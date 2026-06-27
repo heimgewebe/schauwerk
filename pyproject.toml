@@ -8,12 +8,19 @@ version = "0.1.0"
 description = "Visual work, projection, and publication layer for Heimgewebe."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["jsonschema>=4.23", "PyYAML>=6.0.2"]
+dependencies = [
+  "httpx>=0.28,<1",
+  "jsonschema>=4.23",
+  "mcp>=1.28,<2",
+  "platformdirs>=4.3,<5",
+  "PyYAML>=6.0.2",
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3", "ruff>=0.15"]
 
 [project.scripts]
+schauwerk = "schauwerk.runner:main"
 schauwerk-registry-validate = "schauwerk.registry_validation:main"
 
 [tool.setuptools.packages.find]
