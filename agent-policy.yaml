@@ -1,0 +1,15 @@
+schema_version: 1
+mode: planning-foundation
+mutations:
+  external_surfaces: forbidden
+  registry: review-required
+  schemas: review-required
+  documentation: allowed
+publication:
+  sanitized_artifact_required: true
+  receipt_required: true
+automation:
+  managed_region_required: true
+  snapshot_before_apply: true
+  verify_after_apply: true
+  idempotency_required: true

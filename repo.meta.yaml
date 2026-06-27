@@ -1,0 +1,32 @@
+repo_name: schauwerk
+repo_type: service
+role: visual_work_projection_and_publication_layer
+status: proposed
+summary: Visual work, projection, and publication layer for Heimgewebe.
+owners:
+  - heimgewebe-team
+primary_languages:
+  - python
+  - typescript
+  - markdown
+entrypoints:
+  - README.md
+  - AGENTS.md
+  - docs/index.md
+canonical_sources:
+  - repo.meta.yaml
+  - AGENTS.md
+  - docs/architecture/schauwerk.md
+  - docs/roadmap.md
+discovery_roots:
+  - docs/
+  - schemas/
+  - registry/
+  - src/
+  - scripts/
+  - tests/
+  - .github/workflows/
+required_checks:
+  - lint
+  - test
+  - registry-validate

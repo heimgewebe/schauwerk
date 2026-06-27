@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/view.v1.schema.json",
+  "title": "Schauwerk View v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "project_id",
+    "title",
+    "purpose",
+    "visibility",
+    "management_mode"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "project_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "visibility": {
+      "enum": [
+        "private",
+        "shared",
+        "classroom",
+        "public",
+        "archived"
+      ]
+    },
+    "management_mode": {
+      "enum": [
+        "manual",
+        "cooperative",
+        "suggest-only",
+        "approval-required",
+        "managed",
+        "read-only",
+        "public-copy"
+      ]
+    },
+    "source_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "surface_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audiences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    }
+  }
+}

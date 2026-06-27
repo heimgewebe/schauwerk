@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "schauwerk"
+version = "0.1.0"
+description = "Visual work, projection, and publication layer for Heimgewebe."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["jsonschema>=4.23", "PyYAML>=6.0.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "ruff>=0.15"]
+
+[project.scripts]
+schauwerk-registry-validate = "schauwerk.registry_validation:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "scripts", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
