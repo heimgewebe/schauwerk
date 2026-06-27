@@ -21,6 +21,9 @@ Deliver architecture, ownership boundaries, visibility model, region modes, vers
 
 ## SW-001 — Direct Miro MCP client
 
+**Implementation status:** complete; live Miro authorization and tool discovery remain the acceptance proof.
+
+
 Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamable HTTP, tool discovery, health diagnostics, and team/server binding.
 
 **Gate:** the tool catalogue is available without invoking a model.
