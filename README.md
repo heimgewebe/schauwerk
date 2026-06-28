@@ -78,7 +78,17 @@ schauwerk miro inspect --json
 schauwerk miro inspect --query Schauwerk --owned-by-me --limit 20 --max-pages 5 --json
 ```
 
-Die Inspektion prüft nur die vorhandene Identität und die Struktur der Board-Suche. Sie führt keine Board-Mutation aus und gibt keine Board-Namen, IDs, URLs oder Inhalte aus. Ein vollständiger deterministischer Board-Snapshot ist weiterhin Teil von SW-002.
+Die Inspektion prüft nur die vorhandene Identität und die Struktur der Board-Suche. Sie führt keine Board-Mutation aus und gibt keine Board-Namen, IDs, URLs oder Inhalte aus.
+
+## Deterministischer Board-Snapshot
+
+```bash
+schauwerk miro board add sw002-fixture 'https://miro.com/app/board/...'
+schauwerk miro board list --json
+schauwerk miro snapshot sw002-fixture --json
+```
+
+Board-URLs liegen ausschließlich in einer lokalen Datei mit Modus `0600`. Der Snapshot ersetzt Provider-IDs und URLs durch Digests, entfernt volatile Identitäts- und Zeitfelder, erkennt doppelte Referenzen, liest das Board zweimal und schreibt nur bei identischem Inhalts- und Paginationsergebnis über einen symlink-sicheren Zielpfad ein Artefakt. `--no-comments`, `--output`, `--item-limit`, `--comment-limit` und `--max-pages` begrenzen den Leseumfang.
 
 ## Aktueller Umsetzungsschnitt
 

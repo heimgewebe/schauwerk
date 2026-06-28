@@ -29,7 +29,7 @@ Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamab
 
 ## SW-002 — Read-only Miro snapshot
 
-**Implementation status:** in progress; sanitized identity and board-search diagnostics exist. Deterministic board-item snapshots, allowlisting, and the repeatability gate remain open.
+**Implementation status:** implemented; owner-only board allowlisting, cursor/offset pagination, duplicate-reference detection, sanitized canonical snapshots, symlink-safe output, and a two-read content-and-pagination repeatability gate exist. Live acceptance against the isolated SW-002 fixture remains the final proof.
 
 Read one allowlisted board with pagination, frames, elements, layout information, and supported comments. Normalize data into a stable snapshot.
 
