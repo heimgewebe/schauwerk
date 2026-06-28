@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import stat
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -39,8 +40,15 @@ class FileTokenStorage(TokenStorage):
     @contextmanager
     def _lock(self, *, exclusive: bool) -> Iterator[None]:
         self._ensure_parent()
-        descriptor = os.open(self.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
         try:
+            descriptor = os.open(self.lock_path, flags, 0o600)
+        except OSError as exc:
+            raise MiroCredentialError("OAuth lock path is unsafe") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise MiroCredentialError("OAuth lock path is not a regular file")
             os.fchmod(descriptor, 0o600)
             fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
             yield
@@ -49,18 +57,35 @@ class FileTokenStorage(TokenStorage):
             os.close(descriptor)
 
     @staticmethod
-    def _assert_owner_only(path: Path) -> None:
-        if path.stat().st_mode & 0o077:
+    def _assert_owner_only(path: Path) -> os.stat_result:
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            raise
+        if stat.S_ISLNK(metadata.st_mode):
+            raise MiroCredentialError("OAuth state must not be a symlink")
+        if not stat.S_ISREG(metadata.st_mode):
+            raise MiroCredentialError("OAuth state must be a regular file")
+        if metadata.st_mode & 0o077:
             raise MiroCredentialError(
                 f"OAuth state has unsafe permissions: {path}; expected mode 0600"
             )
+        return metadata
 
     def _read_unlocked(self) -> dict[str, Any]:
-        if not self.path.exists():
-            return {}
-        self._assert_owner_only(self.path)
         try:
-            value = json.loads(self.path.read_text(encoding="utf-8"))
+            self._assert_owner_only(self.path)
+        except FileNotFoundError:
+            return {}
+        try:
+            descriptor = os.open(
+                self.path,
+                os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+            )
+            with os.fdopen(descriptor, "r", encoding="utf-8") as handle:
+                value = json.load(handle)
+        except MiroCredentialError:
+            raise
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise MiroCredentialError("OAuth state is unreadable or corrupt") from exc
         if not isinstance(value, dict):
@@ -133,25 +158,26 @@ class FileTokenStorage(TokenStorage):
         document = self._read()
         return {
             "path": str(self.path),
-            "exists": self.path.exists(),
-            "secure": not self.path.exists() or not bool(self.path.stat().st_mode & 0o077),
+            "exists": self.path.is_file() and not self.path.is_symlink(),
+            "secure": True,
             "has_tokens": isinstance(document.get("tokens"), dict),
             "has_client_info": isinstance(document.get("client_info"), dict),
         }
 
     def clear(self) -> bool:
-        """Remove only this client's state and return whether it existed."""
+        """Remove only this client's regular state file, never a symlink target."""
         with self._lock(exclusive=True):
-            existed = self.path.exists()
-            if existed:
+            try:
                 self._assert_owner_only(self.path)
-                self.path.unlink()
-                directory_fd = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY)
-                try:
-                    os.fsync(directory_fd)
-                finally:
-                    os.close(directory_fd)
-            return existed
+            except FileNotFoundError:
+                return False
+            self.path.unlink()
+            directory_fd = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            return True
 
 
 def write_json_owner_only(path: Path, value: dict[str, Any]) -> None:
