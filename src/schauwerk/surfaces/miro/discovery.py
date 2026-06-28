@@ -14,9 +14,9 @@ from pydantic import AnyUrl
 from .auth import CallbackHandler, RedirectHandler
 from .credentials import FileTokenStorage
 from .errors import (
-    MiroAuthorizationRequired,
     MiroConnectionError,
     MiroError,
+    find_nested_miro_error,
     redact_text,
 )
 from .models import MiroSettings, ToolCatalogue, ToolInfo
@@ -79,17 +79,6 @@ async def list_all_tools(session: ClientSession) -> list[ToolInfo]:
     return tools
 
 
-def find_authorization_error(exc: BaseException) -> MiroAuthorizationRequired | None:
-    current: BaseException | None = exc
-    visited: set[int] = set()
-    while current is not None and id(current) not in visited:
-        visited.add(id(current))
-        if isinstance(current, MiroAuthorizationRequired):
-            return current
-        current = current.__cause__ or current.__context__
-    return None
-
-
 async def discover_tools(
     settings: MiroSettings,
     storage: FileTokenStorage,
@@ -112,10 +101,12 @@ async def discover_tools(
                     tools = await list_all_tools(session)
     except MiroError:
         raise
-    except Exception as exc:
-        authorization_error = find_authorization_error(exc)
-        if authorization_error is not None:
-            raise authorization_error from exc
+    except BaseException as exc:
+        nested = find_nested_miro_error(exc)
+        if nested is not None:
+            raise nested from exc
+        if not isinstance(exc, Exception):
+            raise
         raise MiroConnectionError(
             f"Miro MCP discovery failed: {redact_text(exc)}"
         ) from exc
