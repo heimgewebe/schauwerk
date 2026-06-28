@@ -71,6 +71,18 @@ pip install -e '.[dev]'
 make validate
 ```
 
+## Direkter Miro-Betrieb
+
+```bash
+schauwerk miro status --json
+schauwerk miro login
+schauwerk miro tools --json
+schauwerk miro inspect --query grabowski --json
+schauwerk miro logout --json
+```
+
+`inspect` ist strikt lesend. Der Befehl prüft die gespeicherte Sitzung, meldet nur die Präsenz erwarteter Identitätsfelder, paginiert die Board-Suche begrenzt und gibt weder IDs noch Board-URLs aus. Inkonsistente MCP-Seiten werden als Diagnosecodes statt als vermeintlich vollständiger Bestand ausgewiesen.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge

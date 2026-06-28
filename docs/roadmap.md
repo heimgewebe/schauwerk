@@ -21,14 +21,15 @@ Deliver architecture, ownership boundaries, visibility model, region modes, vers
 
 ## SW-001 — Direct Miro MCP client
 
-**Implementation status:** complete; live Miro authorization and tool discovery remain the acceptance proof.
-
+**Implementation status:** complete; live Miro authorization and tool discovery were proven on 2026-06-28.
 
 Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamable HTTP, tool discovery, health diagnostics, and team/server binding.
 
 **Gate:** the tool catalogue is available without invoking a model.
 
 ## SW-002 — Read-only Miro snapshot
+
+**Implementation status:** partial; sanitized session and board-search inspection is complete. Stable allowlisted board snapshots remain open because the current Miro search response reports boards without returning records.
 
 Read one allowlisted board with pagination, frames, elements, layout information, and supported comments. Normalize data into a stable snapshot.
 

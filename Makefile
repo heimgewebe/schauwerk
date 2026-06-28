@@ -1,12 +1,17 @@
 .PHONY: lint test registry-validate validate
 
+VENV_BIN := $(if $(wildcard .venv/bin/python),.venv/bin/,)
+PYTHON ?= $(VENV_BIN)python
+RUFF ?= $(VENV_BIN)ruff
+PYTEST ?= $(VENV_BIN)pytest
+
 lint:
-	ruff check src tests
+	$(RUFF) check src tests
 
 registry-validate:
-	python -m schauwerk.registry_validation
+	$(PYTHON) -m schauwerk.registry_validation
 
 test:
-	pytest
+	$(PYTEST)
 
 validate: lint registry-validate test

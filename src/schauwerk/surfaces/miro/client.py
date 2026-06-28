@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .auth import interactive_handlers
 from .credentials import FileTokenStorage, write_json_owner_only
 from .discovery import discover_tools
-from .errors import MiroCredentialError, redact_text
+from .errors import MiroAuthorizationRequired, MiroCredentialError, redact_text
 from .models import MiroSettings, ToolCatalogue
+from .operations import inspect_miro
 
 
 class MiroMCPClient:
@@ -65,11 +67,26 @@ class MiroMCPClient:
 
     async def tools(self) -> ToolCatalogue:
         async def stop(_value: str = "") -> tuple[str, str | None]:
-            raise MiroCredentialError("Miro login must be renewed")
+            raise MiroAuthorizationRequired("Miro login must be renewed")
 
         result = await discover_tools(self.settings, self.storage, stop, stop)
         write_json_owner_only(self.settings.catalogue_path, result.to_dict())
         return result
+
+    async def inspect(
+        self,
+        *,
+        query: str = "",
+        owned_by_me: bool = False,
+        max_pages: int = 5,
+    ) -> dict[str, Any]:
+        return await inspect_miro(
+            self.settings,
+            self.storage,
+            query=query,
+            owned_by_me=owned_by_me,
+            max_pages=max_pages,
+        )
 
     def cached_tools(self) -> dict[str, Any]:
         path = self.settings.catalogue_path
@@ -77,7 +94,10 @@ class MiroMCPClient:
             raise MiroCredentialError("No safe cached tool catalogue exists")
         if path.stat().st_mode & 0o077:
             raise MiroCredentialError("Cached tool catalogue has unsafe permissions")
-        value = __import__("json").loads(path.read_text(encoding="utf-8"))
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise MiroCredentialError("Cached tool catalogue is unreadable") from exc
         if not isinstance(value, dict):
             raise MiroCredentialError("Cached tool catalogue is invalid")
         return value
@@ -86,7 +106,7 @@ class MiroMCPClient:
         state_removed = self.storage.clear()
         path = self.settings.catalogue_path
         cache_removed = False
-        if path.exists():
+        if path.exists() or path.is_symlink():
             if not path.is_file() or path.is_symlink():
                 raise MiroCredentialError("Refusing unsafe cache path")
             path.unlink()

@@ -80,13 +80,21 @@ async def list_all_tools(session: ClientSession) -> list[ToolInfo]:
 
 
 def find_authorization_error(exc: BaseException) -> MiroAuthorizationRequired | None:
-    current: BaseException | None = exc
+    pending: list[BaseException] = [exc]
     visited: set[int] = set()
-    while current is not None and id(current) not in visited:
+    while pending:
+        current = pending.pop()
+        if id(current) in visited:
+            continue
         visited.add(id(current))
         if isinstance(current, MiroAuthorizationRequired):
             return current
-        current = current.__cause__ or current.__context__
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(current.exceptions)
+        if current.__cause__ is not None:
+            pending.append(current.__cause__)
+        if current.__context__ is not None:
+            pending.append(current.__context__)
     return None
 
 

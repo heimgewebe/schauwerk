@@ -6,7 +6,13 @@ import json
 import sys
 from typing import Any
 
-from .cli_handlers import handle_login, handle_logout, handle_status, handle_tools
+from .cli_handlers import (
+    handle_inspect,
+    handle_login,
+    handle_logout,
+    handle_status,
+    handle_tools,
+)
 from .cli_parser import build_parser
 from .surfaces.miro.errors import MiroError, redact_text
 
@@ -31,13 +37,19 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "tools":
             result = handle_tools()
+        elif args.command == "inspect":
+            result = handle_inspect(
+                query=args.query,
+                owned_by_me=args.owned_by_me,
+                max_pages=args.max_pages,
+            )
         elif args.command == "logout":
             result = handle_logout()
         else:
             raise AssertionError(f"unhandled command: {args.command}")
         emit(result, as_json=args.json)
         return 0
-    except MiroError as exc:
+    except (MiroError, ValueError) as exc:
         print(f"error: {redact_text(exc)}", file=sys.stderr)
         return 2
 
