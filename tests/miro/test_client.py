@@ -5,8 +5,11 @@ import json
 import os
 from contextlib import asynccontextmanager
 
+import pytest
+
 from schauwerk.surfaces.miro import client as client_module
 from schauwerk.surfaces.miro.client import MiroMCPClient
+from schauwerk.surfaces.miro.errors import MiroCredentialError
 from schauwerk.surfaces.miro.models import MiroSettings, ToolCatalogue, ToolInfo
 
 
@@ -71,3 +74,51 @@ def test_login_wires_handlers_and_persists_catalogue(tmp_path, monkeypatch) -> N
     cached = json.loads(settings.catalogue_path.read_text(encoding="utf-8"))
     assert cached["tool_count"] == 1
     assert settings.catalogue_path.stat().st_mode & 0o077 == 0
+
+
+def test_inspect_delegates_without_exposing_identifiers(tmp_path, monkeypatch) -> None:
+    settings = MiroSettings(state_root=tmp_path / "state")
+    client = MiroMCPClient(settings=settings)
+    observed = {}
+
+    async def fake_inspect(
+        _settings, _storage, *, query, owned_by_me, limit, max_pages
+    ):
+        observed.update(
+            query=query, owned=owned_by_me, limit=limit, pages=max_pages
+        )
+        return {"read_only": True, "identity": {"complete": True}}
+
+    monkeypatch.setattr(client_module, "run_read_only_inspection", fake_inspect)
+    result = asyncio.run(
+        client.inspect(query="grabowski", owned_by_me=True, max_pages=3)
+    )
+
+    assert result == {"read_only": True, "identity": {"complete": True}}
+    assert observed == {
+        "query": "grabowski",
+        "owned": True,
+        "limit": 20,
+        "pages": 3,
+    }
+
+
+def test_cached_tools_wraps_invalid_json(tmp_path) -> None:
+    settings = MiroSettings(state_root=tmp_path / "state")
+    settings.state_root.mkdir(parents=True)
+    settings.catalogue_path.write_text("not-json", encoding="utf-8")
+    os.chmod(settings.catalogue_path, 0o600)
+
+    with pytest.raises(MiroCredentialError, match="unreadable"):
+        MiroMCPClient(settings=settings).cached_tools()
+
+
+def test_logout_removes_dangling_cache_symlink(tmp_path) -> None:
+    settings = MiroSettings(state_root=tmp_path / "state")
+    settings.state_root.mkdir(parents=True)
+    settings.catalogue_path.symlink_to(tmp_path / "missing-target")
+
+    outcome = MiroMCPClient(settings=settings).logout()
+
+    assert outcome["cache_removed"] is True
+    assert not settings.catalogue_path.is_symlink()

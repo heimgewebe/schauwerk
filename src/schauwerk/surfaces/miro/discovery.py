@@ -14,6 +14,7 @@ from pydantic import AnyUrl
 from .auth import CallbackHandler, RedirectHandler
 from .credentials import FileTokenStorage
 from .errors import (
+    MiroAuthorizationRequired,
     MiroConnectionError,
     MiroError,
     find_nested_miro_error,
@@ -78,6 +79,10 @@ async def list_all_tools(session: ClientSession) -> list[ToolInfo]:
         raise MiroConnectionError("Miro returned duplicate tool names")
     return tools
 
+
+def find_authorization_error(exc: BaseException) -> MiroAuthorizationRequired | None:
+    nested = find_nested_miro_error(exc)
+    return nested if isinstance(nested, MiroAuthorizationRequired) else None
 
 async def discover_tools(
     settings: MiroSettings,

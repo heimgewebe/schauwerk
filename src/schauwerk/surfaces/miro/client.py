@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from .auth import interactive_handlers
@@ -102,7 +103,10 @@ class MiroMCPClient:
             raise MiroCredentialError("No safe cached tool catalogue exists")
         if path.stat().st_mode & 0o077:
             raise MiroCredentialError("Cached tool catalogue has unsafe permissions")
-        value = __import__("json").loads(path.read_text(encoding="utf-8"))
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise MiroCredentialError("Cached tool catalogue is unreadable") from exc
         if not isinstance(value, dict):
             raise MiroCredentialError("Cached tool catalogue is invalid")
         return value
