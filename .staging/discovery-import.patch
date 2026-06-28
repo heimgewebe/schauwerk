@@ -1,0 +1,9 @@
+*** Begin Patch
+*** Update File: src/schauwerk/surfaces/miro/discovery.py
+@@
+-    MiroAuthorizationRequired,
+     MiroConnectionError,
+     MiroError,
++    find_nested_miro_error,
+     redact_text,
+*** End Patch
