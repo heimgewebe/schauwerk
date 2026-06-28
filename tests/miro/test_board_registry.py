@@ -53,3 +53,16 @@ def test_allowlist_rejects_group_readable_file(tmp_path) -> None:
 
     with pytest.raises(MiroCredentialError, match="0600"):
         BoardAllowlist(path).list()
+
+
+def test_allowlist_requires_explicit_alias_replacement(tmp_path) -> None:
+    allowlist = BoardAllowlist(tmp_path / "boards.json")
+    other = "https://miro.com/app/board/uXjVOther=/"
+    allowlist.add("fixture", URL)
+
+    with pytest.raises(MiroCredentialError, match="--replace"):
+        allowlist.add("fixture", other)
+
+    assert allowlist.resolve("fixture") == URL
+    allowlist.add("fixture", other, replace=True)
+    assert allowlist.resolve("fixture") == other

@@ -38,8 +38,8 @@ def test_runner_dispatches_read_only_inspection(monkeypatch, capsys) -> None:
 def test_runner_dispatches_board_add(monkeypatch, capsys) -> None:
     observed = {}
 
-    def fake_add(*, alias, miro_url):
-        observed.update(alias=alias, miro_url=miro_url)
+    def fake_add(*, alias, miro_url, replace):
+        observed.update(alias=alias, miro_url=miro_url, replace=replace)
         return {"alias": alias, "reference_digest": "digest"}
 
     monkeypatch.setattr(runner, "handle_board_add", fake_add)
@@ -48,6 +48,7 @@ def test_runner_dispatches_board_add(monkeypatch, capsys) -> None:
     )
     assert code == 0
     assert observed["alias"] == "fixture"
+    assert observed["replace"] is False
     assert "miro.com" not in capsys.readouterr().out
 
 

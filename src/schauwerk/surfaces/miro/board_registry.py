@@ -74,16 +74,25 @@ class BoardAllowlist:
         document = _read_owner_only(self.path)
         if not document:
             return {"schema_version": 1, "boards": {}}
-        if document.get("schema_version") != 1 or not isinstance(
-            document.get("boards"), dict
-        ):
+        if document.get("schema_version") != 1 or not isinstance(document.get("boards"), dict):
             raise MiroCredentialError("Board allowlist has an unsupported shape")
         return document
 
-    def add(self, alias: str, miro_url: str) -> AllowlistedBoard:
+    def add(self, alias: str, miro_url: str, *, replace: bool = False) -> AllowlistedBoard:
         name = validate_alias(alias)
         url = validate_board_url(miro_url)
         boards = dict(self._document()["boards"])
+        current = boards.get(name)
+        if current is not None:
+            if not isinstance(current, Mapping) or not isinstance(current.get("miro_url"), str):
+                raise MiroCredentialError("Board allowlist contains an invalid entry")
+            current_url = validate_board_url(current["miro_url"])
+            if current_url != url and not replace:
+                raise MiroCredentialError(
+                    "Board alias already refers to a different board; use --replace explicitly"
+                )
+            if current_url == url:
+                return AllowlistedBoard(name, reference_digest(url))
         boards[name] = {"miro_url": url}
         write_json_owner_only(
             self.path,

@@ -43,9 +43,9 @@ def handle_inspect(
 
 
 def handle_board_add(
-    *, alias: str, miro_url: str, client: MiroMCPClient | None = None
+    *, alias: str, miro_url: str, replace: bool = False, client: MiroMCPClient | None = None
 ) -> dict[str, Any]:
-    return (client or MiroMCPClient()).board_add(alias, miro_url).to_dict()
+    return (client or MiroMCPClient()).board_add(alias, miro_url, replace=replace).to_dict()
 
 
 def handle_board_list(client: MiroMCPClient | None = None) -> dict[str, Any]:
@@ -53,9 +53,7 @@ def handle_board_list(client: MiroMCPClient | None = None) -> dict[str, Any]:
     return {"count": len(boards), "boards": [board.to_dict() for board in boards]}
 
 
-def handle_board_remove(
-    *, alias: str, client: MiroMCPClient | None = None
-) -> dict[str, Any]:
+def handle_board_remove(*, alias: str, client: MiroMCPClient | None = None) -> dict[str, Any]:
     return {"alias": alias, "removed": (client or MiroMCPClient()).board_remove(alias)}
 
 

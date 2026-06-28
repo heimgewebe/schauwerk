@@ -120,8 +120,3 @@ def normalize_comment(record: Mapping[str, Any]) -> dict[str, Any]:
 
 def content_digest(content: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical_json(content).encode()).hexdigest()
-
-
-def unique_sorted(records: Sequence[dict[str, Any]]) -> tuple[dict[str, Any], ...]:
-    unique = {canonical_json(record): record for record in records}
-    return tuple(unique[key] for key in sorted(unique))

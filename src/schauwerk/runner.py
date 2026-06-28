@@ -49,7 +49,9 @@ def main(argv: list[str] | None = None) -> int:
                 max_pages=args.max_pages,
             )
         elif args.command == "board" and args.board_command == "add":
-            result = handle_board_add(alias=args.alias, miro_url=args.miro_url)
+            result = handle_board_add(
+                alias=args.alias, miro_url=args.miro_url, replace=args.replace
+            )
         elif args.command == "board" and args.board_command == "list":
             result = handle_board_list()
         elif args.command == "board" and args.board_command == "remove":

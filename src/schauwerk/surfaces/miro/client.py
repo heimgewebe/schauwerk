@@ -53,9 +53,7 @@ class MiroMCPClient:
             "credentials": credentials,
             "credential_error": credential_error,
             "catalogue_path": str(catalogue_path),
-            "catalogue_exists": (
-                catalogue_path.is_file() and not catalogue_path.is_symlink()
-            ),
+            "catalogue_exists": (catalogue_path.is_file() and not catalogue_path.is_symlink()),
             "authorized_locally": bool(
                 credential_error is None
                 and credentials["has_tokens"]
@@ -101,8 +99,10 @@ class MiroMCPClient:
             max_pages=max_pages,
         )
 
-    def board_add(self, alias: str, miro_url: str) -> AllowlistedBoard:
-        return BoardAllowlist(self.settings.board_allowlist_path).add(alias, miro_url)
+    def board_add(self, alias: str, miro_url: str, *, replace: bool = False) -> AllowlistedBoard:
+        return BoardAllowlist(self.settings.board_allowlist_path).add(
+            alias, miro_url, replace=replace
+        )
 
     def board_list(self) -> tuple[AllowlistedBoard, ...]:
         return BoardAllowlist(self.settings.board_allowlist_path).list()

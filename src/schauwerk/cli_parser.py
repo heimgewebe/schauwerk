@@ -44,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     board_add = board_commands.add_parser("add", help="allowlist one board URL")
     board_add.add_argument("alias")
     board_add.add_argument("miro_url")
+    board_add.add_argument("--replace", action="store_true")
     board_add.add_argument("--json", action="store_true")
     board_list = board_commands.add_parser("list", help="list allowlisted aliases")
     board_list.add_argument("--json", action="store_true")
