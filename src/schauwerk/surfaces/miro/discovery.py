@@ -41,7 +41,7 @@ def build_oauth_provider(
         storage=storage,
         redirect_handler=redirect_handler,
         callback_handler=callback_handler,
-        timeout=settings.timeout_seconds,
+        timeout=settings.network_timeout_seconds,
     )
 
 
@@ -101,7 +101,7 @@ async def discover_tools(
         async with httpx.AsyncClient(
             auth=oauth,
             follow_redirects=True,
-            timeout=httpx.Timeout(settings.timeout_seconds),
+            timeout=httpx.Timeout(settings.network_timeout_seconds),
             headers={"User-Agent": "schauwerk/0.1"},
         ) as http_client:
             async with streamable_http_client(
