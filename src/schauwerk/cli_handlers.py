@@ -6,6 +6,7 @@ import asyncio
 from typing import Any
 
 from .surfaces.miro.client import MiroMCPClient
+from .surfaces.miro.safe_logout import safe_logout
 
 
 def handle_status(client: MiroMCPClient | None = None) -> dict[str, Any]:
@@ -31,4 +32,4 @@ def handle_tools(client: MiroMCPClient | None = None) -> dict[str, Any]:
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
-    return (client or MiroMCPClient()).logout()
+    return safe_logout(client or MiroMCPClient())
