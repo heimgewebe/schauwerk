@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 import stat
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from .client import MiroMCPClient
 from .errors import MiroCredentialError
+
+if TYPE_CHECKING:
+    from .client import MiroMCPClient
 
 
 def _unlink_entry(path: Path, *, label: str) -> bool:
@@ -34,11 +37,5 @@ def safe_logout(client: MiroMCPClient) -> dict[str, bool]:
         state_removed = _unlink_entry(state_path, label="OAuth state")
     else:
         state_removed = client.storage.clear()
-    cache_removed = _unlink_entry(
-        client.settings.catalogue_path,
-        label="tool catalogue",
-    )
-    return {
-        "state_removed": state_removed,
-        "cache_removed": cache_removed,
-    }
+    cache_removed = _unlink_entry(client.settings.catalogue_path, label="tool catalogue")
+    return {"state_removed": state_removed, "cache_removed": cache_removed}
