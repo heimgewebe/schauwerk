@@ -23,12 +23,13 @@ Deliver architecture, ownership boundaries, visibility model, region modes, vers
 
 **Implementation status:** complete; live Miro authorization and tool discovery remain the acceptance proof.
 
-
 Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamable HTTP, tool discovery, health diagnostics, and team/server binding.
 
 **Gate:** the tool catalogue is available without invoking a model.
 
 ## SW-002 — Read-only Miro snapshot
+
+**Implementation status:** in progress; sanitized identity and board-search diagnostics exist. Deterministic board-item snapshots, allowlisting, and the repeatability gate remain open.
 
 Read one allowlisted board with pagination, frames, elements, layout information, and supported comments. Normalize data into a stable snapshot.
 
