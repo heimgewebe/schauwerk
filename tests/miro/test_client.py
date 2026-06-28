@@ -76,23 +76,31 @@ def test_login_wires_handlers_and_persists_catalogue(tmp_path, monkeypatch) -> N
     assert settings.catalogue_path.stat().st_mode & 0o077 == 0
 
 
-
 def test_inspect_delegates_without_exposing_identifiers(tmp_path, monkeypatch) -> None:
     settings = MiroSettings(state_root=tmp_path / "state")
     client = MiroMCPClient(settings=settings)
     observed = {}
 
-    async def fake_inspect(_settings, _storage, *, query, owned_by_me, max_pages):
-        observed.update(query=query, owned=owned_by_me, pages=max_pages)
+    async def fake_inspect(
+        _settings, _storage, *, query, owned_by_me, limit, max_pages
+    ):
+        observed.update(
+            query=query, owned=owned_by_me, limit=limit, pages=max_pages
+        )
         return {"read_only": True, "identity": {"complete": True}}
 
-    monkeypatch.setattr(client_module, "inspect_miro", fake_inspect)
+    monkeypatch.setattr(client_module, "run_read_only_inspection", fake_inspect)
     result = asyncio.run(
         client.inspect(query="grabowski", owned_by_me=True, max_pages=3)
     )
 
     assert result == {"read_only": True, "identity": {"complete": True}}
-    assert observed == {"query": "grabowski", "owned": True, "pages": 3}
+    assert observed == {
+        "query": "grabowski",
+        "owned": True,
+        "limit": 20,
+        "pages": 3,
+    }
 
 
 def test_cached_tools_wraps_invalid_json(tmp_path) -> None:
@@ -105,11 +113,12 @@ def test_cached_tools_wraps_invalid_json(tmp_path) -> None:
         MiroMCPClient(settings=settings).cached_tools()
 
 
-def test_logout_rejects_dangling_cache_symlink(tmp_path) -> None:
+def test_logout_removes_dangling_cache_symlink(tmp_path) -> None:
     settings = MiroSettings(state_root=tmp_path / "state")
     settings.state_root.mkdir(parents=True)
     settings.catalogue_path.symlink_to(tmp_path / "missing-target")
 
-    with pytest.raises(MiroCredentialError, match="unsafe cache path"):
-        MiroMCPClient(settings=settings).logout()
-    assert settings.catalogue_path.is_symlink()
+    outcome = MiroMCPClient(settings=settings).logout()
+
+    assert outcome["cache_removed"] is True
+    assert not settings.catalogue_path.is_symlink()

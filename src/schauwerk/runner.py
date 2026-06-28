@@ -41,6 +41,7 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_inspect(
                 query=args.query,
                 owned_by_me=args.owned_by_me,
+                limit=args.limit,
                 max_pages=args.max_pages,
             )
         elif args.command == "logout":

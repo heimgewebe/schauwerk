@@ -17,6 +17,7 @@ from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
     MiroError,
+    find_nested_miro_error,
     redact_text,
 )
 from .models import MiroSettings, ToolCatalogue, ToolInfo
@@ -80,23 +81,8 @@ async def list_all_tools(session: ClientSession) -> list[ToolInfo]:
 
 
 def find_authorization_error(exc: BaseException) -> MiroAuthorizationRequired | None:
-    pending: list[BaseException] = [exc]
-    visited: set[int] = set()
-    while pending:
-        current = pending.pop()
-        if id(current) in visited:
-            continue
-        visited.add(id(current))
-        if isinstance(current, MiroAuthorizationRequired):
-            return current
-        if isinstance(current, BaseExceptionGroup):
-            pending.extend(current.exceptions)
-        if current.__cause__ is not None:
-            pending.append(current.__cause__)
-        if current.__context__ is not None:
-            pending.append(current.__context__)
-    return None
-
+    nested = find_nested_miro_error(exc)
+    return nested if isinstance(nested, MiroAuthorizationRequired) else None
 
 async def discover_tools(
     settings: MiroSettings,
@@ -120,10 +106,12 @@ async def discover_tools(
                     tools = await list_all_tools(session)
     except MiroError:
         raise
-    except Exception as exc:
-        authorization_error = find_authorization_error(exc)
-        if authorization_error is not None:
-            raise authorization_error from exc
+    except BaseException as exc:
+        nested = find_nested_miro_error(exc)
+        if nested is not None:
+            raise nested from exc
+        if not isinstance(exc, Exception):
+            raise
         raise MiroConnectionError(
             f"Miro MCP discovery failed: {redact_text(exc)}"
         ) from exc

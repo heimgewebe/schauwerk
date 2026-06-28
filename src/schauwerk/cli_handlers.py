@@ -34,17 +34,20 @@ def handle_inspect(
     *,
     query: str,
     owned_by_me: bool,
+    limit: int,
     max_pages: int,
     client: MiroMCPClient | None = None,
 ) -> dict[str, Any]:
     active = client or MiroMCPClient()
-    return asyncio.run(
+    report = asyncio.run(
         active.inspect(
             query=query,
             owned_by_me=owned_by_me,
+            limit=limit,
             max_pages=max_pages,
         )
     )
+    return report.to_dict()
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:

@@ -71,17 +71,14 @@ pip install -e '.[dev]'
 make validate
 ```
 
-## Direkter Miro-Betrieb
+## Read-only Miro-Inspektion
 
 ```bash
-schauwerk miro status --json
-schauwerk miro login
-schauwerk miro tools --json
-schauwerk miro inspect --query grabowski --json
-schauwerk miro logout --json
+schauwerk miro inspect --json
+schauwerk miro inspect --query Schauwerk --owned-by-me --limit 20 --max-pages 5 --json
 ```
 
-`inspect` ist strikt lesend. Der Befehl prüft die gespeicherte Sitzung, meldet nur die Präsenz erwarteter Identitätsfelder, paginiert die Board-Suche begrenzt und gibt weder IDs noch Board-URLs aus. Inkonsistente MCP-Seiten werden als Diagnosecodes statt als vermeintlich vollständiger Bestand ausgewiesen.
+Die Inspektion prüft nur die vorhandene Identität und die Struktur der Board-Suche. Sie führt keine Board-Mutation aus und gibt keine Board-Namen, IDs, URLs oder Inhalte aus. Ein vollständiger deterministischer Board-Snapshot ist weiterhin Teil von SW-002.
 
 ## Aktueller Umsetzungsschnitt
 
