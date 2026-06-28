@@ -73,10 +73,15 @@ class LoopbackCallbackServer:
             raise RuntimeError("callback server has not started")
         try:
             result = await asyncio.wait_for(
-                asyncio.shield(self._future), timeout=self.settings.timeout_seconds
+                asyncio.shield(self._future),
+                timeout=self.settings.authorization_timeout_seconds,
             )
         except TimeoutError as exc:
-            raise MiroAuthorizationError("Timed out waiting for Miro authorization") from exc
+            duration = self.settings.authorization_timeout_seconds
+            raise MiroAuthorizationError(
+                "Timed out waiting for Miro authorization "
+                f"after {duration:g} seconds"
+            ) from exc
         return result.code, result.state
 
     async def _handle_connection(

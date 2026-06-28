@@ -19,7 +19,8 @@ class MiroSettings:
     callback_port: int = 41739
     callback_path: str = "/callback"
     client_name: str = "Schauwerk Miro MCP Client"
-    timeout_seconds: float = 60.0
+    network_timeout_seconds: float = 60.0
+    authorization_timeout_seconds: float = 600.0
     state_root: Path = field(
         default_factory=lambda: user_state_path("schauwerk", ensure_exists=False) / "miro"
     )
