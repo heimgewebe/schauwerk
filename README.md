@@ -71,6 +71,15 @@ pip install -e '.[dev]'
 make validate
 ```
 
+## Read-only Miro-Inspektion
+
+```bash
+schauwerk miro inspect --json
+schauwerk miro inspect --query Schauwerk --owned-by-me --limit 20 --max-pages 5 --json
+```
+
+Die Inspektion prüft nur die vorhandene Identität und die Struktur der Board-Suche. Sie führt keine Board-Mutation aus und gibt keine Board-Namen, IDs, URLs oder Inhalte aus. Ein vollständiger deterministischer Board-Snapshot ist weiterhin Teil von SW-002.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge
