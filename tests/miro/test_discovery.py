@@ -5,8 +5,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from schauwerk.surfaces.miro.discovery import list_all_tools, normalize_tool
-from schauwerk.surfaces.miro.errors import MiroConnectionError, redact_text
+from schauwerk.surfaces.miro.discovery import (
+    find_authorization_error,
+    list_all_tools,
+    normalize_tool,
+)
+from schauwerk.surfaces.miro.errors import (
+    MiroAuthorizationRequired,
+    MiroConnectionError,
+    redact_text,
+)
 
 
 def tool(name: str) -> SimpleNamespace:
@@ -60,6 +68,21 @@ def test_duplicate_names_are_rejected() -> None:
 
     with pytest.raises(MiroConnectionError, match="duplicate"):
         asyncio.run(list_all_tools(Session()))
+
+
+def test_authorization_error_is_found_inside_exception_group() -> None:
+    expected = MiroAuthorizationRequired("renew login")
+    nested = ExceptionGroup("outer", [RuntimeError("other"), ExceptionGroup("inner", [expected])])
+
+    assert find_authorization_error(nested) is expected
+
+
+def test_authorization_error_is_found_through_cause() -> None:
+    expected = MiroAuthorizationRequired("renew login")
+    wrapper = RuntimeError("wrapper")
+    wrapper.__cause__ = expected
+
+    assert find_authorization_error(wrapper) is expected
 
 
 def test_redaction_removes_common_secret_forms() -> None:
