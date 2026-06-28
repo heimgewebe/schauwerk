@@ -8,7 +8,10 @@ from .auth import interactive_handlers
 from .credentials import FileTokenStorage, write_json_owner_only
 from .discovery import discover_tools
 from .errors import MiroCredentialError, redact_text
+from .inspection import ReadOnlyInspection
 from .models import MiroSettings, ToolCatalogue
+from .readonly import run_read_only_inspection
+from .safe_logout import safe_logout
 
 
 class MiroMCPClient:
@@ -28,22 +31,26 @@ class MiroMCPClient:
             credentials = self.storage.summary()
             credential_error = None
         except MiroCredentialError as exc:
+            credentials_path = self.settings.credentials_path
             credentials = {
-                "path": str(self.settings.credentials_path),
-                "exists": self.settings.credentials_path.exists(),
+                "path": str(credentials_path),
+                "exists": credentials_path.exists() or credentials_path.is_symlink(),
                 "secure": False,
                 "has_tokens": False,
                 "has_client_info": False,
             }
             credential_error = redact_text(exc)
+        catalogue_path = self.settings.catalogue_path
         return {
             "server_url": self.settings.server_url,
             "scope": self.settings.scope,
             "redirect_uri": self.settings.redirect_uri,
             "credentials": credentials,
             "credential_error": credential_error,
-            "catalogue_path": str(self.settings.catalogue_path),
-            "catalogue_exists": self.settings.catalogue_path.is_file(),
+            "catalogue_path": str(catalogue_path),
+            "catalogue_exists": (
+                catalogue_path.is_file() and not catalogue_path.is_symlink()
+            ),
             "authorized_locally": bool(
                 credential_error is None
                 and credentials["has_tokens"]
@@ -71,6 +78,24 @@ class MiroMCPClient:
         write_json_owner_only(self.settings.catalogue_path, result.to_dict())
         return result
 
+    async def inspect(
+        self,
+        *,
+        query: str = "",
+        owned_by_me: bool = False,
+        limit: int = 20,
+        max_pages: int = 5,
+    ) -> ReadOnlyInspection:
+        """Run the sanitized, mutation-free operational inspection."""
+        return await run_read_only_inspection(
+            self.settings,
+            self.storage,
+            query=query,
+            owned_by_me=owned_by_me,
+            limit=limit,
+            max_pages=max_pages,
+        )
+
     def cached_tools(self) -> dict[str, Any]:
         path = self.settings.catalogue_path
         if not path.is_file() or path.is_symlink():
@@ -83,12 +108,5 @@ class MiroMCPClient:
         return value
 
     def logout(self) -> dict[str, bool]:
-        state_removed = self.storage.clear()
-        path = self.settings.catalogue_path
-        cache_removed = False
-        if path.exists():
-            if not path.is_file() or path.is_symlink():
-                raise MiroCredentialError("Refusing unsafe cache path")
-            path.unlink()
-            cache_removed = True
-        return {"state_removed": state_removed, "cache_removed": cache_removed}
+        """Remove local client state without following symlinks."""
+        return safe_logout(self)
