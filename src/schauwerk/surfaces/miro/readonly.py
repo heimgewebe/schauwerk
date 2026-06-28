@@ -64,10 +64,32 @@ async def run_read_only_inspection(
                     )
     except MiroError:
         raise
-    except Exception as exc:
+    except BaseException as exc:
         nested = find_nested_miro_error(exc)
         if nested is not None:
             raise nested from exc
+        if not isinstance(exc, Exception):
+            raise
         raise MiroConnectionError(
             f"Miro read-only inspection failed: {redact_text(exc)}"
         ) from exc
+
+
+async def inspect_default(
+    *,
+    query: str = "",
+    owned_by_me: bool = False,
+    limit: int = 20,
+    max_pages: int = 5,
+) -> ReadOnlyInspection:
+    """Run the inspection with Schauwerk's default local Miro settings."""
+    settings = MiroSettings()
+    storage = FileTokenStorage(settings.credentials_path)
+    return await run_read_only_inspection(
+        settings,
+        storage,
+        query=query,
+        owned_by_me=owned_by_me,
+        limit=limit,
+        max_pages=max_pages,
+    )
