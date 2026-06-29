@@ -20,8 +20,10 @@ def test_threadless_dns_resolution_uses_socket_without_executor(monkeypatch) -> 
         original = loop.getaddrinfo
         async with threadless_dns_resolution():
             result = await loop.getaddrinfo("example.invalid", 443)
+        restored = getattr(loop.getaddrinfo, "__func__", loop.getaddrinfo)
+        previous = getattr(original, "__func__", original)
         assert calls[0][0] == "example.invalid"
         assert result[0][4] == ("127.0.0.1", 443)
-        assert getattr(loop.getaddrinfo, "__func__", loop.getaddrinfo) is getattr(original, "__func__", original)
+        assert restored is previous
 
     asyncio.run(probe())
