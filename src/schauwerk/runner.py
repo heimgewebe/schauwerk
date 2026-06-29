@@ -18,7 +18,7 @@ from .cli_handlers import (
     handle_tools,
 )
 from .cli_parser import build_parser
-from .surfaces.miro.errors import MiroError, redact_text
+from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
 
 
 def emit(value: Any, *, as_json: bool) -> None:
@@ -74,6 +74,12 @@ def main(argv: list[str] | None = None) -> int:
     except (MiroError, ValueError) as exc:
         print(f"error: {redact_text(exc)}", file=sys.stderr)
         return 2
+    except Exception as exc:
+        nested = find_nested_miro_error(exc)
+        if nested is not None:
+            print(f"error: {redact_text(nested)}", file=sys.stderr)
+            return 2
+        raise
 
 
 if __name__ == "__main__":
