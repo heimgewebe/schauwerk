@@ -21,7 +21,7 @@ Deliver architecture, ownership boundaries, visibility model, region modes, vers
 
 ## SW-001 — Direct Miro MCP client
 
-**Implementation status:** complete; live Miro authorization and tool discovery remain the acceptance proof.
+**Implementation status:** complete; live Miro authorization and tool discovery were accepted against the `Dev team` Miro workspace during SW-002 live acceptance.
 
 Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamable HTTP, tool discovery, health diagnostics, and team/server binding.
 
@@ -29,7 +29,7 @@ Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamab
 
 ## SW-002 — Read-only Miro snapshot
 
-**Implementation status:** implemented; owner-only board allowlisting, cursor/offset pagination, duplicate-reference detection, sanitized canonical snapshots, symlink-safe output, and a two-read content-and-pagination repeatability gate exist. Live acceptance against the isolated SW-002 fixture remains the final proof.
+**Implementation status:** complete; owner-only board allowlisting, cursor/offset pagination, duplicate-reference detection, sanitized canonical snapshots, symlink-safe output, and a two-read content-and-pagination repeatability gate exist. Live acceptance passed against the isolated `sw002-fixture` board with 4 items, 1 comment, stable item/comment pagination, owner-only artifact mode, and no board URL leakage.
 
 Read one allowlisted board with pagination, frames, elements, layout information, and supported comments. Normalize data into a stable snapshot.
 
