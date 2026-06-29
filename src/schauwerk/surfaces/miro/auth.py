@@ -148,7 +148,7 @@ async def interactive_handlers(
 
     async def redirect_handler(url: str) -> None:
         if open_browser:
-            opened = await asyncio.to_thread(webbrowser.open, url, new=2)
+            opened = webbrowser.open(url, new=2)
             if opened:
                 print("Opened Miro authorization in the local browser.", file=sys.stderr)
                 return
