@@ -37,6 +37,14 @@ class MiroSettings:
     def catalogue_path(self) -> Path:
         return self.state_root / "tools.json"
 
+    @property
+    def board_allowlist_path(self) -> Path:
+        return self.state_root / "boards.json"
+
+    @property
+    def snapshots_root(self) -> Path:
+        return self.state_root / "snapshots"
+
 
 @dataclass(frozen=True)
 class ToolInfo:

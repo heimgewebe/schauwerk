@@ -7,9 +7,13 @@ import sys
 from typing import Any
 
 from .cli_handlers import (
+    handle_board_add,
+    handle_board_list,
+    handle_board_remove,
     handle_inspect,
     handle_login,
     handle_logout,
+    handle_snapshot,
     handle_status,
     handle_tools,
 )
@@ -43,6 +47,23 @@ def main(argv: list[str] | None = None) -> int:
                 owned_by_me=args.owned_by_me,
                 limit=args.limit,
                 max_pages=args.max_pages,
+            )
+        elif args.command == "board" and args.board_command == "add":
+            result = handle_board_add(
+                alias=args.alias, miro_url=args.miro_url, replace=args.replace
+            )
+        elif args.command == "board" and args.board_command == "list":
+            result = handle_board_list()
+        elif args.command == "board" and args.board_command == "remove":
+            result = handle_board_remove(alias=args.alias)
+        elif args.command == "snapshot":
+            result = handle_snapshot(
+                alias=args.alias,
+                output=args.output,
+                item_limit=args.item_limit,
+                comment_limit=args.comment_limit,
+                max_pages=args.max_pages,
+                include_comments=not args.no_comments,
             )
         elif args.command == "logout":
             result = handle_logout()

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .auth import interactive_handlers
+from .board_registry import AllowlistedBoard, BoardAllowlist
 from .credentials import FileTokenStorage, write_json_owner_only
 from .discovery import discover_tools
 from .errors import MiroCredentialError, redact_text
@@ -13,6 +15,8 @@ from .inspection import ReadOnlyInspection
 from .models import MiroSettings, ToolCatalogue
 from .readonly import run_read_only_inspection
 from .safe_logout import safe_logout
+from .snapshot_model import SnapshotReceipt
+from .snapshot_runtime import run_verified_snapshot
 
 
 class MiroMCPClient:
@@ -49,9 +53,7 @@ class MiroMCPClient:
             "credentials": credentials,
             "credential_error": credential_error,
             "catalogue_path": str(catalogue_path),
-            "catalogue_exists": (
-                catalogue_path.is_file() and not catalogue_path.is_symlink()
-            ),
+            "catalogue_exists": (catalogue_path.is_file() and not catalogue_path.is_symlink()),
             "authorized_locally": bool(
                 credential_error is None
                 and credentials["has_tokens"]
@@ -95,6 +97,38 @@ class MiroMCPClient:
             owned_by_me=owned_by_me,
             limit=limit,
             max_pages=max_pages,
+        )
+
+    def board_add(self, alias: str, miro_url: str, *, replace: bool = False) -> AllowlistedBoard:
+        return BoardAllowlist(self.settings.board_allowlist_path).add(
+            alias, miro_url, replace=replace
+        )
+
+    def board_list(self) -> tuple[AllowlistedBoard, ...]:
+        return BoardAllowlist(self.settings.board_allowlist_path).list()
+
+    def board_remove(self, alias: str) -> bool:
+        return BoardAllowlist(self.settings.board_allowlist_path).remove(alias)
+
+    async def snapshot(
+        self,
+        *,
+        alias: str,
+        output_path: Path | None = None,
+        item_limit: int = 100,
+        comment_limit: int = 50,
+        max_pages: int = 20,
+        include_comments: bool = True,
+    ) -> SnapshotReceipt:
+        return await run_verified_snapshot(
+            self.settings,
+            self.storage,
+            alias=alias,
+            output_path=output_path,
+            item_limit=item_limit,
+            comment_limit=comment_limit,
+            max_pages=max_pages,
+            include_comments=include_comments,
         )
 
     def cached_tools(self) -> dict[str, Any]:
