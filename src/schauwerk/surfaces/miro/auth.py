@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import shutil
+import subprocess
 import sys
-import webbrowser
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
@@ -22,6 +23,35 @@ class CallbackResult:
     code: str
     state: str | None
 
+
+
+
+def _open_browser_nonblocking(url: str) -> bool:
+    """Launch a local browser without blocking the asyncio event loop."""
+    commands: list[list[str]] = []
+    if sys.platform == "darwin":
+        commands.append(["open", url])
+    elif sys.platform.startswith("linux"):
+        xdg_open = shutil.which("xdg-open")
+        if xdg_open:
+            commands.append([xdg_open, url])
+        gio = shutil.which("gio")
+        if gio:
+            commands.append([gio, "open", url])
+
+    for command in commands:
+        try:
+            subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            return True
+        except OSError:
+            continue
+    return False
 
 def parse_callback_url(value: str, *, expected_path: str | None = None) -> CallbackResult:
     """Parse a full callback URL or request target without exposing its contents."""
@@ -148,7 +178,7 @@ async def interactive_handlers(
 
     async def redirect_handler(url: str) -> None:
         if open_browser:
-            opened = webbrowser.open(url, new=2)
+            opened = _open_browser_nonblocking(url)
             if opened:
                 print("Opened Miro authorization in the local browser.", file=sys.stderr)
                 return
@@ -157,9 +187,7 @@ async def interactive_handlers(
 
     async def callback_handler() -> tuple[str, str | None]:
         if manual_callback:
-            value = await asyncio.to_thread(
-                input, "Paste the final callback URL from the browser: "
-            )
+            value = input("Paste the final callback URL from the browser: ")
             result = parse_callback_url(value, expected_path=settings.callback_path)
             return result.code, result.state
         if server is None:
