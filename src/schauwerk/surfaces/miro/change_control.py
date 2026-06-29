@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from .errors import MiroCredentialError
+from .errors import MiroCredentialError, redact_text
 from .snapshot_model import canonical_json, content_digest
 
 
@@ -64,3 +65,25 @@ def token_present(content: dict[str, Any], token: str) -> bool:
 def marked_lines(layout_text: str, marker: str) -> str:
     safe_marker = validate_marker(marker)
     return "\n".join(line for line in layout_text.splitlines() if safe_marker in line)
+
+
+def prepare_receipt_destination(path: Path) -> Path:
+    destination = path.expanduser().absolute()
+    if destination.is_symlink() or any(parent.is_symlink() for parent in destination.parents):
+        raise MiroCredentialError("SW-003 receipt path is unsafe")
+    return destination
+
+
+def failure_receipt(
+    *, alias: str, marker: str, stage: str, exc: BaseException
+) -> dict[str, Any]:
+    safe_marker = validate_marker(marker)
+    return {
+        "schema_version": 1,
+        "board_alias": alias,
+        "marker": safe_marker,
+        "ok": False,
+        "mutation_attempted": stage not in ("preflight", "connect"),
+        "failed_stage": stage,
+        "error": redact_text(exc),
+    }
