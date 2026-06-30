@@ -11,6 +11,7 @@ from .cli_handlers import (
     handle_board_list,
     handle_board_remove,
     handle_inspect,
+    handle_learn_render,
     handle_login,
     handle_logout,
     handle_snapshot,
@@ -65,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
                 max_pages=args.max_pages,
                 include_comments=not args.no_comments,
             )
+        elif args.command == "learn" and args.learn_command == "render":
+            result = handle_learn_render(input_path=args.input, output=args.output)
         elif args.command == "logout":
             result = handle_logout()
         else:

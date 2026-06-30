@@ -14,6 +14,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 1. [Architecture](architecture/schauwerk.md)
 2. [Roadmap](roadmap.md)
 3. [Miro-first boundary decision](decisions/0001-miro-first-adapter-boundary.md)
+4. [Learning View v1](education/learning-view-v1.md)
 
 ## Contracts
 
@@ -24,4 +25,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The repository is in foundation phase. External surface mutations are forbidden by policy until the read-only and isolated-write gates are satisfied.
+The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.
