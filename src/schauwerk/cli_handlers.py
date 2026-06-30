@@ -99,5 +99,27 @@ def handle_learn_render(*, input_path: str, output: str | None) -> dict[str, Any
     return result
 
 
+def handle_learn_apply(
+    *, input_path: str, alias: str, client: MiroMCPClient | None = None
+) -> dict[str, Any]:
+    source = Path(input_path)
+    view = load_learning_view(source)
+    dsl = render_learning_dsl(view)
+    receipt = asyncio.run(
+        (client or MiroMCPClient()).layout_create(
+            alias=alias,
+            dsl=dsl,
+            invocation_source="schauwerk-learn-apply",
+        )
+    ).to_dict()
+    return {
+        "topic": view.topic,
+        "audience": view.audience,
+        "step_count": len(view.steps),
+        "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
+        "layout": receipt,
+    }
+
+
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
     return (client or MiroMCPClient()).logout()

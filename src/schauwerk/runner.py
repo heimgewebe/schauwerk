@@ -11,6 +11,7 @@ from .cli_handlers import (
     handle_board_list,
     handle_board_remove,
     handle_inspect,
+    handle_learn_apply,
     handle_learn_render,
     handle_login,
     handle_logout,
@@ -68,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "learn" and args.learn_command == "render":
             result = handle_learn_render(input_path=args.input, output=args.output)
+        elif args.command == "learn" and args.learn_command == "apply":
+            result = handle_learn_apply(input_path=args.input, alias=args.alias)
         elif args.command == "logout":
             result = handle_logout()
         else:

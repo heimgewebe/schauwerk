@@ -12,6 +12,7 @@ from .credentials import FileTokenStorage, write_json_owner_only
 from .discovery import discover_tools
 from .errors import MiroCredentialError, redact_text
 from .inspection import ReadOnlyInspection
+from .layout_runtime import LayoutReceipt, run_layout_create
 from .models import MiroSettings, ToolCatalogue
 from .readonly import run_read_only_inspection
 from .safe_logout import safe_logout
@@ -129,6 +130,21 @@ class MiroMCPClient:
             comment_limit=comment_limit,
             max_pages=max_pages,
             include_comments=include_comments,
+        )
+
+    async def layout_create(
+        self,
+        *,
+        alias: str,
+        dsl: str,
+        invocation_source: str = "schauwerk",
+    ) -> LayoutReceipt:
+        return await run_layout_create(
+            self.settings,
+            self.storage,
+            alias=alias,
+            dsl=dsl,
+            invocation_source=invocation_source,
         )
 
     def cached_tools(self) -> dict[str, Any]:

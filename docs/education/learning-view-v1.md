@@ -27,4 +27,5 @@ The renderer emits current Miro `layout_create` DSL with four regions: orientati
 
 ```bash
 schauwerk miro learn render demos/education/peer-learning.yml --output /tmp/peer-learning.dsl --json
+schauwerk miro learn apply grabowski-demo demos/education/peer-learning.yml --json
 ```
