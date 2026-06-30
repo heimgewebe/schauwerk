@@ -29,3 +29,14 @@ The renderer emits current Miro `layout_create` DSL with four regions: orientati
 schauwerk miro learn render demos/education/peer-learning.yml --output /tmp/peer-learning.dsl --json
 schauwerk miro learn apply grabowski-demo demos/education/peer-learning.yml --json
 ```
+
+
+## Live preflight
+
+Before `learn apply`, run:
+
+```bash
+schauwerk miro status --live --json
+```
+
+Proceed only when `live.ok=true`. If `live.renewal_required=true`, renew the Miro login first.

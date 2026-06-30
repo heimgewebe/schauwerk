@@ -23,7 +23,7 @@ from .errors import (
 )
 from .inspection import result_payload
 from .models import MiroSettings
-from .runtime import threadless_dns_resolution
+from .runtime import quiet_provider_stderr, threadless_dns_resolution
 
 
 @dataclass(frozen=True)
@@ -88,29 +88,28 @@ async def run_layout_create(
         settings, storage, _authorization_required, _authorization_required
     )
     try:
-        async with threadless_dns_resolution():
-            async with httpx.AsyncClient(
-                auth=oauth,
-                follow_redirects=True,
-                timeout=httpx.Timeout(settings.network_timeout_seconds),
-                headers={"User-Agent": "schauwerk/0.1"},
-            ) as http_client:
-                async with streamable_http_client(settings.server_url, http_client=http_client) as (
-                    read_stream,
-                    write_stream,
-                    _session_id,
-                ):
-                    async with ClientSession(read_stream, write_stream) as session:
-                        await session.initialize()
-                        result = await session.call_tool(
-                            "layout_" + "create",
-                            {
-                                "miro_" + "url": board_reference,
-                                "dsl": dsl,
-                                "invocation_source": invocation_source,
-                                "is_repository": True,
-                            },
-                        )
+        with quiet_provider_stderr():
+            async with threadless_dns_resolution():
+                async with httpx.AsyncClient(
+                    auth=oauth,
+                    follow_redirects=True,
+                    timeout=httpx.Timeout(settings.network_timeout_seconds),
+                    headers={"User-Agent": "schauwerk/0.1"},
+                ) as http_client:
+                    async with streamable_http_client(
+                        settings.server_url, http_client=http_client
+                    ) as (read_stream, write_stream, _session_id):
+                        async with ClientSession(read_stream, write_stream) as session:
+                            await session.initialize()
+                            result = await session.call_tool(
+                                "layout_" + "create",
+                                {
+                                    "miro_" + "url": board_reference,
+                                    "dsl": dsl,
+                                    "invocation_source": invocation_source,
+                                    "is_repository": True,
+                                },
+                            )
     except MiroError:
         raise
     except BaseException as exc:

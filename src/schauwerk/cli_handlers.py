@@ -14,8 +14,14 @@ from .education.view import (
 from .surfaces.miro.client import MiroMCPClient
 
 
-def handle_status(client: MiroMCPClient | None = None) -> dict[str, Any]:
-    return (client or MiroMCPClient()).status()
+def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    result = active.status()
+    if live:
+        result["live"] = asyncio.run(active.live_status())
+    else:
+        result["live"] = {"checked": False}
+    return result
 
 
 def handle_login(

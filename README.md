@@ -71,6 +71,14 @@ pip install -e '.[dev]'
 make validate
 ```
 
+## Miro Live-Status
+
+```bash
+schauwerk miro status --live --json
+```
+
+`authorized_locally` zeigt nur, ob sichere lokale OAuth-Dateien vorhanden sind. `live.ok` prueft dagegen den echten Miro-MCP-Zugriff. Wenn `live.renewal_required=true` ist, muss `schauwerk miro login` erneuert werden, bevor produktive Miro-Schreibpfade wie `learn apply` laufen.
+
 ## Read-only Miro-Inspektion
 
 ```bash

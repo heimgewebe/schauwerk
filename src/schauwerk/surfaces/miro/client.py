@@ -10,11 +10,12 @@ from .auth import interactive_handlers
 from .board_registry import AllowlistedBoard, BoardAllowlist
 from .credentials import FileTokenStorage, write_json_owner_only
 from .discovery import discover_tools
-from .errors import MiroCredentialError, redact_text
+from .errors import MiroAuthorizationRequired, MiroCredentialError, MiroError, redact_text
 from .inspection import ReadOnlyInspection
 from .layout_runtime import LayoutReceipt, run_layout_create
 from .models import MiroSettings, ToolCatalogue
 from .readonly import run_read_only_inspection
+from .runtime import quiet_provider_stderr
 from .safe_logout import safe_logout
 from .snapshot_model import SnapshotReceipt
 from .snapshot_runtime import run_verified_snapshot
@@ -81,6 +82,28 @@ class MiroMCPClient:
         result = await discover_tools(self.settings, self.storage, stop, stop)
         write_json_owner_only(self.settings.catalogue_path, result.to_dict())
         return result
+
+    async def live_status(self) -> dict[str, Any]:
+        """Check whether stored Miro credentials work against the live MCP server."""
+        try:
+            with quiet_provider_stderr():
+                catalogue = await self.tools()
+        except MiroError as exc:
+            return {
+                "checked": True,
+                "ok": False,
+                "renewal_required": isinstance(
+                    exc, (MiroAuthorizationRequired, MiroCredentialError)
+                ),
+                "error": redact_text(exc),
+            }
+        return {
+            "checked": True,
+            "ok": True,
+            "renewal_required": False,
+            "server_name": catalogue.server_name,
+            "tool_count": len(catalogue.tools),
+        }
 
     async def inspect(
         self,
