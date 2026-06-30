@@ -10,6 +10,9 @@ from typing import Any
 
 import yaml
 
+from ..visual.grammar import learning_template
+from ..visual.miro_dsl import doc, table
+
 _MAX_ITEMS = 8
 _MAX_STEPS = 6
 
@@ -156,6 +159,7 @@ def _bullets(items: Sequence[str]) -> str:
 
 
 def render_learning_dsl(view: LearningView) -> str:
+    template = learning_template()
     goals = _bullets(view.goals)
     terms = _bullets(view.key_terms or ("Begriffe im Gespraech sammeln",))
     materials = _bullets(view.materials or ("Board", "Notizen", "Rueckfragen"))
@@ -181,8 +185,41 @@ def render_learning_dsl(view: LearningView) -> str:
             )
         )
         step_y += 125
+    rich_lines = [
+        doc(
+            "overview_doc",
+            parent="concepts",
+            x=260,
+            y=150,
+            markdown=(
+                f"# Erklaerfaden\n\nLeitfrage: {view.guiding_question}"
+                f"\n\nRolle: {view.author_role}"
+            ),
+        ),
+        table(
+            "goals_table",
+            parent="concepts",
+            x=260,
+            y=360,
+            title="Ziele und Sicherung",
+            columns=("Bereich", "Inhalt"),
+            rows=(("Ziele", "; ".join(view.goals)), ("Check", view.check)),
+        ),
+        table(
+            "terms_table",
+            parent="concepts",
+            x=260,
+            y=565,
+            title="Begriffe",
+            columns=("Begriff", "Notiz"),
+            rows=tuple(
+                (term, "klaeren")
+                for term in (view.key_terms or ("Schluesselbegriff",))
+            ),
+        ),
+    ]
     lines = [
-        _line("root", "FRAME", x=0, y=0, w=2000, h=1300, content="Schauwerk Learning View"),
+        _line("root", "FRAME", x=0, y=0, w=2600, h=1300, content="Schauwerk Learning View"),
         _line(
             "title",
             "TEXT",
@@ -224,6 +261,17 @@ def render_learning_dsl(view: LearningView) -> str:
         ),
         _line("flow", "FRAME", x=-120, y=120, w=520, h=760, fill="#F5F5F5", content="2 Lernweg"),
         _line("peer", "FRAME", x=460, y=120, w=520, h=760, fill="#F5F5F5", content="3 Gruppe"),
+        _line(
+            "concepts",
+            "FRAME",
+            x=1040,
+            y=120,
+            w=520,
+            h=760,
+            fill="#F5F5F5",
+            content="4 Struktur",
+        ),
+        *rich_lines,
         _line(
             "goals",
             "TEXT",
@@ -339,15 +387,19 @@ def render_learning_dsl(view: LearningView) -> str:
             content="sichern",
         ),
     ]
+    assert template.name == "learning-view-v1-rich"
     return "\n".join(lines) + "\n"
 
 
 def learning_render_receipt(
     view: LearningView, dsl: str, *, output_path: Path | None
 ) -> dict[str, Any]:
+    template = learning_template()
     return {
         "topic": view.topic,
         "audience": view.audience,
+        "template": template.name,
+        "used_primitives": list(template.primitives),
         "step_count": len(view.steps),
         "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
         "output_path": str(output_path) if output_path else None,
