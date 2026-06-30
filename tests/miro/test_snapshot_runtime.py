@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -65,3 +66,17 @@ def test_snapshot_destination_rejects_symlink(tmp_path) -> None:
         )
 
     assert target.read_text(encoding="utf-8") == "unchanged"
+
+
+def test_snapshot_write_does_not_chmod_existing_parent(tmp_path) -> None:
+    shared_parent = tmp_path / "shared"
+    shared_parent.mkdir(mode=0o777)
+    os.chmod(shared_parent, 0o777)
+
+    destination = shared_parent / "snapshot.json"
+    write_snapshot_pair(
+        sample("stable"), sample("stable"), alias="fixture", destination=destination
+    )
+
+    assert shared_parent.stat().st_mode & 0o777 == 0o777
+    assert destination.stat().st_mode & 0o077 == 0

@@ -17,6 +17,7 @@ from .errors import (
 )
 from .inspection import ReadOnlyInspection, inspect_read_only
 from .models import MiroSettings
+from .runtime import threadless_dns_resolution
 
 
 async def _authorization_redirect_required(_url: str) -> None:
@@ -44,24 +45,25 @@ async def run_read_only_inspection(
         _authorization_callback_required,
     )
     try:
-        async with httpx.AsyncClient(
-            auth=oauth,
-            follow_redirects=True,
-            timeout=httpx.Timeout(settings.network_timeout_seconds),
-            headers={"User-Agent": "schauwerk/0.1"},
-        ) as http_client:
-            async with streamable_http_client(
-                settings.server_url, http_client=http_client
-            ) as (read_stream, write_stream, _session_id):
-                async with ClientSession(read_stream, write_stream) as session:
-                    await session.initialize()
-                    return await inspect_read_only(
-                        session.call_tool,
-                        query=query,
-                        owned_by_me=owned_by_me,
-                        limit=limit,
-                        max_pages=max_pages,
-                    )
+        async with threadless_dns_resolution():
+            async with httpx.AsyncClient(
+                auth=oauth,
+                follow_redirects=True,
+                timeout=httpx.Timeout(settings.network_timeout_seconds),
+                headers={"User-Agent": "schauwerk/0.1"},
+            ) as http_client:
+                async with streamable_http_client(
+                    settings.server_url, http_client=http_client
+                ) as (read_stream, write_stream, _session_id):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        return await inspect_read_only(
+                            session.call_tool,
+                            query=query,
+                            owned_by_me=owned_by_me,
+                            limit=limit,
+                            max_pages=max_pages,
+                        )
     except MiroError:
         raise
     except BaseException as exc:
