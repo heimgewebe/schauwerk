@@ -108,3 +108,19 @@ def test_runner_dispatches_learning_apply(monkeypatch, capsys) -> None:
     result = json.loads(capsys.readouterr().out)
     assert result["layout"]["board_alias"] == "board-a"
     assert result["layout"]["success"] is True
+
+
+def test_runner_dispatches_live_status(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_status(*, live):
+        observed["live"] = live
+        return {"authorized_locally": True, "live": {"checked": live, "ok": True}}
+
+    monkeypatch.setattr(runner, "handle_status", fake_status)
+    code = runner.main(["miro", "status", "--live", "--json"])
+
+    assert code == 0
+    assert observed == {"live": True}
+    result = json.loads(capsys.readouterr().out)
+    assert result["live"] == {"checked": True, "ok": True}

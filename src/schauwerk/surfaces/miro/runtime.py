@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import io
 import socket
 from collections.abc import AsyncIterator
 from typing import Any
@@ -37,3 +38,10 @@ async def threadless_dns_resolution() -> AsyncIterator[None]:
             loop.getnameinfo = original_getnameinfo  # type: ignore[method-assign]
         else:
             del loop.getnameinfo
+
+
+@contextlib.contextmanager
+def quiet_provider_stderr():
+    """Suppress provider-library OAuth tracebacks in user-facing live probes."""
+    with contextlib.redirect_stderr(io.StringIO()):
+        yield

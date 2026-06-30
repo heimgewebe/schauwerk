@@ -35,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.command == "status":
-            result = handle_status()
+            result = handle_status(live=args.live)
         elif args.command == "login":
             result = handle_login(
                 open_browser=not args.no_browser,

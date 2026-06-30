@@ -22,6 +22,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = miro.add_subparsers(dest="command", required=True)
 
     status = commands.add_parser("status", help="show local connection state")
+    status.add_argument("--live", action="store_true", help="check live Miro MCP access")
     status.add_argument("--json", action="store_true")
 
     login = commands.add_parser("login", help="authorize and discover tools")
