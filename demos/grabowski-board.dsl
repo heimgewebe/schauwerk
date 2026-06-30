@@ -1,16 +1,23 @@
-frame sw_root x=0 y=0 w=1600 h=900 title='Schauwerk x Grabowski'
-text sw_title x=40 y=40 w=1500 h=90 content='Quellen lesen; Zustand sichern; sichtbare Arbeitsflaeche erzeugen; Snapshot pruefen.'
-frame sw_sources x=60 y=160 w=420 h=620 title='1 Quellen'
-sticky sw_src_git x=100 y=240 w=300 h=110 content='Git und GitHub: Branches, PRs, Tests, Diffs'
-sticky sw_src_tasks x=100 y=380 w=300 h=110 content='Tasks: running, failed, completed, blocked'
-sticky sw_src_runtime x=100 y=520 w=300 h=110 content='Runtime: Capabilities, Leases, Audit, Recovery'
-frame sw_contracts x=560 y=160 w=420 h=620 title='2 Safety'
-sticky sw_ct_allowlist x=600 y=240 w=300 h=110 content='Board allowlist: nur deklarierte Ziele'
-sticky sw_ct_snapshot x=600 y=380 w=300 h=110 content='Deterministische Snapshots: zwei Reads, ein Digest'
-sticky sw_ct_markers x=600 y=520 w=300 h=110 content='Marker, Scope, Receipt, Cleanup'
-frame sw_surface x=1060 y=160 w=420 h=620 title='3 Sichtflaeche'
-sticky sw_sf_map x=1100 y=240 w=300 h=110 content='Miro Board als Lagebild'
-sticky sw_sf_review x=1100 y=380 w=300 h=110 content='Review vor Mutation'
-sticky sw_sf_receipt x=1100 y=520 w=300 h=110 content='Receipt nach Mutation'
-frame sw_flow x=60 y=840 w=1420 h=260 title='4 Kontrollkreis'
-text sw_flow_steps x=100 y=920 w=1300 h=90 content='Inspect -> normalize -> plan -> write -> snapshot -> compare -> publish or rollback.'
+root FRAME x=0 y=0 w=1800 h=1200 "Schauwerk x Grabowski"
+title TEXT parent=root x=900 y=80 w=1500 font=open_sans size=32 align=center color=#1a1a1a "Schauwerk macht Grabowski-Arbeit sichtbar: Quellen lesen, Zustand sichern, Board schreiben, Ergebnis pruefen."
+sources FRAME x=-670 y=60 w=430 h=720 fill=#F5F5F5 "1 Quellen"
+contracts FRAME x=-220 y=60 w=430 h=720 fill=#F5F5F5 "2 Contracts"
+surface FRAME x=230 y=60 w=430 h=720 fill=#F5F5F5 "3 Miro Surface"
+flow FRAME x=680 y=60 w=430 h=720 fill=#F5F5F5 "4 Kontrollschleife"
+s1 STICKY parent=sources x=215 y=170 w=190 color=light_blue "Git und GitHub: Branches, PRs, Reviews, CI"
+s2 STICKY parent=sources x=215 y=380 w=190 color=light_yellow "Bureau Tasks: Auswahl, Bindung, Abschluss"
+s3 STICKY parent=sources x=215 y=590 w=190 color=light_green "Runtime: Grabowski, Shell, OAuth, Belege"
+c1 STICKY parent=contracts x=215 y=170 w=190 color=violet "Board-Allowlist und explizite Schreibfreigabe"
+c2 STICKY parent=contracts x=215 y=380 w=190 color=orange "Deterministische Snapshots und Hash-Belege"
+c3 STICKY parent=contracts x=215 y=590 w=190 color=light_pink "Marker, Scope, Receipt, Cleanup"
+m1 STICKY parent=surface x=215 y=170 w=190 color=cyan "Miro ist Arbeitskarte, nicht Wahrheitsquelle"
+m2 STICKY parent=surface x=215 y=380 w=190 color=yellow "Review vor Mutation"
+m3 STICKY parent=surface x=215 y=590 w=190 color=green "Receipt nach Mutation"
+f1 TEXT parent=flow x=215 y=160 w=350 font=plex_sans size=20 align=center color=#333333 "Inspect -> normalize -> plan"
+f2 TEXT parent=flow x=215 y=340 w=350 font=plex_sans size=20 align=center color=#333333 "write -> snapshot -> compare"
+f3 TEXT parent=flow x=215 y=520 w=350 font=plex_sans size=20 align=center color=#333333 "publish or rollback"
+shape1 SHAPE parent=root x=900 y=1010 w=1300 h=90 type=round_rectangle fill=#1a1a1a color=#FFFFFF font=open_sans size=22 valign=middle "Essenz: Schauwerk verbindet Agentenarbeit mit sichtbarer, pruefbarer Miro-Dokumentation."
+e1 CONNECTOR from=s1 to=c1 shape=elbowed end_cap=arrow "source to contract"
+e2 CONNECTOR from=c1 to=m1 shape=elbowed end_cap=arrow "contract to surface"
+e3 CONNECTOR from=m1 to=f1 shape=elbowed end_cap=arrow "surface to loop"
+e4 CONNECTOR from=f3 to=shape1 shape=straight end_cap=arrow "receipt"
