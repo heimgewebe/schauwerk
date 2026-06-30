@@ -1,0 +1,33 @@
+learn:
+  topic: "Photosynthese erklaeren"
+  audience: "Mitschuelerinnen und Mitschueler"
+  author_role: "Schueler"
+  guiding_question: "Wie wird aus Licht nutzbare Energie?"
+  goals:
+    - "Ausgangsstoffe und Produkte benennen"
+    - "den Ablauf in eigenen Worten erklaeren"
+    - "Rueckfragen sammeln"
+  key_terms:
+    - "Licht"
+    - "Wasser"
+    - "Kohlenstoffdioxid"
+    - "Glucose"
+  materials:
+    - "Board"
+    - "Skizze einer Pflanze"
+    - "Pfeile fuer den Ablauf"
+  steps:
+    - title: "Vorwissen"
+      minutes: 5
+      activity: "Begriffe sammeln und sortieren."
+      output: "Begriffsfeld"
+    - title: "Ablauf"
+      minutes: 10
+      activity: "Den Ablauf mit Pfeilen sichtbar machen."
+      output: "Mini-Schaubild"
+    - title: "Erklaeren"
+      minutes: 10
+      activity: "In Partnerarbeit den Ablauf erklaeren und Rueckfragen notieren."
+      output: "erklaerte Skizze"
+  collaboration: "Partnerarbeit: zuhoeren, nachfragen, eine Rueckfrage notieren."
+  check: "Exit-Frage: Welcher Stoff speichert am Ende die Energie?"

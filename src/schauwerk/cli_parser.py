@@ -61,6 +61,15 @@ def build_parser() -> argparse.ArgumentParser:
     snapshot.add_argument("--no-comments", action="store_true")
     snapshot.add_argument("--json", action="store_true")
 
+    learn = commands.add_parser("learn", help="render learning views for Miro")
+    learn_commands = learn.add_subparsers(dest="learn_command", required=True)
+    learn_render = learn_commands.add_parser(
+        "render", help="render a learning-view input to Miro DSL"
+    )
+    learn_render.add_argument("input")
+    learn_render.add_argument("--output")
+    learn_render.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

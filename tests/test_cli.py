@@ -73,3 +73,18 @@ def test_runner_dispatches_snapshot(monkeypatch, capsys) -> None:
         "include_comments": False,
     }
     assert json.loads(capsys.readouterr().out)["repeatability_verified"] is True
+
+
+def test_runner_dispatches_learning_render(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_render(*, input_path, output):
+        observed.update(input_path=input_path, output=output)
+        return {"topic": "fixture", "dsl_line_count": 3}
+
+    monkeypatch.setattr(runner, "handle_learn_render", fake_render)
+    code = runner.main(["miro", "learn", "render", "topic.yml", "--output", "out.dsl", "--json"])
+
+    assert code == 0
+    assert observed == {"input_path": "topic.yml", "output": "out.dsl"}
+    assert json.loads(capsys.readouterr().out)["dsl_line_count"] == 3

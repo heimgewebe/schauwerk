@@ -61,6 +61,8 @@ Apply the model to a separate active software project with components, decisions
 
 ## SW-007 — Education pilot
 
+**Implementation status:** partial; Learning View v1 renders structured peer-facing topic files into deterministic current Miro DSL. Direct managed board updates, projected variants, assignments, exports, and offline packages remain open.
+
 Produce teacher view, projected lesson view, assignment, student-facing view, presentation, and offline package without personal data.
 
 **Gate:** the system works for a non-software use case.

@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Planning / foundation.** Dieses Repository enthält zunächst Architektur, Verträge, Register und das technische Grundgerüst. Es führt noch keine produktiven Miro-Mutationen aus.
+**Foundation plus Miro pilot.** Dieses Repository enthält Architektur, Verträge, Register, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, isolierte Schreibnachweise und einen ersten Learning-View-Renderer.
 
 ## Zielbild
 
@@ -97,5 +97,6 @@ Board-URLs werden lokal in einer Datei mit Modus `0600` persistiert; eine besteh
 - SW-002: read-only Miro-Snapshot
 - SW-003: isolierter Schreibtest
 - SW-004: Registry-Grundgerüst
+- SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen
 
 Siehe `docs/roadmap.md`.

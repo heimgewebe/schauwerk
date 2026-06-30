@@ -6,6 +6,11 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
+from .education.view import (
+    learning_render_receipt,
+    load_learning_view,
+    render_learning_dsl,
+)
 from .surfaces.miro.client import MiroMCPClient
 
 
@@ -78,6 +83,20 @@ def handle_snapshot(
         )
     )
     return receipt.to_dict()
+
+
+def handle_learn_render(*, input_path: str, output: str | None) -> dict[str, Any]:
+    source = Path(input_path)
+    view = load_learning_view(source)
+    dsl = render_learning_dsl(view)
+    destination = Path(output) if output else None
+    if destination is not None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(dsl, encoding="utf-8")
+    result = learning_render_receipt(view, dsl, output_path=destination)
+    if destination is None:
+        result["dsl"] = dsl
+    return result
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
