@@ -69,6 +69,12 @@ def build_parser() -> argparse.ArgumentParser:
     learn_render.add_argument("input")
     learn_render.add_argument("--output")
     learn_render.add_argument("--json", action="store_true")
+    learn_apply = learn_commands.add_parser(
+        "apply", help="render and apply a learning-view input to an allowlisted board"
+    )
+    learn_apply.add_argument("alias")
+    learn_apply.add_argument("input")
+    learn_apply.add_argument("--json", action="store_true")
 
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")

@@ -90,6 +90,15 @@ schauwerk miro snapshot sw002-fixture --json
 
 Board-URLs werden lokal in einer Datei mit Modus `0600` persistiert; eine bestehende Alias-Zuordnung wird nur mit `--replace` geändert. Der Snapshot ersetzt Provider-IDs und URLs durch Digests, entfernt volatile Identitäts- und Zeitfelder, erkennt doppelte Referenzen, liest das Board zweimal und schreibt nur bei identischem Inhalts- und Paginationsergebnis über einen symlink-sicheren Zielpfad ein Artefakt. `--no-comments`, `--output`, `--item-limit`, `--comment-limit` und `--max-pages` begrenzen den Leseumfang.
 
+## Learning View
+
+```bash
+schauwerk miro learn render demos/education/peer-learning.yml --output /tmp/peer-learning.dsl --json
+schauwerk miro learn apply grabowski-demo demos/education/peer-learning.yml --json
+```
+
+`render` erzeugt prüfbare Miro-DSL aus einem strukturierten Lernthema. `apply` schreibt dieselbe Ansicht auf ein allowlisted Board und gibt ein redaktiertes Receipt aus.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge

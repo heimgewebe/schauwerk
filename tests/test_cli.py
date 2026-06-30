@@ -88,3 +88,23 @@ def test_runner_dispatches_learning_render(monkeypatch, capsys) -> None:
     assert code == 0
     assert observed == {"input_path": "topic.yml", "output": "out.dsl"}
     assert json.loads(capsys.readouterr().out)["dsl_line_count"] == 3
+
+
+def test_runner_dispatches_learning_apply(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_apply(*, input_path, alias):
+        observed.update(input_path=input_path, alias=alias)
+        return {
+            "topic": "fixture",
+            "layout": {"board_alias": alias, "success": True, "created_count": 3},
+        }
+
+    monkeypatch.setattr(runner, "handle_learn_apply", fake_apply)
+    code = runner.main(["miro", "learn", "apply", "board-a", "topic.yml", "--json"])
+
+    assert code == 0
+    assert observed == {"input_path": "topic.yml", "alias": "board-a"}
+    result = json.loads(capsys.readouterr().out)
+    assert result["layout"]["board_alias"] == "board-a"
+    assert result["layout"]["success"] is True
