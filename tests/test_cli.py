@@ -171,3 +171,39 @@ def test_runner_dispatches_learning_live_test(monkeypatch, capsys) -> None:
     result = json.loads(capsys.readouterr().out)
     assert result["layout"]["success"] is True
     assert result["layout_read"]["connector_count"] == 1
+
+
+def test_runner_dispatches_quality(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_quality(**kwargs):
+        observed.update(kwargs)
+        return {"board_alias": kwargs["alias"], "ok": True, "score": 100}
+
+    monkeypatch.setattr(runner, "handle_quality", fake_quality)
+    code = runner.main([
+        "miro",
+        "quality",
+        "live-a",
+        "after.json",
+        "--output",
+        "quality.json",
+        "--expected-min-connectors",
+        "2",
+        "--expected-min-docs",
+        "1",
+        "--expected-min-tables",
+        "2",
+        "--json",
+    ])
+
+    assert code == 0
+    assert observed == {
+        "alias": "live-a",
+        "snapshot": "after.json",
+        "output": "quality.json",
+        "expected_min_connectors": 2,
+        "expected_min_docs": 1,
+        "expected_min_tables": 2,
+    }
+    assert json.loads(capsys.readouterr().out)["ok"] is True
