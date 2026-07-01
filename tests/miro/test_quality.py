@@ -100,9 +100,9 @@ def test_quality_accepts_structured_learning_like_snapshot() -> None:
                 item("sticky_note", ref="step1", x=-400, y=100, w=230, h=180, parent="flow"),
                 item("sticky_note", ref="step2", x=-400, y=360, w=230, h=180, parent="flow"),
                 {"ref": "edge", "type": "connector", "data": {"content": "weiter"}},
-                item("document", ref="doc", x=1200, y=100, w=600, h=250, parent="root"),
-                item("table", ref="table1", x=1200, y=470, w=640, h=260, parent="root"),
-                item("table", ref="table2", x=1200, y=820, w=640, h=260, parent="root"),
+                item("doc_format", ref="doc", x=1200, y=100, w=600, h=250, parent="root"),
+                item("data_table_format", ref="table1", x=1200, y=470, w=640, h=260, parent="root"),
+                item("data_table_format", ref="table2", x=1200, y=820, w=640, h=260, parent="root"),
             ]
         ),
         expected_min_connectors=1,
@@ -145,7 +145,7 @@ def test_quality_receipt_write_is_owner_only(tmp_path) -> None:
             snapshot(
                 [
                     item("frame", ref="root", x=0, y=0, w=1000, h=800),
-                    item("document", ref="doc", x=0, y=0, w=500, h=260, parent="root"),
+                    item("doc_format", ref="doc", x=0, y=0, w=500, h=260, parent="root"),
                 ]
             )
         ),
