@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Command handlers for the Schauwerk CLI."""
 
 from __future__ import annotations
@@ -12,9 +13,11 @@ from .education.view import (
     load_learning_view,
     render_learning_dsl,
 )
+from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
+from .visual.grammar import zoomlandkarte_template
 
 
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
@@ -116,31 +119,50 @@ def handle_quality(
     return receipt.to_dict()
 
 
-def handle_learn_render(*, input_path: str, output: str | None) -> dict[str, Any]:
+def handle_learn_render(
+    *, input_path: str, output: str | None, template: str = "classic"
+) -> dict[str, Any]:
     source = Path(input_path)
     view = load_learning_view(source)
-    dsl = render_learning_dsl(view)
+    dsl = (
+        render_learning_zoomlandkarte_dsl(view)
+        if template == "zoomlandkarte"
+        else render_learning_dsl(view)
+    )
     destination = Path(output) if output else None
     if destination is not None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(dsl, encoding="utf-8")
     result = learning_render_receipt(view, dsl, output_path=destination)
+    if template == "zoomlandkarte":
+        spec = zoomlandkarte_template()
+        result["template"] = spec.name
+        result["used_primitives"] = list(spec.primitives)
+        result["visual_strategy"] = "zoom-out-cluster-zoom-in-detail"
     if destination is None:
         result["dsl"] = dsl
     return result
 
 
 def handle_learn_apply(
-    *, input_path: str, alias: str, client: MiroMCPClient | None = None
+    *,
+    input_path: str,
+    alias: str,
+    template: str = "classic",
+    client: MiroMCPClient | None = None,
 ) -> dict[str, Any]:
     source = Path(input_path)
     view = load_learning_view(source)
-    dsl = render_learning_dsl(view)
+    dsl = (
+        render_learning_zoomlandkarte_dsl(view)
+        if template == "zoomlandkarte"
+        else render_learning_dsl(view)
+    )
     receipt = asyncio.run(
         (client or MiroMCPClient()).layout_create(
             alias=alias,
             dsl=dsl,
-            invocation_source="schauwerk-learn-apply",
+            invocation_source=f"schauwerk-learn-apply-{template}",
         )
     ).to_dict()
     return {
@@ -148,6 +170,9 @@ def handle_learn_apply(
         "audience": view.audience,
         "step_count": len(view.steps),
         "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
+        "template": zoomlandkarte_template().name
+        if template == "zoomlandkarte"
+        else "learning-view-v1-rich",
         "layout": receipt,
     }
 
@@ -167,15 +192,23 @@ def handle_learn_live_test(
     comment_limit: int,
     max_pages: int,
     include_comments: bool,
+    template: str = "classic",
     client: MiroMCPClient | None = None,
 ) -> dict[str, Any]:
     active = client or MiroMCPClient()
     name = alias or _default_live_test_alias()
     source = Path(input_path)
     view = load_learning_view(source)
-    dsl = render_learning_dsl(view)
+    dsl = (
+        render_learning_zoomlandkarte_dsl(view)
+        if template == "zoomlandkarte"
+        else render_learning_dsl(view)
+    )
     base = Path(output_dir) if output_dir else active.settings.snapshots_root / "live-tests" / name
     base.mkdir(parents=True, exist_ok=True)
+    template_name = (
+        zoomlandkarte_template().name if template == "zoomlandkarte" else "learning-view-v1-rich"
+    )
     resolved_board_name = board_name or f"Schauwerk Learning Live Test: {view.topic}"
 
     board = asyncio.run(
@@ -184,7 +217,7 @@ def handle_learn_live_test(
             name=resolved_board_name,
             description="Fresh Schauwerk learning-view live test board.",
             replace_alias=replace_alias,
-            invocation_source="schauwerk-learn-live-test",
+            invocation_source=f"schauwerk-learn-live-test-{template}",
         )
     ).to_dict()
     before = asyncio.run(
@@ -201,7 +234,7 @@ def handle_learn_live_test(
         active.layout_create(
             alias=name,
             dsl=dsl,
-            invocation_source="schauwerk-learn-live-test",
+            invocation_source=f"schauwerk-learn-live-test-{template}",
         )
     ).to_dict()
     after = asyncio.run(
@@ -216,7 +249,7 @@ def handle_learn_live_test(
     ).to_dict()
     layout_read = asyncio.run(
         active.layout_read_summary(
-            alias=name, invocation_source="schauwerk-learn-live-test"
+            alias=name, invocation_source=f"schauwerk-learn-live-test-{template}"
         )
     ).to_dict()
     after_path = Path(str(after["output_path"]))
@@ -224,9 +257,11 @@ def handle_learn_live_test(
         snapshot_path=after_path,
         destination=base / "quality.json",
         board_alias=name,
-        expected_min_connectors=max(0, len(view.steps) - 1),
-        expected_min_docs=1,
-        expected_min_tables=2,
+        expected_min_connectors=max(5, len(view.steps) + 3)
+        if template == "zoomlandkarte"
+        else max(0, len(view.steps) - 1),
+        expected_min_docs=3 if template == "zoomlandkarte" else 1,
+        expected_min_tables=4 if template == "zoomlandkarte" else 2,
         layout_read=layout_read,
     ).to_dict()
     live_test_record = create_live_test_record(
@@ -242,6 +277,7 @@ def handle_learn_live_test(
         "audience": view.audience,
         "step_count": len(view.steps),
         "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
+        "template": template_name,
         "alias": name,
         "board": board,
         "before": before,

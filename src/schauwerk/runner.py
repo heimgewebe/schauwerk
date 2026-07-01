@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 """Executable Schauwerk command dispatcher."""
 
 from __future__ import annotations
@@ -80,9 +81,13 @@ def main(argv: list[str] | None = None) -> int:
                 expected_min_tables=args.expected_min_tables,
             )
         elif args.command == "learn" and args.learn_command == "render":
-            result = handle_learn_render(input_path=args.input, output=args.output)
+            result = handle_learn_render(
+                input_path=args.input, output=args.output, template=args.template
+            )
         elif args.command == "learn" and args.learn_command == "apply":
-            result = handle_learn_apply(input_path=args.input, alias=args.alias)
+            result = handle_learn_apply(
+                input_path=args.input, alias=args.alias, template=args.template
+            )
         elif args.command == "learn" and args.learn_command == "live-test":
             result = handle_learn_live_test(
                 input_path=args.input,
@@ -94,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
                 comment_limit=args.comment_limit,
                 max_pages=args.max_pages,
                 include_comments=not args.no_comments,
+                template=args.template,
             )
         elif args.command == "learn" and args.learn_command == "live-prune":
             result = handle_learn_live_prune(keep=args.keep, dry_run=args.dry_run)
