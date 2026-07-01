@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from schauwerk.cli_handlers import handle_learn_live_test
+from schauwerk.surfaces.miro.live_test_index import read_live_test_records
 
 
 class Receipt:
@@ -94,3 +95,8 @@ learn:
     ]
     assert client.calls[0][1]["replace_alias"] is True
     assert client.calls[1][1]["include_comments"] is False
+    assert result["live_test_record"]["alias"] == "live-fixture"
+    assert result["live_test_record"]["reference_digest"] == "board-digest"
+    assert result["remote_cleanup_supported"] is False
+    assert result["remote_cleanup_attempted"] is False
+    assert [record.alias for record in read_live_test_records(client.settings)] == ["live-fixture"]

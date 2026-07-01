@@ -12,6 +12,7 @@ from .cli_handlers import (
     handle_board_remove,
     handle_inspect,
     handle_learn_apply,
+    handle_learn_live_prune,
     handle_learn_live_test,
     handle_learn_render,
     handle_login,
@@ -84,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
                 max_pages=args.max_pages,
                 include_comments=not args.no_comments,
             )
+        elif args.command == "learn" and args.learn_command == "live-prune":
+            result = handle_learn_live_prune(keep=args.keep, dry_run=args.dry_run)
         elif args.command == "logout":
             result = handle_logout()
         else:

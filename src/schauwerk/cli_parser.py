@@ -91,6 +91,14 @@ def build_parser() -> argparse.ArgumentParser:
     learn_live.add_argument("--no-comments", action="store_true")
     learn_live.add_argument("--json", action="store_true")
 
+    learn_prune = learn_commands.add_parser(
+        "live-prune", help="prune local learning live-test artefact records"
+    )
+    learn_prune.add_argument("--keep", type=_bounded_integer(0, 1000), default=5)
+    learn_prune.add_argument("--dry-run", action="store_true")
+    learn_prune.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser
+
