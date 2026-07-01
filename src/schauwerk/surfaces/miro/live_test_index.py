@@ -221,7 +221,9 @@ def _retire_output_dir(
         return plan, f"{source}: skipped move error: {exc.__class__.__name__}"
 
 
-def prune_live_tests(settings: MiroSettings, *, keep: int, dry_run: bool = False) -> LiveTestPruneReceipt:
+def prune_live_tests(
+    settings: MiroSettings, *, keep: int, dry_run: bool = False
+) -> LiveTestPruneReceipt:
     if keep < 0:
         raise ValueError("keep must be non-negative")
 
