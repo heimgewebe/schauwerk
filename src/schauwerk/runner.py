@@ -17,6 +17,7 @@ from .cli_handlers import (
     handle_learn_render,
     handle_login,
     handle_logout,
+    handle_quality,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -68,6 +69,15 @@ def main(argv: list[str] | None = None) -> int:
                 comment_limit=args.comment_limit,
                 max_pages=args.max_pages,
                 include_comments=not args.no_comments,
+            )
+        elif args.command == "quality":
+            result = handle_quality(
+                alias=args.alias,
+                snapshot=args.snapshot,
+                output=args.output,
+                expected_min_connectors=args.expected_min_connectors,
+                expected_min_docs=args.expected_min_docs,
+                expected_min_tables=args.expected_min_tables,
             )
         elif args.command == "learn" and args.learn_command == "render":
             result = handle_learn_render(input_path=args.input, output=args.output)

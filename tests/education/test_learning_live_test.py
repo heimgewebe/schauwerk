@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,25 +27,46 @@ class FakeClient:
 
     async def snapshot(self, **kwargs):
         self.calls.append(("snapshot", kwargs))
+        snapshot_count = len([c for c in self.calls if c[0] == "snapshot"])
+        item_count = 0 if snapshot_count == 1 else 20
+        output_path = Path(kwargs["output_path"])
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            json.dumps(
+                {
+                    "board_alias": kwargs["alias"],
+                    "items": [],
+                    "comments": [],
+                    "repeatability_verified": True,
+                    "verified_reads": 2,
+                    "sanitized_references": True,
+                }
+            ),
+            encoding="utf-8",
+        )
         return Receipt(
             {
                 "board_alias": kwargs["alias"],
-                "output_path": str(kwargs["output_path"]),
+                "output_path": str(output_path),
                 "repeatability_verified": True,
-                "item_count": 0 if len([c for c in self.calls if c[0] == "snapshot"]) == 1 else 20,
+                "item_count": item_count,
             }
         )
 
     async def layout_create(self, **kwargs):
         self.calls.append(("layout_create", kwargs))
-        return Receipt(
-            {"board_alias": kwargs["alias"], "success": True, "created_count": 25}
-        )
+        return Receipt({"board_alias": kwargs["alias"], "success": True, "created_count": 25})
 
     async def layout_read_summary(self, **kwargs):
         self.calls.append(("layout_read_summary", kwargs))
         return Receipt(
-            {"line_count": 10, "connector_count": 5, "success": True}
+            {
+                "line_count": 10,
+                "connector_count": 5,
+                "doc_count": 1,
+                "table_count": 2,
+                "success": True,
+            }
         )
 
 
@@ -85,6 +107,7 @@ learn:
     assert result["layout"]["created_count"] == 25
     assert result["after"]["item_count"] == 20
     assert result["layout_read"]["connector_count"] == 5
+    assert result["quality"]["ok"] is True
     assert result["output_dir"] == str(tmp_path / "out")
     assert [name for name, _ in client.calls] == [
         "board_create",

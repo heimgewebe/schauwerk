@@ -14,6 +14,7 @@ from .education.view import (
 )
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
+from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 
 
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
@@ -89,6 +90,28 @@ def handle_snapshot(
             max_pages=max_pages,
             include_comments=include_comments,
         )
+    )
+    return receipt.to_dict()
+
+
+def handle_quality(
+    *,
+    alias: str,
+    snapshot: str,
+    output: str | None,
+    expected_min_connectors: int,
+    expected_min_docs: int,
+    expected_min_tables: int,
+) -> dict[str, Any]:
+    snapshot_path = Path(snapshot)
+    destination = Path(output) if output else snapshot_path.with_name("quality.json")
+    receipt = write_quality_receipt_from_snapshot_file(
+        snapshot_path=snapshot_path,
+        destination=destination,
+        board_alias=alias,
+        expected_min_connectors=expected_min_connectors,
+        expected_min_docs=expected_min_docs,
+        expected_min_tables=expected_min_tables,
     )
     return receipt.to_dict()
 
@@ -196,6 +219,16 @@ def handle_learn_live_test(
             alias=name, invocation_source="schauwerk-learn-live-test"
         )
     ).to_dict()
+    after_path = Path(str(after["output_path"]))
+    quality = write_quality_receipt_from_snapshot_file(
+        snapshot_path=after_path,
+        destination=base / "quality.json",
+        board_alias=name,
+        expected_min_connectors=max(0, len(view.steps) - 1),
+        expected_min_docs=1,
+        expected_min_tables=2,
+        layout_read=layout_read,
+    ).to_dict()
     live_test_record = create_live_test_record(
         active.settings,
         alias=name,
@@ -215,6 +248,7 @@ def handle_learn_live_test(
         "layout": layout,
         "after": after,
         "layout_read": layout_read,
+        "quality": quality,
         "output_dir": str(base),
         "live_test_record": live_test_record,
         "mutation_attempted": True,

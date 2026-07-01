@@ -62,6 +62,15 @@ def build_parser() -> argparse.ArgumentParser:
     snapshot.add_argument("--no-comments", action="store_true")
     snapshot.add_argument("--json", action="store_true")
 
+    quality = commands.add_parser("quality", help="inspect a local Miro snapshot quality receipt")
+    quality.add_argument("alias")
+    quality.add_argument("snapshot")
+    quality.add_argument("--output")
+    quality.add_argument("--expected-min-connectors", type=_bounded_integer(0, 1000), default=0)
+    quality.add_argument("--expected-min-docs", type=_bounded_integer(0, 1000), default=0)
+    quality.add_argument("--expected-min-tables", type=_bounded_integer(0, 1000), default=0)
+    quality.add_argument("--json", action="store_true")
+
     learn = commands.add_parser("learn", help="render learning views for Miro")
     learn_commands = learn.add_subparsers(dest="learn_command", required=True)
     learn_render = learn_commands.add_parser(
