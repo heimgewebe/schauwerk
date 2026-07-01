@@ -13,6 +13,7 @@ from .education.view import (
     render_learning_dsl,
 )
 from .surfaces.miro.client import MiroMCPClient
+from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 
 
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
@@ -152,11 +153,12 @@ def handle_learn_live_test(
     dsl = render_learning_dsl(view)
     base = Path(output_dir) if output_dir else active.settings.snapshots_root / "live-tests" / name
     base.mkdir(parents=True, exist_ok=True)
+    resolved_board_name = board_name or f"Schauwerk Learning Live Test: {view.topic}"
 
     board = asyncio.run(
         active.board_create(
             alias=name,
-            name=board_name or f"Schauwerk Learning Live Test: {view.topic}",
+            name=resolved_board_name,
             description="Fresh Schauwerk learning-view live test board.",
             replace_alias=replace_alias,
             invocation_source="schauwerk-learn-live-test",
@@ -194,6 +196,14 @@ def handle_learn_live_test(
             alias=name, invocation_source="schauwerk-learn-live-test"
         )
     ).to_dict()
+    live_test_record = create_live_test_record(
+        active.settings,
+        alias=name,
+        reference_digest=str(board.get("reference_digest", "")),
+        topic=view.topic,
+        board_name=resolved_board_name,
+        output_dir=base,
+    ).to_dict()
     return {
         "topic": view.topic,
         "audience": view.audience,
@@ -206,8 +216,18 @@ def handle_learn_live_test(
         "after": after,
         "layout_read": layout_read,
         "output_dir": str(base),
+        "live_test_record": live_test_record,
         "mutation_attempted": True,
+        "remote_cleanup_supported": False,
+        "remote_cleanup_attempted": False,
     }
+
+
+def handle_learn_live_prune(
+    *, keep: int, dry_run: bool, client: MiroMCPClient | None = None
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    return prune_live_tests(active.settings, keep=keep, dry_run=dry_run).to_dict()
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
