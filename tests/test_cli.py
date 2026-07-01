@@ -78,23 +78,23 @@ def test_runner_dispatches_snapshot(monkeypatch, capsys) -> None:
 def test_runner_dispatches_learning_render(monkeypatch, capsys) -> None:
     observed = {}
 
-    def fake_render(*, input_path, output):
-        observed.update(input_path=input_path, output=output)
+    def fake_render(*, input_path, output, template):
+        observed.update(input_path=input_path, output=output, template=template)
         return {"topic": "fixture", "dsl_line_count": 3}
 
     monkeypatch.setattr(runner, "handle_learn_render", fake_render)
     code = runner.main(["miro", "learn", "render", "topic.yml", "--output", "out.dsl", "--json"])
 
     assert code == 0
-    assert observed == {"input_path": "topic.yml", "output": "out.dsl"}
+    assert observed == {"input_path": "topic.yml", "output": "out.dsl", "template": "classic"}
     assert json.loads(capsys.readouterr().out)["dsl_line_count"] == 3
 
 
 def test_runner_dispatches_learning_apply(monkeypatch, capsys) -> None:
     observed = {}
 
-    def fake_apply(*, input_path, alias):
-        observed.update(input_path=input_path, alias=alias)
+    def fake_apply(*, input_path, alias, template):
+        observed.update(input_path=input_path, alias=alias, template=template)
         return {
             "topic": "fixture",
             "layout": {"board_alias": alias, "success": True, "created_count": 3},
@@ -104,7 +104,7 @@ def test_runner_dispatches_learning_apply(monkeypatch, capsys) -> None:
     code = runner.main(["miro", "learn", "apply", "board-a", "topic.yml", "--json"])
 
     assert code == 0
-    assert observed == {"input_path": "topic.yml", "alias": "board-a"}
+    assert observed == {"input_path": "topic.yml", "alias": "board-a", "template": "classic"}
     result = json.loads(capsys.readouterr().out)
     assert result["layout"]["board_alias"] == "board-a"
     assert result["layout"]["success"] is True
@@ -167,6 +167,7 @@ def test_runner_dispatches_learning_live_test(monkeypatch, capsys) -> None:
         "comment_limit": 50,
         "max_pages": 20,
         "include_comments": False,
+        "template": "classic",
     }
     result = json.loads(capsys.readouterr().out)
     assert result["layout"]["success"] is True
@@ -181,21 +182,23 @@ def test_runner_dispatches_quality(monkeypatch, capsys) -> None:
         return {"board_alias": kwargs["alias"], "ok": True, "score": 100}
 
     monkeypatch.setattr(runner, "handle_quality", fake_quality)
-    code = runner.main([
-        "miro",
-        "quality",
-        "live-a",
-        "after.json",
-        "--output",
-        "quality.json",
-        "--expected-min-connectors",
-        "2",
-        "--expected-min-docs",
-        "1",
-        "--expected-min-tables",
-        "2",
-        "--json",
-    ])
+    code = runner.main(
+        [
+            "miro",
+            "quality",
+            "live-a",
+            "after.json",
+            "--output",
+            "quality.json",
+            "--expected-min-connectors",
+            "2",
+            "--expected-min-docs",
+            "1",
+            "--expected-min-tables",
+            "2",
+            "--json",
+        ]
+    )
 
     assert code == 0
     assert observed == {

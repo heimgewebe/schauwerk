@@ -78,12 +78,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     learn_render.add_argument("input")
     learn_render.add_argument("--output")
+    learn_render.add_argument("--template", choices=("classic", "zoomlandkarte"), default="classic")
     learn_render.add_argument("--json", action="store_true")
     learn_apply = learn_commands.add_parser(
         "apply", help="render and apply a learning-view input to an allowlisted board"
     )
     learn_apply.add_argument("alias")
     learn_apply.add_argument("input")
+    learn_apply.add_argument("--template", choices=("classic", "zoomlandkarte"), default="classic")
     learn_apply.add_argument("--json", action="store_true")
 
     learn_live = learn_commands.add_parser(
@@ -98,6 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     learn_live.add_argument("--comment-limit", type=_bounded_integer(1, 50), default=50)
     learn_live.add_argument("--max-pages", type=_bounded_integer(1, 100), default=20)
     learn_live.add_argument("--no-comments", action="store_true")
+    learn_live.add_argument("--template", choices=("classic", "zoomlandkarte"), default="classic")
     learn_live.add_argument("--json", action="store_true")
 
     learn_prune = learn_commands.add_parser(

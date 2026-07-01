@@ -158,6 +158,40 @@ def learning_template() -> TemplateSpec:
     )
 
 
+def zoomlandkarte_template() -> TemplateSpec:
+    """Return the zoomable learning-map template inspired by large Miro cluster boards."""
+    return TemplateSpec(
+        name="learning-zoomlandkarte-v1",
+        purpose="zoomable overview-to-detail map for larger learning material",
+        regions=(
+            "macro overview",
+            "production lane",
+            "priority clusters",
+            "detail fields",
+            "risk and gap zone",
+            "source hygiene",
+            "privacy footer",
+        ),
+        primitives=(
+            "frame",
+            "banner_shape",
+            "text",
+            "table",
+            "doc",
+            "sticky",
+            "connector",
+        ),
+        invariants=(
+            "zoom-out shows named clusters before details",
+            "zoom-in reveals dense local content inside clusters",
+            "production lane separates workflow from knowledge clusters",
+            "risk and source hygiene are explicit regions",
+            "details stay inside their cluster frame",
+            "privacy footer is always present",
+        ),
+    )
+
+
 def primitive_names(*, layout_only: bool = False) -> tuple[str, ...]:
     """List available primitive names for diagnostics and docs."""
     return tuple(
