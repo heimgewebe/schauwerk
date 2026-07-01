@@ -32,6 +32,13 @@ def doc(identifier: str, *, parent: str | None, x: int, y: int, markdown: str) -
     return f"{identifier} DOC{parent_part} x={x} y={y} <<<\n{markdown.strip()}\n>>>"
 
 
+def _table_column_definition(column: str) -> str:
+    value = column.strip().replace("|", "/")
+    if ":" in value:
+        return value
+    return f"{value}:text"
+
+
 def table(
     identifier: str,
     *,
@@ -43,7 +50,7 @@ def table(
     rows: Iterable[Sequence[str]],
 ) -> str:
     parent_part = f" parent={parent}" if parent else ""
-    header = " | ".join(columns)
+    header = " | ".join(_table_column_definition(column) for column in columns)
     body = "\n".join(" | ".join(cell.replace("|", "/") for cell in row) for row in rows)
     return (
         f"{identifier} TABLE{parent_part} x={x} y={y} {quote(title)} <<<\n"

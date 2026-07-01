@@ -56,5 +56,19 @@ def test_miro_dsl_helpers_emit_deterministic_lines_and_blocks() -> None:
     assert text == 'heading TEXT x=1 y=2 "A &quot;quote&quot;"'
     assert document == "guide DOC parent=root x=10 y=20 <<<\n# Guide\n>>>"
     assert 'rubric TABLE parent=root x=30 y=40 "Rubric"' in rendered_table
-    assert "A | B\n---\nx/y | z" in rendered_table
+    assert "A:text | B:text\n---\nx/y | z" in rendered_table
     assert dsl.bullets(("one", "two")) == "- one\n- two"
+
+
+def test_miro_dsl_table_preserves_explicit_column_types() -> None:
+    rendered_table = dsl.table(
+        "rubric",
+        parent="root",
+        x=30,
+        y=40,
+        title="Rubric",
+        columns=("Status:select(Done#00FF00, Blocked#FF0000)", "Updated:latest_update"),
+        rows=(("Done", "today"),),
+    )
+
+    assert "Status:select(Done#00FF00, Blocked#FF0000) | Updated:latest_update" in rendered_table
