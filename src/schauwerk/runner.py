@@ -12,6 +12,7 @@ from .cli_handlers import (
     handle_board_remove,
     handle_inspect,
     handle_learn_apply,
+    handle_learn_live_test,
     handle_learn_render,
     handle_login,
     handle_logout,
@@ -71,6 +72,18 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_learn_render(input_path=args.input, output=args.output)
         elif args.command == "learn" and args.learn_command == "apply":
             result = handle_learn_apply(input_path=args.input, alias=args.alias)
+        elif args.command == "learn" and args.learn_command == "live-test":
+            result = handle_learn_live_test(
+                input_path=args.input,
+                alias=args.alias,
+                board_name=args.board_name,
+                output_dir=args.output_dir,
+                replace_alias=args.replace_alias,
+                item_limit=args.item_limit,
+                comment_limit=args.comment_limit,
+                max_pages=args.max_pages,
+                include_comments=not args.no_comments,
+            )
         elif args.command == "logout":
             result = handle_logout()
         else:

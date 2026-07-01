@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -124,6 +125,88 @@ def handle_learn_apply(
         "step_count": len(view.steps),
         "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
         "layout": receipt,
+    }
+
+
+def _default_live_test_alias() -> str:
+    return datetime.now(UTC).strftime("learn-live-%Y%m%d-%H%M%S")
+
+
+def handle_learn_live_test(
+    *,
+    input_path: str,
+    alias: str | None,
+    board_name: str | None,
+    output_dir: str | None,
+    replace_alias: bool,
+    item_limit: int,
+    comment_limit: int,
+    max_pages: int,
+    include_comments: bool,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    name = alias or _default_live_test_alias()
+    source = Path(input_path)
+    view = load_learning_view(source)
+    dsl = render_learning_dsl(view)
+    base = Path(output_dir) if output_dir else active.settings.snapshots_root / "live-tests" / name
+    base.mkdir(parents=True, exist_ok=True)
+
+    board = asyncio.run(
+        active.board_create(
+            alias=name,
+            name=board_name or f"Schauwerk Learning Live Test: {view.topic}",
+            description="Fresh Schauwerk learning-view live test board.",
+            replace_alias=replace_alias,
+            invocation_source="schauwerk-learn-live-test",
+        )
+    ).to_dict()
+    before = asyncio.run(
+        active.snapshot(
+            alias=name,
+            output_path=base / "before.json",
+            item_limit=item_limit,
+            comment_limit=comment_limit,
+            max_pages=max_pages,
+            include_comments=include_comments,
+        )
+    ).to_dict()
+    layout = asyncio.run(
+        active.layout_create(
+            alias=name,
+            dsl=dsl,
+            invocation_source="schauwerk-learn-live-test",
+        )
+    ).to_dict()
+    after = asyncio.run(
+        active.snapshot(
+            alias=name,
+            output_path=base / "after.json",
+            item_limit=item_limit,
+            comment_limit=comment_limit,
+            max_pages=max_pages,
+            include_comments=include_comments,
+        )
+    ).to_dict()
+    layout_read = asyncio.run(
+        active.layout_read_summary(
+            alias=name, invocation_source="schauwerk-learn-live-test"
+        )
+    ).to_dict()
+    return {
+        "topic": view.topic,
+        "audience": view.audience,
+        "step_count": len(view.steps),
+        "dsl_line_count": len([line for line in dsl.splitlines() if line.strip()]),
+        "alias": name,
+        "board": board,
+        "before": before,
+        "layout": layout,
+        "after": after,
+        "layout_read": layout_read,
+        "output_dir": str(base),
+        "mutation_attempted": True,
     }
 
 
