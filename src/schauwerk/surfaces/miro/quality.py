@@ -22,8 +22,8 @@ _CHECKED_DIMENSIONS = (
     "sticky_balance",
 )
 _CONNECTOR_TYPES = {"connector", "line", "arrow"}
-_DOC_TYPES = {"doc", "document"}
-_TABLE_TYPES = {"table"}
+_DOC_TYPES = {"doc", "doc_format", "document"}
+_TABLE_TYPES = {"data_table_format", "table"}
 _FRAME_TYPES = {"frame"}
 _STICKY_TYPES = {"sticky", "sticky_note"}
 _TEXTUAL_TYPES = _STICKY_TYPES | {"text", "shape"} | _DOC_TYPES | _TABLE_TYPES
