@@ -163,8 +163,23 @@ def render_learning_dsl(view: LearningView) -> str:
     goals = _bullets(view.goals)
     terms = _bullets(view.key_terms or ("Begriffe im Gespraech sammeln",))
     materials = _bullets(view.materials or ("Board", "Notizen", "Rueckfragen"))
+
+    root_width = 3400
+    root_height = 2200
+    root_mid_x = root_width // 2
+    title_y = 90
+    question_y = 220
+    footer_y = root_height - 150
+
+    column_y = 250
+    column_height = 1500
+    narrow_width = 620
+    wide_width = 760
+    narrow_mid_x = narrow_width // 2
+    wide_mid_x = wide_width // 2
+
     step_lines = []
-    step_y = 150
+    step_y = 190
     for index, step in enumerate(view.steps, start=1):
         minutes = f" ({step.minutes} min)" if step.minutes else ""
         output = f"<p><b>Ergebnis:</b> {step.output}</p>" if step.output else ""
@@ -177,20 +192,34 @@ def render_learning_dsl(view: LearningView) -> str:
                 f"step{index}",
                 "STICKY",
                 parent="flow",
-                x=260,
+                x=narrow_mid_x,
                 y=step_y,
-                w=270,
+                w=230,
                 color="light_blue" if index % 2 else "light_green",
                 content=step_content,
             )
         )
-        step_y += 125
+        step_y += 250
+
+    sequence_lines = []
+    for index in range(1, len(view.steps)):
+        sequence_lines.append(
+            _line(
+                f"e_step_{index}",
+                "CONNECTOR",
+                **{"from": f"step{index}", "to": f"step{index + 1}"},
+                shape="elbowed",
+                end_cap="arrow",
+                content="weiter",
+            )
+        )
+
     rich_lines = [
         doc(
             "overview_doc",
             parent="concepts",
-            x=260,
-            y=150,
+            x=wide_mid_x,
+            y=190,
             markdown=(
                 f"# Erklaerfaden\n\nLeitfrage: {view.guiding_question}"
                 f"\n\nRolle: {view.author_role}"
@@ -199,8 +228,8 @@ def render_learning_dsl(view: LearningView) -> str:
         table(
             "goals_table",
             parent="concepts",
-            x=260,
-            y=360,
+            x=wide_mid_x,
+            y=560,
             title="Ziele und Sicherung",
             columns=("Bereich", "Inhalt"),
             rows=(("Ziele", "; ".join(view.goals)), ("Check", view.check)),
@@ -208,8 +237,8 @@ def render_learning_dsl(view: LearningView) -> str:
         table(
             "terms_table",
             parent="concepts",
-            x=260,
-            y=565,
+            x=wide_mid_x,
+            y=930,
             title="Begriffe",
             columns=("Begriff", "Notiz"),
             rows=tuple(
@@ -219,14 +248,22 @@ def render_learning_dsl(view: LearningView) -> str:
         ),
     ]
     lines = [
-        _line("root", "FRAME", x=0, y=0, w=2600, h=1300, content="Schauwerk Learning View"),
+        _line(
+            "root",
+            "FRAME",
+            x=0,
+            y=0,
+            w=root_width,
+            h=root_height,
+            content="Schauwerk Learning View",
+        ),
         _line(
             "title",
             "TEXT",
             parent="root",
-            x=1000,
-            y=80,
-            w=1700,
+            x=root_mid_x,
+            y=title_y,
+            w=2200,
             font="open_sans",
             size=34,
             align="center",
@@ -237,9 +274,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "question",
             "SHAPE",
             parent="root",
-            x=1000,
-            y=185,
-            w=1500,
+            x=root_mid_x,
+            y=question_y,
+            w=2100,
             h=95,
             type="round_rectangle",
             fill="#1a1a1a",
@@ -252,22 +289,40 @@ def render_learning_dsl(view: LearningView) -> str:
         _line(
             "overview",
             "FRAME",
-            x=-700,
-            y=120,
-            w=520,
-            h=760,
+            x=-1200,
+            y=column_y,
+            w=narrow_width,
+            h=column_height,
             fill="#F5F5F5",
             content="1 Orientierung",
         ),
-        _line("flow", "FRAME", x=-120, y=120, w=520, h=760, fill="#F5F5F5", content="2 Lernweg"),
-        _line("peer", "FRAME", x=460, y=120, w=520, h=760, fill="#F5F5F5", content="3 Gruppe"),
+        _line(
+            "flow",
+            "FRAME",
+            x=-400,
+            y=column_y,
+            w=narrow_width,
+            h=column_height,
+            fill="#F5F5F5",
+            content="2 Lernweg",
+        ),
+        _line(
+            "peer",
+            "FRAME",
+            x=400,
+            y=column_y,
+            w=narrow_width,
+            h=column_height,
+            fill="#F5F5F5",
+            content="3 Gruppe",
+        ),
         _line(
             "concepts",
             "FRAME",
-            x=1040,
-            y=120,
-            w=520,
-            h=760,
+            x=1210,
+            y=column_y,
+            w=wide_width,
+            h=column_height,
             fill="#F5F5F5",
             content="4 Struktur",
         ),
@@ -276,9 +331,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "goals",
             "TEXT",
             parent="overview",
-            x=260,
-            y=165,
-            w=420,
+            x=narrow_mid_x,
+            y=190,
+            w=500,
             font="open_sans",
             size=20,
             align="left",
@@ -289,9 +344,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "terms",
             "TEXT",
             parent="overview",
-            x=260,
-            y=425,
-            w=420,
+            x=narrow_mid_x,
+            y=650,
+            w=500,
             font="open_sans",
             size=18,
             align="left",
@@ -302,9 +357,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "materials",
             "TEXT",
             parent="overview",
-            x=260,
-            y=625,
-            w=420,
+            x=narrow_mid_x,
+            y=1040,
+            w=500,
             font="open_sans",
             size=18,
             align="left",
@@ -316,9 +371,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "role",
             "STICKY",
             parent="peer",
-            x=260,
-            y=175,
-            w=270,
+            x=narrow_mid_x,
+            y=220,
+            w=240,
             color="yellow",
             content=(
                 f"<p><b>Rolle</b></p><p>{view.author_role}: "
@@ -329,9 +384,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "collaboration",
             "STICKY",
             parent="peer",
-            x=260,
-            y=365,
-            w=270,
+            x=narrow_mid_x,
+            y=610,
+            w=240,
             color="light_yellow",
             content=f"<p><b>Arbeitsform</b></p><p>{view.collaboration}</p>",
         ),
@@ -339,9 +394,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "check",
             "STICKY",
             parent="peer",
-            x=260,
-            y=555,
-            w=270,
+            x=narrow_mid_x,
+            y=1000,
+            w=240,
             color="light_green",
             content=f"<p><b>Sicherung</b></p><p>{view.check}</p>",
         ),
@@ -349,9 +404,9 @@ def render_learning_dsl(view: LearningView) -> str:
             "privacy",
             "SHAPE",
             parent="root",
-            x=1000,
-            y=1130,
-            w=1500,
+            x=root_mid_x,
+            y=footer_y,
+            w=2100,
             h=80,
             type="round_rectangle",
             fill="#FFFFFF",
@@ -368,7 +423,7 @@ def render_learning_dsl(view: LearningView) -> str:
             **{"from": "question", "to": "goals"},
             shape="elbowed",
             end_cap="arrow",
-            content="verstehen",
+            content="orientieren",
         ),
         _line(
             "e2",
@@ -376,8 +431,9 @@ def render_learning_dsl(view: LearningView) -> str:
             **{"from": "goals", "to": "step1"},
             shape="elbowed",
             end_cap="arrow",
-            content="lernen",
+            content="starten",
         ),
+        *sequence_lines,
         _line(
             "e3",
             "CONNECTOR",
