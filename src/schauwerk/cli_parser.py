@@ -77,6 +77,20 @@ def build_parser() -> argparse.ArgumentParser:
     learn_apply.add_argument("input")
     learn_apply.add_argument("--json", action="store_true")
 
+    learn_live = learn_commands.add_parser(
+        "live-test", help="create a fresh board and run a verified learning-view live test"
+    )
+    learn_live.add_argument("input")
+    learn_live.add_argument("--alias")
+    learn_live.add_argument("--board-name")
+    learn_live.add_argument("--output-dir")
+    learn_live.add_argument("--replace-alias", action="store_true")
+    learn_live.add_argument("--item-limit", type=_bounded_integer(10, 1000), default=200)
+    learn_live.add_argument("--comment-limit", type=_bounded_integer(1, 50), default=50)
+    learn_live.add_argument("--max-pages", type=_bounded_integer(1, 100), default=20)
+    learn_live.add_argument("--no-comments", action="store_true")
+    learn_live.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

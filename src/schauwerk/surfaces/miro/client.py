@@ -13,6 +13,12 @@ from .discovery import discover_tools
 from .errors import MiroAuthorizationRequired, MiroCredentialError, MiroError, redact_text
 from .inspection import ReadOnlyInspection
 from .layout_runtime import LayoutReceipt, run_layout_create
+from .live_test_runtime import (
+    BoardCreateReceipt,
+    LayoutReadSummary,
+    run_board_create,
+    run_layout_read_summary,
+)
 from .models import MiroSettings, ToolCatalogue
 from .readonly import run_read_only_inspection
 from .runtime import quiet_provider_stderr
@@ -169,6 +175,12 @@ class MiroMCPClient:
             dsl=dsl,
             invocation_source=invocation_source,
         )
+
+    async def board_create(self, **kwargs: Any) -> BoardCreateReceipt:
+        return await run_board_create(self.settings, self.storage, **kwargs)
+
+    async def layout_read_summary(self, **kwargs: Any) -> LayoutReadSummary:
+        return await run_layout_read_summary(self.settings, self.storage, **kwargs)
 
     def cached_tools(self) -> dict[str, Any]:
         path = self.settings.catalogue_path

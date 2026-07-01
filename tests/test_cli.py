@@ -124,3 +124,50 @@ def test_runner_dispatches_live_status(monkeypatch, capsys) -> None:
     assert observed == {"live": True}
     result = json.loads(capsys.readouterr().out)
     assert result["live"] == {"checked": True, "ok": True}
+
+
+def test_runner_dispatches_learning_live_test(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_live_test(**kwargs):
+        observed.update(kwargs)
+        return {
+            "alias": kwargs["alias"],
+            "layout": {"success": True, "created_count": 3},
+            "layout_read": {"connector_count": 1},
+        }
+
+    monkeypatch.setattr(runner, "handle_learn_live_test", fake_live_test)
+    code = runner.main(
+        [
+            "miro",
+            "learn",
+            "live-test",
+            "topic.yml",
+            "--alias",
+            "live-a",
+            "--board-name",
+            "Live A",
+            "--output-dir",
+            "/tmp/live-a",
+            "--replace-alias",
+            "--no-comments",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "input_path": "topic.yml",
+        "alias": "live-a",
+        "board_name": "Live A",
+        "output_dir": "/tmp/live-a",
+        "replace_alias": True,
+        "item_limit": 200,
+        "comment_limit": 50,
+        "max_pages": 20,
+        "include_comments": False,
+    }
+    result = json.loads(capsys.readouterr().out)
+    assert result["layout"]["success"] is True
+    assert result["layout_read"]["connector_count"] == 1
