@@ -38,4 +38,11 @@ def safe_logout(client: MiroMCPClient) -> dict[str, bool]:
     else:
         state_removed = client.storage.clear()
     cache_removed = _unlink_entry(client.settings.catalogue_path, label="tool catalogue")
-    return {"state_removed": state_removed, "cache_removed": cache_removed}
+    auth_health_removed = _unlink_entry(
+        client.settings.auth_health_path, label="auth health receipt"
+    )
+    return {
+        "state_removed": state_removed,
+        "cache_removed": cache_removed,
+        "auth_health_removed": auth_health_removed,
+    }

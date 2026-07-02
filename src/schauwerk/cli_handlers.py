@@ -23,10 +23,7 @@ from .visual.grammar import zoomlandkarte_template
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
     active = client or MiroMCPClient()
     result = active.status()
-    if live:
-        result["live"] = asyncio.run(active.live_status())
-    else:
-        result["live"] = {"checked": False}
+    result["live"] = asyncio.run(active.live_status()) if live else {"checked": False}
     return result
 
 
@@ -41,6 +38,10 @@ def handle_login(
 
 def handle_tools(client: MiroMCPClient | None = None) -> dict[str, Any]:
     return asyncio.run((client or MiroMCPClient()).tools()).to_dict()
+
+
+def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:
+    return asyncio.run((client or MiroMCPClient()).doctor(check_live=live))
 
 
 def handle_inspect(

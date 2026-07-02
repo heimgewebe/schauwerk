@@ -10,6 +10,7 @@ from .cli_handlers import (
     handle_board_add,
     handle_board_list,
     handle_board_remove,
+    handle_doctor,
     handle_inspect,
     handle_learn_apply,
     handle_learn_live_prune,
@@ -47,6 +48,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "tools":
             result = handle_tools()
+        elif args.command == "doctor":
+            result = handle_doctor(live=not args.no_live)
         elif args.command == "inspect":
             result = handle_inspect(
                 query=args.query,

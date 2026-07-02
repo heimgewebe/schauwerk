@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,9 @@ from .runtime import quiet_provider_stderr
 from .safe_logout import safe_logout
 from .snapshot_model import SnapshotReceipt
 from .snapshot_runtime import run_verified_snapshot
+
+MIRO_AUTH_HEALTH_SCHEMA_VERSION = "miro-auth-health.v1"
+MIRO_AUTH_DOCTOR_SCHEMA_VERSION = "miro-auth-doctor.v1"
 
 
 class MiroMCPClient:
@@ -54,6 +58,11 @@ class MiroMCPClient:
             }
             credential_error = redact_text(exc)
         catalogue_path = self.settings.catalogue_path
+        local_state_present = bool(
+            credential_error is None
+            and credentials["has_tokens"]
+            and credentials["has_client_info"]
+        )
         return {
             "server_url": self.settings.server_url,
             "scope": self.settings.scope,
@@ -62,10 +71,16 @@ class MiroMCPClient:
             "credential_error": credential_error,
             "catalogue_path": str(catalogue_path),
             "catalogue_exists": (catalogue_path.is_file() and not catalogue_path.is_symlink()),
-            "authorized_locally": bool(
-                credential_error is None
-                and credentials["has_tokens"]
-                and credentials["has_client_info"]
+            "auth_health_path": str(self.settings.auth_health_path),
+            "auth_health_exists": (
+                self.settings.auth_health_path.is_file()
+                and not self.settings.auth_health_path.is_symlink()
+            ),
+            "local_state_present": local_state_present,
+            "authorized_locally": local_state_present,
+            "authorized_locally_note": (
+                "local OAuth state only; use `miro status --live` or `miro doctor` "
+                "to prove live authorization"
             ),
         }
 
@@ -89,6 +104,77 @@ class MiroMCPClient:
         write_json_owner_only(self.settings.catalogue_path, result.to_dict())
         return result
 
+    def cached_auth_health(self) -> dict[str, Any] | None:
+        """Return the latest persisted live-auth health receipt, if present."""
+        path = self.settings.auth_health_path
+        try:
+            if path.is_symlink():
+                raise MiroCredentialError("Cached auth health receipt is unsafe")
+            if not path.exists():
+                return None
+            if not path.is_file():
+                raise MiroCredentialError("Cached auth health receipt is unsafe")
+            if path.stat().st_mode & 0o077:
+                raise MiroCredentialError(
+                    "Cached auth health receipt has unsafe permissions"
+                )
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except MiroCredentialError:
+            raise
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise MiroCredentialError("Cached auth health receipt is unreadable") from exc
+        if not isinstance(value, dict):
+            raise MiroCredentialError("Cached auth health receipt is invalid")
+        if value.get("schema_version") != MIRO_AUTH_HEALTH_SCHEMA_VERSION:
+            raise MiroCredentialError(
+                "Cached auth health receipt has an unsupported schema"
+            )
+        return value
+
+    def _recommend_next_command(
+        self, local_status: dict[str, Any], live_status: dict[str, Any]
+    ) -> str:
+        if live_status.get("checked") and live_status.get("ok") is True:
+            return "Proceed with live Miro operations."
+        if local_status.get("credential_error"):
+            return "Inspect local OAuth state permissions, then run `schauwerk miro login`."
+        if not local_status.get("local_state_present"):
+            return "Run `schauwerk miro login --no-browser --manual-callback --json`."
+        if not live_status.get("checked"):
+            return "Run `schauwerk miro doctor --json` before live board operations."
+        if live_status.get("renewal_required") is True:
+            return (
+                "Run `schauwerk miro login --no-browser --manual-callback --json`, "
+                "then rerun `schauwerk miro doctor --json`."
+            )
+        return "Inspect the live MCP/network error before live board operations."
+
+    def _persist_auth_health(
+        self, live_status: dict[str, Any], local_status: dict[str, Any]
+    ) -> dict[str, Any]:
+        checked_live = bool(live_status.get("checked"))
+        live_authorized = live_status.get("ok") if checked_live else None
+        renewal_required = live_status.get("renewal_required") if checked_live else None
+        receipt = {
+            "schema_version": MIRO_AUTH_HEALTH_SCHEMA_VERSION,
+            "observed_at": datetime.now(UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "local_state_present": bool(local_status.get("local_state_present")),
+            "live_authorized": live_authorized,
+            "live_authorized_known": checked_live,
+            "renewal_required": renewal_required,
+            "renewal_required_known": checked_live,
+            "safe_for_live_board_operations": live_authorized is True,
+            "recommended_next_command": self._recommend_next_command(
+                local_status, live_status
+            ),
+            "live": live_status,
+        }
+        write_json_owner_only(self.settings.auth_health_path, receipt)
+        return receipt
+
     async def live_status(self) -> dict[str, Any]:
         """Check whether stored Miro credentials work against the live MCP server."""
         try:
@@ -109,6 +195,45 @@ class MiroMCPClient:
             "renewal_required": False,
             "server_name": catalogue.server_name,
             "tool_count": len(catalogue.tools),
+        }
+
+    async def doctor(self, *, check_live: bool = True) -> dict[str, Any]:
+        """Report local and live Miro auth state with an operational recommendation."""
+        local_status = self.status()
+        live_status = await self.live_status() if check_live else {"checked": False}
+        checked_live = bool(live_status.get("checked"))
+        live_authorized = live_status.get("ok") if checked_live else None
+        renewal_required = live_status.get("renewal_required") if checked_live else None
+        health_error = None
+        if check_live:
+            try:
+                last_health = self._persist_auth_health(live_status, local_status)
+                local_status["auth_health_exists"] = True
+            except MiroCredentialError as exc:
+                last_health = None
+                health_error = redact_text(exc)
+        else:
+            try:
+                last_health = self.cached_auth_health()
+            except MiroCredentialError as exc:
+                last_health = None
+                health_error = redact_text(exc)
+        return {
+            "schema_version": MIRO_AUTH_DOCTOR_SCHEMA_VERSION,
+            "checked_live": checked_live,
+            "live_authorized_known": checked_live,
+            "renewal_required_known": checked_live,
+            "local_state_present": bool(local_status.get("local_state_present")),
+            "live_authorized": live_authorized,
+            "renewal_required": renewal_required,
+            "safe_for_live_board_operations": live_authorized is True,
+            "recommended_next_command": self._recommend_next_command(
+                local_status, live_status
+            ),
+            "local": local_status,
+            "live": live_status,
+            "last_health": last_health,
+            "health_error": health_error,
         }
 
     async def inspect(
