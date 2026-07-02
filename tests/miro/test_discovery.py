@@ -92,3 +92,44 @@ def test_redaction_removes_common_secret_forms() -> None:
     assert "secret-value" not in message
     assert "header-value" not in message
     assert "other" not in message
+
+
+def test_persistent_provider_restores_expiry_for_stored_tokens(tmp_path) -> None:
+    from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+    from pydantic import AnyUrl
+
+    from schauwerk.surfaces.miro.credentials import FileTokenStorage
+    from schauwerk.surfaces.miro.discovery import build_oauth_provider
+    from schauwerk.surfaces.miro.models import MiroSettings
+
+    storage = FileTokenStorage(tmp_path / "oauth.json")
+    settings = MiroSettings(state_root=tmp_path / "state")
+    token = OAuthToken(
+        access_token="access",
+        token_type="Bearer",
+        expires_in=30,
+        refresh_token="refresh",
+    )
+    client_info = OAuthClientInformationFull(
+        client_id="client",
+        client_secret="client-secret",
+        redirect_uris=[AnyUrl("http://127.0.0.1:41739/callback")],
+        token_endpoint_auth_method="client_secret_post",
+        grant_types=["authorization_code", "refresh_token"],
+        response_types=["code"],
+        client_name="Schauwerk test",
+    )
+    asyncio.run(storage.set_tokens(token))
+    asyncio.run(storage.set_client_info(client_info))
+
+    async def redirect(_url: str) -> None:
+        raise AssertionError("redirect should not be used")
+
+    async def callback():
+        raise AssertionError("callback should not be used")
+
+    provider = build_oauth_provider(settings, storage, redirect, callback)
+    asyncio.run(provider._initialize())
+
+    assert provider.context.token_expiry_time is not None
+    assert provider.context.can_refresh_token() is True

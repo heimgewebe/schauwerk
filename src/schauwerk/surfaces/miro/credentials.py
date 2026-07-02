@@ -7,6 +7,7 @@ import json
 import os
 import stat
 import tempfile
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -130,16 +131,32 @@ class FileTokenStorage(TokenStorage):
             self._write_unlocked(document)
 
     async def get_tokens(self) -> OAuthToken | None:
-        raw = self._read().get("tokens")
+        document = self._read()
+        raw = document.get("tokens")
         if raw is None:
             return None
+        if not isinstance(raw, dict):
+            raise MiroCredentialError("Stored OAuth tokens are invalid")
+        token_data = dict(raw)
+        saved_at = document.get("tokens_saved_at")
+        expires_in = token_data.get("expires_in")
+        if isinstance(expires_in, int | float):
+            if isinstance(saved_at, int | float):
+                age = max(0.0, time.time() - float(saved_at))
+                token_data["expires_in"] = max(0, int(float(expires_in) - age))
+            else:
+                token_data["expires_in"] = 0
         try:
-            return OAuthToken.model_validate(raw)
+            return OAuthToken.model_validate(token_data)
         except ValidationError as exc:
             raise MiroCredentialError("Stored OAuth tokens are invalid") from exc
 
     async def set_tokens(self, tokens: OAuthToken) -> None:
-        self._update("tokens", tokens.model_dump(mode="json", exclude_none=True))
+        with self._lock(exclusive=True):
+            document = self._read_unlocked()
+            document["tokens"] = tokens.model_dump(mode="json", exclude_none=True)
+            document["tokens_saved_at"] = time.time()
+            self._write_unlocked(document)
 
     async def get_client_info(self) -> OAuthClientInformationFull | None:
         raw = self._read().get("client_info")
@@ -161,6 +178,7 @@ class FileTokenStorage(TokenStorage):
             "exists": self.path.is_file() and not self.path.is_symlink(),
             "secure": True,
             "has_tokens": isinstance(document.get("tokens"), dict),
+            "has_token_saved_at": isinstance(document.get("tokens_saved_at"), int | float),
             "has_client_info": isinstance(document.get("client_info"), dict),
         }
 
