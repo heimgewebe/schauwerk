@@ -18,6 +18,7 @@ from .cli_handlers import (
     handle_login,
     handle_logout,
     handle_quality,
+    handle_region_plan,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -102,6 +103,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "learn" and args.learn_command == "live-prune":
             result = handle_learn_live_prune(keep=args.keep, dry_run=args.dry_run)
+        elif args.command == "region" and args.region_command == "plan":
+            result = handle_region_plan(
+                input_path=args.input, operation=args.operation, output=args.output
+            )
         elif args.command == "logout":
             result = handle_logout()
         else:

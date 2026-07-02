@@ -13,6 +13,7 @@ from .education.view import (
     render_learning_dsl,
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
+from .operator.regions import compile_region_operation_plan, load_region_declaration
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
@@ -301,3 +302,12 @@ def handle_learn_live_prune(
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
     return (client or MiroMCPClient()).logout()
+
+
+def handle_region_plan(*, input_path: str, operation: str, output: str | None) -> dict[str, Any]:
+    declaration = load_region_declaration(Path(input_path))
+    return compile_region_operation_plan(
+        declaration=declaration,
+        operation=operation,
+        output_path=Path(output) if output else None,
+    )

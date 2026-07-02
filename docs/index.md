@@ -16,6 +16,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 3. [Miro-first boundary decision](decisions/0001-miro-first-adapter-boundary.md)
 4. [Learning View v1](education/learning-view-v1.md)
 5. [Miro live recovery](operations/miro-live-recovery.md)
+6. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
 
 ## Contracts
 

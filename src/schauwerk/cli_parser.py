@@ -110,7 +110,16 @@ def build_parser() -> argparse.ArgumentParser:
     learn_prune.add_argument("--dry-run", action="store_true")
     learn_prune.add_argument("--json", action="store_true")
 
+    region = commands.add_parser("region")
+    rc = region.add_subparsers(dest="region_command", required=True)
+    rp = rc.add_parser("plan")
+    rp.add_argument("input")
+    rp.add_argument(
+        "--operation", choices=("render-update", "replace-region"), default="render-update"
+    )
+    rp.add_argument("--output")
+    rp.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser
-
