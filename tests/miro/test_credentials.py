@@ -88,3 +88,37 @@ def test_owner_only_json_writer(tmp_path) -> None:
 
     assert json.loads(path.read_text(encoding="utf-8")) == {"tools": ["one"]}
     assert path.stat().st_mode & 0o077 == 0
+
+
+def test_storage_records_save_time_and_returns_remaining_lifetime(tmp_path, monkeypatch) -> None:
+    import schauwerk.surfaces.miro.credentials as credentials
+
+    path = tmp_path / "oauth.json"
+    storage = FileTokenStorage(path)
+    monkeypatch.setattr(credentials.time, "time", lambda: 1000.0)
+    asyncio.run(storage.set_tokens(sample_token()))
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["tokens_saved_at"] == 1000.0
+    assert storage.summary()["has_token_saved_at"] is True
+
+    monkeypatch.setattr(credentials.time, "time", lambda: 1010.0)
+    tokens = asyncio.run(storage.get_tokens())
+
+    assert tokens is not None
+    assert tokens.expires_in == 3590
+
+
+def test_legacy_token_without_saved_time_loads_as_expired(tmp_path) -> None:
+    path = tmp_path / "oauth.json"
+    storage = FileTokenStorage(path)
+    path.write_text(
+        json.dumps({"tokens": sample_token().model_dump(mode="json", exclude_none=True)}) + "\n",
+        encoding="utf-8",
+    )
+    os.chmod(path, 0o600)
+
+    tokens = asyncio.run(storage.get_tokens())
+
+    assert tokens is not None
+    assert tokens.expires_in == 0

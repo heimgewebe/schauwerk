@@ -24,6 +24,15 @@ from .models import MiroSettings, ToolCatalogue, ToolInfo
 from .runtime import threadless_dns_resolution
 
 
+class PersistentOAuthClientProvider(OAuthClientProvider):
+    """OAuth provider that restores token expiry after loading stored tokens."""
+
+    async def _initialize(self) -> None:  # pragma: no cover - exercised via unit tests
+        await super()._initialize()
+        if self.context.current_tokens is not None:
+            self.context.update_token_expiry(self.context.current_tokens)
+
+
 def build_oauth_provider(
     settings: MiroSettings,
     storage: FileTokenStorage,
@@ -37,7 +46,7 @@ def build_oauth_provider(
         response_types=["code"],
         scope=settings.scope,
     )
-    return OAuthClientProvider(
+    return PersistentOAuthClientProvider(
         server_url=settings.server_url,
         client_metadata=metadata,
         storage=storage,
@@ -85,6 +94,7 @@ def find_authorization_error(exc: BaseException) -> MiroAuthorizationRequired | 
     nested = find_nested_miro_error(exc)
     return nested if isinstance(nested, MiroAuthorizationRequired) else None
 
+
 async def discover_tools(
     settings: MiroSettings,
     storage: FileTokenStorage,
@@ -100,9 +110,11 @@ async def discover_tools(
                 timeout=httpx.Timeout(settings.network_timeout_seconds),
                 headers={"User-Agent": "schauwerk/0.1"},
             ) as http_client:
-                async with streamable_http_client(
-                    settings.server_url, http_client=http_client
-                ) as (read_stream, write_stream, _session_id):
+                async with streamable_http_client(settings.server_url, http_client=http_client) as (
+                    read_stream,
+                    write_stream,
+                    _session_id,
+                ):
                     async with ClientSession(read_stream, write_stream) as session:
                         initialized = await session.initialize()
                         tools = await list_all_tools(session)
@@ -114,9 +126,7 @@ async def discover_tools(
             raise nested from exc
         if not isinstance(exc, Exception):
             raise
-        raise MiroConnectionError(
-            f"Miro MCP discovery failed: {redact_text(exc)}"
-        ) from exc
+        raise MiroConnectionError(f"Miro MCP discovery failed: {redact_text(exc)}") from exc
 
     return ToolCatalogue(
         protocol_version=str(initialized.protocolVersion),
