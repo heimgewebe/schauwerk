@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Zoomable learning-map renderer."""
 
 from __future__ import annotations
@@ -232,7 +231,7 @@ def render_learning_zoomlandkarte_dsl(view: LearningView) -> str:
             parent="cluster_goals",
             x=1900,
             y=680,
-            markdown=f"# Leitfaden\n\nLeitfrage: {view.guiding_question}\n\nRolle: {view.author_role}",
+            markdown=f"# Leitfaden\n\nLeitfrage: {view.guiding_question}\n\nRolle: {view.author_role}",  # noqa: E501
         )
     )
     lines.append(
@@ -298,7 +297,7 @@ def render_learning_zoomlandkarte_dsl(view: LearningView) -> str:
             parent="cluster_transfer",
             x=1900,
             y=760,
-            markdown=f"# Erklaeren und pruefen\n\nArbeitsform: {view.collaboration}\n\nZiel: Andere koennen den Zusammenhang wiedergeben.",
+            markdown=f"# Erklaeren und pruefen\n\nArbeitsform: {view.collaboration}\n\nZiel: Andere koennen den Zusammenhang wiedergeben.",  # noqa: E501
         )
     )
     lines.append(
@@ -310,7 +309,7 @@ def render_learning_zoomlandkarte_dsl(view: LearningView) -> str:
             y=1780,
             w=720,
             color="yellow",
-            content="<p><b>Peer-Test</b></p><p>Eine Person erklaert, eine fragt nach, eine sichert die Luecke.</p>",
+            content="<p><b>Peer-Test</b></p><p>Eine Person erklaert, eine fragt nach, eine sichert die Luecke.</p>",  # noqa: E501
         )
     )
     lines.append(
@@ -338,7 +337,7 @@ def render_learning_zoomlandkarte_dsl(view: LearningView) -> str:
             y=1960,
             w=780,
             color="light_yellow",
-            content="<p><b>Naechster Output</b></p><p>Summary, Lernkarten, Fragen, Probeerklaerung.</p>",
+            content="<p><b>Naechster Output</b></p><p>Summary, Lernkarten, Fragen, Probeerklaerung.</p>",  # noqa: E501
         )
     )
     lines.append(
@@ -358,7 +357,7 @@ def render_learning_zoomlandkarte_dsl(view: LearningView) -> str:
             parent="cluster_sources",
             x=1900,
             y=1840,
-            markdown="# Quellenhygiene\n\nNur tatsaechliche Lerninhalte auf das Board. Unsichere oder nicht gelesene Quellen bleiben als Luecke markiert.",
+            markdown="# Quellenhygiene\n\nNur tatsaechliche Lerninhalte auf das Board. Unsichere oder nicht gelesene Quellen bleiben als Luecke markiert.",  # noqa: E501
         )
     )
     edges = (

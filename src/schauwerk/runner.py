@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Executable Schauwerk command dispatcher."""
 
 from __future__ import annotations
