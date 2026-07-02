@@ -38,6 +38,10 @@ class MiroSettings:
         return self.state_root / "tools.json"
 
     @property
+    def auth_health_path(self) -> Path:
+        return self.state_root / "auth-health.json"
+
+    @property
     def board_allowlist_path(self) -> Path:
         return self.state_root / "boards.json"
 

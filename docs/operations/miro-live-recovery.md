@@ -13,7 +13,31 @@ summary: Operational recovery steps for Miro OAuth, board allowlists, live tests
 
 This runbook keeps Schauwerk usable when Miro live access, board allowlists, or live-test artefacts drift. It is intentionally operational: it does not change source truth, publish content, or delete remote Miro boards.
 
-## Fast status check
+## Fast auth doctor
+
+```bash
+cd /home/alex/repos/schauwerk
+.venv/bin/python -m schauwerk miro doctor --json
+```
+
+Interpretation:
+
+- `safe_for_live_board_operations=true`: live MCP access is currently usable.
+- `local_state_present=true`: local OAuth state exists, but this alone does not prove live access.
+- `live_authorized=true`: the live MCP check succeeded.
+- `renewal_required=true`: renew OAuth before any live board operation.
+- `recommended_next_command`: next operational command for the current state.
+- `last_health`: latest persisted `auth-health.json` receipt from a live check.
+
+Treat `miro doctor --json` as the authoritative preflight for "may I run a live board operation now?" Use `--no-live` only for offline inspection of local state and the latest cached receipt; in that mode live authorization is intentionally unknown.
+
+The backing health receipt is local state, not Git source truth:
+
+```text
+${XDG_STATE_HOME:-$HOME/.local/state}/schauwerk/miro/auth-health.json
+```
+
+## Lower-level status check
 
 ```bash
 cd /home/alex/repos/schauwerk
@@ -26,6 +50,13 @@ Interpretation:
 - `live.renewal_required=true`: renew OAuth before any live board operation.
 - `credential_error != null`: inspect local credential storage and permissions.
 - `catalogue_exists=false`: rerun login/tool discovery.
+- `authorized_locally=true`: local state exists; this is not a live-access guarantee.
+
+`status --live` performs a live check but does not persist a health receipt. Run `doctor --json` when the result should become the cached operational receipt.
+
+## Logout boundary
+
+`schauwerk miro logout --json` clears OAuth state, cached tool catalogue, and the local auth-health receipt. After logout, `doctor --no-live` must not continue to surface stale live authorization from an old receipt.
 
 ## Renew Miro login
 
@@ -42,7 +73,25 @@ After renewal, rerun:
 .venv/bin/python -m schauwerk miro status --live --json
 ```
 
-Proceed only when `live.ok=true`.
+Proceed only when `live.ok=true`. Then persist a fresh health receipt:
+
+```bash
+.venv/bin/python -m schauwerk miro doctor --json
+```
+
+## Keepalive boundary
+
+A user-level systemd timer should run `schauwerk miro doctor --json` periodically when a persisted health receipt is useful. It is a detection and refresh-attempt mechanism, not a guarantee that Miro will keep the grant valid forever. If the provider invalidates the grant, the timer must surface `renewal_required=true`; it must not pretend to re-consent without a person.
+
+The timer must be non-interactive: no browser launch, no manual callback prompt, and no hidden consent flow. If renewal is required, it should record the failed state and stop there.
+
+Recommended cadence for the local workstation is below one hour, for example `OnUnitActiveSec=45min` with a small randomized delay. The timer must use the same repository and state root as manual live work:
+
+```text
+WorkingDirectory=/home/alex/repos/schauwerk
+Environment=PYTHONPATH=/home/alex/repos/schauwerk/src
+Environment=XDG_STATE_HOME=/home/alex/.local/state
+```
 
 ## Protect Nicole learning maps
 
@@ -147,7 +196,7 @@ Check:
 
 ## Failure handling
 
-If OAuth is expired, stop at renewal. Do not patch renderer code to work around authentication.
+If OAuth is expired, stop at renewal. Do not patch renderer code to work around authentication. Use `miro doctor --json` to prove the restored live state before a renderer or board mutation test.
 
 If Miro live creation succeeds but quality fails, preserve `before.json`, `after.json`, `quality.json`, and create a focused layout patch.
 

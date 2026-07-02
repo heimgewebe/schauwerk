@@ -126,6 +126,39 @@ def test_runner_dispatches_live_status(monkeypatch, capsys) -> None:
     assert result["live"] == {"checked": True, "ok": True}
 
 
+def test_runner_dispatches_doctor_without_live(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_doctor(*, live):
+        observed["live"] = live
+        return {"schema_version": "miro-auth-doctor.v1", "checked_live": live}
+
+    monkeypatch.setattr(runner, "handle_doctor", fake_doctor)
+    code = runner.main(["miro", "doctor", "--no-live", "--json"])
+
+    assert code == 0
+    assert observed == {"live": False}
+    assert json.loads(capsys.readouterr().out) == {
+        "schema_version": "miro-auth-doctor.v1",
+        "checked_live": False,
+    }
+
+
+def test_runner_dispatches_doctor_with_live_by_default(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_doctor(*, live):
+        observed["live"] = live
+        return {"schema_version": "miro-auth-doctor.v1", "checked_live": live}
+
+    monkeypatch.setattr(runner, "handle_doctor", fake_doctor)
+    code = runner.main(["miro", "doctor", "--json"])
+
+    assert code == 0
+    assert observed == {"live": True}
+    assert json.loads(capsys.readouterr().out)["checked_live"] is True
+
+
 def test_runner_dispatches_learning_live_test(monkeypatch, capsys) -> None:
     observed = {}
 
