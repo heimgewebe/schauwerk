@@ -84,3 +84,103 @@ region:
     written = json.loads(output.read_text(encoding="utf-8"))
     assert written["ok"] is True
     assert plan["output_path"] == str(output.absolute())
+
+
+def snapshot_receipt(alias: str, digest: str) -> dict:
+    return {
+        "board_alias": alias,
+        "content_digest": digest,
+        "item_count": 4,
+        "repeatability_verified": True,
+        "sanitized_references": True,
+    }
+
+
+def test_region_preflight_passes_for_allowlisted_matching_snapshot(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_preflight
+
+    data = managed_region()
+    declaration = parse_region_declaration(data)
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_text(
+        json.dumps(snapshot_receipt(declaration.surface_alias, "a" * 64)), encoding="utf-8"
+    )
+
+    result = compile_region_preflight(
+        declaration=declaration,
+        allowlisted_aliases={declaration.surface_alias},
+        snapshot_path=snapshot,
+    )
+
+    assert result["schema_version"] == "typed-region-preflight.v1"
+    assert result["ok"] is True
+    assert result["mutation_attempted"] is False
+    assert result["ready_for_apply"] is True
+    assert result["blocked_reasons"] == []
+    assert result["checks"] == {
+        "surface_alias_allowlisted": True,
+        "snapshot_digest_matches": True,
+        "snapshot_board_alias_matches": True,
+        "snapshot_repeatability_verified": True,
+        "snapshot_references_sanitized": True,
+    }
+
+
+def test_region_preflight_blocks_missing_allowlist_and_digest_mismatch(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_preflight
+
+    declaration = parse_region_declaration(managed_region())
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_text(
+        json.dumps(snapshot_receipt(declaration.surface_alias, "c" * 64)), encoding="utf-8"
+    )
+
+    result = compile_region_preflight(
+        declaration=declaration,
+        allowlisted_aliases=set(),
+        snapshot_path=snapshot,
+    )
+
+    assert result["ok"] is False
+    assert result["checks"]["surface_alias_allowlisted"] is False
+    assert result["checks"]["snapshot_digest_matches"] is False
+    assert "surface_alias_not_allowlisted" in result["blocked_reasons"]
+    assert "snapshot_digest_mismatch" in result["blocked_reasons"]
+
+
+def test_region_preflight_blocks_unverified_snapshot(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_preflight
+
+    declaration = parse_region_declaration(managed_region())
+    receipt = snapshot_receipt(declaration.surface_alias, "a" * 64)
+    receipt["repeatability_verified"] = False
+    snapshot = tmp_path / "snapshot.json"
+    snapshot.write_text(json.dumps(receipt), encoding="utf-8")
+
+    result = compile_region_preflight(
+        declaration=declaration,
+        allowlisted_aliases={declaration.surface_alias},
+        snapshot_path=snapshot,
+    )
+
+    assert result["ok"] is False
+    assert "snapshot_repeatability_unverified" in result["blocked_reasons"]
+
+
+def test_region_preflight_rejects_snapshot_symlink(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_preflight
+
+    declaration = parse_region_declaration(managed_region())
+    target = tmp_path / "target.json"
+    target.write_text(
+        json.dumps(snapshot_receipt(declaration.surface_alias, "a" * 64)), encoding="utf-8"
+    )
+    link = tmp_path / "snapshot-link.json"
+    link.symlink_to(target)
+
+    with pytest.raises(ValueError, match="unsafe"):
+        compile_region_preflight(
+            declaration=declaration,
+            allowlisted_aliases={declaration.surface_alias},
+            snapshot_path=link,
+        )

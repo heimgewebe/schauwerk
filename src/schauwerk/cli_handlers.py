@@ -13,7 +13,12 @@ from .education.view import (
     render_learning_dsl,
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
-from .operator.regions import compile_region_operation_plan, load_region_declaration
+from .operator.regions import (
+    compile_region_operation_plan,
+    compile_region_preflight,
+    load_region_declaration,
+)
+from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
@@ -309,6 +314,29 @@ def handle_region_plan(*, input_path: str, operation: str, output: str | None) -
     declaration = load_region_declaration(Path(input_path))
     return compile_region_operation_plan(
         declaration=declaration,
+        operation=operation,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_preflight(
+    *,
+    input_path: str,
+    snapshot: str,
+    operation: str,
+    output: str | None,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active_client = client or MiroMCPClient()
+    declaration = load_region_declaration(Path(input_path))
+    allowlisted_aliases = {
+        board.alias
+        for board in BoardAllowlist(active_client.settings.board_allowlist_path).list()
+    }
+    return compile_region_preflight(
+        declaration=declaration,
+        allowlisted_aliases=allowlisted_aliases,
+        snapshot_path=Path(snapshot),
         operation=operation,
         output_path=Path(output) if output else None,
     )

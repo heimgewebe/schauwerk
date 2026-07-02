@@ -64,3 +64,11 @@ boundary.no_miro_mutation: true
 ## Boundary
 
 This is not an apply command. It does not create, update, delete, clear, or inspect live Miro items.
+
+## Preflight CLI
+
+```bash
+schauwerk miro region preflight region.yml --snapshot before.json --json
+```
+
+The supplied snapshot receipt must match the declared board alias, expected digest, repeatability flag, and sanitized-reference flag. A failed check sets `ready_for_apply=false` and lists explicit `blocked_reasons`. This remains a dry-run gate and does not call Miro.

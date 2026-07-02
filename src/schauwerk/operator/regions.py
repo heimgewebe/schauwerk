@@ -181,3 +181,105 @@ def compile_region_operation_plan(
     else:
         plan["output_path"] = None
     return plan
+
+
+def _snapshot_receipt(path: Path) -> dict[str, Any]:
+    candidate = path.expanduser().absolute()
+    if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents):
+        raise ValueError("snapshot path is unsafe")
+    try:
+        raw = json.loads(candidate.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("snapshot receipt is unreadable") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("snapshot receipt must contain an object")
+    digest = raw.get("content_digest")
+    if not isinstance(digest, str):
+        raise ValueError("snapshot receipt lacks content_digest")
+    _validate_digest(digest, label="snapshot.content_digest")
+    board_alias = raw.get("board_alias")
+    if not isinstance(board_alias, str):
+        raise ValueError("snapshot receipt lacks board_alias")
+    return {
+        "path": str(candidate),
+        "board_alias": _validate_safe_id(board_alias, label="snapshot.board_alias"),
+        "content_digest": digest,
+        "item_count": raw.get("item_count"),
+        "repeatability_verified": raw.get("repeatability_verified"),
+        "sanitized_references": raw.get("sanitized_references"),
+    }
+
+
+def compile_region_preflight(
+    *,
+    declaration: RegionDeclaration,
+    allowlisted_aliases: set[str],
+    snapshot_path: Path,
+    operation: str = "render-update",
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    plan = compile_region_operation_plan(declaration=declaration, operation=operation)
+    snapshot = _snapshot_receipt(snapshot_path)
+    blocked_reasons = list(plan["blocked_reasons"])
+    alias_allowed = declaration.surface_alias in allowlisted_aliases
+    if not alias_allowed:
+        blocked_reasons.append("surface_alias_not_allowlisted")
+    digest_matches = snapshot["content_digest"] == declaration.expected_snapshot_digest
+    if not digest_matches:
+        blocked_reasons.append("snapshot_digest_mismatch")
+    snapshot_alias_matches = snapshot["board_alias"] == declaration.surface_alias
+    if not snapshot_alias_matches:
+        blocked_reasons.append("snapshot_board_alias_mismatch")
+    repeatability_verified = snapshot.get("repeatability_verified") is True
+    if not repeatability_verified:
+        blocked_reasons.append("snapshot_repeatability_unverified")
+    sanitized_references = snapshot.get("sanitized_references") is True
+    if not sanitized_references:
+        blocked_reasons.append("snapshot_references_not_sanitized")
+
+    ready = not blocked_reasons
+    preflight = {
+        "schema_version": "typed-region-preflight.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "operation": operation,
+        "region": declaration.to_dict(),
+        "plan_ok": plan["ok"],
+        "ready_for_apply": ready,
+        "blocked_reasons": blocked_reasons,
+        "checks": {
+            "surface_alias_allowlisted": alias_allowed,
+            "snapshot_digest_matches": digest_matches,
+            "snapshot_board_alias_matches": snapshot_alias_matches,
+            "snapshot_repeatability_verified": repeatability_verified,
+            "snapshot_references_sanitized": sanitized_references,
+        },
+        "snapshot": snapshot,
+        "required_apply": [
+            "compile_candidate_dsl",
+            "confirm_region_marker_scope",
+            "apply_typed_operations",
+            "capture_after_snapshot",
+            "verify_region_marker_scope",
+            "verify_idempotency_receipt",
+            "write_quality_receipt",
+        ],
+        "restore_required": True,
+        "restore_strategy": "use_preflight_snapshot_path",
+        "boundary": {
+            "dry_run_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(preflight, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        preflight["output_path"] = str(destination)
+    else:
+        preflight["output_path"] = None
+    return preflight
