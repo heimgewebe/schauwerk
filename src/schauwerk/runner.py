@@ -20,6 +20,7 @@ from .cli_handlers import (
     handle_logout,
     handle_quality,
     handle_region_plan,
+    handle_region_preflight,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -109,6 +110,13 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "region" and args.region_command == "plan":
             result = handle_region_plan(
                 input_path=args.input, operation=args.operation, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "preflight":
+            result = handle_region_preflight(
+                input_path=args.input,
+                snapshot=args.snapshot,
+                operation=args.operation,
+                output=args.output,
             )
         elif args.command == "logout":
             result = handle_logout()

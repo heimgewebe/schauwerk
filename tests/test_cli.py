@@ -274,3 +274,39 @@ def test_runner_dispatches_region_plan(monkeypatch, capsys) -> None:
         "output": "plan.json",
     }
     assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-plan.v1"
+
+
+def test_runner_dispatches_region_preflight(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_region_preflight(*, input_path, snapshot, operation, output):
+        observed.update(
+            input_path=input_path, snapshot=snapshot, operation=operation, output=output
+        )
+        return {"schema_version": "typed-region-preflight.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_preflight", fake_region_preflight)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "preflight",
+            "region.yml",
+            "--snapshot",
+            "before.json",
+            "--operation",
+            "replace-region",
+            "--output",
+            "preflight.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "input_path": "region.yml",
+        "snapshot": "before.json",
+        "operation": "replace-region",
+        "output": "preflight.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-preflight.v1"

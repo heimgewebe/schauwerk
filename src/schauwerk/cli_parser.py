@@ -124,6 +124,15 @@ def build_parser() -> argparse.ArgumentParser:
     rp.add_argument("--output")
     rp.add_argument("--json", action="store_true")
 
+    rpf = rc.add_parser("preflight")
+    rpf.add_argument("input")
+    rpf.add_argument("--snapshot", required=True)
+    rpf.add_argument(
+        "--operation", choices=("render-update", "replace-region"), default="render-update"
+    )
+    rpf.add_argument("--output")
+    rpf.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser
