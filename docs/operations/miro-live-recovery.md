@@ -28,13 +28,15 @@ Interpretation:
 - `renewal_required=true`: renew OAuth before any live board operation.
 - `recommended_next_command`: next operational command for the current state.
 - `last_health`: latest persisted `auth-health.json` receipt from a live check.
+- `auth_history`: bounded local history of recent live auth receipts, useful for detecting expiry cadence.
 
 Treat `miro doctor --json` as the authoritative preflight for "may I run a live board operation now?" Use `--no-live` only for offline inspection of local state and the latest cached receipt; in that mode live authorization is intentionally unknown.
 
-The backing health receipt is local state, not Git source truth:
+The backing health receipt and bounded history are local state, not Git source truth:
 
 ```text
 ${XDG_STATE_HOME:-$HOME/.local/state}/schauwerk/miro/auth-health.json
+${XDG_STATE_HOME:-$HOME/.local/state}/schauwerk/miro/auth-history.json
 ```
 
 ## Lower-level status check
@@ -56,7 +58,7 @@ Interpretation:
 
 ## Logout boundary
 
-`schauwerk miro logout --json` clears OAuth state, cached tool catalogue, and the local auth-health receipt. After logout, `doctor --no-live` must not continue to surface stale live authorization from an old receipt.
+`schauwerk miro logout --json` clears OAuth state, cached tool catalogue, the local auth-health receipt, and auth-history. After logout, `doctor --no-live` must not continue to surface stale live authorization from an old receipt or old history.
 
 ## Renew Miro login
 

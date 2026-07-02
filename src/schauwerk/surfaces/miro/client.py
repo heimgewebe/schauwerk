@@ -28,6 +28,7 @@ from .snapshot_model import SnapshotReceipt
 from .snapshot_runtime import run_verified_snapshot
 
 MIRO_AUTH_HEALTH_SCHEMA_VERSION = "miro-auth-health.v1"
+MIRO_AUTH_HISTORY_SCHEMA_VERSION = "miro-auth-history.v1"
 MIRO_AUTH_DOCTOR_SCHEMA_VERSION = "miro-auth-doctor.v1"
 
 
@@ -75,6 +76,11 @@ class MiroMCPClient:
             "auth_health_exists": (
                 self.settings.auth_health_path.is_file()
                 and not self.settings.auth_health_path.is_symlink()
+            ),
+            "auth_history_path": str(self.settings.auth_history_path),
+            "auth_history_exists": (
+                self.settings.auth_history_path.is_file()
+                and not self.settings.auth_history_path.is_symlink()
             ),
             "local_state_present": local_state_present,
             "authorized_locally": local_state_present,
@@ -130,6 +136,54 @@ class MiroMCPClient:
                 "Cached auth health receipt has an unsupported schema"
             )
         return value
+
+    def cached_auth_history(self) -> dict[str, Any]:
+        """Return bounded auth-health history without exposing OAuth material."""
+        path = self.settings.auth_history_path
+        try:
+            if path.is_symlink():
+                raise MiroCredentialError("Cached auth history is unsafe")
+            if not path.exists():
+                return {"schema_version": MIRO_AUTH_HISTORY_SCHEMA_VERSION, "entries": []}
+            if not path.is_file():
+                raise MiroCredentialError("Cached auth history is unsafe")
+            if path.stat().st_mode & 0o077:
+                raise MiroCredentialError("Cached auth history has unsafe permissions")
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except MiroCredentialError:
+            raise
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise MiroCredentialError("Cached auth history is unreadable") from exc
+        if not isinstance(value, dict):
+            raise MiroCredentialError("Cached auth history is invalid")
+        if value.get("schema_version") != MIRO_AUTH_HISTORY_SCHEMA_VERSION:
+            raise MiroCredentialError("Cached auth history has an unsupported schema")
+        entries = value.get("entries")
+        if not isinstance(entries, list):
+            raise MiroCredentialError("Cached auth history is invalid")
+        return value
+
+    def _persist_auth_history(
+        self, receipt: dict[str, Any], *, keep: int = 100
+    ) -> dict[str, Any]:
+        history = self.cached_auth_history()
+        entries = [entry for entry in history.get("entries", []) if isinstance(entry, dict)]
+        entries.append(receipt)
+        value = {
+            "schema_version": MIRO_AUTH_HISTORY_SCHEMA_VERSION,
+            "entries": entries[-keep:],
+        }
+        write_json_owner_only(self.settings.auth_history_path, value)
+        return value
+
+    def _auth_history_report(self, history: dict[str, Any]) -> dict[str, Any]:
+        entries = [entry for entry in history.get("entries", []) if isinstance(entry, dict)]
+        return {
+            "path": str(self.settings.auth_history_path),
+            "count": len(entries),
+            "recent": entries[-5:],
+        }
+
 
     def _recommend_next_command(
         self, local_status: dict[str, Any], live_status: dict[str, Any]
@@ -205,6 +259,8 @@ class MiroMCPClient:
         live_authorized = live_status.get("ok") if checked_live else None
         renewal_required = live_status.get("renewal_required") if checked_live else None
         health_error = None
+        auth_history_error = None
+        auth_history = None
         if check_live:
             try:
                 last_health = self._persist_auth_health(live_status, local_status)
@@ -212,12 +268,25 @@ class MiroMCPClient:
             except MiroCredentialError as exc:
                 last_health = None
                 health_error = redact_text(exc)
+            if last_health is not None:
+                try:
+                    auth_history = self._persist_auth_history(last_health)
+                    local_status["auth_history_exists"] = True
+                except MiroCredentialError as exc:
+                    auth_history_error = redact_text(exc)
         else:
             try:
                 last_health = self.cached_auth_health()
             except MiroCredentialError as exc:
                 last_health = None
                 health_error = redact_text(exc)
+            try:
+                auth_history = self.cached_auth_history()
+            except MiroCredentialError as exc:
+                auth_history_error = redact_text(exc)
+        auth_history_report = (
+            self._auth_history_report(auth_history) if auth_history is not None else None
+        )
         return {
             "schema_version": MIRO_AUTH_DOCTOR_SCHEMA_VERSION,
             "checked_live": checked_live,
@@ -234,6 +303,8 @@ class MiroMCPClient:
             "live": live_status,
             "last_health": last_health,
             "health_error": health_error,
+            "auth_history": auth_history_report,
+            "auth_history_error": auth_history_error,
         }
 
     async def inspect(

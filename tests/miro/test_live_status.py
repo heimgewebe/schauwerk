@@ -64,7 +64,11 @@ def test_doctor_reports_success_and_persists_health(tmp_path, monkeypatch) -> No
     assert result["last_health"]["live_authorized"] is True
     assert result["last_health"]["safe_for_live_board_operations"] is True
     assert result["last_health"]["recommended_next_command"] == "Proceed with live Miro operations."
+    assert result["auth_history_error"] is None
+    assert result["auth_history"]["count"] == 1
+    assert result["auth_history"]["recent"][-1]["live_authorized"] is True
     assert client.settings.auth_health_path.stat().st_mode & 0o077 == 0
+    assert client.settings.auth_history_path.stat().st_mode & 0o077 == 0
 
 
 def test_doctor_reports_renewal_required_and_persists_health(tmp_path, monkeypatch) -> None:
@@ -86,6 +90,7 @@ def test_doctor_reports_renewal_required_and_persists_health(tmp_path, monkeypat
     assert receipt["renewal_required"] is True
     assert receipt["safe_for_live_board_operations"] is False
     assert "login" in receipt["recommended_next_command"]
+    assert result["auth_history"]["recent"][-1]["renewal_required"] is True
 
 
 def test_doctor_persists_non_credential_miro_error(tmp_path, monkeypatch) -> None:
@@ -103,6 +108,7 @@ def test_doctor_persists_non_credential_miro_error(tmp_path, monkeypatch) -> Non
     assert result["safe_for_live_board_operations"] is False
     assert result["last_health"]["live_authorized"] is False
     assert result["last_health"]["renewal_required"] is False
+    assert result["auth_history"]["recent"][-1]["live_authorized"] is False
     assert "network" in result["live"]["error"]
 
 
@@ -126,6 +132,8 @@ def test_doctor_reports_cached_health_without_live_check(tmp_path, monkeypatch) 
     assert result["safe_for_live_board_operations"] is False
     assert result["last_health"]["live_authorized"] is True
     assert result["health_error"] is None
+    assert result["auth_history"]["count"] == 1
+    assert result["auth_history_error"] is None
 
 
 def test_cached_auth_health_rejects_dangling_symlink(tmp_path) -> None:
@@ -160,3 +168,44 @@ def test_doctor_reports_cached_health_error_without_live_check(tmp_path) -> None
     assert result["checked_live"] is False
     assert result["last_health"] is None
     assert "unreadable" in result["health_error"]
+
+
+def test_doctor_keeps_auth_history_bounded(tmp_path, monkeypatch) -> None:
+    client = _client(tmp_path)
+
+    async def fake_tools():
+        return _catalogue()
+
+    monkeypatch.setattr(client, "tools", fake_tools)
+    for _ in range(105):
+        asyncio.run(client.doctor())
+
+    history = client.cached_auth_history()
+
+    assert history["schema_version"] == "miro-auth-history.v1"
+    assert len(history["entries"]) == 100
+
+
+def test_cached_auth_history_rejects_unsupported_schema(tmp_path) -> None:
+    client = _client(tmp_path)
+    client.settings.state_root.mkdir(parents=True)
+    client.settings.auth_history_path.write_text(
+        json.dumps({"schema_version": "miro-auth-history.v0", "entries": []}),
+        encoding="utf-8",
+    )
+    os.chmod(client.settings.auth_history_path, 0o600)
+
+    with pytest.raises(MiroCredentialError, match="unsupported schema"):
+        client.cached_auth_history()
+
+
+def test_doctor_reports_cached_history_error_without_live_check(tmp_path) -> None:
+    client = _client(tmp_path)
+    client.settings.state_root.mkdir(parents=True)
+    client.settings.auth_history_path.write_text("not-json", encoding="utf-8")
+    os.chmod(client.settings.auth_history_path, 0o600)
+
+    result = asyncio.run(client.doctor(check_live=False))
+
+    assert result["auth_history"] is None
+    assert "unreadable" in result["auth_history_error"]
