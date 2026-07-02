@@ -72,3 +72,11 @@ schauwerk miro region preflight region.yml --snapshot before.json --json
 ```
 
 The supplied snapshot receipt must match the declared board alias, expected digest, repeatability flag, and sanitized-reference flag. A failed check sets `ready_for_apply=false` and lists explicit `blocked_reasons`. This remains a dry-run gate and does not call Miro.
+
+## Apply Scaffold CLI
+
+```bash
+schauwerk miro region apply-scaffold preflight.json --json
+```
+
+The apply scaffold accepts only a `typed-region-preflight.v1` receipt. If the preflight is not ready, the scaffold remains blocked and preserves the preflight reasons. If it is ready, the scaffold lists the live preconditions and apply steps required before a later mutation command may exist. This command also does not call Miro.

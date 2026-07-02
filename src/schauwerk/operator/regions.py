@@ -283,3 +283,93 @@ def compile_region_preflight(
     else:
         preflight["output_path"] = None
     return preflight
+
+
+def load_region_preflight(path: Path) -> dict[str, Any]:
+    candidate = path.expanduser().absolute()
+    if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents):
+        raise ValueError("preflight path is unsafe")
+    try:
+        raw = json.loads(candidate.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError("preflight receipt is unreadable") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("preflight receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-preflight.v1":
+        raise ValueError("preflight receipt has an unsupported schema")
+    return raw
+
+
+def compile_region_apply_scaffold(
+    *,
+    preflight: dict[str, Any],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    blocked_reasons: list[str] = []
+    preflight_ok = preflight.get("ok") is True
+    ready_for_apply = preflight.get("ready_for_apply") is True
+    if not preflight_ok or not ready_for_apply:
+        blocked_reasons.append("preflight_not_ready")
+    if preflight.get("mutation_attempted") is not False:
+        blocked_reasons.append("preflight_mutation_state_invalid")
+    region = preflight.get("region")
+    if not isinstance(region, dict):
+        blocked_reasons.append("preflight_region_missing")
+        region = {}
+    snapshot = preflight.get("snapshot")
+    if not isinstance(snapshot, dict):
+        blocked_reasons.append("preflight_snapshot_missing")
+        snapshot = {}
+    boundary = preflight.get("boundary")
+    if not isinstance(boundary, dict) or boundary.get("no_miro_mutation") is not True:
+        blocked_reasons.append("preflight_boundary_missing")
+    preflight_blocks = preflight.get("blocked_reasons", [])
+    if preflight_blocks:
+        blocked_reasons.extend(
+            f"preflight:{reason}" for reason in preflight_blocks if isinstance(reason, str)
+        )
+
+    ready = not blocked_reasons
+    value = {
+        "schema_version": "typed-region-apply-scaffold.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "ready_for_live_apply": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": preflight.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "required_live_preconditions": [
+            "miro_doctor_safe_for_live_board_operations",
+            "operator_confirms_preflight_receipt_digest",
+            "operator_confirms_expected_source_digest",
+            "operator_confirms_restore_strategy",
+        ],
+        "required_apply_steps": [
+            "compile_candidate_dsl",
+            "confirm_region_marker_scope",
+            "apply_typed_operations",
+            "capture_after_snapshot",
+            "verify_region_marker_scope",
+            "verify_idempotency_receipt",
+            "write_quality_receipt",
+        ],
+        "restore_required": True,
+        "restore_strategy": "use_preflight_snapshot_path",
+        "boundary": {
+            "scaffold_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
