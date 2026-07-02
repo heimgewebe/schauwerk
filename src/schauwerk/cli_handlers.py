@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Command handlers for the Schauwerk CLI."""
 
 from __future__ import annotations
