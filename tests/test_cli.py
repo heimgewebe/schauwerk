@@ -210,3 +210,34 @@ def test_runner_dispatches_quality(monkeypatch, capsys) -> None:
         "expected_min_tables": 2,
     }
     assert json.loads(capsys.readouterr().out)["ok"] is True
+
+
+def test_runner_dispatches_region_plan(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_region_plan(*, input_path, operation, output):
+        observed.update(input_path=input_path, operation=operation, output=output)
+        return {"schema_version": "typed-region-plan.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_plan", fake_region_plan)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "plan",
+            "region.yml",
+            "--operation",
+            "replace-region",
+            "--output",
+            "plan.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "input_path": "region.yml",
+        "operation": "replace-region",
+        "output": "plan.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-plan.v1"
