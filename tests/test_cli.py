@@ -310,3 +310,20 @@ def test_runner_dispatches_region_preflight(monkeypatch, capsys) -> None:
         "output": "preflight.json",
     }
     assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-preflight.v1"
+
+
+def test_runner_dispatches_region_apply_scaffold(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_apply_scaffold(*, preflight, output):
+        observed.update(preflight=preflight, output=output)
+        return {"schema_version": "typed-region-apply-scaffold.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_apply_scaffold", fake_apply_scaffold)
+    code = runner.main(
+        ["miro", "region", "apply-scaffold", "preflight.json", "--output", "apply.json", "--json"]
+    )
+
+    assert code == 0
+    assert observed == {"preflight": "preflight.json", "output": "apply.json"}
+    assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-apply-scaffold.v1"

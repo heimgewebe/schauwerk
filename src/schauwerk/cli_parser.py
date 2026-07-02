@@ -133,6 +133,11 @@ def build_parser() -> argparse.ArgumentParser:
     rpf.add_argument("--output")
     rpf.add_argument("--json", action="store_true")
 
+    ras = rc.add_parser("apply-scaffold")
+    ras.add_argument("preflight")
+    ras.add_argument("--output")
+    ras.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

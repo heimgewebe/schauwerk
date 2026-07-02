@@ -14,9 +14,11 @@ from .education.view import (
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
 from .operator.regions import (
+    compile_region_apply_scaffold,
     compile_region_operation_plan,
     compile_region_preflight,
     load_region_declaration,
+    load_region_preflight,
 )
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -330,13 +332,20 @@ def handle_region_preflight(
     active_client = client or MiroMCPClient()
     declaration = load_region_declaration(Path(input_path))
     allowlisted_aliases = {
-        board.alias
-        for board in BoardAllowlist(active_client.settings.board_allowlist_path).list()
+        board.alias for board in BoardAllowlist(active_client.settings.board_allowlist_path).list()
     }
     return compile_region_preflight(
         declaration=declaration,
         allowlisted_aliases=allowlisted_aliases,
         snapshot_path=Path(snapshot),
         operation=operation,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_apply_scaffold(*, preflight: str, output: str | None) -> dict[str, Any]:
+    receipt = load_region_preflight(Path(preflight))
+    return compile_region_apply_scaffold(
+        preflight=receipt,
         output_path=Path(output) if output else None,
     )

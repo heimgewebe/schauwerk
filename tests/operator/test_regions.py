@@ -184,3 +184,80 @@ def test_region_preflight_rejects_snapshot_symlink(tmp_path) -> None:
             allowlisted_aliases={declaration.surface_alias},
             snapshot_path=link,
         )
+
+
+def ready_preflight() -> dict:
+    declaration = parse_region_declaration(managed_region())
+    return {
+        "schema_version": "typed-region-preflight.v1",
+        "ok": True,
+        "ready_for_apply": True,
+        "mutation_attempted": False,
+        "operation": "render-update",
+        "region": declaration.to_dict(),
+        "snapshot": snapshot_receipt(declaration.surface_alias, "a" * 64),
+        "blocked_reasons": [],
+        "boundary": {"no_miro_mutation": True},
+    }
+
+
+def test_apply_scaffold_allows_ready_preflight_without_mutation() -> None:
+    from schauwerk.operator.regions import compile_region_apply_scaffold
+
+    result = compile_region_apply_scaffold(preflight=ready_preflight())
+
+    assert result["schema_version"] == "typed-region-apply-scaffold.v1"
+    assert result["ok"] is True
+    assert result["ready_for_live_apply"] is True
+    assert result["mutation_attempted"] is False
+    assert result["blocked_reasons"] == []
+    assert "miro_doctor_safe_for_live_board_operations" in result["required_live_preconditions"]
+    assert result["boundary"] == {
+        "scaffold_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def test_apply_scaffold_blocks_failed_preflight() -> None:
+    from schauwerk.operator.regions import compile_region_apply_scaffold
+
+    preflight = ready_preflight()
+    preflight["ok"] = False
+    preflight["ready_for_apply"] = False
+    preflight["blocked_reasons"] = ["snapshot_digest_mismatch"]
+
+    result = compile_region_apply_scaffold(preflight=preflight)
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "preflight_not_ready" in result["blocked_reasons"]
+    assert "preflight:snapshot_digest_mismatch" in result["blocked_reasons"]
+
+
+def test_apply_scaffold_loads_preflight_and_writes_receipt(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_apply_scaffold, load_region_preflight
+
+    source = tmp_path / "preflight.json"
+    output = tmp_path / "apply.json"
+    source.write_text(json.dumps(ready_preflight()), encoding="utf-8")
+
+    preflight = load_region_preflight(source)
+    result = compile_region_apply_scaffold(preflight=preflight, output_path=output)
+
+    assert result["ok"] is True
+    assert output.exists()
+    assert (
+        json.loads(output.read_text(encoding="utf-8"))["schema_version"]
+        == "typed-region-apply-scaffold.v1"
+    )
+
+
+def test_load_region_preflight_rejects_wrong_schema(tmp_path) -> None:
+    from schauwerk.operator.regions import load_region_preflight
+
+    source = tmp_path / "preflight.json"
+    source.write_text(json.dumps({"schema_version": "wrong"}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsupported schema"):
+        load_region_preflight(source)
