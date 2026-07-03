@@ -476,14 +476,19 @@ def ready_apply_receipt() -> dict:
 
 def after_snapshot_receipt(digest: str = "e" * 64, alias: str | None = None) -> dict:
     declaration = parse_region_declaration(managed_region())
+    apply_receipt = ready_apply_receipt()
     return {
         "board_alias": alias or declaration.surface_alias,
         "content_digest": digest,
         "item_count": 6,
         "repeatability_verified": True,
         "sanitized_references": True,
+        "fixture_operations_digest": apply_receipt["source_receipts"][
+            "fixture_operations_digest"
+        ],
+        "idempotency_key": apply_receipt["idempotency"]["key"],
+        "idempotency_verified": True,
     }
-
 
 def test_postflight_receipt_is_fixture_only_and_ready_for_restore() -> None:
     from schauwerk.operator.regions import compile_region_postflight_receipt
@@ -518,6 +523,36 @@ def test_postflight_receipt_blocks_alias_mismatch() -> None:
     assert result["ok"] is False
     assert result["ready_for_restore"] is False
     assert "after_snapshot_board_alias_mismatch" in result["blocked_reasons"]
+
+
+def test_postflight_receipt_blocks_missing_fixture_verification() -> None:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    after_snapshot = after_snapshot_receipt()
+    after_snapshot.pop("fixture_operations_digest")
+
+    result = compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(), after_snapshot=after_snapshot
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_restore"] is False
+    assert "after_snapshot_fixture_digest_missing" in result["blocked_reasons"]
+
+
+def test_postflight_receipt_blocks_idempotency_mismatch() -> None:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    after_snapshot = after_snapshot_receipt()
+    after_snapshot["idempotency_key"] = "wrong-key"
+
+    result = compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(), after_snapshot=after_snapshot
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_restore"] is False
+    assert "after_snapshot_idempotency_key_mismatch" in result["blocked_reasons"]
 
 
 def test_postflight_receipt_writes_receipt(tmp_path) -> None:

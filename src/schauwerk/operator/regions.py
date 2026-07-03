@@ -691,6 +691,36 @@ def compile_region_postflight_receipt(
     if normalized_after.get("sanitized_references") is not True:
         blocked_reasons.append("after_snapshot_references_not_sanitized")
 
+    apply_source_receipts = apply_receipt.get("source_receipts")
+    if not isinstance(apply_source_receipts, dict):
+        blocked_reasons.append("apply_receipt_source_receipts_missing")
+        apply_source_receipts = {}
+    expected_fixture_digest = apply_source_receipts.get("fixture_operations_digest")
+    observed_fixture_digest = after_snapshot.get("fixture_operations_digest")
+    if not isinstance(observed_fixture_digest, str):
+        blocked_reasons.append("after_snapshot_fixture_digest_missing")
+    elif observed_fixture_digest != expected_fixture_digest:
+        blocked_reasons.append("after_snapshot_fixture_digest_mismatch")
+
+    idempotency = apply_receipt.get("idempotency")
+    if not isinstance(idempotency, dict):
+        blocked_reasons.append("apply_receipt_idempotency_missing")
+        idempotency = {}
+    expected_idempotency_key = idempotency.get("key")
+    observed_idempotency_key = after_snapshot.get("idempotency_key")
+    if not isinstance(observed_idempotency_key, str):
+        blocked_reasons.append("after_snapshot_idempotency_key_missing")
+    elif observed_idempotency_key != expected_idempotency_key:
+        blocked_reasons.append("after_snapshot_idempotency_key_mismatch")
+    idempotency_verified = after_snapshot.get("idempotency_verified") is True
+    if not idempotency_verified:
+        blocked_reasons.append("after_snapshot_idempotency_unverified")
+
+    verification = {
+        "fixture_operations_digest": observed_fixture_digest,
+        "idempotency_key": observed_idempotency_key,
+        "idempotency_verified": idempotency_verified,
+    }
     source_receipts = {
         "apply_receipt_digest": _stable_digest(_without_runtime_fields(apply_receipt)),
         "after_snapshot_digest": _stable_digest(normalized_after),
@@ -707,6 +737,7 @@ def compile_region_postflight_receipt(
         "region": region,
         "pre_apply_snapshot": snapshot,
         "after_snapshot": normalized_after,
+        "verification": verification,
         "source_receipts": source_receipts,
         "fixture": apply_receipt.get("fixture", {}),
         "idempotency": apply_receipt.get("idempotency", {}),
@@ -724,6 +755,7 @@ def compile_region_postflight_receipt(
                 "region": region,
                 "pre_apply_snapshot": snapshot,
                 "after_snapshot": normalized_after,
+                "verification": verification,
                 "source_receipts": source_receipts,
             }
         ),
