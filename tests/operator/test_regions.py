@@ -261,3 +261,115 @@ def test_load_region_preflight_rejects_wrong_schema(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="unsupported schema"):
         load_region_preflight(source)
+
+
+def fixture_operations(region_id: str = "cluster-goals") -> list[dict[str, str]]:
+    return [
+        {
+            "operation_id": "create-title",
+            "action": "create-item",
+            "region_id": region_id,
+            "local_ref": "title-card",
+            "payload_digest": "c" * 64,
+        },
+        {
+            "operation_id": "update-body",
+            "action": "update-item",
+            "region_id": region_id,
+            "local_ref": "body-card",
+            "payload_digest": "d" * 64,
+        },
+    ]
+
+
+def ready_apply_scaffold() -> dict:
+    from schauwerk.operator.regions import compile_region_apply_scaffold
+
+    return compile_region_apply_scaffold(preflight=ready_preflight())
+
+
+def test_apply_receipt_is_fixture_only_and_deterministic() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    first = compile_region_apply_receipt(
+        scaffold=ready_apply_scaffold(), fixture_operations=fixture_operations()
+    )
+    second = compile_region_apply_receipt(
+        scaffold=ready_apply_scaffold(), fixture_operations=fixture_operations()
+    )
+
+    assert first["schema_version"] == "typed-region-apply-receipt.v1"
+    assert first["ok"] is True
+    assert first["mutation_attempted"] is False
+    assert first["live_apply_attempted"] is False
+    assert first["ready_for_live_apply"] is False
+    assert first["ready_for_postflight"] is True
+    assert first["blocked_reasons"] == []
+    assert first["fixture"]["operation_count"] == 2
+    assert first["receipt_digest"] == second["receipt_digest"]
+    assert first["source_receipts"] == second["source_receipts"]
+    assert "verify_fixture_operation_digest" in first["postflight_required"]
+    assert first["boundary"] == {
+        "fixture_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def test_apply_receipt_blocks_failed_scaffold_without_mutation() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    scaffold = ready_apply_scaffold()
+    scaffold["ok"] = False
+    scaffold["ready_for_live_apply"] = False
+    scaffold["blocked_reasons"] = ["preflight_not_ready"]
+
+    result = compile_region_apply_receipt(
+        scaffold=scaffold, fixture_operations=fixture_operations()
+    )
+
+    assert result["ok"] is False
+    assert result["mutation_attempted"] is False
+    assert result["live_apply_attempted"] is False
+    assert result["ready_for_postflight"] is False
+    assert "apply_scaffold_not_ready" in result["blocked_reasons"]
+    assert "apply_scaffold:preflight_not_ready" in result["blocked_reasons"]
+
+
+def test_apply_receipt_rejects_undeclared_region_target() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    with pytest.raises(ValueError, match="undeclared region"):
+        compile_region_apply_receipt(
+            scaffold=ready_apply_scaffold(),
+            fixture_operations=fixture_operations(region_id="other-region"),
+        )
+
+
+def test_apply_receipt_rejects_external_reference_keys() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    operations = fixture_operations()
+    operations[0]["external_ref"] = "item-123"
+
+    with pytest.raises(ValueError, match="unsupported keys"):
+        compile_region_apply_receipt(
+            scaffold=ready_apply_scaffold(), fixture_operations=operations
+        )
+
+
+def test_apply_receipt_writes_receipt(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    output = tmp_path / "apply-receipt.json"
+    result = compile_region_apply_receipt(
+        scaffold=ready_apply_scaffold(),
+        fixture_operations=fixture_operations(),
+        output_path=output,
+    )
+
+    assert output.exists()
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert written["schema_version"] == "typed-region-apply-receipt.v1"
+    assert written["receipt_digest"] == result["receipt_digest"]
+    assert result["output_path"] == str(output.absolute())

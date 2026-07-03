@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
@@ -21,6 +22,14 @@ _ALLOWED_MODES = {
 }
 _ALLOWED_VISIBILITIES = {"private", "shared", "classroom", "public", "archived"}
 _ALLOWED_OPERATIONS = {"render-update", "replace-region"}
+_ALLOWED_FIXTURE_ACTIONS = {"create-item", "delete-item", "replace-region", "update-item"}
+_FIXTURE_OPERATION_KEYS = {
+    "action",
+    "local_ref",
+    "operation_id",
+    "payload_digest",
+    "region_id",
+}
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9_.:-]{1,80}$")
 _HEX_DIGEST = re.compile(r"^[a-f0-9]{16,128}$")
 
@@ -298,6 +307,199 @@ def load_region_preflight(path: Path) -> dict[str, Any]:
     if raw.get("schema_version") != "typed-region-preflight.v1":
         raise ValueError("preflight receipt has an unsupported schema")
     return raw
+
+
+def _stable_digest(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _without_runtime_fields(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: item
+        for key, item in value.items()
+        if key not in {"output_path", "receipt_digest"}
+    }
+
+
+def _required_fixture_text(data: dict[str, Any], key: str) -> str:
+    value = data.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"fixture operation {key} must be a non-empty string")
+    return value.strip()
+
+
+def _normalized_fixture_operations(
+    value: list[dict[str, Any]],
+    *,
+    region_id: str,
+) -> list[dict[str, str]]:
+    if not isinstance(value, list) or not value:
+        raise ValueError("fixture_operations must contain at least one operation")
+
+    seen: set[str] = set()
+    normalized: list[dict[str, str]] = []
+    for raw in value:
+        if not isinstance(raw, dict):
+            raise ValueError("fixture operation must be an object")
+        unknown_keys = sorted(set(raw) - _FIXTURE_OPERATION_KEYS)
+        if unknown_keys:
+            raise ValueError(
+                f"fixture operation contains unsupported keys: {', '.join(unknown_keys)}"
+            )
+        operation_id = _validate_safe_id(
+            _required_fixture_text(raw, "operation_id"), label="operation_id"
+        )
+        if operation_id in seen:
+            raise ValueError("fixture operation_id values must be unique")
+        seen.add(operation_id)
+        action = _required_fixture_text(raw, "action")
+        if action not in _ALLOWED_FIXTURE_ACTIONS:
+            raise ValueError(
+                f"fixture operation action must be one of {sorted(_ALLOWED_FIXTURE_ACTIONS)}"
+            )
+        operation_region_id = _validate_safe_id(
+            _required_fixture_text(raw, "region_id"), label="operation.region_id"
+        )
+        if operation_region_id != region_id:
+            raise ValueError("fixture operation targets undeclared region")
+        local_ref = _validate_safe_id(
+            _required_fixture_text(raw, "local_ref"), label="operation.local_ref"
+        )
+        payload_digest = _validate_digest(
+            _required_fixture_text(raw, "payload_digest"), label="operation.payload_digest"
+        )
+        normalized.append(
+            {
+                "operation_id": operation_id,
+                "action": action,
+                "region_id": operation_region_id,
+                "local_ref": local_ref,
+                "payload_digest": payload_digest,
+            }
+        )
+    return normalized
+
+
+def compile_region_apply_receipt(
+    *,
+    scaffold: dict[str, Any],
+    fixture_operations: list[dict[str, Any]],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(scaffold, dict):
+        raise ValueError("apply scaffold must contain an object")
+
+    blocked_reasons: list[str] = []
+    if scaffold.get("schema_version") != "typed-region-apply-scaffold.v1":
+        blocked_reasons.append("apply_scaffold_schema_unsupported")
+    if scaffold.get("ok") is not True or scaffold.get("ready_for_live_apply") is not True:
+        blocked_reasons.append("apply_scaffold_not_ready")
+    if scaffold.get("mutation_attempted") is not False:
+        blocked_reasons.append("apply_scaffold_mutation_state_invalid")
+
+    region = scaffold.get("region")
+    declaration: RegionDeclaration | None = None
+    if not isinstance(region, dict):
+        blocked_reasons.append("apply_scaffold_region_missing")
+        region = {}
+    else:
+        try:
+            declaration = parse_region_declaration({"region": region})
+        except ValueError:
+            blocked_reasons.append("apply_scaffold_region_invalid")
+
+    snapshot = scaffold.get("snapshot")
+    if not isinstance(snapshot, dict):
+        blocked_reasons.append("apply_scaffold_snapshot_missing")
+        snapshot = {}
+
+    boundary = scaffold.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("scaffold_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("apply_scaffold_boundary_missing")
+
+    scaffold_blocks = scaffold.get("blocked_reasons", [])
+    if scaffold_blocks:
+        blocked_reasons.extend(
+            f"apply_scaffold:{reason}" for reason in scaffold_blocks if isinstance(reason, str)
+        )
+
+    if declaration is None:
+        raise ValueError("apply scaffold region is required for fixture validation")
+    normalized_operations = _normalized_fixture_operations(
+        fixture_operations, region_id=declaration.region_id
+    )
+    scaffold_digest = _stable_digest(_without_runtime_fields(scaffold))
+    fixture_digest = _stable_digest(normalized_operations)
+    receipt_material = {
+        "schema_version": "typed-region-apply-receipt.v1",
+        "operation": scaffold.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "scaffold_digest": scaffold_digest,
+        "fixture_operations_digest": fixture_digest,
+    }
+    ready = not blocked_reasons
+    value = {
+        "schema_version": "typed-region-apply-receipt.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_apply_attempted": False,
+        "ready_for_live_apply": False,
+        "ready_for_postflight": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": scaffold.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "source_receipts": {
+            "apply_scaffold_digest": scaffold_digest,
+            "fixture_operations_digest": fixture_digest,
+        },
+        "fixture": {
+            "operation_count": len(normalized_operations),
+            "operations": normalized_operations,
+        },
+        "idempotency": {
+            "method": "fixture_operations_digest",
+            "key": f"{declaration.view_id}:{declaration.region_id}:{fixture_digest}",
+        },
+        "postflight_required": [
+            "capture_after_snapshot",
+            "verify_region_marker_scope",
+            "verify_fixture_operation_digest",
+            "verify_idempotency_receipt",
+            "write_quality_receipt",
+        ],
+        "restore_required": True,
+        "restore_strategy": scaffold.get("restore_strategy", "use_preflight_snapshot_path"),
+        "boundary": {
+            "fixture_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+        "receipt_digest": _stable_digest(receipt_material),
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
 
 
 def compile_region_apply_scaffold(
