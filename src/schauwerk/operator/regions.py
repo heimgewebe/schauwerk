@@ -871,3 +871,138 @@ def compile_region_restore_receipt(
     else:
         value["output_path"] = None
     return value
+
+
+def load_region_operation_contract(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="operation contract")
+    if not isinstance(raw, dict):
+        raise ValueError("operation contract must contain an object")
+    if raw.get("schema_version") != "typed-region-operation-contract.v1":
+        raise ValueError("operation contract has an unsupported schema")
+    return raw
+
+
+def compile_region_operation_contract(
+    *,
+    scaffold: dict[str, Any],
+    fixture_operations: list[dict[str, Any]],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(scaffold, dict):
+        raise ValueError("apply scaffold must contain an object")
+
+    blocked_reasons: list[str] = []
+    if scaffold.get("schema_version") != "typed-region-apply-scaffold.v1":
+        blocked_reasons.append("apply_scaffold_schema_unsupported")
+    if scaffold.get("ok") is not True or scaffold.get("ready_for_live_apply") is not True:
+        blocked_reasons.append("apply_scaffold_not_ready")
+    if scaffold.get("mutation_attempted") is not False:
+        blocked_reasons.append("apply_scaffold_mutation_state_invalid")
+
+    region = scaffold.get("region")
+    declaration: RegionDeclaration | None = None
+    if not isinstance(region, dict):
+        blocked_reasons.append("apply_scaffold_region_missing")
+        region = {}
+    else:
+        try:
+            declaration = parse_region_declaration({"region": region})
+        except ValueError:
+            blocked_reasons.append("apply_scaffold_region_invalid")
+
+    snapshot = scaffold.get("snapshot")
+    if not isinstance(snapshot, dict):
+        blocked_reasons.append("apply_scaffold_snapshot_missing")
+        snapshot = {}
+
+    boundary = scaffold.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("scaffold_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("apply_scaffold_boundary_missing")
+
+    scaffold_blocks = scaffold.get("blocked_reasons", [])
+    if scaffold_blocks:
+        blocked_reasons.extend(
+            f"apply_scaffold:{reason}" for reason in scaffold_blocks if isinstance(reason, str)
+        )
+
+    if declaration is None:
+        raise ValueError("apply scaffold region is required for operation contract")
+    if declaration.mode != "managed":
+        blocked_reasons.append("apply_scaffold_region_not_managed")
+    snapshot_digest = snapshot.get("content_digest")
+    if snapshot_digest != declaration.expected_snapshot_digest:
+        blocked_reasons.append("apply_scaffold_snapshot_digest_mismatch")
+
+    normalized_operations = _normalized_fixture_operations(
+        fixture_operations, region_id=declaration.region_id
+    )
+    operations_digest = _stable_digest(normalized_operations)
+    idempotency_key = f"{declaration.view_id}:{declaration.region_id}:{operations_digest}"
+    source_receipts = {
+        "apply_scaffold_digest": _stable_digest(_without_runtime_fields(scaffold)),
+        "operation_contract_digest": operations_digest,
+    }
+    ready = not blocked_reasons
+    contract_material = {
+        "schema_version": "typed-region-operation-contract.v1",
+        "operation": scaffold.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "operations_digest": operations_digest,
+        "source_receipts": source_receipts,
+    }
+    value = {
+        "schema_version": "typed-region-operation-contract.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_apply_attempted": False,
+        "ready_for_apply_simulation": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": scaffold.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "operations": normalized_operations,
+        "operation_count": len(normalized_operations),
+        "operations_digest": operations_digest,
+        "idempotency": {
+            "method": "operation_contract_digest",
+            "key": idempotency_key,
+        },
+        "simulation_required": [
+            "verify_region_marker_scope",
+            "verify_operation_contract_digest",
+            "verify_idempotency_key",
+            "emit_apply_receipt_fixture_evidence",
+        ],
+        "postflight_evidence_required": [
+            "fixture_operations_digest",
+            "idempotency_key",
+            "idempotency_verified",
+        ],
+        "restore_required": True,
+        "restore_strategy": scaffold.get("restore_strategy", "use_preflight_snapshot_path"),
+        "source_receipts": source_receipts,
+        "boundary": {
+            "fixture_only": True,
+            "simulation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+        "contract_digest": _stable_digest(contract_material),
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
