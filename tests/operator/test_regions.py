@@ -358,6 +358,36 @@ def test_apply_receipt_rejects_external_reference_keys() -> None:
         )
 
 
+def test_apply_receipt_blocks_snapshot_digest_mismatch() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    scaffold = ready_apply_scaffold()
+    scaffold["snapshot"]["content_digest"] = "e" * 64
+
+    result = compile_region_apply_receipt(
+        scaffold=scaffold, fixture_operations=fixture_operations()
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_postflight"] is False
+    assert "apply_scaffold_snapshot_digest_mismatch" in result["blocked_reasons"]
+
+
+def test_apply_receipt_blocks_non_managed_region() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    scaffold = ready_apply_scaffold()
+    scaffold["region"]["mode"] = "manual"
+
+    result = compile_region_apply_receipt(
+        scaffold=scaffold, fixture_operations=fixture_operations()
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_postflight"] is False
+    assert "apply_scaffold_region_not_managed" in result["blocked_reasons"]
+
+
 def test_apply_receipt_writes_receipt(tmp_path) -> None:
     from schauwerk.operator.regions import compile_region_apply_receipt
 

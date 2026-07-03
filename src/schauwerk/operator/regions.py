@@ -436,6 +436,11 @@ def compile_region_apply_receipt(
 
     if declaration is None:
         raise ValueError("apply scaffold region is required for fixture validation")
+    if declaration.mode != "managed":
+        blocked_reasons.append("apply_scaffold_region_not_managed")
+    snapshot_digest = snapshot.get("content_digest")
+    if snapshot_digest != declaration.expected_snapshot_digest:
+        blocked_reasons.append("apply_scaffold_snapshot_digest_mismatch")
     normalized_operations = _normalized_fixture_operations(
         fixture_operations, region_id=declaration.region_id
     )
