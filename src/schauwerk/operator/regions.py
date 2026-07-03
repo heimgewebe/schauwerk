@@ -642,6 +642,13 @@ def load_region_postflight_receipt(path: Path) -> dict[str, Any]:
     return raw
 
 
+def load_snapshot_mapping_receipt(path: Path, *, label: str = "snapshot") -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label=label)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{label} snapshot must contain an object")
+    return raw
+
+
 def compile_region_postflight_receipt(
     *,
     apply_receipt: dict[str, Any],

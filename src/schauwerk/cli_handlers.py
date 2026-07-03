@@ -17,11 +17,16 @@ from .operator.regions import (
     compile_region_apply_receipt,
     compile_region_apply_scaffold,
     compile_region_operation_plan,
+    compile_region_postflight_receipt,
     compile_region_preflight,
+    compile_region_restore_receipt,
     load_fixture_operations,
+    load_region_apply_receipt,
     load_region_apply_scaffold,
     load_region_declaration,
+    load_region_postflight_receipt,
     load_region_preflight,
+    load_snapshot_mapping_receipt,
 )
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -365,3 +370,27 @@ def handle_region_apply_receipt(
         output_path=Path(output) if output else None,
     )
 
+
+
+def handle_region_postflight(
+    *, apply_receipt: str, after_snapshot: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_apply_receipt(Path(apply_receipt))
+    snapshot = load_snapshot_mapping_receipt(Path(after_snapshot), label="after")
+    return compile_region_postflight_receipt(
+        apply_receipt=receipt,
+        after_snapshot=snapshot,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_restore_receipt(
+    *, postflight: str, restored_snapshot: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_postflight_receipt(Path(postflight))
+    snapshot = load_snapshot_mapping_receipt(Path(restored_snapshot), label="restored")
+    return compile_region_restore_receipt(
+        postflight_receipt=receipt,
+        restored_snapshot=snapshot,
+        output_path=Path(output) if output else None,
+    )

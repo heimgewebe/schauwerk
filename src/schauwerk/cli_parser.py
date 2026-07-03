@@ -144,6 +144,18 @@ def build_parser() -> argparse.ArgumentParser:
     rar.add_argument("--output")
     rar.add_argument("--json", action="store_true")
 
+    postflight_receipt = rc.add_parser("postflight")
+    postflight_receipt.add_argument("apply_receipt")
+    postflight_receipt.add_argument("--after-snapshot", required=True)
+    postflight_receipt.add_argument("--output")
+    postflight_receipt.add_argument("--json", action="store_true")
+
+    restore_receipt = rc.add_parser("restore-receipt")
+    restore_receipt.add_argument("postflight")
+    restore_receipt.add_argument("--restored-snapshot", required=True)
+    restore_receipt.add_argument("--output")
+    restore_receipt.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

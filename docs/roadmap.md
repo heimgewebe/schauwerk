@@ -77,7 +77,7 @@ Define semantic shapes, state markers, provenance, freshness, uncertainty, acces
 
 ## SW-009 — Typed operator
 
-**Implementation status:** partial; typed region plan, preflight, apply-scaffold, fixture-only apply receipt, CLI-backed apply receipt, and fixture-only postflight/restore receipts exist. Next slice: CLI-backed postflight and restore receipts.
+**Implementation status:** partial; typed region plan, preflight, apply-scaffold, fixture-only apply receipt, CLI-backed apply receipt, fixture-only postflight/restore receipts, and CLI-backed postflight/restore receipts exist. Next slice: typed operation contracts for apply simulation.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 
