@@ -464,3 +464,142 @@ def test_load_fixture_operations_rejects_non_list(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="must contain a list"):
         load_fixture_operations(source)
+
+
+def ready_apply_receipt() -> dict:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    return compile_region_apply_receipt(
+        scaffold=ready_apply_scaffold(), fixture_operations=fixture_operations()
+    )
+
+
+def after_snapshot_receipt(digest: str = "e" * 64, alias: str | None = None) -> dict:
+    declaration = parse_region_declaration(managed_region())
+    return {
+        "board_alias": alias or declaration.surface_alias,
+        "content_digest": digest,
+        "item_count": 6,
+        "repeatability_verified": True,
+        "sanitized_references": True,
+    }
+
+
+def test_postflight_receipt_is_fixture_only_and_ready_for_restore() -> None:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    result = compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(), after_snapshot=after_snapshot_receipt()
+    )
+
+    assert result["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert result["ok"] is True
+    assert result["mutation_attempted"] is False
+    assert result["live_postflight_attempted"] is False
+    assert result["ready_for_restore"] is True
+    assert result["blocked_reasons"] == []
+    assert result["pre_apply_snapshot"]["content_digest"] == "a" * 64
+    assert result["after_snapshot"]["content_digest"] == "e" * 64
+    assert result["boundary"] == {
+        "fixture_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def test_postflight_receipt_blocks_alias_mismatch() -> None:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    result = compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(),
+        after_snapshot=after_snapshot_receipt(alias="other-board"),
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_restore"] is False
+    assert "after_snapshot_board_alias_mismatch" in result["blocked_reasons"]
+
+
+def test_postflight_receipt_writes_receipt(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    output = tmp_path / "postflight.json"
+    result = compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(),
+        after_snapshot=after_snapshot_receipt(),
+        output_path=output,
+    )
+
+    assert output.exists()
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert written["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert written["receipt_digest"] == result["receipt_digest"]
+
+
+def ready_postflight_receipt() -> dict:
+    from schauwerk.operator.regions import compile_region_postflight_receipt
+
+    return compile_region_postflight_receipt(
+        apply_receipt=ready_apply_receipt(), after_snapshot=after_snapshot_receipt()
+    )
+
+
+def test_restore_receipt_is_fixture_only_and_ready_for_closeout() -> None:
+    from schauwerk.operator.regions import compile_region_restore_receipt
+
+    result = compile_region_restore_receipt(
+        postflight_receipt=ready_postflight_receipt(),
+        restored_snapshot=after_snapshot_receipt(digest="a" * 64),
+    )
+
+    assert result["schema_version"] == "typed-region-restore-receipt.v1"
+    assert result["ok"] is True
+    assert result["mutation_attempted"] is False
+    assert result["live_restore_attempted"] is False
+    assert result["ready_for_closeout"] is True
+    assert result["blocked_reasons"] == []
+    assert result["restored_snapshot"]["content_digest"] == "a" * 64
+    assert result["boundary"] == {
+        "fixture_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def test_restore_receipt_blocks_digest_mismatch() -> None:
+    from schauwerk.operator.regions import compile_region_restore_receipt
+
+    result = compile_region_restore_receipt(
+        postflight_receipt=ready_postflight_receipt(),
+        restored_snapshot=after_snapshot_receipt(digest="f" * 64),
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_closeout"] is False
+    assert "restored_snapshot_digest_mismatch" in result["blocked_reasons"]
+
+
+def test_restore_receipt_writes_receipt(tmp_path) -> None:
+    from schauwerk.operator.regions import compile_region_restore_receipt
+
+    output = tmp_path / "restore.json"
+    result = compile_region_restore_receipt(
+        postflight_receipt=ready_postflight_receipt(),
+        restored_snapshot=after_snapshot_receipt(digest="a" * 64),
+        output_path=output,
+    )
+
+    assert output.exists()
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert written["schema_version"] == "typed-region-restore-receipt.v1"
+    assert written["receipt_digest"] == result["receipt_digest"]
+
+
+def test_load_region_postflight_receipt_rejects_wrong_schema(tmp_path) -> None:
+    from schauwerk.operator.regions import load_region_postflight_receipt
+
+    source = tmp_path / "postflight.json"
+    source.write_text(json.dumps({"schema_version": "wrong"}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsupported schema"):
+        load_region_postflight_receipt(source)
