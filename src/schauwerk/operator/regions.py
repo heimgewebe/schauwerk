@@ -945,7 +945,7 @@ def compile_region_operation_contract(
     idempotency_key = f"{declaration.view_id}:{declaration.region_id}:{operations_digest}"
     source_receipts = {
         "apply_scaffold_digest": _stable_digest(_without_runtime_fields(scaffold)),
-        "operation_contract_digest": operations_digest,
+        "fixture_operations_digest": operations_digest,
     }
     ready = not blocked_reasons
     contract_material = {

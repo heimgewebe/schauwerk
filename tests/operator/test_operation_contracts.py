@@ -74,3 +74,4 @@ def test_contract_ready() -> None:
     assert result["schema_version"] == "typed-region-operation-contract.v1"
     assert result["ok"] is True
     assert result["mutation_attempted"] is False
+    assert "fixture_operations_digest" in result["source_receipts"]
