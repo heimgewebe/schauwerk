@@ -14,9 +14,12 @@ from .education.view import (
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
 from .operator.regions import (
+    compile_region_apply_receipt,
     compile_region_apply_scaffold,
     compile_region_operation_plan,
     compile_region_preflight,
+    load_fixture_operations,
+    load_region_apply_scaffold,
     load_region_declaration,
     load_region_preflight,
 )
@@ -349,3 +352,16 @@ def handle_region_apply_scaffold(*, preflight: str, output: str | None) -> dict[
         preflight=receipt,
         output_path=Path(output) if output else None,
     )
+
+
+def handle_region_apply_receipt(
+    *, scaffold: str, fixture: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_apply_scaffold(Path(scaffold))
+    fixture_operations = load_fixture_operations(Path(fixture))
+    return compile_region_apply_receipt(
+        scaffold=receipt,
+        fixture_operations=fixture_operations,
+        output_path=Path(output) if output else None,
+    )
+

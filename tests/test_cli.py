@@ -327,3 +327,34 @@ def test_runner_dispatches_region_apply_scaffold(monkeypatch, capsys) -> None:
     assert code == 0
     assert observed == {"preflight": "preflight.json", "output": "apply.json"}
     assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-apply-scaffold.v1"
+
+
+def test_runner_dispatches_region_apply_receipt(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_apply_receipt(*, scaffold, fixture, output):
+        observed.update(scaffold=scaffold, fixture=fixture, output=output)
+        return {"schema_version": "typed-region-apply-receipt.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_apply_receipt", fake_apply_receipt)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "apply-receipt",
+            "apply-scaffold.json",
+            "--fixture",
+            "fixture-ops.yml",
+            "--output",
+            "apply-receipt.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "scaffold": "apply-scaffold.json",
+        "fixture": "fixture-ops.yml",
+        "output": "apply-receipt.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-apply-receipt.v1"

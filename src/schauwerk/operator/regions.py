@@ -294,18 +294,41 @@ def compile_region_preflight(
     return preflight
 
 
-def load_region_preflight(path: Path) -> dict[str, Any]:
+def _load_json_or_yaml(path: Path, *, label: str) -> Any:
     candidate = path.expanduser().absolute()
     if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents):
-        raise ValueError("preflight path is unsafe")
+        raise ValueError(f"{label} path is unsafe")
     try:
-        raw = json.loads(candidate.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise ValueError("preflight receipt is unreadable") from exc
+        text = candidate.read_text(encoding="utf-8")
+        return json.loads(text) if candidate.suffix.lower() == ".json" else yaml.safe_load(text)
+    except (OSError, UnicodeError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise ValueError(f"{label} receipt is unreadable") from exc
+
+
+def load_region_preflight(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="preflight")
     if not isinstance(raw, dict):
         raise ValueError("preflight receipt must contain an object")
     if raw.get("schema_version") != "typed-region-preflight.v1":
         raise ValueError("preflight receipt has an unsupported schema")
+    return raw
+
+
+def load_region_apply_scaffold(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="apply scaffold")
+    if not isinstance(raw, dict):
+        raise ValueError("apply scaffold receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-apply-scaffold.v1":
+        raise ValueError("apply scaffold receipt has an unsupported schema")
+    return raw
+
+
+def load_fixture_operations(path: Path) -> list[dict[str, Any]]:
+    raw = _load_json_or_yaml(path, label="fixture operations")
+    if isinstance(raw, dict):
+        raw = raw.get("fixture_operations")
+    if not isinstance(raw, list):
+        raise ValueError("fixture operations file must contain a list")
     return raw
 
 

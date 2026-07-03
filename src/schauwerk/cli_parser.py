@@ -138,6 +138,12 @@ def build_parser() -> argparse.ArgumentParser:
     ras.add_argument("--output")
     ras.add_argument("--json", action="store_true")
 
+    rar = rc.add_parser("apply-receipt")
+    rar.add_argument("scaffold")
+    rar.add_argument("--fixture", required=True)
+    rar.add_argument("--output")
+    rar.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser
