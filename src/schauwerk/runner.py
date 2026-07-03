@@ -22,7 +22,9 @@ from .cli_handlers import (
     handle_region_apply_receipt,
     handle_region_apply_scaffold,
     handle_region_plan,
+    handle_region_postflight,
     handle_region_preflight,
+    handle_region_restore_receipt,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -125,6 +127,18 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "region" and args.region_command == "apply-receipt":
             result = handle_region_apply_receipt(
                 scaffold=args.scaffold, fixture=args.fixture, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "postflight":
+            result = handle_region_postflight(
+                apply_receipt=args.apply_receipt,
+                after_snapshot=args.after_snapshot,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "restore-receipt":
+            result = handle_region_restore_receipt(
+                postflight=args.postflight,
+                restored_snapshot=args.restored_snapshot,
+                output=args.output,
             )
         elif args.command == "logout":
             result = handle_logout()

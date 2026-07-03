@@ -358,3 +358,73 @@ def test_runner_dispatches_region_apply_receipt(monkeypatch, capsys) -> None:
         "output": "apply-receipt.json",
     }
     assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-apply-receipt.v1"
+
+
+def test_runner_dispatches_region_postflight(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_postflight(*, apply_receipt, after_snapshot, output):
+        observed.update(
+            apply_receipt=apply_receipt, after_snapshot=after_snapshot, output=output
+        )
+        return {"schema_version": "typed-region-postflight-receipt.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_postflight", fake_postflight)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "postflight",
+            "apply-receipt.json",
+            "--after-snapshot",
+            "after.json",
+            "--output",
+            "postflight.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "apply_receipt": "apply-receipt.json",
+        "after_snapshot": "after.json",
+        "output": "postflight.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-postflight-receipt.v1"
+    )
+
+
+def test_runner_dispatches_region_restore_receipt(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_restore(*, postflight, restored_snapshot, output):
+        observed.update(
+            postflight=postflight, restored_snapshot=restored_snapshot, output=output
+        )
+        return {"schema_version": "typed-region-restore-receipt.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_restore_receipt", fake_restore)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "restore-receipt",
+            "postflight.json",
+            "--restored-snapshot",
+            "restored.json",
+            "--output",
+            "restore.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "postflight": "postflight.json",
+        "restored_snapshot": "restored.json",
+        "output": "restore.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-restore-receipt.v1"
+    )
