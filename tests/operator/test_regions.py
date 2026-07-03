@@ -403,3 +403,64 @@ def test_apply_receipt_writes_receipt(tmp_path) -> None:
     assert written["schema_version"] == "typed-region-apply-receipt.v1"
     assert written["receipt_digest"] == result["receipt_digest"]
     assert result["output_path"] == str(output.absolute())
+
+
+def test_load_region_apply_scaffold_accepts_schema(tmp_path) -> None:
+    from schauwerk.operator.regions import load_region_apply_scaffold
+
+    source = tmp_path / "apply-scaffold.json"
+    source.write_text(json.dumps(ready_apply_scaffold()), encoding="utf-8")
+
+    loaded = load_region_apply_scaffold(source)
+
+    assert loaded["schema_version"] == "typed-region-apply-scaffold.v1"
+    assert loaded["ok"] is True
+
+
+def test_load_region_apply_scaffold_rejects_wrong_schema(tmp_path) -> None:
+    from schauwerk.operator.regions import load_region_apply_scaffold
+
+    source = tmp_path / "apply-scaffold.json"
+    source.write_text(json.dumps({"schema_version": "wrong"}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsupported schema"):
+        load_region_apply_scaffold(source)
+
+
+def test_load_fixture_operations_accepts_wrapped_yaml(tmp_path) -> None:
+    from schauwerk.operator.regions import load_fixture_operations
+
+    source = tmp_path / "fixture-ops.yml"
+    source.write_text(
+        """
+fixture_operations:
+  - operation_id: create-title
+    action: create-item
+    region_id: cluster-goals
+    local_ref: title-card
+    payload_digest: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+""".strip(),
+        encoding="utf-8",
+    )
+
+    loaded = load_fixture_operations(source)
+
+    assert loaded == [
+        {
+            "operation_id": "create-title",
+            "action": "create-item",
+            "region_id": "cluster-goals",
+            "local_ref": "title-card",
+            "payload_digest": "c" * 64,
+        }
+    ]
+
+
+def test_load_fixture_operations_rejects_non_list(tmp_path) -> None:
+    from schauwerk.operator.regions import load_fixture_operations
+
+    source = tmp_path / "fixture-ops.json"
+    source.write_text(json.dumps({"fixture_operations": {}}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must contain a list"):
+        load_fixture_operations(source)

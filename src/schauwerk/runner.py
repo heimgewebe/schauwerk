@@ -19,6 +19,7 @@ from .cli_handlers import (
     handle_login,
     handle_logout,
     handle_quality,
+    handle_region_apply_receipt,
     handle_region_apply_scaffold,
     handle_region_plan,
     handle_region_preflight,
@@ -121,6 +122,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "region" and args.region_command == "apply-scaffold":
             result = handle_region_apply_scaffold(preflight=args.preflight, output=args.output)
+        elif args.command == "region" and args.region_command == "apply-receipt":
+            result = handle_region_apply_receipt(
+                scaffold=args.scaffold, fixture=args.fixture, output=args.output
+            )
         elif args.command == "logout":
             result = handle_logout()
         else:
