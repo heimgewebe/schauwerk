@@ -17,6 +17,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 4. [Learning View v1](education/learning-view-v1.md)
 5. [Miro live recovery](operations/miro-live-recovery.md)
 6. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
+7. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
 
 ## Contracts
 
@@ -27,4 +28,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.
+The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. SW-003 remains a closeout-proof item, and SW-009 is the next safety-critical apply chain. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.

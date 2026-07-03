@@ -37,6 +37,8 @@ Read one allowlisted board with pagination, frames, elements, layout information
 
 ## SW-003 — Isolated write proof
 
+**Implementation status:** partial; see `docs/operators/sw003-sw009-planhygiene.md`.
+
 Create a clearly marked test frame, create and update test elements, verify IDs and state, prove idempotency, and remove or archive only the identified test scope.
 
 **Gate:** create, read, update, verify, and cleanup are reproducible.
@@ -74,6 +76,8 @@ Define semantic shapes, state markers, provenance, freshness, uncertainty, acces
 **Gate:** views are recognizable as one system without becoming visually uniform.
 
 ## SW-009 — Typed operator
+
+**Implementation status:** partial; typed region plan, preflight, and apply-scaffold exist. Next slice: SW-009A fixture-only apply receipt.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 
