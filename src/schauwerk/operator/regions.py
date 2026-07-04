@@ -1006,3 +1006,173 @@ def compile_region_operation_contract(
     else:
         value["output_path"] = None
     return value
+
+
+
+def load_region_apply_simulation_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="apply simulation")
+    if not isinstance(raw, dict):
+        raise ValueError("apply simulation receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-apply-simulation-receipt.v1":
+        raise ValueError("apply simulation receipt has an unsupported schema")
+    return raw
+
+
+def compile_region_apply_simulation_receipt(
+    *,
+    operation_contract: dict[str, Any],
+    after_snapshot: dict[str, Any],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(operation_contract, dict):
+        raise ValueError("operation contract must contain an object")
+
+    blocked_reasons: list[str] = []
+    if operation_contract.get("schema_version") != "typed-region-operation-contract.v1":
+        blocked_reasons.append("operation_contract_schema_unsupported")
+    contract_ready = (
+        operation_contract.get("ok") is True
+        and operation_contract.get("ready_for_apply_simulation") is True
+    )
+    if not contract_ready:
+        blocked_reasons.append("operation_contract_not_ready")
+    if operation_contract.get("mutation_attempted") is not False:
+        blocked_reasons.append("operation_contract_mutation_state_invalid")
+    if operation_contract.get("live_apply_attempted") is not False:
+        blocked_reasons.append("operation_contract_live_state_invalid")
+
+    region = operation_contract.get("region")
+    declaration: RegionDeclaration | None = None
+    if not isinstance(region, dict):
+        blocked_reasons.append("operation_contract_region_missing")
+        region = {}
+    else:
+        try:
+            declaration = parse_region_declaration({"region": region})
+        except ValueError:
+            blocked_reasons.append("operation_contract_region_invalid")
+    if declaration is None:
+        raise ValueError("operation contract region is required for apply simulation")
+
+    snapshot = operation_contract.get("snapshot")
+    if not isinstance(snapshot, dict):
+        blocked_reasons.append("operation_contract_snapshot_missing")
+        snapshot = {}
+    if snapshot.get("content_digest") != declaration.expected_snapshot_digest:
+        blocked_reasons.append("operation_contract_snapshot_digest_mismatch")
+
+    boundary = operation_contract.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("fixture_only") is not True
+        or boundary.get("simulation_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("operation_contract_boundary_missing")
+
+    normalized_after = _snapshot_mapping_receipt(after_snapshot, label="after")
+    if normalized_after["board_alias"] != declaration.surface_alias:
+        blocked_reasons.append("after_snapshot_board_alias_mismatch")
+    if normalized_after.get("repeatability_verified") is not True:
+        blocked_reasons.append("after_snapshot_repeatability_unverified")
+    if normalized_after.get("sanitized_references") is not True:
+        blocked_reasons.append("after_snapshot_references_not_sanitized")
+
+    expected_operations_digest = operation_contract.get("operations_digest")
+    observed_operations_digest = after_snapshot.get("operation_contract_operations_digest")
+    if not isinstance(expected_operations_digest, str):
+        blocked_reasons.append("operation_contract_operations_digest_missing")
+    elif observed_operations_digest != expected_operations_digest:
+        blocked_reasons.append("after_snapshot_operations_digest_mismatch")
+
+    expected_contract_digest = operation_contract.get("contract_digest")
+    observed_contract_digest = after_snapshot.get("operation_contract_digest")
+    if not isinstance(expected_contract_digest, str):
+        blocked_reasons.append("operation_contract_digest_missing")
+    elif observed_contract_digest != expected_contract_digest:
+        blocked_reasons.append("after_snapshot_contract_digest_mismatch")
+
+    idempotency = operation_contract.get("idempotency")
+    if not isinstance(idempotency, dict):
+        blocked_reasons.append("operation_contract_idempotency_missing")
+        idempotency = {}
+    expected_idempotency_key = idempotency.get("key")
+    observed_idempotency_key = after_snapshot.get("idempotency_key")
+    if not isinstance(observed_idempotency_key, str):
+        blocked_reasons.append("after_snapshot_idempotency_key_missing")
+    elif observed_idempotency_key != expected_idempotency_key:
+        blocked_reasons.append("after_snapshot_idempotency_key_mismatch")
+    idempotency_verified = after_snapshot.get("idempotency_verified") is True
+    if not idempotency_verified:
+        blocked_reasons.append("after_snapshot_idempotency_unverified")
+
+    verification = {
+        "operation_contract_digest": observed_contract_digest,
+        "operation_contract_operations_digest": observed_operations_digest,
+        "idempotency_key": observed_idempotency_key,
+        "idempotency_verified": idempotency_verified,
+    }
+    source_receipts = {
+        "operation_contract_digest": _stable_digest(
+            _without_runtime_fields(operation_contract)
+        ),
+        "after_snapshot_digest": _stable_digest(normalized_after),
+    }
+    ready = not blocked_reasons
+    value = {
+        "schema_version": "typed-region-apply-simulation-receipt.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_apply_attempted": False,
+        "ready_for_postflight": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": operation_contract.get("operation"),
+        "region": region,
+        "pre_apply_snapshot": snapshot,
+        "after_snapshot": normalized_after,
+        "verification": verification,
+        "operations": operation_contract.get("operations", []),
+        "operation_count": operation_contract.get("operation_count"),
+        "operations_digest": expected_operations_digest,
+        "idempotency": idempotency,
+        "postflight_required": [
+            "verify_region_marker_scope",
+            "verify_operation_contract_digest",
+            "verify_idempotency_receipt",
+            "write_quality_receipt",
+        ],
+        "restore_required": True,
+        "restore_strategy": operation_contract.get(
+            "restore_strategy", "use_preflight_snapshot_path"
+        ),
+        "source_receipts": source_receipts,
+        "boundary": {
+            "fixture_only": True,
+            "simulation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+        "receipt_digest": _stable_digest(
+            {
+                "schema_version": "typed-region-apply-simulation-receipt.v1",
+                "operation": operation_contract.get("operation"),
+                "region": region,
+                "pre_apply_snapshot": snapshot,
+                "after_snapshot": normalized_after,
+                "verification": verification,
+                "source_receipts": source_receipts,
+            }
+        ),
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
