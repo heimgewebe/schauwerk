@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from schauwerk.operator.regions import (
+from schauwerk.operator.core import (
     _ALLOWED_FIXTURE_ACTIONS,
     _FIXTURE_OPERATION_KEYS,
     RegionDeclaration,
