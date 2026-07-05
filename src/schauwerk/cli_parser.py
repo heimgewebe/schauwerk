@@ -18,6 +18,16 @@ def _bounded_integer(minimum: int, maximum: int):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="schauwerk")
     providers = parser.add_subparsers(dest="provider", required=True)
+    ecosystem = providers.add_parser("ecosystem", help="ecosystem visualizations")
+    ecosystem_commands = ecosystem.add_subparsers(dest="command", required=True)
+    ecosystem_render = ecosystem_commands.add_parser(
+        "render", help="write an ecosystem map HTML handoff"
+    )
+    ecosystem_render.add_argument("manifest")
+    ecosystem_render.add_argument("--output", required=True)
+    ecosystem_render.add_argument("--source-root")
+    ecosystem_render.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

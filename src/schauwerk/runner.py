@@ -11,6 +11,7 @@ from .cli_handlers import (
     handle_board_list,
     handle_board_remove,
     handle_doctor,
+    handle_ecosystem_render,
     handle_inspect,
     handle_learn_apply,
     handle_learn_live_prune,
@@ -44,7 +45,13 @@ def emit(value: Any, *, as_json: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.command == "status":
+        if args.provider == "ecosystem" and args.command == "render":
+            result = handle_ecosystem_render(
+                manifest=args.manifest,
+                output=args.output,
+                source_root=args.source_root,
+            )
+        elif args.command == "status":
             result = handle_status(live=args.live)
         elif args.command == "login":
             result = handle_login(
