@@ -118,6 +118,7 @@ def test_apply_simulation_receipt_passes_for_matching_contract_evidence() -> Non
         "no_provider_ids_returned": True,
     }
     assert result["restore_required"] is True
+    assert "after_snapshot_input_digest" in result["source_receipts"]
 
 
 def test_apply_simulation_receipt_blocks_mismatched_contract_evidence() -> None:

@@ -17,6 +17,8 @@ from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
 from .operator.regions import (
     compile_region_apply_receipt,
     compile_region_apply_scaffold,
+    compile_region_apply_simulation_receipt,
+    compile_region_operation_contract,
     compile_region_operation_plan,
     compile_region_postflight_receipt,
     compile_region_preflight,
@@ -25,6 +27,7 @@ from .operator.regions import (
     load_region_apply_receipt,
     load_region_apply_scaffold,
     load_region_declaration,
+    load_region_operation_contract,
     load_region_postflight_receipt,
     load_region_preflight,
     load_snapshot_mapping_receipt,
@@ -381,6 +384,30 @@ def handle_region_apply_receipt(
         output_path=Path(output) if output else None,
     )
 
+
+
+def handle_region_operation_contract(
+    *, scaffold: str, fixture: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_apply_scaffold(Path(scaffold))
+    fixture_operations = load_fixture_operations(Path(fixture))
+    return compile_region_operation_contract(
+        scaffold=receipt,
+        fixture_operations=fixture_operations,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_apply_simulation(
+    *, operation_contract: str, after_snapshot: str, output: str | None
+) -> dict[str, Any]:
+    contract = load_region_operation_contract(Path(operation_contract))
+    snapshot = load_snapshot_mapping_receipt(Path(after_snapshot), label="after")
+    return compile_region_apply_simulation_receipt(
+        operation_contract=contract,
+        after_snapshot=snapshot,
+        output_path=Path(output) if output else None,
+    )
 
 
 def handle_region_postflight(

@@ -22,6 +22,8 @@ from .cli_handlers import (
     handle_quality,
     handle_region_apply_receipt,
     handle_region_apply_scaffold,
+    handle_region_apply_simulation,
+    handle_region_operation_contract,
     handle_region_plan,
     handle_region_postflight,
     handle_region_preflight,
@@ -134,6 +136,16 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "region" and args.region_command == "apply-receipt":
             result = handle_region_apply_receipt(
                 scaffold=args.scaffold, fixture=args.fixture, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "operation-contract":
+            result = handle_region_operation_contract(
+                scaffold=args.scaffold, fixture=args.fixture, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "apply-simulation":
+            result = handle_region_apply_simulation(
+                operation_contract=args.operation_contract,
+                after_snapshot=args.after_snapshot,
+                output=args.output,
             )
         elif args.command == "region" and args.region_command == "postflight":
             result = handle_region_postflight(

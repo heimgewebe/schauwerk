@@ -5,6 +5,67 @@ import json
 from schauwerk import runner
 
 
+def _ready_region_for_cli_chain() -> dict:
+    return {
+        "view_id": "learning:photosynthese",
+        "region_id": "cluster-goals",
+        "mode": "managed",
+        "surface_alias": "nicole-mt-zoom-chunked-20260701-211733",
+        "expected_snapshot_digest": "a" * 64,
+        "expected_source_digest": "b" * 64,
+        "owner": "schauwerk",
+        "visibility": "classroom",
+    }
+
+
+def _ready_apply_scaffold_for_cli_chain() -> dict:
+    region = _ready_region_for_cli_chain()
+    return {
+        "schema_version": "typed-region-apply-scaffold.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "ready_for_live_apply": True,
+        "operation": "render-update",
+        "region": region,
+        "snapshot": {
+            "board_alias": region["surface_alias"],
+            "content_digest": "a" * 64,
+            "item_count": 4,
+            "repeatability_verified": True,
+            "sanitized_references": True,
+        },
+        "blocked_reasons": [],
+        "boundary": {
+            "scaffold_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+    }
+
+
+def _fixture_operations_for_cli_chain() -> list[dict[str, str]]:
+    return [
+        {
+            "operation_id": "create-title",
+            "action": "create-item",
+            "region_id": "cluster-goals",
+            "local_ref": "title-card",
+            "payload_digest": "c" * 64,
+        },
+        {
+            "operation_id": "update-body",
+            "action": "update-item",
+            "region_id": "cluster-goals",
+            "local_ref": "body-card",
+            "payload_digest": "d" * 64,
+        },
+    ]
+
+
+def _write_json(path, value) -> None:
+    path.write_text(json.dumps(value), encoding="utf-8")
+
+
 def test_runner_dispatches_read_only_inspection(monkeypatch, capsys) -> None:
     observed = {}
 
@@ -358,6 +419,196 @@ def test_runner_dispatches_region_apply_receipt(monkeypatch, capsys) -> None:
         "output": "apply-receipt.json",
     }
     assert json.loads(capsys.readouterr().out)["schema_version"] == "typed-region-apply-receipt.v1"
+
+
+def test_runner_dispatches_region_operation_contract(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_operation_contract(*, scaffold, fixture, output):
+        observed.update(scaffold=scaffold, fixture=fixture, output=output)
+        return {"schema_version": "typed-region-operation-contract.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_operation_contract", fake_operation_contract)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "operation-contract",
+            "apply-scaffold.json",
+            "--fixture",
+            "fixture-ops.yml",
+            "--output",
+            "operation-contract.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "scaffold": "apply-scaffold.json",
+        "fixture": "fixture-ops.yml",
+        "output": "operation-contract.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-operation-contract.v1"
+    )
+
+
+def test_runner_dispatches_region_apply_simulation(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_apply_simulation(*, operation_contract, after_snapshot, output):
+        observed.update(
+            operation_contract=operation_contract,
+            after_snapshot=after_snapshot,
+            output=output,
+        )
+        return {"schema_version": "typed-region-apply-simulation-receipt.v1", "ok": True}
+
+    monkeypatch.setattr(runner, "handle_region_apply_simulation", fake_apply_simulation)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "apply-simulation",
+            "operation-contract.json",
+            "--after-snapshot",
+            "after.json",
+            "--output",
+            "apply-simulation.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "operation_contract": "operation-contract.json",
+        "after_snapshot": "after.json",
+        "output": "apply-simulation.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-apply-simulation-receipt.v1"
+    )
+
+
+def test_region_operation_contract_cli_writes_real_receipt(tmp_path, capsys) -> None:
+    scaffold = tmp_path / "apply-scaffold.json"
+    fixture = tmp_path / "fixture-ops.json"
+    output = tmp_path / "operation-contract.json"
+    _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
+    _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "operation-contract",
+            str(scaffold),
+            "--fixture",
+            str(fixture),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert stdout_receipt["schema_version"] == "typed-region-operation-contract.v1"
+    assert written["schema_version"] == "typed-region-operation-contract.v1"
+    assert written["ok"] is True
+    assert written["boundary"] == {
+        "fixture_only": True,
+        "simulation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def test_region_apply_simulation_cli_writes_real_receipt(tmp_path, capsys) -> None:
+    scaffold = tmp_path / "apply-scaffold.json"
+    fixture = tmp_path / "fixture-ops.json"
+    contract_path = tmp_path / "operation-contract.json"
+    after_snapshot_path = tmp_path / "after.json"
+    output = tmp_path / "apply-simulation.json"
+    _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
+    _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "operation-contract",
+            str(scaffold),
+            "--fixture",
+            str(fixture),
+            "--output",
+            str(contract_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    _write_json(
+        after_snapshot_path,
+        {
+            "board_alias": contract["region"]["surface_alias"],
+            "content_digest": "e" * 64,
+            "item_count": 6,
+            "repeatability_verified": True,
+            "sanitized_references": True,
+            "operation_contract_digest": contract["contract_digest"],
+            "operation_contract_operations_digest": contract["operations_digest"],
+            "idempotency_key": contract["idempotency"]["key"],
+            "idempotency_verified": True,
+        },
+    )
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "apply-simulation",
+            str(contract_path),
+            "--after-snapshot",
+            str(after_snapshot_path),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert stdout_receipt["schema_version"] == "typed-region-apply-simulation-receipt.v1"
+    assert written["schema_version"] == "typed-region-apply-simulation-receipt.v1"
+    assert written["ok"] is True
+    assert written["boundary"]["simulation_only"] is True
+    assert "after_snapshot_input_digest" in written["source_receipts"]
+
+
+def test_region_apply_simulation_cli_rejects_wrong_contract_schema(tmp_path, capsys) -> None:
+    contract_path = tmp_path / "operation-contract.json"
+    after_snapshot_path = tmp_path / "after.json"
+    _write_json(contract_path, {"schema_version": "wrong"})
+    _write_json(after_snapshot_path, {"content_digest": "e" * 64, "board_alias": "fixture"})
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "apply-simulation",
+            str(contract_path),
+            "--after-snapshot",
+            str(after_snapshot_path),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    assert "unsupported schema" in capsys.readouterr().err
 
 
 def test_runner_dispatches_region_postflight(monkeypatch, capsys) -> None:

@@ -77,11 +77,31 @@ Define semantic shapes, state markers, provenance, freshness, uncertainty, acces
 
 ## SW-009 — Typed operator
 
-**Implementation status:** partial; typed region plan, preflight, apply-scaffold, fixture-only apply receipt, CLI-backed apply receipt, fixture-only postflight/restore receipts, CLI-backed postflight/restore receipts, and fixture-only operation contracts exist. Next slice: apply simulation receipts.
+**Implementation status:** partial.
+
+Implemented:
+
+- typed region plan, preflight, and apply scaffold;
+- fixture-only and CLI-backed apply receipts;
+- fixture-only and CLI-backed operation contracts;
+- fixture-only and CLI-backed apply simulation receipts;
+- fixture-only and CLI-backed postflight/restore receipts.
+
+Command graph:
+
+- fixture apply path: `preflight → apply-scaffold → apply-receipt → postflight → restore-receipt`;
+- simulation contract path: `preflight → apply-scaffold → operation-contract → apply-simulation`.
+
+The simulation contract path is currently a bounded endpoint. The existing `postflight` command accepts `typed-region-apply-receipt.v1`, not `typed-region-apply-simulation-receipt.v1`.
+
+Related blocker: SW-003 closeout proof.
+
+Next SW-009 slice after SW-003 closeout: live-safe typed apply gating.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 
 **Gate:** productive writes cannot touch undeclared regions or silently create duplicates.
+
 
 ## SW-010 — Regie
 

@@ -154,6 +154,23 @@ def build_parser() -> argparse.ArgumentParser:
     rar.add_argument("--output")
     rar.add_argument("--json", action="store_true")
 
+    operation_contract = rc.add_parser(
+        "operation-contract", help="compile a fixture-only operation contract"
+    )
+    operation_contract.add_argument("scaffold")
+    operation_contract.add_argument("--fixture", required=True)
+    operation_contract.add_argument("--output")
+    operation_contract.add_argument("--json", action="store_true")
+
+    apply_simulation = rc.add_parser(
+        "apply-simulation",
+        help="verify simulation-only apply evidence; this is the current simulation endpoint",
+    )
+    apply_simulation.add_argument("operation_contract")
+    apply_simulation.add_argument("--after-snapshot", required=True)
+    apply_simulation.add_argument("--output")
+    apply_simulation.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)
