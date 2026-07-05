@@ -18,6 +18,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 5. [Miro live recovery](operations/miro-live-recovery.md)
 6. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
 7. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
+8. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 

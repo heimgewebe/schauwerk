@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .ecosystem_map import render_ecosystem_map_html
 from .education.view import (
     learning_render_receipt,
     load_learning_view,
@@ -33,6 +34,16 @@ from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .visual.grammar import zoomlandkarte_template
+
+
+def handle_ecosystem_render(
+    *, manifest: str, output: str, source_root: str | None
+) -> dict[str, Any]:
+    return render_ecosystem_map_html(
+        manifest_path=Path(manifest),
+        output_path=Path(output),
+        source_root=source_root,
+    )
 
 
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
