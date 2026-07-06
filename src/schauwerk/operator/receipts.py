@@ -831,6 +831,7 @@ def compile_region_apply_simulation_receipt(
             _without_runtime_fields(operation_contract)
         ),
         "after_snapshot_digest": _stable_digest(normalized_after),
+        "after_snapshot_input_digest": _stable_digest(after_snapshot),
     }
     ready = not blocked_reasons
     value = {
