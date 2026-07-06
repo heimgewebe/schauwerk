@@ -183,6 +183,16 @@ def build_parser() -> argparse.ArgumentParser:
     restore_receipt.add_argument("--output")
     restore_receipt.add_argument("--json", action="store_true")
 
+    sw003_closeout = rc.add_parser(
+        "sw003-closeout",
+        help="compile a fixture-only SW-003 closeout receipt without Miro mutation",
+    )
+    sw003_closeout.add_argument("restore_receipt")
+    sw003_closeout.add_argument("--evidence", required=True)
+    sw003_closeout.add_argument("--marker", required=True)
+    sw003_closeout.add_argument("--output")
+    sw003_closeout.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

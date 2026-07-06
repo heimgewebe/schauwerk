@@ -28,6 +28,7 @@ from .cli_handlers import (
     handle_region_postflight,
     handle_region_preflight,
     handle_region_restore_receipt,
+    handle_region_sw003_closeout,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -157,6 +158,13 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_region_restore_receipt(
                 postflight=args.postflight,
                 restored_snapshot=args.restored_snapshot,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw003-closeout":
+            result = handle_region_sw003_closeout(
+                restore_receipt=args.restore_receipt,
+                evidence=args.evidence,
+                marker=args.marker,
                 output=args.output,
             )
         elif args.command == "logout":

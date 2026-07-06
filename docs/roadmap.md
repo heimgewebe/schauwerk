@@ -37,7 +37,7 @@ Read one allowlisted board with pagination, frames, elements, layout information
 
 ## SW-003 — Isolated write proof
 
-**Implementation status:** partial; see `docs/operators/sw003-sw009-planhygiene.md`.
+**Implementation status:** partial; marker planning, safe failure receipts, typed region receipt chains, and a fixture-only SW-003 closeout receipt exist. Live Miro closeout acceptance remains open. See `docs/operators/sw003-sw009-planhygiene.md`.
 
 Create a clearly marked test frame, create and update test elements, verify IDs and state, prove idempotency, and remove or archive only the identified test scope.
 

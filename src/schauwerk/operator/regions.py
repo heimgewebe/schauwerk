@@ -246,6 +246,12 @@ def load_region_postflight_receipt(path: Path) -> dict[str, Any]:
     return _impl(path)
 
 
+def load_region_restore_receipt(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.receipts import load_region_restore_receipt as _impl
+
+    return _impl(path)
+
+
 def load_snapshot_mapping_receipt(
     path: Path, *, label: str = "snapshot"
 ) -> dict[str, Any]:
@@ -280,6 +286,35 @@ def compile_region_restore_receipt(
     return _impl(
         postflight_receipt=postflight_receipt,
         restored_snapshot=restored_snapshot,
+        output_path=output_path,
+    )
+
+
+def load_sw003_closeout_evidence(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import load_sw003_closeout_evidence as _impl
+
+    return _impl(path)
+
+
+def load_sw003_closeout_receipt(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import load_sw003_closeout_receipt as _impl
+
+    return _impl(path)
+
+
+def compile_sw003_closeout_receipt(
+    *,
+    restore_receipt: dict[str, Any],
+    evidence: dict[str, Any],
+    marker: str,
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import compile_sw003_closeout_receipt as _impl
+
+    return _impl(
+        restore_receipt=restore_receipt,
+        evidence=evidence,
+        marker=marker,
         output_path=output_path,
     )
 
