@@ -590,13 +590,15 @@ def test_region_apply_simulation_cli_writes_real_receipt(tmp_path, capsys) -> No
     assert "after_snapshot_input_digest" in written["source_receipts"]
 
 
-def test_region_simulation_postflight_cli_writes_real_receipt(tmp_path, capsys) -> None:
+def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -> None:
     scaffold = tmp_path / "apply-scaffold.json"
     fixture = tmp_path / "fixture-ops.json"
     contract_path = tmp_path / "operation-contract.json"
     after_snapshot_path = tmp_path / "after.json"
     apply_simulation_path = tmp_path / "apply-simulation.json"
     output = tmp_path / "simulation-postflight.json"
+    restored_snapshot_path = tmp_path / "restored.json"
+    restore_output = tmp_path / "restore.json"
     _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
     _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
 
@@ -662,8 +664,41 @@ def test_region_simulation_postflight_cli_writes_real_receipt(tmp_path, capsys) 
     assert stdout_receipt["schema_version"] == "typed-region-postflight-receipt.v1"
     assert written["schema_version"] == "typed-region-postflight-receipt.v1"
     assert written["ok"] is True
+    assert written["ready_for_restore"] is True
     assert written["boundary"]["simulation_only"] is True
     assert "apply_simulation_receipt_digest" in written["source_receipts"]
+
+    _write_json(
+        restored_snapshot_path,
+        {
+            "board_alias": written["pre_apply_snapshot"]["board_alias"],
+            "content_digest": written["pre_apply_snapshot"]["content_digest"],
+            "item_count": written["pre_apply_snapshot"]["item_count"],
+            "repeatability_verified": True,
+            "sanitized_references": True,
+        },
+    )
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "restore-receipt",
+            str(output),
+            "--restored-snapshot",
+            str(restored_snapshot_path),
+            "--output",
+            str(restore_output),
+            "--json",
+        ]
+    ) == 0
+    restore_stdout = json.loads(capsys.readouterr().out)
+    restore_written = json.loads(restore_output.read_text(encoding="utf-8"))
+    assert restore_stdout["schema_version"] == "typed-region-restore-receipt.v1"
+    assert restore_written["schema_version"] == "typed-region-restore-receipt.v1"
+    assert restore_written["ok"] is True
+    assert restore_written["live_restore_attempted"] is False
+    assert restore_written["ready_for_closeout"] is True
 
 
 def test_region_apply_simulation_cli_rejects_wrong_contract_schema(tmp_path, capsys) -> None:
