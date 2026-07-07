@@ -355,6 +355,15 @@ def load_region_postflight_receipt(path: Path) -> dict[str, Any]:
     return raw
 
 
+def load_region_restore_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="restore receipt")
+    if not isinstance(raw, dict):
+        raise ValueError("restore receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-restore-receipt.v1":
+        raise ValueError("restore receipt has an unsupported schema")
+    return raw
+
+
 def load_snapshot_mapping_receipt(path: Path, *, label: str = "snapshot") -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label=label)
     if not isinstance(raw, dict):

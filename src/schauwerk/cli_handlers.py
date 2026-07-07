@@ -23,6 +23,7 @@ from .operator.regions import (
     compile_region_postflight_receipt,
     compile_region_preflight,
     compile_region_restore_receipt,
+    compile_sw003_closeout_receipt,
     load_fixture_operations,
     load_region_apply_receipt,
     load_region_apply_scaffold,
@@ -30,7 +31,9 @@ from .operator.regions import (
     load_region_operation_contract,
     load_region_postflight_receipt,
     load_region_preflight,
+    load_region_restore_receipt,
     load_snapshot_mapping_receipt,
+    load_sw003_closeout_evidence,
 )
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -328,6 +331,19 @@ def handle_learn_live_prune(
 ) -> dict[str, Any]:
     active = client or MiroMCPClient()
     return prune_live_tests(active.settings, keep=keep, dry_run=dry_run).to_dict()
+
+
+def handle_region_sw003_closeout(
+    *, restore_receipt: str, evidence: str, marker: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_restore_receipt(Path(restore_receipt))
+    closeout_evidence = load_sw003_closeout_evidence(Path(evidence))
+    return compile_sw003_closeout_receipt(
+        restore_receipt=receipt,
+        evidence=closeout_evidence,
+        marker=marker,
+        output_path=Path(output) if output else None,
+    )
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
