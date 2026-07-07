@@ -101,9 +101,9 @@ These branches have commits not patch-equivalent to main, but comparing them aga
 
 ## Next SW-009 slice
 
-Name: `SW-009A — typed region apply receipt v1, fixture-only`.
+Name: `SW-009B — live-safe typed apply gating`.
 
-Goal: move from apply scaffold to a real receipt chain without touching Miro yet.
+Goal: keep fixture and simulation receipts usable while preventing any scaffold from claiming live typed-apply readiness before SW-003 live-gate evidence exists.
 
 Inputs:
 
@@ -115,19 +115,17 @@ Inputs:
 
 Outputs:
 
-- `typed-region-apply-receipt.v1` with:
-  - `provider_mutation_attempted=false`;
-  - `fixture_mutation_attempted=true`;
-  - region, operation, snapshot, candidate DSL digest;
-  - marker-scope verification;
-  - idempotency check over the fixture result;
-  - postflight fixture digest;
-  - restore pointer to the preflight snapshot.
+- `typed-region-apply-scaffold.v1` with:
+  - `ready_for_fixture_apply=true` when local preflight is ready;
+  - `ready_for_live_apply=false` while SW-003 live-gate evidence is absent;
+  - `live_apply_gate.blocked_reasons=["sw003_live_gate_open"]`;
+  - SW-003 live-gate evidence requirements exposed without provider identifiers.
 
 Boundary:
 
 - no live Miro mutation;
 - no provider object identifiers;
+- no live typed-apply readiness before SW-003 live acceptance;
 - no board links;
 - no remote cleanup claim;
 - no Regie UI.
@@ -184,4 +182,4 @@ Risk: it delays visible new features. That is acceptable because the next visibl
 
 ## Next action
 
-Keep Issue #8 open. Use the live-gate checklist as the acceptance boundary for any later controlled live SW-003 proof, then continue SW-009 only where it does not imply live-gate closure.
+Keep Issue #8 open. Continue SW-009 only through fixture/simulation-safe surfaces until a controlled live SW-003 proof closes the live-gate evidence boundary.

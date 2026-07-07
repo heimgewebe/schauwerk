@@ -81,7 +81,7 @@ Define semantic shapes, state markers, provenance, freshness, uncertainty, acces
 
 Implemented:
 
-- typed region plan, preflight, and apply scaffold;
+- typed region plan, preflight, apply scaffold, and live-safe apply gating;
 - fixture-only and CLI-backed apply receipts;
 - fixture-only and CLI-backed operation contracts;
 - fixture-only and CLI-backed apply simulation receipts;
@@ -96,7 +96,7 @@ The simulation contract path is currently a bounded endpoint. The existing `post
 
 Related blocker: SW-003 closeout proof.
 
-Next SW-009 slice after SW-003 closeout: live-safe typed apply gating.
+Current SW-009 safety boundary: fixture and simulation paths may proceed from a ready preflight, but live typed apply stays blocked until SW-003 live-gate evidence exists.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 

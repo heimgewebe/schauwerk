@@ -24,7 +24,8 @@ def _ready_apply_scaffold_for_cli_chain() -> dict:
         "schema_version": "typed-region-apply-scaffold.v1",
         "ok": True,
         "mutation_attempted": False,
-        "ready_for_live_apply": True,
+        "ready_for_fixture_apply": True,
+        "ready_for_live_apply": False,
         "operation": "render-update",
         "region": region,
         "snapshot": {

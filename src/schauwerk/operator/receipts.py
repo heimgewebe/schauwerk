@@ -45,6 +45,27 @@ def load_fixture_operations(path: Path) -> list[dict[str, Any]]:
     return raw
 
 
+
+
+def _sw003_live_gate_requirements() -> list[dict[str, str]]:
+    from schauwerk.operator.sw003_closeout import required_sw003_live_gate_evidence
+
+    return required_sw003_live_gate_evidence()
+
+
+def _sw009_live_apply_gate() -> dict[str, Any]:
+    return {
+        "ready_for_live_apply": False,
+        "blocked_reasons": ["sw003_live_gate_open"],
+        "required_evidence": _sw003_live_gate_requirements(),
+        "boundary": {
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_sw003_live_gate": True,
+        },
+    }
+
+
 def _stable_digest(value: Any) -> str:
     payload = json.dumps(
         value,
@@ -134,8 +155,11 @@ def compile_region_apply_receipt(
     blocked_reasons: list[str] = []
     if scaffold.get("schema_version") != "typed-region-apply-scaffold.v1":
         blocked_reasons.append("apply_scaffold_schema_unsupported")
-    if scaffold.get("ok") is not True or scaffold.get("ready_for_live_apply") is not True:
+    fixture_ready = scaffold.get("ready_for_fixture_apply") is True
+    if scaffold.get("ok") is not True or not fixture_ready:
         blocked_reasons.append("apply_scaffold_not_ready")
+    if scaffold.get("ready_for_live_apply") is not False:
+        blocked_reasons.append("apply_scaffold_live_gate_not_closed")
     if scaffold.get("mutation_attempted") is not False:
         blocked_reasons.append("apply_scaffold_mutation_state_invalid")
 
@@ -277,12 +301,15 @@ def compile_region_apply_scaffold(
         "schema_version": "typed-region-apply-scaffold.v1",
         "ok": ready,
         "mutation_attempted": False,
-        "ready_for_live_apply": ready,
+        "ready_for_fixture_apply": ready,
+        "ready_for_live_apply": False,
+        "live_apply_gate": _sw009_live_apply_gate(),
         "blocked_reasons": blocked_reasons,
         "operation": preflight.get("operation"),
         "region": region,
         "snapshot": snapshot,
         "required_live_preconditions": [
+            "sw003_live_gate_evidence_complete",
             "miro_doctor_safe_for_live_board_operations",
             "operator_confirms_preflight_receipt_digest",
             "operator_confirms_expected_source_digest",
@@ -616,8 +643,11 @@ def compile_region_operation_contract(
     blocked_reasons: list[str] = []
     if scaffold.get("schema_version") != "typed-region-apply-scaffold.v1":
         blocked_reasons.append("apply_scaffold_schema_unsupported")
-    if scaffold.get("ok") is not True or scaffold.get("ready_for_live_apply") is not True:
+    fixture_ready = scaffold.get("ready_for_fixture_apply") is True
+    if scaffold.get("ok") is not True or not fixture_ready:
         blocked_reasons.append("apply_scaffold_not_ready")
+    if scaffold.get("ready_for_live_apply") is not False:
+        blocked_reasons.append("apply_scaffold_live_gate_not_closed")
     if scaffold.get("mutation_attempted") is not False:
         blocked_reasons.append("apply_scaffold_mutation_state_invalid")
 

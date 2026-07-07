@@ -208,9 +208,13 @@ def test_apply_scaffold_allows_ready_preflight_without_mutation() -> None:
 
     assert result["schema_version"] == "typed-region-apply-scaffold.v1"
     assert result["ok"] is True
-    assert result["ready_for_live_apply"] is True
+    assert result["ready_for_fixture_apply"] is True
+    assert result["ready_for_live_apply"] is False
+    assert result["live_apply_gate"]["ready_for_live_apply"] is False
+    assert "sw003_live_gate_open" in result["live_apply_gate"]["blocked_reasons"]
     assert result["mutation_attempted"] is False
     assert result["blocked_reasons"] == []
+    assert "sw003_live_gate_evidence_complete" in result["required_live_preconditions"]
     assert "miro_doctor_safe_for_live_board_operations" in result["required_live_preconditions"]
     assert result["boundary"] == {
         "scaffold_only": True,
@@ -230,6 +234,7 @@ def test_apply_scaffold_blocks_failed_preflight() -> None:
     result = compile_region_apply_scaffold(preflight=preflight)
 
     assert result["ok"] is False
+    assert result["ready_for_fixture_apply"] is False
     assert result["ready_for_live_apply"] is False
     assert "preflight_not_ready" in result["blocked_reasons"]
     assert "preflight:snapshot_digest_mismatch" in result["blocked_reasons"]
@@ -638,3 +643,33 @@ def test_load_region_postflight_receipt_rejects_wrong_schema(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="unsupported schema"):
         load_region_postflight_receipt(source)
+
+
+def test_apply_receipt_rejects_live_ready_scaffold_without_gate() -> None:
+    from schauwerk.operator.regions import compile_region_apply_receipt
+
+    scaffold = ready_apply_scaffold()
+    scaffold["ready_for_live_apply"] = True
+
+    result = compile_region_apply_receipt(
+        scaffold=scaffold, fixture_operations=fixture_operations()
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_postflight"] is False
+    assert "apply_scaffold_live_gate_not_closed" in result["blocked_reasons"]
+
+
+def test_operation_contract_rejects_live_ready_scaffold_without_gate() -> None:
+    from schauwerk.operator.regions import compile_region_operation_contract
+
+    scaffold = ready_apply_scaffold()
+    scaffold["ready_for_live_apply"] = True
+
+    result = compile_region_operation_contract(
+        scaffold=scaffold, fixture_operations=fixture_operations()
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_apply_simulation"] is False
+    assert "apply_scaffold_live_gate_not_closed" in result["blocked_reasons"]
