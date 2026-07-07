@@ -322,7 +322,7 @@ def test_sw003_closeout_receipt_exposes_live_gate_requirements_without_closing()
     assert "cleanup_verified_or_boundary_accepted" in required_keys
     assert result["closes_live_sw003_gate"] is False
     assert result["live_gate"]["claim_present"] is False
-    assert result["live_gate"]["closes_live_sw003_gate"] is False
+    assert result["live_gate"]["candidate_closes_live_sw003_gate"] is False
     assert result["live_gate"]["fixture_only_receipt_closes_live_gate"] is False
     assert "sw003_live_gate_closure" in result["non_claims"]
 
@@ -336,7 +336,7 @@ def test_sw003_live_gate_claim_blocks_incomplete_evidence() -> None:
 
     assert result["claim_present"] is True
     assert result["claim_valid"] is False
-    assert result["closes_live_sw003_gate"] is False
+    assert result["candidate_closes_live_sw003_gate"] is False
     assert "evidence_live_update_evidence_digest_missing" in result["blocked_reasons"]
     assert "evidence_idempotency_verified_missing_or_false" in result["blocked_reasons"]
 
@@ -345,7 +345,7 @@ def test_sw003_live_gate_claim_accepts_complete_sanitized_evidence() -> None:
     result = evaluate_sw003_live_gate_claim(complete_live_gate_claim())
 
     assert result["claim_valid"] is True
-    assert result["closes_live_sw003_gate"] is True
+    assert result["candidate_closes_live_sw003_gate"] is True
     assert result["normalized"]["board_scope"] == {
         "surface_alias": "sw003-live-proof",
         "allowlisted": True,
@@ -362,7 +362,7 @@ def test_sw003_live_gate_claim_blocks_and_sanitizes_provider_identifiers() -> No
     rendered = repr(result)
 
     assert result["claim_valid"] is False
-    assert result["closes_live_sw003_gate"] is False
+    assert result["candidate_closes_live_sw003_gate"] is False
     assert "provider_identifier_present_in_live_gate_claim" in result["blocked_reasons"]
     assert "cleanup_boundary_reason_unsafe" in result["blocked_reasons"]
     assert "miro.com" not in rendered
@@ -371,3 +371,57 @@ def test_sw003_live_gate_claim_blocks_and_sanitizes_provider_identifiers() -> No
         result["normalized"]["cleanup"]["cleanup_boundary_reason"]
         == "unsafe-live-gate-reason-rejected"
     )
+
+
+
+def test_sw003_live_gate_claim_never_echoes_invalid_digest_provider_data() -> None:
+    claim = complete_live_gate_claim()
+    claim["live_create_evidence_digest"] = "https://miro.com/app/board/private-id"
+
+    result = evaluate_sw003_live_gate_claim(claim)
+    rendered = repr(result)
+
+    assert result["claim_valid"] is False
+    assert result["candidate_closes_live_sw003_gate"] is False
+    assert "evidence_live_create_evidence_digest_invalid" in result["blocked_reasons"]
+    assert result["normalized"]["evidence_digests"]["live_create_evidence_digest"] is None
+    assert "miro.com" not in rendered
+    assert "private-id" not in rendered
+
+
+def test_sw003_closeout_receipt_rejects_embedded_live_gate_claim() -> None:
+    restore_receipt = ready_restore_receipt()
+    evidence = closeout_evidence(restore_receipt=restore_receipt)
+    evidence["live_gate_claim"] = complete_live_gate_claim()
+
+    result = compile_sw003_closeout_receipt(
+        restore_receipt=restore_receipt,
+        evidence=evidence,
+        marker=MARKER,
+    )
+
+    assert result["ok"] is False
+    assert result["closes_live_sw003_gate"] is False
+    assert result["live_gate"]["candidate_closes_live_sw003_gate"] is True
+    assert result["live_gate"]["fixture_only_receipt_closes_live_gate"] is False
+    assert result["live_gate"].get("closes_live_sw003_gate") is None
+    assert "live_gate_claim_not_allowed_in_fixture_closeout" in result["blocked_reasons"]
+
+
+def test_sw003_closeout_receipt_rejects_invalid_embedded_live_gate_claim() -> None:
+    restore_receipt = ready_restore_receipt()
+    evidence = closeout_evidence(restore_receipt=restore_receipt)
+    claim = complete_live_gate_claim()
+    claim.pop("cleanup_evidence_digest")
+    evidence["live_gate_claim"] = claim
+
+    result = compile_sw003_closeout_receipt(
+        restore_receipt=restore_receipt,
+        evidence=evidence,
+        marker=MARKER,
+    )
+
+    assert result["ok"] is False
+    assert result["live_gate"]["candidate_closes_live_sw003_gate"] is False
+    assert "live_gate_claim_not_allowed_in_fixture_closeout" in result["blocked_reasons"]
+    assert "live_gate_claim_invalid_in_fixture_closeout" in result["blocked_reasons"]

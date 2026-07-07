@@ -87,6 +87,18 @@ _PROVIDER_IDENTIFIER_MARKERS = (
     "/app/board/",
 )
 _UNSAFE_LIVE_GATE_REASON = "unsafe-live-gate-reason-rejected"
+_LIVE_GATE_ALLOWED_KEYS = frozenset(
+    {
+        "claim_closes_live_sw003_gate",
+        "board_scope",
+        "cleanup_attempted",
+        "cleanup_verified",
+        "cleanup_boundary_accepted",
+        "cleanup_boundary_reason",
+        *_LIVE_GATE_BOOLEAN_FIELDS,
+        *_LIVE_GATE_DIGEST_FIELDS,
+    }
+)
 
 
 def required_sw003_live_gate_evidence() -> list[dict[str, str]]:
@@ -103,6 +115,20 @@ def _contains_provider_identifier(value: object) -> bool:
     if isinstance(value, list | tuple | set):
         return any(_contains_provider_identifier(item) for item in value)
     return False
+
+
+def _live_gate_digest(
+    value: dict[str, Any], key: str, blocked_reasons: list[str]
+) -> str | None:
+    raw = value.get(key)
+    if not isinstance(raw, str):
+        blocked_reasons.append(f"evidence_{key}_missing")
+        return None
+    try:
+        return _validate_digest(raw, label=f"sw003.live_gate.{key}")
+    except ValueError:
+        blocked_reasons.append(f"evidence_{key}_invalid")
+        return None
 
 
 def _normalized_live_gate_scope(
@@ -140,7 +166,8 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
         return {
             "claim_present": False,
             "claim_valid": False,
-            "closes_live_sw003_gate": False,
+            "candidate_claim_valid": False,
+            "candidate_closes_live_sw003_gate": False,
             "blocked_reasons": ["live_gate_claim_missing"],
             "requirements": requirements,
             "normalized": {},
@@ -149,13 +176,17 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
         return {
             "claim_present": True,
             "claim_valid": False,
-            "closes_live_sw003_gate": False,
+            "candidate_claim_valid": False,
+            "candidate_closes_live_sw003_gate": False,
             "blocked_reasons": ["live_gate_claim_not_object"],
             "requirements": requirements,
             "normalized": {},
         }
 
     blocked_reasons: list[str] = []
+    unknown_keys = set(evidence) - _LIVE_GATE_ALLOWED_KEYS
+    if unknown_keys:
+        blocked_reasons.append("live_gate_claim_unknown_fields")
     if _contains_provider_identifier(evidence):
         blocked_reasons.append("provider_identifier_present_in_live_gate_claim")
 
@@ -171,7 +202,7 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
             blocked_reasons.append(f"evidence_{key}_missing_or_false")
 
     evidence_digests = {
-        key: _evidence_digest(evidence, key, blocked_reasons)
+        key: _live_gate_digest(evidence, key, blocked_reasons)
         for key in _LIVE_GATE_DIGEST_FIELDS
     }
     board_scope = _normalized_live_gate_scope(evidence.get("board_scope"), blocked_reasons)
@@ -200,7 +231,8 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
         "claim_present": True,
         "claim_requested": claim_requested,
         "claim_valid": claim_valid,
-        "closes_live_sw003_gate": claim_valid,
+        "candidate_claim_valid": claim_valid,
+        "candidate_closes_live_sw003_gate": claim_valid,
         "blocked_reasons": blocked_reasons,
         "requirements": requirements,
         "normalized": {
@@ -419,7 +451,12 @@ def compile_sw003_closeout_receipt(
     cleanup = _normalized_cleanup(evidence.get("cleanup"), blocked_reasons)
     if cleanup.get("restore_receipt_digest") != restore_digest:
         blocked_reasons.append("cleanup_restore_receipt_digest_mismatch")
-    live_gate = evaluate_sw003_live_gate_claim(evidence.get("live_gate_claim"))
+    raw_live_gate_claim = evidence.get("live_gate_claim")
+    live_gate = evaluate_sw003_live_gate_claim(raw_live_gate_claim)
+    if raw_live_gate_claim is not None:
+        blocked_reasons.append("live_gate_claim_not_allowed_in_fixture_closeout")
+        if not live_gate["candidate_claim_valid"]:
+            blocked_reasons.append("live_gate_claim_invalid_in_fixture_closeout")
 
     source_receipts = {
         "restore_receipt_digest": restore_digest,
