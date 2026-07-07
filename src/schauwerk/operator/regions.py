@@ -290,6 +290,20 @@ def compile_region_restore_receipt(
     )
 
 
+def required_sw003_live_gate_evidence() -> list[dict[str, str]]:
+    from schauwerk.operator.sw003_closeout import (
+        required_sw003_live_gate_evidence as _impl,
+    )
+
+    return _impl()
+
+
+def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import evaluate_sw003_live_gate_claim as _impl
+
+    return _impl(evidence)
+
+
 def load_sw003_closeout_evidence(path: Path) -> dict[str, Any]:
     from schauwerk.operator.sw003_closeout import load_sw003_closeout_evidence as _impl
 

@@ -14,7 +14,7 @@ summary: Audit of the open SW-003 item against main and definition of the next t
 This document prevents the roadmap from drifting into two equally bad states:
 
 1. treating SW-003 as untouched even though main already contains several Miro live-test and mutation-adjacent primitives; or
-2. treating SW-003 as closed before the create/read/update/verify/cleanup gate has a dedicated closeout receipt.
+2. treating SW-003 as closed before the live create/read/update/verify/cleanup gate has dedicated, sanitized evidence.
 
 The practical decision is conservative: keep SW-003 open, but narrow it to the missing proof. The cat may sit on the keyboard; it does not thereby become a release manager.
 
@@ -141,13 +141,38 @@ Tests:
 - proves re-running the fixture operation is idempotent;
 - preserves restore pointer.
 
+## SW-003 live-gate plan after fixture-only closeout
+
+PR #45 added a fixture-only SW-003 closeout receipt. That receipt is a
+precondition artifact, not live Miro acceptance. It must not close Issue #8 and
+it must keep `closes_live_sw003_gate=false`.
+
+A later live SW-003 receipt may claim `closes_live_sw003_gate=true` only when all
+of the following evidence is present and public output remains sanitized:
+
+- live create path attempted in a bounded SW-003 scope;
+- created object state verified after the live create step;
+- live read after create verified against the expected marked scope;
+- live update verified against the same marked scope, not a duplicate layout;
+- marker/scope uniqueness verified;
+- idempotency verified for the same marker/scope operation;
+- cleanup verified, or an explicit live cleanup boundary accepted;
+- provider identifiers, board URLs, and provider object IDs absent from public
+  evidence;
+- board/scope represented by an allowlisted local alias.
+
+This plan is modeled in code by a pure local live-gate evaluator. It performs no
+Miro access and no mutation. Its purpose is to block premature live-gate claims
+until a later dedicated live proof provides complete, sanitized evidence.
+
+
 ## Decision
 
-Do not close the SW-003 tracker item from this audit alone. First produce an SW-003 closeout receipt or update the item to say exactly why it remains open. Then implement SW-009A as the next code slice.
+Do not close the SW-003 tracker item from fixture-only closeout alone. The remaining closure condition is a dedicated live proof whose public receipt satisfies the live-gate evidence checklist without exposing provider identifiers.
 
 ## Epistemic gaps
 
-- The SW-003 tracker discussion still needs a fresh closeout comment before closing or narrowing the item.
+- The SW-003 tracker discussion still needs a fresh comment explaining that fixture-only closeout is not live acceptance.
 - The available Miro MCP tool catalogue must be checked before claiming remote cleanup.
 - A true update operation must distinguish updating marked existing objects from adding a second marked layout.
 
@@ -159,4 +184,4 @@ Risk: it delays visible new features. That is acceptable because the next visibl
 
 ## Next action
 
-Create the SW-009A fixture-only apply receipt implementation and tests. Then update the SW-003 tracker item with a narrowed checklist rather than closing it prematurely.
+Keep Issue #8 open. Use the live-gate checklist as the acceptance boundary for any later controlled live SW-003 proof, then continue SW-009 only where it does not imply live-gate closure.
