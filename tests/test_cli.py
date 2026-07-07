@@ -590,6 +590,82 @@ def test_region_apply_simulation_cli_writes_real_receipt(tmp_path, capsys) -> No
     assert "after_snapshot_input_digest" in written["source_receipts"]
 
 
+def test_region_simulation_postflight_cli_writes_real_receipt(tmp_path, capsys) -> None:
+    scaffold = tmp_path / "apply-scaffold.json"
+    fixture = tmp_path / "fixture-ops.json"
+    contract_path = tmp_path / "operation-contract.json"
+    after_snapshot_path = tmp_path / "after.json"
+    apply_simulation_path = tmp_path / "apply-simulation.json"
+    output = tmp_path / "simulation-postflight.json"
+    _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
+    _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "operation-contract",
+            str(scaffold),
+            "--fixture",
+            str(fixture),
+            "--output",
+            str(contract_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    _write_json(
+        after_snapshot_path,
+        {
+            "board_alias": contract["region"]["surface_alias"],
+            "content_digest": "e" * 64,
+            "item_count": 6,
+            "repeatability_verified": True,
+            "sanitized_references": True,
+            "operation_contract_digest": contract["contract_digest"],
+            "operation_contract_operations_digest": contract["operations_digest"],
+            "idempotency_key": contract["idempotency"]["key"],
+            "idempotency_verified": True,
+        },
+    )
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "apply-simulation",
+            str(contract_path),
+            "--after-snapshot",
+            str(after_snapshot_path),
+            "--output",
+            str(apply_simulation_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "simulation-postflight",
+            str(apply_simulation_path),
+            "--output",
+            str(output),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output.read_text(encoding="utf-8"))
+    assert stdout_receipt["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert written["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert written["ok"] is True
+    assert written["boundary"]["simulation_only"] is True
+    assert "apply_simulation_receipt_digest" in written["source_receipts"]
+
+
 def test_region_apply_simulation_cli_rejects_wrong_contract_schema(tmp_path, capsys) -> None:
     contract_path = tmp_path / "operation-contract.json"
     after_snapshot_path = tmp_path / "after.json"
@@ -610,6 +686,40 @@ def test_region_apply_simulation_cli_rejects_wrong_contract_schema(tmp_path, cap
 
     assert code == 2
     assert "unsupported schema" in capsys.readouterr().err
+
+
+def test_runner_dispatches_region_simulation_postflight(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_simulation_postflight(*, apply_simulation_receipt, output):
+        observed.update(
+            apply_simulation_receipt=apply_simulation_receipt, output=output
+        )
+        return {"schema_version": "typed-region-postflight-receipt.v1", "ok": True}
+
+    monkeypatch.setattr(
+        runner, "handle_region_simulation_postflight", fake_simulation_postflight
+    )
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "simulation-postflight",
+            "apply-simulation.json",
+            "--output",
+            "simulation-postflight.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "apply_simulation_receipt": "apply-simulation.json",
+        "output": "simulation-postflight.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-postflight-receipt.v1"
+    )
 
 
 def test_runner_dispatches_region_postflight(monkeypatch, capsys) -> None:

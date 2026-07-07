@@ -182,4 +182,4 @@ Risk: it delays visible new features. That is acceptable because the next visibl
 
 ## Next action
 
-Keep Issue #8 open. Continue SW-009 only through fixture/simulation-safe surfaces until a controlled live SW-003 proof closes the live-gate evidence boundary.
+Keep Issue #8 open. Continue SW-009 only through fixture/simulation-safe surfaces until a controlled live SW-003 proof closes the live-gate evidence boundary. The next safe follow-up is keeping the simulation receipt chain restore-capable without turning on live apply.

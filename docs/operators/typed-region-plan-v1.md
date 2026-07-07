@@ -80,3 +80,12 @@ schauwerk miro region apply-scaffold preflight.json --json
 ```
 
 The apply scaffold accepts only a `typed-region-preflight.v1` receipt. If the preflight is not ready, the scaffold remains blocked and preserves the preflight reasons. If it is ready, the scaffold is fixture-ready only: `ready_for_fixture_apply=true` and `ready_for_live_apply=false`. Live apply remains blocked by `live_apply_gate.blocked_reasons=["sw003_live_gate_open"]` until a later dedicated SW-003 live proof provides complete, sanitized evidence. This command also does not call Miro.
+
+
+## Simulation Postflight CLI
+
+```bash
+schauwerk miro region simulation-postflight apply-simulation.json --json
+```
+
+The simulation postflight command accepts only `typed-region-apply-simulation-receipt.v1`. It converts a verified simulation-only apply receipt into a `typed-region-postflight-receipt.v1` that remains fixture-only, simulation-only, and restore-ready. It does not require or perform live Miro access.

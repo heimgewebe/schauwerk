@@ -92,7 +92,7 @@ Command graph:
 - fixture apply path: `preflight → apply-scaffold → apply-receipt → postflight → restore-receipt`;
 - simulation contract path: `preflight → apply-scaffold → operation-contract → apply-simulation`.
 
-The simulation contract path is currently a bounded endpoint. The existing `postflight` command accepts `typed-region-apply-receipt.v1`, not `typed-region-apply-simulation-receipt.v1`.
+The simulation contract path now has a restore-ready postflight bridge via `simulation-postflight`; the live typed apply path remains blocked by the SW-003 live-gate boundary.
 
 Related blocker: SW-003 closeout proof.
 

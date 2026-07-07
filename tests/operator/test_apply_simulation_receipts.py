@@ -8,6 +8,8 @@ from schauwerk.operator.regions import (
     compile_region_apply_scaffold,
     compile_region_apply_simulation_receipt,
     compile_region_operation_contract,
+    compile_region_restore_receipt,
+    compile_region_simulation_postflight_receipt,
     load_region_apply_simulation_receipt,
     parse_region_declaration,
 )
@@ -91,6 +93,14 @@ def after_snapshot(contract: dict) -> dict:
     }
 
 
+def ready_apply_simulation_receipt() -> dict:
+    contract = ready_operation_contract()
+    return compile_region_apply_simulation_receipt(
+        operation_contract=contract,
+        after_snapshot=after_snapshot(contract),
+    )
+
+
 def test_apply_simulation_receipt_passes_for_matching_contract_evidence() -> None:
     contract = ready_operation_contract()
 
@@ -161,3 +171,63 @@ def test_load_region_apply_simulation_receipt_rejects_wrong_schema(tmp_path) -> 
 
     with pytest.raises(ValueError, match="unsupported schema"):
         load_region_apply_simulation_receipt(source)
+
+
+def test_simulation_postflight_receipt_is_restore_ready() -> None:
+    simulation = ready_apply_simulation_receipt()
+
+    result = compile_region_simulation_postflight_receipt(
+        apply_simulation_receipt=simulation
+    )
+
+    assert result["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert result["ok"] is True
+    assert result["mutation_attempted"] is False
+    assert result["live_postflight_attempted"] is False
+    assert result["ready_for_restore"] is True
+    assert result["boundary"] == {
+        "fixture_only": True,
+        "simulation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+    assert "apply_simulation_receipt_digest" in result["source_receipts"]
+
+    restored = dict(result["pre_apply_snapshot"])
+    restored["repeatability_verified"] = True
+    restored["sanitized_references"] = True
+    restore = compile_region_restore_receipt(
+        postflight_receipt=result,
+        restored_snapshot=restored,
+    )
+    assert restore["ok"] is True
+    assert restore["ready_for_closeout"] is True
+
+
+def test_simulation_postflight_receipt_blocks_unready_simulation() -> None:
+    simulation = ready_apply_simulation_receipt()
+    simulation["ok"] = False
+    simulation["ready_for_postflight"] = False
+    simulation["blocked_reasons"] = ["after_snapshot_idempotency_unverified"]
+
+    result = compile_region_simulation_postflight_receipt(
+        apply_simulation_receipt=simulation
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_restore"] is False
+    assert "apply_simulation_receipt_not_ready" in result["blocked_reasons"]
+
+
+def test_simulation_postflight_receipt_writes_receipt(tmp_path) -> None:
+    output = tmp_path / "simulation-postflight.json"
+
+    result = compile_region_simulation_postflight_receipt(
+        apply_simulation_receipt=ready_apply_simulation_receipt(),
+        output_path=output,
+    )
+    loaded = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result["ok"] is True
+    assert loaded["schema_version"] == "typed-region-postflight-receipt.v1"
+    assert loaded["receipt_digest"] == result["receipt_digest"]
