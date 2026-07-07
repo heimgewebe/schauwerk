@@ -88,4 +88,4 @@ The apply scaffold accepts only a `typed-region-preflight.v1` receipt. If the pr
 schauwerk miro region simulation-postflight apply-simulation.json --json
 ```
 
-The simulation postflight command accepts only `typed-region-apply-simulation-receipt.v1`. It converts a verified simulation-only apply receipt into a `typed-region-postflight-receipt.v1` that remains fixture-only, simulation-only, and restore-ready. It does not require or perform live Miro access.
+The simulation postflight command accepts only `typed-region-apply-simulation-receipt.v1`. It converts a verified simulation-only apply receipt into a `typed-region-postflight-receipt.v1` that remains fixture-only, simulation-only, and restore-ready. The resulting postflight receipt can feed the existing `restore-receipt` command with a restored snapshot fixture. Neither command requires or performs live Miro access.
