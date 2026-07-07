@@ -8,6 +8,7 @@ from typing import Any
 
 from schauwerk.operator.core import _load_json_or_yaml, _validate_digest
 from schauwerk.operator.receipts import _stable_digest, _without_runtime_fields
+from schauwerk.surfaces.miro.board_registry import validate_alias
 from schauwerk.surfaces.miro.change_control import validate_marker
 
 SCHEMA_VERSION = "typed-region-sw003-closeout-receipt.v1"
@@ -20,6 +21,201 @@ _VERIFICATION_DIGEST_FIELDS = (
 )
 _CLEANUP_BOUNDARY_REASON_CODES = frozenset({"miro_remote_cleanup_unavailable"})
 _UNSAFE_CLEANUP_BOUNDARY_REASON = "unsafe-boundary-reason-rejected"
+
+
+_LIVE_GATE_REQUIREMENTS = (
+    {
+        "key": "live_create_attempted",
+        "description": "live create path was attempted in a bounded SW-003 scope",
+    },
+    {
+        "key": "live_create_verified",
+        "description": "created object state was verified after the live create step",
+    },
+    {
+        "key": "live_read_after_create_verified",
+        "description": "a live read after create observed the expected marked scope",
+    },
+    {
+        "key": "live_update_verified",
+        "description": "a live update changed the same marked scope instead of duplicating it",
+    },
+    {
+        "key": "marker_scope_uniqueness_verified",
+        "description": "the SW-003 marker is unique inside the declared board/scope",
+    },
+    {
+        "key": "idempotency_verified",
+        "description": "repeating the same marker/scope operation is idempotent",
+    },
+    {
+        "key": "cleanup_verified_or_boundary_accepted",
+        "description": "cleanup was verified or a live cleanup boundary was explicitly accepted",
+    },
+    {
+        "key": "provider_identifiers_sanitized",
+        "description": "public evidence exposes no board URLs or provider object identifiers",
+    },
+    {
+        "key": "board_scope_allowlisted",
+        "description": "the live board/scope is represented by an allowlisted local alias",
+    },
+)
+_LIVE_GATE_DIGEST_FIELDS = (
+    "live_create_evidence_digest",
+    "live_read_after_create_evidence_digest",
+    "live_update_evidence_digest",
+    "marker_scope_evidence_digest",
+    "idempotency_evidence_digest",
+    "cleanup_evidence_digest",
+    "board_scope_evidence_digest",
+)
+_LIVE_GATE_BOOLEAN_FIELDS = (
+    "live_create_attempted",
+    "live_create_verified",
+    "live_read_after_create_verified",
+    "live_update_verified",
+    "marker_scope_uniqueness_verified",
+    "idempotency_verified",
+    "provider_identifiers_sanitized",
+)
+_LIVE_CLEANUP_BOUNDARY_REASON_CODES = frozenset({"live_cleanup_boundary_accepted"})
+_PROVIDER_IDENTIFIER_MARKERS = (
+    "https://miro.com/app/board/",
+    "http://miro.com/app/board/",
+    "miro.com/app/board/",
+    "/app/board/",
+)
+_UNSAFE_LIVE_GATE_REASON = "unsafe-live-gate-reason-rejected"
+
+
+def required_sw003_live_gate_evidence() -> list[dict[str, str]]:
+    """Return the public evidence checklist required for a future SW-003 live gate."""
+    return [dict(item) for item in _LIVE_GATE_REQUIREMENTS]
+
+
+def _contains_provider_identifier(value: object) -> bool:
+    if isinstance(value, str):
+        lower_value = value.lower()
+        return any(marker in lower_value for marker in _PROVIDER_IDENTIFIER_MARKERS)
+    if isinstance(value, dict):
+        return any(_contains_provider_identifier(item) for item in value.values())
+    if isinstance(value, list | tuple | set):
+        return any(_contains_provider_identifier(item) for item in value)
+    return False
+
+
+def _normalized_live_gate_scope(
+    value: object, blocked_reasons: list[str]
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        blocked_reasons.append("board_scope_evidence_missing")
+        return {"surface_alias": None, "allowlisted": False}
+
+    alias = value.get("surface_alias")
+    if not isinstance(alias, str):
+        blocked_reasons.append("board_scope_surface_alias_missing")
+        safe_alias = None
+    else:
+        try:
+            safe_alias = validate_alias(alias)
+        except ValueError:
+            blocked_reasons.append("board_scope_surface_alias_invalid")
+            safe_alias = None
+
+    allowlisted = value.get("allowlisted") is True
+    if not allowlisted:
+        blocked_reasons.append("board_scope_not_allowlisted")
+    return {"surface_alias": safe_alias, "allowlisted": allowlisted}
+
+
+def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
+    """Evaluate whether a future SW-003 live-closeout claim is evidence-complete.
+
+    The evaluator is deliberately local and provider-neutral. It never talks to Miro,
+    never mutates provider state, and never echoes board URLs or provider object IDs.
+    """
+    requirements = required_sw003_live_gate_evidence()
+    if evidence is None:
+        return {
+            "claim_present": False,
+            "claim_valid": False,
+            "closes_live_sw003_gate": False,
+            "blocked_reasons": ["live_gate_claim_missing"],
+            "requirements": requirements,
+            "normalized": {},
+        }
+    if not isinstance(evidence, dict):
+        return {
+            "claim_present": True,
+            "claim_valid": False,
+            "closes_live_sw003_gate": False,
+            "blocked_reasons": ["live_gate_claim_not_object"],
+            "requirements": requirements,
+            "normalized": {},
+        }
+
+    blocked_reasons: list[str] = []
+    if _contains_provider_identifier(evidence):
+        blocked_reasons.append("provider_identifier_present_in_live_gate_claim")
+
+    claim_requested = evidence.get("claim_closes_live_sw003_gate") is True
+    if not claim_requested:
+        blocked_reasons.append("live_gate_claim_not_requested")
+
+    normalized_flags = {}
+    for key in _LIVE_GATE_BOOLEAN_FIELDS:
+        verified = evidence.get(key) is True
+        normalized_flags[key] = verified
+        if not verified:
+            blocked_reasons.append(f"evidence_{key}_missing_or_false")
+
+    evidence_digests = {
+        key: _evidence_digest(evidence, key, blocked_reasons)
+        for key in _LIVE_GATE_DIGEST_FIELDS
+    }
+    board_scope = _normalized_live_gate_scope(evidence.get("board_scope"), blocked_reasons)
+
+    cleanup_verified = evidence.get("cleanup_verified") is True
+    cleanup_boundary_accepted = evidence.get("cleanup_boundary_accepted") is True
+    raw_boundary_reason = evidence.get("cleanup_boundary_reason")
+    boundary_reason = None
+    if cleanup_boundary_accepted:
+        if not isinstance(raw_boundary_reason, str) or not raw_boundary_reason.strip():
+            blocked_reasons.append("cleanup_boundary_reason_missing")
+        else:
+            candidate = raw_boundary_reason.strip()
+            if candidate in _LIVE_CLEANUP_BOUNDARY_REASON_CODES:
+                boundary_reason = candidate
+            else:
+                blocked_reasons.append("cleanup_boundary_reason_unsafe")
+                boundary_reason = _UNSAFE_LIVE_GATE_REASON
+    if cleanup_verified and evidence.get("cleanup_attempted") is not True:
+        blocked_reasons.append("cleanup_attempt_missing")
+    if not cleanup_verified and not cleanup_boundary_accepted:
+        blocked_reasons.append("cleanup_verified_or_boundary_missing")
+
+    claim_valid = not blocked_reasons
+    return {
+        "claim_present": True,
+        "claim_requested": claim_requested,
+        "claim_valid": claim_valid,
+        "closes_live_sw003_gate": claim_valid,
+        "blocked_reasons": blocked_reasons,
+        "requirements": requirements,
+        "normalized": {
+            "flags": normalized_flags,
+            "evidence_digests": evidence_digests,
+            "board_scope": board_scope,
+            "cleanup": {
+                "cleanup_attempted": evidence.get("cleanup_attempted") is True,
+                "cleanup_verified": cleanup_verified,
+                "cleanup_boundary_accepted": cleanup_boundary_accepted,
+                "cleanup_boundary_reason": boundary_reason,
+            },
+        },
+    }
+
 
 
 def load_sw003_closeout_evidence(path: Path) -> dict[str, Any]:
@@ -223,6 +419,7 @@ def compile_sw003_closeout_receipt(
     cleanup = _normalized_cleanup(evidence.get("cleanup"), blocked_reasons)
     if cleanup.get("restore_receipt_digest") != restore_digest:
         blocked_reasons.append("cleanup_restore_receipt_digest_mismatch")
+    live_gate = evaluate_sw003_live_gate_claim(evidence.get("live_gate_claim"))
 
     source_receipts = {
         "restore_receipt_digest": restore_digest,
@@ -248,11 +445,16 @@ def compile_sw003_closeout_receipt(
         "region": region,
         "verification": normalized_verification,
         "cleanup": cleanup,
+        "live_gate": {
+            **live_gate,
+            "fixture_only_receipt_closes_live_gate": False,
+        },
         "source_receipts": source_receipts,
         "non_claims": [
             "live_miro_write_acceptance",
             "remote_miro_cleanup",
             "issue_8_closure",
+            "sw003_live_gate_closure",
         ],
         "boundary": {
             "fixture_only": True,
@@ -267,6 +469,7 @@ def compile_sw003_closeout_receipt(
                 "region": region,
                 "verification": normalized_verification,
                 "cleanup": cleanup,
+                "live_gate": live_gate,
                 "cleanup_complete": cleanup_complete,
                 "cleanup_boundary_accepted": cleanup_boundary_accepted,
                 "source_receipts": source_receipts,

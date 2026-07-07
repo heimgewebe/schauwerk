@@ -29,4 +29,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. SW-003 remains a closeout-proof item, and SW-009 is the next safety-critical apply chain. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.
+The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. SW-003 remains open for live Miro acceptance; fixture-only closeout and live-gate evidence planning are in place, and SW-009 is the next safety-critical apply chain. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.
