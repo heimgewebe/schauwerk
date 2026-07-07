@@ -275,6 +275,21 @@ def compile_region_postflight_receipt(
     )
 
 
+def compile_region_simulation_postflight_receipt(
+    *,
+    apply_simulation_receipt: dict[str, Any],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        compile_region_simulation_postflight_receipt as _impl,
+    )
+
+    return _impl(
+        apply_simulation_receipt=apply_simulation_receipt,
+        output_path=output_path,
+    )
+
+
 def compile_region_restore_receipt(
     *,
     postflight_receipt: dict[str, Any],

@@ -171,6 +171,14 @@ def build_parser() -> argparse.ArgumentParser:
     apply_simulation.add_argument("--output")
     apply_simulation.add_argument("--json", action="store_true")
 
+    simulation_postflight = rc.add_parser(
+        "simulation-postflight",
+        help="convert a simulation-only apply receipt into restore-ready postflight evidence",
+    )
+    simulation_postflight.add_argument("apply_simulation_receipt")
+    simulation_postflight.add_argument("--output")
+    simulation_postflight.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)

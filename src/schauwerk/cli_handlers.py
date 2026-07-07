@@ -23,10 +23,12 @@ from .operator.regions import (
     compile_region_postflight_receipt,
     compile_region_preflight,
     compile_region_restore_receipt,
+    compile_region_simulation_postflight_receipt,
     compile_sw003_closeout_receipt,
     load_fixture_operations,
     load_region_apply_receipt,
     load_region_apply_scaffold,
+    load_region_apply_simulation_receipt,
     load_region_declaration,
     load_region_operation_contract,
     load_region_postflight_receipt,
@@ -422,6 +424,16 @@ def handle_region_apply_simulation(
     return compile_region_apply_simulation_receipt(
         operation_contract=contract,
         after_snapshot=snapshot,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_simulation_postflight(
+    *, apply_simulation_receipt: str, output: str | None
+) -> dict[str, Any]:
+    receipt = load_region_apply_simulation_receipt(Path(apply_simulation_receipt))
+    return compile_region_simulation_postflight_receipt(
+        apply_simulation_receipt=receipt,
         output_path=Path(output) if output else None,
     )
 

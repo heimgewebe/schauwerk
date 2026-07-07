@@ -529,6 +529,121 @@ def compile_region_postflight_receipt(
     return value
 
 
+def compile_region_simulation_postflight_receipt(
+    *,
+    apply_simulation_receipt: dict[str, Any],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(apply_simulation_receipt, dict):
+        raise ValueError("apply simulation receipt must contain an object")
+
+    blocked_reasons: list[str] = []
+    if (
+        apply_simulation_receipt.get("schema_version")
+        != "typed-region-apply-simulation-receipt.v1"
+    ):
+        blocked_reasons.append("apply_simulation_receipt_schema_unsupported")
+    simulation_ready = (
+        apply_simulation_receipt.get("ok") is True
+        and apply_simulation_receipt.get("ready_for_postflight") is True
+    )
+    if not simulation_ready:
+        blocked_reasons.append("apply_simulation_receipt_not_ready")
+    if apply_simulation_receipt.get("mutation_attempted") is not False:
+        blocked_reasons.append("apply_simulation_receipt_mutation_state_invalid")
+    if apply_simulation_receipt.get("live_apply_attempted") is not False:
+        blocked_reasons.append("apply_simulation_receipt_live_state_invalid")
+
+    boundary = apply_simulation_receipt.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("fixture_only") is not True
+        or boundary.get("simulation_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("apply_simulation_receipt_boundary_missing")
+
+    region = apply_simulation_receipt.get("region")
+    if not isinstance(region, dict):
+        blocked_reasons.append("apply_simulation_receipt_region_missing")
+        region = {}
+    pre_apply_snapshot = apply_simulation_receipt.get("pre_apply_snapshot")
+    if not isinstance(pre_apply_snapshot, dict):
+        blocked_reasons.append("apply_simulation_receipt_pre_snapshot_missing")
+        pre_apply_snapshot = {}
+    after_snapshot = apply_simulation_receipt.get("after_snapshot")
+    if not isinstance(after_snapshot, dict):
+        blocked_reasons.append("apply_simulation_receipt_after_snapshot_missing")
+        after_snapshot = {}
+
+    verification = apply_simulation_receipt.get("verification")
+    if not isinstance(verification, dict):
+        blocked_reasons.append("apply_simulation_receipt_verification_missing")
+        verification = {}
+    if verification.get("idempotency_verified") is not True:
+        blocked_reasons.append("apply_simulation_receipt_idempotency_unverified")
+
+    source_receipts = {
+        "apply_simulation_receipt_digest": _stable_digest(
+            _without_runtime_fields(apply_simulation_receipt)
+        ),
+    }
+    ready = not blocked_reasons
+    value = {
+        "schema_version": "typed-region-postflight-receipt.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_postflight_attempted": False,
+        "ready_for_restore": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": apply_simulation_receipt.get("operation"),
+        "region": region,
+        "pre_apply_snapshot": pre_apply_snapshot,
+        "after_snapshot": after_snapshot,
+        "verification": verification,
+        "source_receipts": source_receipts,
+        "fixture": {
+            "operation_count": apply_simulation_receipt.get("operation_count"),
+            "operations": apply_simulation_receipt.get("operations", []),
+        },
+        "idempotency": apply_simulation_receipt.get("idempotency", {}),
+        "restore_required": True,
+        "restore_strategy": apply_simulation_receipt.get(
+            "restore_strategy", "use_preflight_snapshot_path"
+        ),
+        "boundary": {
+            "fixture_only": True,
+            "simulation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+        "receipt_digest": _stable_digest(
+            {
+                "schema_version": "typed-region-postflight-receipt.v1",
+                "source_kind": "typed-region-apply-simulation-receipt.v1",
+                "operation": apply_simulation_receipt.get("operation"),
+                "region": region,
+                "pre_apply_snapshot": pre_apply_snapshot,
+                "after_snapshot": after_snapshot,
+                "verification": verification,
+                "source_receipts": source_receipts,
+            }
+        ),
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
+
+
 def compile_region_restore_receipt(
     *,
     postflight_receipt: dict[str, Any],
