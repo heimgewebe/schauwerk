@@ -182,7 +182,9 @@ binding. The versioned receipt is loadable for later gates while remaining a
 non-closing local evaluation. A local `typed-region-sw003-live-gate-status.v1`
 status receipt may summarize a valid candidate as ready for live acceptance
 review, but it still keeps `ready_for_live_apply=false` and
-`closes_live_sw003_gate=false`. All commands avoid Miro access, avoid provider
+`closes_live_sw003_gate=false`. The status receipt is also loadable for later
+gates and rejects digest drift, live-apply readiness, live-gate closure, and
+invalid local-only boundaries. All commands avoid Miro access, avoid provider
 mutation, do not close Issue #8, and do not themselves create live acceptance.
 
 

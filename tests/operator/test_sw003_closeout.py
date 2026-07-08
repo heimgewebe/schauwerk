@@ -14,6 +14,7 @@ from schauwerk.operator.regions import (
     evaluate_sw003_live_gate_claim,
     load_sw003_closeout_receipt,
     load_sw003_live_gate_evaluation_receipt,
+    load_sw003_live_gate_status_receipt,
     parse_region_declaration,
     required_sw003_live_gate_evidence,
 )
@@ -592,3 +593,107 @@ def test_sw003_live_gate_status_receipt_blocks_requirement_drift() -> None:
     assert result["ok"] is False
     assert result["requirements_digest_matches"] is False
     assert "requirements_digest_mismatch" in result["blocked_reasons"]
+
+
+def _live_gate_status_receipt() -> dict[str, Any]:
+    return compile_sw003_live_gate_status_receipt(
+        evaluation_receipt=_live_gate_evaluation_receipt()
+    )
+
+
+def test_sw003_live_gate_status_receipt_loads_versioned_receipt(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    path = tmp_path / "live-gate-status.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    loaded = load_sw003_live_gate_status_receipt(path)
+
+    assert loaded["schema_version"] == "typed-region-sw003-live-gate-status.v1"
+    assert loaded["ready_for_live_apply"] is False
+    assert loaded["closes_live_sw003_gate"] is False
+
+
+def test_sw003_live_gate_status_receipt_rejects_digest_mismatch(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    receipt["blocked_reasons"] = ["tampered"]
+    path = tmp_path / "live-gate-status-mismatch.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_status_receipt(path)
+    except ValueError as exc:
+        assert "digest mismatch" in str(exc)
+    else:
+        raise AssertionError("mismatched live-gate status digest was accepted")
+
+
+def test_sw003_live_gate_status_receipt_rejects_live_apply_ready(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    receipt["ready_for_live_apply"] = True
+    receipt.pop("status_digest")
+    receipt["status_digest"] = _stable_digest(
+        {key: item for key, item in receipt.items() if key != "output_path"}
+    )
+    path = tmp_path / "live-gate-status-live-ready.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_status_receipt(path)
+    except ValueError as exc:
+        assert "must not enable live apply" in str(exc)
+    else:
+        raise AssertionError("live-apply-ready status receipt was accepted")
+
+
+def test_sw003_live_gate_status_receipt_rejects_closing_status(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    receipt["closes_live_sw003_gate"] = True
+    receipt.pop("status_digest")
+    receipt["status_digest"] = _stable_digest(
+        {key: item for key, item in receipt.items() if key != "output_path"}
+    )
+    path = tmp_path / "live-gate-status-closing.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_status_receipt(path)
+    except ValueError as exc:
+        assert "must not close SW-003" in str(exc)
+    else:
+        raise AssertionError("closing live-gate status receipt was accepted")
+
+
+def test_sw003_live_gate_status_receipt_rejects_invalid_source_digest(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    receipt["source_receipts"]["live_gate_evaluation_digest"] = "not-a-digest"
+    receipt.pop("status_digest")
+    receipt["status_digest"] = _stable_digest(
+        {key: item for key, item in receipt.items() if key != "output_path"}
+    )
+    path = tmp_path / "live-gate-status-invalid-source.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_status_receipt(path)
+    except ValueError as exc:
+        assert "lowercase hex digest" in str(exc)
+    else:
+        raise AssertionError("invalid source digest was accepted")
+
+
+def test_sw003_live_gate_status_receipt_rejects_boundary_drift(tmp_path) -> None:
+    receipt = _live_gate_status_receipt()
+    receipt["boundary"]["local_status_only"] = False
+    receipt.pop("status_digest")
+    receipt["status_digest"] = _stable_digest(
+        {key: item for key, item in receipt.items() if key != "output_path"}
+    )
+    path = tmp_path / "live-gate-status-boundary-drift.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_status_receipt(path)
+    except ValueError as exc:
+        assert "invalid boundary" in str(exc)
+    else:
+        raise AssertionError("status receipt boundary drift was accepted")

@@ -366,6 +366,66 @@ def compile_sw003_live_gate_status_receipt(
     return value
 
 
+def load_sw003_live_gate_status_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-003 live-gate status receipt")
+    if not isinstance(raw, dict):
+        raise ValueError("SW-003 live-gate status receipt must contain an object")
+    if raw.get("schema_version") != LIVE_GATE_STATUS_SCHEMA_VERSION:
+        raise ValueError("SW-003 live-gate status receipt has an unsupported schema")
+    digest = raw.get("status_digest")
+    if not isinstance(digest, str):
+        raise ValueError("SW-003 live-gate status receipt lacks status_digest")
+    _validate_digest(digest, label="sw003.live_gate_status.status_digest")
+    digest_input = {
+        key: value
+        for key, value in raw.items()
+        if key not in {"status_digest", "output_path"}
+    }
+    if digest != _stable_digest(digest_input):
+        raise ValueError("SW-003 live-gate status receipt digest mismatch")
+    if raw.get("mutation_attempted") is not False:
+        raise ValueError("SW-003 live-gate status receipt has invalid mutation state")
+    if raw.get("live_miro_access_attempted") is not False:
+        raise ValueError("SW-003 live-gate status receipt has invalid live access state")
+    if raw.get("closes_live_sw003_gate") is not False:
+        raise ValueError("SW-003 live-gate status receipt must not close SW-003")
+    if raw.get("creates_live_acceptance") is not False:
+        raise ValueError("SW-003 live-gate status receipt must not create live acceptance")
+    if raw.get("ready_for_live_apply") is not False:
+        raise ValueError("SW-003 live-gate status receipt must not enable live apply")
+    if raw.get("ok") is not raw.get("ready_for_live_acceptance_review"):
+        raise ValueError("SW-003 live-gate status receipt has inconsistent review state")
+    source_receipts = raw.get("source_receipts")
+    if not isinstance(source_receipts, dict):
+        raise ValueError("SW-003 live-gate status receipt lacks source receipts")
+    for key in (
+        "live_gate_evaluation_digest",
+        "evidence_input_digest",
+        "requirements_digest",
+    ):
+        source_digest = source_receipts.get(key)
+        if not isinstance(source_digest, str):
+            raise ValueError(f"SW-003 live-gate status receipt lacks {key}")
+        _validate_digest(source_digest, label=f"sw003.live_gate_status.{key}")
+    live_apply_gate = raw.get("live_apply_gate")
+    if (
+        not isinstance(live_apply_gate, dict)
+        or live_apply_gate.get("ready_for_live_apply") is not False
+        or live_apply_gate.get("blocked_reasons") != ["sw003_live_gate_status_only"]
+    ):
+        raise ValueError("SW-003 live-gate status receipt has invalid live apply gate")
+    boundary = raw.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("local_status_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+        or boundary.get("does_not_close_issue_8") is not True
+    ):
+        raise ValueError("SW-003 live-gate status receipt has invalid boundary")
+    return raw
+
+
 def _verified(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> bool:
     verified = value.get(key) is True
     if not verified:
