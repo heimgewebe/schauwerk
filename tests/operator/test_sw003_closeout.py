@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from schauwerk.operator.receipts import _stable_digest, _without_runtime_fields
@@ -11,6 +12,7 @@ from schauwerk.operator.regions import (
     compile_sw003_closeout_receipt,
     evaluate_sw003_live_gate_claim,
     load_sw003_closeout_receipt,
+    load_sw003_live_gate_evaluation_receipt,
     parse_region_declaration,
     required_sw003_live_gate_evidence,
 )
@@ -373,7 +375,6 @@ def test_sw003_live_gate_claim_blocks_and_sanitizes_provider_identifiers() -> No
     )
 
 
-
 def test_sw003_live_gate_claim_never_echoes_invalid_digest_provider_data() -> None:
     claim = complete_live_gate_claim()
     claim["live_create_evidence_digest"] = "https://miro.com/app/board/private-id"
@@ -425,3 +426,91 @@ def test_sw003_closeout_receipt_rejects_invalid_embedded_live_gate_claim() -> No
     assert result["live_gate"]["candidate_closes_live_sw003_gate"] is False
     assert "live_gate_claim_not_allowed_in_fixture_closeout" in result["blocked_reasons"]
     assert "live_gate_claim_invalid_in_fixture_closeout" in result["blocked_reasons"]
+
+
+def test_sw003_live_gate_evaluation_receipt_writes_and_loads(tmp_path) -> None:
+    receipt = evaluate_sw003_live_gate_claim(complete_live_gate_claim())
+    receipt.update(
+        {
+            "schema_version": "typed-region-sw003-live-gate-evaluation.v1",
+            "evidence_input_digest": "1" * 64,
+            "requirements_digest": "2" * 64,
+            "mutation_attempted": False,
+            "live_miro_access_attempted": False,
+            "closes_live_sw003_gate": False,
+            "creates_live_acceptance": False,
+            "boundary": {
+                "local_evaluation_only": True,
+                "no_miro_mutation": True,
+                "no_provider_ids_returned": True,
+                "does_not_close_issue_8": True,
+            },
+        }
+    )
+    receipt["evaluation_digest"] = _stable_digest(receipt)
+    path = tmp_path / "live-gate-evaluation.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    loaded = load_sw003_live_gate_evaluation_receipt(path)
+
+    assert loaded["schema_version"] == "typed-region-sw003-live-gate-evaluation.v1"
+    assert loaded["mutation_attempted"] is False
+    assert loaded["closes_live_sw003_gate"] is False
+
+
+def test_sw003_live_gate_evaluation_receipt_rejects_unsupported_schema(tmp_path) -> None:
+    path = tmp_path / "wrong-live-gate-evaluation.json"
+    path.write_text(json.dumps({"schema_version": "wrong"}), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_evaluation_receipt(path)
+    except ValueError as exc:
+        assert "unsupported schema" in str(exc)
+    else:
+        raise AssertionError("unsupported live-gate evaluation schema was accepted")
+
+
+def test_sw003_live_gate_evaluation_receipt_rejects_closing_claim(tmp_path) -> None:
+    receipt = {
+        "schema_version": "typed-region-sw003-live-gate-evaluation.v1",
+        "evidence_input_digest": "1" * 64,
+        "requirements_digest": "2" * 64,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": True,
+    }
+    receipt["evaluation_digest"] = _stable_digest(receipt)
+    path = tmp_path / "closing-live-gate-evaluation.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_evaluation_receipt(path)
+    except ValueError as exc:
+        assert "must not close SW-003" in str(exc)
+    else:
+        raise AssertionError("closing live-gate evaluation receipt was accepted")
+
+
+def test_sw003_live_gate_evaluation_receipt_rejects_digest_mismatch(tmp_path) -> None:
+    receipt = evaluate_sw003_live_gate_claim(complete_live_gate_claim())
+    receipt.update(
+        {
+            "schema_version": "typed-region-sw003-live-gate-evaluation.v1",
+            "evidence_input_digest": "1" * 64,
+            "requirements_digest": "2" * 64,
+            "mutation_attempted": False,
+            "live_miro_access_attempted": False,
+            "closes_live_sw003_gate": False,
+            "creates_live_acceptance": False,
+        }
+    )
+    receipt["evaluation_digest"] = "3" * 64
+    path = tmp_path / "live-gate-evaluation-mismatch.json"
+    path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_evaluation_receipt(path)
+    except ValueError as exc:
+        assert "digest mismatch" in str(exc)
+    else:
+        raise AssertionError("mismatched live-gate evaluation digest was accepted")

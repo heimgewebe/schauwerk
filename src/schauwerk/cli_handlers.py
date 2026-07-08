@@ -42,6 +42,7 @@ from .operator.regions import (
     load_sw003_closeout_evidence,
     required_sw003_live_gate_evidence,
 )
+from .operator.sw003_closeout import LIVE_GATE_EVALUATION_SCHEMA_VERSION
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
@@ -371,7 +372,7 @@ def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[
     live_gate_evidence = load_sw003_closeout_evidence(Path(evidence))
     requirements = required_sw003_live_gate_evidence()
     result = evaluate_sw003_live_gate_claim(live_gate_evidence)
-    result["schema_version"] = "typed-region-sw003-live-gate-evaluation.v1"
+    result["schema_version"] = LIVE_GATE_EVALUATION_SCHEMA_VERSION
     result["evidence_input_digest"] = _stable_digest(live_gate_evidence)
     result["requirements_digest"] = _stable_digest(requirements)
     result["mutation_attempted"] = False

@@ -12,6 +12,7 @@ from schauwerk.surfaces.miro.board_registry import validate_alias
 from schauwerk.surfaces.miro.change_control import validate_marker
 
 SCHEMA_VERSION = "typed-region-sw003-closeout-receipt.v1"
+LIVE_GATE_EVALUATION_SCHEMA_VERSION = "typed-region-sw003-live-gate-evaluation.v1"
 _VERIFICATION_DIGEST_FIELDS = (
     "create_evidence_digest",
     "read_evidence_digest",
@@ -263,6 +264,33 @@ def load_sw003_closeout_receipt(path: Path) -> dict[str, Any]:
         raise ValueError("SW-003 closeout receipt must contain an object")
     if raw.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("SW-003 closeout receipt has an unsupported schema")
+    return raw
+
+
+def load_sw003_live_gate_evaluation_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-003 live-gate evaluation receipt")
+    if not isinstance(raw, dict):
+        raise ValueError("SW-003 live-gate evaluation receipt must contain an object")
+    if raw.get("schema_version") != LIVE_GATE_EVALUATION_SCHEMA_VERSION:
+        raise ValueError("SW-003 live-gate evaluation receipt has an unsupported schema")
+    for key in ("evidence_input_digest", "requirements_digest", "evaluation_digest"):
+        digest = raw.get(key)
+        if not isinstance(digest, str):
+            raise ValueError(f"SW-003 live-gate evaluation receipt lacks {key}")
+        _validate_digest(digest, label=f"sw003.live_gate_evaluation.{key}")
+    digest_input = {
+        key: value
+        for key, value in raw.items()
+        if key not in {"evaluation_digest", "output_path"}
+    }
+    if raw["evaluation_digest"] != _stable_digest(digest_input):
+        raise ValueError("SW-003 live-gate evaluation receipt digest mismatch")
+    if raw.get("mutation_attempted") is not False:
+        raise ValueError("SW-003 live-gate evaluation receipt has invalid mutation state")
+    if raw.get("live_miro_access_attempted") is not False:
+        raise ValueError("SW-003 live-gate evaluation receipt has invalid live access state")
+    if raw.get("closes_live_sw003_gate") is not False:
+        raise ValueError("SW-003 live-gate evaluation receipt must not close SW-003")
     return raw
 
 
