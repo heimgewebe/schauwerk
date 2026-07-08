@@ -185,3 +185,35 @@ def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
     }
+
+
+def test_sw003_live_gate_cli_does_not_echo_provider_identifiers(tmp_path, capsys) -> None:
+    evidence = _complete_live_gate_claim()
+    evidence["cleanup_verified"] = False
+    evidence["cleanup_boundary_accepted"] = True
+    evidence["cleanup_boundary_reason"] = "https://miro.com/app/board/private-id"
+    evidence_path = tmp_path / "live-gate-evidence.json"
+    output_path = tmp_path / "live-gate-evaluation.json"
+    _write_json(evidence_path, evidence)
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            str(evidence_path),
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout = capsys.readouterr().out
+    written = output_path.read_text(encoding="utf-8")
+    assert "provider_identifier_present_in_live_gate_claim" in stdout
+    assert "cleanup_boundary_reason_unsafe" in stdout
+    assert "miro.com" not in stdout
+    assert "private-id" not in stdout
+    assert "miro.com" not in written
+    assert "private-id" not in written
