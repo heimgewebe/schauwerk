@@ -344,3 +344,71 @@ def test_sw003_live_gate_template_evidence_fails_closed_when_evaluated(tmp_path,
     assert "evidence_live_create_attempted_missing_or_false" in evaluation[
         "blocked_reasons"
     ]
+
+
+def test_sw003_live_gate_status_cli_writes_local_status_receipt(tmp_path, capsys) -> None:
+    evidence_path = tmp_path / "live-gate-evidence.json"
+    evaluation_path = tmp_path / "live-gate-evaluation.json"
+    status_path = tmp_path / "live-gate-status.json"
+    evidence = _complete_live_gate_claim()
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            str(evidence_path),
+            "--output",
+            str(evaluation_path),
+            "--json",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-status",
+            str(evaluation_path),
+            "--output",
+            str(status_path),
+            "--json",
+        ]
+    ) == 0
+
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(status_path.read_text(encoding="utf-8"))
+    assert stdout_receipt == written
+    assert written["schema_version"] == "typed-region-sw003-live-gate-status.v1"
+    assert written["ok"] is True
+    assert written["ready_for_live_acceptance_review"] is True
+    assert written["ready_for_live_apply"] is False
+    assert written["closes_live_sw003_gate"] is False
+    assert written["creates_live_acceptance"] is False
+    assert written["mutation_attempted"] is False
+    assert written["live_miro_access_attempted"] is False
+    assert written["live_apply_gate"] == {
+        "ready_for_live_apply": False,
+        "blocked_reasons": ["sw003_live_gate_status_only"],
+    }
+    assert "miro.com" not in status_path.read_text(encoding="utf-8")
+
+
+def test_sw003_live_gate_status_cli_rejects_invalid_evaluation_schema(tmp_path, capsys) -> None:
+    evaluation_path = tmp_path / "wrong-live-gate-evaluation.json"
+    evaluation_path.write_text(json.dumps({"schema_version": "wrong"}), encoding="utf-8")
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-status",
+            str(evaluation_path),
+            "--json",
+        ]
+    )
+
+    assert code == 2
+    assert "unsupported schema" in capsys.readouterr().err
