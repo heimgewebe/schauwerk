@@ -170,7 +170,7 @@ Do not close the SW-003 tracker item from fixture-only closeout alone. The remai
 
 ## Epistemic gaps
 
-- The SW-003 tracker discussion still needs a fresh comment explaining that fixture-only closeout is not live acceptance.
+- The SW-003 tracker discussion has a 2026-07-08 post-PR-51 comment explaining that fixture-only closeout and SW-009 simulation closeout are not live acceptance.
 - The available Miro MCP tool catalogue must be checked before claiming remote cleanup.
 - A true update operation must distinguish updating marked existing objects from adding a second marked layout.
 
