@@ -10,6 +10,7 @@ from schauwerk.operator.regions import (
     compile_region_postflight_receipt,
     compile_region_restore_receipt,
     compile_sw003_closeout_receipt,
+    compile_sw003_live_gate_review_packet,
     compile_sw003_live_gate_status_receipt,
     evaluate_sw003_live_gate_claim,
     load_sw003_closeout_receipt,
@@ -697,3 +698,70 @@ def test_sw003_live_gate_status_receipt_rejects_boundary_drift(tmp_path) -> None
         assert "invalid boundary" in str(exc)
     else:
         raise AssertionError("status receipt boundary drift was accepted")
+
+
+def test_sw003_live_gate_review_packet_writes_local_packet(tmp_path) -> None:
+    output = tmp_path / "review-packet.json"
+    result = compile_sw003_live_gate_review_packet(
+        status_receipt=_live_gate_status_receipt(), output_path=output
+    )
+    written = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result == written
+    assert result["schema_version"] == "typed-region-sw003-live-gate-review-packet.v1"
+    assert result["ok"] is True
+    assert result["ready_for_live_acceptance_review"] is True
+    assert result["ready_for_live_apply"] is False
+    assert result["closes_live_sw003_gate"] is False
+    assert result["creates_live_acceptance"] is False
+    assert result["live_apply_gate"] == {
+        "ready_for_live_apply": False,
+        "blocked_reasons": ["sw003_live_gate_review_packet_only"],
+    }
+    status = _live_gate_status_receipt()
+    assert result["status_blocked_reasons"] == []
+    assert result["source_receipts"]["live_gate_status_digest"] == status["status_digest"]
+    assert result["review_scope"] == {
+        "human_review_required": True,
+        "review_subject": "sw003_live_gate_candidate",
+        "acceptance_review_only": True,
+        "review_may_not_mutate_miro": True,
+        "review_may_not_close_issue_8": True,
+    }
+    assert len(result["review_packet_digest"]) == 64
+    digest_input = {
+        key: item
+        for key, item in result.items()
+        if key not in {"output_path", "review_packet_digest"}
+    }
+    assert result["review_packet_digest"] == _stable_digest(digest_input)
+
+
+def test_sw003_live_gate_review_packet_blocks_unready_status() -> None:
+    status = compile_sw003_live_gate_status_receipt(
+        evaluation_receipt=_live_gate_evaluation_receipt(claim_valid=False)
+    )
+
+    result = compile_sw003_live_gate_review_packet(status_receipt=status)
+
+    assert result["ok"] is False
+    assert result["ready_for_live_acceptance_review"] is False
+    assert result["ready_for_live_apply"] is False
+    assert result["blocked_reasons"] == ["live_gate_status_not_ready_for_review"]
+    assert result["status_blocked_reasons"] == ["live_gate_candidate_invalid"]
+
+
+def test_sw003_live_gate_review_packet_rejects_tampered_status() -> None:
+    status = _live_gate_status_receipt()
+    status["ready_for_live_apply"] = True
+    status.pop("status_digest")
+    status["status_digest"] = _stable_digest(
+        {key: item for key, item in status.items() if key != "output_path"}
+    )
+
+    try:
+        compile_sw003_live_gate_review_packet(status_receipt=status)
+    except ValueError as exc:
+        assert "must not enable live apply" in str(exc)
+    else:
+        raise AssertionError("tampered live-apply-ready status was accepted")

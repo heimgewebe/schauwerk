@@ -964,6 +964,42 @@ def test_runner_dispatches_region_sw003_live_gate_status(monkeypatch, capsys) ->
     assert result["ready_for_live_apply"] is False
 
 
+def test_runner_dispatches_region_sw003_live_gate_review_packet(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_review_packet(*, status_receipt, output):
+        observed.update(status_receipt=status_receipt, output=output)
+        return {
+            "schema_version": "typed-region-sw003-live-gate-review-packet.v1",
+            "ready_for_live_apply": False,
+            "closes_live_sw003_gate": False,
+        }
+
+    monkeypatch.setattr(
+        runner, "handle_region_sw003_live_gate_review_packet", fake_review_packet
+    )
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-review-packet",
+            "live-gate-status.json",
+            "--output",
+            "review-packet.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "status_receipt": "live-gate-status.json",
+        "output": "review-packet.json",
+    }
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw003-live-gate-review-packet.v1"
+    assert result["ready_for_live_apply"] is False
+
+
 def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, capsys) -> None:
     observed = {}
 

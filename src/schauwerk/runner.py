@@ -33,6 +33,7 @@ from .cli_handlers import (
     handle_region_sw003_closeout,
     handle_region_sw003_live_gate,
     handle_region_sw003_live_gate_requirements,
+    handle_region_sw003_live_gate_review_packet,
     handle_region_sw003_live_gate_status,
     handle_region_sw003_live_gate_template,
     handle_snapshot,
@@ -191,6 +192,14 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "region" and args.region_command == "sw003-live-gate-status":
             result = handle_region_sw003_live_gate_status(
                 evaluation_receipt=args.evaluation_receipt,
+                output=args.output,
+            )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw003-live-gate-review-packet"
+        ):
+            result = handle_region_sw003_live_gate_review_packet(
+                status_receipt=args.status_receipt,
                 output=args.output,
             )
         elif (
