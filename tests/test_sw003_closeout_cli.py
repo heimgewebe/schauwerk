@@ -173,6 +173,7 @@ def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(
     assert code == 0
     stdout_receipt = json.loads(capsys.readouterr().out)
     written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert stdout_receipt == written
     assert stdout_receipt["claim_valid"] is True
     assert written["candidate_closes_live_sw003_gate"] is True
     assert written["closes_live_sw003_gate"] is False
@@ -242,6 +243,9 @@ def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsy
     )
     assert "live_create_attempted" in required_keys
     assert "cleanup_verified_or_boundary_accepted" in required_keys
+    assert stdout_receipt == written
+    assert isinstance(written["requirements_digest"], str)
+    assert len(written["requirements_digest"]) == 64
     assert written["mutation_attempted"] is False
     assert written["live_miro_access_attempted"] is False
     assert written["closes_live_sw003_gate"] is False
