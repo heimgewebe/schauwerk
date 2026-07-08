@@ -890,3 +890,37 @@ def test_runner_dispatches_region_restore_receipt(monkeypatch, capsys) -> None:
     assert json.loads(capsys.readouterr().out)["schema_version"] == (
         "typed-region-restore-receipt.v1"
     )
+
+
+def test_runner_dispatches_region_sw003_live_gate(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_live_gate(*, evidence, output):
+        observed.update(evidence=evidence, output=output)
+        return {
+            "claim_present": True,
+            "claim_valid": False,
+            "mutation_attempted": False,
+            "closes_live_sw003_gate": False,
+        }
+
+    monkeypatch.setattr(runner, "handle_region_sw003_live_gate", fake_live_gate)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            "live-gate-evidence.json",
+            "--output",
+            "live-gate-evaluation.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "evidence": "live-gate-evidence.json",
+        "output": "live-gate-evaluation.json",
+    }
+    result = json.loads(capsys.readouterr().out)
+    assert result["mutation_attempted"] is False

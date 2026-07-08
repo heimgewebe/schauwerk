@@ -163,6 +163,16 @@ This plan is modeled in code by a pure local live-gate evaluator. It performs no
 Miro access and no mutation. Its purpose is to block premature live-gate claims
 until a later dedicated live proof provides complete, sanitized evidence.
 
+The local evaluator is exposed through:
+
+```bash
+schauwerk miro region sw003-live-gate live-gate-evidence.json --json
+```
+
+This command evaluates a sanitized evidence file and may identify a valid
+candidate live-gate claim, but it does not talk to Miro, does not mutate provider
+state, does not close Issue #8, and does not itself create live acceptance.
+
 
 ## Decision
 

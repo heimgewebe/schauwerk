@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from .operator.regions import (
     compile_region_simulation_closeout_receipt,
     compile_region_simulation_postflight_receipt,
     compile_sw003_closeout_receipt,
+    evaluate_sw003_live_gate_claim,
     load_fixture_operations,
     load_region_apply_receipt,
     load_region_apply_scaffold,
@@ -347,6 +349,32 @@ def handle_region_sw003_closeout(
         marker=marker,
         output_path=Path(output) if output else None,
     )
+
+
+def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[str, Any]:
+    live_gate_evidence = load_sw003_closeout_evidence(Path(evidence))
+    result = evaluate_sw003_live_gate_claim(live_gate_evidence)
+    result["mutation_attempted"] = False
+    result["live_miro_access_attempted"] = False
+    result["closes_live_sw003_gate"] = False
+    result["creates_live_acceptance"] = False
+    result["boundary"] = {
+        "local_evaluation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "does_not_close_issue_8": True,
+    }
+    if output is not None:
+        destination = Path(output).expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        result["output_path"] = str(destination)
+    else:
+        result["output_path"] = None
+    return result
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
