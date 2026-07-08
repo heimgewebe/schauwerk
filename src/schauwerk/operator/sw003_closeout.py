@@ -13,6 +13,7 @@ from schauwerk.surfaces.miro.change_control import validate_marker
 
 SCHEMA_VERSION = "typed-region-sw003-closeout-receipt.v1"
 LIVE_GATE_EVALUATION_SCHEMA_VERSION = "typed-region-sw003-live-gate-evaluation.v1"
+LIVE_GATE_STATUS_SCHEMA_VERSION = "typed-region-sw003-live-gate-status.v1"
 _VERIFICATION_DIGEST_FIELDS = (
     "create_evidence_digest",
     "read_evidence_digest",
@@ -267,8 +268,7 @@ def load_sw003_closeout_receipt(path: Path) -> dict[str, Any]:
     return raw
 
 
-def load_sw003_live_gate_evaluation_receipt(path: Path) -> dict[str, Any]:
-    raw = _load_json_or_yaml(path, label="SW-003 live-gate evaluation receipt")
+def _validate_sw003_live_gate_evaluation_receipt(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("SW-003 live-gate evaluation receipt must contain an object")
     if raw.get("schema_version") != LIVE_GATE_EVALUATION_SCHEMA_VERSION:
@@ -292,6 +292,78 @@ def load_sw003_live_gate_evaluation_receipt(path: Path) -> dict[str, Any]:
     if raw.get("closes_live_sw003_gate") is not False:
         raise ValueError("SW-003 live-gate evaluation receipt must not close SW-003")
     return raw
+
+
+def load_sw003_live_gate_evaluation_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-003 live-gate evaluation receipt")
+    return _validate_sw003_live_gate_evaluation_receipt(raw)
+
+
+def compile_sw003_live_gate_status_receipt(
+    *, evaluation_receipt: dict[str, Any], output_path: Path | None = None
+) -> dict[str, Any]:
+    evaluation = _validate_sw003_live_gate_evaluation_receipt(evaluation_receipt)
+    blocked_reasons: list[str] = []
+    requirements_digest = _stable_digest(required_sw003_live_gate_evidence())
+    requirements_digest_matches = evaluation.get("requirements_digest") == requirements_digest
+    if not requirements_digest_matches:
+        blocked_reasons.append("requirements_digest_mismatch")
+    candidate_valid = (
+        evaluation.get("claim_valid") is True
+        and evaluation.get("candidate_claim_valid") is True
+        and evaluation.get("candidate_closes_live_sw003_gate") is True
+    )
+    if not candidate_valid:
+        blocked_reasons.append("live_gate_candidate_invalid")
+    ready_for_live_acceptance_review = not blocked_reasons
+    source_receipts = {
+        "live_gate_evaluation_digest": evaluation["evaluation_digest"],
+        "evidence_input_digest": evaluation["evidence_input_digest"],
+        "requirements_digest": evaluation["requirements_digest"],
+    }
+    value = {
+        "schema_version": LIVE_GATE_STATUS_SCHEMA_VERSION,
+        "ok": ready_for_live_acceptance_review,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "ready_for_live_acceptance_review": ready_for_live_acceptance_review,
+        "ready_for_live_apply": False,
+        "candidate_claim_valid": candidate_valid,
+        "candidate_closes_live_sw003_gate": evaluation.get(
+            "candidate_closes_live_sw003_gate"
+        )
+        is True,
+        "requirements_digest_matches": requirements_digest_matches,
+        "blocked_reasons": blocked_reasons,
+        "source_receipts": source_receipts,
+        "live_apply_gate": {
+            "ready_for_live_apply": False,
+            "blocked_reasons": ["sw003_live_gate_status_only"],
+        },
+        "boundary": {
+            "local_status_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    value["status_digest"] = _stable_digest(
+        {key: item for key, item in value.items() if key != "output_path"}
+    )
+    if output_path is not None:
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return value
 
 
 def _verified(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> bool:
