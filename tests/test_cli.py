@@ -924,3 +924,34 @@ def test_runner_dispatches_region_sw003_live_gate(monkeypatch, capsys) -> None:
     }
     result = json.loads(capsys.readouterr().out)
     assert result["mutation_attempted"] is False
+
+
+def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_requirements(*, output):
+        observed.update(output=output)
+        return {
+            "schema_version": "typed-region-sw003-live-gate-requirements.v1",
+            "ok": True,
+            "requirements": [],
+        }
+
+    monkeypatch.setattr(
+        runner, "handle_region_sw003_live_gate_requirements", fake_requirements
+    )
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-requirements",
+            "--output",
+            "requirements.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {"output": "requirements.json"}
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw003-live-gate-requirements.v1"

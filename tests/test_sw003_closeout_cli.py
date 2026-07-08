@@ -217,3 +217,38 @@ def test_sw003_live_gate_cli_does_not_echo_provider_identifiers(tmp_path, capsys
     assert "private-id" not in stdout
     assert "miro.com" not in written
     assert "private-id" not in written
+
+
+def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsys) -> None:
+    output_path = tmp_path / "live-gate-requirements.json"
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-requirements",
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    required_keys = {item["key"] for item in written["requirements"]}
+    assert stdout_receipt["schema_version"] == (
+        "typed-region-sw003-live-gate-requirements.v1"
+    )
+    assert "live_create_attempted" in required_keys
+    assert "cleanup_verified_or_boundary_accepted" in required_keys
+    assert written["mutation_attempted"] is False
+    assert written["live_miro_access_attempted"] is False
+    assert written["closes_live_sw003_gate"] is False
+    assert written["creates_live_acceptance"] is False
+    assert written["boundary"] == {
+        "local_evaluation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "does_not_close_issue_8": True,
+    }

@@ -39,6 +39,7 @@ from .operator.regions import (
     load_region_restore_receipt,
     load_snapshot_mapping_receipt,
     load_sw003_closeout_evidence,
+    required_sw003_live_gate_evidence,
 )
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -363,6 +364,35 @@ def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[
         "no_miro_mutation": True,
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
+    }
+    if output is not None:
+        destination = Path(output).expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        result["output_path"] = str(destination)
+    else:
+        result["output_path"] = None
+    return result
+
+
+def handle_region_sw003_live_gate_requirements(*, output: str | None) -> dict[str, Any]:
+    result = {
+        "schema_version": "typed-region-sw003-live-gate-requirements.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "requirements": required_sw003_live_gate_evidence(),
+        "boundary": {
+            "local_evaluation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
     }
     if output is not None:
         destination = Path(output).expanduser().absolute()
