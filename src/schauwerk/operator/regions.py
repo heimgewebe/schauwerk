@@ -331,6 +331,14 @@ def load_sw003_closeout_receipt(path: Path) -> dict[str, Any]:
     return _impl(path)
 
 
+def load_sw003_live_gate_evaluation_receipt(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import (
+        load_sw003_live_gate_evaluation_receipt as _impl,
+    )
+
+    return _impl(path)
+
+
 def compile_sw003_closeout_receipt(
     *,
     restore_receipt: dict[str, Any],

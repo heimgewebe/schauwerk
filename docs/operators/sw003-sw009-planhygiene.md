@@ -176,8 +176,9 @@ sanitized non-claim evidence template. The third evaluates a sanitized evidence
 file and may identify a valid candidate live-gate claim. Its local evaluation
 receipt uses `typed-region-sw003-live-gate-evaluation.v1` and includes an
 evidence input digest, requirements digest, and evaluation digest for review
-binding. All commands avoid Miro access, avoid provider mutation, do not close
-Issue #8, and do not themselves create live acceptance.
+binding. The versioned receipt is loadable for later gates while remaining a
+non-closing local evaluation. All commands avoid Miro access, avoid provider
+mutation, do not close Issue #8, and do not themselves create live acceptance.
 
 
 ## Decision
