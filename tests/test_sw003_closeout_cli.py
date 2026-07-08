@@ -256,3 +256,34 @@ def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsy
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
     }
+
+
+def test_sw003_live_gate_template_cli_writes_non_claim_template(tmp_path, capsys) -> None:
+    output_path = tmp_path / "live-gate-template.json"
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-template",
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert stdout_receipt == written
+    assert written["schema_version"] == "typed-region-sw003-live-gate-template.v1"
+    assert written["template_only"] is True
+    assert written["closes_live_sw003_gate"] is False
+    assert written["creates_live_acceptance"] is False
+    assert written["evidence_template"]["claim_closes_live_sw003_gate"] is False
+    assert written["evidence_template"]["board_scope"] == {
+        "surface_alias": "",
+        "allowlisted": False,
+    }
+    assert len(written["evidence_template_digest"]) == 64
+    assert "miro.com" not in output_path.read_text(encoding="utf-8")

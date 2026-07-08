@@ -167,13 +167,15 @@ The local evaluator is exposed through:
 
 ```bash
 schauwerk miro region sw003-live-gate-requirements --json
+schauwerk miro region sw003-live-gate-template --json
 schauwerk miro region sw003-live-gate live-gate-evidence.json --json
 ```
 
-The first command emits the local evidence checklist. The second evaluates a
-sanitized evidence file and may identify a valid candidate live-gate claim. Both
-commands avoid Miro access, avoid provider mutation, do not close Issue #8, and
-do not themselves create live acceptance.
+The first command emits the local evidence checklist. The second emits a
+sanitized non-claim evidence template. The third evaluates a sanitized evidence
+file and may identify a valid candidate live-gate claim. All commands avoid Miro
+access, avoid provider mutation, do not close Issue #8, and do not themselves
+create live acceptance.
 
 
 ## Decision
