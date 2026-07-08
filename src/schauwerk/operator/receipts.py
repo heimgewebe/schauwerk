@@ -84,6 +84,51 @@ def _without_runtime_fields(value: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _fixture_boundary() -> dict[str, bool]:
+    return {
+        "fixture_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+
+
+def _simulation_boundary() -> dict[str, bool]:
+    return {
+        **_fixture_boundary(),
+        "simulation_only": True,
+    }
+
+
+def _sw009_simulation_closeout_boundary() -> dict[str, bool]:
+    return {
+        **_simulation_boundary(),
+        "does_not_close_sw003_live_gate": True,
+    }
+
+
+def _has_simulation_boundary(receipt: dict[str, Any]) -> bool:
+    boundary = receipt.get("boundary")
+    return (
+        isinstance(boundary, dict)
+        and boundary.get("fixture_only") is True
+        and boundary.get("simulation_only") is True
+        and boundary.get("no_miro_mutation") is True
+        and boundary.get("no_provider_ids_returned") is True
+    )
+
+
+def _is_sha256_digest(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _receipt_digest(value: dict[str, Any]) -> str:
+    return _stable_digest(_without_runtime_fields(value))
+
+
 def _required_fixture_text(data: dict[str, Any], key: str) -> str:
     value = data.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -499,11 +544,7 @@ def compile_region_postflight_receipt(
         "idempotency": apply_receipt.get("idempotency", {}),
         "restore_required": True,
         "restore_strategy": apply_receipt.get("restore_strategy", "use_preflight_snapshot_path"),
-        "boundary": {
-            "fixture_only": True,
-            "no_miro_mutation": True,
-            "no_provider_ids_returned": True,
-        },
+        "boundary": _fixture_boundary(),
         "receipt_digest": _stable_digest(
             {
                 "schema_version": "typed-region-postflight-receipt.v1",
@@ -612,12 +653,7 @@ def compile_region_simulation_postflight_receipt(
         "restore_strategy": apply_simulation_receipt.get(
             "restore_strategy", "use_preflight_snapshot_path"
         ),
-        "boundary": {
-            "fixture_only": True,
-            "simulation_only": True,
-            "no_miro_mutation": True,
-            "no_provider_ids_returned": True,
-        },
+        "boundary": _simulation_boundary(),
         "receipt_digest": _stable_digest(
             {
                 "schema_version": "typed-region-postflight-receipt.v1",
@@ -690,18 +726,25 @@ def compile_region_restore_receipt(
         blocked_reasons.append("restored_snapshot_references_not_sanitized")
 
     source_receipts = {
-        "postflight_receipt_digest": _stable_digest(
-            _without_runtime_fields(postflight_receipt)
-        ),
+        "postflight_receipt_digest": _receipt_digest(postflight_receipt),
         "restored_snapshot_digest": _stable_digest(normalized_restored),
     }
-    output_boundary = {
-        "fixture_only": True,
-        "no_miro_mutation": True,
-        "no_provider_ids_returned": True,
-    }
-    if isinstance(boundary, dict) and boundary.get("simulation_only") is True:
-        output_boundary["simulation_only"] = True
+    postflight_source_receipts = postflight_receipt.get("source_receipts")
+    if (
+        isinstance(postflight_source_receipts, dict)
+        and _has_simulation_boundary(postflight_receipt)
+        and _is_sha256_digest(
+            postflight_source_receipts.get("apply_simulation_receipt_digest")
+        )
+    ):
+        source_receipts["apply_simulation_receipt_digest"] = (
+            postflight_source_receipts["apply_simulation_receipt_digest"]
+        )
+    output_boundary = (
+        _simulation_boundary()
+        if _has_simulation_boundary(postflight_receipt)
+        else _fixture_boundary()
+    )
     ready = not blocked_reasons
     value = {
         "schema_version": "typed-region-restore-receipt.v1",
@@ -716,17 +759,8 @@ def compile_region_restore_receipt(
         "restored_snapshot": normalized_restored,
         "source_receipts": source_receipts,
         "boundary": output_boundary,
-        "receipt_digest": _stable_digest(
-            {
-                "schema_version": "typed-region-restore-receipt.v1",
-                "operation": postflight_receipt.get("operation"),
-                "region": postflight_receipt.get("region", {}),
-                "pre_apply_snapshot": pre_apply_snapshot,
-                "restored_snapshot": normalized_restored,
-                "source_receipts": source_receipts,
-            }
-        ),
     }
+    value["receipt_digest"] = _receipt_digest(value)
     if output_path is not None:
         destination = output_path.expanduser().absolute()
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -760,26 +794,33 @@ def compile_region_simulation_closeout_receipt(
     blocked_reasons: list[str] = []
     if restore_receipt.get("schema_version") != "typed-region-restore-receipt.v1":
         blocked_reasons.append("restore_receipt_schema_unsupported")
-    restore_ready = (
-        restore_receipt.get("ok") is True
-        and restore_receipt.get("ready_for_closeout") is True
-    )
-    if not restore_ready:
-        blocked_reasons.append("restore_receipt_not_ready")
+
+    restore_ok = restore_receipt.get("ok") is True
+    restore_ready_for_closeout = restore_receipt.get("ready_for_closeout") is True
+    restore_ready = restore_ok and restore_ready_for_closeout
+    if not restore_ok:
+        blocked_reasons.append("restore_receipt_not_ok")
+    if not restore_ready_for_closeout:
+        blocked_reasons.append("restore_receipt_not_ready_for_closeout")
     if restore_receipt.get("mutation_attempted") is not False:
         blocked_reasons.append("restore_receipt_mutation_state_invalid")
     if restore_receipt.get("live_restore_attempted") is not False:
         blocked_reasons.append("restore_receipt_live_state_invalid")
 
-    boundary = restore_receipt.get("boundary")
-    if (
-        not isinstance(boundary, dict)
-        or boundary.get("fixture_only") is not True
-        or boundary.get("simulation_only") is not True
-        or boundary.get("no_miro_mutation") is not True
-        or boundary.get("no_provider_ids_returned") is not True
-    ):
+    simulation_boundary_valid = _has_simulation_boundary(restore_receipt)
+    if not simulation_boundary_valid:
         blocked_reasons.append("restore_receipt_simulation_boundary_missing")
+
+    restore_source_receipts = restore_receipt.get("source_receipts")
+    if not isinstance(restore_source_receipts, dict):
+        blocked_reasons.append("restore_receipt_source_receipts_missing")
+        restore_source_receipts = {}
+    apply_simulation_receipt_digest = restore_source_receipts.get(
+        "apply_simulation_receipt_digest"
+    )
+    simulation_provenance_valid = _is_sha256_digest(apply_simulation_receipt_digest)
+    if not simulation_provenance_valid:
+        blocked_reasons.append("restore_receipt_simulation_provenance_missing")
 
     pre_apply_snapshot = restore_receipt.get("pre_apply_snapshot")
     if not isinstance(pre_apply_snapshot, dict):
@@ -790,9 +831,23 @@ def compile_region_simulation_closeout_receipt(
         blocked_reasons.append("restore_receipt_restored_snapshot_missing")
         restored_snapshot = {}
 
+    pre_board_alias = pre_apply_snapshot.get("board_alias")
+    restored_board_alias = restored_snapshot.get("board_alias")
+    pre_content_digest = pre_apply_snapshot.get("content_digest")
+    restored_content_digest = restored_snapshot.get("content_digest")
+    pre_item_count = pre_apply_snapshot.get("item_count")
+    restored_item_count = restored_snapshot.get("item_count")
+    item_count_matches = (
+        not isinstance(pre_item_count, int)
+        or restored_item_count == pre_item_count
+    )
     restored_to_pre_apply_snapshot = (
-        restored_snapshot.get("board_alias") == pre_apply_snapshot.get("board_alias")
-        and restored_snapshot.get("content_digest") == pre_apply_snapshot.get("content_digest")
+        isinstance(pre_board_alias, str)
+        and bool(pre_board_alias)
+        and restored_board_alias == pre_board_alias
+        and _is_sha256_digest(pre_content_digest)
+        and restored_content_digest == pre_content_digest
+        and item_count_matches
         and restored_snapshot.get("repeatability_verified") is True
         and restored_snapshot.get("sanitized_references") is True
     )
@@ -800,9 +855,8 @@ def compile_region_simulation_closeout_receipt(
         blocked_reasons.append("restore_receipt_not_restored_to_pre_apply_snapshot")
 
     source_receipts = {
-        "restore_receipt_digest": _stable_digest(
-            _without_runtime_fields(restore_receipt)
-        ),
+        "restore_receipt_digest": _receipt_digest(restore_receipt),
+        "apply_simulation_receipt_digest": apply_simulation_receipt_digest,
     }
     ready = not blocked_reasons
     value = {
@@ -818,30 +872,17 @@ def compile_region_simulation_closeout_receipt(
         "region": restore_receipt.get("region", {}),
         "source_receipts": source_receipts,
         "verification": {
+            "restore_receipt_ok": restore_ok,
+            "restore_receipt_ready_for_closeout": restore_ready_for_closeout,
             "restore_receipt_ready": restore_ready,
+            "simulation_boundary_valid": simulation_boundary_valid,
+            "simulation_provenance_valid": simulation_provenance_valid,
             "restored_to_pre_apply_snapshot": restored_to_pre_apply_snapshot,
         },
         "live_apply_gate": _sw009_live_apply_gate(),
-        "boundary": {
-            "fixture_only": True,
-            "simulation_only": True,
-            "no_miro_mutation": True,
-            "no_provider_ids_returned": True,
-            "does_not_close_sw003_live_gate": True,
-        },
-        "receipt_digest": _stable_digest(
-            {
-                "schema_version": "typed-region-sw009-simulation-closeout-receipt.v1",
-                "operation": restore_receipt.get("operation"),
-                "region": restore_receipt.get("region", {}),
-                "source_receipts": source_receipts,
-                "verification": {
-                    "restore_receipt_ready": restore_ready,
-                    "restored_to_pre_apply_snapshot": restored_to_pre_apply_snapshot,
-                },
-            }
-        ),
+        "boundary": _sw009_simulation_closeout_boundary(),
     }
+    value["receipt_digest"] = _receipt_digest(value)
     if output_path is not None:
         destination = output_path.expanduser().absolute()
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -853,7 +894,6 @@ def compile_region_simulation_closeout_receipt(
     else:
         value["output_path"] = None
     return value
-
 
 def load_region_operation_contract(path: Path) -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label="operation contract")
