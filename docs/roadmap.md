@@ -37,7 +37,7 @@ Read one allowlisted board with pagination, frames, elements, layout information
 
 ## SW-003 — Isolated write proof
 
-**Implementation status:** partial; marker planning, safe failure receipts, typed region receipt chains, a fixture-only SW-003 closeout receipt, and a local live-gate evidence evaluator exist. Live Miro closeout acceptance remains open. See `docs/operators/sw003-sw009-planhygiene.md`.
+**Implementation status:** partial; marker planning, safe failure receipts, typed region receipt chains, a fixture-only SW-003 closeout receipt, local live-gate requirements, a non-claim evidence template, and a local live-gate evidence evaluator exist. Live Miro closeout acceptance remains open. See `docs/operators/sw003-sw009-planhygiene.md`.
 
 Create a clearly marked test frame, create and update test elements, verify IDs and state, prove idempotency, and remove or archive only the identified test scope.
 
@@ -95,9 +95,9 @@ Command graph:
 
 The simulation contract path now has full fixture/simulation-only CLI coverage through `simulation-postflight`, `restore-receipt`, and explicit `simulation-closeout`; the live typed apply path remains blocked by the SW-003 live-gate boundary.
 
-Related blocker: SW-003 closeout proof.
+Related blocker: SW-003 live closeout proof.
 
-Current SW-009 safety boundary: fixture and simulation paths may proceed from a ready preflight, but live typed apply stays blocked until SW-003 live-gate evidence exists.
+Current SW-009 safety boundary: fixture and simulation paths may proceed from a ready preflight, but live typed apply stays blocked until a dedicated SW-003 live closeout proof satisfies the local live-gate requirements without provider identifiers.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 
