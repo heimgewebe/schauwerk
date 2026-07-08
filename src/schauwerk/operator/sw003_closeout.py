@@ -14,6 +14,7 @@ from schauwerk.surfaces.miro.change_control import validate_marker
 SCHEMA_VERSION = "typed-region-sw003-closeout-receipt.v1"
 LIVE_GATE_EVALUATION_SCHEMA_VERSION = "typed-region-sw003-live-gate-evaluation.v1"
 LIVE_GATE_STATUS_SCHEMA_VERSION = "typed-region-sw003-live-gate-status.v1"
+LIVE_GATE_REVIEW_PACKET_SCHEMA_VERSION = "typed-region-sw003-live-gate-review-packet.v1"
 _VERIFICATION_DIGEST_FIELDS = (
     "create_evidence_digest",
     "read_evidence_digest",
@@ -368,6 +369,70 @@ def compile_sw003_live_gate_status_receipt(
 
 def load_sw003_live_gate_status_receipt(path: Path) -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label="SW-003 live-gate status receipt")
+    return _validate_sw003_live_gate_status_receipt(raw)
+
+
+def compile_sw003_live_gate_review_packet(
+    *, status_receipt: dict[str, Any], output_path: Path | None = None
+) -> dict[str, Any]:
+    status = _validate_sw003_live_gate_status_receipt(status_receipt)
+    status_ready = status.get("ready_for_live_acceptance_review") is True
+    status_blocked_reasons = status.get("blocked_reasons")
+    if not isinstance(status_blocked_reasons, list):
+        status_blocked_reasons = ["live_gate_status_blocked_reasons_missing"]
+    blocked_reasons = [] if status_ready else ["live_gate_status_not_ready_for_review"]
+    source_receipts = {
+        **status["source_receipts"],
+        "live_gate_status_digest": status["status_digest"],
+    }
+    value = {
+        "schema_version": LIVE_GATE_REVIEW_PACKET_SCHEMA_VERSION,
+        "ok": status_ready,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "ready_for_live_acceptance_review": status_ready,
+        "ready_for_live_apply": False,
+        "blocked_reasons": blocked_reasons,
+        "status_blocked_reasons": list(status_blocked_reasons),
+        "source_receipts": source_receipts,
+        "review_scope": {
+            "human_review_required": True,
+            "review_subject": "sw003_live_gate_candidate",
+            "acceptance_review_only": True,
+            "review_may_not_mutate_miro": True,
+            "review_may_not_close_issue_8": True,
+        },
+        "live_apply_gate": {
+            "ready_for_live_apply": False,
+            "blocked_reasons": ["sw003_live_gate_review_packet_only"],
+        },
+        "boundary": {
+            "local_review_packet_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    value["review_packet_digest"] = _stable_digest(
+        {key: item for key, item in value.items() if key != "output_path"}
+    )
+    if output_path is not None:
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return value
+
+
+def _validate_sw003_live_gate_status_receipt(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("SW-003 live-gate status receipt must contain an object")
     if raw.get("schema_version") != LIVE_GATE_STATUS_SCHEMA_VERSION:
