@@ -10,6 +10,7 @@ from schauwerk.operator.regions import (
     compile_region_postflight_receipt,
     compile_region_restore_receipt,
     compile_sw003_closeout_receipt,
+    compile_sw003_live_gate_status_receipt,
     evaluate_sw003_live_gate_claim,
     load_sw003_closeout_receipt,
     load_sw003_live_gate_evaluation_receipt,
@@ -514,3 +515,80 @@ def test_sw003_live_gate_evaluation_receipt_rejects_digest_mismatch(tmp_path) ->
         assert "digest mismatch" in str(exc)
     else:
         raise AssertionError("mismatched live-gate evaluation digest was accepted")
+
+
+def _live_gate_evaluation_receipt(claim_valid: bool = True) -> dict[str, Any]:
+    claim = complete_live_gate_claim()
+    if not claim_valid:
+        claim["idempotency_verified"] = False
+    receipt = evaluate_sw003_live_gate_claim(claim)
+    receipt.update(
+        {
+            "schema_version": "typed-region-sw003-live-gate-evaluation.v1",
+            "evidence_input_digest": "1" * 64,
+            "requirements_digest": _stable_digest(required_sw003_live_gate_evidence()),
+            "mutation_attempted": False,
+            "live_miro_access_attempted": False,
+            "closes_live_sw003_gate": False,
+            "creates_live_acceptance": False,
+            "boundary": {
+                "local_evaluation_only": True,
+                "no_miro_mutation": True,
+                "no_provider_ids_returned": True,
+                "does_not_close_issue_8": True,
+            },
+        }
+    )
+    receipt["evaluation_digest"] = _stable_digest(receipt)
+    return receipt
+
+
+def test_sw003_live_gate_status_receipt_summarizes_candidate_without_closing(tmp_path) -> None:
+    output = tmp_path / "live-gate-status.json"
+    result = compile_sw003_live_gate_status_receipt(
+        evaluation_receipt=_live_gate_evaluation_receipt(), output_path=output
+    )
+    written = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result == written
+    assert result["schema_version"] == "typed-region-sw003-live-gate-status.v1"
+    assert result["ok"] is True
+    assert result["ready_for_live_acceptance_review"] is True
+    assert result["ready_for_live_apply"] is False
+    assert result["closes_live_sw003_gate"] is False
+    assert result["creates_live_acceptance"] is False
+    assert result["live_apply_gate"] == {
+        "ready_for_live_apply": False,
+        "blocked_reasons": ["sw003_live_gate_status_only"],
+    }
+    assert len(result["status_digest"]) == 64
+    status_digest_input = {
+        key: item
+        for key, item in result.items()
+        if key not in {"output_path", "status_digest"}
+    }
+    assert result["status_digest"] == _stable_digest(status_digest_input)
+
+
+def test_sw003_live_gate_status_receipt_blocks_invalid_candidate() -> None:
+    result = compile_sw003_live_gate_status_receipt(
+        evaluation_receipt=_live_gate_evaluation_receipt(claim_valid=False)
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_acceptance_review"] is False
+    assert "live_gate_candidate_invalid" in result["blocked_reasons"]
+    assert result["ready_for_live_apply"] is False
+
+
+def test_sw003_live_gate_status_receipt_blocks_requirement_drift() -> None:
+    receipt = _live_gate_evaluation_receipt()
+    receipt["requirements_digest"] = "f" * 64
+    receipt.pop("evaluation_digest")
+    receipt["evaluation_digest"] = _stable_digest(receipt)
+
+    result = compile_sw003_live_gate_status_receipt(evaluation_receipt=receipt)
+
+    assert result["ok"] is False
+    assert result["requirements_digest_matches"] is False
+    assert "requirements_digest_mismatch" in result["blocked_reasons"]

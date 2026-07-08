@@ -177,7 +177,10 @@ file and may identify a valid candidate live-gate claim. Its local evaluation
 receipt uses `typed-region-sw003-live-gate-evaluation.v1` and includes an
 evidence input digest, requirements digest, and evaluation digest for review
 binding. The versioned receipt is loadable for later gates while remaining a
-non-closing local evaluation. All commands avoid Miro access, avoid provider
+non-closing local evaluation. A local `typed-region-sw003-live-gate-status.v1`
+status receipt may summarize a valid candidate as ready for live acceptance
+review, but it still keeps `ready_for_live_apply=false` and
+`closes_live_sw003_gate=false`. All commands avoid Miro access, avoid provider
 mutation, do not close Issue #8, and do not themselves create live acceptance.
 
 
