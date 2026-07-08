@@ -123,3 +123,97 @@ def test_sw003_closeout_cli_writes_bound_fixture_receipt(tmp_path, capsys) -> No
     assert written["ok"] is True
     assert written["closes_live_sw003_gate"] is False
     assert written["cleanup_boundary_accepted"] is True
+
+
+def _complete_live_gate_claim() -> dict:
+    return {
+        "claim_closes_live_sw003_gate": True,
+        "live_create_attempted": True,
+        "live_create_verified": True,
+        "live_create_evidence_digest": "6" * 64,
+        "live_read_after_create_verified": True,
+        "live_read_after_create_evidence_digest": "7" * 64,
+        "live_update_verified": True,
+        "live_update_evidence_digest": "8" * 64,
+        "marker_scope_uniqueness_verified": True,
+        "marker_scope_evidence_digest": "9" * 64,
+        "idempotency_verified": True,
+        "idempotency_evidence_digest": "a" * 64,
+        "cleanup_attempted": True,
+        "cleanup_verified": True,
+        "cleanup_evidence_digest": "b" * 64,
+        "provider_identifiers_sanitized": True,
+        "board_scope": {
+            "surface_alias": "sw003-live-proof",
+            "allowlisted": True,
+        },
+        "board_scope_evidence_digest": "c" * 64,
+    }
+
+
+def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(
+    tmp_path, capsys
+) -> None:
+    evidence_path = tmp_path / "live-gate-evidence.json"
+    output_path = tmp_path / "live-gate-evaluation.json"
+    _write_json(evidence_path, _complete_live_gate_claim())
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            str(evidence_path),
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert stdout_receipt["claim_valid"] is True
+    assert written["candidate_closes_live_sw003_gate"] is True
+    assert written["closes_live_sw003_gate"] is False
+    assert written["creates_live_acceptance"] is False
+    assert written["mutation_attempted"] is False
+    assert written["live_miro_access_attempted"] is False
+    assert written["boundary"] == {
+        "local_evaluation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "does_not_close_issue_8": True,
+    }
+
+
+def test_sw003_live_gate_cli_does_not_echo_provider_identifiers(tmp_path, capsys) -> None:
+    evidence = _complete_live_gate_claim()
+    evidence["cleanup_verified"] = False
+    evidence["cleanup_boundary_accepted"] = True
+    evidence["cleanup_boundary_reason"] = "https://miro.com/app/board/private-id"
+    evidence_path = tmp_path / "live-gate-evidence.json"
+    output_path = tmp_path / "live-gate-evaluation.json"
+    _write_json(evidence_path, evidence)
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            str(evidence_path),
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout = capsys.readouterr().out
+    written = output_path.read_text(encoding="utf-8")
+    assert "provider_identifier_present_in_live_gate_claim" in stdout
+    assert "cleanup_boundary_reason_unsafe" in stdout
+    assert "miro.com" not in stdout
+    assert "private-id" not in stdout
+    assert "miro.com" not in written
+    assert "private-id" not in written

@@ -31,6 +31,7 @@ from .cli_handlers import (
     handle_region_simulation_closeout,
     handle_region_simulation_postflight,
     handle_region_sw003_closeout,
+    handle_region_sw003_live_gate,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -177,6 +178,11 @@ def main(argv: list[str] | None = None) -> int:
                 restore_receipt=args.restore_receipt,
                 evidence=args.evidence,
                 marker=args.marker,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw003-live-gate":
+            result = handle_region_sw003_live_gate(
+                evidence=args.evidence,
                 output=args.output,
             )
         elif args.command == "logout":
