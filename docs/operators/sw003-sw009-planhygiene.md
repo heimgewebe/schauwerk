@@ -169,12 +169,14 @@ The local evaluator is exposed through:
 schauwerk miro region sw003-live-gate-requirements --json
 schauwerk miro region sw003-live-gate-template --json
 schauwerk miro region sw003-live-gate live-gate-evidence.json --json
+schauwerk miro region sw003-live-gate-status live-gate-evaluation.json --json
 ```
 
 The first command emits the local evidence checklist. The second emits a
 sanitized non-claim evidence template. The third evaluates a sanitized evidence
-file and may identify a valid candidate live-gate claim. Its local evaluation
-receipt uses `typed-region-sw003-live-gate-evaluation.v1` and includes an
+file and may identify a valid candidate live-gate claim. The fourth compiles a
+local status receipt from the evaluation receipt. The local evaluation receipt
+uses `typed-region-sw003-live-gate-evaluation.v1` and includes an
 evidence input digest, requirements digest, and evaluation digest for review
 binding. The versioned receipt is loadable for later gates while remaining a
 non-closing local evaluation. A local `typed-region-sw003-live-gate-status.v1`
