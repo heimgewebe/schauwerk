@@ -176,6 +176,15 @@ def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(
     assert stdout_receipt == written
     assert stdout_receipt["claim_valid"] is True
     assert written["candidate_closes_live_sw003_gate"] is True
+    assert written["evidence_input_digest"] == _stable_digest(_complete_live_gate_claim())
+    assert len(written["requirements_digest"]) == 64
+    assert len(written["evaluation_digest"]) == 64
+    digest_input = {
+        key: value
+        for key, value in written.items()
+        if key not in {"evaluation_digest", "output_path"}
+    }
+    assert written["evaluation_digest"] == _stable_digest(digest_input)
     assert written["closes_live_sw003_gate"] is False
     assert written["creates_live_acceptance"] is False
     assert written["mutation_attempted"] is False
@@ -218,6 +227,9 @@ def test_sw003_live_gate_cli_does_not_echo_provider_identifiers(tmp_path, capsys
     assert "private-id" not in stdout
     assert "miro.com" not in written
     assert "private-id" not in written
+    result = json.loads(written)
+    assert result["evidence_input_digest"] == _stable_digest(evidence)
+    assert len(result["evaluation_digest"]) == 64
 
 
 def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsys) -> None:

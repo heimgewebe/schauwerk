@@ -369,7 +369,10 @@ def _write_local_cli_receipt(result: dict[str, Any], output: str | None) -> dict
 
 def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[str, Any]:
     live_gate_evidence = load_sw003_closeout_evidence(Path(evidence))
+    requirements = required_sw003_live_gate_evidence()
     result = evaluate_sw003_live_gate_claim(live_gate_evidence)
+    result["evidence_input_digest"] = _stable_digest(live_gate_evidence)
+    result["requirements_digest"] = _stable_digest(requirements)
     result["mutation_attempted"] = False
     result["live_miro_access_attempted"] = False
     result["closes_live_sw003_gate"] = False
@@ -380,6 +383,7 @@ def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
     }
+    result["evaluation_digest"] = _stable_digest(result)
     return _write_local_cli_receipt(result, output)
 
 
