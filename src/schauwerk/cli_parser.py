@@ -179,6 +179,14 @@ def build_parser() -> argparse.ArgumentParser:
     simulation_postflight.add_argument("--output")
     simulation_postflight.add_argument("--json", action="store_true")
 
+    simulation_closeout = rc.add_parser(
+        "simulation-closeout",
+        help="close a restored SW-009 simulation chain without live apply readiness",
+    )
+    simulation_closeout.add_argument("restore_receipt")
+    simulation_closeout.add_argument("--output")
+    simulation_closeout.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)

@@ -28,6 +28,7 @@ from .cli_handlers import (
     handle_region_postflight,
     handle_region_preflight,
     handle_region_restore_receipt,
+    handle_region_simulation_closeout,
     handle_region_simulation_postflight,
     handle_region_sw003_closeout,
     handle_snapshot,
@@ -152,6 +153,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "region" and args.region_command == "simulation-postflight":
             result = handle_region_simulation_postflight(
                 apply_simulation_receipt=args.apply_simulation_receipt,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "simulation-closeout":
+            result = handle_region_simulation_closeout(
+                restore_receipt=args.restore_receipt,
                 output=args.output,
             )
         elif args.command == "region" and args.region_command == "postflight":

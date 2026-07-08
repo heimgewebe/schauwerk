@@ -89,3 +89,11 @@ schauwerk miro region simulation-postflight apply-simulation.json --json
 ```
 
 The simulation postflight command accepts only `typed-region-apply-simulation-receipt.v1`. It converts a verified simulation-only apply receipt into a `typed-region-postflight-receipt.v1` that remains fixture-only, simulation-only, and restore-ready. The resulting postflight receipt can feed the existing `restore-receipt` command with a restored snapshot fixture. Neither command requires or performs live Miro access.
+
+## Simulation Closeout CLI
+
+```bash
+schauwerk miro region simulation-closeout restore.json --json
+```
+
+The simulation closeout command accepts only a restored `typed-region-restore-receipt.v1` that still carries `boundary.simulation_only=true` and a propagated `source_receipts.apply_simulation_receipt_digest` from the simulation-postflight chain. This prevents a normal fixture restore, or a hand-edited restore receipt with only a forged boundary flag, from being mistaken for a completed SW-009 simulation chain. The closeout receipt reports `ready_for_sw009_simulation_closeout=true` only after the restore receipt is ready, fixture-only, simulation-only, provenance-bound, restored to the pre-apply snapshot, and sanitized. It deliberately keeps `ready_for_live_apply=false`, reports `closes_live_sw003_gate=false`, and exposes the same SW-003 live gate block (`sw003_live_gate_open`).

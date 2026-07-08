@@ -348,6 +348,20 @@ def compile_sw003_closeout_receipt(
     )
 
 
+def load_region_simulation_closeout_receipt(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.receipts import load_region_simulation_closeout_receipt as _impl
+
+    return _impl(path)
+
+
+def compile_region_simulation_closeout_receipt(
+    *, restore_receipt: dict[str, Any], output_path: Path | None = None
+) -> dict[str, Any]:
+    from schauwerk.operator.receipts import compile_region_simulation_closeout_receipt as _impl
+
+    return _impl(restore_receipt=restore_receipt, output_path=output_path)
+
+
 def load_region_operation_contract(path: Path) -> dict[str, Any]:
     from schauwerk.operator.receipts import load_region_operation_contract as _impl
 
