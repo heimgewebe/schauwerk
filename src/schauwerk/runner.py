@@ -32,6 +32,7 @@ from .cli_handlers import (
     handle_region_simulation_postflight,
     handle_region_sw003_closeout,
     handle_region_sw003_live_gate,
+    handle_region_sw003_live_gate_requirements,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -185,6 +186,11 @@ def main(argv: list[str] | None = None) -> int:
                 evidence=args.evidence,
                 output=args.output,
             )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw003-live-gate-requirements"
+        ):
+            result = handle_region_sw003_live_gate_requirements(output=args.output)
         elif args.command == "logout":
             result = handle_logout()
         else:

@@ -15,6 +15,7 @@ from .education.view import (
     render_learning_dsl,
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
+from .operator.receipts import _stable_digest
 from .operator.regions import (
     compile_region_apply_receipt,
     compile_region_apply_scaffold,
@@ -39,6 +40,7 @@ from .operator.regions import (
     load_region_restore_receipt,
     load_snapshot_mapping_receipt,
     load_sw003_closeout_evidence,
+    required_sw003_live_gate_evidence,
 )
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -351,6 +353,20 @@ def handle_region_sw003_closeout(
     )
 
 
+def _write_local_cli_receipt(result: dict[str, Any], output: str | None) -> dict[str, Any]:
+    if output is None:
+        result["output_path"] = None
+        return result
+    destination = Path(output).expanduser().absolute()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    result["output_path"] = str(destination)
+    destination.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return result
+
+
 def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[str, Any]:
     live_gate_evidence = load_sw003_closeout_evidence(Path(evidence))
     result = evaluate_sw003_live_gate_claim(live_gate_evidence)
@@ -364,17 +380,28 @@ def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
     }
-    if output is not None:
-        destination = Path(output).expanduser().absolute()
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(
-            json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
-        )
-        result["output_path"] = str(destination)
-    else:
-        result["output_path"] = None
-    return result
+    return _write_local_cli_receipt(result, output)
+
+
+def handle_region_sw003_live_gate_requirements(*, output: str | None) -> dict[str, Any]:
+    requirements = required_sw003_live_gate_evidence()
+    result = {
+        "schema_version": "typed-region-sw003-live-gate-requirements.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "requirements": requirements,
+        "requirements_digest": _stable_digest(requirements),
+        "boundary": {
+            "local_evaluation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    return _write_local_cli_receipt(result, output)
 
 
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:

@@ -166,12 +166,14 @@ until a later dedicated live proof provides complete, sanitized evidence.
 The local evaluator is exposed through:
 
 ```bash
+schauwerk miro region sw003-live-gate-requirements --json
 schauwerk miro region sw003-live-gate live-gate-evidence.json --json
 ```
 
-This command evaluates a sanitized evidence file and may identify a valid
-candidate live-gate claim, but it does not talk to Miro, does not mutate provider
-state, does not close Issue #8, and does not itself create live acceptance.
+The first command emits the local evidence checklist. The second evaluates a
+sanitized evidence file and may identify a valid candidate live-gate claim. Both
+commands avoid Miro access, avoid provider mutation, do not close Issue #8, and
+do not themselves create live acceptance.
 
 
 ## Decision
