@@ -432,6 +432,81 @@ def compile_sw003_live_gate_review_packet(
     return value
 
 
+def load_sw003_live_gate_review_packet(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-003 live-gate review packet")
+    return _validate_sw003_live_gate_review_packet(raw)
+
+
+def _validate_sw003_live_gate_review_packet(raw: object) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("SW-003 live-gate review packet must contain an object")
+    if raw.get("schema_version") != LIVE_GATE_REVIEW_PACKET_SCHEMA_VERSION:
+        raise ValueError("SW-003 live-gate review packet has an unsupported schema")
+    digest = raw.get("review_packet_digest")
+    if not isinstance(digest, str):
+        raise ValueError("SW-003 live-gate review packet lacks review_packet_digest")
+    _validate_digest(digest, label="sw003.live_gate_review_packet.review_packet_digest")
+    digest_input = {
+        key: value
+        for key, value in raw.items()
+        if key not in {"review_packet_digest", "output_path"}
+    }
+    if digest != _stable_digest(digest_input):
+        raise ValueError("SW-003 live-gate review packet digest mismatch")
+    if raw.get("mutation_attempted") is not False:
+        raise ValueError("SW-003 live-gate review packet has invalid mutation state")
+    if raw.get("live_miro_access_attempted") is not False:
+        raise ValueError("SW-003 live-gate review packet has invalid live access state")
+    if raw.get("closes_live_sw003_gate") is not False:
+        raise ValueError("SW-003 live-gate review packet must not close SW-003")
+    if raw.get("creates_live_acceptance") is not False:
+        raise ValueError("SW-003 live-gate review packet must not create live acceptance")
+    if raw.get("ready_for_live_apply") is not False:
+        raise ValueError("SW-003 live-gate review packet must not enable live apply")
+    if raw.get("ok") is not raw.get("ready_for_live_acceptance_review"):
+        raise ValueError("SW-003 live-gate review packet has inconsistent review state")
+    source_receipts = raw.get("source_receipts")
+    if not isinstance(source_receipts, dict):
+        raise ValueError("SW-003 live-gate review packet lacks source receipts")
+    for key in (
+        "live_gate_status_digest",
+        "live_gate_evaluation_digest",
+        "evidence_input_digest",
+        "requirements_digest",
+    ):
+        source_digest = source_receipts.get(key)
+        if not isinstance(source_digest, str):
+            raise ValueError(f"SW-003 live-gate review packet lacks {key}")
+        _validate_digest(source_digest, label=f"sw003.live_gate_review_packet.{key}")
+    review_scope = raw.get("review_scope")
+    if (
+        not isinstance(review_scope, dict)
+        or review_scope.get("human_review_required") is not True
+        or review_scope.get("review_subject") != "sw003_live_gate_candidate"
+        or review_scope.get("acceptance_review_only") is not True
+        or review_scope.get("review_may_not_mutate_miro") is not True
+        or review_scope.get("review_may_not_close_issue_8") is not True
+    ):
+        raise ValueError("SW-003 live-gate review packet has invalid review scope")
+    live_apply_gate = raw.get("live_apply_gate")
+    if (
+        not isinstance(live_apply_gate, dict)
+        or live_apply_gate.get("ready_for_live_apply") is not False
+        or live_apply_gate.get("blocked_reasons") != ["sw003_live_gate_review_packet_only"]
+    ):
+        raise ValueError("SW-003 live-gate review packet has invalid live apply gate")
+    boundary = raw.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("local_review_packet_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+        or boundary.get("does_not_close_issue_8") is not True
+    ):
+        raise ValueError("SW-003 live-gate review packet has invalid boundary")
+    return raw
+
+
 def _validate_sw003_live_gate_status_receipt(raw: object) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("SW-003 live-gate status receipt must contain an object")

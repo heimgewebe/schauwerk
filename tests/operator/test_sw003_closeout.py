@@ -15,6 +15,7 @@ from schauwerk.operator.regions import (
     evaluate_sw003_live_gate_claim,
     load_sw003_closeout_receipt,
     load_sw003_live_gate_evaluation_receipt,
+    load_sw003_live_gate_review_packet,
     load_sw003_live_gate_status_receipt,
     parse_region_declaration,
     required_sw003_live_gate_evidence,
@@ -765,3 +766,108 @@ def test_sw003_live_gate_review_packet_rejects_tampered_status() -> None:
         assert "must not enable live apply" in str(exc)
     else:
         raise AssertionError("tampered live-apply-ready status was accepted")
+
+
+def _live_gate_review_packet() -> dict[str, Any]:
+    return compile_sw003_live_gate_review_packet(
+        status_receipt=_live_gate_status_receipt()
+    )
+
+
+def test_sw003_live_gate_review_packet_loads_versioned_packet(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    path = tmp_path / "review-packet.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    loaded = load_sw003_live_gate_review_packet(path)
+
+    assert loaded["schema_version"] == "typed-region-sw003-live-gate-review-packet.v1"
+    assert loaded["ready_for_live_apply"] is False
+    assert loaded["closes_live_sw003_gate"] is False
+    assert loaded["review_scope"]["human_review_required"] is True
+
+
+def test_sw003_live_gate_review_packet_rejects_digest_mismatch(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    packet["blocked_reasons"] = ["tampered"]
+    path = tmp_path / "review-packet-mismatch.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_review_packet(path)
+    except ValueError as exc:
+        assert "digest mismatch" in str(exc)
+    else:
+        raise AssertionError("mismatched review packet digest was accepted")
+
+
+def test_sw003_live_gate_review_packet_rejects_live_apply_ready_packet(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    packet["ready_for_live_apply"] = True
+    packet.pop("review_packet_digest")
+    packet["review_packet_digest"] = _stable_digest(
+        {key: item for key, item in packet.items() if key != "output_path"}
+    )
+    path = tmp_path / "review-packet-live-ready.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_review_packet(path)
+    except ValueError as exc:
+        assert "must not enable live apply" in str(exc)
+    else:
+        raise AssertionError("live-apply-ready review packet was accepted")
+
+
+def test_sw003_live_gate_review_packet_rejects_invalid_review_scope(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    packet["review_scope"]["review_may_not_mutate_miro"] = False
+    packet.pop("review_packet_digest")
+    packet["review_packet_digest"] = _stable_digest(
+        {key: item for key, item in packet.items() if key != "output_path"}
+    )
+    path = tmp_path / "review-packet-bad-scope.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_review_packet(path)
+    except ValueError as exc:
+        assert "invalid review scope" in str(exc)
+    else:
+        raise AssertionError("invalid review packet scope was accepted")
+
+
+def test_sw003_live_gate_review_packet_rejects_missing_source_digest(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    del packet["source_receipts"]["live_gate_status_digest"]
+    packet.pop("review_packet_digest")
+    packet["review_packet_digest"] = _stable_digest(
+        {key: item for key, item in packet.items() if key != "output_path"}
+    )
+    path = tmp_path / "review-packet-missing-source.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_review_packet(path)
+    except ValueError as exc:
+        assert "lacks live_gate_status_digest" in str(exc)
+    else:
+        raise AssertionError("review packet missing status digest was accepted")
+
+
+def test_sw003_live_gate_review_packet_rejects_boundary_drift(tmp_path) -> None:
+    packet = _live_gate_review_packet()
+    packet["boundary"]["local_review_packet_only"] = False
+    packet.pop("review_packet_digest")
+    packet["review_packet_digest"] = _stable_digest(
+        {key: item for key, item in packet.items() if key != "output_path"}
+    )
+    path = tmp_path / "review-packet-boundary-drift.json"
+    path.write_text(json.dumps(packet), encoding="utf-8")
+
+    try:
+        load_sw003_live_gate_review_packet(path)
+    except ValueError as exc:
+        assert "invalid boundary" in str(exc)
+    else:
+        raise AssertionError("review packet boundary drift was accepted")
