@@ -898,6 +898,7 @@ def test_runner_dispatches_region_sw003_live_gate(monkeypatch, capsys) -> None:
     def fake_live_gate(*, evidence, output):
         observed.update(evidence=evidence, output=output)
         return {
+            "schema_version": "typed-region-sw003-live-gate-evaluation.v1",
             "claim_present": True,
             "claim_valid": False,
             "mutation_attempted": False,
@@ -923,6 +924,7 @@ def test_runner_dispatches_region_sw003_live_gate(monkeypatch, capsys) -> None:
         "output": "live-gate-evaluation.json",
     }
     result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw003-live-gate-evaluation.v1"
     assert result["mutation_attempted"] is False
 
 

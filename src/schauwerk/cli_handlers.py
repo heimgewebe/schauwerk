@@ -371,6 +371,7 @@ def handle_region_sw003_live_gate(*, evidence: str, output: str | None) -> dict[
     live_gate_evidence = load_sw003_closeout_evidence(Path(evidence))
     requirements = required_sw003_live_gate_evidence()
     result = evaluate_sw003_live_gate_claim(live_gate_evidence)
+    result["schema_version"] = "typed-region-sw003-live-gate-evaluation.v1"
     result["evidence_input_digest"] = _stable_digest(live_gate_evidence)
     result["requirements_digest"] = _stable_digest(requirements)
     result["mutation_attempted"] = False
