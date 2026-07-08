@@ -695,6 +695,13 @@ def compile_region_restore_receipt(
         ),
         "restored_snapshot_digest": _stable_digest(normalized_restored),
     }
+    output_boundary = {
+        "fixture_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+    }
+    if isinstance(boundary, dict) and boundary.get("simulation_only") is True:
+        output_boundary["simulation_only"] = True
     ready = not blocked_reasons
     value = {
         "schema_version": "typed-region-restore-receipt.v1",
@@ -708,11 +715,7 @@ def compile_region_restore_receipt(
         "pre_apply_snapshot": pre_apply_snapshot,
         "restored_snapshot": normalized_restored,
         "source_receipts": source_receipts,
-        "boundary": {
-            "fixture_only": True,
-            "no_miro_mutation": True,
-            "no_provider_ids_returned": True,
-        },
+        "boundary": output_boundary,
         "receipt_digest": _stable_digest(
             {
                 "schema_version": "typed-region-restore-receipt.v1",
@@ -721,6 +724,121 @@ def compile_region_restore_receipt(
                 "pre_apply_snapshot": pre_apply_snapshot,
                 "restored_snapshot": normalized_restored,
                 "source_receipts": source_receipts,
+            }
+        ),
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
+
+
+def load_region_simulation_closeout_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="simulation closeout")
+    if not isinstance(raw, dict):
+        raise ValueError("simulation closeout receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-sw009-simulation-closeout-receipt.v1":
+        raise ValueError("simulation closeout receipt has an unsupported schema")
+    return raw
+
+
+def compile_region_simulation_closeout_receipt(
+    *,
+    restore_receipt: dict[str, Any],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(restore_receipt, dict):
+        raise ValueError("restore receipt must contain an object")
+
+    blocked_reasons: list[str] = []
+    if restore_receipt.get("schema_version") != "typed-region-restore-receipt.v1":
+        blocked_reasons.append("restore_receipt_schema_unsupported")
+    restore_ready = (
+        restore_receipt.get("ok") is True
+        and restore_receipt.get("ready_for_closeout") is True
+    )
+    if not restore_ready:
+        blocked_reasons.append("restore_receipt_not_ready")
+    if restore_receipt.get("mutation_attempted") is not False:
+        blocked_reasons.append("restore_receipt_mutation_state_invalid")
+    if restore_receipt.get("live_restore_attempted") is not False:
+        blocked_reasons.append("restore_receipt_live_state_invalid")
+
+    boundary = restore_receipt.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("fixture_only") is not True
+        or boundary.get("simulation_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("restore_receipt_simulation_boundary_missing")
+
+    pre_apply_snapshot = restore_receipt.get("pre_apply_snapshot")
+    if not isinstance(pre_apply_snapshot, dict):
+        blocked_reasons.append("restore_receipt_pre_apply_snapshot_missing")
+        pre_apply_snapshot = {}
+    restored_snapshot = restore_receipt.get("restored_snapshot")
+    if not isinstance(restored_snapshot, dict):
+        blocked_reasons.append("restore_receipt_restored_snapshot_missing")
+        restored_snapshot = {}
+
+    restored_to_pre_apply_snapshot = (
+        restored_snapshot.get("board_alias") == pre_apply_snapshot.get("board_alias")
+        and restored_snapshot.get("content_digest") == pre_apply_snapshot.get("content_digest")
+        and restored_snapshot.get("repeatability_verified") is True
+        and restored_snapshot.get("sanitized_references") is True
+    )
+    if not restored_to_pre_apply_snapshot:
+        blocked_reasons.append("restore_receipt_not_restored_to_pre_apply_snapshot")
+
+    source_receipts = {
+        "restore_receipt_digest": _stable_digest(
+            _without_runtime_fields(restore_receipt)
+        ),
+    }
+    ready = not blocked_reasons
+    value = {
+        "schema_version": "typed-region-sw009-simulation-closeout-receipt.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_closeout_attempted": False,
+        "ready_for_sw009_simulation_closeout": ready,
+        "ready_for_live_apply": False,
+        "closes_live_sw003_gate": False,
+        "blocked_reasons": blocked_reasons,
+        "operation": restore_receipt.get("operation"),
+        "region": restore_receipt.get("region", {}),
+        "source_receipts": source_receipts,
+        "verification": {
+            "restore_receipt_ready": restore_ready,
+            "restored_to_pre_apply_snapshot": restored_to_pre_apply_snapshot,
+        },
+        "live_apply_gate": _sw009_live_apply_gate(),
+        "boundary": {
+            "fixture_only": True,
+            "simulation_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_sw003_live_gate": True,
+        },
+        "receipt_digest": _stable_digest(
+            {
+                "schema_version": "typed-region-sw009-simulation-closeout-receipt.v1",
+                "operation": restore_receipt.get("operation"),
+                "region": restore_receipt.get("region", {}),
+                "source_receipts": source_receipts,
+                "verification": {
+                    "restore_receipt_ready": restore_ready,
+                    "restored_to_pre_apply_snapshot": restored_to_pre_apply_snapshot,
+                },
             }
         ),
     }

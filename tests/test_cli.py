@@ -599,6 +599,7 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
     output = tmp_path / "simulation-postflight.json"
     restored_snapshot_path = tmp_path / "restored.json"
     restore_output = tmp_path / "restore.json"
+    closeout_output = tmp_path / "simulation-closeout.json"
     _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
     _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
 
@@ -699,6 +700,37 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
     assert restore_written["ok"] is True
     assert restore_written["live_restore_attempted"] is False
     assert restore_written["ready_for_closeout"] is True
+    assert restore_written["boundary"]["simulation_only"] is True
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "simulation-closeout",
+            str(restore_output),
+            "--output",
+            str(closeout_output),
+            "--json",
+        ]
+    ) == 0
+    closeout_stdout = json.loads(capsys.readouterr().out)
+    closeout_written = json.loads(closeout_output.read_text(encoding="utf-8"))
+    assert closeout_stdout["schema_version"] == (
+        "typed-region-sw009-simulation-closeout-receipt.v1"
+    )
+    assert closeout_written["ok"] is True
+    assert closeout_written["ready_for_live_apply"] is False
+    assert closeout_written["closes_live_sw003_gate"] is False
+    assert closeout_written["live_apply_gate"]["blocked_reasons"] == [
+        "sw003_live_gate_open"
+    ]
+    assert closeout_written["boundary"] == {
+        "fixture_only": True,
+        "simulation_only": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "does_not_close_sw003_live_gate": True,
+    }
 
 
 def test_region_apply_simulation_cli_rejects_wrong_contract_schema(tmp_path, capsys) -> None:
@@ -754,6 +786,39 @@ def test_runner_dispatches_region_simulation_postflight(monkeypatch, capsys) -> 
     }
     assert json.loads(capsys.readouterr().out)["schema_version"] == (
         "typed-region-postflight-receipt.v1"
+    )
+
+
+def test_runner_dispatches_region_simulation_closeout(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_closeout(*, restore_receipt, output):
+        observed.update(restore_receipt=restore_receipt, output=output)
+        return {
+            "schema_version": "typed-region-sw009-simulation-closeout-receipt.v1",
+            "ok": True,
+        }
+
+    monkeypatch.setattr(runner, "handle_region_simulation_closeout", fake_closeout)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "simulation-closeout",
+            "restore.json",
+            "--output",
+            "simulation-closeout.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "restore_receipt": "restore.json",
+        "output": "simulation-closeout.json",
+    }
+    assert json.loads(capsys.readouterr().out)["schema_version"] == (
+        "typed-region-sw009-simulation-closeout-receipt.v1"
     )
 
 
