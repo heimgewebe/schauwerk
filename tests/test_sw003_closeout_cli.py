@@ -256,3 +256,76 @@ def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsy
         "no_provider_ids_returned": True,
         "does_not_close_issue_8": True,
     }
+
+
+def test_sw003_live_gate_template_cli_writes_non_claim_template(tmp_path, capsys) -> None:
+    output_path = tmp_path / "live-gate-template.json"
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-template",
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    stdout_receipt = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert stdout_receipt == written
+    assert written["schema_version"] == "typed-region-sw003-live-gate-template.v1"
+    assert written["template_only"] is True
+    assert written["closes_live_sw003_gate"] is False
+    assert written["creates_live_acceptance"] is False
+    assert written["evidence_template"]["claim_closes_live_sw003_gate"] is False
+    assert written["evidence_template"]["board_scope"] == {
+        "surface_alias": "",
+        "allowlisted": False,
+    }
+    assert len(written["evidence_template_digest"]) == 64
+    assert "miro.com" not in output_path.read_text(encoding="utf-8")
+
+
+def test_sw003_live_gate_template_evidence_fails_closed_when_evaluated(tmp_path, capsys) -> None:
+    template_path = tmp_path / "live-gate-template.json"
+    evidence_path = tmp_path / "template-evidence.json"
+    evaluation_path = tmp_path / "template-evaluation.json"
+
+    assert runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-template",
+            "--output",
+            str(template_path),
+            "--json",
+        ]
+    ) == 0
+    template_receipt = json.loads(template_path.read_text(encoding="utf-8"))
+    _write_json(evidence_path, template_receipt["evidence_template"])
+    capsys.readouterr()
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate",
+            str(evidence_path),
+            "--output",
+            str(evaluation_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    evaluation = json.loads(evaluation_path.read_text(encoding="utf-8"))
+    assert evaluation["claim_valid"] is False
+    assert evaluation["candidate_closes_live_sw003_gate"] is False
+    assert evaluation["closes_live_sw003_gate"] is False
+    assert "live_gate_claim_not_requested" in evaluation["blocked_reasons"]
+    assert "evidence_live_create_attempted_missing_or_false" in evaluation[
+        "blocked_reasons"
+    ]

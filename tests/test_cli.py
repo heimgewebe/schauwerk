@@ -955,3 +955,32 @@ def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, caps
     assert observed == {"output": "requirements.json"}
     result = json.loads(capsys.readouterr().out)
     assert result["schema_version"] == "typed-region-sw003-live-gate-requirements.v1"
+
+
+def test_runner_dispatches_region_sw003_live_gate_template(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_template(*, output):
+        observed.update(output=output)
+        return {
+            "schema_version": "typed-region-sw003-live-gate-template.v1",
+            "ok": True,
+            "template_only": True,
+        }
+
+    monkeypatch.setattr(runner, "handle_region_sw003_live_gate_template", fake_template)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw003-live-gate-template",
+            "--output",
+            "template.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {"output": "template.json"}
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw003-live-gate-template.v1"

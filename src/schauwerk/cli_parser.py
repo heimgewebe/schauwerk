@@ -224,6 +224,13 @@ def build_parser() -> argparse.ArgumentParser:
     sw003_live_gate_requirements.add_argument("--output")
     sw003_live_gate_requirements.add_argument("--json", action="store_true")
 
+    sw003_live_gate_template = rc.add_parser(
+        "sw003-live-gate-template",
+        help="emit a sanitized SW-003 live-gate evidence template without Miro access",
+    )
+    sw003_live_gate_template.add_argument("--output")
+    sw003_live_gate_template.add_argument("--json", action="store_true")
+
     logout = commands.add_parser("logout", help="clear local Miro state")
     logout.add_argument("--json", action="store_true")
     return parser

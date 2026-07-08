@@ -404,6 +404,57 @@ def handle_region_sw003_live_gate_requirements(*, output: str | None) -> dict[st
     return _write_local_cli_receipt(result, output)
 
 
+def handle_region_sw003_live_gate_template(*, output: str | None) -> dict[str, Any]:
+    requirements = required_sw003_live_gate_evidence()
+    evidence_template = {
+        "claim_closes_live_sw003_gate": False,
+        "live_create_attempted": False,
+        "live_create_verified": False,
+        "live_create_evidence_digest": "<sha256>",
+        "live_read_after_create_verified": False,
+        "live_read_after_create_evidence_digest": "<sha256>",
+        "live_update_verified": False,
+        "live_update_evidence_digest": "<sha256>",
+        "marker_scope_uniqueness_verified": False,
+        "marker_scope_evidence_digest": "<sha256>",
+        "idempotency_verified": False,
+        "idempotency_evidence_digest": "<sha256>",
+        "cleanup_attempted": False,
+        "cleanup_verified": False,
+        "cleanup_evidence_digest": "<sha256>",
+        "cleanup_boundary_accepted": False,
+        "cleanup_boundary_reason": "",
+        "provider_identifiers_sanitized": False,
+        "board_scope": {"surface_alias": "", "allowlisted": False},
+        "board_scope_evidence_digest": "<sha256>",
+    }
+    result = {
+        "schema_version": "typed-region-sw003-live-gate-template.v1",
+        "ok": True,
+        "template_only": True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "requirements": requirements,
+        "requirements_digest": _stable_digest(requirements),
+        "evidence_template": evidence_template,
+        "evidence_template_digest": _stable_digest(evidence_template),
+        "notes": [
+            "replace placeholder digests with real sha256 evidence digests",
+            "set claim_closes_live_sw003_gate true only for real live proof evidence",
+            "do not include provider board URLs or provider object identifiers",
+        ],
+        "boundary": {
+            "local_template_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    return _write_local_cli_receipt(result, output)
+
+
 def handle_logout(client: MiroMCPClient | None = None) -> dict[str, bool]:
     return (client or MiroMCPClient()).logout()
 
