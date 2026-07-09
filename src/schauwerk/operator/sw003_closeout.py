@@ -15,6 +15,7 @@ SCHEMA_VERSION = "typed-region-sw003-closeout-receipt.v1"
 LIVE_GATE_EVALUATION_SCHEMA_VERSION = "typed-region-sw003-live-gate-evaluation.v1"
 LIVE_GATE_STATUS_SCHEMA_VERSION = "typed-region-sw003-live-gate-status.v1"
 LIVE_GATE_REVIEW_PACKET_SCHEMA_VERSION = "typed-region-sw003-live-gate-review-packet.v1"
+LIVE_GATE_EVIDENCE_PACKET_SCHEMA_VERSION = "typed-region-sw003-live-gate-evidence-packet.v1"
 _VERIFICATION_DIGEST_FIELDS = (
     "create_evidence_digest",
     "read_evidence_digest",
@@ -527,6 +528,72 @@ def compile_sw003_live_gate_review_packet(
 def load_sw003_live_gate_review_packet(path: Path) -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label="SW-003 live-gate review packet")
     return _validate_sw003_live_gate_review_packet(raw)
+
+
+def compile_sw003_live_gate_evidence_packet(
+    *, review_packet: dict[str, Any], output_path: Path | None = None
+) -> dict[str, Any]:
+    packet = _validate_sw003_live_gate_review_packet(review_packet)
+    requirements = required_sw003_live_gate_evidence()
+    source_receipts = {
+        **packet["source_receipts"],
+        "live_gate_review_packet_digest": packet["review_packet_digest"],
+    }
+    value = {
+        "schema_version": LIVE_GATE_EVIDENCE_PACKET_SCHEMA_VERSION,
+        "ok": packet.get("ok") is True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "ready_for_live_acceptance_review": packet.get(
+            "ready_for_live_acceptance_review"
+        )
+        is True,
+        "ready_for_live_apply": False,
+        "source_schema_versions": {
+            "live_gate_evaluation": LIVE_GATE_EVALUATION_SCHEMA_VERSION,
+            "live_gate_status": LIVE_GATE_STATUS_SCHEMA_VERSION,
+            "live_gate_review_packet": LIVE_GATE_REVIEW_PACKET_SCHEMA_VERSION,
+        },
+        "source_receipts": source_receipts,
+        "requirements": requirements,
+        "requirements_digest": _stable_digest(requirements),
+        "summary": {
+            "review_packet_ok": packet.get("ok") is True,
+            "review_packet_blocked_reasons": list(packet.get("blocked_reasons") or []),
+            "status_blocked_reasons": list(packet.get("status_blocked_reasons") or []),
+            "human_review_required": packet.get("review_scope", {}).get(
+                "human_review_required"
+            )
+            is True,
+        },
+        "live_apply_gate": {
+            "ready_for_live_apply": False,
+            "blocked_reasons": ["sw003_live_gate_evidence_packet_only"],
+        },
+        "boundary": {
+            "local_evidence_packet_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    value["evidence_packet_digest"] = _stable_digest(
+        {key: item for key, item in value.items() if key != "output_path"}
+    )
+    if output_path is not None:
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    return value
 
 
 def _validate_sw003_live_gate_review_packet(raw: object) -> dict[str, Any]:

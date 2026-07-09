@@ -28,6 +28,7 @@ from .operator.regions import (
     compile_region_simulation_closeout_receipt,
     compile_region_simulation_postflight_receipt,
     compile_sw003_closeout_receipt,
+    compile_sw003_live_gate_evidence_packet,
     compile_sw003_live_gate_review_packet,
     compile_sw003_live_gate_status_receipt,
     evaluate_sw003_live_gate_claim,
@@ -43,6 +44,7 @@ from .operator.regions import (
     load_snapshot_mapping_receipt,
     load_sw003_closeout_evidence,
     load_sw003_live_gate_evaluation_receipt,
+    load_sw003_live_gate_review_packet,
     load_sw003_live_gate_status_receipt,
     required_sw003_live_gate_evidence,
 )
@@ -409,6 +411,16 @@ def handle_region_sw003_live_gate_review_packet(
     receipt = load_sw003_live_gate_status_receipt(Path(status_receipt))
     return compile_sw003_live_gate_review_packet(
         status_receipt=receipt,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_sw003_live_gate_evidence_packet(
+    *, review_packet: str, output: str | None
+) -> dict[str, Any]:
+    packet = load_sw003_live_gate_review_packet(Path(review_packet))
+    return compile_sw003_live_gate_evidence_packet(
+        review_packet=packet,
         output_path=Path(output) if output else None,
     )
 

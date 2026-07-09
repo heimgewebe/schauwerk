@@ -171,13 +171,14 @@ schauwerk miro region sw003-live-gate-template --json
 schauwerk miro region sw003-live-gate live-gate-evidence.json --json
 schauwerk miro region sw003-live-gate-status live-gate-evaluation.json --json
 schauwerk miro region sw003-live-gate-review-packet live-gate-status.json --json
+schauwerk miro region sw003-live-gate-evidence-packet live-gate-review-packet.json --json
 ```
 
 The first command emits the local evidence checklist. The second emits a
 sanitized non-claim evidence template. The third evaluates a sanitized evidence
 file and may identify a valid candidate live-gate claim. The fourth compiles a
 local status receipt from the evaluation receipt. The fifth compiles a local
-review packet from the status receipt for human acceptance review. The local evaluation receipt
+review packet from the status receipt for human acceptance review. The sixth compiles a local evidence packet that summarizes and binds the versioned receipt chain. The local evaluation receipt
 uses `typed-region-sw003-live-gate-evaluation.v1` and includes an
 evidence input digest, requirements digest, and evaluation digest for review
 binding. The versioned receipt is loadable for later gates while remaining a
@@ -187,11 +188,12 @@ review, but it still keeps `ready_for_live_apply=false` and
 `closes_live_sw003_gate=false`. The status receipt is also loadable for later
 gates and rejects digest drift, live-apply readiness, live-gate closure, and
 invalid local-only boundaries. The review packet binds the status and source
-receipt digests for later human review, but remains review-only. It is loadable
-for later gates and rejects digest drift, live-apply readiness, invalid review
-scope, and invalid local-only boundaries. All commands avoid Miro access, avoid
-provider mutation, do not close Issue #8, and do not themselves create live
-acceptance.
+receipt digests for later human review, but remains review-only and loadable for
+later gates. It rejects digest drift, live-apply readiness, invalid review scope,
+and invalid local-only boundaries. The evidence packet binds the review packet,
+source receipt digests, schema versions, and current requirements for operator
+consumption. All commands avoid Miro access, avoid provider mutation, do not
+close Issue #8, and do not themselves create live acceptance.
 
 
 ## Decision

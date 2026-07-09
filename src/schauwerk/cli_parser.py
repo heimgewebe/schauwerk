@@ -233,6 +233,14 @@ def build_parser() -> argparse.ArgumentParser:
     sw003_live_gate_review_packet.add_argument("--output")
     sw003_live_gate_review_packet.add_argument("--json", action="store_true")
 
+    sw003_live_gate_evidence_packet = rc.add_parser(
+        "sw003-live-gate-evidence-packet",
+        help="compile a local SW-003 live-gate evidence packet without Miro access",
+    )
+    sw003_live_gate_evidence_packet.add_argument("review_packet")
+    sw003_live_gate_evidence_packet.add_argument("--output")
+    sw003_live_gate_evidence_packet.add_argument("--json", action="store_true")
+
     sw003_live_gate_requirements = rc.add_parser(
         "sw003-live-gate-requirements",
         help="emit the local SW-003 live-gate evidence checklist without Miro access",

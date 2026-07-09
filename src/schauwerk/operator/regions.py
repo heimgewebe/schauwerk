@@ -375,6 +375,16 @@ def load_sw003_live_gate_review_packet(path: Path) -> dict[str, Any]:
     return _impl(path)
 
 
+def compile_sw003_live_gate_evidence_packet(
+    *, review_packet: dict[str, Any], output_path: Path | None = None
+) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import (
+        compile_sw003_live_gate_evidence_packet as _impl,
+    )
+
+    return _impl(review_packet=review_packet, output_path=output_path)
+
+
 def compile_sw003_closeout_receipt(
     *,
     restore_receipt: dict[str, Any],
