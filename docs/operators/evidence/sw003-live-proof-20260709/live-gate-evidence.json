@@ -1,0 +1,25 @@
+{
+  "board_scope": {
+    "allowlisted": true,
+    "surface_alias": "sw003-live-20260709-102319-ed4848"
+  },
+  "board_scope_evidence_digest": "8324694c706dfbe5133a1f90a6dcb64a6c2b36aaf0ae7cf1094057c8f49f8cb8",
+  "claim_closes_live_sw003_gate": true,
+  "cleanup_attempted": true,
+  "cleanup_boundary_accepted": false,
+  "cleanup_boundary_reason": "",
+  "cleanup_evidence_digest": "2b24ec36a6d0cb89bc18291ce663584efa8f00c40e1122cf9fa57cdabfb0ee92",
+  "cleanup_verified": true,
+  "idempotency_evidence_digest": "5323ee514850aaa3201f9c03a4f94259472825d096c21599c0b564cf3d10ecab",
+  "idempotency_verified": true,
+  "live_create_attempted": true,
+  "live_create_evidence_digest": "b443c97c714850419790a399709217373967255f2b2954e64b0ea0d425719a7a",
+  "live_create_verified": true,
+  "live_read_after_create_evidence_digest": "99a658422b0b767bccd6f1a5facae648b3aebfdef2f89739bff30ade8dbe7238",
+  "live_read_after_create_verified": true,
+  "live_update_evidence_digest": "2029d01e5d912d8c20ee823dcd0ed3c113ec7fba2eb0aaebc5717196bddf828c",
+  "live_update_verified": true,
+  "marker_scope_evidence_digest": "20d9a41a4ddfa41921371b59c89127dddf220d9cf0fcdc345a4b20192aa92ab3",
+  "marker_scope_uniqueness_verified": true,
+  "provider_identifiers_sanitized": true
+}

@@ -1,0 +1,22 @@
+{
+  "alias": "sw003-live-20260709-102319-ed4848",
+  "cleanup_boundary_accepted": false,
+  "cleanup_boundary_reason": "",
+  "cleanup_loop_summary_digest": "094399bf1aa0f8493c9c73bd17d0ad85c36798d7c82f2d5c1264bd28ae607b94",
+  "cleanup_verified": true,
+  "idempotency_verified": true,
+  "live_create_verified": true,
+  "live_miro_access_attempted": true,
+  "live_read_after_create_verified": true,
+  "live_update_verified": true,
+  "marked_line_count_after_cleanup": 0,
+  "marker_digest": "f1c6a3c2c4e439066ecbe9c23d8bb62a9d7e83654e01a0b41c3a329f6c1fa4f7",
+  "marker_scope_uniqueness_verified": true,
+  "mutation_attempted": true,
+  "private_raw_evidence_digest": "0bcac5873f78478a2c23d72b8a8219902ade4cb807f48a2db02870525b33facf",
+  "private_raw_evidence_path": "/tmp/schauwerk-sw003-live-proof-prep/private-live-proof-raw.json",
+  "provider_identifiers_sanitized": true,
+  "public_evidence_digest": "23f5ef363fa13ede75b880af7e68493e0f2edafcdf1b6bbd0bb1ccb669147e1c",
+  "public_evidence_path": "/tmp/schauwerk-sw003-live-proof-prep/live-gate-evidence.json",
+  "schema_version": "sw003-live-proof-execution-summary.v1"
+}

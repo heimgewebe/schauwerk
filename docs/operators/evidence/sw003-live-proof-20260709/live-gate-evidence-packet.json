@@ -1,0 +1,81 @@
+{
+  "boundary": {
+    "does_not_close_issue_8": true,
+    "local_evidence_packet_only": true,
+    "no_miro_mutation": true,
+    "no_provider_ids_returned": true
+  },
+  "closes_live_sw003_gate": false,
+  "creates_live_acceptance": false,
+  "evidence_packet_digest": "171b042bb76b06d9cb4a55bfb7e570ed6f3850ba6c03bb688099bba52dc89771",
+  "live_apply_gate": {
+    "blocked_reasons": [
+      "sw003_live_gate_evidence_packet_only"
+    ],
+    "ready_for_live_apply": false
+  },
+  "live_miro_access_attempted": false,
+  "mutation_attempted": false,
+  "ok": true,
+  "output_path": "/tmp/schauwerk-sw003-live-proof-prep/live-gate-evidence-packet.json",
+  "ready_for_live_acceptance_review": true,
+  "ready_for_live_apply": false,
+  "requirements": [
+    {
+      "description": "live create path was attempted in a bounded SW-003 scope",
+      "key": "live_create_attempted"
+    },
+    {
+      "description": "created object state was verified after the live create step",
+      "key": "live_create_verified"
+    },
+    {
+      "description": "a live read after create observed the expected marked scope",
+      "key": "live_read_after_create_verified"
+    },
+    {
+      "description": "a live update changed the same marked scope instead of duplicating it",
+      "key": "live_update_verified"
+    },
+    {
+      "description": "the SW-003 marker is unique inside the declared board/scope",
+      "key": "marker_scope_uniqueness_verified"
+    },
+    {
+      "description": "repeating the same marker/scope operation is idempotent",
+      "key": "idempotency_verified"
+    },
+    {
+      "description": "cleanup was verified or a live cleanup boundary was explicitly accepted",
+      "key": "cleanup_verified_or_boundary_accepted"
+    },
+    {
+      "description": "public evidence exposes no board URLs or provider object identifiers",
+      "key": "provider_identifiers_sanitized"
+    },
+    {
+      "description": "the live board/scope is represented by an allowlisted local alias",
+      "key": "board_scope_allowlisted"
+    }
+  ],
+  "requirements_digest": "2d9f2eb8fed45520ce078e42c96fef7bd6094f280d2041e859f226cb4a2e569f",
+  "schema_version": "typed-region-sw003-live-gate-evidence-packet.v1",
+  "source_receipts": {
+    "evidence_input_digest": "23f5ef363fa13ede75b880af7e68493e0f2edafcdf1b6bbd0bb1ccb669147e1c",
+    "live_gate_evaluation_digest": "d699a7c994ee623ebc299a7b47420f3a6471336b13be493c630803a149fef45f",
+    "live_gate_review_packet_digest": "96e75b712df54036a1c4f5d0f2f5362a7cbac6790199b28798dd475aaae60aea",
+    "live_gate_status_digest": "7cacfca4c4f1cc6c30324f58f5bec619245ae051bf080c9be6724ba66faa0315",
+    "requirements_digest": "2d9f2eb8fed45520ce078e42c96fef7bd6094f280d2041e859f226cb4a2e569f"
+  },
+  "source_schema_versions": {
+    "live_gate_evaluation": "typed-region-sw003-live-gate-evaluation.v1",
+    "live_gate_review_packet": "typed-region-sw003-live-gate-review-packet.v1",
+    "live_gate_status": "typed-region-sw003-live-gate-status.v1"
+  },
+  "summary": {
+    "human_review_required": true,
+    "review_packet_blocked_reasons": [],
+    "review_packet_ok": true,
+    "status_blocked_reasons": []
+  }
+}
