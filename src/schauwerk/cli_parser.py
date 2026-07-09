@@ -203,6 +203,21 @@ def build_parser() -> argparse.ArgumentParser:
     sw009_live_apply_gate.add_argument("--output")
     sw009_live_apply_gate.add_argument("--json", action="store_true")
 
+    sw009_candidate_template = rc.add_parser(
+        "sw009-live-apply-candidate-template",
+        help="emit a local SW-009 live-apply candidate manifest template",
+    )
+    sw009_candidate_template.add_argument("--output")
+    sw009_candidate_template.add_argument("--json", action="store_true")
+
+    sw009_candidate_check = rc.add_parser(
+        "sw009-live-apply-candidate-check",
+        help="check one local SW-009 live-apply candidate manifest without mutation",
+    )
+    sw009_candidate_check.add_argument("candidate")
+    sw009_candidate_check.add_argument("--output")
+    sw009_candidate_check.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)

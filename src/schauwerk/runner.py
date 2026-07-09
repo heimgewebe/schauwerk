@@ -37,6 +37,8 @@ from .cli_handlers import (
     handle_region_sw003_live_gate_review_packet,
     handle_region_sw003_live_gate_status,
     handle_region_sw003_live_gate_template,
+    handle_region_sw009_live_apply_candidate_check,
+    handle_region_sw009_live_apply_candidate_template,
     handle_region_sw009_live_apply_gate,
     handle_snapshot,
     handle_status,
@@ -181,6 +183,20 @@ def main(argv: list[str] | None = None) -> int:
                     "operator_confirms_postflight_plan": args.ack_postflight_plan,
                     "operator_confirms_provider_redaction": args.ack_provider_redaction,
                 },
+            )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw009-live-apply-candidate-template"
+        ):
+            result = handle_region_sw009_live_apply_candidate_template(
+                output=args.output
+            )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw009-live-apply-candidate-check"
+        ):
+            result = handle_region_sw009_live_apply_candidate_check(
+                candidate_path=args.candidate, output=args.output
             )
         elif args.command == "region" and args.region_command == "postflight":
             result = handle_region_postflight(

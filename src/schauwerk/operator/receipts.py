@@ -77,6 +77,14 @@ _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS = (
 )
 
 
+SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION = (
+    "typed-region-sw009-live-apply-candidate.v1"
+)
+SW009_LIVE_APPLY_CANDIDATE_RECEIPT_SCHEMA_VERSION = (
+    "typed-region-sw009-live-apply-candidate-receipt.v1"
+)
+
+
 def _stable_digest(value: Any) -> str:
     payload = json.dumps(
         value,
@@ -780,6 +788,245 @@ def compile_region_restore_receipt(
             encoding="utf-8",
         )
         value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
+
+
+def _sw009_acknowledgement_template(*, accepted: bool) -> dict[str, bool]:
+    return {key: accepted for key in _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS}
+
+
+def compile_region_sw009_live_apply_candidate_template(
+    *, output_path: Path | None = None
+) -> dict[str, Any]:
+    template = {
+        "schema_version": SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION,
+        "candidate_id": "sw009-live-apply-candidate-YYYYMMDD",
+        "scaffold_path": "apply-scaffold.json",
+        "sw003_evidence_packet_path": (
+            "docs/operators/evidence/sw003-live-proof-20260709/"
+            "live-gate-evidence-packet.json"
+        ),
+        "acknowledgements": _sw009_acknowledgement_template(accepted=False),
+        "operator_notes": [
+            "Use allowlisted board alias only; never include board URLs or provider IDs.",
+            "Capture before snapshot before any live apply attempt.",
+            "Prepare postflight and restore evidence before mutation.",
+        ],
+        "boundary": {
+            "local_candidate_manifest_only": True,
+            "does_not_execute_live_apply": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_separate_human_operator_apply": True,
+        },
+    }
+    template["candidate_digest"] = _stable_digest(template)
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        template["output_path"] = str(destination)
+        destination.write_text(
+            json.dumps(template, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        template["output_path"] = None
+    return template
+
+
+def load_region_sw009_live_apply_candidate(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-009 live apply candidate")
+    if not isinstance(raw, dict):
+        raise ValueError("SW-009 live apply candidate must contain an object")
+    if raw.get("schema_version") != SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION:
+        raise ValueError("SW-009 live apply candidate has an unsupported schema")
+    return raw
+
+
+def _candidate_manifest_digest(candidate: dict[str, Any]) -> str:
+    return _stable_digest(
+        {
+            key: value
+            for key, value in candidate.items()
+            if key not in {"candidate_digest", "output_path"}
+        }
+    )
+
+
+def _candidate_contains_provider_reference(value: object) -> bool:
+    if isinstance(value, dict):
+        return any(_candidate_contains_provider_reference(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_candidate_contains_provider_reference(item) for item in value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        return (
+            "miro.com/app/board/" in lowered
+            or "https://miro.com" in lowered
+            or "http://miro.com" in lowered
+        )
+    return False
+
+
+def _candidate_path(candidate_path: Path, value: Any, *, label: str) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    raw = value.strip()
+    if "miro.com" in raw or "https://" in raw or "http://" in raw:
+        raise ValueError(f"{label} must be a local path, not a provider URL")
+    path = Path(raw)
+    if not path.is_absolute():
+        path = candidate_path.expanduser().absolute().parent / path
+    resolved = path.expanduser().absolute()
+    if resolved.is_symlink() or any(parent.is_symlink() for parent in resolved.parents):
+        raise ValueError(f"{label} path is unsafe")
+    return resolved
+
+
+def compile_region_sw009_live_apply_candidate_receipt(
+    *, candidate: dict[str, Any], candidate_path: Path, output_path: Path | None = None
+) -> dict[str, Any]:
+    if not isinstance(candidate, dict):
+        raise ValueError("SW-009 live apply candidate must contain an object")
+    blocked_reasons: list[str] = []
+    if candidate.get("schema_version") != SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION:
+        blocked_reasons.append("candidate_schema_unsupported")
+
+    candidate_id = candidate.get("candidate_id")
+    if isinstance(candidate_id, str) and candidate_id.strip():
+        try:
+            candidate_id = _validate_safe_id(candidate_id.strip(), label="candidate_id")
+        except ValueError:
+            blocked_reasons.append("candidate_id_invalid")
+            candidate_id = None
+    else:
+        blocked_reasons.append("candidate_id_missing")
+        candidate_id = None
+
+    declared_digest = candidate.get("candidate_digest")
+    actual_digest = _candidate_manifest_digest(candidate)
+    if declared_digest is None:
+        blocked_reasons.append("candidate_digest_missing")
+    elif not _is_sha256_digest(declared_digest):
+        blocked_reasons.append("candidate_digest_invalid")
+    elif declared_digest != actual_digest:
+        blocked_reasons.append("candidate_digest_mismatch")
+
+    if _candidate_contains_provider_reference(candidate):
+        blocked_reasons.append("candidate_provider_reference_present")
+
+    boundary = candidate.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("local_candidate_manifest_only") is not True
+        or boundary.get("does_not_execute_live_apply") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+        or boundary.get("requires_separate_human_operator_apply") is not True
+    ):
+        blocked_reasons.append("candidate_boundary_invalid")
+
+    try:
+        scaffold_path = _candidate_path(
+            candidate_path, candidate.get("scaffold_path"), label="scaffold_path"
+        )
+        evidence_packet_path = _candidate_path(
+            candidate_path,
+            candidate.get("sw003_evidence_packet_path"),
+            label="sw003_evidence_packet_path",
+        )
+    except ValueError as exc:
+        blocked_reasons.append(str(exc).replace(" ", "_"))
+        scaffold_path = None
+        evidence_packet_path = None
+
+    if scaffold_path is None:
+        blocked_reasons.append("candidate_scaffold_path_missing")
+    if evidence_packet_path is None:
+        blocked_reasons.append("candidate_sw003_evidence_packet_path_missing")
+
+    acknowledgements = candidate.get("acknowledgements")
+    if not isinstance(acknowledgements, dict):
+        acknowledgements = {}
+        blocked_reasons.append("candidate_acknowledgements_missing")
+
+    scaffold: dict[str, Any] | None = None
+    sw003_evidence_packet: dict[str, Any] | None = None
+    if scaffold_path is not None:
+        try:
+            scaffold = load_region_apply_scaffold(scaffold_path)
+        except ValueError as exc:
+            blocked_reasons.append(f"candidate_scaffold_invalid:{exc}")
+    if evidence_packet_path is not None:
+        try:
+            from schauwerk.operator.sw003_closeout import (
+                load_sw003_live_gate_evidence_packet,
+            )
+
+            sw003_evidence_packet = load_sw003_live_gate_evidence_packet(evidence_packet_path)
+        except ValueError as exc:
+            blocked_reasons.append(f"candidate_sw003_evidence_packet_invalid:{exc}")
+
+    if scaffold is not None and sw003_evidence_packet is not None:
+        gate_receipt = compile_region_sw009_live_apply_gate_receipt(
+            scaffold=scaffold,
+            sw003_evidence_packet=sw003_evidence_packet,
+            acknowledgements=acknowledgements,
+        )
+        blocked_reasons.extend(
+            f"gate:{reason}"
+            for reason in gate_receipt.get("blocked_reasons", [])
+            if isinstance(reason, str)
+        )
+    else:
+        gate_receipt = None
+
+    ready = not blocked_reasons
+    value = {
+        "schema_version": SW009_LIVE_APPLY_CANDIDATE_RECEIPT_SCHEMA_VERSION,
+        "ok": ready,
+        "candidate_id": candidate_id,
+        "mutation_attempted": False,
+        "live_apply_attempted": False,
+        "ready_for_live_apply": ready,
+        "blocked_reasons": blocked_reasons,
+        "candidate_digest": actual_digest,
+        "declared_candidate_digest": declared_digest,
+        "paths": {
+            "candidate_path": str(candidate_path.expanduser().absolute()),
+            "scaffold_path": str(scaffold_path) if scaffold_path is not None else None,
+            "sw003_evidence_packet_path": (
+                str(evidence_packet_path) if evidence_packet_path is not None else None
+            ),
+        },
+        "acknowledgements": _validate_sw009_live_acknowledgements(
+            acknowledgements, []
+        ),
+        "gate_receipt": gate_receipt,
+        "live_apply_gate": {
+            "ready_for_live_apply": ready,
+            "blocked_reasons": blocked_reasons,
+            "requires_separate_human_operator_apply": True,
+        },
+        "boundary": {
+            "local_candidate_check_only": True,
+            "does_not_execute_live_apply": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_separate_human_operator_apply": True,
+        },
+    }
+    value["receipt_digest"] = _receipt_digest(value)
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        value["output_path"] = str(destination)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     else:
         value["output_path"] = None
     return value

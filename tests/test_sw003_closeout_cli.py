@@ -740,3 +740,123 @@ def test_sw009_live_apply_gate_cli_blocks_without_acknowledgements(tmp_path, cap
     assert "acknowledgement_missing:operator_confirms_provider_redaction" in result[
         "blocked_reasons"
     ]
+
+
+def _ready_sw009_candidate_manifest(tmp_path) -> dict:
+    scaffold_path = tmp_path / "apply-scaffold.json"
+    sw003_packet_path = tmp_path / "sw003-evidence-packet.json"
+    scaffold_path.write_text(json.dumps(_ready_sw009_scaffold()), encoding="utf-8")
+    sw003_packet_path.write_text(
+        json.dumps(_ready_sw003_evidence_packet_for_sw009()), encoding="utf-8"
+    )
+    candidate = {
+        "schema_version": "typed-region-sw009-live-apply-candidate.v1",
+        "candidate_id": "sw009-candidate-cli",
+        "scaffold_path": "apply-scaffold.json",
+        "sw003_evidence_packet_path": "sw003-evidence-packet.json",
+        "acknowledgements": {
+            "operator_confirms_allowlisted_scope": True,
+            "operator_confirms_preflight_receipt_digest": True,
+            "operator_confirms_before_snapshot": True,
+            "operator_confirms_review_packet": True,
+            "operator_confirms_restore_strategy": True,
+            "operator_confirms_postflight_plan": True,
+            "operator_confirms_provider_redaction": True,
+        },
+        "boundary": {
+            "local_candidate_manifest_only": True,
+            "does_not_execute_live_apply": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_separate_human_operator_apply": True,
+        },
+    }
+    candidate["candidate_digest"] = _stable_digest(candidate)
+    return candidate
+
+
+def test_sw009_live_apply_candidate_template_cli_writes_template(tmp_path, capsys) -> None:
+    output_path = tmp_path / "candidate-template.json"
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-candidate-template",
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result == written
+    assert result["schema_version"] == "typed-region-sw009-live-apply-candidate.v1"
+    assert result["boundary"]["does_not_execute_live_apply"] is True
+    assert set(result["acknowledgements"].values()) == {False}
+
+
+def test_sw009_live_apply_candidate_check_cli_writes_ready_receipt(
+    tmp_path, capsys
+) -> None:
+    candidate_path = tmp_path / "candidate.json"
+    output_path = tmp_path / "candidate-receipt.json"
+    candidate_path.write_text(
+        json.dumps(_ready_sw009_candidate_manifest(tmp_path)), encoding="utf-8"
+    )
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-candidate-check",
+            str(candidate_path),
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result == written
+    assert result["schema_version"] == (
+        "typed-region-sw009-live-apply-candidate-receipt.v1"
+    )
+    assert result["ok"] is True
+    assert result["ready_for_live_apply"] is True
+    assert result["live_apply_attempted"] is False
+    assert result["mutation_attempted"] is False
+    assert result["gate_receipt"]["ready_for_live_apply"] is True
+    assert result["boundary"]["does_not_execute_live_apply"] is True
+
+
+def test_sw009_live_apply_candidate_check_cli_blocks_missing_ack(
+    tmp_path, capsys
+) -> None:
+    candidate = _ready_sw009_candidate_manifest(tmp_path)
+    candidate["acknowledgements"]["operator_confirms_postflight_plan"] = False
+    candidate.pop("candidate_digest")
+    candidate["candidate_digest"] = _stable_digest(candidate)
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-candidate-check",
+            str(candidate_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "gate:acknowledgement_missing:operator_confirms_postflight_plan" in result[
+        "blocked_reasons"
+    ]

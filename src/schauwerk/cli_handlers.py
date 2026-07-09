@@ -27,6 +27,8 @@ from .operator.regions import (
     compile_region_restore_receipt,
     compile_region_simulation_closeout_receipt,
     compile_region_simulation_postflight_receipt,
+    compile_region_sw009_live_apply_candidate_receipt,
+    compile_region_sw009_live_apply_candidate_template,
     compile_region_sw009_live_apply_gate_receipt,
     compile_sw003_closeout_receipt,
     compile_sw003_live_gate_evidence_packet,
@@ -42,6 +44,7 @@ from .operator.regions import (
     load_region_postflight_receipt,
     load_region_preflight,
     load_region_restore_receipt,
+    load_region_sw009_live_apply_candidate,
     load_snapshot_mapping_receipt,
     load_sw003_closeout_evidence,
     load_sw003_live_gate_evaluation_receipt,
@@ -440,6 +443,24 @@ def handle_region_sw009_live_apply_gate(
         scaffold=scaffold_receipt,
         sw003_evidence_packet=evidence_packet,
         acknowledgements=acknowledgements,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_sw009_live_apply_candidate_template(*, output: str | None) -> dict[str, Any]:
+    return compile_region_sw009_live_apply_candidate_template(
+        output_path=Path(output) if output else None
+    )
+
+
+def handle_region_sw009_live_apply_candidate_check(
+    *, candidate_path: str, output: str | None
+) -> dict[str, Any]:
+    path = Path(candidate_path)
+    candidate = load_region_sw009_live_apply_candidate(path)
+    return compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=path,
         output_path=Path(output) if output else None,
     )
 
