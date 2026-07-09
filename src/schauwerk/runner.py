@@ -32,6 +32,7 @@ from .cli_handlers import (
     handle_region_simulation_postflight,
     handle_region_sw003_closeout,
     handle_region_sw003_live_gate,
+    handle_region_sw003_live_gate_evidence_packet,
     handle_region_sw003_live_gate_requirements,
     handle_region_sw003_live_gate_review_packet,
     handle_region_sw003_live_gate_status,
@@ -200,6 +201,14 @@ def main(argv: list[str] | None = None) -> int:
         ):
             result = handle_region_sw003_live_gate_review_packet(
                 status_receipt=args.status_receipt,
+                output=args.output,
+            )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw003-live-gate-evidence-packet"
+        ):
+            result = handle_region_sw003_live_gate_evidence_packet(
+                review_packet=args.review_packet,
                 output=args.output,
             )
         elif (
