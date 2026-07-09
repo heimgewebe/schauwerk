@@ -235,3 +235,15 @@ schauwerk miro region sw009-live-apply-gate apply-scaffold.json \
 ```
 
 The receipt is local-only and non-mutating. It can report `ready_for_live_apply=true` only for a ready managed scaffold, valid SW-003 evidence packet, sanitized before snapshot, and all explicit acknowledgements. Actual live apply remains a separate human/operator action followed by after-snapshot, postflight, restore evidence, and review.
+
+
+## SW-009 candidate manifest before live apply
+
+Before a live apply is attempted, compile and check a local candidate manifest. This keeps the apply decision reproducible and separates candidate review from provider mutation:
+
+```bash
+schauwerk miro region sw009-live-apply-candidate-template --output sw009-candidate.json --json
+schauwerk miro region sw009-live-apply-candidate-check sw009-candidate.json --json
+```
+
+The candidate manifest contains only local paths and acknowledgements. The check loads the apply scaffold and SW-003 evidence packet, calls the local `sw009-live-apply-gate` compiler, and returns a `typed-region-sw009-live-apply-candidate-receipt.v1`. It rejects provider URLs in candidate paths, keeps `mutation_attempted=false`, keeps `live_apply_attempted=false`, and still requires a separate human/operator live apply followed by postflight, restore, and review evidence.

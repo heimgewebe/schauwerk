@@ -81,6 +81,8 @@ schauwerk miro region apply-scaffold preflight.json --json
 
 The apply scaffold accepts only a `typed-region-preflight.v1` receipt. If the preflight is not ready, the scaffold remains blocked and preserves the preflight reasons. If it is ready, the scaffold is fixture-ready only: `ready_for_fixture_apply=true` and `ready_for_live_apply=false`. Live apply remains blocked in ordinary scaffold receipts. After the dedicated SW-003 live proof, a separate `sw009-live-apply-gate` receipt can mark `ready_for_live_apply=true` only when SW-003 evidence, allowlisted scope, before snapshot, review packet, restore strategy, postflight plan, and provider redaction acknowledgements are all present. The gate receipt does not execute live apply. This command also does not call Miro.
 
+For repeatable live-candidate review, use `sw009-live-apply-candidate-template` and `sw009-live-apply-candidate-check`. The candidate check consumes a local manifest with local paths to the apply scaffold and SW-003 evidence packet, rejects provider URLs, and emits a `typed-region-sw009-live-apply-candidate-receipt.v1` while keeping `mutation_attempted=false` and `live_apply_attempted=false`.
+
 
 ## Simulation Postflight CLI
 

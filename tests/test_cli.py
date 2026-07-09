@@ -1084,6 +1084,80 @@ def test_runner_dispatches_region_sw009_live_apply_gate(monkeypatch, capsys) -> 
     assert result["ready_for_live_apply"] is True
 
 
+def test_runner_dispatches_region_sw009_live_apply_candidate_template(
+    monkeypatch, capsys
+) -> None:
+    observed = {}
+
+    def fake_template(*, output):
+        observed["output"] = output
+        return {
+            "schema_version": "typed-region-sw009-live-apply-candidate.v1",
+            "mutation_attempted": False,
+        }
+
+    monkeypatch.setattr(
+        runner, "handle_region_sw009_live_apply_candidate_template", fake_template
+    )
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-candidate-template",
+            "--output",
+            "candidate.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {"output": "candidate.json"}
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw009-live-apply-candidate.v1"
+    assert result["mutation_attempted"] is False
+
+
+def test_runner_dispatches_region_sw009_live_apply_candidate_check(
+    monkeypatch, capsys
+) -> None:
+    observed = {}
+
+    def fake_check(*, candidate_path, output):
+        observed.update(candidate_path=candidate_path, output=output)
+        return {
+            "schema_version": "typed-region-sw009-live-apply-candidate-receipt.v1",
+            "ready_for_live_apply": True,
+            "live_apply_attempted": False,
+        }
+
+    monkeypatch.setattr(
+        runner, "handle_region_sw009_live_apply_candidate_check", fake_check
+    )
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-candidate-check",
+            "candidate.json",
+            "--output",
+            "candidate-receipt.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed == {
+        "candidate_path": "candidate.json",
+        "output": "candidate-receipt.json",
+    }
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == (
+        "typed-region-sw009-live-apply-candidate-receipt.v1"
+    )
+    assert result["ready_for_live_apply"] is True
+    assert result["live_apply_attempted"] is False
+
+
 def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, capsys) -> None:
     observed = {}
 

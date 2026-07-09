@@ -827,3 +827,140 @@ def test_sw009_live_apply_gate_writes_and_loads(tmp_path) -> None:
     assert loaded == json.loads(output.read_text(encoding="utf-8"))
     assert loaded["schema_version"] == "typed-region-sw009-live-apply-gate-receipt.v1"
     assert result["output_path"] == str(output.absolute())
+
+
+def _ready_sw009_candidate(tmp_path) -> dict:
+    scaffold_path = tmp_path / "apply-scaffold.json"
+    evidence_path = tmp_path / "sw003-evidence-packet.json"
+    scaffold_path.write_text(json.dumps(ready_apply_scaffold()), encoding="utf-8")
+    evidence_path.write_text(json.dumps(ready_sw003_evidence_packet()), encoding="utf-8")
+    candidate = {
+        "schema_version": "typed-region-sw009-live-apply-candidate.v1",
+        "candidate_id": "sw009-candidate-test",
+        "scaffold_path": "apply-scaffold.json",
+        "sw003_evidence_packet_path": "sw003-evidence-packet.json",
+        "acknowledgements": ready_acknowledgements(),
+        "boundary": {
+            "local_candidate_manifest_only": True,
+            "does_not_execute_live_apply": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_separate_human_operator_apply": True,
+        },
+    }
+    from schauwerk.operator.receipts import _stable_digest
+
+    candidate["candidate_digest"] = _stable_digest(candidate)
+    return candidate
+
+
+def test_sw009_live_apply_candidate_template_is_local_only(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_template,
+    )
+
+    output = tmp_path / "candidate-template.json"
+    result = compile_region_sw009_live_apply_candidate_template(output_path=output)
+    written = json.loads(output.read_text(encoding="utf-8"))
+
+    assert result == written
+    assert result["schema_version"] == "typed-region-sw009-live-apply-candidate.v1"
+    assert result["boundary"] == {
+        "local_candidate_manifest_only": True,
+        "does_not_execute_live_apply": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "requires_separate_human_operator_apply": True,
+    }
+    assert set(result["acknowledgements"].values()) == {False}
+    assert len(result["candidate_digest"]) == 64
+
+
+def test_sw009_live_apply_candidate_check_opens_gate_from_manifest(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_receipt,
+    )
+
+    candidate = _ready_sw009_candidate(tmp_path)
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    result = compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=candidate_path,
+    )
+
+    assert result["schema_version"] == (
+        "typed-region-sw009-live-apply-candidate-receipt.v1"
+    )
+    assert result["ok"] is True
+    assert result["ready_for_live_apply"] is True
+    assert result["live_apply_attempted"] is False
+    assert result["mutation_attempted"] is False
+    assert result["gate_receipt"]["ready_for_live_apply"] is True
+    assert result["boundary"]["does_not_execute_live_apply"] is True
+
+
+def test_sw009_live_apply_candidate_check_blocks_digest_mismatch(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_receipt,
+    )
+
+    candidate = _ready_sw009_candidate(tmp_path)
+    candidate["candidate_digest"] = "0" * 64
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    result = compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=candidate_path,
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "candidate_digest_mismatch" in result["blocked_reasons"]
+
+
+def test_sw009_live_apply_candidate_check_blocks_missing_digest(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_receipt,
+    )
+
+    candidate = _ready_sw009_candidate(tmp_path)
+    candidate.pop("candidate_digest")
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    result = compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=candidate_path,
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "candidate_digest_missing" in result["blocked_reasons"]
+
+
+def test_sw009_live_apply_candidate_check_rejects_provider_url_path(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_receipt,
+    )
+
+    candidate = _ready_sw009_candidate(tmp_path)
+    candidate["scaffold_path"] = "https://miro.com/app/board/not-local"
+    from schauwerk.operator.receipts import _stable_digest
+
+    candidate.pop("candidate_digest")
+    candidate["candidate_digest"] = _stable_digest(candidate)
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    result = compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=candidate_path,
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "candidate_provider_reference_present" in result["blocked_reasons"]
+    assert result["boundary"]["no_miro_mutation"] is True

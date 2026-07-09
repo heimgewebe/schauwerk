@@ -451,6 +451,36 @@ def compile_region_sw009_live_apply_gate_receipt(
     )
 
 
+def compile_region_sw009_live_apply_candidate_template(
+    *, output_path: Path | None = None
+) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        compile_region_sw009_live_apply_candidate_template as _impl,
+    )
+
+    return _impl(output_path=output_path)
+
+
+def load_region_sw009_live_apply_candidate(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        load_region_sw009_live_apply_candidate as _impl,
+    )
+
+    return _impl(path)
+
+
+def compile_region_sw009_live_apply_candidate_receipt(
+    *, candidate: dict[str, Any], candidate_path: Path, output_path: Path | None = None
+) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        compile_region_sw009_live_apply_candidate_receipt as _impl,
+    )
+
+    return _impl(
+        candidate=candidate, candidate_path=candidate_path, output_path=output_path
+    )
+
+
 def load_region_operation_contract(path: Path) -> dict[str, Any]:
     from schauwerk.operator.receipts import load_region_operation_contract as _impl
 
