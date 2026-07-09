@@ -37,6 +37,7 @@ from .cli_handlers import (
     handle_region_sw003_live_gate_review_packet,
     handle_region_sw003_live_gate_status,
     handle_region_sw003_live_gate_template,
+    handle_region_sw009_live_apply_gate,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -165,6 +166,21 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_region_simulation_closeout(
                 restore_receipt=args.restore_receipt,
                 output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-apply-gate":
+            result = handle_region_sw009_live_apply_gate(
+                scaffold=args.scaffold,
+                sw003_evidence_packet=args.sw003_evidence_packet,
+                output=args.output,
+                acknowledgements={
+                    "operator_confirms_allowlisted_scope": args.ack_allowlisted_scope,
+                    "operator_confirms_preflight_receipt_digest": args.ack_preflight_receipt_digest,
+                    "operator_confirms_before_snapshot": args.ack_before_snapshot,
+                    "operator_confirms_review_packet": args.ack_review_packet,
+                    "operator_confirms_restore_strategy": args.ack_restore_strategy,
+                    "operator_confirms_postflight_plan": args.ack_postflight_plan,
+                    "operator_confirms_provider_redaction": args.ack_provider_redaction,
+                },
             )
         elif args.command == "region" and args.region_command == "postflight":
             result = handle_region_postflight(

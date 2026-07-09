@@ -589,3 +589,154 @@ def test_sw003_live_gate_evidence_packet_cli_rejects_invalid_review_schema(
 
     assert code == 2
     assert "unsupported schema" in capsys.readouterr().err
+
+
+def _ready_sw009_scaffold() -> dict:
+    return {
+        "schema_version": "typed-region-apply-scaffold.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "ready_for_fixture_apply": True,
+        "ready_for_live_apply": False,
+        "blocked_reasons": [],
+        "operation": "replace-region",
+        "region": {
+            "view_id": "learning:photosynthese",
+            "region_id": "cluster-goals",
+            "mode": "managed",
+            "surface_alias": "nicole-mt-zoom-chunked-20260701-211733",
+            "expected_snapshot_digest": "a" * 64,
+            "expected_source_digest": "b" * 64,
+            "owner": "schauwerk",
+            "visibility": "classroom",
+        },
+        "snapshot": {
+            "board_alias": "nicole-mt-zoom-chunked-20260701-211733",
+            "content_digest": "a" * 64,
+            "item_count": 4,
+            "repeatability_verified": True,
+            "sanitized_references": True,
+        },
+        "restore_strategy": "use_preflight_snapshot_path",
+        "boundary": {
+            "scaffold_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+        },
+    }
+
+
+def _ready_sw003_evidence_packet_for_sw009() -> dict:
+    packet = {
+        "schema_version": "typed-region-sw003-live-gate-evidence-packet.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "ready_for_live_acceptance_review": True,
+        "ready_for_live_apply": False,
+        "source_receipts": {
+            "evidence_input_digest": "c" * 64,
+            "live_gate_evaluation_digest": "d" * 64,
+            "live_gate_status_digest": "e" * 64,
+            "live_gate_review_packet_digest": "f" * 64,
+            "requirements_digest": "1" * 64,
+        },
+        "requirements": [],
+        "requirements_digest": "1" * 64,
+        "source_schema_versions": {
+            "live_gate_evaluation": "typed-region-sw003-live-gate-evaluation.v1",
+            "live_gate_status": "typed-region-sw003-live-gate-status.v1",
+            "live_gate_review_packet": "typed-region-sw003-live-gate-review-packet.v1",
+        },
+        "summary": {
+            "review_packet_ok": True,
+            "review_packet_blocked_reasons": [],
+            "status_blocked_reasons": [],
+            "human_review_required": True,
+        },
+        "live_apply_gate": {
+            "ready_for_live_apply": False,
+            "blocked_reasons": ["sw003_live_gate_evidence_packet_only"],
+        },
+        "boundary": {
+            "local_evidence_packet_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    packet["evidence_packet_digest"] = _stable_digest(packet)
+    return packet
+
+
+def test_sw009_live_apply_gate_cli_writes_ready_gate(tmp_path, capsys) -> None:
+    scaffold_path = tmp_path / "scaffold.json"
+    sw003_packet_path = tmp_path / "sw003-evidence-packet.json"
+    output_path = tmp_path / "sw009-live-gate.json"
+    scaffold_path.write_text(json.dumps(_ready_sw009_scaffold()), encoding="utf-8")
+    sw003_packet_path.write_text(
+        json.dumps(_ready_sw003_evidence_packet_for_sw009()), encoding="utf-8"
+    )
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-gate",
+            str(scaffold_path),
+            "--sw003-evidence-packet",
+            str(sw003_packet_path),
+            "--ack-allowlisted-scope",
+            "--ack-preflight-receipt-digest",
+            "--ack-before-snapshot",
+            "--ack-review-packet",
+            "--ack-restore-strategy",
+            "--ack-postflight-plan",
+            "--ack-provider-redaction",
+            "--output",
+            str(output_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(capsys.readouterr().out)
+    written = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result == written
+    assert result["schema_version"] == "typed-region-sw009-live-apply-gate-receipt.v1"
+    assert result["ok"] is True
+    assert result["ready_for_live_apply"] is True
+    assert result["live_apply_attempted"] is False
+    assert result["mutation_attempted"] is False
+    assert result["boundary"]["does_not_execute_live_apply"] is True
+
+
+def test_sw009_live_apply_gate_cli_blocks_without_acknowledgements(tmp_path, capsys) -> None:
+    scaffold_path = tmp_path / "scaffold.json"
+    sw003_packet_path = tmp_path / "sw003-evidence-packet.json"
+    scaffold_path.write_text(json.dumps(_ready_sw009_scaffold()), encoding="utf-8")
+    sw003_packet_path.write_text(
+        json.dumps(_ready_sw003_evidence_packet_for_sw009()), encoding="utf-8"
+    )
+
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-gate",
+            str(scaffold_path),
+            "--sw003-evidence-packet",
+            str(sw003_packet_path),
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "acknowledgement_missing:operator_confirms_provider_redaction" in result[
+        "blocked_reasons"
+    ]

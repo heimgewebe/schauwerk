@@ -385,6 +385,14 @@ def compile_sw003_live_gate_evidence_packet(
     return _impl(review_packet=review_packet, output_path=output_path)
 
 
+def load_sw003_live_gate_evidence_packet(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.sw003_closeout import (
+        load_sw003_live_gate_evidence_packet as _impl,
+    )
+
+    return _impl(path)
+
+
 def compile_sw003_closeout_receipt(
     *,
     restore_receipt: dict[str, Any],
@@ -414,6 +422,33 @@ def compile_region_simulation_closeout_receipt(
     from schauwerk.operator.receipts import compile_region_simulation_closeout_receipt as _impl
 
     return _impl(restore_receipt=restore_receipt, output_path=output_path)
+
+
+def load_region_sw009_live_apply_gate_receipt(path: Path) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        load_region_sw009_live_apply_gate_receipt as _impl,
+    )
+
+    return _impl(path)
+
+
+def compile_region_sw009_live_apply_gate_receipt(
+    *,
+    scaffold: dict[str, Any],
+    sw003_evidence_packet: dict[str, Any],
+    acknowledgements: dict[str, bool],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    from schauwerk.operator.receipts import (
+        compile_region_sw009_live_apply_gate_receipt as _impl,
+    )
+
+    return _impl(
+        scaffold=scaffold,
+        sw003_evidence_packet=sw003_evidence_packet,
+        acknowledgements=acknowledgements,
+        output_path=output_path,
+    )
 
 
 def load_region_operation_contract(path: Path) -> dict[str, Any]:

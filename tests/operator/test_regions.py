@@ -673,3 +673,157 @@ def test_operation_contract_rejects_live_ready_scaffold_without_gate() -> None:
     assert result["ok"] is False
     assert result["ready_for_apply_simulation"] is False
     assert "apply_scaffold_live_gate_not_closed" in result["blocked_reasons"]
+
+
+def ready_acknowledgements() -> dict[str, bool]:
+    return {
+        "operator_confirms_allowlisted_scope": True,
+        "operator_confirms_preflight_receipt_digest": True,
+        "operator_confirms_before_snapshot": True,
+        "operator_confirms_review_packet": True,
+        "operator_confirms_restore_strategy": True,
+        "operator_confirms_postflight_plan": True,
+        "operator_confirms_provider_redaction": True,
+    }
+
+
+def ready_sw003_evidence_packet() -> dict:
+    packet = {
+        "schema_version": "typed-region-sw003-live-gate-evidence-packet.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "live_miro_access_attempted": False,
+        "closes_live_sw003_gate": False,
+        "creates_live_acceptance": False,
+        "ready_for_live_acceptance_review": True,
+        "ready_for_live_apply": False,
+        "source_receipts": {
+            "evidence_input_digest": "c" * 64,
+            "live_gate_evaluation_digest": "d" * 64,
+            "live_gate_status_digest": "e" * 64,
+            "live_gate_review_packet_digest": "f" * 64,
+            "requirements_digest": "1" * 64,
+        },
+        "requirements": [],
+        "requirements_digest": "1" * 64,
+        "source_schema_versions": {
+            "live_gate_evaluation": "typed-region-sw003-live-gate-evaluation.v1",
+            "live_gate_status": "typed-region-sw003-live-gate-status.v1",
+            "live_gate_review_packet": "typed-region-sw003-live-gate-review-packet.v1",
+        },
+        "summary": {
+            "review_packet_ok": True,
+            "review_packet_blocked_reasons": [],
+            "status_blocked_reasons": [],
+            "human_review_required": True,
+        },
+        "live_apply_gate": {
+            "ready_for_live_apply": False,
+            "blocked_reasons": ["sw003_live_gate_evidence_packet_only"],
+        },
+        "boundary": {
+            "local_evidence_packet_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    }
+    from schauwerk.operator.receipts import _stable_digest
+
+    packet["evidence_packet_digest"] = _stable_digest(packet)
+    return packet
+
+
+def test_sw009_live_apply_gate_opens_with_sw003_evidence_and_acknowledgements() -> None:
+    from schauwerk.operator.regions import compile_region_sw009_live_apply_gate_receipt
+
+    result = compile_region_sw009_live_apply_gate_receipt(
+        scaffold=ready_apply_scaffold(),
+        sw003_evidence_packet=ready_sw003_evidence_packet(),
+        acknowledgements=ready_acknowledgements(),
+    )
+
+    assert result["schema_version"] == "typed-region-sw009-live-apply-gate-receipt.v1"
+    assert result["ok"] is True
+    assert result["ready_for_live_apply"] is True
+    assert result["live_apply_attempted"] is False
+    assert result["mutation_attempted"] is False
+    assert result["blocked_reasons"] == []
+    assert result["live_apply_gate"] == {
+        "ready_for_live_apply": True,
+        "blocked_reasons": [],
+        "requires_human_operator_apply": True,
+        "requires_postflight_receipt": True,
+        "requires_restore_plan": True,
+    }
+    assert result["boundary"] == {
+        "local_gate_only": True,
+        "does_not_execute_live_apply": True,
+        "no_miro_mutation": True,
+        "no_provider_ids_returned": True,
+        "requires_sw003_live_gate": True,
+        "requires_human_operator_apply": True,
+    }
+    assert result["source_receipts"]["sw003_live_gate_evidence_packet_digest"] == (
+        ready_sw003_evidence_packet()["evidence_packet_digest"]
+    )
+    assert "compile_postflight_receipt" in result["required_live_sequence"]
+    assert result["restore_required"] is True
+
+
+def test_sw009_live_apply_gate_blocks_missing_acknowledgements() -> None:
+    from schauwerk.operator.regions import compile_region_sw009_live_apply_gate_receipt
+
+    result = compile_region_sw009_live_apply_gate_receipt(
+        scaffold=ready_apply_scaffold(),
+        sw003_evidence_packet=ready_sw003_evidence_packet(),
+        acknowledgements={},
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert result["live_apply_gate"]["ready_for_live_apply"] is False
+    assert "acknowledgement_missing:operator_confirms_review_packet" in result[
+        "blocked_reasons"
+    ]
+    assert "acknowledgement_missing:operator_confirms_restore_strategy" in result[
+        "blocked_reasons"
+    ]
+
+
+def test_sw009_live_apply_gate_blocks_tampered_sw003_evidence_packet() -> None:
+    from schauwerk.operator.regions import compile_region_sw009_live_apply_gate_receipt
+
+    packet = ready_sw003_evidence_packet()
+    packet["ready_for_live_apply"] = True
+    result = compile_region_sw009_live_apply_gate_receipt(
+        scaffold=ready_apply_scaffold(),
+        sw003_evidence_packet=packet,
+        acknowledgements=ready_acknowledgements(),
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "sw003_live_gate_evidence_packet_must_not_enable_apply" in result[
+        "blocked_reasons"
+    ]
+
+
+def test_sw009_live_apply_gate_writes_and_loads(tmp_path) -> None:
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_gate_receipt,
+        load_region_sw009_live_apply_gate_receipt,
+    )
+
+    output = tmp_path / "gate.json"
+    result = compile_region_sw009_live_apply_gate_receipt(
+        scaffold=ready_apply_scaffold(),
+        sw003_evidence_packet=ready_sw003_evidence_packet(),
+        acknowledgements=ready_acknowledgements(),
+        output_path=output,
+    )
+    loaded = load_region_sw009_live_apply_gate_receipt(output)
+
+    assert loaded == json.loads(output.read_text(encoding="utf-8"))
+    assert loaded["schema_version"] == "typed-region-sw009-live-apply-gate-receipt.v1"
+    assert result["output_path"] == str(output.absolute())

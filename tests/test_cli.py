@@ -1036,6 +1036,54 @@ def test_runner_dispatches_region_sw003_live_gate_evidence_packet(monkeypatch, c
     assert result["ready_for_live_apply"] is False
 
 
+def test_runner_dispatches_region_sw009_live_apply_gate(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_gate(*, scaffold, sw003_evidence_packet, output, acknowledgements):
+        observed.update(
+            scaffold=scaffold,
+            sw003_evidence_packet=sw003_evidence_packet,
+            output=output,
+            acknowledgements=acknowledgements,
+        )
+        return {
+            "schema_version": "typed-region-sw009-live-apply-gate-receipt.v1",
+            "ready_for_live_apply": True,
+            "live_apply_attempted": False,
+        }
+
+    monkeypatch.setattr(runner, "handle_region_sw009_live_apply_gate", fake_gate)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply-gate",
+            "apply-scaffold.json",
+            "--sw003-evidence-packet",
+            "sw003-evidence-packet.json",
+            "--ack-allowlisted-scope",
+            "--ack-preflight-receipt-digest",
+            "--ack-before-snapshot",
+            "--ack-review-packet",
+            "--ack-restore-strategy",
+            "--ack-postflight-plan",
+            "--ack-provider-redaction",
+            "--output",
+            "live-gate.json",
+            "--json",
+        ]
+    )
+
+    assert code == 0
+    assert observed["scaffold"] == "apply-scaffold.json"
+    assert observed["sw003_evidence_packet"] == "sw003-evidence-packet.json"
+    assert observed["output"] == "live-gate.json"
+    assert all(observed["acknowledgements"].values())
+    result = json.loads(capsys.readouterr().out)
+    assert result["schema_version"] == "typed-region-sw009-live-apply-gate-receipt.v1"
+    assert result["ready_for_live_apply"] is True
+
+
 def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, capsys) -> None:
     observed = {}
 
