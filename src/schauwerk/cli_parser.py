@@ -187,6 +187,22 @@ def build_parser() -> argparse.ArgumentParser:
     simulation_closeout.add_argument("--output")
     simulation_closeout.add_argument("--json", action="store_true")
 
+    sw009_live_apply_gate = rc.add_parser(
+        "sw009-live-apply-gate",
+        help="compile a local SW-009 live-apply gate receipt without Miro mutation",
+    )
+    sw009_live_apply_gate.add_argument("scaffold")
+    sw009_live_apply_gate.add_argument("--sw003-evidence-packet", required=True)
+    sw009_live_apply_gate.add_argument("--ack-allowlisted-scope", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-preflight-receipt-digest", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-before-snapshot", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-review-packet", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-restore-strategy", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-postflight-plan", action="store_true")
+    sw009_live_apply_gate.add_argument("--ack-provider-redaction", action="store_true")
+    sw009_live_apply_gate.add_argument("--output")
+    sw009_live_apply_gate.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)

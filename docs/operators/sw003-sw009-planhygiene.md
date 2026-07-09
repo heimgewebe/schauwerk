@@ -214,4 +214,24 @@ Risk: it delays visible new features. That is acceptable because the next visibl
 
 ## Next action
 
-Keep Issue #8 open. Continue SW-009 only through fixture/simulation-safe surfaces until a controlled live SW-003 proof closes the live-gate evidence boundary. The simulation receipt chain is now restore-capable and has an explicit simulation closeout receipt without turning on live apply; keep further work on fixture/simulation-safe surfaces until SW-003 live evidence exists.
+Issue #8 is now closed by sanitized SW-003 live proof evidence. Continue ordinary apply scaffolds as fixture-only, and use the separate SW-009 live apply gate receipt to decide whether live apply can be considered under explicit acknowledgements. The gate receipt is non-mutating and does not replace postflight, restore, or review requirements.
+
+
+## SW-009 live apply gate after SW-003
+
+SW-003 Issue #8 is now closed by sanitized public evidence. This does not make existing apply scaffolds mutate Miro. Instead, the next SW-009 step is a separate local gate receipt:
+
+```bash
+schauwerk miro region sw009-live-apply-gate apply-scaffold.json \
+  --sw003-evidence-packet docs/operators/evidence/sw003-live-proof-20260709/live-gate-evidence-packet.json \
+  --ack-allowlisted-scope \
+  --ack-preflight-receipt-digest \
+  --ack-before-snapshot \
+  --ack-review-packet \
+  --ack-restore-strategy \
+  --ack-postflight-plan \
+  --ack-provider-redaction \
+  --json
+```
+
+The receipt is local-only and non-mutating. It can report `ready_for_live_apply=true` only for a ready managed scaffold, valid SW-003 evidence packet, sanitized before snapshot, and all explicit acknowledgements. Actual live apply remains a separate human/operator action followed by after-snapshot, postflight, restore evidence, and review.

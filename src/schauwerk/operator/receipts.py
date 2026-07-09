@@ -66,6 +66,17 @@ def _sw009_live_apply_gate() -> dict[str, Any]:
     }
 
 
+_SW009_LIVE_APPLY_ACKNOWLEDGEMENTS = (
+    "operator_confirms_allowlisted_scope",
+    "operator_confirms_preflight_receipt_digest",
+    "operator_confirms_before_snapshot",
+    "operator_confirms_review_packet",
+    "operator_confirms_restore_strategy",
+    "operator_confirms_postflight_plan",
+    "operator_confirms_provider_redaction",
+)
+
+
 def _stable_digest(value: Any) -> str:
     payload = json.dumps(
         value,
@@ -769,6 +780,255 @@ def compile_region_restore_receipt(
             encoding="utf-8",
         )
         value["output_path"] = str(destination)
+    else:
+        value["output_path"] = None
+    return value
+
+
+def load_region_sw009_live_apply_gate_receipt(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-009 live apply gate")
+    if not isinstance(raw, dict):
+        raise ValueError("SW-009 live apply gate receipt must contain an object")
+    if raw.get("schema_version") != "typed-region-sw009-live-apply-gate-receipt.v1":
+        raise ValueError("SW-009 live apply gate receipt has an unsupported schema")
+    return raw
+
+
+def _validate_sw003_live_gate_evidence_packet_for_sw009(
+    packet: dict[str, Any], blocked_reasons: list[str]
+) -> dict[str, Any]:
+    if not isinstance(packet, dict):
+        blocked_reasons.append("sw003_live_gate_evidence_packet_missing")
+        return {}
+    if packet.get("schema_version") != "typed-region-sw003-live-gate-evidence-packet.v1":
+        blocked_reasons.append("sw003_live_gate_evidence_packet_schema_unsupported")
+    if packet.get("ok") is not True:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_not_ok")
+    if packet.get("ready_for_live_acceptance_review") is not True:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_not_review_ready")
+    if packet.get("ready_for_live_apply") is not False:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_must_not_enable_apply")
+    if packet.get("mutation_attempted") is not False:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_mutation_state_invalid")
+    if packet.get("live_miro_access_attempted") is not False:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_live_state_invalid")
+    if packet.get("closes_live_sw003_gate") is not False:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_must_not_close_gate")
+    if packet.get("creates_live_acceptance") is not False:
+        blocked_reasons.append("sw003_live_gate_evidence_packet_must_not_create_acceptance")
+
+    live_apply_gate = packet.get("live_apply_gate")
+    if (
+        not isinstance(live_apply_gate, dict)
+        or live_apply_gate.get("ready_for_live_apply") is not False
+        or live_apply_gate.get("blocked_reasons")
+        != ["sw003_live_gate_evidence_packet_only"]
+    ):
+        blocked_reasons.append("sw003_live_gate_evidence_packet_live_apply_gate_invalid")
+
+    boundary = packet.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("local_evidence_packet_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+        or boundary.get("does_not_close_issue_8") is not True
+    ):
+        blocked_reasons.append("sw003_live_gate_evidence_packet_boundary_invalid")
+
+    source_receipts = packet.get("source_receipts")
+    if not isinstance(source_receipts, dict):
+        blocked_reasons.append("sw003_live_gate_evidence_packet_source_receipts_missing")
+        source_receipts = {}
+    for key in (
+        "evidence_input_digest",
+        "live_gate_evaluation_digest",
+        "live_gate_status_digest",
+        "live_gate_review_packet_digest",
+        "requirements_digest",
+    ):
+        if not _is_sha256_digest(source_receipts.get(key)):
+            blocked_reasons.append(f"sw003_live_gate_evidence_packet_{key}_invalid")
+    evidence_packet_digest = packet.get("evidence_packet_digest")
+    if not _is_sha256_digest(evidence_packet_digest):
+        blocked_reasons.append("sw003_live_gate_evidence_packet_digest_invalid")
+    else:
+        digest_input = {
+            key: value
+            for key, value in packet.items()
+            if key not in {"evidence_packet_digest", "output_path"}
+        }
+        if evidence_packet_digest != _stable_digest(digest_input):
+            blocked_reasons.append("sw003_live_gate_evidence_packet_digest_mismatch")
+    return source_receipts
+
+
+def _validate_sw009_live_acknowledgements(
+    acknowledgements: dict[str, bool], blocked_reasons: list[str]
+) -> dict[str, bool]:
+    if not isinstance(acknowledgements, dict):
+        acknowledgements = {}
+    normalized = {
+        key: acknowledgements.get(key) is True
+        for key in _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS
+    }
+    for key, accepted in normalized.items():
+        if not accepted:
+            blocked_reasons.append(f"acknowledgement_missing:{key}")
+    return normalized
+
+
+def compile_region_sw009_live_apply_gate_receipt(
+    *,
+    scaffold: dict[str, Any],
+    sw003_evidence_packet: dict[str, Any],
+    acknowledgements: dict[str, bool],
+    output_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(scaffold, dict):
+        raise ValueError("apply scaffold must contain an object")
+
+    blocked_reasons: list[str] = []
+    if scaffold.get("schema_version") != "typed-region-apply-scaffold.v1":
+        blocked_reasons.append("apply_scaffold_schema_unsupported")
+    fixture_ready = scaffold.get("ready_for_fixture_apply") is True
+    if scaffold.get("ok") is not True or not fixture_ready:
+        blocked_reasons.append("apply_scaffold_not_ready")
+    if scaffold.get("mutation_attempted") is not False:
+        blocked_reasons.append("apply_scaffold_mutation_state_invalid")
+    if scaffold.get("ready_for_live_apply") is not False:
+        blocked_reasons.append("apply_scaffold_live_gate_state_invalid")
+
+    region = scaffold.get("region")
+    declaration: RegionDeclaration | None = None
+    if not isinstance(region, dict):
+        blocked_reasons.append("apply_scaffold_region_missing")
+        region = {}
+    else:
+        try:
+            declaration = parse_region_declaration({"region": region})
+        except ValueError:
+            blocked_reasons.append("apply_scaffold_region_invalid")
+
+    snapshot = scaffold.get("snapshot")
+    if not isinstance(snapshot, dict):
+        blocked_reasons.append("apply_scaffold_snapshot_missing")
+        snapshot = {}
+
+    boundary = scaffold.get("boundary")
+    if (
+        not isinstance(boundary, dict)
+        or boundary.get("scaffold_only") is not True
+        or boundary.get("no_miro_mutation") is not True
+        or boundary.get("no_provider_ids_returned") is not True
+    ):
+        blocked_reasons.append("apply_scaffold_boundary_missing")
+
+    scaffold_blocks = scaffold.get("blocked_reasons", [])
+    if scaffold_blocks:
+        blocked_reasons.extend(
+            f"apply_scaffold:{reason}" for reason in scaffold_blocks if isinstance(reason, str)
+        )
+
+    if declaration is None:
+        raise ValueError("apply scaffold region is required for SW-009 live apply gate")
+    if declaration.mode != "managed":
+        blocked_reasons.append("apply_scaffold_region_not_managed")
+    snapshot_digest = snapshot.get("content_digest")
+    if snapshot_digest != declaration.expected_snapshot_digest:
+        blocked_reasons.append("apply_scaffold_snapshot_digest_mismatch")
+    if snapshot.get("board_alias") != declaration.surface_alias:
+        blocked_reasons.append("apply_scaffold_snapshot_alias_mismatch")
+    if snapshot.get("repeatability_verified") is not True:
+        blocked_reasons.append("apply_scaffold_snapshot_repeatability_missing")
+    if snapshot.get("sanitized_references") is not True:
+        blocked_reasons.append("apply_scaffold_snapshot_not_sanitized")
+
+    sw003_source_receipts = _validate_sw003_live_gate_evidence_packet_for_sw009(
+        sw003_evidence_packet, blocked_reasons
+    )
+    normalized_acknowledgements = _validate_sw009_live_acknowledgements(
+        acknowledgements, blocked_reasons
+    )
+
+    ready = not blocked_reasons
+    scaffold_digest = _stable_digest(_without_runtime_fields(scaffold))
+    sw003_packet_digest = (
+        sw003_evidence_packet.get("evidence_packet_digest")
+        if isinstance(sw003_evidence_packet, dict)
+        else None
+    )
+    source_receipts = {
+        "apply_scaffold_digest": scaffold_digest,
+        "sw003_live_gate_evidence_packet_digest": sw003_packet_digest,
+        "sw003_live_gate_evidence_input_digest": sw003_source_receipts.get(
+            "evidence_input_digest"
+        ),
+        "sw003_live_gate_review_packet_digest": sw003_source_receipts.get(
+            "live_gate_review_packet_digest"
+        ),
+    }
+    value = {
+        "schema_version": "typed-region-sw009-live-apply-gate-receipt.v1",
+        "ok": ready,
+        "mutation_attempted": False,
+        "live_apply_attempted": False,
+        "ready_for_live_apply": ready,
+        "blocked_reasons": blocked_reasons,
+        "operation": scaffold.get("operation"),
+        "region": region,
+        "snapshot": snapshot,
+        "acknowledgements": normalized_acknowledgements,
+        "source_receipts": source_receipts,
+        "verification": {
+            "apply_scaffold_ready": scaffold.get("ok") is True and fixture_ready,
+            "sw003_live_gate_evidence_packet_ready": (
+                isinstance(sw003_evidence_packet, dict)
+                and sw003_evidence_packet.get("ok") is True
+                and sw003_evidence_packet.get("ready_for_live_acceptance_review") is True
+            ),
+            "all_acknowledgements_present": all(normalized_acknowledgements.values()),
+            "snapshot_repeatability_verified": snapshot.get("repeatability_verified") is True,
+            "snapshot_references_sanitized": snapshot.get("sanitized_references") is True,
+        },
+        "required_live_sequence": [
+            "capture_before_snapshot",
+            "confirm_region_marker_scope",
+            "apply_typed_operations",
+            "capture_after_snapshot",
+            "verify_region_marker_scope",
+            "verify_idempotency_receipt",
+            "write_quality_receipt",
+            "compile_postflight_receipt",
+            "compile_restore_plan_or_restore_receipt",
+        ],
+        "restore_required": True,
+        "restore_strategy": scaffold.get("restore_strategy", "use_preflight_snapshot_path"),
+        "live_apply_gate": {
+            "ready_for_live_apply": ready,
+            "blocked_reasons": blocked_reasons,
+            "requires_human_operator_apply": True,
+            "requires_postflight_receipt": True,
+            "requires_restore_plan": True,
+        },
+        "boundary": {
+            "local_gate_only": True,
+            "does_not_execute_live_apply": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "requires_sw003_live_gate": True,
+            "requires_human_operator_apply": True,
+        },
+    }
+    value["receipt_digest"] = _receipt_digest(value)
+    if output_path is not None:
+        destination = output_path.expanduser().absolute()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        value["output_path"] = str(destination)
+        destination.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
     else:
         value["output_path"] = None
     return value

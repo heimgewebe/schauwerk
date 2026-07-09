@@ -530,6 +530,80 @@ def load_sw003_live_gate_review_packet(path: Path) -> dict[str, Any]:
     return _validate_sw003_live_gate_review_packet(raw)
 
 
+def load_sw003_live_gate_evidence_packet(path: Path) -> dict[str, Any]:
+    raw = _load_json_or_yaml(path, label="SW-003 live-gate evidence packet")
+    return _validate_sw003_live_gate_evidence_packet(raw)
+
+
+def _validate_sw003_live_gate_evidence_packet(raw: object) -> dict[str, Any]:
+    packet = _validate_receipt_object(
+        raw,
+        receipt_label="SW-003 live-gate evidence packet",
+        schema_version=LIVE_GATE_EVIDENCE_PACKET_SCHEMA_VERSION,
+    )
+    _validate_digest_bound_receipt(
+        packet,
+        receipt_label="SW-003 live-gate evidence packet",
+        label_prefix="sw003.live_gate_evidence_packet",
+        digest_key="evidence_packet_digest",
+    )
+    _require_false_field(
+        packet,
+        "mutation_attempted",
+        "SW-003 live-gate evidence packet has invalid mutation state",
+    )
+    _require_false_field(
+        packet,
+        "live_miro_access_attempted",
+        "SW-003 live-gate evidence packet has invalid live access state",
+    )
+    _require_false_field(
+        packet,
+        "closes_live_sw003_gate",
+        "SW-003 live-gate evidence packet must not close SW-003",
+    )
+    _require_false_field(
+        packet,
+        "creates_live_acceptance",
+        "SW-003 live-gate evidence packet must not create live acceptance",
+    )
+    _require_false_field(
+        packet,
+        "ready_for_live_apply",
+        "SW-003 live-gate evidence packet must not enable live apply",
+    )
+    if packet.get("ok") is not packet.get("ready_for_live_acceptance_review"):
+        raise ValueError("SW-003 live-gate evidence packet has inconsistent review state")
+    _validate_source_receipt_digests(
+        packet,
+        receipt_label="SW-003 live-gate evidence packet",
+        label_prefix="sw003.live_gate_evidence_packet",
+        keys=(
+            "live_gate_review_packet_digest",
+            "live_gate_status_digest",
+            "live_gate_evaluation_digest",
+            "evidence_input_digest",
+            "requirements_digest",
+        ),
+    )
+    _validate_blocked_live_apply_gate(
+        packet,
+        receipt_label="SW-003 live-gate evidence packet",
+        blocked_reason="sw003_live_gate_evidence_packet_only",
+    )
+    _validate_boolean_boundary(
+        packet,
+        receipt_label="SW-003 live-gate evidence packet",
+        expected={
+            "local_evidence_packet_only": True,
+            "no_miro_mutation": True,
+            "no_provider_ids_returned": True,
+            "does_not_close_issue_8": True,
+        },
+    )
+    return packet
+
+
 def compile_sw003_live_gate_evidence_packet(
     *, review_packet: dict[str, Any], output_path: Path | None = None
 ) -> dict[str, Any]:

@@ -27,6 +27,7 @@ from .operator.regions import (
     compile_region_restore_receipt,
     compile_region_simulation_closeout_receipt,
     compile_region_simulation_postflight_receipt,
+    compile_region_sw009_live_apply_gate_receipt,
     compile_sw003_closeout_receipt,
     compile_sw003_live_gate_evidence_packet,
     compile_sw003_live_gate_review_packet,
@@ -44,6 +45,7 @@ from .operator.regions import (
     load_snapshot_mapping_receipt,
     load_sw003_closeout_evidence,
     load_sw003_live_gate_evaluation_receipt,
+    load_sw003_live_gate_evidence_packet,
     load_sw003_live_gate_review_packet,
     load_sw003_live_gate_status_receipt,
     required_sw003_live_gate_evidence,
@@ -421,6 +423,23 @@ def handle_region_sw003_live_gate_evidence_packet(
     packet = load_sw003_live_gate_review_packet(Path(review_packet))
     return compile_sw003_live_gate_evidence_packet(
         review_packet=packet,
+        output_path=Path(output) if output else None,
+    )
+
+
+def handle_region_sw009_live_apply_gate(
+    *,
+    scaffold: str,
+    sw003_evidence_packet: str,
+    output: str | None,
+    acknowledgements: dict[str, bool],
+) -> dict[str, Any]:
+    scaffold_receipt = load_region_apply_scaffold(Path(scaffold))
+    evidence_packet = load_sw003_live_gate_evidence_packet(Path(sw003_evidence_packet))
+    return compile_region_sw009_live_apply_gate_receipt(
+        scaffold=scaffold_receipt,
+        sw003_evidence_packet=evidence_packet,
+        acknowledgements=acknowledgements,
         output_path=Path(output) if output else None,
     )
 
