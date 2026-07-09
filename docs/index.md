@@ -19,7 +19,8 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 6. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
 7. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
 8. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
-9. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+9. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
+10. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 

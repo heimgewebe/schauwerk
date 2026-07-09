@@ -1,0 +1,39 @@
+{
+  "blocked_reasons": [],
+  "boundary": {
+    "does_not_close_issue_8": true,
+    "local_review_packet_only": true,
+    "no_miro_mutation": true,
+    "no_provider_ids_returned": true
+  },
+  "closes_live_sw003_gate": false,
+  "creates_live_acceptance": false,
+  "live_apply_gate": {
+    "blocked_reasons": [
+      "sw003_live_gate_review_packet_only"
+    ],
+    "ready_for_live_apply": false
+  },
+  "live_miro_access_attempted": false,
+  "mutation_attempted": false,
+  "ok": true,
+  "output_path": "/tmp/schauwerk-sw003-live-proof-prep/live-gate-review-packet.json",
+  "ready_for_live_acceptance_review": true,
+  "ready_for_live_apply": false,
+  "review_packet_digest": "96e75b712df54036a1c4f5d0f2f5362a7cbac6790199b28798dd475aaae60aea",
+  "review_scope": {
+    "acceptance_review_only": true,
+    "human_review_required": true,
+    "review_may_not_close_issue_8": true,
+    "review_may_not_mutate_miro": true,
+    "review_subject": "sw003_live_gate_candidate"
+  },
+  "schema_version": "typed-region-sw003-live-gate-review-packet.v1",
+  "source_receipts": {
+    "evidence_input_digest": "23f5ef363fa13ede75b880af7e68493e0f2edafcdf1b6bbd0bb1ccb669147e1c",
+    "live_gate_evaluation_digest": "d699a7c994ee623ebc299a7b47420f3a6471336b13be493c630803a149fef45f",
+    "live_gate_status_digest": "7cacfca4c4f1cc6c30324f58f5bec619245ae051bf080c9be6724ba66faa0315",
+    "requirements_digest": "2d9f2eb8fed45520ce078e42c96fef7bd6094f280d2041e859f226cb4a2e569f"
+  },
+  "status_blocked_reasons": []
+}

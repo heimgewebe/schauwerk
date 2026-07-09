@@ -1,0 +1,10 @@
+{
+  "alias": "sw003-live-20260709-102319-ed4848",
+  "attempt_count": 2,
+  "cleanup_verified": true,
+  "final_dsl_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "marker_digest": "f1c6a3c2c4e439066ecbe9c23d8bb62a9d7e83654e01a0b41c3a329f6c1fa4f7",
+  "provider_identifiers_sanitized": true,
+  "remaining_marked_line_count": 0,
+  "schema_version": "sw003-cleanup-loop-summary.v1"
+}
