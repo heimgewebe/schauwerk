@@ -112,8 +112,9 @@ schauwerk miro learn apply grabowski-demo demos/education/peer-learning.yml --js
 - SW-000: Architektur und Verträge
 - SW-001: direkter Miro-MCP-Client
 - SW-002: read-only Miro-Snapshot
-- SW-003: isolierter Schreibtest
+- SW-003: isolierter Schreibtest bleibt für echte Live-Acceptance offen; die lokale Evidence-Kette aus Requirements, Template, Evaluation Receipt, Status Receipt, Review Packet und Loadern ist vorhanden und bleibt nicht-mutierend, non-closing und `ready_for_live_apply=false`
 - SW-004: Registry-Grundgerüst
 - SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen
+- SW-009: typed-region Apply bleibt fixture-/simulation-safe, bis SW-003 durch einen kontrollierten Live-Proof geschlossen ist
 
 Siehe `docs/roadmap.md`.
