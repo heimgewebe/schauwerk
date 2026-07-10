@@ -12,6 +12,8 @@ from .cli_handlers import (
     handle_board_remove,
     handle_doctor,
     handle_ecosystem_render,
+    handle_education_offline,
+    handle_education_render,
     handle_grabowski_operational_pilot,
     handle_grabowski_pilot,
     handle_inspect,
@@ -92,6 +94,14 @@ def main(argv: list[str] | None = None) -> int:
                 input_path=args.input,
                 snapshot_output=args.snapshot_output,
                 dsl_output=args.dsl_output,
+            )
+        elif args.provider == "education" and args.command == "render":
+            result = handle_education_render(
+                input_path=args.input, variant=args.variant, output=args.output
+            )
+        elif args.provider == "education" and args.command == "offline":
+            result = handle_education_offline(
+                input_path=args.input, output_dir=args.output_dir, variant=args.variant
             )
         elif args.command == "status":
             result = handle_status(live=args.live)

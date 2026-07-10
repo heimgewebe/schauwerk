@@ -72,6 +72,33 @@ def build_parser() -> argparse.ArgumentParser:
     software.add_argument("--dsl-output")
     software.add_argument("--json", action="store_true")
 
+    education = providers.add_parser(
+        "education", help="render audience-specific learning variants and offline packages"
+    )
+    education_commands = education.add_subparsers(dest="command", required=True)
+    education_render = education_commands.add_parser(
+        "render", help="render one audience-specific static HTML variant"
+    )
+    education_render.add_argument("input")
+    education_render.add_argument(
+        "--variant",
+        required=True,
+        choices=("teacher", "projection", "assignment", "student", "presentation"),
+    )
+    education_render.add_argument("--output")
+    education_render.add_argument("--json", action="store_true")
+    education_offline = education_commands.add_parser(
+        "offline", help="write a self-contained offline learning package"
+    )
+    education_offline.add_argument("input")
+    education_offline.add_argument(
+        "--variant",
+        required=True,
+        choices=("teacher", "projection", "assignment", "student", "presentation"),
+    )
+    education_offline.add_argument("--output-dir", required=True)
+    education_offline.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 
