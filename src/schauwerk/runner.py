@@ -50,6 +50,7 @@ from .cli_handlers import (
     handle_software_pilot,
     handle_status,
     handle_tools,
+    handle_visual_grammar,
 )
 from .cli_parser import build_parser
 from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
@@ -103,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_education_offline(
                 input_path=args.input, output_dir=args.output_dir, variant=args.variant
             )
+        elif args.provider == "visual" and args.command == "grammar":
+            result = handle_visual_grammar(output=args.output)
         elif args.command == "status":
             result = handle_status(live=args.live)
         elif args.command == "login":

@@ -230,3 +230,14 @@ def test_excessive_input_nesting_is_rejected() -> None:
     data["learn"]["teacher_notes"] = nested
     with pytest.raises(ValueError, match="nesting exceeds"):
         parse_education_source(data)
+
+
+def test_education_variants_use_shared_visual_grammar() -> None:
+    source = parse_education_source(sample())
+    document, receipt = render_education_variant(source, "student")
+    assert receipt["schema_version"] == "education-variant-receipt.v1"
+    assert "grammar_version" not in receipt
+    assert "template" not in receipt
+    assert "schauwerk-visual-grammar.v1" in document
+    assert "Template: learning-view-v1-rich" in document
+    assert "--sw-accent:#173B2D" in document

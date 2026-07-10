@@ -5,6 +5,7 @@ This directory proves the SW-006 second-software-pilot gate without provider mut
 - `input.json` is the reviewed declarative source projection bound to one Lenskit revision.
 - `snapshot.json` is the deterministic compiled snapshot.
 - `software-overview.dsl` is the read-only Miro DSL.
-- `render-receipt.json` binds source, snapshot and output counts.
+- `render-receipt.json` binds source, snapshot and output counts without changing its v1 schema.
+- The DSL uses `schauwerk-visual-grammar.v1` and text-plus-symbol state cues.
 
 The Lenskit repository and GitHub remain authoritative. The committed projection is intentionally not a live-health claim.

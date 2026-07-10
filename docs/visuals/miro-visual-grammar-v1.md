@@ -3,45 +3,89 @@ id: miro-visual-grammar-v1
 role: contract
 status: active
 doc_type: contract
-title: Miro Visual Grammar v1
-summary: Semantic primitive catalog and template rules for richer Miro boards.
+title: Schauwerk Visual Grammar v1
+summary: Versioned renderer-independent semantic tokens, state cues, provenance and template rules.
 ---
 
-# Miro Visual Grammar v1
+# Schauwerk Visual Grammar v1
 
-Miro Visual Grammar v1 defines which visual primitive Schauwerk should choose before it emits layout DSL. The rule is semantic first: the renderer chooses the primitive that matches the job, not the item that is quickest to create.
+`schauwerk-visual-grammar.v1` is the common semantic layer for Miro DSL, static HTML and later publication or presentation renderers. Renderers may look different, but they must preserve the same meaning, state and source boundaries.
+
+The canonical machine-readable manifest is produced with:
+
+```bash
+schauwerk visual grammar --output visual-grammar.json --json
+```
+
+## Semantic tokens
+
+| Token | Meaning | Non-colour cue |
+| --- | --- | --- |
+| Orientation | entry point or primary question | `◆` and text label |
+| Evidence | source-backed claim | `▣` and source wording |
+| Decision | decision or trade-off | `◇` and decision label |
+| Action | next or review action | `→` and action wording |
+| Risk | risk, failure or blockade | `!` and risk wording |
+| Source | provenance and revision | `↗` and source wording |
+| Uncertainty | estimated or unresolved statement | `?` and uncertainty label |
+
+Colour is never the only carrier of meaning. Every semantic token has a label, symbol, shape and text alternative.
+
+## State markers
+
+`healthy`, `partial`, `stale`, `failed`, `unavailable` and `unknown` each combine:
+
+- a visible symbol;
+- an explicit text label;
+- a contrast-validated foreground and background;
+- a severity rank for deterministic summaries.
+
+Normal-text contrast must be at least `4.5:1`. Stored contrast receipts are recomputed during validation rather than trusted.
+
+## Provenance, freshness and uncertainty
+
+Every live or source-derived fact must expose:
+
+- `source_id`;
+- `revision`;
+- `observed_at`;
+- `freshness`;
+- `uncertainty`.
+
+Missing observation time cannot appear fresh. Derived or estimated claims remain labelled and cannot become source facts automatically. Unavailable sources must remain visible instead of disappearing from the view.
+
+## Template families
+
+The grammar defines separate templates for:
+
+- software overview;
+- education;
+- roadmap;
+- timeline;
+- presentation;
+- public summary;
+- zoomable education map.
+
+Each template has its own regions, audience, reading order and invariants. This gives the system a common visual language without forcing software architecture and classroom material into the same layout.
 
 ## Primitive catalog
 
 | Primitive | Role | Use when |
 | --- | --- | --- |
-| Frame | region | A board needs a bounded chapter, workspace, or projection area. |
-| Banner / Shape | orientation | A leitfrage, thesis, warning, or status must be visible first. |
-| Text | label | The board needs a heading, caption, or quiet explanatory label. |
-| Sticky | short thought | A learner note, quick idea, or small step must stay lightweight. |
-| Connector | relation | A cause, sequence, dependency, contrast, or evidence link must be explicit. |
-| Doc | explanation | Longer instruction, source summary, worked example, or speaking note would overload a sticky. |
-| Table | structured comparison | Roles, criteria, vocabulary, status, or argument maps need rows and columns. |
-| Card | action item | A task, review item, or handoff needs ownership-like treatment. |
-| Code Widget | technical evidence | Commands, config, or source snippets must remain reproducible. |
-| Image | visual anchor | A screenshot, map, photo, or diagram source gives orientation faster than text. |
-| Comment | review thread | Feedback or teacher notes should remain attached to an item. |
-| Diagram | formal model | A flow, system relation, process, or decision tree is the object itself. |
-| Prototype | interactive surface | A screen flow or clickable explanation is needed. |
+| Frame | region | A bounded chapter, workspace or projection area is needed. |
+| Banner / Shape | orientation | A question, thesis, warning or status must be visible first. |
+| Text | label | A heading, caption or quiet explanatory label is needed. |
+| Sticky | short thought | A learner note, quick idea or small step must stay lightweight. |
+| Connector | relation | Cause, sequence, dependency, contrast or evidence must be explicit. |
+| Doc | explanation | Longer instruction or source explanation would overload a sticky. |
+| Table | structured comparison | Roles, criteria, vocabulary or status need rows and columns. |
+| Card | action item | A task, review item or handoff needs action treatment. |
+| Code Widget | technical evidence | Commands, configuration or source snippets must remain reproducible. |
+| Image | visual anchor | A screenshot, map, photo or diagram gives faster orientation. |
+| Comment | review thread | Feedback should remain attached to an item. |
+| Diagram | formal model | A process, flow or decision tree is the object itself. |
+| Prototype | interactive surface | A screen flow or clickable explanation is required. |
 
-## Learning View template
+## Current renderer boundary
 
-`learning-view-v1-rich` uses six regions: orientation, concept table, learning path, explainer doc, peer review, and safety footer.
-
-Required invariants:
-
-- The guiding question is visible at first glance.
-- Longer explanations use `DOC`, not sticky notes.
-- Structured comparisons use `TABLE`.
-- Sticky notes are reserved for short learning actions.
-- Relations are explicit `CONNECTOR` items.
-- The privacy footer is always present.
-
-## Current DSL boundary
-
-The renderer may catalog primitives that the current Miro layout backend does not yet support directly. For Learning View v1, the emitted default set is deliberately conservative: `FRAME`, `SHAPE`, `TEXT`, `DOC`, `TABLE`, `STICKY`, and `CONNECTOR`.
+The Miro layout backend currently emits the conservative subset `FRAME`, `SHAPE`, `TEXT`, `DOC`, `TABLE`, `STICKY` and `CONNECTOR`. HTML education output uses the shared education theme and accessibility contract. Unsupported primitives remain declared for later adapters and cannot be silently substituted with misleading semantics.

@@ -1,0 +1,646 @@
+{
+  "accessibility": {
+    "colour_only_meaning_prohibited": true,
+    "minimum_normal_text_contrast": 4.5,
+    "reading_order_required": true,
+    "state_requires_text_and_symbol": true,
+    "text_alternative_required": true
+  },
+  "primitives": [
+    {
+      "density": "macro",
+      "layout_dsl": true,
+      "name": "frame",
+      "role": "region",
+      "supports_review": false,
+      "use_for": [
+        "chapter",
+        "workspace",
+        "projection boundary",
+        "board section"
+      ]
+    },
+    {
+      "density": "low",
+      "layout_dsl": true,
+      "name": "banner_shape",
+      "role": "orientation",
+      "supports_review": false,
+      "use_for": [
+        "leitfrage",
+        "thesis",
+        "warning",
+        "status",
+        "section emphasis"
+      ]
+    },
+    {
+      "density": "low",
+      "layout_dsl": true,
+      "name": "text",
+      "role": "label",
+      "supports_review": false,
+      "use_for": [
+        "heading",
+        "legend",
+        "caption",
+        "quiet explanation"
+      ]
+    },
+    {
+      "density": "medium",
+      "layout_dsl": true,
+      "name": "sticky",
+      "role": "short thought",
+      "supports_review": true,
+      "use_for": [
+        "question",
+        "idea",
+        "student note",
+        "quick classification",
+        "learning step"
+      ]
+    },
+    {
+      "density": "low",
+      "layout_dsl": true,
+      "name": "connector",
+      "role": "relation",
+      "supports_review": false,
+      "use_for": [
+        "cause",
+        "sequence",
+        "contrast",
+        "evidence",
+        "dependency"
+      ]
+    },
+    {
+      "density": "high",
+      "layout_dsl": true,
+      "name": "doc",
+      "role": "explanation",
+      "supports_review": false,
+      "use_for": [
+        "longer instruction",
+        "source summary",
+        "worked example",
+        "speaker notes"
+      ]
+    },
+    {
+      "density": "high",
+      "layout_dsl": true,
+      "name": "table",
+      "role": "structured comparison",
+      "supports_review": false,
+      "use_for": [
+        "roles",
+        "criteria",
+        "vocabulary",
+        "task status",
+        "argument map"
+      ]
+    },
+    {
+      "density": "medium",
+      "layout_dsl": true,
+      "name": "card",
+      "role": "action item",
+      "supports_review": true,
+      "use_for": [
+        "assignment",
+        "todo",
+        "review item",
+        "handoff"
+      ]
+    },
+    {
+      "density": "high",
+      "layout_dsl": false,
+      "name": "code_widget",
+      "role": "technical evidence",
+      "supports_review": false,
+      "use_for": [
+        "command",
+        "config",
+        "source snippet",
+        "repro step"
+      ]
+    },
+    {
+      "density": "medium",
+      "layout_dsl": false,
+      "name": "image",
+      "role": "visual anchor",
+      "supports_review": false,
+      "use_for": [
+        "photo",
+        "diagram source",
+        "map",
+        "screenshot"
+      ]
+    },
+    {
+      "density": "medium",
+      "layout_dsl": false,
+      "name": "comment",
+      "role": "review thread",
+      "supports_review": true,
+      "use_for": [
+        "feedback",
+        "open question",
+        "teacher note",
+        "peer review"
+      ]
+    },
+    {
+      "density": "medium",
+      "layout_dsl": false,
+      "name": "diagram",
+      "role": "formal model",
+      "supports_review": false,
+      "use_for": [
+        "process",
+        "flowchart",
+        "system relation",
+        "decision tree"
+      ]
+    },
+    {
+      "density": "high",
+      "layout_dsl": false,
+      "name": "prototype",
+      "role": "interactive surface",
+      "supports_review": false,
+      "use_for": [
+        "screen flow",
+        "interactive explanation",
+        "web mockup"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "freshness_values": [
+      "fresh",
+      "stale",
+      "unknown",
+      "unavailable"
+    ],
+    "required_fields": [
+      "source_id",
+      "revision",
+      "observed_at",
+      "freshness",
+      "uncertainty"
+    ],
+    "rules": [
+      "source authority remains external to the rendered view",
+      "missing observation time cannot be presented as fresh",
+      "stale and unavailable states remain visible",
+      "estimated or derived claims are labelled and never promoted to source facts"
+    ],
+    "uncertainty_values": [
+      "observed",
+      "derived",
+      "estimated",
+      "unknown"
+    ]
+  },
+  "schema_version": "schauwerk-visual-grammar.v1",
+  "semantic_tokens": [
+    {
+      "background": "#16324F",
+      "border": "#16324F",
+      "contrast_ratio": 13.1,
+      "foreground": "#FFFFFF",
+      "label": "Orientierung",
+      "name": "orientation",
+      "role": "entry point",
+      "shape": "round_rectangle",
+      "symbol": "◆",
+      "text_alternative": "Orientierung und Einstieg"
+    },
+    {
+      "background": "#EDF4FF",
+      "border": "#315D8A",
+      "contrast_ratio": 14.44,
+      "foreground": "#14213D",
+      "label": "Beleg",
+      "name": "evidence",
+      "role": "source-backed fact",
+      "shape": "rectangle",
+      "symbol": "▣",
+      "text_alternative": "Belegte Aussage mit Quelle"
+    },
+    {
+      "background": "#F8ECFF",
+      "border": "#6B3B73",
+      "contrast_ratio": 14.03,
+      "foreground": "#301934",
+      "label": "Entscheidung",
+      "name": "decision",
+      "role": "decision or trade-off",
+      "shape": "diamond",
+      "symbol": "◇",
+      "text_alternative": "Entscheidung oder Abwägung"
+    },
+    {
+      "background": "#FFF4CC",
+      "border": "#8A6512",
+      "contrast_ratio": 13.39,
+      "foreground": "#1F2933",
+      "label": "Aktion",
+      "name": "action",
+      "role": "next action",
+      "shape": "round_rectangle",
+      "symbol": "→",
+      "text_alternative": "Auszuführende oder zu prüfende Aktion"
+    },
+    {
+      "background": "#FFE8E8",
+      "border": "#9A3030",
+      "contrast_ratio": 13.08,
+      "foreground": "#4A1010",
+      "label": "Risiko",
+      "name": "risk",
+      "role": "risk or failure",
+      "shape": "hexagon",
+      "symbol": "!",
+      "text_alternative": "Risiko, Fehler oder Blockade"
+    },
+    {
+      "background": "#EAF8F0",
+      "border": "#2F6B50",
+      "contrast_ratio": 11.29,
+      "foreground": "#173B2D",
+      "label": "Quelle",
+      "name": "source",
+      "role": "provenance",
+      "shape": "document",
+      "symbol": "↗",
+      "text_alternative": "Quelle, Revision und Beobachtungszeit"
+    },
+    {
+      "background": "#FFF8DD",
+      "border": "#80671F",
+      "contrast_ratio": 12.27,
+      "foreground": "#3C2F12",
+      "label": "Unsicherheit",
+      "name": "uncertainty",
+      "role": "uncertain claim",
+      "shape": "cloud",
+      "symbol": "?",
+      "text_alternative": "Unsichere oder noch zu prüfende Aussage"
+    }
+  ],
+  "state_markers": [
+    {
+      "background": "#E8F7EC",
+      "border": "#2B6B3F",
+      "contrast_ratio": 11.04,
+      "foreground": "#113D24",
+      "label": "gesund",
+      "name": "healthy",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 0,
+      "symbol": "✓"
+    },
+    {
+      "background": "#FFF8DD",
+      "border": "#80671F",
+      "contrast_ratio": 12.27,
+      "foreground": "#3C2F12",
+      "label": "teilweise",
+      "name": "partial",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 1,
+      "symbol": "◐"
+    },
+    {
+      "background": "#FFF0DF",
+      "border": "#985B22",
+      "contrast_ratio": 11.42,
+      "foreground": "#4A2B10",
+      "label": "veraltet",
+      "name": "stale",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 2,
+      "symbol": "⧖"
+    },
+    {
+      "background": "#FFE8E8",
+      "border": "#9A3030",
+      "contrast_ratio": 13.08,
+      "foreground": "#4A1010",
+      "label": "fehlgeschlagen",
+      "name": "failed",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 3,
+      "symbol": "✕"
+    },
+    {
+      "background": "#FFE8E8",
+      "border": "#9A3030",
+      "contrast_ratio": 13.08,
+      "foreground": "#4A1010",
+      "label": "nicht verfügbar",
+      "name": "unavailable",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 4,
+      "symbol": "!"
+    },
+    {
+      "background": "#EEF1F4",
+      "border": "#58636E",
+      "contrast_ratio": 12.61,
+      "foreground": "#252B31",
+      "label": "unbekannt",
+      "name": "unknown",
+      "non_colour_cues": [
+        "text",
+        "symbol"
+      ],
+      "severity_rank": 5,
+      "symbol": "?"
+    }
+  ],
+  "templates": [
+    {
+      "audience": "technical operators",
+      "family": "software",
+      "invariants": [
+        "source revision is visible",
+        "decisions remain separate from current work",
+        "test and risk states have text and symbol cues",
+        "provider mutation is never implied"
+      ],
+      "name": "software-overview-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "table",
+        "doc",
+        "connector"
+      ],
+      "purpose": "architecture, decisions, delivery, tests and risks",
+      "reading_order": [
+        "orientation",
+        "architecture",
+        "direction",
+        "delivery",
+        "risks",
+        "sources"
+      ],
+      "regions": [
+        "orientation",
+        "architecture",
+        "direction",
+        "delivery",
+        "risks",
+        "sources"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "teachers and learners",
+      "family": "education",
+      "invariants": [
+        "leitfrage is visible at first glance",
+        "longer explanation uses doc, not sticky notes",
+        "structured comparisons use tables",
+        "short learning actions may use sticky notes",
+        "relations are explicit connectors",
+        "privacy footer is always present"
+      ],
+      "name": "learning-view-v1-rich",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "table",
+        "doc",
+        "sticky",
+        "connector"
+      ],
+      "purpose": "peer-facing explanation and projection board",
+      "reading_order": [
+        "orientation",
+        "concept table",
+        "learning path",
+        "explainer doc",
+        "peer review",
+        "safety footer"
+      ],
+      "regions": [
+        "orientation",
+        "concept table",
+        "learning path",
+        "explainer doc",
+        "peer review",
+        "safety footer"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "planning and delivery",
+      "family": "roadmap",
+      "invariants": [
+        "outcomes precede activities",
+        "dependencies use explicit connectors",
+        "blocked work has a non-colour marker",
+        "time horizons do not claim calendar precision without sources"
+      ],
+      "name": "roadmap-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "card",
+        "connector",
+        "table"
+      ],
+      "purpose": "sequenced outcomes, gates and dependencies",
+      "reading_order": [
+        "outcome",
+        "now",
+        "next",
+        "later",
+        "dependencies",
+        "risks"
+      ],
+      "regions": [
+        "outcome",
+        "now",
+        "next",
+        "later",
+        "dependencies",
+        "risks"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "mixed",
+      "family": "timeline",
+      "invariants": [
+        "every date has a source or uncertainty label",
+        "gaps remain visible",
+        "sequence does not imply causality",
+        "reading order is chronological"
+      ],
+      "name": "timeline-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "card",
+        "connector"
+      ],
+      "purpose": "dated events with source and uncertainty",
+      "reading_order": [
+        "legend",
+        "time axis",
+        "events",
+        "gaps",
+        "sources"
+      ],
+      "regions": [
+        "legend",
+        "time axis",
+        "events",
+        "gaps",
+        "sources"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "live audience",
+      "family": "presentation",
+      "invariants": [
+        "one main claim per slide",
+        "speaker notes are not projected",
+        "reading order is explicit",
+        "offline output has no remote dependencies"
+      ],
+      "name": "presentation-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "image",
+        "diagram",
+        "doc"
+      ],
+      "purpose": "ordered slides with separate speaker support",
+      "reading_order": [
+        "title",
+        "question",
+        "content",
+        "evidence",
+        "decision",
+        "close"
+      ],
+      "regions": [
+        "title",
+        "question",
+        "content",
+        "evidence",
+        "decision",
+        "close"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "public",
+      "family": "public-summary",
+      "invariants": [
+        "only declared public fields are rendered",
+        "limitations and version remain visible",
+        "unknown visibility fails closed",
+        "published output is read-only"
+      ],
+      "name": "public-summary-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "doc",
+        "table"
+      ],
+      "purpose": "sanitized immutable public explanation",
+      "reading_order": [
+        "title",
+        "summary",
+        "evidence",
+        "limitations",
+        "version"
+      ],
+      "regions": [
+        "title",
+        "summary",
+        "evidence",
+        "limitations",
+        "version"
+      ],
+      "supports_offline": true
+    },
+    {
+      "audience": "teachers and learners",
+      "family": "education-map",
+      "invariants": [
+        "zoom-out shows named clusters before details",
+        "zoom-in reveals dense local content inside clusters",
+        "production lane separates workflow from knowledge clusters",
+        "risk and source hygiene are explicit regions",
+        "details stay inside their cluster frame",
+        "privacy footer is always present"
+      ],
+      "name": "learning-zoomlandkarte-v1",
+      "primitives": [
+        "frame",
+        "banner_shape",
+        "text",
+        "table",
+        "doc",
+        "sticky",
+        "connector"
+      ],
+      "purpose": "zoomable overview-to-detail map for larger learning material",
+      "reading_order": [
+        "macro overview",
+        "production lane",
+        "priority clusters",
+        "detail fields",
+        "risk and gap zone",
+        "source hygiene",
+        "privacy footer"
+      ],
+      "regions": [
+        "macro overview",
+        "production lane",
+        "priority clusters",
+        "detail fields",
+        "risk and gap zone",
+        "source hygiene",
+        "privacy footer"
+      ],
+      "supports_offline": true
+    }
+  ]
+}

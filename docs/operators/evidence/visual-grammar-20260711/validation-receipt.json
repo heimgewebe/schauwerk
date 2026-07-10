@@ -1,0 +1,12 @@
+{
+  "canonical_bytes": 10073,
+  "grammar_version": "schauwerk-visual-grammar.v1",
+  "manifest_bytes": 15100,
+  "minimum_contrast": 11.04,
+  "output": "docs/operators/evidence/visual-grammar-20260711/grammar.json",
+  "schema_version": "visual-grammar-validation-receipt.v1",
+  "state_count": 6,
+  "template_count": 7,
+  "token_count": 7,
+  "valid": true
+}

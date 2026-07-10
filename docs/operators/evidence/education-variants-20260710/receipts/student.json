@@ -15,7 +15,7 @@
   "miro_required": false,
   "network_dependencies": false,
   "output": "docs/operators/evidence/education-variants-20260710/variants/student.html",
-  "output_sha256": "179c9a7690e5dc693154e9ace6e6acab97f287de6b6e19ae0e375be4215afd06",
+  "output_sha256": "657de061605045e6e0b8f71c242abd824d9cd94f6ef0d9094df39aac063db0d1",
   "personal_data_detected": false,
   "schema_version": "education-variant-receipt.v1",
   "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",

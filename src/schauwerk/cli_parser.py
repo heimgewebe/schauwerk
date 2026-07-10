@@ -99,6 +99,14 @@ def build_parser() -> argparse.ArgumentParser:
     education_offline.add_argument("--output-dir", required=True)
     education_offline.add_argument("--json", action="store_true")
 
+    visual = providers.add_parser("visual", help="inspect the versioned visual grammar")
+    visual_commands = visual.add_subparsers(dest="command", required=True)
+    visual_grammar = visual_commands.add_parser(
+        "grammar", help="validate or write the canonical visual grammar manifest"
+    )
+    visual_grammar.add_argument("--output")
+    visual_grammar.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 
