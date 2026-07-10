@@ -1,0 +1,131 @@
+{
+  "schema_version": "software-pilot-input.v1",
+  "project_id": "lenskit",
+  "view_id": "lenskit.software-overview",
+  "sources": [
+    {
+      "source_id": "github.lenskit",
+      "revision": "0ec3cf2938a6bb000a6e397a9d347ce781b9e3f2"
+    },
+    {
+      "source_id": "repo.lenskit",
+      "revision": "0ec3cf2938a6bb000a6e397a9d347ce781b9e3f2"
+    }
+  ],
+  "title": "Lenskit und RepoBrief",
+  "purpose": "Repositories deterministisch, zitierbar und mit klarer Autorität für Menschen und Agenten aufbereiten.",
+  "components": [
+    {
+      "id": "agent-contract",
+      "title": "Agent Consumption Contract",
+      "responsibility": "Definiert Autorität, Lesereihenfolge und Zitierpflichten.",
+      "status": "active"
+    },
+    {
+      "id": "atlas",
+      "title": "Atlas",
+      "responsibility": "Erfasst Dateisysteme über explizite Root- und Sicherheitsverträge.",
+      "status": "active"
+    },
+    {
+      "id": "repobrief",
+      "title": "RepoBrief",
+      "responsibility": "Erzeugt portable Repository-Bundles und Reading Packs.",
+      "status": "active"
+    },
+    {
+      "id": "retrieval",
+      "title": "Retrieval und Range Resolution",
+      "responsibility": "Löst Suche, Spans und belegbare Textbereiche auf.",
+      "status": "active"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "authority",
+      "title": "Canonical artifact remains authoritative",
+      "status": "accepted",
+      "impact": "Reading Packs navigieren, ersetzen aber nie den kanonischen Inhalt."
+    },
+    {
+      "id": "read-boundary",
+      "title": "MCP adapter remains read-only",
+      "status": "accepted",
+      "impact": "Agentenzugriff darf keine versteckte Spiegel- oder Schreibschicht erzeugen."
+    },
+    {
+      "id": "snapshot",
+      "title": "Snapshot creation is explicit",
+      "status": "accepted",
+      "impact": "Frische Daten entstehen nur durch einen sichtbaren Erzeugungsschritt."
+    }
+  ],
+  "roadmap": [
+    {
+      "id": "adapter",
+      "title": "Broader read-only adapter",
+      "status": "next",
+      "outcome": "Mehr Artefaktrollen werden über denselben Integritätsvertrag lesbar."
+    },
+    {
+      "id": "evaluation",
+      "title": "Retrieval evaluation",
+      "status": "active",
+      "outcome": "Recall, Citation Range und Grounding werden messbar verbessert."
+    },
+    {
+      "id": "snapshot-create",
+      "title": "MCP snapshot_create",
+      "status": "planned",
+      "outcome": "Snapshot-Erzeugung wird explizit und getrennt von Lesezugriffen angeboten."
+    }
+  ],
+  "work": [
+    {
+      "id": "main-957",
+      "title": "Portable refresh output root",
+      "status": "merged",
+      "kind": "pull-request"
+    },
+    {
+      "id": "open-prs",
+      "title": "Offene Pull Requests",
+      "status": "none",
+      "kind": "repository-state"
+    },
+    {
+      "id": "required-ci",
+      "title": "Test, Lint, Contracts und Merge-Validierung",
+      "status": "green",
+      "kind": "validation"
+    }
+  ],
+  "tests": {
+    "status": "required validation workflows green",
+    "passed": 6,
+    "failed": 0
+  },
+  "risks": [
+    {
+      "id": "metrics",
+      "title": "Metrics Snapshot & Validation ist rot",
+      "severity": "medium",
+      "status": "open",
+      "mitigation": "Diagnostischen Workflow getrennt untersuchen; grüne Kernvalidierung nicht überdehnen."
+    },
+    {
+      "id": "retrieval-quality",
+      "title": "Retrieval-Qualität bleibt messbar begrenzt",
+      "severity": "high",
+      "status": "managed",
+      "mitigation": "Eval-Sätze, Citation-Range-Prüfung und Grounding-Verträge weiter ausbauen."
+    },
+    {
+      "id": "staleness",
+      "title": "Bundles können veralten",
+      "severity": "medium",
+      "status": "managed",
+      "mitigation": "Snapshot-Hash, Frischezustand und explizite Erzeugung gemeinsam prüfen."
+    }
+  ]
+}

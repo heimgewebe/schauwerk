@@ -13,12 +13,12 @@ def test_seeded_registry_is_valid() -> None:
     root = Path(__file__).resolve().parents[1]
     assert validate_registry(root) == {
         "policies": 2,
-        "projects": 2,
+        "projects": 3,
         "publications": 1,
-        "regions": 3,
-        "sources": 10,
-        "surfaces": 4,
-        "views": 3,
+        "regions": 4,
+        "sources": 12,
+        "surfaces": 5,
+        "views": 4,
     }
 
 
@@ -28,7 +28,7 @@ def test_registry_status_is_deterministic_and_inspectable() -> None:
     second = registry_status(root)
     assert first == second
     assert first["valid"] is True
-    assert first["counts"]["sources"] == 10
+    assert first["counts"]["sources"] == 12
     assert len(first["registry_digest"]) == 64
     view = registry_show("views", "grabowski.operator-overview", root)["item"]
     assert view["project_id"] == "grabowski"

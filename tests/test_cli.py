@@ -1222,7 +1222,7 @@ def test_registry_status_cli(capsys) -> None:
     assert runner.main(["registry", "status", "--json"]) == 0
     result = json.loads(capsys.readouterr().out)
     assert result["valid"] is True
-    assert result["counts"]["projects"] == 2
+    assert result["counts"]["projects"] == 3
 
 
 def test_registry_show_cli(capsys) -> None:
@@ -1363,3 +1363,36 @@ def test_grabowski_operational_pilot_cli(tmp_path, capsys) -> None:
     result = json.loads(capsys.readouterr().out)
     assert result["overall_status"] == "unavailable"
     assert result["provider_mutation_attempted"] is False
+
+
+def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_software(*, input_path, snapshot_output, dsl_output):
+        observed.update(
+            input_path=input_path,
+            snapshot_output=snapshot_output,
+            dsl_output=dsl_output,
+        )
+        return {"project_id": "lenskit", "provider_mutation_attempted": False}
+
+    monkeypatch.setattr(runner, "handle_software_pilot", fake_software)
+    code = runner.main(
+        [
+            "pilot",
+            "software",
+            "input.json",
+            "--snapshot-output",
+            "snapshot.json",
+            "--dsl-output",
+            "view.dsl",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "input_path": "input.json",
+        "snapshot_output": "snapshot.json",
+        "dsl_output": "view.dsl",
+    }
+    assert json.loads(capsys.readouterr().out)["project_id"] == "lenskit"

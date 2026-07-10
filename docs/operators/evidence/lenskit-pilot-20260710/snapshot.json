@@ -1,0 +1,147 @@
+{
+  "boundaries": {
+    "contains_personal_data": false,
+    "contains_secret_values": false,
+    "provider_mutation_attempted": false,
+    "source_system_remains_authoritative": true
+  },
+  "components": [
+    {
+      "id": "agent-contract",
+      "responsibility": "Definiert Autorit\u00e4t, Lesereihenfolge und Zitierpflichten.",
+      "status": "active",
+      "title": "Agent Consumption Contract"
+    },
+    {
+      "id": "atlas",
+      "responsibility": "Erfasst Dateisysteme \u00fcber explizite Root- und Sicherheitsvertr\u00e4ge.",
+      "status": "active",
+      "title": "Atlas"
+    },
+    {
+      "id": "repobrief",
+      "responsibility": "Erzeugt portable Repository-Bundles und Reading Packs.",
+      "status": "active",
+      "title": "RepoBrief"
+    },
+    {
+      "id": "retrieval",
+      "responsibility": "L\u00f6st Suche, Spans und belegbare Textbereiche auf.",
+      "status": "active",
+      "title": "Retrieval und Range Resolution"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "authority",
+      "impact": "Reading Packs navigieren, ersetzen aber nie den kanonischen Inhalt.",
+      "status": "accepted",
+      "title": "Canonical artifact remains authoritative"
+    },
+    {
+      "id": "read-boundary",
+      "impact": "Agentenzugriff darf keine versteckte Spiegel- oder Schreibschicht erzeugen.",
+      "status": "accepted",
+      "title": "MCP adapter remains read-only"
+    },
+    {
+      "id": "snapshot",
+      "impact": "Frische Daten entstehen nur durch einen sichtbaren Erzeugungsschritt.",
+      "status": "accepted",
+      "title": "Snapshot creation is explicit"
+    }
+  ],
+  "input_sha256": "e1accd1617f4c6c56a1c7a47fe54f74ef7403d93831b8b81ff49599e77620f35",
+  "project_id": "lenskit",
+  "risks": [
+    {
+      "id": "metrics",
+      "mitigation": "Diagnostischen Workflow getrennt untersuchen; gr\u00fcne Kernvalidierung nicht \u00fcberdehnen.",
+      "severity": "medium",
+      "status": "open",
+      "title": "Metrics Snapshot & Validation ist rot"
+    },
+    {
+      "id": "retrieval-quality",
+      "mitigation": "Eval-S\u00e4tze, Citation-Range-Pr\u00fcfung und Grounding-Vertr\u00e4ge weiter ausbauen.",
+      "severity": "high",
+      "status": "managed",
+      "title": "Retrieval-Qualit\u00e4t bleibt messbar begrenzt"
+    },
+    {
+      "id": "staleness",
+      "mitigation": "Snapshot-Hash, Frischezustand und explizite Erzeugung gemeinsam pr\u00fcfen.",
+      "severity": "medium",
+      "status": "managed",
+      "title": "Bundles k\u00f6nnen veralten"
+    }
+  ],
+  "roadmap": [
+    {
+      "id": "adapter",
+      "outcome": "Mehr Artefaktrollen werden \u00fcber denselben Integrit\u00e4tsvertrag lesbar.",
+      "status": "next",
+      "title": "Broader read-only adapter"
+    },
+    {
+      "id": "evaluation",
+      "outcome": "Recall, Citation Range und Grounding werden messbar verbessert.",
+      "status": "active",
+      "title": "Retrieval evaluation"
+    },
+    {
+      "id": "snapshot-create",
+      "outcome": "Snapshot-Erzeugung wird explizit und getrennt von Lesezugriffen angeboten.",
+      "status": "planned",
+      "title": "MCP snapshot_create"
+    }
+  ],
+  "schema_version": "software-pilot-snapshot.v1",
+  "snapshot_digest": "960df10aa9e2c4635f9c3c102b470e71ca3e95a5fa76e30059c84f7fc184c7d0",
+  "sources": [
+    {
+      "reference": "heimgewebe/lenskit",
+      "revision": "0ec3cf2938a6bb000a6e397a9d347ce781b9e3f2",
+      "source_id": "github.lenskit"
+    },
+    {
+      "reference": "heimgewebe/lenskit",
+      "revision": "0ec3cf2938a6bb000a6e397a9d347ce781b9e3f2",
+      "source_id": "repo.lenskit"
+    }
+  ],
+  "summary": {
+    "component_count": 4,
+    "decision_count": 3,
+    "purpose": "Repositories deterministisch, zitierbar und mit klarer Autorit\u00e4t f\u00fcr Menschen und Agenten aufbereiten.",
+    "risk_count": 3,
+    "roadmap_count": 3,
+    "test_failed": 0,
+    "test_passed": 6,
+    "test_status": "required validation workflows green",
+    "test_total": 6,
+    "title": "Lenskit und RepoBrief",
+    "work_count": 3
+  },
+  "view_id": "lenskit.software-overview",
+  "work": [
+    {
+      "id": "main-957",
+      "kind": "pull-request",
+      "status": "merged",
+      "title": "Portable refresh output root"
+    },
+    {
+      "id": "open-prs",
+      "kind": "repository-state",
+      "status": "none",
+      "title": "Offene Pull Requests"
+    },
+    {
+      "id": "required-ci",
+      "kind": "validation",
+      "status": "green",
+      "title": "Test, Lint, Contracts und Merge-Validierung"
+    }
+  ]
+}
