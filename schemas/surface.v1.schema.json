@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/surface.v1.schema.json",
+  "title": "Schauwerk Surface v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "provider",
+    "kind",
+    "status",
+    "visibility",
+    "management_mode"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "provider": {
+      "enum": [
+        "miro",
+        "filesystem",
+        "html"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "board",
+        "artifact",
+        "preview"
+      ]
+    },
+    "status": {
+      "enum": [
+        "proposed",
+        "active",
+        "paused",
+        "retired"
+      ]
+    },
+    "visibility": {
+      "enum": [
+        "private",
+        "shared",
+        "classroom",
+        "public",
+        "archived"
+      ]
+    },
+    "management_mode": {
+      "enum": [
+        "manual",
+        "cooperative",
+        "suggest-only",
+        "approval-required",
+        "managed",
+        "read-only",
+        "public-copy"
+      ]
+    },
+    "alias": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "output_path": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "provider": {
+            "const": "filesystem"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "output_path"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provider": {
+            "const": "miro"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "alias"
+        ]
+      }
+    }
+  ]
+}

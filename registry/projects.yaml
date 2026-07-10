@@ -1,2 +1,17 @@
 schema_version: 1
-projects: []
+projects:
+  - id: grabowski
+    title: Grabowski operator system
+    status: active
+    visibility: private
+    source_ids:
+      - github.grabowski
+      - grabowski.operator-context
+      - repo.grabowski
+  - id: schauwerk
+    title: Schauwerk visual projection layer
+    status: active
+    visibility: private
+    source_ids:
+      - github.schauwerk
+      - repo.schauwerk

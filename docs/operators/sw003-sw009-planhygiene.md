@@ -4,10 +4,14 @@ role: audit
 status: active
 doc_type: report
 title: SW-003 / SW-009 plan hygiene
-summary: Audit of the open SW-003 item against main and definition of the next typed-operator apply slice.
+summary: Historical SW-003 gate audit plus the current post-closeout SW-009 apply boundary.
 ---
 
 # SW-003 / SW-009 plan hygiene
+
+## Current disposition
+
+SW-003 was closed on 2026-07-09 after the controlled live proof and sanitized evidence review. Sections that say to keep SW-003 open document the pre-proof decision context; they are not the current tracker state. The current boundary starts at [SW-009 live apply gate after SW-003](#sw-009-live-apply-gate-after-sw-003): ordinary scaffolds remain non-live and require the separate digest-bound live-apply gate and candidate review.
 
 ## Purpose
 
@@ -196,11 +200,11 @@ consumption. All commands avoid Miro access, avoid provider mutation, do not
 close Issue #8, and do not themselves create live acceptance.
 
 
-## Decision
+## Historical decision before the live proof
 
 Do not close the SW-003 tracker item from fixture-only closeout alone. The remaining closure condition is a dedicated live proof whose public receipt satisfies the live-gate evidence checklist without exposing provider identifiers.
 
-## Epistemic gaps
+## Historical epistemic gaps
 
 - The SW-003 tracker discussion has a 2026-07-08 post-PR-51 comment explaining that fixture-only closeout and SW-009 simulation closeout are not live acceptance.
 - The available Miro MCP tool catalogue must be checked before claiming remote cleanup.

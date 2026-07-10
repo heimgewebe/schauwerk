@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/region.v1.schema.json",
+  "title": "Schauwerk Region v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "view_id", "surface_ref", "title", "management_mode", "policy_id"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "view_id": {"type": "string", "minLength": 1},
+    "surface_ref": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "management_mode": {"enum": ["manual", "cooperative", "suggest-only", "approval-required", "managed", "read-only", "public-copy"]},
+    "policy_id": {"type": "string", "minLength": 1},
+    "marker_prefix": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"}
+  }
+}

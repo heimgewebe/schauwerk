@@ -28,6 +28,32 @@ def build_parser() -> argparse.ArgumentParser:
     ecosystem_render.add_argument("--source-root")
     ecosystem_render.add_argument("--json", action="store_true")
 
+    registry = providers.add_parser("registry", help="inspect the declared Schauwerk registry")
+    registry_commands = registry.add_subparsers(dest="command", required=True)
+    registry_status = registry_commands.add_parser(
+        "status", help="validate and summarize registry truth"
+    )
+    registry_status.add_argument("--json", action="store_true")
+    registry_show = registry_commands.add_parser(
+        "show", help="show one registry collection or item"
+    )
+    registry_show.add_argument(
+        "kind",
+        choices=("sources", "projects", "surfaces", "views", "regions", "policies", "publications"),
+    )
+    registry_show.add_argument("identifier", nargs="?")
+    registry_show.add_argument("--json", action="store_true")
+
+    pilot = providers.add_parser("pilot", help="render deterministic useful-pilot projections")
+    pilot_commands = pilot.add_subparsers(dest="command", required=True)
+    grabowski = pilot_commands.add_parser(
+        "grabowski", help="render the Grabowski operator overview from its declared context"
+    )
+    grabowski.add_argument("operator_context")
+    grabowski.add_argument("--snapshot-output")
+    grabowski.add_argument("--dsl-output")
+    grabowski.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

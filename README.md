@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Foundation plus Miro pilot.** Dieses Repository enthält Architektur, Verträge, Register, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, isolierte Schreibnachweise und einen ersten Learning-View-Renderer.
+**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, einen ersten Learning-View-Renderer und eine reproduzierbare Grabowski-Operator-Projektion aus deklarierter Quelle.
 
 ## Zielbild
 
@@ -107,14 +107,29 @@ schauwerk miro learn apply grabowski-demo demos/education/peer-learning.yml --js
 
 `render` erzeugt prüfbare Miro-DSL aus einem strukturierten Lernthema. `apply` schreibt dieselbe Ansicht auf ein allowlisted Board und gibt ein redaktiertes Receipt aus.
 
+## Registry und Grabowski-Pilot
+
+```bash
+schauwerk registry status --json
+schauwerk registry show views grabowski.operator-overview --json
+schauwerk pilot grabowski \
+  ../grabowski/docs/generated/operator-context.v1.json \
+  --snapshot-output /tmp/grabowski-pilot/snapshot.json \
+  --dsl-output /tmp/grabowski-pilot/operator-overview.dsl \
+  --json
+```
+
+Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Richtlinien und Publikationen samt Querverweisen. Der Grabowski-Pilot erzeugt eine deterministische, bereinigte Miro-DSL, führt aber keine Provider-Mutation aus.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge
 - SW-001: direkter Miro-MCP-Client
 - SW-002: read-only Miro-Snapshot
-- SW-003: isolierter Schreibtest bleibt für echte Live-Acceptance offen; die lokale Evidence-Kette aus Requirements, Template, Evaluation Receipt, Status Receipt, Review Packet und Loadern ist vorhanden und bleibt nicht-mutierend, non-closing und `ready_for_live_apply=false`
-- SW-004: Registry-Grundgerüst
-- SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen
-- SW-009: typed-region Apply bleibt fixture-/simulation-safe, bis SW-003 durch einen kontrollierten Live-Proof geschlossen ist
+- SW-003: kontrollierter Live-Schreibnachweis abgeschlossen; bereinigte Evidence für Create, Read, Update, Idempotenz und Cleanup liegt vor
+- SW-004: vollständige Registry-Verträge, Querverweisprüfung, deterministischer Digest und CLI-Inspektion
+- SW-005: erste deterministische Grabowski-Operator-Projektion mit gebundener Acceptance-Evidence; Livezustand, Hosts und laufende Arbeit bleiben offen
+- SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen; Varianten und Offline-Ausgaben bleiben offen
+- SW-009: Simulation, Live-Gate und Kandidatenprüfung sind vorhanden; der produktive Live-Apply-Executor samt Postflight/Restore bleibt offen
 
 Siehe `docs/roadmap.md`.

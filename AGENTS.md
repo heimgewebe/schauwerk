@@ -15,7 +15,7 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - `docs/architecture/schauwerk.md`: system boundaries and invariants
 - `docs/roadmap.md`: implementation sequence and gates
 - `schemas/`: versioned data contracts
-- `registry/`: declared projects, views, surfaces, and publications
+- `registry/`: declared sources, projects, surfaces, views, regions, policies and publications
 
 ## Non-negotiable Boundaries
 - Source systems remain authoritative for domain content.
@@ -27,7 +27,7 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - Semantic services are optional enrichments and must not block the core workflow.
 
 ## Current Scope
-The initial repository is planning and foundation only. Productive Miro writes, public deployment, and automatic source synchronization are out of scope until the corresponding roadmap gates are satisfied.
+The repository is in useful-pilot foundation phase. Controlled Miro read/write primitives, registry inspection, Learning View rendering and deterministic pilot projections exist. Productive typed live apply, Regie, public deployment and automatic source synchronization remain gated by their roadmap contracts.
 
 ## Required Checks
 Run `make validate`.
@@ -38,7 +38,8 @@ Run `make validate`.
 - `docs/architecture/`
 - `docs/decisions/`
 - `.github/workflows/`
-- future authentication and mutation code under `src/schauwerk/surfaces/` and `src/schauwerk/operator/`
+- authentication and mutation code under `src/schauwerk/surfaces/` and `src/schauwerk/operator/`
+- pilot source compilers under `src/schauwerk/pilots/`
 
 ## Forbidden Content
 - OAuth credentials and refresh tokens

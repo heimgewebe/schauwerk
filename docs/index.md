@@ -20,15 +20,22 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 7. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
 8. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
 9. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
-10. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+10. [Registry](registry.md)
+11. [Grabowski useful pilot](pilots/grabowski.md)
+12. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
+13. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
+- `schemas/source.v1.schema.json`
 - `schemas/project.v1.schema.json`
+- `schemas/surface.v1.schema.json`
 - `schemas/view.v1.schema.json`
+- `schemas/region.v1.schema.json`
+- `schemas/policy.v1.schema.json`
 - `schemas/publication.v1.schema.json`
 - `registry/`
 
 ## Current status
 
-The repository is in foundation plus Miro-pilot phase. Direct Miro authorization, allowlisted snapshots, isolated layout writes, and the first Learning View renderer are implemented. SW-003 remains open for live Miro acceptance; fixture-only closeout and the local live-gate chain are in place: requirements, sanitized non-claim template, evaluation receipt, status receipt, review packet, and loaders for the versioned receipts. This chain is local-only, non-closing, does not access or mutate Miro, and keeps live apply blocked. SW-009 remains the next safety-critical apply chain and must stay fixture/simulation-safe until a controlled SW-003 live proof is accepted. Larger Regie, publication, live-maintenance, and recovery surfaces remain roadmap work.
+The repository is in useful-pilot foundation phase. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live write proof, complete registry contracts, deterministic registry inspection, the first Learning View renderer, and a source-bound initial Grabowski operator projection are implemented. SW-009 now has simulation, live-gate, and candidate-check receipts; actual productive live apply remains a separate approval-required operation with postflight, restore, and review. Regie, broader pilots, publication, live maintenance, and durable recovery surfaces remain roadmap work.

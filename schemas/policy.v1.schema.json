@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/policy.v1.schema.json",
+  "title": "Schauwerk Policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "mutation_mode", "require_snapshot", "require_postflight", "require_restore", "allowed_operations"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "title": {"type": "string", "minLength": 1},
+    "mutation_mode": {"enum": ["read-only", "suggest-only", "approval-required", "managed"]},
+    "require_snapshot": {"type": "boolean"},
+    "require_postflight": {"type": "boolean"},
+    "require_restore": {"type": "boolean"},
+    "allowed_operations": {
+      "type": "array",
+      "items": {"enum": ["render", "create", "update", "replace-managed-region", "delete-managed-region", "publish"]},
+      "uniqueItems": true
+    }
+  }
+}

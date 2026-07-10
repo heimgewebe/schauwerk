@@ -722,7 +722,7 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
     assert closeout_written["ready_for_live_apply"] is False
     assert closeout_written["closes_live_sw003_gate"] is False
     assert closeout_written["live_apply_gate"]["blocked_reasons"] == [
-        "sw003_live_gate_open"
+        "dedicated_live_apply_gate_required"
     ]
     assert closeout_written["boundary"] == {
         "fixture_only": True,
@@ -1216,3 +1216,53 @@ def test_runner_dispatches_region_sw003_live_gate_template(monkeypatch, capsys) 
     assert observed == {"output": "template.json"}
     result = json.loads(capsys.readouterr().out)
     assert result["schema_version"] == "typed-region-sw003-live-gate-template.v1"
+
+
+def test_registry_status_cli(capsys) -> None:
+    assert runner.main(["registry", "status", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["valid"] is True
+    assert result["counts"]["projects"] == 2
+
+
+def test_registry_show_cli(capsys) -> None:
+    assert runner.main(["registry", "show", "views", "grabowski.operator-overview", "--json"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["item"]["project_id"] == "grabowski"
+
+
+def test_grabowski_pilot_cli(tmp_path, capsys) -> None:
+    source = tmp_path / "operator-context.json"
+    source.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "purpose": "Bounded operator contract.",
+                "capabilities": [
+                    {"id": "read", "category": "repo", "risk_class": "low", "read_only": True}
+                ],
+                "runtime_contract": {"expected_tools": ["read"]},
+                "policy_contract": {"active_profile": "observe", "mode": "observe"},
+                "operating_protocol": {"name": "Operator Relay v0"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    snapshot = tmp_path / "snapshot.json"
+    dsl = tmp_path / "view.dsl"
+    assert runner.main(
+        [
+            "pilot",
+            "grabowski",
+            str(source),
+            "--snapshot-output",
+            str(snapshot),
+            "--dsl-output",
+            str(dsl),
+            "--json",
+        ]
+    ) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["provider_mutation_attempted"] is False
+    assert snapshot.is_file()
+    assert dsl.is_file()

@@ -1,0 +1,43 @@
+schema_version: 1
+sources:
+  - id: github.grabowski
+    title: Grabowski GitHub repository
+    kind: github-repository
+    authority: operational
+    visibility: shared
+    reference: heimgewebe/grabowski
+    freshness: live
+    depends_on:
+      - repo.grabowski
+  - id: github.schauwerk
+    title: Schauwerk GitHub repository
+    kind: github-repository
+    authority: operational
+    visibility: shared
+    reference: heimgewebe/schauwerk
+    freshness: live
+    depends_on:
+      - repo.schauwerk
+  - id: grabowski.operator-context
+    title: Grabowski generated operator context
+    kind: generated-artifact
+    authority: derived
+    visibility: private
+    reference: docs/generated/operator-context.v1.json
+    freshness: on-merge
+    depends_on:
+      - repo.grabowski
+  - id: repo.grabowski
+    title: Grabowski source repository
+    kind: git-repository
+    authority: canonical
+    visibility: private
+    reference: heimgewebe/grabowski
+    freshness: on-merge
+  - id: repo.schauwerk
+    title: Schauwerk source repository
+    kind: git-repository
+    authority: canonical
+    visibility: private
+    reference: heimgewebe/schauwerk
+    freshness: on-merge

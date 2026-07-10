@@ -211,7 +211,7 @@ def test_apply_scaffold_allows_ready_preflight_without_mutation() -> None:
     assert result["ready_for_fixture_apply"] is True
     assert result["ready_for_live_apply"] is False
     assert result["live_apply_gate"]["ready_for_live_apply"] is False
-    assert "sw003_live_gate_open" in result["live_apply_gate"]["blocked_reasons"]
+    assert "dedicated_live_apply_gate_required" in result["live_apply_gate"]["blocked_reasons"]
     assert result["mutation_attempted"] is False
     assert result["blocked_reasons"] == []
     assert "sw003_live_gate_evidence_complete" in result["required_live_preconditions"]

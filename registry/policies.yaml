@@ -1,0 +1,20 @@
+schema_version: 1
+policies:
+  - id: managed-safe-default
+    title: Managed region safe default
+    mutation_mode: approval-required
+    require_snapshot: true
+    require_postflight: true
+    require_restore: true
+    allowed_operations:
+      - render
+      - replace-managed-region
+      - update
+  - id: read-only-projection
+    title: Read-only projection
+    mutation_mode: read-only
+    require_snapshot: false
+    require_postflight: false
+    require_restore: false
+    allowed_operations:
+      - render

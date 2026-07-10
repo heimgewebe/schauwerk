@@ -56,7 +56,7 @@ def _sw003_live_gate_requirements() -> list[dict[str, str]]:
 def _sw009_live_apply_gate() -> dict[str, Any]:
     return {
         "ready_for_live_apply": False,
-        "blocked_reasons": ["sw003_live_gate_open"],
+        "blocked_reasons": ["dedicated_live_apply_gate_required"],
         "required_evidence": _sw003_live_gate_requirements(),
         "boundary": {
             "no_miro_mutation": True,

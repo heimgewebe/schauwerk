@@ -293,7 +293,7 @@ def test_simulation_closeout_receipt_closes_only_simulation_chain() -> None:
     assert result["ready_for_sw009_simulation_closeout"] is True
     assert result["ready_for_live_apply"] is False
     assert result["closes_live_sw003_gate"] is False
-    assert result["live_apply_gate"]["blocked_reasons"] == ["sw003_live_gate_open"]
+    assert result["live_apply_gate"]["blocked_reasons"] == ["dedicated_live_apply_gate_required"]
     assert result["boundary"] == {
         "fixture_only": True,
         "simulation_only": True,

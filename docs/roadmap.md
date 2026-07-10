@@ -37,7 +37,7 @@ Read one allowlisted board with pagination, frames, elements, layout information
 
 ## SW-003 — Isolated write proof
 
-**Implementation status:** partial; marker planning, safe failure receipts, typed region receipt chains, a fixture-only SW-003 closeout receipt, local live-gate requirements, a non-claim evidence template, and a local live-gate evidence evaluator exist. Live Miro closeout acceptance remains open. See `docs/operators/sw003-sw009-planhygiene.md`.
+**Implementation status:** complete; the controlled live Miro proof verified bounded create, read, update, marker uniqueness, idempotency and cleanup. Sanitized evidence is committed under `docs/operators/evidence/sw003-live-proof-20260709/`, and Issue #8 was closed on 2026-07-09. The evidence does not itself authorize unrelated live apply operations.
 
 Create a clearly marked test frame, create and update test elements, verify IDs and state, prove idempotency, and remove or archive only the identified test scope.
 
@@ -45,11 +45,15 @@ Create a clearly marked test frame, create and update test elements, verify IDs 
 
 ## SW-004 — Registry foundation
 
+**Implementation status:** complete; source, project, surface, view, region, policy and publication schemas are enforced in CI. Registry collections are ID-sorted, cross-reference checked, alias-unique, inspectable through `schauwerk registry`, and bound by a deterministic whole-registry digest.
+
 Complete project, view, source, surface, publication, region, and policy contracts. Add CLI inspection and deterministic validation.
 
 **Gate:** the full registry validates in CI and contains no provider credentials.
 
 ## SW-005 — Grabowski pilot
+
+**Implementation status:** partial; the first static operator overview is complete. `schauwerk pilot grabowski` consumes the declared generated operator context, emits a sanitized deterministic snapshot and Miro-compatible DSL, and records source and snapshot digests. Acceptance evidence is committed under `docs/operators/evidence/grabowski-pilot-20260710/`. Host state, live runtime health, current work and known-gap lanes remain open as separately sourced projections.
 
 Build system architecture, capabilities, hosts, runtime state, current work, and known-gap views from real sources.
 
@@ -93,11 +97,9 @@ Command graph:
 - simulation contract path: `preflight → apply-scaffold → operation-contract → apply-simulation`;
 - simulation closeout path: `apply-simulation → simulation-postflight → restore-receipt → simulation-closeout`.
 
-The simulation contract path now has full fixture/simulation-only CLI coverage through `simulation-postflight`, `restore-receipt`, and explicit `simulation-closeout`; the live typed apply path remains blocked by the SW-003 live-gate boundary.
+The simulation contract path has full fixture/simulation-only CLI coverage through `simulation-postflight`, `restore-receipt`, and explicit `simulation-closeout`. After SW-003 closure, a separate digest-bound live-apply gate and candidate-manifest check can report candidate readiness without calling Miro.
 
-Related blocker: SW-003 live closeout proof.
-
-Current SW-009 safety boundary: fixture and simulation paths may proceed from a ready preflight, but live typed apply stays blocked until a dedicated SW-003 live closeout proof satisfies the local live-gate requirements without provider identifiers.
+Current SW-009 safety boundary: no automatic live executor exists. A ready candidate still requires an explicit allowlisted target, before snapshot, reviewed operation scope, provider mutation, after snapshot, postflight verification, restore evidence and final review. The local gate and candidate receipt are not mutation authority.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 

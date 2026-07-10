@@ -1,2 +1,29 @@
 schema_version: 1
-views: []
+views:
+- id: grabowski.operator-overview
+  project_id: grabowski
+  title: Grabowski operator overview
+  purpose: Reconstruct architecture, capability risk, runtime contract and operating
+    boundaries from declared sources.
+  visibility: private
+  management_mode: approval-required
+  source_ids:
+  - grabowski.operator-context
+  - repo.grabowski
+  surface_ref: local.grabowski-preview
+  audiences:
+  - operator
+  - maintainer
+- id: schauwerk.delivery-status
+  project_id: schauwerk
+  title: Schauwerk delivery status
+  purpose: Show roadmap completion, current gates and declared next work without treating
+    the view as source truth.
+  visibility: private
+  management_mode: read-only
+  source_ids:
+  - github.schauwerk
+  - repo.schauwerk
+  surface_ref: local.schauwerk-status-preview
+  audiences:
+  - operator
