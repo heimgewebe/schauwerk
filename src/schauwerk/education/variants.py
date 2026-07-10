@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 
+from ..visual.grammar import GRAMMAR_SCHEMA_VERSION, html_theme_css, template_by_family
 from .view import LearningStep, LearningView, parse_learning_view
 
 INPUT_SCHEMA_VERSION = "education-variants-input.v1"
@@ -341,18 +342,15 @@ def _section(identifier: str, title: str, body: str) -> str:
 
 
 def _document(*, title: str, source_digest: str, variant: str, body: str) -> str:
-    style = (
-        "body{font-family:system-ui,sans-serif;max-width:68rem;margin:0 auto;padding:2rem;"
-        "line-height:1.5;color:#181818}header,footer{border-block:1px solid #aaa;padding:1rem 0}"
-        "section{margin:2rem 0}.steps{padding-left:1.5rem}.meta{font-size:.9rem;color:#555}"
-        "@media print{body{max-width:none;padding:0}nav{display:none}}"
-    )
+    template = template_by_family("education")
+    style = html_theme_css(template.family)
     return (
         "<!doctype html>\n<html lang=\"de\"><head><meta charset=\"utf-8\">"
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f"<title>{html.escape(title)}</title><style>{style}</style></head><body>"
         f"<header><h1>{html.escape(title)}</h1><p class=\"meta\">Variante: {variant} · "
-        f"Quelle: {source_digest[:16]}</p></header><main>{body}</main>"
+        f"Quelle: {source_digest[:16]} · Grammatik: {GRAMMAR_SCHEMA_VERSION} · "
+        f"Template: {template.name}</p></header><main>{body}</main>"
         "<footer><p>Offline nutzbar · keine Netzwerk- oder Miro-Abhängigkeit · "
         "keine personenbezogenen Daten</p></footer></body></html>\n"
     )

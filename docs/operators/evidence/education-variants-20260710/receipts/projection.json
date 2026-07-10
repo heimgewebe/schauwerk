@@ -13,7 +13,7 @@
   "miro_required": false,
   "network_dependencies": false,
   "output": "docs/operators/evidence/education-variants-20260710/variants/projection.html",
-  "output_sha256": "804653a1f76eab4bc09afc56bb9b80c25428f1350d8b9c546347f124c5d8a098",
+  "output_sha256": "3db828816e2c1c0ff40d55fa244c11419a9f94b78c140c5c07083c5b6fc33e0a",
   "personal_data_detected": false,
   "schema_version": "education-variant-receipt.v1",
   "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",

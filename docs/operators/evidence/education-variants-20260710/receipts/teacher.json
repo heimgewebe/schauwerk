@@ -14,7 +14,7 @@
   "miro_required": false,
   "network_dependencies": false,
   "output": "docs/operators/evidence/education-variants-20260710/variants/teacher.html",
-  "output_sha256": "7826ecd24fd6e00bd8975d4805b02fa56e06354e7f53cbfecc6144db7987c3de",
+  "output_sha256": "20357d7806a9cb488a1589a377a2d56ca9c1c08655b6726d60e4d0dc4527f044",
   "personal_data_detected": false,
   "schema_version": "education-variant-receipt.v1",
   "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",

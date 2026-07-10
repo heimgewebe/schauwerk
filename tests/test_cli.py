@@ -1454,3 +1454,17 @@ def test_runner_dispatches_education_offline(monkeypatch, capsys) -> None:
         "variant": "student",
     }
     assert json.loads(capsys.readouterr().out)["miro_required"] is False
+
+
+def test_runner_dispatches_visual_grammar(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_visual(*, output):
+        observed["output"] = output
+        return {"grammar_version": "schauwerk-visual-grammar.v1", "valid": True}
+
+    monkeypatch.setattr(runner, "handle_visual_grammar", fake_visual)
+    code = runner.main(["visual", "grammar", "--output", "grammar.json", "--json"])
+    assert code == 0
+    assert observed == {"output": "grammar.json"}
+    assert json.loads(capsys.readouterr().out)["valid"] is True

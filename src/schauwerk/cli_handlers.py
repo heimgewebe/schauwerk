@@ -63,7 +63,22 @@ from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
-from .visual.grammar import zoomlandkarte_template
+from .visual.grammar import (
+    validate_visual_grammar,
+    visual_grammar_manifest,
+    write_visual_grammar,
+    zoomlandkarte_template,
+)
+
+
+def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:
+    if output:
+        return write_visual_grammar(Path(output))
+    manifest = visual_grammar_manifest()
+    return {
+        "validation": validate_visual_grammar(manifest),
+        "manifest": manifest,
+    }
 
 
 def handle_education_render(

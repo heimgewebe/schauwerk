@@ -13,6 +13,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from schauwerk.registry_runtime import load_registry
+from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION, software_template, state_label
 from schauwerk.visual.miro_dsl import doc, line, table
 
 INPUT_SCHEMA_VERSION = "software-pilot-input.v1"
@@ -377,6 +378,8 @@ def render_software_dsl(snapshot: Mapping[str, Any], *, repo_root: Path | None =
     roadmap = snapshot["roadmap"]
     work = snapshot["work"]
     risks = snapshot["risks"]
+    template = software_template()
+    test_state = "healthy" if summary["test_failed"] == 0 else "failed"
     lines = [
         line("root", "FRAME", x=0, y=0, w=4600, h=2300, content=summary["title"]),
         line(
@@ -458,7 +461,7 @@ def render_software_dsl(snapshot: Mapping[str, Any], *, repo_root: Path | None =
             type="round_rectangle",
             content=(
                 f"Tests: {summary['test_passed']}/{summary['test_total']} bestanden · "
-                f"Status: {summary['test_status']}"
+                f"{state_label(test_state, detail=summary['test_status'])}"
             ),
         ),
         table(
@@ -483,7 +486,8 @@ def render_software_dsl(snapshot: Mapping[str, Any], *, repo_root: Path | None =
             size=18,
             align="center",
             content=(
-                f"Snapshot {snapshot['snapshot_digest'][:16]} · Quellsystem bleibt maßgeblich · "
+                f"Snapshot {snapshot['snapshot_digest'][:16]} · {GRAMMAR_SCHEMA_VERSION} · "
+                f"Template {template.name} · Quellsystem bleibt maßgeblich · "
                 "keine Provider-Mutation"
             ),
         ),

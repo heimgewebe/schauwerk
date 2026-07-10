@@ -38,7 +38,7 @@ Portable refresh output root | pull-request | merged
 Offene Pull Requests | repository-state | none
 Test, Lint, Contracts und Merge-Validierung | validation | green
 >>>
-tests SHAPE parent=delivery x=525 y=1200 w=720 h=230 type=round_rectangle "Tests: 6/6 bestanden · Status: required validation workflows green"
+tests SHAPE parent=delivery x=525 y=1200 w=720 h=230 type=round_rectangle "Tests: 6/6 bestanden · ✓ gesund — required validation workflows green"
 risk_table TABLE parent=risk x=425 y=650 "Offene Risiken" <<<
 Risiko:text | Schwere:text | Status:text | Gegenmaßnahme:text
 ---
@@ -46,4 +46,4 @@ Metrics Snapshot & Validation ist rot | medium | open | Diagnostischen Workflow 
 Retrieval-Qualität bleibt messbar begrenzt | high | managed | Eval-Sätze, Citation-Range-Prüfung und Grounding-Verträge weiter ausbauen.
 Bundles können veralten | medium | managed | Snapshot-Hash, Frischezustand und explizite Erzeugung gemeinsam prüfen.
 >>>
-footer TEXT parent=root x=2300 y=2140 w=4000 size=18 align=center "Snapshot 960df10aa9e2c463 · Quellsystem bleibt maßgeblich · keine Provider-Mutation"
+footer TEXT parent=root x=2300 y=2140 w=4000 size=18 align=center "Snapshot 960df10aa9e2c463 · schauwerk-visual-grammar.v1 · Template software-overview-v1 · Quellsystem bleibt maßgeblich · keine Provider-Mutation"

@@ -203,3 +203,29 @@ def test_software_pilot_table_emitter_escapes_pipe_cells(tmp_path: Path) -> None
     dsl = render_software_dsl(snapshot, repo_root=ROOT)
     assert "API / Gateway" in dsl
     assert "API | Gateway" not in dsl
+
+
+def test_software_pilot_uses_shared_visual_grammar(tmp_path: Path) -> None:
+    snapshot = compile_software_snapshot(write_input(tmp_path), repo_root=ROOT)
+    rendered = render_software_dsl(snapshot, repo_root=ROOT)
+    assert snapshot["schema_version"] == "software-pilot-snapshot.v1"
+    assert set(snapshot["boundaries"]) == {
+        "source_system_remains_authoritative",
+        "contains_secret_values",
+        "contains_personal_data",
+        "provider_mutation_attempted",
+    }
+    assert "✓ gesund" in rendered
+    assert "schauwerk-visual-grammar.v1" in rendered
+    assert "Template software-overview-v1" in rendered
+
+
+def test_software_pilot_marks_failed_tests_as_failed_not_unavailable(tmp_path: Path) -> None:
+    value = software_input()
+    value["tests"] = {"status": "red", "passed": 2, "failed": 1}
+    snapshot = compile_software_snapshot(write_input(tmp_path, value), repo_root=ROOT)
+
+    rendered = render_software_dsl(snapshot, repo_root=ROOT)
+
+    assert "✕ fehlgeschlagen — red" in rendered
+    assert "nicht verfügbar — red" not in rendered

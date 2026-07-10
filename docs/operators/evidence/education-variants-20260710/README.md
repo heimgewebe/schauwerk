@@ -9,5 +9,6 @@ This evidence proves SW-007 without Miro or network access.
 - The assignment variant contains explicit instructions, resources and a submission boundary.
 - `package/manifest.json` binds a student-only offline package; teacher material is not bundled.
 - `offline-receipt.json` records the package identity and confirms that Miro and network access are not required.
+- Rendered HTML uses `schauwerk-visual-grammar.v1` with the distinct `learning-view-v1-rich` template while receipt v1 remains stable.
 
 The package contains no personal data. It is a deterministic fixture, not a live classroom record.

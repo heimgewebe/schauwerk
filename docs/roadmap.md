@@ -77,6 +77,8 @@ Produce teacher view, projected lesson view, assignment, student-facing view, pr
 
 ## SW-008 — Visual grammar and templates
 
+**Implementation status:** complete; `schauwerk-visual-grammar.v1` defines renderer-independent semantic tokens, non-colour state markers, provenance, freshness and uncertainty contracts, contrast validation and distinct software, education, roadmap, timeline, presentation and public-summary template families. Software and education pilots use the same grammar while retaining different regions and audiences.
+
 Define semantic shapes, state markers, provenance, freshness, uncertainty, accessibility, layout rules, and templates for overview, architecture, decision, roadmap, timeline, lesson, presentation, and public summary.
 
 **Gate:** views are recognizable as one system without becoming visually uniform.
