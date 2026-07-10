@@ -194,3 +194,12 @@ def test_software_pilot_rejects_rehashed_hidden_fields(tmp_path: Path) -> None:
     _rehash(snapshot)
     with pytest.raises(ValueError, match="fields are invalid"):
         validate_software_snapshot(snapshot, repo_root=ROOT)
+
+
+def test_software_pilot_table_emitter_escapes_pipe_cells(tmp_path: Path) -> None:
+    value = software_input()
+    value["components"][0]["title"] = "API | Gateway"
+    snapshot = compile_software_snapshot(write_input(tmp_path, value), repo_root=ROOT)
+    dsl = render_software_dsl(snapshot, repo_root=ROOT)
+    assert "API / Gateway" in dsl
+    assert "API | Gateway" not in dsl
