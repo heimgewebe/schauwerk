@@ -54,6 +54,16 @@ def build_parser() -> argparse.ArgumentParser:
     grabowski.add_argument("--dsl-output")
     grabowski.add_argument("--json", action="store_true")
 
+    grabowski_operational = pilot_commands.add_parser(
+        "grabowski-operational",
+        help="render static Grabowski contract facts beside sanitized live observations",
+    )
+    grabowski_operational.add_argument("static_snapshot")
+    grabowski_operational.add_argument("observation")
+    grabowski_operational.add_argument("--snapshot-output")
+    grabowski_operational.add_argument("--dsl-output")
+    grabowski_operational.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

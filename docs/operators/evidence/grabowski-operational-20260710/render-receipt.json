@@ -1,0 +1,11 @@
+{
+  "dsl_line_count": 50,
+  "dsl_output": "docs/operators/evidence/grabowski-operational-20260710/operator-overview.dsl",
+  "overall_status": "degraded",
+  "project_id": "grabowski",
+  "provider_mutation_attempted": false,
+  "schema_version": "grabowski-operational-render-receipt.v1",
+  "snapshot_digest": "5af25c3a17b3d3c4191f0292bed848469ec27d989070c8317908b7f71f9670e2",
+  "snapshot_output": "docs/operators/evidence/grabowski-operational-20260710/snapshot.json",
+  "view_id": "grabowski.operator-operational-overview"
+}

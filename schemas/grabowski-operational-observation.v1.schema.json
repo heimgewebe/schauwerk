@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/grabowski-operational-observation.v1.schema.json",
+  "title": "Grabowski operational observation v1",
+  "description": "Sanitized four-channel observation input. Semantic channel summaries are validated by the compiler.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evaluated_at",
+    "channels"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "grabowski-operational-observation.v1"
+    },
+    "evaluated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hosts",
+        "runtime",
+        "work",
+        "gaps"
+      ],
+      "properties": {
+        "hosts": {
+          "$ref": "#/$defs/channel"
+        },
+        "runtime": {
+          "$ref": "#/$defs/channel"
+        },
+        "work": {
+          "$ref": "#/$defs/channel"
+        },
+        "gaps": {
+          "$ref": "#/$defs/channel"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "authority",
+        "observed_at",
+        "stale_after_seconds",
+        "collection_status",
+        "error_code",
+        "summary"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authority": {
+          "enum": [
+            "canonical",
+            "operational",
+            "derived"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "stale_after_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 604800
+        },
+        "collection_status": {
+          "enum": [
+            "ok",
+            "partial",
+            "unavailable"
+          ]
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-z0-9_]{1,64}$"
+        },
+        "summary": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

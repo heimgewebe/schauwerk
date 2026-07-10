@@ -23,7 +23,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 10. [Registry](registry.md)
 11. [Grabowski useful pilot](pilots/grabowski.md)
 12. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
-13. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+13. [Grabowski operational pilot](pilots/grabowski-operational.md)
+14. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
+15. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
@@ -34,8 +36,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/region.v1.schema.json`
 - `schemas/policy.v1.schema.json`
 - `schemas/publication.v1.schema.json`
+- `schemas/grabowski-operational-observation.v1.schema.json`
 - `registry/`
 
 ## Current status
 
-The repository is in useful-pilot foundation phase. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live write proof, complete registry contracts, deterministic registry inspection, the first Learning View renderer, and a source-bound initial Grabowski operator projection are implemented. SW-009 now has simulation, live-gate, and candidate-check receipts; actual productive live apply remains a separate approval-required operation with postflight, restore, and review. Regie, broader pilots, publication, live maintenance, and durable recovery surfaces remain roadmap work.
+The repository is in useful-pilot foundation phase. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live write proof, complete registry contracts, deterministic registry inspection, the first Learning View renderer, and source-bound static and operational Grabowski projections are implemented. SW-009 now has simulation, live-gate, and candidate-check receipts; actual productive live apply remains a separate approval-required operation with postflight, restore, and review. Regie, broader pilots, publication, live maintenance, and durable recovery surfaces remain roadmap work.

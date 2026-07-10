@@ -1266,3 +1266,100 @@ def test_grabowski_pilot_cli(tmp_path, capsys) -> None:
     assert result["provider_mutation_attempted"] is False
     assert snapshot.is_file()
     assert dsl.is_file()
+
+
+def test_grabowski_operational_pilot_cli(tmp_path, capsys) -> None:
+    context = tmp_path / "operator-context.json"
+    context.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "purpose": "Bounded operator contract.",
+                "capabilities": [
+                    {"id": "read", "category": "repo", "risk_class": "low", "read_only": True}
+                ],
+                "runtime_contract": {"expected_tools": ["read"]},
+                "policy_contract": {"active_profile": "observe", "mode": "observe"},
+                "operating_protocol": {"name": "Operator Relay v0"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    static = tmp_path / "static.json"
+    assert (
+        runner.main(
+            ["pilot", "grabowski", str(context), "--snapshot-output", str(static), "--json"]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    observed = "2026-07-10T05:30:00Z"
+    observation = tmp_path / "observation.json"
+    observation.write_text(
+        json.dumps(
+            {
+                "schema_version": "grabowski-operational-observation.v1",
+                "evaluated_at": "2026-07-10T05:31:00Z",
+                "channels": {
+                    "hosts": {
+                        "source_id": "grabowski.fleet-observation",
+                        "authority": "operational",
+                        "observed_at": observed,
+                        "stale_after_seconds": 900,
+                        "collection_status": "unavailable",
+                        "error_code": "fixture_unavailable",
+                        "summary": None,
+                    },
+                    "runtime": {
+                        "source_id": "grabowski.runtime-observation",
+                        "authority": "operational",
+                        "observed_at": observed,
+                        "stale_after_seconds": 300,
+                        "collection_status": "unavailable",
+                        "error_code": "fixture_unavailable",
+                        "summary": None,
+                    },
+                    "work": {
+                        "source_id": "bureau.grabowski-work-observation",
+                        "authority": "operational",
+                        "observed_at": observed,
+                        "stale_after_seconds": 300,
+                        "collection_status": "unavailable",
+                        "error_code": "fixture_unavailable",
+                        "summary": None,
+                    },
+                    "gaps": {
+                        "source_id": "bureau.grabowski-gap-observation",
+                        "authority": "derived",
+                        "observed_at": observed,
+                        "stale_after_seconds": 1800,
+                        "collection_status": "unavailable",
+                        "error_code": "fixture_unavailable",
+                        "summary": None,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    output = tmp_path / "operational.json"
+    dsl = tmp_path / "operational.dsl"
+    assert (
+        runner.main(
+            [
+                "pilot",
+                "grabowski-operational",
+                str(static),
+                str(observation),
+                "--snapshot-output",
+                str(output),
+                "--dsl-output",
+                str(dsl),
+                "--json",
+            ]
+        )
+        == 0
+    )
+    result = json.loads(capsys.readouterr().out)
+    assert result["overall_status"] == "unavailable"
+    assert result["provider_mutation_attempted"] is False

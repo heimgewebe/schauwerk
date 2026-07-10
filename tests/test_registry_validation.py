@@ -70,7 +70,10 @@ def test_registry_rejects_read_only_region_with_mutating_policy(tmp_path: Path) 
     root = _registry_copy(tmp_path)
     path = root / "registry" / "regions.yaml"
     value = yaml.safe_load(path.read_text(encoding="utf-8"))
-    value["regions"][1]["policy_id"] = "managed-safe-default"
+    region = next(
+        item for item in value["regions"] if item["id"] == "schauwerk.delivery-status.readonly"
+    )
+    region["policy_id"] = "managed-safe-default"
     path.write_text(yaml.safe_dump(value, sort_keys=False), encoding="utf-8")
     with pytest.raises(RegistryValidationError, match="requires read-only policy"):
         validate_registry(root)
