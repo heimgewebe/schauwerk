@@ -1,0 +1,16 @@
+schema_version: 1
+regions:
+- id: grabowski.operator-overview.managed
+  view_id: grabowski.operator-overview
+  surface_ref: local.grabowski-preview
+  title: Generated Grabowski operator overview
+  management_mode: managed
+  policy_id: managed-safe-default
+  marker_prefix: SCHAUWERK:GRABOWSKI
+- id: schauwerk.delivery-status.readonly
+  view_id: schauwerk.delivery-status
+  surface_ref: local.schauwerk-status-preview
+  title: Read-only Schauwerk delivery status
+  management_mode: read-only
+  policy_id: read-only-projection
+  marker_prefix: SCHAUWERK:STATUS

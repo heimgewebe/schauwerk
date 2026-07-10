@@ -1,0 +1,11 @@
+{
+  "dsl_line_count": 54,
+  "dsl_output": "docs/operators/evidence/grabowski-pilot-20260710/operator-overview.dsl",
+  "project_id": "grabowski",
+  "provider_mutation_attempted": false,
+  "schema_version": "grabowski-pilot-render-receipt.v1",
+  "snapshot_digest": "d6a43fa90e1a48224f29c8bf2bf076982b9f6ac70c751eb02d618b34e285a948",
+  "snapshot_output": "docs/operators/evidence/grabowski-pilot-20260710/snapshot.json",
+  "source_sha256": "dba1ecbfff1079d2ee3aa3e59b70a700232bb9e4aa769f31723ba3ee596abc73",
+  "view_id": "grabowski.operator-overview"
+}

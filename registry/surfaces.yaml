@@ -1,2 +1,28 @@
 schema_version: 1
-surfaces: []
+surfaces:
+- id: local.grabowski-preview
+  title: Grabowski operator overview preview
+  provider: filesystem
+  kind: preview
+  status: active
+  visibility: private
+  management_mode: managed
+  alias: grabowski-operator-overview
+  output_path: docs/operators/evidence/grabowski-pilot-20260710/operator-overview.dsl
+- id: local.schauwerk-status-preview
+  title: Schauwerk delivery status preview
+  provider: filesystem
+  kind: preview
+  status: proposed
+  visibility: private
+  management_mode: read-only
+  alias: schauwerk-delivery-status
+  output_path: build/schauwerk/delivery-status.json
+- id: miro.grabowski-pilot
+  title: Grabowski managed Miro pilot
+  provider: miro
+  kind: board
+  status: proposed
+  visibility: shared
+  management_mode: approval-required
+  alias: grabowski-pilot

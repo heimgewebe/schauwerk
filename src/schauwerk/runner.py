@@ -12,6 +12,7 @@ from .cli_handlers import (
     handle_board_remove,
     handle_doctor,
     handle_ecosystem_render,
+    handle_grabowski_pilot,
     handle_inspect,
     handle_learn_apply,
     handle_learn_live_prune,
@@ -40,6 +41,8 @@ from .cli_handlers import (
     handle_region_sw009_live_apply_candidate_check,
     handle_region_sw009_live_apply_candidate_template,
     handle_region_sw009_live_apply_gate,
+    handle_registry_show,
+    handle_registry_status,
     handle_snapshot,
     handle_status,
     handle_tools,
@@ -64,6 +67,16 @@ def main(argv: list[str] | None = None) -> int:
                 manifest=args.manifest,
                 output=args.output,
                 source_root=args.source_root,
+            )
+        elif args.provider == "registry" and args.command == "status":
+            result = handle_registry_status()
+        elif args.provider == "registry" and args.command == "show":
+            result = handle_registry_show(kind=args.kind, identifier=args.identifier)
+        elif args.provider == "pilot" and args.command == "grabowski":
+            result = handle_grabowski_pilot(
+                operator_context=args.operator_context,
+                snapshot_output=args.snapshot_output,
+                dsl_output=args.dsl_output,
             )
         elif args.command == "status":
             result = handle_status(live=args.live)

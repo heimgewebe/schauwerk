@@ -1,0 +1,63 @@
+{
+  "boundaries": {
+    "contains_live_runtime_state": false,
+    "contains_secret_values": false,
+    "provider_mutation_attempted": false,
+    "source_system_remains_authoritative": true
+  },
+  "capability_categories": {
+    "artifact": 3,
+    "audit": 3,
+    "browser-worker": 4,
+    "checkout-lifecycle": 4,
+    "command": 5,
+    "context": 5,
+    "deployment": 1,
+    "diagnostics": 1,
+    "filesystem": 7,
+    "fleet": 2,
+    "grip-surface": 2,
+    "gui-worker": 4,
+    "knowledge": 9,
+    "operation": 3,
+    "operations-observability": 4,
+    "privileged-execution": 1,
+    "privileged-reference": 2,
+    "process": 2,
+    "recovery": 2,
+    "remote-version-control": 3,
+    "resource": 5,
+    "secret": 5,
+    "service": 3,
+    "session": 3,
+    "task": 10,
+    "version-control": 7
+  },
+  "project_id": "grabowski",
+  "risk_classes": {
+    "critical": 1,
+    "high": 18,
+    "low": 54,
+    "medium": 20,
+    "variable": 7
+  },
+  "schema_version": "grabowski-pilot-snapshot.v1",
+  "snapshot_digest": "d6a43fa90e1a48224f29c8bf2bf076982b9f6ac70c751eb02d618b34e285a948",
+  "source": {
+    "reference": "docs/generated/operator-context.v1.json",
+    "schema_version": 1,
+    "sha256": "dba1ecbfff1079d2ee3aa3e59b70a700232bb9e4aa769f31723ba3ee596abc73",
+    "source_id": "grabowski.operator-context"
+  },
+  "summary": {
+    "active_profile": "observe",
+    "capability_count": 100,
+    "effectful_capability_count": 43,
+    "expected_tool_count": 100,
+    "operating_protocol": "Operator Relay v0",
+    "policy_mode": "observe",
+    "purpose": "Deterministic repository contract for the Grabowski operator. Live state is returned by the grabowski_context MCP tool.",
+    "read_only_capability_count": 57
+  },
+  "view_id": "grabowski.operator-overview"
+}

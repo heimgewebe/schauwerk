@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/source.v1.schema.json",
+  "title": "Schauwerk Source v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "kind",
+    "authority",
+    "visibility",
+    "reference",
+    "freshness"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "git-repository",
+        "github-repository",
+        "generated-artifact",
+        "document",
+        "miro-board",
+        "local-artifact"
+      ]
+    },
+    "authority": {
+      "enum": [
+        "canonical",
+        "operational",
+        "derived"
+      ]
+    },
+    "visibility": {
+      "enum": [
+        "private",
+        "shared",
+        "classroom",
+        "public",
+        "archived"
+      ]
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z][A-Za-z0-9+.-]*://)(?!/).+$"
+    },
+    "freshness": {
+      "enum": [
+        "manual",
+        "on-demand",
+        "on-merge",
+        "live"
+      ]
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
+    }
+  }
+}

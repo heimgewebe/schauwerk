@@ -54,6 +54,8 @@ from .operator.regions import (
     required_sw003_live_gate_evidence,
 )
 from .operator.sw003_closeout import LIVE_GATE_EVALUATION_SCHEMA_VERSION
+from .pilots.grabowski import write_grabowski_pilot
+from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
@@ -68,6 +70,24 @@ def handle_ecosystem_render(
         manifest_path=Path(manifest),
         output_path=Path(output),
         source_root=source_root,
+    )
+
+
+def handle_registry_status() -> dict[str, Any]:
+    return registry_status()
+
+
+def handle_registry_show(*, kind: str, identifier: str | None) -> dict[str, Any]:
+    return registry_show(kind, identifier)
+
+
+def handle_grabowski_pilot(
+    *, operator_context: str, snapshot_output: str | None, dsl_output: str | None
+) -> dict[str, Any]:
+    return write_grabowski_pilot(
+        operator_context=Path(operator_context),
+        snapshot_output=Path(snapshot_output) if snapshot_output else None,
+        dsl_output=Path(dsl_output) if dsl_output else None,
     )
 
 
