@@ -28,6 +28,15 @@ sources:
     freshness: live
     depends_on:
       - repo.grabowski
+  - id: github.lenskit
+    title: Lenskit GitHub repository
+    kind: github-repository
+    authority: operational
+    visibility: shared
+    reference: heimgewebe/lenskit
+    freshness: live
+    depends_on:
+      - repo.lenskit
   - id: github.schauwerk
     title: Schauwerk GitHub repository
     kind: github-repository
@@ -77,6 +86,13 @@ sources:
     authority: canonical
     visibility: private
     reference: heimgewebe/grabowski
+    freshness: on-merge
+  - id: repo.lenskit
+    title: Lenskit source repository
+    kind: git-repository
+    authority: canonical
+    visibility: private
+    reference: heimgewebe/lenskit
     freshness: on-merge
   - id: repo.schauwerk
     title: Schauwerk source repository

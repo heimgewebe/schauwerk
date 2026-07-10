@@ -45,6 +45,7 @@ from .cli_handlers import (
     handle_registry_show,
     handle_registry_status,
     handle_snapshot,
+    handle_software_pilot,
     handle_status,
     handle_tools,
 )
@@ -83,6 +84,12 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_grabowski_operational_pilot(
                 static_snapshot=args.static_snapshot,
                 observation=args.observation,
+                snapshot_output=args.snapshot_output,
+                dsl_output=args.dsl_output,
+            )
+        elif args.provider == "pilot" and args.command == "software":
+            result = handle_software_pilot(
+                input_path=args.input,
                 snapshot_output=args.snapshot_output,
                 dsl_output=args.dsl_output,
             )

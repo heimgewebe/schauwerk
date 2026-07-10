@@ -56,6 +56,7 @@ from .operator.regions import (
 from .operator.sw003_closeout import LIVE_GATE_EVALUATION_SCHEMA_VERSION
 from .pilots.grabowski import write_grabowski_pilot
 from .pilots.grabowski_operational import write_operational_pilot
+from .pilots.software import write_software_pilot
 from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -102,6 +103,16 @@ def handle_grabowski_operational_pilot(
     return write_operational_pilot(
         static_snapshot_path=Path(static_snapshot),
         observation_path=Path(observation),
+        snapshot_output=Path(snapshot_output) if snapshot_output else None,
+        dsl_output=Path(dsl_output) if dsl_output else None,
+    )
+
+
+def handle_software_pilot(
+    *, input_path: str, snapshot_output: str | None, dsl_output: str | None
+) -> dict[str, Any]:
+    return write_software_pilot(
+        input_path=Path(input_path),
         snapshot_output=Path(snapshot_output) if snapshot_output else None,
         dsl_output=Path(dsl_output) if dsl_output else None,
     )

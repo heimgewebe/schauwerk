@@ -1,0 +1,12 @@
+{
+  "dsl_line_count": 48,
+  "dsl_output": "docs/operators/evidence/lenskit-pilot-20260710/software-overview.dsl",
+  "input_sha256": "e1accd1617f4c6c56a1c7a47fe54f74ef7403d93831b8b81ff49599e77620f35",
+  "project_id": "lenskit",
+  "provider_mutation_attempted": false,
+  "schema_version": "software-pilot-render-receipt.v1",
+  "snapshot_digest": "960df10aa9e2c4635f9c3c102b470e71ca3e95a5fa76e30059c84f7fc184c7d0",
+  "snapshot_output": "docs/operators/evidence/lenskit-pilot-20260710/snapshot.json",
+  "source_count": 2,
+  "view_id": "lenskit.software-overview"
+}

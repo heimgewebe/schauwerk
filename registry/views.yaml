@@ -32,6 +32,20 @@ views:
   audiences:
   - operator
   - maintainer
+- id: lenskit.software-overview
+  project_id: lenskit
+  title: Lenskit software overview
+  purpose: Reconstruct architecture, decisions, roadmap, delivery checks and risks through
+    the generic software-pilot contract.
+  visibility: private
+  management_mode: read-only
+  source_ids:
+  - github.lenskit
+  - repo.lenskit
+  surface_ref: local.lenskit-preview
+  audiences:
+  - operator
+  - maintainer
 - id: schauwerk.delivery-status
   project_id: schauwerk
   title: Schauwerk delivery status

@@ -61,6 +61,8 @@ Build system architecture, capabilities, hosts, runtime state, current work, and
 
 ## SW-006 — Second software pilot
 
+**Implementation status:** complete; `schauwerk pilot software` validates a project-neutral input contract, binds project, view and source IDs through the registry, and renders deterministic architecture, decision, roadmap, delivery, test and risk sections without provider mutation. Lenskit/RepoBrief is the first acceptance proof under `docs/operators/evidence/lenskit-pilot-20260710/`.
+
 Apply the model to a separate active software project with components, decisions, roadmap, pull requests, tests, and risks.
 
 **Gate:** templates and data contracts are not Grabowski-specific.
