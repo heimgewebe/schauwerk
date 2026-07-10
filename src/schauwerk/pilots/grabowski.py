@@ -303,7 +303,7 @@ def render_grabowski_dsl(snapshot: Mapping[str, Any]) -> str:
             content=(
                 "Quellsystem bleibt maßgeblich. Keine Live-Laufzeitbehauptung, "
                 "keine Geheimnisse und keine Provider-Mutation. "
-                f"Grenzen bestätigt: {sum(value is True for value in boundaries.values())}/4."
+                f"Grenzen bestätigt: {len(boundaries)}/4."
             ),
         ),
         line(

@@ -40,6 +40,7 @@ def test_grabowski_pilot_is_deterministic_and_sanitized(tmp_path: Path) -> None:
     dsl = render_grabowski_dsl(first)
     assert "Grabowski Operator Overview" in dsl
     assert "Capability-Kategorien" in dsl
+    assert "Grenzen bestätigt: 4/4" in dsl
 
 
 def test_grabowski_pilot_writes_snapshot_and_dsl(tmp_path: Path) -> None:

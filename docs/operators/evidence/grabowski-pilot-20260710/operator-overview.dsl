@@ -54,5 +54,5 @@ medium | 20
 variable | 7
 >>>
 counts SHAPE parent=capabilities x=450 y=940 w=650 h=210 type=round_rectangle "Gesamt: 100 | read-only: 57 | effektvoll: 43 | Runtime-Tools: 100"
-boundary SHAPE parent=risk x=450 y=940 w=650 h=250 type=round_rectangle "Quellsystem bleibt maßgeblich. Keine Live-Laufzeitbehauptung, keine Geheimnisse und keine Provider-Mutation. Grenzen bestätigt: 1/4."
+boundary SHAPE parent=risk x=450 y=940 w=650 h=250 type=round_rectangle "Quellsystem bleibt maßgeblich. Keine Live-Laufzeitbehauptung, keine Geheimnisse und keine Provider-Mutation. Grenzen bestätigt: 4/4."
 footer TEXT parent=root x=1500 y=1740 w=2400 size=18 align=center "Snapshot d6a43fa90e1a4822 · aus deklarierter Quelle"
