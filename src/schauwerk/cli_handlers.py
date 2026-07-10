@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .ecosystem_map import render_ecosystem_map_html
+from .education.variants import write_education_variant, write_offline_package
 from .education.view import (
     learning_render_receipt,
     load_learning_view,
@@ -63,6 +64,26 @@ from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .visual.grammar import zoomlandkarte_template
+
+
+def handle_education_render(
+    *, input_path: str, variant: str, output: str | None
+) -> dict[str, Any]:
+    return write_education_variant(
+        input_path=Path(input_path),
+        variant=variant,
+        output=Path(output) if output else None,
+    )
+
+
+def handle_education_offline(
+    *, input_path: str, output_dir: str, variant: str
+) -> dict[str, Any]:
+    return write_offline_package(
+        input_path=Path(input_path),
+        output_dir=Path(output_dir),
+        variant=variant,
+    )
 
 
 def handle_ecosystem_render(

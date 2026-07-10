@@ -1,0 +1,66 @@
+{
+  "schema_version": "education-variants-input.v1",
+  "learn": {
+    "topic": "Kinderrechte im pädagogischen Alltag",
+    "audience": "Fachschulklasse",
+    "guiding_question": "Wie werden Kinderrechte in Alltagssituationen konkret geschützt?",
+    "goals": [
+      "Schutz-, Förder- und Beteiligungsrechte unterscheiden",
+      "eine Alltagssituation aus mehreren Perspektiven prüfen",
+      "eine begründete pädagogische Handlung formulieren"
+    ],
+    "key_terms": [
+      "Beteiligung",
+      "Kindeswohl",
+      "Schutzauftrag"
+    ],
+    "materials": [
+      "anonymisierte Fallschilderung",
+      "Kinderrechtsübersicht",
+      "Prüffragenkarte"
+    ],
+    "steps": [
+      {
+        "title": "Situation erfassen",
+        "activity": "Beobachtungen und Deutungen getrennt notieren.",
+        "minutes": 10,
+        "output": "eine sachliche Situationsbeschreibung"
+      },
+      {
+        "title": "Rechte zuordnen",
+        "activity": "Betroffene Schutz-, Förder- und Beteiligungsrechte markieren.",
+        "minutes": 15,
+        "output": "eine begründete Rechtezuordnung"
+      },
+      {
+        "title": "Handlung abwägen",
+        "activity": "Zwei Handlungswege nach Nutzen, Risiken und Beteiligung vergleichen.",
+        "minutes": 20,
+        "output": "eine begründete Handlungsempfehlung"
+      }
+    ],
+    "collaboration": "In Dreiergruppen Perspektiven vergleichen und Widersprüche sichtbar halten.",
+    "check": "Welche Handlung schützt Rechte und ermöglicht zugleich Beteiligung?",
+    "teacher_notes": [
+      "Beobachtung und Bewertung konsequent trennen.",
+      "Bei vorschnellen Lösungen nach fehlenden Perspektiven fragen."
+    ],
+    "answer_key": [
+      "Eine tragfähige Lösung benennt das betroffene Recht, begründet die Abwägung und beschreibt eine angemessene Beteiligung."
+    ],
+    "assignment": {
+      "instructions": [
+        "Wähle zwei mögliche Handlungswege.",
+        "Ordne jedem Handlungsweg Nutzen, Risiko und betroffene Rechte zu.",
+        "Begründe eine Entscheidung in höchstens 180 Wörtern."
+      ],
+      "resources": [
+        "anonymisierte Fallschilderung",
+        "Kinderrechtsübersicht",
+        "Prüffragenkarte"
+      ],
+      "submission_boundary": "Abgegeben wird nur die anonymisierte Begründung ohne Namen, Noten oder Kontaktdaten."
+    },
+    "privacy_note": "Keine Namen, Noten, Kontaktdaten oder identifizierenden Falldetails verwenden."
+  }
+}

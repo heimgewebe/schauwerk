@@ -1396,3 +1396,61 @@ def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
         "dsl_output": "view.dsl",
     }
     assert json.loads(capsys.readouterr().out)["project_id"] == "lenskit"
+
+
+def test_runner_dispatches_education_variant(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_render(*, input_path, variant, output):
+        observed.update(input_path=input_path, variant=variant, output=output)
+        return {"variant": variant, "network_dependencies": False}
+
+    monkeypatch.setattr(runner, "handle_education_render", fake_render)
+    code = runner.main(
+        [
+            "education",
+            "render",
+            "lesson.json",
+            "--variant",
+            "student",
+            "--output",
+            "student.html",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "input_path": "lesson.json",
+        "variant": "student",
+        "output": "student.html",
+    }
+    assert json.loads(capsys.readouterr().out)["network_dependencies"] is False
+
+
+def test_runner_dispatches_education_offline(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_offline(*, input_path, output_dir, variant):
+        observed.update(input_path=input_path, output_dir=output_dir, variant=variant)
+        return {"file_count": 3, "miro_required": False}
+
+    monkeypatch.setattr(runner, "handle_education_offline", fake_offline)
+    code = runner.main(
+        [
+            "education",
+            "offline",
+            "lesson.json",
+            "--variant",
+            "student",
+            "--output-dir",
+            "offline",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "input_path": "lesson.json",
+        "output_dir": "offline",
+        "variant": "student",
+    }
+    assert json.loads(capsys.readouterr().out)["miro_required"] is False

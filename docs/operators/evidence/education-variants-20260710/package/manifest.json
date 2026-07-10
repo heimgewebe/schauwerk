@@ -1,0 +1,28 @@
+{
+  "entrypoint": "index.html",
+  "excluded_private_sections": [
+    "teacher_notes",
+    "answer_key",
+    "submission_boundary"
+  ],
+  "files": {
+    "index.html": "61c6173140b54dd5fda015e714e3f895b24da0a3998bb27e01ba8246bd6ba804",
+    "student.html": "179c9a7690e5dc693154e9ace6e6acab97f287de6b6e19ae0e375be4215afd06"
+  },
+  "included_sections": [
+    "question",
+    "goals",
+    "steps",
+    "materials",
+    "check",
+    "privacy"
+  ],
+  "miro_required": false,
+  "network_dependencies": false,
+  "personal_data_detected": false,
+  "schema_version": "education-offline-package.v1",
+  "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",
+  "topic": "Kinderrechte im pädagogischen Alltag",
+  "variant": "student",
+  "variant_file": "student.html"
+}

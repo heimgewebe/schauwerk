@@ -1,0 +1,11 @@
+{
+  "file_count": 3,
+  "manifest_sha256": "0bc4b082ec0d3909e9acce9812d1741d022934dedf6425b1451a32b6101b4ded",
+  "miro_required": false,
+  "network_dependencies": false,
+  "output_dir": "docs/operators/evidence/education-variants-20260710/package",
+  "personal_data_detected": false,
+  "schema_version": "education-offline-receipt.v1",
+  "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",
+  "variant": "student"
+}

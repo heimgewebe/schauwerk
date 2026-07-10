@@ -1,0 +1,22 @@
+{
+  "excluded_private_sections": [
+    "teacher_notes",
+    "answer_key"
+  ],
+  "included_sections": [
+    "question",
+    "goals",
+    "instructions",
+    "resources",
+    "submission_boundary",
+    "privacy"
+  ],
+  "miro_required": false,
+  "network_dependencies": false,
+  "output": "docs/operators/evidence/education-variants-20260710/variants/assignment.html",
+  "output_sha256": "9eced54f28af6276528dea6fbc5ca0a0d59c3cd2a5d4eeff5f8107e268061d20",
+  "personal_data_detected": false,
+  "schema_version": "education-variant-receipt.v1",
+  "source_digest": "34f75b9dcfdd3371c2bcb117f7a09b33a459688e3ad3929913ca65d8f64dff82",
+  "variant": "assignment"
+}
