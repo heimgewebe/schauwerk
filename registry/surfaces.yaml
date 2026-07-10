@@ -1,5 +1,14 @@
 schema_version: 1
 surfaces:
+- id: local.grabowski-operational-preview
+  title: Grabowski operational overview preview
+  provider: filesystem
+  kind: preview
+  status: active
+  visibility: private
+  management_mode: read-only
+  alias: grabowski-operational-overview
+  output_path: docs/operators/evidence/grabowski-operational-20260710/operator-overview.dsl
 - id: local.grabowski-preview
   title: Grabowski operator overview preview
   provider: filesystem

@@ -1,0 +1,96 @@
+{
+  "boundaries": {
+    "contains_host_identifiers": false,
+    "contains_raw_command_output": false,
+    "contains_secret_values": false,
+    "provider_mutation_attempted": false,
+    "source_systems_remain_authoritative": true
+  },
+  "channel_state_counts": {
+    "healthy": 2,
+    "partial": 2,
+    "stale": 0,
+    "unavailable": 0
+  },
+  "channels": {
+    "gaps": {
+      "age_seconds": 0,
+      "authority": "derived",
+      "collection_status": "ok",
+      "error_code": null,
+      "freshness_contract": "live",
+      "observed_at": "2026-07-10T05:43:15Z",
+      "source_id": "bureau.grabowski-gap-observation",
+      "stale_after_seconds": 1800,
+      "state": "healthy",
+      "summary": {
+        "blocked_count": 0,
+        "planned_count": 37,
+        "repair_candidate_count": 0,
+        "tracked_followup_count": 38
+      }
+    },
+    "hosts": {
+      "age_seconds": 45,
+      "authority": "operational",
+      "collection_status": "ok",
+      "error_code": null,
+      "freshness_contract": "live",
+      "observed_at": "2026-07-10T05:42:30Z",
+      "source_id": "grabowski.fleet-observation",
+      "stale_after_seconds": 900,
+      "state": "partial",
+      "summary": {
+        "declared_count": 4,
+        "enabled_count": 4,
+        "reachable_count": 3,
+        "unavailable_count": 1
+      }
+    },
+    "runtime": {
+      "age_seconds": 20,
+      "authority": "operational",
+      "collection_status": "partial",
+      "error_code": "runtime_catalog_expected_only",
+      "freshness_contract": "live",
+      "observed_at": "2026-07-10T05:42:55Z",
+      "source_id": "grabowski.runtime-observation",
+      "stale_after_seconds": 300,
+      "state": "partial",
+      "summary": {
+        "expected_tool_count": 100,
+        "failed_grabowski_units": 23,
+        "policy_state": "unknown",
+        "running_grabowski_units": 2
+      }
+    },
+    "work": {
+      "age_seconds": 0,
+      "authority": "operational",
+      "collection_status": "ok",
+      "error_code": null,
+      "freshness_contract": "live",
+      "observed_at": "2026-07-10T05:43:15Z",
+      "source_id": "bureau.grabowski-work-observation",
+      "stale_after_seconds": 300,
+      "state": "healthy",
+      "summary": {
+        "active_run_count": 0,
+        "current_task_state": "ready",
+        "open_pr_count": 1,
+        "ready_task_count": 1
+      }
+    }
+  },
+  "evaluated_at": "2026-07-10T05:43:15Z",
+  "overall_status": "degraded",
+  "project_id": "grabowski",
+  "schema_version": "grabowski-operational-snapshot.v1",
+  "snapshot_digest": "5af25c3a17b3d3c4191f0292bed848469ec27d989070c8317908b7f71f9670e2",
+  "static_snapshot": {
+    "expected_tool_count": 100,
+    "snapshot_digest": "d6a43fa90e1a48224f29c8bf2bf076982b9f6ac70c751eb02d618b34e285a948",
+    "source_sha256": "dba1ecbfff1079d2ee3aa3e59b70a700232bb9e4aa769f31723ba3ee596abc73"
+  },
+  "view_id": "grabowski.operator-operational-overview"
+}

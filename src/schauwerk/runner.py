@@ -12,6 +12,7 @@ from .cli_handlers import (
     handle_board_remove,
     handle_doctor,
     handle_ecosystem_render,
+    handle_grabowski_operational_pilot,
     handle_grabowski_pilot,
     handle_inspect,
     handle_learn_apply,
@@ -75,6 +76,13 @@ def main(argv: list[str] | None = None) -> int:
         elif args.provider == "pilot" and args.command == "grabowski":
             result = handle_grabowski_pilot(
                 operator_context=args.operator_context,
+                snapshot_output=args.snapshot_output,
+                dsl_output=args.dsl_output,
+            )
+        elif args.provider == "pilot" and args.command == "grabowski-operational":
+            result = handle_grabowski_operational_pilot(
+                static_snapshot=args.static_snapshot,
+                observation=args.observation,
                 snapshot_output=args.snapshot_output,
                 dsl_output=args.dsl_output,
             )

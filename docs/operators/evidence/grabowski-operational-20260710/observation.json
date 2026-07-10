@@ -1,0 +1,62 @@
+{
+  "schema_version": "grabowski-operational-observation.v1",
+  "evaluated_at": "2026-07-10T05:43:15Z",
+  "channels": {
+    "hosts": {
+      "source_id": "grabowski.fleet-observation",
+      "authority": "operational",
+      "observed_at": "2026-07-10T05:42:30Z",
+      "stale_after_seconds": 900,
+      "collection_status": "ok",
+      "error_code": null,
+      "summary": {
+        "declared_count": 4,
+        "enabled_count": 4,
+        "reachable_count": 3,
+        "unavailable_count": 1
+      }
+    },
+    "runtime": {
+      "source_id": "grabowski.runtime-observation",
+      "authority": "operational",
+      "observed_at": "2026-07-10T05:42:55Z",
+      "stale_after_seconds": 300,
+      "collection_status": "partial",
+      "error_code": "runtime_catalog_expected_only",
+      "summary": {
+        "running_grabowski_units": 2,
+        "expected_tool_count": 100,
+        "policy_state": "unknown",
+        "failed_grabowski_units": 23
+      }
+    },
+    "work": {
+      "source_id": "bureau.grabowski-work-observation",
+      "authority": "operational",
+      "observed_at": "2026-07-10T05:43:15Z",
+      "stale_after_seconds": 300,
+      "collection_status": "ok",
+      "error_code": null,
+      "summary": {
+        "active_run_count": 0,
+        "open_pr_count": 1,
+        "ready_task_count": 1,
+        "current_task_state": "ready"
+      }
+    },
+    "gaps": {
+      "source_id": "bureau.grabowski-gap-observation",
+      "authority": "derived",
+      "observed_at": "2026-07-10T05:43:15Z",
+      "stale_after_seconds": 1800,
+      "collection_status": "ok",
+      "error_code": null,
+      "summary": {
+        "blocked_count": 0,
+        "planned_count": 37,
+        "repair_candidate_count": 0,
+        "tracked_followup_count": 38
+      }
+    }
+  }
+}

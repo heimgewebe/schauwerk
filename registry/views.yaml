@@ -1,5 +1,23 @@
 schema_version: 1
 views:
+- id: grabowski.operator-operational-overview
+  project_id: grabowski
+  title: Grabowski operational overview
+  purpose: Separate versioned operator-contract facts from bounded live host, runtime,
+    work and gap observations.
+  visibility: private
+  management_mode: read-only
+  source_ids:
+  - bureau.grabowski-gap-observation
+  - bureau.grabowski-work-observation
+  - grabowski.fleet-observation
+  - grabowski.operator-context
+  - grabowski.runtime-observation
+  - repo.grabowski
+  surface_ref: local.grabowski-operational-preview
+  audiences:
+  - operator
+  - maintainer
 - id: grabowski.operator-overview
   project_id: grabowski
   title: Grabowski operator overview

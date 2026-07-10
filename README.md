@@ -119,7 +119,16 @@ schauwerk pilot grabowski \
   --json
 ```
 
-Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Richtlinien und Publikationen samt Querverweisen. Der Grabowski-Pilot erzeugt eine deterministische, bereinigte Miro-DSL, führt aber keine Provider-Mutation aus.
+```bash
+schauwerk pilot grabowski-operational \
+  /tmp/grabowski-pilot/snapshot.json \
+  /path/to/operational-observation.json \
+  --snapshot-output /tmp/grabowski-operational/snapshot.json \
+  --dsl-output /tmp/grabowski-operational/operator-overview.dsl \
+  --json
+```
+
+Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Richtlinien und Publikationen samt Querverweisen. Der Grabowski-Pilot erzeugt deterministische, bereinigte statische und operationale Miro-DSL. Die operationale Ansicht trennt Vertrag, zeitgebundene Beobachtung und Ausfälle; beide Pfade führen keine Provider-Mutation aus.
 
 ## Aktueller Umsetzungsschnitt
 
@@ -128,7 +137,7 @@ Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Ric
 - SW-002: read-only Miro-Snapshot
 - SW-003: kontrollierter Live-Schreibnachweis abgeschlossen; bereinigte Evidence für Create, Read, Update, Idempotenz und Cleanup liegt vor
 - SW-004: vollständige Registry-Verträge, Querverweisprüfung, deterministischer Digest und CLI-Inspektion
-- SW-005: erste deterministische Grabowski-Operator-Projektion mit gebundener Acceptance-Evidence; Livezustand, Hosts und laufende Arbeit bleiben offen
+- SW-005: statische und operationale Grabowski-Operator-Projektionen mit gebundener Acceptance-Evidence für Vertrag, Hosts, Runtime, laufende Arbeit und bekannte Lücken
 - SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen; Varianten und Offline-Ausgaben bleiben offen
 - SW-009: Simulation, Live-Gate und Kandidatenprüfung sind vorhanden; der produktive Live-Apply-Executor samt Postflight/Restore bleibt offen
 

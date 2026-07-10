@@ -53,7 +53,7 @@ Complete project, view, source, surface, publication, region, and policy contrac
 
 ## SW-005 — Grabowski pilot
 
-**Implementation status:** partial; the first static operator overview is complete. `schauwerk pilot grabowski` consumes the declared generated operator context, emits a sanitized deterministic snapshot and Miro-compatible DSL, and records source and snapshot digests. Acceptance evidence is committed under `docs/operators/evidence/grabowski-pilot-20260710/`. Host state, live runtime health, current work and known-gap lanes remain open as separately sourced projections.
+**Implementation status:** complete for the useful-pilot gate. `schauwerk pilot grabowski` renders the declared static operator contract. `schauwerk pilot grabowski-operational` adds bounded, expiring host, runtime, current-work and known-gap observations while keeping source authority, stale state and collection failure explicit. Deterministic acceptance evidence is committed under `docs/operators/evidence/grabowski-pilot-20260710/` and `docs/operators/evidence/grabowski-operational-20260710/`. Continuous collection and the cross-project overview remain later SW-011/SW-014 work.
 
 Build system architecture, capabilities, hosts, runtime state, current work, and known-gap views from real sources.
 

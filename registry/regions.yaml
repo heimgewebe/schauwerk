@@ -1,5 +1,12 @@
 schema_version: 1
 regions:
+- id: grabowski.operator-operational-overview.readonly
+  view_id: grabowski.operator-operational-overview
+  surface_ref: local.grabowski-operational-preview
+  title: Read-only Grabowski operational overview
+  management_mode: read-only
+  policy_id: read-only-projection
+  marker_prefix: SCHAUWERK:GRABOWSKI:LIVE
 - id: grabowski.operator-overview.managed
   view_id: grabowski.operator-overview
   surface_ref: local.grabowski-preview

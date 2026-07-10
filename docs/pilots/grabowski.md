@@ -26,3 +26,7 @@ The committed acceptance evidence in `docs/operators/evidence/grabowski-pilot-20
 ## Gate result
 
 A useful Miro view can be reconstructed from declared registry sources and a digest-bound sanitized snapshot. Applying that DSL to the proposed `miro.grabowski-pilot` surface remains a separate approval-required SW-009 operation.
+
+## Operational continuation
+
+For time-bound host, runtime, work and gap observations, continue with [Grabowski operational pilot](grabowski-operational.md). The operational view consumes the static snapshot rather than duplicating or silently refreshing contract facts.

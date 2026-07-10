@@ -5,8 +5,13 @@ projects:
     status: active
     visibility: private
     source_ids:
+      - bureau.grabowski-gap-observation
+      - bureau.grabowski-work-observation
       - github.grabowski
+      - grabowski.fleet-observation
       - grabowski.operator-context
+      - grabowski.runtime-observation
+      - repo.bureau
       - repo.grabowski
   - id: schauwerk
     title: Schauwerk visual projection layer

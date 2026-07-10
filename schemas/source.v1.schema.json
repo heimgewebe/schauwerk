@@ -29,7 +29,8 @@
         "generated-artifact",
         "document",
         "miro-board",
-        "local-artifact"
+        "local-artifact",
+        "runtime-observation"
       ]
     },
     "authority": {

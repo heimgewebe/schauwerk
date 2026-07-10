@@ -1,5 +1,24 @@
 schema_version: 1
 sources:
+  - id: bureau.grabowski-gap-observation
+    title: Bureau Grabowski gap observation
+    kind: runtime-observation
+    authority: derived
+    visibility: private
+    reference: bureau:repo.grabowski:gaps
+    freshness: live
+    depends_on:
+      - repo.bureau
+  - id: bureau.grabowski-work-observation
+    title: Bureau Grabowski work observation
+    kind: runtime-observation
+    authority: operational
+    visibility: private
+    reference: bureau:repo.grabowski:work
+    freshness: live
+    depends_on:
+      - github.grabowski
+      - repo.bureau
   - id: github.grabowski
     title: Grabowski GitHub repository
     kind: github-repository
@@ -18,6 +37,15 @@ sources:
     freshness: live
     depends_on:
       - repo.schauwerk
+  - id: grabowski.fleet-observation
+    title: Grabowski fleet observation
+    kind: runtime-observation
+    authority: operational
+    visibility: private
+    reference: grabowski:fleet
+    freshness: live
+    depends_on:
+      - repo.grabowski
   - id: grabowski.operator-context
     title: Grabowski generated operator context
     kind: generated-artifact
@@ -27,6 +55,22 @@ sources:
     freshness: on-merge
     depends_on:
       - repo.grabowski
+  - id: grabowski.runtime-observation
+    title: Grabowski runtime observation
+    kind: runtime-observation
+    authority: operational
+    visibility: private
+    reference: grabowski:runtime
+    freshness: live
+    depends_on:
+      - repo.grabowski
+  - id: repo.bureau
+    title: Bureau source repository
+    kind: git-repository
+    authority: canonical
+    visibility: private
+    reference: heimgewebe/bureau
+    freshness: on-merge
   - id: repo.grabowski
     title: Grabowski source repository
     kind: git-repository
