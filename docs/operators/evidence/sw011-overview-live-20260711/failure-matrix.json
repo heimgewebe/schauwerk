@@ -1,0 +1,19 @@
+{
+  "cases": [
+    "provider exception becomes an error observation while Registry navigation remains available",
+    "stale cached health remains explicitly stale",
+    "future observation timestamps become unknown rather than fresh",
+    "missing active artifacts become warning failures",
+    "missing draft publications remain unknown rather than errors",
+    "corrupt SW-009 journals become hashed local failures without aborting collection",
+    "tampered Regie effect receipts fail before active-job projection",
+    "freshness and provider summary cannot be relabelled by rehashing the snapshot",
+    "duplicate publication, failure, job, observation and profile identifiers fail closed",
+    "unknown display-profile sections fail closed",
+    "non-owner-only snapshot files are rejected",
+    "HTTP POST requests return read-only service",
+    "invalid session token or loopback Host header blocks private API reads"
+  ],
+  "productive_provider_mutation_attempted": false,
+  "schema_version": "sw011-overview-failure-matrix.v1"
+}

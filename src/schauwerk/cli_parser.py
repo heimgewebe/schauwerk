@@ -138,6 +138,24 @@ def build_parser() -> argparse.ArgumentParser:
     regie_serve.add_argument("--no-browser", action="store_true")
     regie_serve.add_argument("--json", action="store_true")
 
+    overview = providers.add_parser(
+        "overview", help="registry-backed resilient overview and live views"
+    )
+    overview_commands = overview.add_subparsers(dest="command", required=True)
+    overview_snapshot = overview_commands.add_parser(
+        "snapshot", help="write a validated owner-only overview snapshot"
+    )
+    overview_snapshot.add_argument("--output", required=True)
+    overview_snapshot.add_argument("--probe-provider", action="store_true")
+    overview_snapshot.add_argument("--json", action="store_true")
+    overview_serve = overview_commands.add_parser(
+        "serve", help="serve read-only overview on 127.0.0.1"
+    )
+    overview_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
+    overview_serve.add_argument("--probe-provider", action="store_true")
+    overview_serve.add_argument("--no-browser", action="store_true")
+    overview_serve.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

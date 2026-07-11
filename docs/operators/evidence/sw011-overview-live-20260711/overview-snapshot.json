@@ -1,0 +1,286 @@
+{
+  "boundary": {
+    "observations_are_time_bound": true,
+    "provider_failure_does_not_block_local_diagnostics": true,
+    "provider_identifiers_excluded": true,
+    "read_only": true,
+    "registry_is_navigation_truth": true
+  },
+  "display_profiles": [
+    {
+      "fullscreen": false,
+      "maximum_items_per_section": 100,
+      "profile_id": "operator",
+      "refresh_seconds": 60,
+      "schema_version": "schauwerk-display-profile.v1",
+      "title": "Operator overview",
+      "visible_sections": [
+        "summary",
+        "projects",
+        "observations",
+        "jobs",
+        "publications",
+        "failures"
+      ]
+    },
+    {
+      "fullscreen": true,
+      "maximum_items_per_section": 40,
+      "profile_id": "wallboard",
+      "refresh_seconds": 30,
+      "schema_version": "schauwerk-display-profile.v1",
+      "title": "Fullscreen wallboard",
+      "visible_sections": [
+        "summary",
+        "observations",
+        "jobs",
+        "failures"
+      ]
+    },
+    {
+      "fullscreen": true,
+      "maximum_items_per_section": 200,
+      "profile_id": "incident",
+      "refresh_seconds": 15,
+      "schema_version": "schauwerk-display-profile.v1",
+      "title": "Incident display",
+      "visible_sections": [
+        "summary",
+        "observations",
+        "jobs",
+        "failures"
+      ]
+    }
+  ],
+  "failures": [
+    {
+      "failure_id": "provider.miro.unavailable",
+      "message": "fixture provider outage",
+      "observed_at": "2026-07-11T03:00:00Z",
+      "severity": "critical",
+      "source": "Miro provider health"
+    }
+  ],
+  "generated_at": "2026-07-11T03:00:00Z",
+  "jobs": [
+    {
+      "freshness": "fresh",
+      "job_id": "regie.sw010-regie-fixture",
+      "kind": "regie-session",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "project_id": "schauwerk",
+      "source": "local Regie receipt chain",
+      "status": "authorization-expired",
+      "summary": "Regie review sw010-regie-fixture — authorization expired",
+      "view_id": "schauwerk.delivery-status"
+    },
+    {
+      "freshness": "fresh",
+      "job_id": "transaction.sw011-fixture-transaction",
+      "kind": "live-transaction",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "project_id": "schauwerk",
+      "source": "local SW-009 transaction journal",
+      "status": "committed",
+      "summary": "Managed region managed-summary",
+      "view_id": null
+    }
+  ],
+  "observations": [
+    {
+      "category": "provider",
+      "error": "fixture provider outage",
+      "freshness": "error",
+      "label": "Miro provider health",
+      "observation_id": "provider.miro.live",
+      "observed_at": "2026-07-11T03:00:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "critical",
+      "source": "live Miro read-only health check",
+      "stale_after_seconds": 900,
+      "state": "error",
+      "value": "live read-only check failed"
+    },
+    {
+      "category": "provider",
+      "error": null,
+      "freshness": "fresh",
+      "label": "Miro local authorization state",
+      "observation_id": "provider.miro.local",
+      "observed_at": "2026-07-11T03:00:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "info",
+      "source": "local Miro client status",
+      "stale_after_seconds": 300,
+      "state": "ok",
+      "value": "local authorization material present"
+    },
+    {
+      "category": "surface",
+      "error": null,
+      "freshness": "fresh",
+      "label": "Grabowski operational overview preview",
+      "observation_id": "surface.local.grabowski-operational-preview",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "info",
+      "source": "registry surface local.grabowski-operational-preview",
+      "stale_after_seconds": 604800,
+      "state": "ok",
+      "value": "artifact present"
+    },
+    {
+      "category": "surface",
+      "error": null,
+      "freshness": "fresh",
+      "label": "Grabowski operator overview preview",
+      "observation_id": "surface.local.grabowski-preview",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "info",
+      "source": "registry surface local.grabowski-preview",
+      "stale_after_seconds": 604800,
+      "state": "ok",
+      "value": "artifact present"
+    },
+    {
+      "category": "surface",
+      "error": null,
+      "freshness": "fresh",
+      "label": "Lenskit software overview preview",
+      "observation_id": "surface.local.lenskit-preview",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "info",
+      "source": "registry surface local.lenskit-preview",
+      "stale_after_seconds": 604800,
+      "state": "ok",
+      "value": "artifact present"
+    },
+    {
+      "category": "surface",
+      "error": null,
+      "freshness": "fresh",
+      "label": "Schauwerk delivery status preview",
+      "observation_id": "surface.local.schauwerk-status-preview",
+      "observed_at": "2026-07-11T03:00:00Z",
+      "schema_version": "schauwerk-overview-observation.v1",
+      "severity": "info",
+      "source": "registry surface local.schauwerk-status-preview",
+      "stale_after_seconds": 604800,
+      "state": "inactive",
+      "value": "artifact missing"
+    }
+  ],
+  "projects": [
+    {
+      "project_id": "grabowski",
+      "status": "active",
+      "title": "Grabowski operator system",
+      "views": [
+        {
+          "audiences": [
+            "maintainer",
+            "operator"
+          ],
+          "management_mode": "read-only",
+          "publication_ids": [],
+          "purpose": "Separate versioned operator-contract facts from bounded live host, runtime, work and gap observations.",
+          "surface_id": "local.grabowski-operational-preview",
+          "surface_provider": "filesystem",
+          "surface_status": "active",
+          "title": "Grabowski operational overview",
+          "view_id": "grabowski.operator-operational-overview",
+          "visibility": "private"
+        },
+        {
+          "audiences": [
+            "maintainer",
+            "operator"
+          ],
+          "management_mode": "approval-required",
+          "publication_ids": [
+            "grabowski.operator-overview.preview"
+          ],
+          "purpose": "Reconstruct architecture, capability risk, runtime contract and operating boundaries from declared sources.",
+          "surface_id": "local.grabowski-preview",
+          "surface_provider": "filesystem",
+          "surface_status": "active",
+          "title": "Grabowski operator overview",
+          "view_id": "grabowski.operator-overview",
+          "visibility": "private"
+        }
+      ],
+      "visibility": "private"
+    },
+    {
+      "project_id": "lenskit",
+      "status": "active",
+      "title": "Lenskit and RepoBrief",
+      "views": [
+        {
+          "audiences": [
+            "maintainer",
+            "operator"
+          ],
+          "management_mode": "read-only",
+          "publication_ids": [],
+          "purpose": "Reconstruct architecture, decisions, roadmap, delivery checks and risks through the generic software-pilot contract.",
+          "surface_id": "local.lenskit-preview",
+          "surface_provider": "filesystem",
+          "surface_status": "active",
+          "title": "Lenskit software overview",
+          "view_id": "lenskit.software-overview",
+          "visibility": "private"
+        }
+      ],
+      "visibility": "private"
+    },
+    {
+      "project_id": "schauwerk",
+      "status": "active",
+      "title": "Schauwerk visual projection layer",
+      "views": [
+        {
+          "audiences": [
+            "operator"
+          ],
+          "management_mode": "read-only",
+          "publication_ids": [],
+          "purpose": "Show roadmap completion, current gates and declared next work without treating the view as source truth.",
+          "surface_id": "local.schauwerk-status-preview",
+          "surface_provider": "filesystem",
+          "surface_status": "proposed",
+          "title": "Schauwerk delivery status",
+          "view_id": "schauwerk.delivery-status",
+          "visibility": "private"
+        }
+      ],
+      "visibility": "private"
+    }
+  ],
+  "publications": [
+    {
+      "artifact_state": "present",
+      "audience": "operator",
+      "expires_at": null,
+      "freshness": "fresh",
+      "observed_at": "2026-07-11T02:30:00Z",
+      "publication_id": "grabowski.operator-overview.preview",
+      "source_revision": "f149b944a6bf756a4a95f3aab7396c9877d20b1f",
+      "status": "draft",
+      "view_id": "grabowski.operator-overview"
+    }
+  ],
+  "registry_digest": "be0cd8c63343e13666d4c3415a182156467a6df8d9eb7fd47bace45d702edc61",
+  "schema_version": "schauwerk-overview-snapshot.v1",
+  "snapshot_digest": "5b3b67a1bb255bbb9f5f6ddc709a61497a8d429729cea32978789deae118802e",
+  "summary": {
+    "active_job_count": 2,
+    "error_count": 1,
+    "project_count": 3,
+    "provider_state": "error",
+    "stale_count": 0,
+    "view_count": 4
+  }
+}

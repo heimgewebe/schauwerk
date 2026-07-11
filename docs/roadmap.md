@@ -121,7 +121,16 @@ Command graph:
 
 ## SW-011 — Overview and live views
 
-Provide project navigation, freshness, active jobs, provider health, embedded surfaces, publications, errors, and fullscreen displays.
+**Implementation status:** complete for the read-only local v1 contract. A digest-bound overview snapshot joins Registry-backed project/view navigation with time-bound artifact, publication, SW-009 transaction, Regie session and Miro health observations. Provider probes are optional and read-only; exceptions become provider error facts while all local diagnostics remain available.
+
+The serial loopback interface exposes no mutation route, uses fragment-delivered tab session tokens, supports explicit fullscreen, and declares bounded `operator`, `wallboard` and `incident` profiles with refresh intervals from 15 to 60 seconds. Freshness, summary counts, publication expiry and provider state are recomputed during validation rather than trusted as editable labels.
+
+Command graph:
+
+- offline path: `Registry + local receipts + cached health → overview snapshot`;
+- current health path: `overview snapshot --probe-provider`;
+- live path: `overview serve → repeated validated read-only snapshots`;
+- display path: `operator | wallboard | incident → bounded sections and refresh`.
 
 **Gate:** diagnostics remain useful when Miro is unavailable.
 
