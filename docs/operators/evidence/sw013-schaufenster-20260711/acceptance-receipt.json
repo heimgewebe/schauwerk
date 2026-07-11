@@ -1,5 +1,5 @@
 {
-  "acceptance_digest": "d66f281b4e510d279d86a5025fd942bf3c2b6e200e8a047859f25dc2efd85f16",
+  "acceptance_digest": "88628daaff65b9b7956d03204ca106dd8e2b41990cc47eab8e9923825141ba75",
   "artifacts": {
     "active-link.json": {
       "bytes": 565,
@@ -91,7 +91,7 @@
     "docs/architecture/schauwerk.md": "bce9148b26f3d0557011ef11a69ce1bb130b3b03717e9c24c80e58752acd886f",
     "docs/index.md": "5c8be9eae3d03b377959c6eca661c4923508f9be4097d27b3e59fff39f2d2839",
     "docs/operators/evidence/sw013-schaufenster-20260711/README.md": "df366180fc1ac913fc7b6f1e95c73f082fc328fd7a88258829749da9e9b9262a",
-    "docs/publications/schaufenster-v1.md": "1d2007401e9ca97249672634d7543fd316d6440d15ec7c0647d660f8c59c2b0c",
+    "docs/publications/schaufenster-v1.md": "fe9476d71d9d89f7da959d5600e68c01015bfe871afd64ee0db87370082b22ab",
     "docs/roadmap.md": "86ad4cc2313d9b27ba04fddb0023c7965f862f5b8b9e6aa47c22fa0abe1f610e",
     "registry/publications.yaml": "86919e675a216492729012e940cd1120a85a3537b10d0eb318c268ed5f2ed6ac",
     "schemas/publication-boundary.v1.schema.json": "632ba1f12a7f9f41923c571a01e5f88e1eeea0742b9a60cda9eba5045cf90c70",
@@ -107,6 +107,7 @@
     "tests/publication/test_publication_fixtures.py": "0dfd1b28592c60c47ac169d78e7bb15313010f3fc2ee0f208bf2f583f3a6a3d8"
   },
   "runtime_boundary": {
+    "immutable_semantics": "read-only-permissions-plus-digest-verification",
     "platform": "linux",
     "power_loss_durability": "not-claimed-in-v1",
     "required_primitives": [
@@ -114,6 +115,7 @@
       "renameat2:RENAME_EXCHANGE",
       "flock"
     ],
+    "same_uid_lock_bypass": "not-covered-in-v1",
     "unsupported_runtime_behavior": "fail-closed"
   },
   "schema_version": "schauwerk-sw013-acceptance-receipt.v1",

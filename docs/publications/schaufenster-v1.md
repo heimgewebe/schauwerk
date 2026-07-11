@@ -123,4 +123,6 @@ V1 ist ein providerneutraler lokaler Publikationskern. Es gibt keinen öffentlic
 
 Die atomaren Dateisystemoperationen erfordern Linux `renameat2` mit `RENAME_NOREPLACE` und `RENAME_EXCHANGE`. Fehlt diese Garantie, schlägt der Mutationspfad geschlossen fehl. „Atomar“ bezeichnet in V1 Prozess-, Konkurrenz- und Rollback-Atomik; eine vollständige Garantie gegen Stromausfall oder Dateisystemverlust wird nicht behauptet.
 
-Unveränderliche Objekte sind absichtlich nicht direkt löschbar. Ein administrativer Rückbau muss zuerst die Schreibrechte des konkret ausgewählten Objektbaums wiederherstellen und darf nie pauschal fremde Store-Inhalte rekursiv verändern. V1 bietet deshalb bewusst keinen automatischen Prune-Befehl.
+Unveränderliche Objekte sind absichtlich nicht direkt löschbar. „Unveränderlich“ bedeutet in V1: versionsgebunden, ohne Schreibbits abgelegt und vor Status oder Auslieferung vollständig hashgeprüft. Es ist kein Kernel-Immutable-Attribut. Ein Prozess unter derselben Benutzerkennung kann Schreibrechte bewusst zurücksetzen; eine danach veränderte Datei wird erkannt und nicht ausgeliefert. `flock` koordiniert kooperierende Schauwerk-Prozesse, schützt aber nicht vor einem absichtlich lockignorierenden Prozess derselben Benutzerkennung oder vor einem Dateisystemverlust.
+
+Ein administrativer Rückbau muss zuerst die Schreibrechte des konkret ausgewählten Objektbaums wiederherstellen und darf nie pauschal fremde Store-Inhalte rekursiv verändern. V1 bietet deshalb bewusst keinen automatischen Prune-Befehl.
