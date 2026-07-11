@@ -6,7 +6,7 @@ from html import escape
 from pathlib import Path
 from typing import Any
 
-MANIFEST_KIND = 'cabinet_ecosystem_map_artifact_manifest'
+MANIFEST_KIND = 'system_catalog_map_artifact_manifest'
 RENDER_KIND = 'schauwerk_ecosystem_map_html_handoff'
 
 
@@ -27,10 +27,15 @@ def _load_manifest(path: Path) -> dict[str, Any]:
         raise EcosystemMapRenderError(f'manifest is invalid JSON: {exc.msg}') from exc
     if not isinstance(data, dict):
         raise EcosystemMapRenderError('manifest root must be an object')
-    if data.get('kind') != MANIFEST_KIND or data.get('schemaVersion') != 1:
+    identity_mismatch = (
+        data.get('kind') != MANIFEST_KIND
+        or data.get('schemaVersion') != 1
+        or data.get('contractVersion') != '1'
+    )
+    if identity_mismatch:
         raise EcosystemMapRenderError('manifest kind or schema version mismatch')
     source = data.get('source')
-    if not isinstance(source, dict) or source.get('repository') != 'heimgewebe/heimgewebe-katalog':
+    if not isinstance(source, dict) or source.get('repository') != 'heimgewebe/systemkatalog':
         raise EcosystemMapRenderError('manifest source mismatch')
     commit = source.get('commit')
     commit_invalid = (
@@ -79,6 +84,8 @@ def _read_artifact(root: Path, item: dict[str, Any]) -> tuple[str, str, int, str
     if not isinstance(raw, str) or not isinstance(digest, str) or not isinstance(byte_count, int):
         raise EcosystemMapRenderError('artifact fields are incomplete')
     text = _safe_path(root, raw).read_text(encoding='utf-8')
+    if len(text.encode('utf-8')) != byte_count:
+        raise EcosystemMapRenderError(f'artifact byte count mismatch: {raw}')
     if _sha(text) != digest:
         raise EcosystemMapRenderError(f'artifact digest mismatch: {raw}')
     return raw, text, byte_count, digest
@@ -88,32 +95,26 @@ def _page(
     manifest: dict[str, Any],
     manifest_path: Path,
     source_root: Path,
-    overview: tuple[str, str, int, str],
-    registry: tuple[str, str, int, str],
+    map_artifact: tuple[str, str, int, str],
 ) -> str:
     source = manifest['source']
-    ov_path, ov_text, ov_bytes, ov_sha = overview
-    rg_path, rg_text, rg_bytes, rg_sha = registry
+    map_path, map_text, map_bytes, map_sha = map_artifact
     return f'''<!DOCTYPE html>
-<html lang="de"><head><meta charset="utf-8"><title>Heimgewebe Ecosystem Map Handoff</title></head>
+<html lang="de"><head><meta charset="utf-8">
+<title>Systemkatalog Ecosystem Map Handoff</title></head>
 <body data-render-kind="{RENDER_KIND}" data-render-mode="source-html">
-<h1>Heimgewebe Ecosystem Map Handoff</h1>
-<p><strong>Boundary:</strong> read-only presentation handoff from
-Heimgewebe-Systemkatalog map artifacts.</p>
+<h1>Systemkatalog Ecosystem Map Handoff</h1>
+<p><strong>Boundary:</strong> read-only presentation handoff from the canonical
+Systemkatalog map artifact.</p>
 <dl>
 <dt>System catalog commit</dt><dd>{escape(source['commit'])}</dd>
 <dt>Manifest</dt><dd>{escape(str(manifest_path))}</dd>
 <dt>Source root</dt><dd>{escape(str(source_root))}</dd>
 </dl>
 <section>
-<h2>Readable overview Mermaid source</h2>
-<p>{escape(ov_path)} · {ov_bytes} bytes · sha256 {escape(ov_sha)}</p>
-<pre>{escape(ov_text)}</pre>
-</section>
-<section>
-<h2>Generated registry projection Mermaid source</h2>
-<p>{escape(rg_path)} · {rg_bytes} bytes · sha256 {escape(rg_sha)}</p>
-<pre>{escape(rg_text)}</pre>
+<h2>Canonical ecosystem map Mermaid source</h2>
+<p>{escape(map_path)} · {map_bytes} bytes · sha256 {escape(map_sha)}</p>
+<pre>{escape(map_text)}</pre>
 </section>
 </body></html>
 '''
@@ -128,9 +129,8 @@ def render_ecosystem_map_html(
     manifest_path = manifest_path.resolve()
     root = _source_root(manifest_path, source_root)
     manifest = _load_manifest(manifest_path)
-    overview = _read_artifact(root, _artifact(manifest, 'readable_overview_mermaid'))
-    registry = _read_artifact(root, _artifact(manifest, 'generated_registry_projection_mermaid'))
-    html = _page(manifest, manifest_path, root, overview, registry)
+    map_artifact = _read_artifact(root, _artifact(manifest, 'canonical_ecosystem_map_mermaid'))
+    html = _page(manifest, manifest_path, root, map_artifact)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding='utf-8')
     return {
