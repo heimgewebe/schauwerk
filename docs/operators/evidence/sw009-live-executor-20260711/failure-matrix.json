@@ -20,7 +20,8 @@
     "symlinked input and output paths fail closed",
     "non-managed regions and replace-region operations fail closed",
     "layout read and update DSL exceeding 16 MiB are rejected",
-    "loaded owner-only authorization compiles a plan without internal validation fields"
+    "loaded owner-only authorization compiles a plan without internal validation fields",
+    "failed restore retry requires a validated prior failure receipt and updated committed journal digest"
   ],
   "fixture_only": true,
   "productive_provider_mutation_attempted": false,

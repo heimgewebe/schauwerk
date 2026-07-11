@@ -107,6 +107,37 @@ def build_parser() -> argparse.ArgumentParser:
     visual_grammar.add_argument("--output")
     visual_grammar.add_argument("--json", action="store_true")
 
+    regie = providers.add_parser("regie", help="local receipt-bound review interface")
+    regie_commands = regie.add_subparsers(dest="command", required=True)
+    regie_context_template = regie_commands.add_parser(
+        "context-template", help="write an owner-only editable Regie context draft"
+    )
+    regie_context_template.add_argument("--review-id", required=True)
+    regie_context_template.add_argument("--title", required=True)
+    regie_context_template.add_argument("--output", required=True)
+    regie_context_template.add_argument("--json", action="store_true")
+    regie_context_compile = regie_commands.add_parser(
+        "context-compile", help="validate and digest-bind one Regie context draft"
+    )
+    regie_context_compile.add_argument("draft")
+    regie_context_compile.add_argument("--output", required=True)
+    regie_context_compile.add_argument("--json", action="store_true")
+    regie_review = regie_commands.add_parser(
+        "review", help="compile a source-bound review bundle without provider effect"
+    )
+    regie_review.add_argument("--context", required=True)
+    regie_review.add_argument("--gate", required=True)
+    regie_review.add_argument("--bundle", required=True)
+    regie_review.add_argument("--output", required=True)
+    regie_review.add_argument("--json", action="store_true")
+    regie_serve = regie_commands.add_parser(
+        "serve", help="run the Regie interface on 127.0.0.1"
+    )
+    regie_serve.add_argument("review_bundle")
+    regie_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
+    regie_serve.add_argument("--no-browser", action="store_true")
+    regie_serve.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

@@ -809,6 +809,128 @@ def validate_live_transaction_receipt(value: Mapping[str, Any]) -> dict[str, Any
     }
 
 
+def validate_live_transaction_failure_receipt(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    common_fields = {
+        "schema_version",
+        "ok",
+        "mutation_attempted",
+        "live_apply_attempted",
+        "transaction_id",
+        "surface_alias",
+        "region_id",
+        "operation_count",
+        "applied_operation_ids",
+        "failure",
+        "rollback_attempted",
+        "rollback_succeeded",
+        "rollback_error",
+        "restore_ready",
+        "journal_path",
+        "source_receipts",
+        "boundary",
+        "receipt_digest",
+    }
+    preflight_fields = common_fields
+    apply_fields = common_fields | {"manual_recovery_required"}
+    if not isinstance(value, Mapping) or set(value) not in {
+        frozenset(preflight_fields),
+        frozenset(apply_fields),
+    }:
+        raise ValueError("live transaction failure receipt fields are invalid")
+    if value.get("schema_version") != LIVE_TRANSACTION_SCHEMA:
+        raise ValueError("live transaction failure receipt has an unsupported schema")
+    if value.get("ok") is not False or value.get("live_apply_attempted") is not True:
+        raise ValueError("live transaction failure receipt status is invalid")
+    if value.get("restore_ready") is not False:
+        raise ValueError("live transaction failure receipt restore state is invalid")
+    mutation_attempted = value.get("mutation_attempted")
+    rollback_attempted = value.get("rollback_attempted")
+    if not isinstance(mutation_attempted, bool) or not isinstance(
+        rollback_attempted, bool
+    ):
+        raise ValueError("live transaction failure mutation state is invalid")
+    if rollback_attempted is not mutation_attempted:
+        raise ValueError("live transaction failure rollback state is invalid")
+    transaction_id = _safe_id(value.get("transaction_id"), label="transaction_id")
+    alias = _safe_id(value.get("surface_alias"), label="surface_alias")
+    region_id = _safe_id(value.get("region_id"), label="region_id")
+    operation_count = value.get("operation_count")
+    applied_ids = value.get("applied_operation_ids")
+    if (
+        isinstance(operation_count, bool)
+        or not isinstance(operation_count, int)
+        or not 1 <= operation_count <= 100
+        or not isinstance(applied_ids, list)
+        or len(applied_ids) > operation_count
+        or len(set(applied_ids)) != len(applied_ids)
+    ):
+        raise ValueError("live transaction failure operation counts are invalid")
+    normalized_ids = [
+        _safe_id(item, label=f"applied_operation_ids[{index}]")
+        for index, item in enumerate(applied_ids)
+    ]
+    failure = _safe_text(value.get("failure"), label="failure")
+    rollback_succeeded = value.get("rollback_succeeded")
+    rollback_error = value.get("rollback_error")
+    is_apply_failure = set(value) == apply_fields
+    if not is_apply_failure:
+        if (
+            mutation_attempted
+            or normalized_ids
+            or rollback_succeeded is not None
+            or rollback_error is not None
+        ):
+            raise ValueError("live transaction preflight failure state is invalid")
+    else:
+        if not isinstance(rollback_succeeded, bool):
+            raise ValueError("live transaction failure rollback result is invalid")
+        if rollback_succeeded:
+            if rollback_error is not None:
+                raise ValueError("live transaction failure rollback error is invalid")
+        else:
+            rollback_error = _safe_text(rollback_error, label="rollback_error")
+        manual_recovery = value.get("manual_recovery_required")
+        if not isinstance(manual_recovery, bool) or manual_recovery is rollback_succeeded:
+            raise ValueError("live transaction failure recovery state is invalid")
+    journal_path = _safe_text(value.get("journal_path"), label="journal_path")
+    source_receipts = value.get("source_receipts")
+    if not isinstance(source_receipts, Mapping) or set(source_receipts) != {
+        "gate_receipt_digest",
+        "operation_bundle_digest",
+        "authorization_digest",
+    }:
+        raise ValueError("live transaction failure source receipts are invalid")
+    normalized_sources = {
+        key: _digest(source_receipts.get(key), label=key)
+        for key in source_receipts
+    }
+    expected_boundary = {
+        "managed_region_only": True,
+        "provider_identifiers_not_returned": True,
+        "failed_apply_is_fail_closed": True,
+    }
+    if value.get("boundary") != expected_boundary:
+        raise ValueError("live transaction failure boundary is invalid")
+    declared = _digest(value.get("receipt_digest"), label="receipt_digest")
+    if declared != _receipt_digest(value):
+        raise ValueError("live transaction failure receipt digest mismatch")
+    return {
+        **dict(value),
+        "transaction_id": transaction_id,
+        "surface_alias": alias,
+        "region_id": region_id,
+        "operation_count": operation_count,
+        "applied_operation_ids": normalized_ids,
+        "failure": failure,
+        "rollback_error": rollback_error,
+        "journal_path": journal_path,
+        "source_receipts": normalized_sources,
+        "receipt_digest": declared,
+    }
+
+
 def load_live_transaction_receipt(path: Path) -> dict[str, Any]:
     return validate_live_transaction_receipt(
         _read_json(path, label="live transaction receipt", owner_only=True)
@@ -898,10 +1020,90 @@ def validate_live_restore_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_live_restore_failure_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
+    expected_fields = {
+        "schema_version",
+        "ok",
+        "mutation_attempted",
+        "live_restore_attempted",
+        "transaction_id",
+        "surface_alias",
+        "region_id",
+        "failure",
+        "rollback_to_after_attempted",
+        "rollback_to_after_succeeded",
+        "rollback_to_after_error",
+        "still_restore_ready",
+        "journal_path",
+        "source_receipts",
+        "boundary",
+        "receipt_digest",
+    }
+    if not isinstance(value, Mapping) or set(value) != expected_fields:
+        raise ValueError("live restore failure receipt fields are invalid")
+    if value.get("schema_version") != LIVE_RESTORE_SCHEMA:
+        raise ValueError("live restore failure receipt has an unsupported schema")
+    if value.get("ok") is not False:
+        raise ValueError("live restore failure receipt ok flag is invalid")
+    for field in (
+        "mutation_attempted",
+        "live_restore_attempted",
+        "rollback_to_after_attempted",
+    ):
+        if value.get(field) is not True:
+            raise ValueError(f"live restore failure receipt {field} is invalid")
+    recovery_ok = value.get("rollback_to_after_succeeded")
+    still_ready = value.get("still_restore_ready")
+    if not isinstance(recovery_ok, bool) or still_ready is not recovery_ok:
+        raise ValueError("live restore failure recovery state is invalid")
+    recovery_error = value.get("rollback_to_after_error")
+    if recovery_ok:
+        if recovery_error is not None:
+            raise ValueError("live restore failure recovery error is invalid")
+    elif not isinstance(recovery_error, str) or not recovery_error.strip():
+        raise ValueError("live restore failure recovery error is invalid")
+    transaction_id = _safe_id(value.get("transaction_id"), label="transaction_id")
+    alias = _safe_id(value.get("surface_alias"), label="surface_alias")
+    region_id = _safe_id(value.get("region_id"), label="region_id")
+    failure = _safe_text(value.get("failure"), label="failure")
+    journal_path = _safe_text(value.get("journal_path"), label="journal_path")
+    source_receipts = value.get("source_receipts")
+    if not isinstance(source_receipts, Mapping) or set(source_receipts) != {
+        "transaction_receipt_digest",
+        "journal_digest",
+    }:
+        raise ValueError("live restore failure source receipt fields are invalid")
+    normalized_sources = {
+        key: _digest(source_receipts.get(key), label=key)
+        for key in source_receipts
+    }
+    expected_boundary = {
+        "managed_region_only": True,
+        "provider_identifiers_not_returned": True,
+        "failed_restore_is_fail_closed": True,
+    }
+    if value.get("boundary") != expected_boundary:
+        raise ValueError("live restore failure receipt boundary is invalid")
+    declared = _digest(value.get("receipt_digest"), label="receipt_digest")
+    if declared != _receipt_digest(value):
+        raise ValueError("live restore failure receipt digest mismatch")
+    return {
+        **dict(value),
+        "transaction_id": transaction_id,
+        "surface_alias": alias,
+        "region_id": region_id,
+        "failure": failure,
+        "journal_path": journal_path,
+        "source_receipts": normalized_sources,
+        "receipt_digest": declared,
+    }
+
+
 def load_live_restore_receipt(path: Path) -> dict[str, Any]:
-    return validate_live_restore_receipt(
-        _read_json(path, label="live restore receipt", owner_only=True)
-    )
+    value = _read_json(path, label="live restore receipt", owner_only=True)
+    if value.get("ok") is True:
+        return validate_live_restore_receipt(value)
+    return validate_live_restore_failure_receipt(value)
 
 
 def kill_switch_status(path: Path) -> dict[str, Any]:
@@ -1554,7 +1756,31 @@ async def restore_live_apply(
         return existing
     if journal.get("status") != "committed":
         raise ValueError("live transaction journal is not committed")
-    if journal.get("journal_digest") != transaction.get("committed_journal_digest"):
+    prior_failure: dict[str, Any] | None = None
+    if canonical_restore_path.exists():
+        prior_value = _read_json(
+            canonical_restore_path,
+            label="canonical live restore receipt",
+            owner_only=True,
+        )
+        if prior_value.get("ok") is not False:
+            raise ValueError("committed journal has an invalid canonical restore receipt")
+        prior_failure = validate_live_restore_failure_receipt(prior_value)
+    journal_digest_matches_transaction = (
+        journal.get("journal_digest") == transaction.get("committed_journal_digest")
+    )
+    journal_digest_matches_retry = bool(
+        prior_failure
+        and prior_failure["still_restore_ready"] is True
+        and prior_failure["transaction_id"] == transaction.get("transaction_id")
+        and prior_failure["surface_alias"] == journal.get("surface_alias")
+        and prior_failure["region_id"] == journal.get("region_id")
+        and prior_failure["source_receipts"]["transaction_receipt_digest"] == declared
+        and prior_failure["source_receipts"]["journal_digest"]
+        == journal.get("journal_digest")
+        and prior_failure["journal_path"] == str(journal_path)
+    )
+    if not (journal_digest_matches_transaction or journal_digest_matches_retry):
         raise ValueError("live transaction receipt and committed journal digest mismatch")
     if journal.get("transaction_id") != transaction.get("transaction_id"):
         raise ValueError("live transaction receipt and journal id mismatch")

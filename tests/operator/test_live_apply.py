@@ -23,6 +23,7 @@ from schauwerk.operator.live_apply import (
     kill_switch_status,
     restore_live_apply,
     validate_live_operation_bundle,
+    validate_live_transaction_failure_receipt,
 )
 from schauwerk.surfaces.miro.credentials import write_json_owner_only
 
@@ -491,6 +492,16 @@ def test_restore_response_loss_recovers_committed_after_state(tmp_path: Path) ->
     assert f"[{MARKER}] NEW 2" in provider.dsl
     journal = json.loads(Path(result["journal_path"]).read_text(encoding="utf-8"))
     assert journal["status"] == "committed"
+    retry = asyncio.run(
+        restore_live_apply(
+            transaction_receipt_path=tmp_path / "transaction.json",
+            provider=provider,
+            output_path=tmp_path / "restore.json",
+        )
+    )
+    assert retry["ok"] is True
+    assert f"[{MARKER}] OLD 1" in provider.dsl
+    assert f"[{MARKER}] OLD 2" in provider.dsl
 
 
 def test_plan_and_transaction_receipt_reject_unknown_fields(tmp_path: Path) -> None:
@@ -769,3 +780,86 @@ def test_loaded_authorization_can_compile_plan_without_internal_fields(
         now=NOW + timedelta(minutes=1),
     )
     assert compiled["ready_for_live_apply"] is True
+
+
+def test_restore_retry_rejects_failure_receipt_alias_mismatch(tmp_path: Path) -> None:
+    provider = FakeProvider(operation_count=2)
+    transaction = asyncio.run(
+        execute_live_apply(
+            plan=plan(count=2),
+            provider=provider,
+            journal_root=tmp_path / "transactions",
+            kill_switch_path=tmp_path / "LIVE_APPLY_DISABLED",
+            output_path=tmp_path / "transaction.json",
+            now=NOW + timedelta(minutes=2),
+        )
+    )
+    provider.fail_after_mutation_call = provider.replace_calls + 2
+    provider.failed_once = False
+    failed = asyncio.run(
+        restore_live_apply(
+            transaction_receipt_path=tmp_path / "transaction.json",
+            provider=provider,
+            output_path=tmp_path / "restore.json",
+        )
+    )
+    assert transaction["ok"] is True
+    assert failed["still_restore_ready"] is True
+    canonical = Path(failed["journal_path"]).parent / "restore-receipt.json"
+    value = json.loads(canonical.read_text(encoding="utf-8"))
+    value["surface_alias"] = "different-test-board"
+    value["receipt_digest"] = _receipt_digest(value)
+    write_json_owner_only(canonical, value)
+    with pytest.raises(ValueError, match="committed journal digest mismatch"):
+        asyncio.run(
+            restore_live_apply(
+                transaction_receipt_path=tmp_path / "transaction.json",
+                provider=provider,
+                output_path=tmp_path / "restore.json",
+            )
+        )
+
+
+def test_transaction_failure_receipts_are_strictly_validated(tmp_path: Path) -> None:
+    preflight_provider = FakeProvider()
+    preflight_provider.forced_snapshot_digest = "f" * 64
+    preflight_path = tmp_path / "preflight-transaction.json"
+    preflight = asyncio.run(
+        execute_live_apply(
+            plan=plan(),
+            provider=preflight_provider,
+            journal_root=tmp_path / "preflight-transactions",
+            kill_switch_path=tmp_path / "LIVE_APPLY_DISABLED",
+            output_path=preflight_path,
+            now=NOW + timedelta(minutes=2),
+        )
+    )
+    persisted_preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+    assert preflight["ok"] is False
+    assert validate_live_transaction_failure_receipt(persisted_preflight)["ok"] is False
+    persisted_preflight["unexpected"] = True
+    persisted_preflight["receipt_digest"] = _receipt_digest(persisted_preflight)
+    with pytest.raises(ValueError, match="fields are invalid"):
+        validate_live_transaction_failure_receipt(persisted_preflight)
+
+    apply_provider = FakeProvider(fail_after_mutation_call=1)
+    apply_path = tmp_path / "apply-transaction.json"
+    apply_failure = asyncio.run(
+        execute_live_apply(
+            plan=plan(),
+            provider=apply_provider,
+            journal_root=tmp_path / "apply-transactions",
+            kill_switch_path=tmp_path / "LIVE_APPLY_DISABLED",
+            output_path=apply_path,
+            now=NOW + timedelta(minutes=2),
+        )
+    )
+    persisted_apply = json.loads(apply_path.read_text(encoding="utf-8"))
+    assert apply_failure["rollback_succeeded"] is True
+    assert validate_live_transaction_failure_receipt(persisted_apply)[
+        "manual_recovery_required"
+    ] is False
+    persisted_apply["manual_recovery_required"] = True
+    persisted_apply["receipt_digest"] = _receipt_digest(persisted_apply)
+    with pytest.raises(ValueError, match="recovery state is invalid"):
+        validate_live_transaction_failure_receipt(persisted_apply)

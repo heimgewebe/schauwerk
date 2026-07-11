@@ -105,7 +105,17 @@ Implement proposals, preflight, expected revisions, snapshots, typed operations,
 
 ## SW-010 — Regie
 
-Build a local review interface for context, sources, instructions, proposed changes, semantic and visual diffs, partial approval, apply, verification, and restore.
+**Implementation status:** complete for the local v1 contract. Regie compiles source-bound contexts and review bundles, projects freshness and uncertainty, renders exact before/after and inline diffs, records immutable approve/reject/defer decisions per operation, derives a new selected bundle plus expiring authorization and plan, and exposes separately confirmed apply, verification receipts and restore in one serial loopback interface.
+
+The interface uses no external assets, requires a fragment-delivered tab session token for private APIs, validates loopback hosts, omits provider identifiers and local journal paths, and revalidates stored effect receipts before display or replay. Repository acceptance uses an expired fixture authorization and an in-memory provider; no productive Miro board was mutated.
+
+Command graph:
+
+- context path: `context-template → context-compile`;
+- review path: `context + live gate + operation bundle → review`;
+- decision path: `review → immutable per-operation decision → selected bundle + authorization + plan`;
+- effect path: `explicit apply → visible postflight receipt`;
+- recovery path: `same review context → explicit restore → restore receipt`.
 
 **Gate:** normal controlled changes require no terminal knowledge.
 

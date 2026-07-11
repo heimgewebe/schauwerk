@@ -20,20 +20,22 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 7. [Miro live recovery](operations/miro-live-recovery.md)
 8. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
 9. [SW-009 reviewed live executor v1](operators/sw009-live-executor-v1.md)
-10. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
-11. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
-12. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
-13. [Registry](registry.md)
-14. [Grabowski useful pilot](pilots/grabowski.md)
-15. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
-16. [Grabowski operational pilot](pilots/grabowski-operational.md)
-17. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
-18. [Generic software pilot](pilots/software.md)
-19. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
-20. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
-21. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
-22. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
-23. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+10. [SW-010 Regie v1](operators/sw010-regie-v1.md)
+11. [SW-010 Regie evidence](operators/evidence/sw010-regie-20260711/README.md)
+12. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
+13. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
+14. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
+15. [Registry](registry.md)
+16. [Grabowski useful pilot](pilots/grabowski.md)
+17. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
+18. [Grabowski operational pilot](pilots/grabowski-operational.md)
+19. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
+20. [Generic software pilot](pilots/software.md)
+21. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
+22. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
+23. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
+24. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
+25. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
@@ -50,4 +52,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The repository has completed the useful-pilot, visual-grammar and reviewed SW-009 executor foundations. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live proof, typed registry contracts, software and education pilots, cross-pilot visual grammar, simulation receipts, digest-bound live-operation review, atomic single-use execution, postflight verification, rollback, drift-protected restore and kill switch are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle and expiring authorization. Regie, resilient overview, presentation, publication, adapter, maintenance, optional semantic and durable operations surfaces remain roadmap work.
+The repository has completed the useful-pilot, visual-grammar, reviewed SW-009 executor and local SW-010 Regie foundations. Direct Miro authorization, allowlisted snapshots, controlled live proof, typed registry contracts, software and education pilots, digest-bound operation review, independent partial approval, serial loopback control, explicit apply, visible verification, rollback and same-context restore are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle, immutable decision, expiring authorization and explicit effect confirmation. Resilient overview, presentation, publication, adapters, maintenance, optional semantic and durable operations surfaces remain roadmap work.

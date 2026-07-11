@@ -1,0 +1,189 @@
+{
+  "boundary": {
+    "local_private_only": true,
+    "no_mutation_authority": true,
+    "partial_approval_required": true,
+    "provider_identifiers_excluded": true
+  },
+  "context": [
+    {
+      "label": "Scope",
+      "source_id": "repo-snapshot",
+      "state": "constraint",
+      "value": "One allowlisted managed fixture region"
+    },
+    {
+      "label": "Revision risk",
+      "source_id": "board-snapshot",
+      "state": "risk",
+      "value": "A current preflight snapshot remains mandatory"
+    }
+  ],
+  "created_at": "2026-07-11T02:00:00Z",
+  "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "gate_receipt": {
+    "blocked_reasons": [],
+    "boundary": {
+      "does_not_execute_live_apply": true,
+      "local_gate_only": true,
+      "no_miro_mutation": true,
+      "no_provider_ids_returned": true,
+      "requires_human_operator_apply": true,
+      "requires_sw003_live_gate": true
+    },
+    "live_apply_attempted": false,
+    "mutation_attempted": false,
+    "ok": true,
+    "operation": "render-update",
+    "ready_for_live_apply": true,
+    "receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+    "region": {
+      "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_source_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "mode": "managed",
+      "owner": "schauwerk",
+      "region_id": "managed-summary",
+      "surface_alias": "sw009-fixture-board",
+      "view_id": "fixture:sw009-live-executor",
+      "visibility": "private"
+    },
+    "schema_version": "typed-region-sw009-live-apply-gate-receipt.v1",
+    "snapshot": {
+      "board_alias": "sw009-fixture-board",
+      "content_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repeatability_verified": true,
+      "sanitized_references": true
+    }
+  },
+  "instructions": [
+    "Inspect source freshness and uncertainty.",
+    "Decide every operation independently."
+  ],
+  "maximum_uncertainty": 0.35,
+  "operation_bundle": {
+    "boundary": {
+      "exact_text_replacement_only": true,
+      "managed_region_only": true,
+      "provider_references_prohibited": true,
+      "restore_required": true,
+      "review_required": true
+    },
+    "bundle_digest": "fd04719b5376fdd1dc74da3d3a7614272f52c82b0e3b618e3ca0e805a22d8928",
+    "bundle_id": "sw009-live-bundle-fixture",
+    "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "marker": "schauwerk-region:managed-summary",
+    "operation": "render-update",
+    "operations": [
+      {
+        "action": "replace-text",
+        "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+        "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+        "operation_id": "replace-reviewed-summary",
+        "region_id": "managed-summary"
+      },
+      {
+        "action": "replace-text",
+        "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE DETAIL",
+        "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE DETAIL",
+        "operation_id": "replace-reviewed-detail",
+        "region_id": "managed-summary"
+      }
+    ],
+    "region_id": "managed-summary",
+    "schema_version": "typed-region-live-operation-bundle.v1",
+    "surface_alias": "sw009-fixture-board"
+  },
+  "operations": [
+    {
+      "action": "replace-text",
+      "default_decision": "defer",
+      "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+      "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+      "operation_id": "replace-reviewed-summary",
+      "region_id": "managed-summary",
+      "semantic_summary": "Replace reviewed text in managed-summary",
+      "visual_diff": [
+        {
+          "kind": "equal",
+          "text": "[schauwerk-region:managed-summary]"
+        },
+        {
+          "kind": "delete",
+          "text": "OLD"
+        },
+        {
+          "kind": "insert",
+          "text": "NEW"
+        },
+        {
+          "kind": "equal",
+          "text": "FIXTURE SUMMARY"
+        }
+      ]
+    },
+    {
+      "action": "replace-text",
+      "default_decision": "defer",
+      "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE DETAIL",
+      "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE DETAIL",
+      "operation_id": "replace-reviewed-detail",
+      "region_id": "managed-summary",
+      "semantic_summary": "Replace reviewed text in managed-summary",
+      "visual_diff": [
+        {
+          "kind": "equal",
+          "text": "[schauwerk-region:managed-summary]"
+        },
+        {
+          "kind": "delete",
+          "text": "OLD"
+        },
+        {
+          "kind": "insert",
+          "text": "NEW"
+        },
+        {
+          "kind": "equal",
+          "text": "FIXTURE DETAIL"
+        }
+      ]
+    }
+  ],
+  "region_id": "managed-summary",
+  "review_digest": "e5c54f7fe3bdd956a4f8ec5ae02f137dd5261e391d45985e1dc2f03eef65efeb",
+  "review_id": "sw010-regie-fixture",
+  "schema_version": "schauwerk-regie-review-bundle.v1",
+  "source_receipts": {
+    "context_digest": "bbf405feedf4db0b97d1769a3e579ccc95306a699d9d72abe838dc91908039e5",
+    "gate_receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+    "operation_bundle_digest": "fd04719b5376fdd1dc74da3d3a7614272f52c82b0e3b618e3ca0e805a22d8928"
+  },
+  "sources": [
+    {
+      "citation": "repo:fixture@20260711",
+      "freshness": "fresh",
+      "observed_at": "2026-07-11T01:45:00Z",
+      "revision": "fixture-main-20260711",
+      "source_id": "repo-snapshot",
+      "title": "Fixture repository snapshot",
+      "uncertainty": 0.02,
+      "visibility": "internal"
+    },
+    {
+      "citation": "snapshot:fixture-before",
+      "freshness": "stale",
+      "observed_at": "2026-07-10T20:00:00Z",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_id": "board-snapshot",
+      "title": "Fixture board snapshot",
+      "uncertainty": 0.35,
+      "visibility": "private"
+    }
+  ],
+  "stale_source_ids": [
+    "board-snapshot"
+  ],
+  "summary": "Review two bounded fixture changes without productive provider effect.",
+  "surface_alias": "sw009-fixture-board",
+  "title": "Fixture managed-region review"
+}
