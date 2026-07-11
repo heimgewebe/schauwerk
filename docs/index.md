@@ -19,19 +19,21 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 6. [Visual Grammar v1](visuals/miro-visual-grammar-v1.md)
 7. [Miro live recovery](operations/miro-live-recovery.md)
 8. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
-9. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
-10. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
-11. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
-12. [Registry](registry.md)
-13. [Grabowski useful pilot](pilots/grabowski.md)
-14. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
-15. [Grabowski operational pilot](pilots/grabowski-operational.md)
-16. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
-17. [Generic software pilot](pilots/software.md)
-18. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
-19. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
-20. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
-21. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+9. [SW-009 reviewed live executor v1](operators/sw009-live-executor-v1.md)
+10. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
+11. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
+12. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
+13. [Registry](registry.md)
+14. [Grabowski useful pilot](pilots/grabowski.md)
+15. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
+16. [Grabowski operational pilot](pilots/grabowski-operational.md)
+17. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
+18. [Generic software pilot](pilots/software.md)
+19. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
+20. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
+21. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
+22. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
+23. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
@@ -48,4 +50,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The repository is in useful-pilot expansion phase. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live write proof, complete registry contracts, deterministic registry inspection, Learning View rendering with audience-specific offline variants, source-bound static and operational Grabowski projections, and a project-neutral second software pilot proven against Lenskit are implemented. SW-009 now has simulation, live-gate, and candidate-check receipts; actual productive live apply remains a separate approval-required operation with postflight, restore, and review. Visual grammar consolidation, Regie, publication, live maintenance, search and durable recovery surfaces remain roadmap work.
+The repository has completed the useful-pilot, visual-grammar and reviewed SW-009 executor foundations. Direct Miro authorization, allowlisted snapshots, the controlled SW-003 live proof, typed registry contracts, software and education pilots, cross-pilot visual grammar, simulation receipts, digest-bound live-operation review, atomic single-use execution, postflight verification, rollback, drift-protected restore and kill switch are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle and expiring authorization. Regie, resilient overview, presentation, publication, adapter, maintenance, optional semantic and durable operations surfaces remain roadmap work.
