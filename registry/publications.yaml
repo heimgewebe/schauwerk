@@ -4,6 +4,6 @@ publications:
   view_id: grabowski.operator-overview
   status: draft
   audience: operator
-  artifact_path: docs/operators/evidence/grabowski-pilot-20260710/operator-overview.dsl
-  source_revision: f149b944a6bf756a4a95f3aab7396c9877d20b1f
-  expires_at: null
+  artifact_path: docs/operators/evidence/sw013-schaufenster-20260711/declaration.json
+  source_revision: 2026-07-10-fixture
+  expires_at: '2026-08-01T00:00:00Z'

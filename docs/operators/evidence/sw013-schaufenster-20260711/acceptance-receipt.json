@@ -1,0 +1,130 @@
+{
+  "acceptance_digest": "d66f281b4e510d279d86a5025fd942bf3c2b6e200e8a047859f25dc2efd85f16",
+  "artifacts": {
+    "active-link.json": {
+      "bytes": 565,
+      "sha256": "665ec8afa1e785f7395fcbc42262920e3ae7b4fc6dbdda23c7d4a6fb04a5e866"
+    },
+    "active-status.json": {
+      "bytes": 654,
+      "sha256": "73e0de150030599d1b9727a2c5cd3d2e680afc5dd7cdb3e6a7073d563e694c00"
+    },
+    "declaration.json": {
+      "bytes": 1350,
+      "sha256": "880af24103a982cca3a3b375192e2abbc199735d0335f54c40afd7ec6271c4ff"
+    },
+    "expired-status.json": {
+      "bytes": 655,
+      "sha256": "d16b02abe5430a2c4dd5abee6ea09ae11f4d7b08452c863759ecf2bb7667a6ec"
+    },
+    "object-manifest.json": {
+      "bytes": 3100,
+      "sha256": "1d2ea32e97e94f3cffb37ae78c39febb1a4d28a8f28f99cd71520b4256b76c38"
+    },
+    "preview.json": {
+      "bytes": 3014,
+      "sha256": "a43ba3c596c9d31ab718ef334d0405e41e577d01825720ea4be0b85f8b8a139a"
+    },
+    "release-receipt.json": {
+      "bytes": 788,
+      "sha256": "7d9f7b83b30fcf104703d58544ccbeb8fd46caf08ffe12091e7c4687117a4307"
+    },
+    "withdrawal-receipt.json": {
+      "bytes": 747,
+      "sha256": "9f179ce36c64b71d867add56cc57694a67f399eaf553f35663ebefbe2015ca3c"
+    },
+    "withdrawn-link.json": {
+      "bytes": 677,
+      "sha256": "26df9227de3a38d68e947be635f3647d9c92bbb94fdd446d68e7b4f8efa2a471"
+    },
+    "withdrawn-status.json": {
+      "bytes": 704,
+      "sha256": "6b72e5138894287af211d9bc1b0f8732bd10137611cf55422d6abb167a6554bc"
+    }
+  },
+  "bindings": {
+    "active_link_digest": "7d63335a0f9aaa49bc12531e96e63a8a5ea57b625257b98477441e354a1ca847",
+    "declaration_digest": "d3c646fd7138992b67fcbf52f005497a68962c4ad33411d645896d7b7c0275e7",
+    "object_digest": "0a667d72911ef5f76a010f323a19f2bdd40fbf8edbd4c593bf57dbb0f33d5b0e",
+    "preview_digest": "25518b28e31d83bd0be77e961a3a86fd0356214a893cc172ed27ac4c08df5bcd",
+    "release_receipt_digest": "a772d82028fc45e2a870acc3f8f7cc5115074bddec181758535f6f8aa2c74170",
+    "withdrawal_receipt_digest": "b66d935137850d0b4b2476e5c1e296792658ca187315d66589f42bbe5fd5d9e4",
+    "withdrawn_link_digest": "0843d681f1399339f4f83f81ef4c82f73514a24607e221829b3273289a164c5c"
+  },
+  "checks": {
+    "all_pptx_members_privacy_scanned": true,
+    "canonical_link_timestamps_required": true,
+    "compressed_pptx_privacy_scan": true,
+    "concurrent_identical_releases_converge": true,
+    "delivery_digest_rechecked": true,
+    "delivery_lock_held_through_byte_verification": true,
+    "exact_source_file_set_required": true,
+    "expiry_without_source_mutation": true,
+    "foreign_link_races_preserved": true,
+    "foreign_object_modification_preserved": true,
+    "identical_release_idempotent": true,
+    "immutable_object_permissions_verified": true,
+    "implementation_files_digest_bound": true,
+    "loopback_only_read_only_http_verified": true,
+    "only_explicit_public_sources_and_fields": true,
+    "pdf_active_objects_rejected": true,
+    "pdf_semantic_parser_limit_documented": true,
+    "preview_output_parent_symlinks_rejected": true,
+    "private_internal_unknown_visibility_fail_closed": true,
+    "productive_publication_attempted": false,
+    "provider_mutation_attempted": false,
+    "public_metadata_control_characters_rejected": true,
+    "release_and_withdrawal_rollback_verified": true,
+    "safe_lock_symlink_rejected": true,
+    "scheduled_delivery_blocked": true,
+    "service_root_read_only_descriptor": true,
+    "source_manifest_and_file_digests_verified": true,
+    "source_truth_unchanged": true,
+    "stable_link_compare_and_swap_verified": true,
+    "store_parent_symlink_rejected_before_mutation": true,
+    "withdrawal_reason_control_characters_rejected": true,
+    "withdrawal_without_object_deletion": true,
+    "write_http_methods_rejected": true
+  },
+  "implementation_file_sha256": {
+    "README.md": "5148ba0696c5a1f6aa9dbf2e8902e7e945c570ecb1b674be541d913fbfc9c743",
+    "docs/architecture/schauwerk.md": "bce9148b26f3d0557011ef11a69ce1bb130b3b03717e9c24c80e58752acd886f",
+    "docs/index.md": "5c8be9eae3d03b377959c6eca661c4923508f9be4097d27b3e59fff39f2d2839",
+    "docs/operators/evidence/sw013-schaufenster-20260711/README.md": "df366180fc1ac913fc7b6f1e95c73f082fc328fd7a88258829749da9e9b9262a",
+    "docs/publications/schaufenster-v1.md": "1d2007401e9ca97249672634d7543fd316d6440d15ec7c0647d660f8c59c2b0c",
+    "docs/roadmap.md": "86ad4cc2313d9b27ba04fddb0023c7965f862f5b8b9e6aa47c22fa0abe1f610e",
+    "registry/publications.yaml": "86919e675a216492729012e940cd1120a85a3537b10d0eb318c268ed5f2ed6ac",
+    "schemas/publication-boundary.v1.schema.json": "632ba1f12a7f9f41923c571a01e5f88e1eeea0742b9a60cda9eba5045cf90c70",
+    "src/schauwerk/cli_handlers.py": "e72dd74abfda9633349f88b5820b9df572521baf295b17a4098c3544d909b3e1",
+    "src/schauwerk/cli_parser.py": "b1ea4e811f9c7143239822bf663f0963ee9d88c5eeb14eb3a3b075928e7b3f49",
+    "src/schauwerk/publication/__init__.py": "b177b4a1f534d50d2756e8b5c80ae39b10acfcf854beb3fd256a8c7c7abaf593",
+    "src/schauwerk/publication/model.py": "9cdd8c26b982beec8ac417e8a82d95aeb02f0ddfac23a0c58613911b8dab0681",
+    "src/schauwerk/publication/server.py": "16d2538ec372e5ab163b4a8484e854f0805eeb5b954ad46b8febbdcdd37450ee",
+    "src/schauwerk/publication/store.py": "c42335b4546e9245a98e8e975bffbc61d00d642ceb0d315b237fc7b82747fd27",
+    "src/schauwerk/runner.py": "c889e8ca6923ab681060ce411a2ec2e7ac288b35bcec28e3c1addc26d9403d7c",
+    "tests/publication/test_publication_boundary.py": "b2d2f8f6cf40ee1880c6673710f37aee5076fc2879b733fa79e17842883afc38",
+    "tests/publication/test_publication_cli.py": "467c6e21115e8fbb99634033ddd0f05ae7d509bf1ff399a33071529f3179a176",
+    "tests/publication/test_publication_fixtures.py": "0dfd1b28592c60c47ac169d78e7bb15313010f3fc2ee0f208bf2f583f3a6a3d8"
+  },
+  "runtime_boundary": {
+    "platform": "linux",
+    "power_loss_durability": "not-claimed-in-v1",
+    "required_primitives": [
+      "renameat2:RENAME_NOREPLACE",
+      "renameat2:RENAME_EXCHANGE",
+      "flock"
+    ],
+    "unsupported_runtime_behavior": "fail-closed"
+  },
+  "schema_version": "schauwerk-sw013-acceptance-receipt.v1",
+  "scope": "local-provider-neutral-publication-boundary",
+  "source_file_sha256": {
+    "handout.html": "e8f48d4d2d6f4496ff4f7fd483eb78d49a0423fffcc9d41284baa635077b676c",
+    "index.html": "6c3dc1e3ab00389a7a7a282bf3b05c499c7637644a9603b591ce2dbb0fc6994b",
+    "manifest.json": "342521ba0ab17fd6727e286ef0d1e06fb9c3336128bc9aa7be65efd7f29d268b",
+    "presentation.pdf": "08f6628f21a7dd14ac88b7f5e510a3450dc120f8c6915cd4221429d3adfa7916",
+    "presentation.pptx": "f5e981c4ef94ddda10ea4f243ab2d5c2d96d434869bcd246a9185e716aa292ff"
+  },
+  "source_package": "docs/operators/evidence/sw012-buehne-20260711/technical/public",
+  "task_id": "SCHAUWERK-USEFUL-PILOT-V1-T011"
+}

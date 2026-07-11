@@ -153,7 +153,9 @@ Command graph:
 
 Implement publication preview, privacy checks, sanitized immutable bundles, stable links, version metadata, expiry, withdrawal, and read-only delivery.
 
-**Gate:** no private source content appears without an explicit publication declaration.
+**Implementation status:** complete for the local provider-neutral v1 boundary. A strict declaration enumerates the exact public sources, allowed fields, source-manifest binding, file set, version and lifecycle. Release recompiles the reviewed preview, writes a read-only immutable version object, updates the stable link with digest-bound compare-and-swap, derives expiry without mutation and preserves the object during withdrawal. The loopback server exposes only verified active objects through `GET` and `HEAD`; public hosting remains a separately authorized later operation.
+
+**Gate:** passed by a declaration-bound SW-012 technical package, adversarial private/unknown visibility cases, immutable release, idempotent retry, version replacement, expiry, withdrawal, link-race preservation, rollback and loopback read-only delivery.
 
 ## SW-014 — Source adapters
 

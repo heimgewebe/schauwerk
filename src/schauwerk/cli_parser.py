@@ -170,6 +170,49 @@ def build_parser() -> argparse.ArgumentParser:
     stage_build.add_argument("--source-root", default=".")
     stage_build.add_argument("--json", action="store_true")
 
+    publish = providers.add_parser(
+        "publish", help="build and operate local immutable SW-013 publications"
+    )
+    publish_commands = publish.add_subparsers(dest="command", required=True)
+    publish_preview = publish_commands.add_parser(
+        "preview", help="compile a privacy-checked publication preview"
+    )
+    publish_preview.add_argument("declaration")
+    publish_preview.add_argument("--source-package", required=True)
+    publish_preview.add_argument("--output", required=True)
+    publish_preview.add_argument("--json", action="store_true")
+    publish_release = publish_commands.add_parser(
+        "release", help="release one reviewed immutable version into a local store"
+    )
+    publish_release.add_argument("declaration")
+    publish_release.add_argument("preview")
+    publish_release.add_argument("--source-package", required=True)
+    publish_release.add_argument("--store-root", required=True)
+    publish_release.add_argument("--json", action="store_true")
+    publish_status = publish_commands.add_parser(
+        "status", help="verify one stable publication link and immutable object"
+    )
+    publish_status.add_argument("stable_slug")
+    publish_status.add_argument("--store-root", required=True)
+    publish_status.add_argument("--at")
+    publish_status.add_argument("--json", action="store_true")
+    publish_withdraw = publish_commands.add_parser(
+        "withdraw", help="withdraw a stable link without deleting its immutable object"
+    )
+    publish_withdraw.add_argument("stable_slug")
+    publish_withdraw.add_argument("--store-root", required=True)
+    publish_withdraw.add_argument("--expected-link-digest", required=True)
+    publish_withdraw.add_argument("--reason", required=True)
+    publish_withdraw.add_argument("--at")
+    publish_withdraw.add_argument("--json", action="store_true")
+    publish_serve = publish_commands.add_parser(
+        "serve", help="serve active publications read-only on 127.0.0.1"
+    )
+    publish_serve.add_argument("--store-root", required=True)
+    publish_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
+    publish_serve.add_argument("--no-browser", action="store_true")
+    publish_serve.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

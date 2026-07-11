@@ -1,0 +1,18 @@
+{
+  "expires_at": "2026-08-01T00:00:00Z",
+  "immutable_object_created": true,
+  "link_digest": "7d63335a0f9aaa49bc12531e96e63a8a5ea57b625257b98477441e354a1ca847",
+  "object_digest": "0a667d72911ef5f76a010f323a19f2bdd40fbf8edbd4c593bf57dbb0f33d5b0e",
+  "ok": true,
+  "preview_digest": "25518b28e31d83bd0be77e961a3a86fd0356214a893cc172ed27ac4c08df5bcd",
+  "provider_mutation_attempted": false,
+  "publication_id": "grabowski-operational-brief",
+  "read_only_delivery": true,
+  "receipt_digest": "a772d82028fc45e2a870acc3f8f7cc5115074bddec181758535f6f8aa2c74170",
+  "schema_version": "schauwerk-publication-release-receipt.v1",
+  "source_truth_mutated": false,
+  "stable_link_updated": true,
+  "stable_path": "/p/grabowski-brief/",
+  "stable_slug": "grabowski-brief",
+  "version": "1.0.0"
+}

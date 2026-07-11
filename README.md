@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, Learning-View-Varianten, eine reproduzierbare Grabowski-Operator-Projektion und deterministische Bühne-Ausgaben aus einem gemeinsamen Präsentationsmodell.
+**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, Learning-View-Varianten, eine reproduzierbare Grabowski-Operator-Projektion, deterministische Bühne-Ausgaben und den lokalen, reviewgebundenen Schaufenster-Publikationskern.
 
 ## Zielbild
 
@@ -130,6 +130,24 @@ schauwerk pilot grabowski-operational \
 
 Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Richtlinien und Publikationen samt Querverweisen. Der Grabowski-Pilot erzeugt deterministische, bereinigte statische und operationale Miro-DSL. Die operationale Ansicht trennt Vertrag, zeitgebundene Beobachtung und Ausfälle; beide Pfade führen keine Provider-Mutation aus.
 
+## Lokales Schaufenster
+
+```bash
+schauwerk publish preview declaration.json \
+  --source-package /path/to/public-package \
+  --output preview.json \
+  --json
+schauwerk publish release declaration.json preview.json \
+  --source-package /path/to/public-package \
+  --store-root /path/to/local-store \
+  --json
+schauwerk publish status stable-slug --store-root /path/to/local-store --json
+```
+
+Das Schaufenster übernimmt nur explizit deklarierte öffentliche Quellen und Felder. Versionen sind unveränderlich; stabile Links sind digestgebunden, können ablaufen oder kontrolliert zurückgenommen werden. `serve` bindet ausschließlich an `127.0.0.1` und ist read-only. Dieser Pfad veröffentlicht nichts ins Internet und verändert weder Miro noch das Quellpaket.
+
+Siehe `docs/publications/schaufenster-v1.md`.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge
@@ -143,5 +161,6 @@ Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Ric
 - SW-010: lokale Regie mit getrenntem Review, Entscheidung, Apply und Restore
 - SW-011: Registry-gebundene Übersicht und resiliente lokale Live-Ansichten
 - SW-012: deterministische HTML-, PDF-, PowerPoint-, Handout- und Offline-Pakete mit getrennten Sprecherhinweisen und Zeitplanung
+- SW-013: explizite Publication-Preview, unveränderliche lokale Versionen, digestgebundene stabile Links, Ablauf, Rücknahme und loopbackgebundene Read-only-Auslieferung
 
 Siehe `docs/roadmap.md`.

@@ -1,0 +1,49 @@
+{
+  "audience": "Technische Betreiber",
+  "declaration_digest": "d3c646fd7138992b67fcbf52f005497a68962c4ad33411d645896d7b7c0275e7",
+  "entrypoint": "index.html",
+  "files": [
+    "handout.html",
+    "index.html",
+    "presentation.pdf",
+    "presentation.pptx"
+  ],
+  "lifecycle": {
+    "expected_link_digest": null,
+    "expires_at": "2026-08-01T00:00:00Z",
+    "published_at": "2026-07-11T12:00:00Z",
+    "replaces_version": null
+  },
+  "metadata_fields": [
+    "audience",
+    "presentation_id",
+    "presentation_version",
+    "public_projection_sha256",
+    "scene_order",
+    "scene_order_sha256",
+    "source_revision",
+    "variant_id",
+    "variant_title",
+    "visible_content_sha256"
+  ],
+  "publication_id": "grabowski-operational-brief",
+  "schema_version": "schauwerk-publication-declaration.v1",
+  "source_manifest_digest": "0380edab29606b67a6791b814602e7412e63597652eb51338d5e44eea18ec491",
+  "source_manifest_sha256": "342521ba0ab17fd6727e286ef0d1e06fb9c3336128bc9aa7be65efd7f29d268b",
+  "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515",
+  "sources": [
+    {
+      "fields": [
+        "id",
+        "label",
+        "revision",
+        "sha256"
+      ],
+      "id": "primary",
+      "visibility": "public"
+    }
+  ],
+  "stable_slug": "grabowski-brief",
+  "version": "1.0.0",
+  "view_id": "grabowski.operator-overview"
+}

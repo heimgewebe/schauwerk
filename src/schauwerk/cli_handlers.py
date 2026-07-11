@@ -81,6 +81,14 @@ from .pilots.grabowski import write_grabowski_pilot
 from .pilots.grabowski_operational import write_operational_pilot
 from .pilots.software import write_software_pilot
 from .presentation.package import build_presentation_packages
+from .publication.model import compile_preview, load_declaration, load_preview
+from .publication.server import serve_publications
+from .publication.store import (
+    publication_status,
+    release_publication,
+    withdraw_publication,
+    write_new_json,
+)
 from .regie.model import (
     compile_regie_context,
     compile_review_bundle,
@@ -281,6 +289,69 @@ def handle_stage_build(
         presenter_dir=Path(presenter_dir),
         source_root=Path(source_root),
     )
+
+
+def handle_publication_preview(
+    *, declaration_path: str, source_package: str, output: str
+) -> dict[str, Any]:
+    declaration = load_declaration(Path(declaration_path))
+    preview, _ = compile_preview(declaration, Path(source_package))
+    destination = write_new_json(Path(output), preview, mode=0o644)
+    return {
+        "schema_version": "schauwerk-publication-preview-receipt.v1",
+        "ok": True,
+        "publication_id": preview["publication_id"],
+        "stable_slug": preview["stable_slug"],
+        "version": preview["version"],
+        "preview_digest": preview["preview_digest"],
+        "output_path": str(destination),
+        "source_truth_mutated": False,
+        "provider_mutation_attempted": False,
+    }
+
+
+def handle_publication_release(
+    *,
+    declaration_path: str,
+    preview_path: str,
+    source_package: str,
+    store_root: str,
+) -> dict[str, Any]:
+    return release_publication(
+        declaration=load_declaration(Path(declaration_path)),
+        preview=load_preview(Path(preview_path)),
+        source_dir=Path(source_package),
+        store_root=Path(store_root),
+    )
+
+
+def handle_publication_status(
+    *, store_root: str, stable_slug: str, observed_at: str | None
+) -> dict[str, Any]:
+    return publication_status(Path(store_root), stable_slug, now=observed_at)
+
+
+def handle_publication_withdraw(
+    *,
+    store_root: str,
+    stable_slug: str,
+    expected_link_digest: str,
+    reason: str,
+    withdrawn_at: str | None,
+) -> dict[str, Any]:
+    return withdraw_publication(
+        Path(store_root),
+        stable_slug,
+        expected_link_digest=expected_link_digest,
+        reason=reason,
+        withdrawn_at=withdrawn_at,
+    )
+
+
+def handle_publication_serve(
+    *, store_root: str, port: int, open_browser: bool
+) -> dict[str, Any]:
+    return serve_publications(Path(store_root), port=port, open_browser=open_browser)
 
 
 def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:
