@@ -1,9 +1,14 @@
 {
   "checks": {
     "absolute_paths_provider_identifiers_or_secrets_in_public_outputs": false,
+    "atomic_noreplace_publication": true,
     "exact_timing_aggregation": true,
+    "foreign_destination_preserved_on_race": true,
+    "interrupted_build_rollback": true,
     "overfull_or_overwide_content_clipping": false,
+    "partial_package_rollback": true,
     "public_note_and_timing_leakage": false,
+    "published_destination_identity_guard": true,
     "same_scene_order_across_formats": true,
     "same_visible_core_digest_across_formats": true,
     "source_digest_binding": true,
@@ -136,6 +141,15 @@
   "network_access_required": false,
   "provider_mutation_attempted": false,
   "public_and_presenter_packages_separated": true,
+  "recovery": {
+    "concurrent_empty_destination_preserved": true,
+    "concurrent_nonempty_destination_preserved": true,
+    "first_published_package_removed_when_second_publish_fails": true,
+    "interrupt_after_first_publish_rolls_back": true,
+    "publication_primitive": "linux-renameat2-RENAME_NOREPLACE",
+    "replaced_published_destination_not_deleted": true,
+    "unsupported_atomic_publication_fails_closed": true
+  },
   "schema_version": "schauwerk-sw012-acceptance-receipt.v1",
   "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515"
 }

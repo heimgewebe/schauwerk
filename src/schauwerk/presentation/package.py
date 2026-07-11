@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import os
 import re
 import shutil
@@ -28,6 +30,59 @@ _FORBIDDEN_PUBLIC_BYTES = (
     b"duration_seconds",
     b"planned_duration_seconds",
 )
+_AT_FDCWD = -100
+_RENAME_NOREPLACE = 1
+
+
+def _directory_identity(path: Path) -> tuple[int, int]:
+    stat = path.stat(follow_symlinks=False)
+    return stat.st_dev, stat.st_ino
+
+
+def _publish_directory_noreplace(source: Path, destination: Path, *, label: str) -> None:
+    """Atomically publish one directory without replacing a concurrent destination."""
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise PresentationModelError("atomic no-replace directory publication is unavailable")
+    renameat2.argtypes = [
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        _AT_FDCWD,
+        os.fsencode(source),
+        _AT_FDCWD,
+        os.fsencode(destination),
+        _RENAME_NOREPLACE,
+    )
+    if result == 0:
+        return
+
+    error_number = ctypes.get_errno()
+    if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
+        raise PresentationModelError(f"{label} appeared during build")
+    if error_number in {errno.EINVAL, errno.ENOSYS, errno.ENOTSUP}:
+        raise PresentationModelError(
+            "atomic no-replace directory publication is unavailable"
+        )
+    raise OSError(error_number, os.strerror(error_number), destination)
+
+
+def _remove_published_directory(path: Path, identity: tuple[int, int] | None) -> None:
+    if identity is None:
+        return
+    try:
+        current_identity = _directory_identity(path)
+    except FileNotFoundError:
+        return
+    if current_identity == identity:
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def _write_bytes(path: Path, payload: bytes, *, mode: int) -> None:
@@ -159,6 +214,8 @@ def build_presentation_packages(
     presenter_parent = presenter_dir.parent
     public_temp = Path(tempfile.mkdtemp(prefix=f".{public_dir.name}.", dir=public_parent))
     presenter_temp = Path(tempfile.mkdtemp(prefix=f".{presenter_dir.name}.", dir=presenter_parent))
+    public_published: tuple[int, int] | None = None
+    presenter_published: tuple[int, int] | None = None
     try:
         metadata = public_metadata(presentation, variant)
         _write_bytes(
@@ -230,15 +287,25 @@ def build_presentation_packages(
         _write_json(presenter_temp / "manifest.json", presenter_manifest, mode=0o600)
         os.chmod(public_temp, 0o755)
         os.chmod(presenter_temp, 0o700)
-        public_temp.rename(public_dir)
-        presenter_temp.rename(presenter_dir)
-    except Exception:
+        public_identity = _directory_identity(public_temp)
+        _publish_directory_noreplace(
+            public_temp,
+            public_dir,
+            label="public output directory",
+        )
+        public_published = public_identity
+        presenter_identity = _directory_identity(presenter_temp)
+        _publish_directory_noreplace(
+            presenter_temp,
+            presenter_dir,
+            label="presenter output directory",
+        )
+        presenter_published = presenter_identity
+    except BaseException:
         shutil.rmtree(public_temp, ignore_errors=True)
         shutil.rmtree(presenter_temp, ignore_errors=True)
-        if public_dir.exists():
-            shutil.rmtree(public_dir, ignore_errors=True)
-        if presenter_dir.exists():
-            shutil.rmtree(presenter_dir, ignore_errors=True)
+        _remove_published_directory(public_dir, public_published)
+        _remove_published_directory(presenter_dir, presenter_published)
         raise
 
     return {

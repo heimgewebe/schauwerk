@@ -53,6 +53,20 @@ def test_checked_in_outputs_and_receipt_match_fresh_builds(tmp_path: Path) -> No
     assert receipt["deterministic_repeat_build"] is True
     assert receipt["network_access_required"] is False
     assert receipt["provider_mutation_attempted"] is False
+    assert receipt["checks"]["atomic_noreplace_publication"] is True
+    assert receipt["checks"]["foreign_destination_preserved_on_race"] is True
+    assert receipt["checks"]["interrupted_build_rollback"] is True
+    assert receipt["checks"]["partial_package_rollback"] is True
+    assert receipt["checks"]["published_destination_identity_guard"] is True
+    assert receipt["recovery"] == {
+        "concurrent_empty_destination_preserved": True,
+        "concurrent_nonempty_destination_preserved": True,
+        "first_published_package_removed_when_second_publish_fails": True,
+        "interrupt_after_first_publish_rolls_back": True,
+        "publication_primitive": "linux-renameat2-RENAME_NOREPLACE",
+        "replaced_published_destination_not_deleted": True,
+        "unsupported_atomic_publication_fails_closed": True,
+    }
 
     for directory in ("technical", "education"):
         fresh_public = tmp_path / f"{directory}-public"

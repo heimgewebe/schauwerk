@@ -222,3 +222,155 @@ def test_unsupported_glyph_and_overwide_token_fail_closed(tmp_path: Path) -> Non
             presenter_dir=tmp_path / "presenter-token",
             source_root=tmp_path,
         )
+
+
+@pytest.mark.parametrize("with_foreign_file", [False, True])
+def test_concurrent_destination_is_not_deleted_on_failure(
+    tmp_path: Path,
+    monkeypatch,
+    with_foreign_file: bool,
+) -> None:
+    import schauwerk.presentation.package as package_module
+
+    model = write_model(tmp_path)
+    public = tmp_path / "public-race"
+    presenter = tmp_path / "presenter-race"
+    original_validate = package_module._validate_public_package
+
+    def create_foreign_destination(*args, **kwargs):
+        original_validate(*args, **kwargs)
+        presenter.mkdir()
+        if with_foreign_file:
+            (presenter / "foreign.txt").write_text(
+                "belongs to another process",
+                encoding="utf-8",
+            )
+
+    monkeypatch.setattr(package_module, "_validate_public_package", create_foreign_destination)
+    with pytest.raises(PresentationModelError, match="appeared during build"):
+        build_presentation_packages(
+            model_path=model,
+            variant_id="fixture",
+            public_dir=public,
+            presenter_dir=presenter,
+            source_root=tmp_path,
+        )
+
+    assert not public.exists()
+    assert presenter.is_dir()
+    if with_foreign_file:
+        assert (presenter / "foreign.txt").read_text(encoding="utf-8") == (
+            "belongs to another process"
+        )
+    else:
+        assert list(presenter.iterdir()) == []
+
+
+def test_missing_atomic_publish_primitive_fails_closed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import schauwerk.presentation.package as package_module
+
+    model = write_model(tmp_path)
+    public = tmp_path / "public-no-renameat2"
+    presenter = tmp_path / "presenter-no-renameat2"
+    monkeypatch.setattr(package_module.ctypes, "CDLL", lambda *args, **kwargs: object())
+
+    with pytest.raises(PresentationModelError, match="publication is unavailable"):
+        build_presentation_packages(
+            model_path=model,
+            variant_id="fixture",
+            public_dir=public,
+            presenter_dir=presenter,
+            source_root=tmp_path,
+        )
+
+    assert not public.exists()
+    assert not presenter.exists()
+
+
+def test_interrupt_rolls_back_the_first_published_package(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import schauwerk.presentation.package as package_module
+
+    model = write_model(tmp_path)
+    public = tmp_path / "public-interrupted"
+    presenter = tmp_path / "presenter-interrupted"
+    original_publish = package_module._publish_directory_noreplace
+    publish_count = 0
+
+    def interrupt_second_publish(source: Path, destination: Path, *, label: str) -> None:
+        nonlocal publish_count
+        publish_count += 1
+        if publish_count == 1:
+            original_publish(source, destination, label=label)
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        package_module,
+        "_publish_directory_noreplace",
+        interrupt_second_publish,
+    )
+    with pytest.raises(KeyboardInterrupt):
+        build_presentation_packages(
+            model_path=model,
+            variant_id="fixture",
+            public_dir=public,
+            presenter_dir=presenter,
+            source_root=tmp_path,
+        )
+
+    assert not public.exists()
+    assert not presenter.exists()
+
+
+def test_rollback_does_not_delete_a_replaced_published_destination(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import schauwerk.presentation.package as package_module
+
+    model = write_model(tmp_path)
+    public = tmp_path / "public-swapped"
+    presenter = tmp_path / "presenter-swapped"
+    displaced_public = tmp_path / "displaced-public"
+    original_publish = package_module._publish_directory_noreplace
+    publish_count = 0
+
+    def swap_after_first_publish(source: Path, destination: Path, *, label: str) -> None:
+        nonlocal publish_count
+        publish_count += 1
+        if publish_count == 1:
+            original_publish(source, destination, label=label)
+            destination.rename(displaced_public)
+            destination.mkdir()
+            (destination / "foreign.txt").write_text(
+                "replacement owned by another process",
+                encoding="utf-8",
+            )
+            return
+        raise PresentationModelError("simulated presenter publish failure")
+
+    monkeypatch.setattr(
+        package_module,
+        "_publish_directory_noreplace",
+        swap_after_first_publish,
+    )
+    with pytest.raises(PresentationModelError, match="simulated presenter publish failure"):
+        build_presentation_packages(
+            model_path=model,
+            variant_id="fixture",
+            public_dir=public,
+            presenter_dir=presenter,
+            source_root=tmp_path,
+        )
+
+    assert (public / "foreign.txt").read_text(encoding="utf-8") == (
+        "replacement owned by another process"
+    )
+    assert (displaced_public / "manifest.json").is_file()
+    assert not presenter.exists()

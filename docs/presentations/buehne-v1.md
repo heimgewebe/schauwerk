@@ -90,6 +90,8 @@ The command fails closed and removes temporary or partially renamed outputs when
 - scene order contains unknown or duplicate IDs;
 - declared total time differs from the sum of scene times;
 - public and presenter destinations overlap or already exist;
+- a destination appears concurrently while the package is being built;
+- atomic no-replace directory publication is unavailable on the runtime;
 - a renderer produces an invalid PDF or PowerPoint structure;
 - a public artifact contains notes, timing, external relationships or executable/external HTML.
 
@@ -98,6 +100,7 @@ No previous destination is overwritten.
 ## Limits
 
 - v1 supports text, bullet, callout and code blocks; images and video are deliberately absent.
+- atomic directory publication currently requires Linux `renameat2` with `RENAME_NOREPLACE`; unsupported runtimes fail closed rather than using an overwrite-prone fallback.
 - PDF and PowerPoint use deterministic built-in layout rather than arbitrary templates. Overfull scenes, overwide tokens and unsupported PDF glyphs fail instead of clipping or substituting content.
 - The v1 PDF font boundary covers Windows-1252 text; broader Unicode requires a later embedded-font contract.
 - The public HTML is keyboard-scrollable and semantically ordered, but v1 does not include a JavaScript presenter controller.
