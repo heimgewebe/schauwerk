@@ -30,7 +30,7 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     if data.get('kind') != MANIFEST_KIND or data.get('schemaVersion') != 1:
         raise EcosystemMapRenderError('manifest kind or schema version mismatch')
     source = data.get('source')
-    if not isinstance(source, dict) or source.get('repository') != 'heimgewebe/cabinet':
+    if not isinstance(source, dict) or source.get('repository') != 'heimgewebe/heimgewebe-katalog':
         raise EcosystemMapRenderError('manifest source mismatch')
     commit = source.get('commit')
     commit_invalid = (
@@ -98,9 +98,10 @@ def _page(
 <html lang="de"><head><meta charset="utf-8"><title>Heimgewebe Ecosystem Map Handoff</title></head>
 <body data-render-kind="{RENDER_KIND}" data-render-mode="source-html">
 <h1>Heimgewebe Ecosystem Map Handoff</h1>
-<p><strong>Boundary:</strong> read-only presentation handoff from Cabinet map artifacts.</p>
+<p><strong>Boundary:</strong> read-only presentation handoff from
+Heimgewebe-Systemkatalog map artifacts.</p>
 <dl>
-<dt>Cabinet commit</dt><dd>{escape(source['commit'])}</dd>
+<dt>System catalog commit</dt><dd>{escape(source['commit'])}</dd>
 <dt>Manifest</dt><dd>{escape(str(manifest_path))}</dd>
 <dt>Source root</dt><dd>{escape(str(source_root))}</dd>
 </dl>
