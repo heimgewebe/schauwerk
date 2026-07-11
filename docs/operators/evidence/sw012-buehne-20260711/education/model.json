@@ -1,0 +1,235 @@
+{
+  "output_profiles": [
+    {
+      "formats": [
+        "handout",
+        "html",
+        "pdf",
+        "pptx"
+      ],
+      "id": "public-default",
+      "include_private_sources": false,
+      "include_speaker_notes": false,
+      "include_timing": false,
+      "visibility": "public"
+    },
+    {
+      "formats": [
+        "html",
+        "json"
+      ],
+      "id": "presenter-default",
+      "include_private_sources": true,
+      "include_speaker_notes": true,
+      "include_timing": true,
+      "visibility": "private"
+    }
+  ],
+  "presentation_id": "kinderrechte-lernweg",
+  "scenes": [
+    {
+      "duration_seconds": 180,
+      "id": "question",
+      "source_ids": [
+        "primary",
+        "guidance"
+      ],
+      "speaker_notes": [
+        "Die Leitfrage offen halten; noch keine Musterlösung anbieten."
+      ],
+      "title": "Leitfrage",
+      "visible": [
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Wie werden Kinderrechte in Alltagssituationen konkret geschützt?"
+        }
+      ]
+    },
+    {
+      "duration_seconds": 240,
+      "id": "goals",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Lernziele als prüfbare Handlungen lesen lassen."
+      ],
+      "title": "Drei Lernziele",
+      "visible": [
+        {
+          "items": [
+            "Schutz-, Förder- und Beteiligungsrechte unterscheiden",
+            "eine Alltagssituation aus mehreren Perspektiven prüfen",
+            "eine begründete pädagogische Handlung formulieren"
+          ],
+          "kind": "bullets",
+          "source_ids": [
+            "primary"
+          ],
+          "text": null
+        }
+      ]
+    },
+    {
+      "duration_seconds": 600,
+      "id": "observe",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Bei Bewertungen nach beobachtbaren Anhaltspunkten fragen."
+      ],
+      "title": "1. Situation erfassen",
+      "visible": [
+        {
+          "items": [],
+          "kind": "paragraph",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Beobachtungen und Deutungen getrennt notieren."
+        },
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Ergebnis: eine sachliche Situationsbeschreibung"
+        }
+      ]
+    },
+    {
+      "duration_seconds": 900,
+      "id": "rights",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Widersprüche zwischen mehreren Rechten ausdrücklich zulassen."
+      ],
+      "title": "2. Rechte zuordnen",
+      "visible": [
+        {
+          "items": [],
+          "kind": "paragraph",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Betroffene Schutz-, Förder- und Beteiligungsrechte markieren."
+        },
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Ergebnis: eine begründete Rechtezuordnung"
+        }
+      ]
+    },
+    {
+      "duration_seconds": 1200,
+      "id": "weigh",
+      "source_ids": [
+        "primary",
+        "guidance"
+      ],
+      "speaker_notes": [
+        "Keine einzelne Standardlösung erzwingen; Qualität der Abwägung prüfen."
+      ],
+      "title": "3. Handlung abwägen",
+      "visible": [
+        {
+          "items": [],
+          "kind": "paragraph",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Zwei Handlungswege nach Nutzen, Risiken und Beteiligung vergleichen."
+        },
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Ergebnis: eine begründete Handlungsempfehlung"
+        }
+      ]
+    },
+    {
+      "duration_seconds": 180,
+      "id": "check",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Vor Abgabe die Datenschutzgrenze laut wiederholen."
+      ],
+      "title": "Sicherung und Datenschutz",
+      "visible": [
+        {
+          "items": [],
+          "kind": "paragraph",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Welche Handlung schützt Rechte und ermöglicht zugleich Beteiligung?"
+        },
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Keine Namen, Noten, Kontaktdaten oder identifizierenden Falldetails verwenden."
+        }
+      ]
+    }
+  ],
+  "schema_version": "schauwerk-presentation.v1",
+  "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515",
+  "sources": [
+    {
+      "artifact": "docs/operators/evidence/education-variants-20260710/source.json",
+      "id": "primary",
+      "label": "Anonymisierte Learning-View-Quelle",
+      "revision": "education-variants-input.v1",
+      "sha256": "fdc1d529c553c1439df2951b052008e5c94149d35707816217963b0e369df78f",
+      "visibility": "public"
+    },
+    {
+      "artifact": "docs/operators/evidence/education-variants-20260710/README.md",
+      "id": "guidance",
+      "label": "Interne Abnahmehinweise",
+      "revision": "2026-07-10",
+      "sha256": "744ec856e02e093e2bbd5a3ca293e073ad84b4631b399747735de5ae46e82a1b",
+      "visibility": "internal"
+    }
+  ],
+  "title": "Kinderrechte im pädagogischen Alltag",
+  "variants": [
+    {
+      "audience": "Fachschulklasse",
+      "id": "education",
+      "planned_duration_seconds": 3300,
+      "presenter_profile_id": "presenter-default",
+      "public_profile_id": "public-default",
+      "scene_ids": [
+        "question",
+        "goals",
+        "observe",
+        "rights",
+        "weigh",
+        "check"
+      ],
+      "title": "Kinderrechte im pädagogischen Alltag"
+    }
+  ],
+  "version": "1.0.0"
+}

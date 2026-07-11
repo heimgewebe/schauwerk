@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, einen ersten Learning-View-Renderer und eine reproduzierbare Grabowski-Operator-Projektion aus deklarierter Quelle.
+**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, Learning-View-Varianten, eine reproduzierbare Grabowski-Operator-Projektion und deterministische Bühne-Ausgaben aus einem gemeinsamen Präsentationsmodell.
 
 ## Zielbild
 
@@ -138,7 +138,10 @@ Die Registry validiert Quellen, Projekte, Oberflächen, Ansichten, Regionen, Ric
 - SW-003: kontrollierter Live-Schreibnachweis abgeschlossen; bereinigte Evidence für Create, Read, Update, Idempotenz und Cleanup liegt vor
 - SW-004: vollständige Registry-Verträge, Querverweisprüfung, deterministischer Digest und CLI-Inspektion
 - SW-005: statische und operationale Grabowski-Operator-Projektionen mit gebundener Acceptance-Evidence für Vertrag, Hosts, Runtime, laufende Arbeit und bekannte Lücken
-- SW-007: erster Learning-View-Renderer für Unterrichts-/Peer-Themen; Varianten und Offline-Ausgaben bleiben offen
-- SW-009: Simulation, Live-Gate und Kandidatenprüfung sind vorhanden; der produktive Live-Apply-Executor samt Postflight/Restore bleibt offen
+- SW-007: Learning-View-Renderer mit Unterrichts-, Peer-, öffentlicher und Offline-Variante
+- SW-009: überprüfter Live-Executor mit Postflight, Rollback und Restore
+- SW-010: lokale Regie mit getrenntem Review, Entscheidung, Apply und Restore
+- SW-011: Registry-gebundene Übersicht und resiliente lokale Live-Ansichten
+- SW-012: deterministische HTML-, PDF-, PowerPoint-, Handout- und Offline-Pakete mit getrennten Sprecherhinweisen und Zeitplanung
 
 Siehe `docs/roadmap.md`.

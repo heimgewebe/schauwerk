@@ -13,7 +13,9 @@ dependencies = [
   "jsonschema>=4.23",
   "mcp>=1.28,<2",
   "platformdirs>=4.3,<5",
+  "python-pptx>=1.0,<2",
   "PyYAML>=6.0.2",
+  "reportlab>=4.2,<5",
 ]
 
 [project.optional-dependencies]

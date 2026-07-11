@@ -80,6 +80,7 @@ from .overview.server import serve_overview
 from .pilots.grabowski import write_grabowski_pilot
 from .pilots.grabowski_operational import write_operational_pilot
 from .pilots.software import write_software_pilot
+from .presentation.package import build_presentation_packages
 from .regie.model import (
     compile_regie_context,
     compile_review_bundle,
@@ -263,6 +264,23 @@ def handle_regie_serve(
         "loopback_only": True,
         "review_digest": controller.review["review_digest"],
     }
+
+
+def handle_stage_build(
+    *,
+    model_path: str,
+    variant: str,
+    public_dir: str,
+    presenter_dir: str,
+    source_root: str,
+) -> dict[str, Any]:
+    return build_presentation_packages(
+        model_path=Path(model_path),
+        variant_id=variant,
+        public_dir=Path(public_dir),
+        presenter_dir=Path(presenter_dir),
+        source_root=Path(source_root),
+    )
 
 
 def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:

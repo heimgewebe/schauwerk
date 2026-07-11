@@ -61,6 +61,7 @@ from .cli_handlers import (
     handle_registry_status,
     handle_snapshot,
     handle_software_pilot,
+    handle_stage_build,
     handle_status,
     handle_tools,
     handle_visual_grammar,
@@ -139,6 +140,14 @@ def main(argv: list[str] | None = None) -> int:
                 review_bundle=args.review_bundle,
                 port=args.port,
                 open_browser=not args.no_browser,
+            )
+        elif args.provider == "stage" and args.command == "build":
+            result = handle_stage_build(
+                model_path=args.model,
+                variant=args.variant,
+                public_dir=args.public_dir,
+                presenter_dir=args.presenter_dir,
+                source_root=args.source_root,
             )
         elif args.provider == "overview" and args.command == "snapshot":
             result = handle_overview_snapshot(

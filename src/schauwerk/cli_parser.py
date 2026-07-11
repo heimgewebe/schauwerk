@@ -156,6 +156,20 @@ def build_parser() -> argparse.ArgumentParser:
     overview_serve.add_argument("--no-browser", action="store_true")
     overview_serve.add_argument("--json", action="store_true")
 
+    stage = providers.add_parser(
+        "stage", help="build separated SW-012 presentation packages"
+    )
+    stage_commands = stage.add_subparsers(dest="command", required=True)
+    stage_build = stage_commands.add_parser(
+        "build", help="render public and presenter outputs from one presentation model"
+    )
+    stage_build.add_argument("model")
+    stage_build.add_argument("--variant", required=True)
+    stage_build.add_argument("--public-dir", required=True)
+    stage_build.add_argument("--presenter-dir", required=True)
+    stage_build.add_argument("--source-root", default=".")
+    stage_build.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

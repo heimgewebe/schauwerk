@@ -1,0 +1,198 @@
+{
+  "output_profiles": [
+    {
+      "formats": [
+        "handout",
+        "html",
+        "pdf",
+        "pptx"
+      ],
+      "id": "public-default",
+      "include_private_sources": false,
+      "include_speaker_notes": false,
+      "include_timing": false,
+      "visibility": "public"
+    },
+    {
+      "formats": [
+        "html",
+        "json"
+      ],
+      "id": "presenter-default",
+      "include_private_sources": true,
+      "include_speaker_notes": true,
+      "include_timing": true,
+      "visibility": "private"
+    }
+  ],
+  "presentation_id": "grabowski-operational-brief",
+  "scenes": [
+    {
+      "duration_seconds": 90,
+      "id": "orientation",
+      "source_ids": [
+        "primary",
+        "guidance"
+      ],
+      "speaker_notes": [
+        "Zuerst die Trennung von Vertrag und Beobachtung erklären."
+      ],
+      "title": "Grabowski als kontrollierter Operator",
+      "visible": [
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Der statische Vertrag beschreibt Fähigkeiten; wechselnde Laufzeitdaten bleiben getrennte Beobachtungen."
+        }
+      ]
+    },
+    {
+      "duration_seconds": 120,
+      "id": "authority",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Die drei Grenzen als Sicherheitsversprechen, nicht als Komfortfunktion markieren."
+      ],
+      "title": "Was ist hier verlässlich?",
+      "visible": [
+        {
+          "items": [
+            "Quellsysteme bleiben maßgeblich.",
+            "Die Darstellung enthält keine Geheimnisse oder Rohkommandos.",
+            "Keine Provider-Mutation wurde ausgeführt."
+          ],
+          "kind": "bullets",
+          "source_ids": [
+            "primary"
+          ],
+          "text": null
+        }
+      ]
+    },
+    {
+      "duration_seconds": 150,
+      "id": "channels",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Der Zustand stammt aus einer zeitgebundenen Fixture-Beobachtung und ist nicht live."
+      ],
+      "title": "Vier beobachtete Kanäle",
+      "visible": [
+        {
+          "items": [
+            "Hosts: teilweise verfügbar",
+            "Runtime: teilweise verfügbar",
+            "Aktuelle Arbeit: gesund",
+            "Bekannte Lücken: gesund"
+          ],
+          "kind": "bullets",
+          "source_ids": [
+            "primary"
+          ],
+          "text": null
+        }
+      ]
+    },
+    {
+      "duration_seconds": 120,
+      "id": "degradation",
+      "source_ids": [
+        "primary"
+      ],
+      "speaker_notes": [
+        "Die Degradierung als korrektes fail-closed Verhalten einordnen."
+      ],
+      "title": "Degradierung bleibt sichtbar",
+      "visible": [
+        {
+          "items": [],
+          "kind": "paragraph",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Ein unvollständiger Runtime-Kanal senkt den Gesamtzustand, ohne andere Diagnosepfade zu löschen."
+        },
+        {
+          "items": [],
+          "kind": "callout",
+          "source_ids": [
+            "primary"
+          ],
+          "text": "Provider- oder Kanalfehler dürfen lokale Evidenz nicht unsichtbar machen."
+        }
+      ]
+    },
+    {
+      "duration_seconds": 120,
+      "id": "close",
+      "source_ids": [
+        "primary",
+        "guidance"
+      ],
+      "speaker_notes": [
+        "Mit der praktischen Regel schließen: Beobachtung informiert, autorisiert aber keine Wirkung."
+      ],
+      "title": "Entscheidungsregel",
+      "visible": [
+        {
+          "items": [
+            "Quelle und Beobachtungszeit nennen.",
+            "Partielle Zustände nicht zu gesund glätten.",
+            "Wirkungen nur über einen aktuellen, gebundenen Gate-Vertrag auslösen."
+          ],
+          "kind": "bullets",
+          "source_ids": [
+            "primary"
+          ],
+          "text": null
+        }
+      ]
+    }
+  ],
+  "schema_version": "schauwerk-presentation.v1",
+  "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515",
+  "sources": [
+    {
+      "artifact": "docs/operators/evidence/grabowski-operational-20260710/snapshot.json",
+      "id": "primary",
+      "label": "Sanitisierter Grabowski-Betriebssnapshot",
+      "revision": "2026-07-10-fixture",
+      "sha256": "64e12f5cd3a85e44dcb27087e83b4de9fae1e94cd98adf4a044460ecd58145b9",
+      "visibility": "public"
+    },
+    {
+      "artifact": "docs/operators/evidence/grabowski-operational-20260710/README.md",
+      "id": "guidance",
+      "label": "Interne Abnahmehinweise",
+      "revision": "2026-07-10",
+      "sha256": "ab48dd78fcd7d4d9f59ccdf7696ab9f8adbcd952178ab270beffa63138b8ab14",
+      "visibility": "internal"
+    }
+  ],
+  "title": "Grabowski: Vertrag, Beobachtung und sichere Wirkung",
+  "variants": [
+    {
+      "audience": "Technische Betreiber",
+      "id": "technical",
+      "planned_duration_seconds": 600,
+      "presenter_profile_id": "presenter-default",
+      "public_profile_id": "public-default",
+      "scene_ids": [
+        "orientation",
+        "authority",
+        "channels",
+        "degradation",
+        "close"
+      ],
+      "title": "Grabowski: Vertrag, Beobachtung und sichere Wirkung"
+    }
+  ],
+  "version": "1.0.0"
+}
