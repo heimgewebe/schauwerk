@@ -1,0 +1,15 @@
+{
+  "expires_at": "2026-08-01T00:00:00Z",
+  "link_digest": "0843d681f1399339f4f83f81ef4c82f73514a24607e221829b3273289a164c5c",
+  "object_digest": "0a667d72911ef5f76a010f323a19f2bdd40fbf8edbd4c593bf57dbb0f33d5b0e",
+  "previous_link_digest": "7d63335a0f9aaa49bc12531e96e63a8a5ea57b625257b98477441e354a1ca847",
+  "publication_id": "grabowski-operational-brief",
+  "published_at": "2026-07-11T12:00:00Z",
+  "schema_version": "schauwerk-publication-link.v1",
+  "stable_slug": "grabowski-brief",
+  "state": "withdrawn",
+  "updated_at": "2026-07-13T00:00:00Z",
+  "version": "1.0.0",
+  "withdrawal_reason": "Acceptance lifecycle withdrawal",
+  "withdrawn_at": "2026-07-13T00:00:00Z"
+}

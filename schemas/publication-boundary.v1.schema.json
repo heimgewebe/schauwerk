@@ -1,0 +1,1017 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/publication-boundary.v1.schema.json",
+  "title": "Schauwerk SW-013 publication boundary v1",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/declaration"
+    },
+    {
+      "$ref": "#/$defs/preview"
+    },
+    {
+      "$ref": "#/$defs/objectManifest"
+    },
+    {
+      "$ref": "#/$defs/stableLink"
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9A-Za-z][0-9A-Za-z._-]{0,63}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "fileName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "published_at",
+        "expires_at",
+        "replaces_version",
+        "expected_link_digest"
+      ],
+      "properties": {
+        "published_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "replaces_version": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/version"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_link_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "sourceDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "visibility",
+        "fields"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "visibility": {
+          "const": "public"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "contains": {
+            "const": "id"
+          },
+          "items": {
+            "enum": [
+              "id",
+              "label",
+              "revision",
+              "sha256"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "revision"
+              }
+            },
+            {
+              "contains": {
+                "const": "sha256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "selectedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "revision": {
+          "$ref": "#/$defs/text"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "fileRecords": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/fileName"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bytes",
+          "sha256"
+        ],
+        "properties": {
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 33554432
+          },
+          "sha256": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      }
+    },
+    "privacyChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_sources_explicitly_public",
+        "exact_file_set_declared",
+        "explicit_metadata_fields_only",
+        "external_resources_absent",
+        "private_content_boundary_false",
+        "provider_identifiers_absent",
+        "secret_like_assignments_absent",
+        "source_files_digest_verified",
+        "source_manifest_digest_bound",
+        "unknown_visibility_absent"
+      ],
+      "properties": {
+        "all_sources_explicitly_public": {
+          "const": true
+        },
+        "exact_file_set_declared": {
+          "const": true
+        },
+        "explicit_metadata_fields_only": {
+          "const": true
+        },
+        "external_resources_absent": {
+          "const": true
+        },
+        "private_content_boundary_false": {
+          "const": true
+        },
+        "provider_identifiers_absent": {
+          "const": true
+        },
+        "secret_like_assignments_absent": {
+          "const": true
+        },
+        "source_files_digest_verified": {
+          "const": true
+        },
+        "source_manifest_digest_bound": {
+          "const": true
+        },
+        "unknown_visibility_absent": {
+          "const": true
+        }
+      }
+    },
+    "sourcePackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "manifest_sha256",
+        "manifest_digest",
+        "source_revision",
+        "selected_metadata",
+        "selected_public_sources"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "schauwerk-stage-public-package.v1"
+        },
+        "manifest_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "manifest_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "source_revision": {
+          "$ref": "#/$defs/text"
+        },
+        "selected_metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "presentation_id",
+            "presentation_version",
+            "public_projection_sha256",
+            "source_revision",
+            "visible_content_sha256"
+          ],
+          "properties": {
+            "audience": {},
+            "presentation_id": {},
+            "presentation_version": {},
+            "public_projection_sha256": {},
+            "scene_order": {},
+            "scene_order_sha256": {},
+            "schema_version": {},
+            "source_revision": {},
+            "template": {},
+            "variant_id": {},
+            "variant_title": {},
+            "visible_content_sha256": {},
+            "visual_grammar": {}
+          }
+        },
+        "selected_public_sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/selectedSource"
+          }
+        }
+      }
+    },
+    "declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "publication_id",
+        "stable_slug",
+        "version",
+        "view_id",
+        "audience",
+        "source_manifest_sha256",
+        "source_manifest_digest",
+        "source_revision",
+        "entrypoint",
+        "files",
+        "metadata_fields",
+        "sources",
+        "lifecycle",
+        "declaration_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "schauwerk-publication-declaration.v1"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/id"
+        },
+        "stable_slug": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "view_id": {
+          "$ref": "#/$defs/id"
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "source_manifest_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "source_manifest_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "source_revision": {
+          "$ref": "#/$defs/text"
+        },
+        "entrypoint": {
+          "$ref": "#/$defs/fileName"
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/fileName"
+          }
+        },
+        "metadata_fields": {
+          "type": "array",
+          "minItems": 5,
+          "maxItems": 13,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "audience",
+              "presentation_id",
+              "presentation_version",
+              "public_projection_sha256",
+              "scene_order",
+              "scene_order_sha256",
+              "schema_version",
+              "source_revision",
+              "template",
+              "variant_id",
+              "variant_title",
+              "visible_content_sha256",
+              "visual_grammar"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "presentation_id"
+              }
+            },
+            {
+              "contains": {
+                "const": "presentation_version"
+              }
+            },
+            {
+              "contains": {
+                "const": "public_projection_sha256"
+              }
+            },
+            {
+              "contains": {
+                "const": "source_revision"
+              }
+            },
+            {
+              "contains": {
+                "const": "visible_content_sha256"
+              }
+            }
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/sourceDeclaration"
+          }
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "published_at",
+            "expires_at",
+            "replaces_version",
+            "expected_link_digest"
+          ],
+          "properties": {
+            "published_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "replaces_version": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/version"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expected_link_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "declaration_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "preview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "publication_id",
+        "stable_slug",
+        "version",
+        "view_id",
+        "audience",
+        "entrypoint",
+        "lifecycle",
+        "source_package",
+        "files",
+        "privacy_checks",
+        "declaration_digest",
+        "preview_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "schauwerk-publication-preview.v1"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/id"
+        },
+        "stable_slug": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "view_id": {
+          "$ref": "#/$defs/id"
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "entrypoint": {
+          "$ref": "#/$defs/fileName"
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "published_at",
+            "expires_at",
+            "replaces_version",
+            "expected_link_digest"
+          ],
+          "properties": {
+            "published_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "replaces_version": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/version"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expected_link_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "source_package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "manifest_sha256",
+            "manifest_digest",
+            "source_revision",
+            "selected_metadata",
+            "selected_public_sources"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "schauwerk-stage-public-package.v1"
+            },
+            "manifest_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "manifest_digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "source_revision": {
+              "$ref": "#/$defs/text"
+            },
+            "selected_metadata": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "presentation_id",
+                "presentation_version",
+                "public_projection_sha256",
+                "source_revision",
+                "visible_content_sha256"
+              ],
+              "properties": {
+                "audience": {},
+                "presentation_id": {},
+                "presentation_version": {},
+                "public_projection_sha256": {},
+                "scene_order": {},
+                "scene_order_sha256": {},
+                "schema_version": {},
+                "source_revision": {},
+                "template": {},
+                "variant_id": {},
+                "variant_title": {},
+                "visible_content_sha256": {},
+                "visual_grammar": {}
+              }
+            },
+            "selected_public_sources": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/selectedSource"
+              }
+            }
+          }
+        },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/fileName"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "bytes",
+              "sha256"
+            ],
+            "properties": {
+              "bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 33554432
+              },
+              "sha256": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        "privacy_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all_sources_explicitly_public",
+            "exact_file_set_declared",
+            "explicit_metadata_fields_only",
+            "external_resources_absent",
+            "private_content_boundary_false",
+            "provider_identifiers_absent",
+            "secret_like_assignments_absent",
+            "source_files_digest_verified",
+            "source_manifest_digest_bound",
+            "unknown_visibility_absent"
+          ],
+          "properties": {
+            "all_sources_explicitly_public": {
+              "const": true
+            },
+            "exact_file_set_declared": {
+              "const": true
+            },
+            "explicit_metadata_fields_only": {
+              "const": true
+            },
+            "external_resources_absent": {
+              "const": true
+            },
+            "private_content_boundary_false": {
+              "const": true
+            },
+            "provider_identifiers_absent": {
+              "const": true
+            },
+            "secret_like_assignments_absent": {
+              "const": true
+            },
+            "source_files_digest_verified": {
+              "const": true
+            },
+            "source_manifest_digest_bound": {
+              "const": true
+            },
+            "unknown_visibility_absent": {
+              "const": true
+            }
+          }
+        },
+        "declaration_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "preview_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "objectManifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "publication_id",
+        "stable_slug",
+        "version",
+        "view_id",
+        "audience",
+        "entrypoint",
+        "lifecycle",
+        "source_package",
+        "files",
+        "privacy_checks",
+        "declaration_digest",
+        "preview_digest",
+        "object_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "schauwerk-publication-object.v1"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/id"
+        },
+        "stable_slug": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "view_id": {
+          "$ref": "#/$defs/id"
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "entrypoint": {
+          "$ref": "#/$defs/fileName"
+        },
+        "lifecycle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "published_at",
+            "expires_at",
+            "replaces_version",
+            "expected_link_digest"
+          ],
+          "properties": {
+            "published_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "expires_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "replaces_version": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/version"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expected_link_digest": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "source_package": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "manifest_sha256",
+            "manifest_digest",
+            "source_revision",
+            "selected_metadata",
+            "selected_public_sources"
+          ],
+          "properties": {
+            "schema_version": {
+              "const": "schauwerk-stage-public-package.v1"
+            },
+            "manifest_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "manifest_digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "source_revision": {
+              "$ref": "#/$defs/text"
+            },
+            "selected_metadata": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "presentation_id",
+                "presentation_version",
+                "public_projection_sha256",
+                "source_revision",
+                "visible_content_sha256"
+              ],
+              "properties": {
+                "audience": {},
+                "presentation_id": {},
+                "presentation_version": {},
+                "public_projection_sha256": {},
+                "scene_order": {},
+                "scene_order_sha256": {},
+                "schema_version": {},
+                "source_revision": {},
+                "template": {},
+                "variant_id": {},
+                "variant_title": {},
+                "visible_content_sha256": {},
+                "visual_grammar": {}
+              }
+            },
+            "selected_public_sources": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/selectedSource"
+              }
+            }
+          }
+        },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/fileName"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "bytes",
+              "sha256"
+            ],
+            "properties": {
+              "bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 33554432
+              },
+              "sha256": {
+                "$ref": "#/$defs/digest"
+              }
+            }
+          }
+        },
+        "privacy_checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all_sources_explicitly_public",
+            "exact_file_set_declared",
+            "explicit_metadata_fields_only",
+            "external_resources_absent",
+            "private_content_boundary_false",
+            "provider_identifiers_absent",
+            "secret_like_assignments_absent",
+            "source_files_digest_verified",
+            "source_manifest_digest_bound",
+            "unknown_visibility_absent"
+          ],
+          "properties": {
+            "all_sources_explicitly_public": {
+              "const": true
+            },
+            "exact_file_set_declared": {
+              "const": true
+            },
+            "explicit_metadata_fields_only": {
+              "const": true
+            },
+            "external_resources_absent": {
+              "const": true
+            },
+            "private_content_boundary_false": {
+              "const": true
+            },
+            "provider_identifiers_absent": {
+              "const": true
+            },
+            "secret_like_assignments_absent": {
+              "const": true
+            },
+            "source_files_digest_verified": {
+              "const": true
+            },
+            "source_manifest_digest_bound": {
+              "const": true
+            },
+            "unknown_visibility_absent": {
+              "const": true
+            }
+          }
+        },
+        "declaration_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "preview_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "object_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "stableLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "stable_slug",
+        "publication_id",
+        "version",
+        "object_digest",
+        "state",
+        "published_at",
+        "expires_at",
+        "updated_at",
+        "withdrawn_at",
+        "withdrawal_reason",
+        "previous_link_digest",
+        "link_digest"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "schauwerk-publication-link.v1"
+        },
+        "stable_slug": {
+          "$ref": "#/$defs/id"
+        },
+        "publication_id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "object_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "state": {
+          "enum": [
+            "active",
+            "withdrawn"
+          ]
+        },
+        "published_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updated_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "withdrawn_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "withdrawal_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "previous_link_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "link_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    }
+  }
+}

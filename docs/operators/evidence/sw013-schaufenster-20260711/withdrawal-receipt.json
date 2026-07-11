@@ -1,0 +1,16 @@
+{
+  "immutable_object_preserved": true,
+  "link_digest": "0843d681f1399339f4f83f81ef4c82f73514a24607e221829b3273289a164c5c",
+  "object_digest": "0a667d72911ef5f76a010f323a19f2bdd40fbf8edbd4c593bf57dbb0f33d5b0e",
+  "ok": true,
+  "previous_link_digest": "7d63335a0f9aaa49bc12531e96e63a8a5ea57b625257b98477441e354a1ca847",
+  "provider_mutation_attempted": false,
+  "publication_id": "grabowski-operational-brief",
+  "reason": "Acceptance lifecycle withdrawal",
+  "receipt_digest": "b66d935137850d0b4b2476e5c1e296792658ca187315d66589f42bbe5fd5d9e4",
+  "schema_version": "schauwerk-publication-withdrawal-receipt.v1",
+  "source_truth_mutated": false,
+  "stable_slug": "grabowski-brief",
+  "version": "1.0.0",
+  "withdrawn_at": "2026-07-13T00:00:00Z"
+}

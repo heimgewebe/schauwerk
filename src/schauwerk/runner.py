@@ -25,6 +25,11 @@ from .cli_handlers import (
     handle_logout,
     handle_overview_serve,
     handle_overview_snapshot,
+    handle_publication_preview,
+    handle_publication_release,
+    handle_publication_serve,
+    handle_publication_status,
+    handle_publication_withdraw,
     handle_quality,
     handle_regie_context_compile,
     handle_regie_context_template,
@@ -157,6 +162,39 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_overview_serve(
                 port=args.port,
                 probe_provider=args.probe_provider,
+                open_browser=not args.no_browser,
+            )
+        elif args.provider == "publish" and args.command == "preview":
+            result = handle_publication_preview(
+                declaration_path=args.declaration,
+                source_package=args.source_package,
+                output=args.output,
+            )
+        elif args.provider == "publish" and args.command == "release":
+            result = handle_publication_release(
+                declaration_path=args.declaration,
+                preview_path=args.preview,
+                source_package=args.source_package,
+                store_root=args.store_root,
+            )
+        elif args.provider == "publish" and args.command == "status":
+            result = handle_publication_status(
+                store_root=args.store_root,
+                stable_slug=args.stable_slug,
+                observed_at=args.at,
+            )
+        elif args.provider == "publish" and args.command == "withdraw":
+            result = handle_publication_withdraw(
+                store_root=args.store_root,
+                stable_slug=args.stable_slug,
+                expected_link_digest=args.expected_link_digest,
+                reason=args.reason,
+                withdrawn_at=args.at,
+            )
+        elif args.provider == "publish" and args.command == "serve":
+            result = handle_publication_serve(
+                store_root=args.store_root,
+                port=args.port,
                 open_browser=not args.no_browser,
             )
         elif args.command == "status":

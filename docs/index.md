@@ -26,20 +26,22 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 13. [SW-011 overview evidence](operators/evidence/sw011-overview-live-20260711/README.md)
 14. [SW-012 Bühne v1](presentations/buehne-v1.md)
 15. [SW-012 Bühne evidence](operators/evidence/sw012-buehne-20260711/README.md)
-16. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
-17. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
-18. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
-19. [Registry](registry.md)
-20. [Grabowski useful pilot](pilots/grabowski.md)
-21. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
-22. [Grabowski operational pilot](pilots/grabowski-operational.md)
-23. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
-24. [Generic software pilot](pilots/software.md)
-25. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
-26. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
-27. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
-28. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
-29. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+16. [SW-013 Schaufenster v1](publications/schaufenster-v1.md)
+17. [SW-013 Schaufenster evidence](operators/evidence/sw013-schaufenster-20260711/README.md)
+18. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
+19. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
+20. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
+21. [Registry](registry.md)
+22. [Grabowski useful pilot](pilots/grabowski.md)
+23. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
+24. [Grabowski operational pilot](pilots/grabowski-operational.md)
+25. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
+26. [Generic software pilot](pilots/software.md)
+27. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
+28. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
+29. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
+30. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
+31. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
@@ -53,8 +55,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/grabowski-operational-observation.v1.schema.json`
 - `schemas/software-pilot-input.v1.schema.json`
 - `schemas/presentation.v1.schema.json`
+- `schemas/publication-boundary.v1.schema.json`
 - `registry/`
 
 ## Current status
 
-The repository has completed the useful-pilot, visual-grammar, reviewed SW-009 executor, local SW-010 Regie and resilient SW-011 overview foundations. Direct Miro authorization, allowlisted snapshots, controlled live proof, typed registry contracts, software and education pilots, digest-bound operation review, independent partial approval, explicit apply and restore, Registry-backed project navigation, time-bound local diagnostics, optional read-only provider probes and bounded fullscreen display profiles are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle, immutable decision, expiring authorization and explicit effect confirmation. The deterministic SW-012 Bühne presentation layer is implemented with separated public and presenter packages, source-bound fixtures and offline HTML, PDF, PowerPoint and handout outputs. Publication, adapters, maintenance, optional semantic and durable operations surfaces remain roadmap work.
+The repository has completed the useful-pilot, visual-grammar, reviewed SW-009 executor, local SW-010 Regie, resilient SW-011 overview, deterministic SW-012 Bühne and local SW-013 Schaufenster foundations. Direct Miro authorization, allowlisted snapshots, controlled live proof, typed registry contracts, software and education pilots, digest-bound operation review, independent partial approval, explicit apply and restore, Registry-backed project navigation, time-bound local diagnostics, optional read-only provider probes, bounded fullscreen display profiles, separated presentation packages and review-bound immutable publication objects are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle, immutable decision, expiring authorization and explicit effect confirmation. External hosting, adapters, maintenance, optional semantic and durable operations surfaces remain roadmap work.

@@ -66,13 +66,14 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 
 ### Publication
 
-1. Start from a private or shared view revision.
-2. Build a publication preview.
-3. remove excluded fields, secrets, and personal data.
-4. Validate the target audience and policy.
-5. Create an immutable publication bundle.
-6. Publish a read-only surface or static export.
-7. Record version, source revisions, and withdrawal metadata.
+1. Select a reviewed public package revision.
+2. Declare the exact source-manifest hash, file set, public sources and allowed metadata fields.
+3. Build and review a deterministic publication preview.
+4. Reject private, internal or unknown visibility, undeclared files, active external resources, credentials, provider IDs and local paths.
+5. Recompile the preview and create a read-only immutable version object.
+6. Update a stable link through a digest-bound atomic compare-and-swap.
+7. Derive expiry without mutation and withdraw the link without deleting the immutable object or changing source truth.
+8. Deliver locally through a loopback-only read-only surface; external hosting remains a separate gated operation.
 
 ## Data ownership
 
