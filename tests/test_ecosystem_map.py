@@ -16,30 +16,23 @@ def _sha(text: str) -> str:
 def _write_fixture(root: Path) -> Path:
     rendered = root / "rendered"
     rendered.mkdir(parents=True)
-    overview = "flowchart TD\n  A[Heimgewebe-Systemkatalog]\n"
-    registry = "flowchart TD\n  B[Registry]\n"
-    (rendered / "ecosystem-map.mmd").write_text(overview, encoding="utf-8")
-    (rendered / "ecosystem-registry-map.mmd").write_text(registry, encoding="utf-8")
+    map_text = "flowchart TD\n  B[Systemkatalog]\n"
+    (rendered / "ecosystem-registry-map.mmd").write_text(map_text, encoding="utf-8")
     manifest = {
         "schemaVersion": 1,
-        "kind": "cabinet_ecosystem_map_artifact_manifest",
+        "kind": "system_catalog_map_artifact_manifest",
+        "contractVersion": "1",
         "source": {
-            "repository": "heimgewebe/heimgewebe-katalog",
+            "repository": "heimgewebe/systemkatalog",
             "commit": "a" * 40,
             "generatedAt": "2026-07-05T00:00:00Z",
         },
         "artifacts": [
             {
-                "role": "readable_overview_mermaid",
-                "path": "rendered/ecosystem-map.mmd",
-                "bytes": len(overview.encode("utf-8")),
-                "sha256": _sha(overview),
-            },
-            {
-                "role": "generated_registry_projection_mermaid",
+                "role": "canonical_ecosystem_map_mermaid",
                 "path": "rendered/ecosystem-registry-map.mmd",
-                "bytes": len(registry.encode("utf-8")),
-                "sha256": _sha(registry),
+                "bytes": len(map_text.encode("utf-8")),
+                "sha256": _sha(map_text),
             },
         ],
     }
@@ -60,14 +53,26 @@ def test_render_ecosystem_map_html_writes_source_handoff(tmp_path: Path) -> None
     assert receipt["diagram_rendered"] is False
     assert receipt["source_commit"] == "a" * 40
     assert "System catalog commit" in html
-    assert "A[Heimgewebe-Systemkatalog]" in html
-    assert "B[Registry]" in html
+    assert "B[Systemkatalog]" in html
+    assert "Canonical ecosystem map Mermaid source" in html
     assert "read-only presentation handoff" in html
+
+
+def test_render_rejects_byte_count_mismatch(tmp_path: Path) -> None:
+    manifest_path = _write_fixture(tmp_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["artifacts"][0]["bytes"] += 1
+    manifest_path.write_text(json.dumps(data), encoding="utf-8")
+
+    with pytest.raises(EcosystemMapRenderError, match="byte count mismatch"):
+        render_ecosystem_map_html(manifest_path=manifest_path, output_path=tmp_path / "map.html")
 
 
 def test_render_rejects_digest_mismatch(tmp_path: Path) -> None:
     manifest_path = _write_fixture(tmp_path)
-    (tmp_path / "rendered" / "ecosystem-map.mmd").write_text("changed", encoding="utf-8")
+    artifact_path = tmp_path / "rendered" / "ecosystem-registry-map.mmd"
+    original = artifact_path.read_text(encoding="utf-8")
+    artifact_path.write_text(original.replace("Systemkatalog", "Systemkatalof"), encoding="utf-8")
 
     with pytest.raises(EcosystemMapRenderError, match="digest mismatch"):
         render_ecosystem_map_html(manifest_path=manifest_path, output_path=tmp_path / "map.html")
