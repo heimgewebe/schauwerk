@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/presentation.v1.schema.json",
+  "title": "Schauwerk presentation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "presentation_id",
+    "version",
+    "title",
+    "source_revision",
+    "sources",
+    "output_profiles",
+    "variants",
+    "scenes"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-presentation.v1"},
+    "presentation_id": {"$ref": "#/$defs/id"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "title": {"$ref": "#/$defs/text"},
+    "source_revision": {"$ref": "#/$defs/text"},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "output_profiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/profile"}
+    },
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/variant"}
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/scene"}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{0,79}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "revision", "sha256", "visibility", "artifact"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "label": {"$ref": "#/$defs/text"},
+        "revision": {"$ref": "#/$defs/text"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "visibility": {"enum": ["public", "internal", "private"]},
+        "artifact": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "visibility",
+        "formats",
+        "include_speaker_notes",
+        "include_timing",
+        "include_private_sources"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "visibility": {"enum": ["public", "private"]},
+        "formats": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}},
+        "include_speaker_notes": {"type": "boolean"},
+        "include_timing": {"type": "boolean"},
+        "include_private_sources": {"type": "boolean"}
+      }
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "audience",
+        "title",
+        "scene_ids",
+        "planned_duration_seconds",
+        "public_profile_id",
+        "presenter_profile_id"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "audience": {"$ref": "#/$defs/text"},
+        "title": {"$ref": "#/$defs/text"},
+        "scene_ids": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/id"}},
+        "planned_duration_seconds": {"type": "integer", "minimum": 30, "maximum": 86400},
+        "public_profile_id": {"$ref": "#/$defs/id"},
+        "presenter_profile_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "visible", "speaker_notes", "duration_seconds", "source_ids"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "title": {"$ref": "#/$defs/text"},
+        "visible": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/block"}},
+        "speaker_notes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/text"}},
+        "duration_seconds": {"type": "integer", "minimum": 15, "maximum": 3600},
+        "source_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "text", "items", "source_ids"],
+      "properties": {
+        "kind": {"enum": ["paragraph", "bullets", "callout", "code"]},
+        "text": {"type": ["string", "null"], "maxLength": 1800},
+        "items": {"type": "array", "maxItems": 12, "items": {"$ref": "#/$defs/text"}},
+        "source_ids": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/id"}}
+      }
+    }
+  }
+}

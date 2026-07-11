@@ -1,0 +1,158 @@
+{
+  "checks": {
+    "absolute_paths_provider_identifiers_or_secrets_in_public_outputs": false,
+    "atomic_noreplace_publication": true,
+    "exact_timing_aggregation": true,
+    "foreign_destination_preserved_on_race": true,
+    "interrupted_build_rollback": true,
+    "overfull_or_overwide_content_clipping": false,
+    "partial_package_rollback": true,
+    "pptx_header_contrast": true,
+    "public_note_and_timing_leakage": false,
+    "published_destination_identity_guard": true,
+    "same_scene_order_across_formats": true,
+    "same_visible_core_digest_across_formats": true,
+    "source_digest_binding": true,
+    "strict_model_validation": true,
+    "unsupported_pdf_glyph_substitution": false,
+    "visible_text_present_across_formats": true
+  },
+  "deterministic_repeat_build": true,
+  "fixtures": {
+    "education": {
+      "byte_identical_repeat_build": true,
+      "cross_format_metadata_bound": true,
+      "cross_format_visible_text_verified": true,
+      "html_offline_structure": true,
+      "html_restrictive_csp": true,
+      "model_digest": "2ac514d2acf3c5dc043bb495e1b225a2b2f326f599233e578c96e84d490acb0f",
+      "model_sha256": "922fc951ffd28d72ba8c02b1adaa420b700b334077dcc520956aef2c6d248d41",
+      "pdf_has_no_links_or_embedded_files": true,
+      "pdf_page_count_matches": true,
+      "planned_duration_seconds": 3300,
+      "pptx_has_no_notes_or_external_relationships": true,
+      "pptx_header_text_contrast_verified": true,
+      "pptx_slide_count_matches": true,
+      "presentation_id": "kinderrechte-lernweg",
+      "presenter_files": {
+        "presenter.html": {
+          "bytes": 3250,
+          "sha256": "ac7b75228c5ba32ce4f99425ffbc721f580c90528cedbb724fec7c889544e624"
+        },
+        "presenter.json": {
+          "bytes": 3171,
+          "sha256": "df7e3de32a939259a807f14772c745e21e2a7c46b5fa42423e7e479fdbec2f2d"
+        }
+      },
+      "presenter_manifest_digest": "a503fc2db4e27657ba11397a44faaaf1e4f8be5d7dc021bc65765cea2d1aefe9",
+      "public_files": {
+        "handout.html": {
+          "bytes": 4389,
+          "sha256": "60f00338cfc44169fe81f17506d1925cb6eda29ee93f7dd495331b8ee7710458"
+        },
+        "index.html": {
+          "bytes": 6101,
+          "sha256": "3d7c1ae4d033ea8059466baac848db74ab7071c6213bbf515dd886f8e4d2d871"
+        },
+        "presentation.pdf": {
+          "bytes": 8353,
+          "sha256": "bb3ff54bbf801a6dbbb365cebac17b4ee261305aa7917f82e06dddae497ddf7f"
+        },
+        "presentation.pptx": {
+          "bytes": 36770,
+          "sha256": "4c6d58c9a5a93ed7117d907defe5b3ad5f03a2a960dba34a4deaed83f826e170"
+        }
+      },
+      "public_manifest_digest": "109a6443e68e4e2c2783c419b27d8edd8e8ed72028c30dffa56196853ede5506",
+      "public_projection_sha256": "3fd7b736a969efaeb2b2bfa4c8673f1a352de77badc17c865bae60ce438b7be0",
+      "scene_count": 6,
+      "scene_order": [
+        "question",
+        "goals",
+        "observe",
+        "rights",
+        "weigh",
+        "check"
+      ],
+      "scene_order_sha256": "15ce0709a34995eb5bdcfb887f6775c19631da91392cead3d0de4f1f48f00317",
+      "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515",
+      "speaker_notes_absent_from_public_package": true,
+      "variant_id": "education",
+      "visible_content_sha256": "1c6139b64c9f578eb189e1fdee25a1d7991aee352a4262420d1b1e5733b7a1d6"
+    },
+    "technical": {
+      "byte_identical_repeat_build": true,
+      "cross_format_metadata_bound": true,
+      "cross_format_visible_text_verified": true,
+      "html_offline_structure": true,
+      "html_restrictive_csp": true,
+      "model_digest": "2eda647447795bd6b4326034ba0c296f6263c49eacd7b29d756108c0548ea34f",
+      "model_sha256": "8f7936c209c3fbf056fc39f5f3ecf3d1d5b82f86ef788baba4ff4324eb04e3e4",
+      "pdf_has_no_links_or_embedded_files": true,
+      "pdf_page_count_matches": true,
+      "planned_duration_seconds": 600,
+      "pptx_has_no_notes_or_external_relationships": true,
+      "pptx_header_text_contrast_verified": true,
+      "pptx_slide_count_matches": true,
+      "presentation_id": "grabowski-operational-brief",
+      "presenter_files": {
+        "presenter.html": {
+          "bytes": 3078,
+          "sha256": "831471330f7cae48e6afb9a72dbc1732efdfd4b609b8711a710250e669e89077"
+        },
+        "presenter.json": {
+          "bytes": 2964,
+          "sha256": "fa09b599d904cd5de1e31a570750d9ed4505e0450c6e0ac2b211c7017b966d5f"
+        }
+      },
+      "presenter_manifest_digest": "5182b1fae3b373c31d41a5c05e03c7b17111074ea362058a5f48bbf0fdf9ba4c",
+      "public_files": {
+        "handout.html": {
+          "bytes": 4185,
+          "sha256": "e8f48d4d2d6f4496ff4f7fd483eb78d49a0423fffcc9d41284baa635077b676c"
+        },
+        "index.html": {
+          "bytes": 5771,
+          "sha256": "6c3dc1e3ab00389a7a7a282bf3b05c499c7637644a9603b591ce2dbb0fc6994b"
+        },
+        "presentation.pdf": {
+          "bytes": 7864,
+          "sha256": "08f6628f21a7dd14ac88b7f5e510a3450dc120f8c6915cd4221429d3adfa7916"
+        },
+        "presentation.pptx": {
+          "bytes": 35336,
+          "sha256": "f5e981c4ef94ddda10ea4f243ab2d5c2d96d434869bcd246a9185e716aa292ff"
+        }
+      },
+      "public_manifest_digest": "0380edab29606b67a6791b814602e7412e63597652eb51338d5e44eea18ec491",
+      "public_projection_sha256": "4e4e62e635bdb5a2b451da3c7640d96d4b728e2febfd9a84b1af5b9c119aa53e",
+      "scene_count": 5,
+      "scene_order": [
+        "orientation",
+        "authority",
+        "channels",
+        "degradation",
+        "close"
+      ],
+      "scene_order_sha256": "3eeafb64c55da9fb6b8fba3c9c4863bc805b7c919e192a5f8ce7345cdf902ad4",
+      "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515",
+      "speaker_notes_absent_from_public_package": true,
+      "variant_id": "technical",
+      "visible_content_sha256": "26226651e342b8ef11e87a3eca5cd99c160ced65fe179abff28d90422945d2e0"
+    }
+  },
+  "network_access_required": false,
+  "provider_mutation_attempted": false,
+  "public_and_presenter_packages_separated": true,
+  "recovery": {
+    "concurrent_empty_destination_preserved": true,
+    "concurrent_nonempty_destination_preserved": true,
+    "first_published_package_removed_when_second_publish_fails": true,
+    "interrupt_after_first_publish_rolls_back": true,
+    "publication_primitive": "linux-renameat2-RENAME_NOREPLACE",
+    "replaced_published_destination_not_deleted": true,
+    "unsupported_atomic_publication_fails_closed": true
+  },
+  "schema_version": "schauwerk-sw012-acceptance-receipt.v1",
+  "source_revision": "af43afc87fb808a25b5306cf460e16bfe6a00515"
+}

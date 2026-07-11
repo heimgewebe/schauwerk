@@ -136,9 +136,18 @@ Command graph:
 
 ## SW-012 — Bühne
 
-Generate presentation order, speaker notes, timing, target variants, PDF, PowerPoint, HTML, handout, and offline packages.
+**Implementation status:** complete for the deterministic local v1 contract. One strict, source-bound presentation model now produces ordered public HTML, PDF, PowerPoint and handout artifacts plus a separate owner-only presenter package with notes and exact timing.
 
-**Gate:** one technical and one education presentation work live and offline.
+Public outputs expose only visible blocks and public source metadata. Internal source labels, speaker notes and timing remain in the presenter package. HTML has no external assets or scripts; PowerPoint has no notes slides or external relationships; PDF has no links or embedded files. Technical and education fixtures rebuild byte-identically without network access.
+
+Command graph:
+
+- validation path: `model + source digests → strict intermediate model`;
+- public path: `intermediate model → HTML + PDF + PPTX + handout + manifest`;
+- presenter path: `same intermediate model → notes + timing + private manifest`;
+- acceptance path: `structure checks + leakage checks + deterministic rebuild`.
+
+**Gate:** passed by one technical and one education presentation working offline.
 
 ## SW-013 — Schaufenster
 
