@@ -297,6 +297,81 @@ def build_parser() -> argparse.ArgumentParser:
     sw009_candidate_check.add_argument("--output")
     sw009_candidate_check.add_argument("--json", action="store_true")
 
+    sw009_bundle_template = rc.add_parser(
+        "sw009-live-bundle-template",
+        help="emit an editable owner-only live operation draft",
+    )
+    sw009_bundle_template.add_argument("input")
+    sw009_bundle_template.add_argument("--bundle-id", default="sw009-live-bundle-edit-me")
+    sw009_bundle_template.add_argument("--output", required=True)
+    sw009_bundle_template.add_argument("--json", action="store_true")
+
+    sw009_bundle_compile = rc.add_parser(
+        "sw009-live-bundle-compile",
+        help="validate and digest-bind one owner-only live operation draft",
+    )
+    sw009_bundle_compile.add_argument("draft")
+    sw009_bundle_compile.add_argument("--output", required=True)
+    sw009_bundle_compile.add_argument("--json", action="store_true")
+
+    sw009_authorization_create = rc.add_parser(
+        "sw009-live-authorization-create",
+        help="bind one live gate and operation bundle to an expiring authorization",
+    )
+    sw009_authorization_create.add_argument("gate")
+    sw009_authorization_create.add_argument("--bundle", required=True)
+    sw009_authorization_create.add_argument("--authorization-id", required=True)
+    sw009_authorization_create.add_argument("--approved-by", required=True)
+    sw009_authorization_create.add_argument("--approval-reference", required=True)
+    sw009_authorization_create.add_argument(
+        "--confirmation",
+        required=True,
+        help="must be exactly APPROVE_LIVE_APPLY",
+    )
+    sw009_authorization_create.add_argument(
+        "--valid-minutes", type=_bounded_integer(1, 1440), default=60
+    )
+    sw009_authorization_create.add_argument("--output", required=True)
+    sw009_authorization_create.add_argument("--json", action="store_true")
+
+    sw009_live_plan = rc.add_parser(
+        "sw009-live-plan", help="compile a fully bound live apply plan without mutation"
+    )
+    sw009_live_plan.add_argument("gate")
+    sw009_live_plan.add_argument("--bundle", required=True)
+    sw009_live_plan.add_argument("--authorization", required=True)
+    sw009_live_plan.add_argument("--output", required=True)
+    sw009_live_plan.add_argument("--json", action="store_true")
+
+    sw009_live_apply = rc.add_parser(
+        "sw009-live-apply", help="execute one reviewed managed-region live transaction"
+    )
+    sw009_live_apply.add_argument("gate")
+    sw009_live_apply.add_argument("--bundle", required=True)
+    sw009_live_apply.add_argument("--authorization", required=True)
+    sw009_live_apply.add_argument(
+        "--plan", required=True, help="owner-only reviewed plan to bind execution"
+    )
+    sw009_live_apply.add_argument("--output", required=True)
+    sw009_live_apply.add_argument("--json", action="store_true")
+
+    sw009_live_restore = rc.add_parser(
+        "sw009-live-restore", help="restore one committed managed-region transaction"
+    )
+    sw009_live_restore.add_argument("transaction_receipt")
+    sw009_live_restore.add_argument("--output", required=True)
+    sw009_live_restore.add_argument("--json", action="store_true")
+
+    sw009_kill_switch = rc.add_parser(
+        "sw009-kill-switch", help="inspect, enable or explicitly disable live apply"
+    )
+    sw009_kill_switch.add_argument("action", choices=("status", "enable", "disable"))
+    sw009_kill_switch.add_argument("--reason")
+    sw009_kill_switch.add_argument(
+        "--confirmation", help="disable requires exactly ENABLE_LIVE_APPLY"
+    )
+    sw009_kill_switch.add_argument("--json", action="store_true")
+
     postflight_receipt = rc.add_parser("postflight")
     postflight_receipt.add_argument("apply_receipt")
     postflight_receipt.add_argument("--after-snapshot", required=True)

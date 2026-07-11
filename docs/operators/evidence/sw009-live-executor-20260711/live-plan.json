@@ -1,0 +1,60 @@
+{
+  "authorization": {
+    "approval_reference": "fixture:sw009-acceptance",
+    "approved_at": "2026-07-11T00:00:00Z",
+    "approved_by": "fixture-operator",
+    "authorization_id": "sw009-live-authorization-fixture",
+    "expires_at": "2026-07-11T00:15:00Z"
+  },
+  "boundary": {
+    "exact_text_replacement_only": true,
+    "managed_region_only": true,
+    "provider_identifiers_not_returned": true,
+    "provider_references_prohibited_in_inputs": true,
+    "reviewed_authorization_required": true
+  },
+  "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "live_apply_attempted": false,
+  "marker": "schauwerk-region:managed-summary",
+  "mutation_attempted": false,
+  "ok": true,
+  "operation": "render-update",
+  "operation_count": 1,
+  "operations": [
+    {
+      "action": "replace-text",
+      "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+      "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+      "operation_id": "replace-reviewed-summary",
+      "region_id": "managed-summary"
+    }
+  ],
+  "plan_digest": "567ad684e383ae7de4566c4477bd32657774d59305176361f4b92bc80e7d6acb",
+  "ready_for_live_apply": true,
+  "region_id": "managed-summary",
+  "required_capabilities": [
+    "layout_read",
+    "layout_update"
+  ],
+  "required_sequence": [
+    "check_kill_switch",
+    "reserve_single_use_authorization",
+    "capture_verified_before_snapshot",
+    "read_live_dsl",
+    "verify_unique_managed_region_matches",
+    "persist_prepared_journal",
+    "apply_exact_text_replacements",
+    "read_live_dsl_after_apply",
+    "verify_semantics_and_idempotency",
+    "capture_verified_after_snapshot",
+    "persist_transaction_receipt"
+  ],
+  "restore_required": true,
+  "schema_version": "typed-region-live-apply-plan.v1",
+  "source_receipts": {
+    "authorization_digest": "9ed01d15ae6bc074684e3c047662e14215dbde93846dd63356df4e5175c47c72",
+    "gate_receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+    "operation_bundle_digest": "74c383c4656bfe0a3b7c62a085d0e48f7ca18f865cd9d16fad799e2c94210f66"
+  },
+  "surface_alias": "sw009-fixture-board"
+}

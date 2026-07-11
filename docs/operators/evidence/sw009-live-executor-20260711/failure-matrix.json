@@ -1,0 +1,28 @@
+{
+  "cases": [
+    "expired authorization blocks before provider access",
+    "atomic reservation blocks concurrent authorization reuse",
+    "reviewed plan mismatch blocks before provider access",
+    "missing layout_update capability blocks before snapshot",
+    "layout_read skipped items block full-scope execution",
+    "kill switch blocks before provider access",
+    "before-snapshot revision mismatch consumes authorization without mutation",
+    "non-unique or overlapping managed text fails preflight",
+    "provider URLs and DSL delimiters are rejected",
+    "effect counts other than one update and zero create/delete are rejected",
+    "provider intermediate DSL digest mismatch triggers rollback",
+    "unexpected full-DSL side effects trigger rollback",
+    "provider response loss after mutation is reconstructed and rolled back",
+    "committed journal digest tampering blocks restore",
+    "external snapshot or DSL drift blocks restore before inverse mutation",
+    "failed restore is recovered to the committed after-state",
+    "corrupted canonical restore replay evidence is rejected",
+    "symlinked input and output paths fail closed",
+    "non-managed regions and replace-region operations fail closed",
+    "layout read and update DSL exceeding 16 MiB are rejected",
+    "loaded owner-only authorization compiles a plan without internal validation fields"
+  ],
+  "fixture_only": true,
+  "productive_provider_mutation_attempted": false,
+  "schema_version": "sw009-live-executor-failure-matrix.v1"
+}

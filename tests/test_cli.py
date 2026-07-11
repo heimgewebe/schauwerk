@@ -1468,3 +1468,161 @@ def test_runner_dispatches_visual_grammar(monkeypatch, capsys) -> None:
     assert code == 0
     assert observed == {"output": "grammar.json"}
     assert json.loads(capsys.readouterr().out)["valid"] is True
+
+
+def test_runner_dispatches_sw009_live_plan(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_plan(*, gate_path, bundle_path, authorization_path, output):
+        observed.update(
+            gate_path=gate_path,
+            bundle_path=bundle_path,
+            authorization_path=authorization_path,
+            output=output,
+        )
+        return {"ready_for_live_apply": True, "mutation_attempted": False}
+
+    monkeypatch.setattr(runner, "handle_region_sw009_live_plan", fake_plan)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-plan",
+            "gate.json",
+            "--bundle",
+            "bundle.json",
+            "--authorization",
+            "authorization.json",
+            "--output",
+            "plan.json",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "gate_path": "gate.json",
+        "bundle_path": "bundle.json",
+        "authorization_path": "authorization.json",
+        "output": "plan.json",
+    }
+    assert json.loads(capsys.readouterr().out)["ready_for_live_apply"] is True
+
+
+def test_runner_dispatches_sw009_live_apply_and_restore(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_apply(
+        *, gate_path, bundle_path, authorization_path, plan_path, output
+    ):
+        observed["apply"] = {
+            "gate_path": gate_path,
+            "bundle_path": bundle_path,
+            "authorization_path": authorization_path,
+            "plan_path": plan_path,
+            "output": output,
+        }
+        return {"ok": True, "live_apply_attempted": True}
+
+    def fake_restore(*, transaction_receipt, output):
+        observed["restore"] = {
+            "transaction_receipt": transaction_receipt,
+            "output": output,
+        }
+        return {"ok": True, "live_restore_attempted": True}
+
+    monkeypatch.setattr(runner, "handle_region_sw009_live_apply", fake_apply)
+    monkeypatch.setattr(runner, "handle_region_sw009_live_restore", fake_restore)
+    apply_code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-apply",
+            "gate.json",
+            "--bundle",
+            "bundle.json",
+            "--authorization",
+            "authorization.json",
+            "--plan",
+            "plan.json",
+            "--output",
+            "transaction.json",
+            "--json",
+        ]
+    )
+    apply_output = json.loads(capsys.readouterr().out)
+    restore_code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-restore",
+            "transaction.json",
+            "--output",
+            "restore.json",
+            "--json",
+        ]
+    )
+    restore_output = json.loads(capsys.readouterr().out)
+    assert apply_code == restore_code == 0
+    assert observed["apply"]["output"] == "transaction.json"
+    assert observed["restore"] == {
+        "transaction_receipt": "transaction.json",
+        "output": "restore.json",
+    }
+    assert apply_output["live_apply_attempted"] is True
+    assert restore_output["live_restore_attempted"] is True
+
+
+def test_runner_dispatches_sw009_kill_switch(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_switch(*, action, reason, confirmation):
+        observed.update(action=action, reason=reason, confirmation=confirmation)
+        return {"enabled": True, "mutation_attempted": True}
+
+    monkeypatch.setattr(runner, "handle_region_sw009_kill_switch", fake_switch)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-kill-switch",
+            "enable",
+            "--reason",
+            "operator stop",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "action": "enable",
+        "reason": "operator stop",
+        "confirmation": None,
+    }
+    assert json.loads(capsys.readouterr().out)["enabled"] is True
+
+
+def test_runner_dispatches_sw009_bundle_compile(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_compile(*, draft_path, output):
+        observed.update(draft_path=draft_path, output=output)
+        return {
+            "schema_version": "typed-region-live-operation-bundle-compile-receipt.v1",
+            "ok": True,
+            "mutation_attempted": False,
+        }
+
+    monkeypatch.setattr(runner, "handle_region_sw009_live_bundle_compile", fake_compile)
+    code = runner.main(
+        [
+            "miro",
+            "region",
+            "sw009-live-bundle-compile",
+            "draft.json",
+            "--output",
+            "bundle.json",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {"draft_path": "draft.json", "output": "bundle.json"}
+    assert json.loads(capsys.readouterr().out)["ok"] is True

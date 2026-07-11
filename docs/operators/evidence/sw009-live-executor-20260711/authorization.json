@@ -1,0 +1,21 @@
+{
+  "approval_reference": "fixture:sw009-acceptance",
+  "approved": true,
+  "approved_at": "2026-07-11T00:00:00Z",
+  "approved_by": "fixture-operator",
+  "authorization_digest": "9ed01d15ae6bc074684e3c047662e14215dbde93846dd63356df4e5175c47c72",
+  "authorization_id": "sw009-live-authorization-fixture",
+  "boundary": {
+    "explicit_live_apply": true,
+    "gate_receipt_bound": true,
+    "operation_bundle_bound": true,
+    "single_use": true
+  },
+  "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "expires_at": "2026-07-11T00:15:00Z",
+  "gate_receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+  "operation_bundle_digest": "74c383c4656bfe0a3b7c62a085d0e48f7ca18f865cd9d16fad799e2c94210f66",
+  "region_id": "managed-summary",
+  "schema_version": "typed-region-live-authorization.v1",
+  "surface_alias": "sw009-fixture-board"
+}

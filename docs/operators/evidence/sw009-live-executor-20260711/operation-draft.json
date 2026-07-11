@@ -1,0 +1,25 @@
+{
+  "boundary": {
+    "exact_text_replacement_only": true,
+    "managed_region_only": true,
+    "provider_references_prohibited": true,
+    "restore_required": true,
+    "review_required": true
+  },
+  "bundle_id": "sw009-live-bundle-fixture",
+  "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "marker": "schauwerk-region:managed-summary",
+  "operation": "render-update",
+  "operations": [
+    {
+      "action": "replace-text",
+      "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+      "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+      "operation_id": "replace-reviewed-summary",
+      "region_id": "managed-summary"
+    }
+  ],
+  "region_id": "managed-summary",
+  "schema_version": "typed-region-live-operation-draft.v1",
+  "surface_alias": "sw009-fixture-board"
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,25 @@ from .education.view import (
     render_learning_dsl,
 )
 from .education.zoomlandkarte import render_learning_zoomlandkarte_dsl
+from .operator.live_apply import (
+    compile_live_apply_plan,
+    compile_live_authorization,
+    compile_live_operation_bundle_template,
+    disable_kill_switch,
+    enable_kill_switch,
+    execute_live_apply,
+    kill_switch_status,
+    live_artifact_destination,
+    load_live_apply_gate,
+    load_live_apply_plan,
+    load_live_authorization,
+    load_live_operation_bundle,
+    load_live_operation_draft,
+    load_live_transaction_receipt,
+    restore_live_apply,
+    write_live_apply_plan,
+    write_live_artifact,
+)
 from .operator.receipts import _stable_digest
 from .operator.regions import (
     compile_region_apply_receipt,
@@ -62,6 +81,7 @@ from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
+from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .visual.grammar import (
     validate_visual_grammar,
@@ -546,6 +566,184 @@ def handle_region_sw009_live_apply_candidate_check(
         candidate_path=path,
         output_path=Path(output) if output else None,
     )
+
+
+def handle_region_sw009_live_bundle_template(
+    *, input_path: str, bundle_id: str, output: str
+) -> dict[str, Any]:
+    region = load_region_declaration(Path(input_path))
+    value = compile_live_operation_bundle_template(region=region, bundle_id=bundle_id)
+    destination = write_live_artifact(
+        Path(output), value, label="live operation draft"
+    )
+    return {
+        "schema_version": "typed-region-live-operation-draft-template-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "draft_schema": value["schema_version"],
+        "surface_alias": region.surface_alias,
+        "region_id": region.region_id,
+        "output_path": str(destination),
+    }
+
+
+def handle_region_sw009_live_bundle_compile(
+    *, draft_path: str, output: str
+) -> dict[str, Any]:
+    bundle = load_live_operation_draft(Path(draft_path))
+    destination = write_live_artifact(
+        Path(output), bundle, label="live operation bundle"
+    )
+    return {
+        "schema_version": "typed-region-live-operation-bundle-compile-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "bundle_id": bundle["bundle_id"],
+        "bundle_digest": bundle["bundle_digest"],
+        "operation_count": len(bundle["operations"]),
+        "output_path": str(destination),
+    }
+
+
+def handle_region_sw009_live_authorization_create(
+    *,
+    gate_path: str,
+    bundle_path: str,
+    authorization_id: str,
+    approved_by: str,
+    approval_reference: str,
+    confirmation: str,
+    valid_minutes: int,
+    output: str,
+) -> dict[str, Any]:
+    if confirmation != "APPROVE_LIVE_APPLY":
+        raise ValueError("live authorization confirmation is invalid")
+    gate = load_live_apply_gate(Path(gate_path))
+    bundle = load_live_operation_bundle(Path(bundle_path))
+    approved_at = datetime.now(UTC).replace(microsecond=0)
+    value = compile_live_authorization(
+        gate_receipt=gate,
+        operation_bundle=bundle,
+        approved_by=approved_by,
+        approval_reference=approval_reference,
+        confirmation=confirmation,
+        approved_at=approved_at,
+        expires_at=approved_at + timedelta(minutes=valid_minutes),
+        authorization_id=authorization_id,
+    )
+    destination = write_live_artifact(
+        Path(output), value, label="live authorization"
+    )
+    return {
+        "schema_version": "typed-region-live-authorization-create-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "authorization_id": value["authorization_id"],
+        "authorization_digest": value["authorization_digest"],
+        "expires_at": value["expires_at"],
+        "output_path": str(destination),
+    }
+
+
+def _compile_live_plan_from_paths(
+    *, gate_path: str, bundle_path: str, authorization_path: str
+) -> dict[str, Any]:
+    return compile_live_apply_plan(
+        gate_receipt=load_live_apply_gate(Path(gate_path)),
+        operation_bundle=load_live_operation_bundle(Path(bundle_path)),
+        authorization=load_live_authorization(Path(authorization_path)),
+    )
+
+
+def handle_region_sw009_live_plan(
+    *, gate_path: str, bundle_path: str, authorization_path: str, output: str
+) -> dict[str, Any]:
+    plan = _compile_live_plan_from_paths(
+        gate_path=gate_path,
+        bundle_path=bundle_path,
+        authorization_path=authorization_path,
+    )
+    return write_live_apply_plan(Path(output), plan)
+
+
+def handle_region_sw009_live_apply(
+    *,
+    gate_path: str,
+    bundle_path: str,
+    authorization_path: str,
+    plan_path: str,
+    output: str,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    plan = _compile_live_plan_from_paths(
+        gate_path=gate_path,
+        bundle_path=bundle_path,
+        authorization_path=authorization_path,
+    )
+    reviewed_plan = load_live_apply_plan(Path(plan_path))
+    if reviewed_plan != plan:
+        raise ValueError("reviewed live plan no longer matches source inputs")
+    kill_switch_path = active.settings.state_root / "LIVE_APPLY_DISABLED"
+    if kill_switch_status(kill_switch_path)["enabled"]:
+        raise ValueError("live apply kill switch is enabled")
+    live_artifact_destination(Path(output), label="live transaction receipt")
+    live_tools = asyncio.run(active.tools()).to_dict()
+    provider = MiroManagedRegionProvider(
+        active.settings, active.storage, cached_tools=live_tools
+    )
+    root = active.settings.state_root / "transactions"
+    return asyncio.run(
+        execute_live_apply(
+            plan=plan,
+            provider=provider,
+            journal_root=root,
+            kill_switch_path=kill_switch_path,
+            output_path=Path(output),
+        )
+    )
+
+
+def handle_region_sw009_live_restore(
+    *,
+    transaction_receipt: str,
+    output: str,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    load_live_transaction_receipt(Path(transaction_receipt))
+    live_artifact_destination(Path(output), label="live restore receipt")
+    live_tools = asyncio.run(active.tools()).to_dict()
+    provider = MiroManagedRegionProvider(
+        active.settings, active.storage, cached_tools=live_tools
+    )
+    return asyncio.run(
+        restore_live_apply(
+            transaction_receipt_path=Path(transaction_receipt),
+            provider=provider,
+            output_path=Path(output),
+        )
+    )
+
+
+def handle_region_sw009_kill_switch(
+    *,
+    action: str,
+    reason: str | None,
+    confirmation: str | None,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    path = active.settings.state_root / "LIVE_APPLY_DISABLED"
+    if action == "status":
+        return kill_switch_status(path)
+    if action == "enable":
+        if not reason:
+            raise ValueError("kill switch enable requires --reason")
+        return enable_kill_switch(path, reason=reason)
+    if action == "disable":
+        return disable_kill_switch(path, confirmation=confirmation or "")
+    raise ValueError("unknown kill switch action")
 
 
 def handle_region_sw003_live_gate_requirements(*, output: str | None) -> dict[str, Any]:

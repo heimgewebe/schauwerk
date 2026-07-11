@@ -1,0 +1,34 @@
+{
+  "blocked_reasons": [],
+  "boundary": {
+    "does_not_execute_live_apply": true,
+    "local_gate_only": true,
+    "no_miro_mutation": true,
+    "no_provider_ids_returned": true,
+    "requires_human_operator_apply": true,
+    "requires_sw003_live_gate": true
+  },
+  "live_apply_attempted": false,
+  "mutation_attempted": false,
+  "ok": true,
+  "operation": "render-update",
+  "ready_for_live_apply": true,
+  "receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+  "region": {
+    "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expected_source_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "mode": "managed",
+    "owner": "schauwerk",
+    "region_id": "managed-summary",
+    "surface_alias": "sw009-fixture-board",
+    "view_id": "fixture:sw009-live-executor",
+    "visibility": "private"
+  },
+  "schema_version": "typed-region-sw009-live-apply-gate-receipt.v1",
+  "snapshot": {
+    "board_alias": "sw009-fixture-board",
+    "content_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "repeatability_verified": true,
+    "sanitized_references": true
+  }
+}

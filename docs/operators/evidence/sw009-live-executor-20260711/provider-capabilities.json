@@ -1,0 +1,18 @@
+{
+  "mutation_attempted": false,
+  "observed_at": "2026-07-11T01:14:07Z",
+  "observed_required_tools": [
+    "layout_read",
+    "layout_update"
+  ],
+  "protocol_version": "2025-11-25",
+  "provider_identifiers_included": false,
+  "required_tools": [
+    "layout_read",
+    "layout_update"
+  ],
+  "required_tools_present": true,
+  "schema_version": "sw009-provider-capability-evidence.v1",
+  "server_name": "Miro MCP",
+  "server_version": "3.2.4"
+}

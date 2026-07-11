@@ -41,9 +41,16 @@ from .cli_handlers import (
     handle_region_sw003_live_gate_review_packet,
     handle_region_sw003_live_gate_status,
     handle_region_sw003_live_gate_template,
+    handle_region_sw009_kill_switch,
+    handle_region_sw009_live_apply,
     handle_region_sw009_live_apply_candidate_check,
     handle_region_sw009_live_apply_candidate_template,
     handle_region_sw009_live_apply_gate,
+    handle_region_sw009_live_authorization_create,
+    handle_region_sw009_live_bundle_compile,
+    handle_region_sw009_live_bundle_template,
+    handle_region_sw009_live_plan,
+    handle_region_sw009_live_restore,
     handle_registry_show,
     handle_registry_status,
     handle_snapshot,
@@ -238,6 +245,51 @@ def main(argv: list[str] | None = None) -> int:
         ):
             result = handle_region_sw009_live_apply_candidate_check(
                 candidate_path=args.candidate, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-bundle-template":
+            result = handle_region_sw009_live_bundle_template(
+                input_path=args.input, bundle_id=args.bundle_id, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-bundle-compile":
+            result = handle_region_sw009_live_bundle_compile(
+                draft_path=args.draft, output=args.output
+            )
+        elif (
+            args.command == "region"
+            and args.region_command == "sw009-live-authorization-create"
+        ):
+            result = handle_region_sw009_live_authorization_create(
+                gate_path=args.gate,
+                bundle_path=args.bundle,
+                authorization_id=args.authorization_id,
+                approved_by=args.approved_by,
+                approval_reference=args.approval_reference,
+                confirmation=args.confirmation,
+                valid_minutes=args.valid_minutes,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-plan":
+            result = handle_region_sw009_live_plan(
+                gate_path=args.gate,
+                bundle_path=args.bundle,
+                authorization_path=args.authorization,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-apply":
+            result = handle_region_sw009_live_apply(
+                gate_path=args.gate,
+                bundle_path=args.bundle,
+                authorization_path=args.authorization,
+                plan_path=args.plan,
+                output=args.output,
+            )
+        elif args.command == "region" and args.region_command == "sw009-live-restore":
+            result = handle_region_sw009_live_restore(
+                transaction_receipt=args.transaction_receipt, output=args.output
+            )
+        elif args.command == "region" and args.region_command == "sw009-kill-switch":
+            result = handle_region_sw009_kill_switch(
+                action=args.action, reason=args.reason, confirmation=args.confirmation
             )
         elif args.command == "region" and args.region_command == "postflight":
             result = handle_region_postflight(

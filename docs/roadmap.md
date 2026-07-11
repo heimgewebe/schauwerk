@@ -85,30 +85,23 @@ Define semantic shapes, state markers, provenance, freshness, uncertainty, acces
 
 ## SW-009 — Typed operator
 
-**Implementation status:** partial.
+**Implementation status:** complete for the reviewed live-executor contract. The existing typed plan, preflight, simulation, postflight and restore chain is now joined by a digest-bound live operation draft/compiler, expiring explicit authorization, atomic single-use transaction journal, required reviewed-plan equality, fresh provider-capability check, complete DSL coverage, verified before/after snapshots, exact managed-region replacements, per-operation result digests, semantic/idempotency postflight, automatic rollback, committed-journal binding, drift-protected restore and kill switch.
 
-Implemented:
-
-- typed region plan, preflight, apply scaffold, and live-safe apply gating;
-- fixture-only and CLI-backed apply receipts;
-- fixture-only and CLI-backed operation contracts;
-- fixture-only and CLI-backed apply simulation receipts;
-- fixture-only and CLI-backed postflight/restore receipts.
+The productive boundary remains operation-specific: repository acceptance did not mutate a live Miro board and does not authorize future writes. Every live execution still requires a current allowlisted alias, expected revision, managed-region marker, reviewed bundle and explicit expiring authorization.
 
 Command graph:
 
-- fixture apply path: `preflight → apply-scaffold → apply-receipt → postflight → restore-receipt`;
-- simulation contract path: `preflight → apply-scaffold → operation-contract → apply-simulation`;
-- simulation closeout path: `apply-simulation → simulation-postflight → restore-receipt → simulation-closeout`.
+- proposal path: `preflight → live-apply-gate → live-bundle-template → live-bundle-compile`;
+- authority path: `live-bundle + live-gate → live-authorization-create → live-plan`;
+- transaction path: `live-plan inputs → live-apply → verified transaction receipt`;
+- recovery path: `transaction receipt → drift check → inverse restore → restore receipt`;
+- emergency path: `kill-switch enable/status/disable`.
 
-The simulation contract path has full fixture/simulation-only CLI coverage through `simulation-postflight`, `restore-receipt`, and explicit `simulation-closeout`. After SW-003 closure, a separate digest-bound live-apply gate and candidate-manifest check can report candidate readiness without calling Miro.
-
-Current SW-009 safety boundary: no automatic live executor exists. A ready candidate still requires an explicit allowlisted target, before snapshot, reviewed operation scope, provider mutation, after snapshot, postflight verification, restore evidence and final review. The local gate and candidate receipt are not mutation authority.
+Version 1 deliberately supports only unique exact-text replacements that preserve a managed-region marker. It does not expose free-form DSL, item creation or item deletion.
 
 Implement proposals, preflight, expected revisions, snapshots, typed operations, postflight reads, verification receipts, idempotency, and restore.
 
 **Gate:** productive writes cannot touch undeclared regions or silently create duplicates.
-
 
 ## SW-010 — Regie
 
