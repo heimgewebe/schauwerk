@@ -7,6 +7,7 @@
     "interrupted_build_rollback": true,
     "overfull_or_overwide_content_clipping": false,
     "partial_package_rollback": true,
+    "pptx_header_contrast": true,
     "public_note_and_timing_leakage": false,
     "published_destination_identity_guard": true,
     "same_scene_order_across_formats": true,
@@ -30,6 +31,7 @@
       "pdf_page_count_matches": true,
       "planned_duration_seconds": 3300,
       "pptx_has_no_notes_or_external_relationships": true,
+      "pptx_header_text_contrast_verified": true,
       "pptx_slide_count_matches": true,
       "presentation_id": "kinderrechte-lernweg",
       "presenter_files": {
@@ -57,11 +59,11 @@
           "sha256": "bb3ff54bbf801a6dbbb365cebac17b4ee261305aa7917f82e06dddae497ddf7f"
         },
         "presentation.pptx": {
-          "bytes": 36704,
-          "sha256": "f59393644b440e1f95a04764dfa80cf676699ab48905366d40f70f9bdb675658"
+          "bytes": 36770,
+          "sha256": "4c6d58c9a5a93ed7117d907defe5b3ad5f03a2a960dba34a4deaed83f826e170"
         }
       },
-      "public_manifest_digest": "03070eada136f6138ec892ce2b9089ccca774c3ee78c312ea15c7ad8db411509",
+      "public_manifest_digest": "109a6443e68e4e2c2783c419b27d8edd8e8ed72028c30dffa56196853ede5506",
       "public_projection_sha256": "3fd7b736a969efaeb2b2bfa4c8673f1a352de77badc17c865bae60ce438b7be0",
       "scene_count": 6,
       "scene_order": [
@@ -90,6 +92,7 @@
       "pdf_page_count_matches": true,
       "planned_duration_seconds": 600,
       "pptx_has_no_notes_or_external_relationships": true,
+      "pptx_header_text_contrast_verified": true,
       "pptx_slide_count_matches": true,
       "presentation_id": "grabowski-operational-brief",
       "presenter_files": {
@@ -117,11 +120,11 @@
           "sha256": "08f6628f21a7dd14ac88b7f5e510a3450dc120f8c6915cd4221429d3adfa7916"
         },
         "presentation.pptx": {
-          "bytes": 35279,
-          "sha256": "8d66548579e13084fc06a57869f2ec2a214938f893ee14e7ce47925b80795f72"
+          "bytes": 35336,
+          "sha256": "f5e981c4ef94ddda10ea4f243ab2d5c2d96d434869bcd246a9185e716aa292ff"
         }
       },
-      "public_manifest_digest": "167b4671c61a98f279f1cbe6a72d4f9736e0bc54814c2b6e072d5bb600094469",
+      "public_manifest_digest": "0380edab29606b67a6791b814602e7412e63597652eb51338d5e44eea18ec491",
       "public_projection_sha256": "4e4e62e635bdb5a2b451da3c7640d96d4b728e2febfd9a84b1af5b9c119aa53e",
       "scene_count": 5,
       "scene_order": [

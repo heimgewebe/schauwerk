@@ -75,6 +75,9 @@ def test_packages_are_deterministic_separated_and_offline(tmp_path: Path) -> Non
 
 
 def test_pdf_and_pptx_preserve_structure_without_notes_or_external_links(tmp_path: Path) -> None:
+    from pptx import Presentation
+    from pptx.dml.color import RGBColor
+
     _, public, _ = _build(tmp_path, "formats")
     pdf = (public / "presentation.pdf").read_bytes()
     assert pdf.startswith(b"%PDF-")
@@ -102,6 +105,19 @@ def test_pdf_and_pptx_preserve_structure_without_notes_or_external_links(tmp_pat
         core = archive.read("docProps/core.xml")
         assert b"public_projection_sha256=" in core
         assert b"visible_content_sha256=" in core
+
+    deck = Presentation(public / "presentation.pptx")
+    for slide in deck.slides:
+        header_runs = [
+            run
+            for shape in slide.shapes
+            if shape.has_text_frame and shape.top < deck.slide_height // 10
+            for paragraph in shape.text_frame.paragraphs
+            for run in paragraph.runs
+            if run.text.strip()
+        ]
+        assert header_runs
+        assert all(run.font.color.rgb == RGBColor(255, 255, 255) for run in header_runs)
 
 
 def test_presenter_permissions_and_destination_guards(tmp_path: Path) -> None:

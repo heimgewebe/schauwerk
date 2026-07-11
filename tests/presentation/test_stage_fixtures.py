@@ -57,6 +57,7 @@ def test_checked_in_outputs_and_receipt_match_fresh_builds(tmp_path: Path) -> No
     assert receipt["checks"]["foreign_destination_preserved_on_race"] is True
     assert receipt["checks"]["interrupted_build_rollback"] is True
     assert receipt["checks"]["partial_package_rollback"] is True
+    assert receipt["checks"]["pptx_header_contrast"] is True
     assert receipt["checks"]["published_destination_identity_guard"] is True
     assert receipt["recovery"] == {
         "concurrent_empty_destination_preserved": True,
@@ -84,6 +85,7 @@ def test_checked_in_outputs_and_receipt_match_fresh_builds(tmp_path: Path) -> No
         public_manifest = json.loads((fresh_public / "manifest.json").read_text())
         presenter_manifest = json.loads((fresh_presenter / "manifest.json").read_text())
         fixture_receipt = receipt["fixtures"][directory]
+        assert fixture_receipt["pptx_header_text_contrast_verified"] is True
         assert fixture_receipt["public_manifest_digest"] == public_manifest["manifest_digest"]
         assert fixture_receipt["presenter_manifest_digest"] == presenter_manifest["manifest_digest"]
         assert fixture_receipt["scene_order"] == public_manifest["artifact_metadata"]["scene_order"]

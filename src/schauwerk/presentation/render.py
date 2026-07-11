@@ -439,7 +439,19 @@ def render_pdf(
     canvas.save()
 
 
-def _add_pptx_text(slide, x, y, width, height, text, *, size, bold=False, font="Arial"):
+def _add_pptx_text(
+    slide,
+    x,
+    y,
+    width,
+    height,
+    text,
+    *,
+    size,
+    bold=False,
+    font="Arial",
+    color=(20, 33, 61),
+):
     shape = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(width), Inches(height))
     frame = shape.text_frame
     frame.clear()
@@ -452,7 +464,7 @@ def _add_pptx_text(slide, x, y, width, height, text, *, size, bold=False, font="
     run.font.name = font
     run.font.size = Pt(size)
     run.font.bold = bold
-    run.font.color.rgb = RGBColor(20, 33, 61)
+    run.font.color.rgb = RGBColor(*color)
     return shape
 
 
@@ -541,9 +553,27 @@ def render_pptx(
         banner.fill.solid()
         banner.fill.fore_color.rgb = RGBColor(20, 33, 61)
         banner.line.fill.background()
-        _add_pptx_text(slide, 0.55, 0.1, 10.8, 0.35, variant.title, size=11, bold=True)
+        _add_pptx_text(
+            slide,
+            0.55,
+            0.1,
+            10.8,
+            0.35,
+            variant.title,
+            size=11,
+            bold=True,
+            color=(255, 255, 255),
+        )
         count = _add_pptx_text(
-            slide, 11.65, 0.1, 1.0, 0.35, f"{index}/{len(scenes)}", size=11, bold=True
+            slide,
+            11.65,
+            0.1,
+            1.0,
+            0.35,
+            f"{index}/{len(scenes)}",
+            size=11,
+            bold=True,
+            color=(255, 255, 255),
         )
         count.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
         _add_pptx_text(slide, 0.75, 0.82, 11.9, 1.05, scene.title, size=31, bold=True)

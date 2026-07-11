@@ -37,5 +37,6 @@ The checked-in presenter fixtures are synthetic and carry no real private source
 - absence of executable or external HTML resources;
 - explicit offline and no-mutation boundaries.
 - atomic no-replace publication, foreign-destination preservation and owned-output rollback.
+- white PowerPoint header text on the dark header band, checked structurally and through LibreOffice export.
 
 The repository tests independently rebuild temporary packages and test note leakage, path safety, destination isolation, deterministic bytes and format structure.
