@@ -74,6 +74,9 @@ from .operator.regions import (
     required_sw003_live_gate_evidence,
 )
 from .operator.sw003_closeout import LIVE_GATE_EVALUATION_SCHEMA_VERSION
+from .overview.collector import collect_overview
+from .overview.model import write_snapshot as write_overview_snapshot
+from .overview.server import serve_overview
 from .pilots.grabowski import write_grabowski_pilot
 from .pilots.grabowski_operational import write_operational_pilot
 from .pilots.software import write_software_pilot
@@ -99,6 +102,55 @@ from .visual.grammar import (
     write_visual_grammar,
     zoomlandkarte_template,
 )
+
+
+def handle_overview_snapshot(
+    *, output: str, probe_provider: bool
+) -> dict[str, Any]:
+    client = MiroMCPClient()
+    snapshot = asyncio.run(
+        collect_overview(
+            miro_client=client,
+            probe_provider=probe_provider,
+        )
+    )
+    destination = write_overview_snapshot(Path(output), snapshot)
+    return {
+        "schema_version": "schauwerk-overview-snapshot-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "probe_provider": probe_provider,
+        "snapshot_digest": snapshot["snapshot_digest"],
+        "project_count": snapshot["summary"]["project_count"],
+        "view_count": snapshot["summary"]["view_count"],
+        "active_job_count": snapshot["summary"]["active_job_count"],
+        "error_count": snapshot["summary"]["error_count"],
+        "provider_state": snapshot["summary"]["provider_state"],
+        "output_path": str(destination),
+    }
+
+
+def handle_overview_serve(
+    *, port: int, probe_provider: bool, open_browser: bool
+) -> dict[str, Any]:
+    client = MiroMCPClient()
+
+    async def snapshot_factory() -> dict[str, Any]:
+        return await collect_overview(
+            miro_client=client,
+            probe_provider=probe_provider,
+        )
+
+    serve_overview(
+        snapshot_factory, port=port, open_browser=open_browser
+    )
+    return {
+        "schema_version": "schauwerk-overview-server-stop-receipt.v1",
+        "ok": True,
+        "read_only": True,
+        "loopback_only": True,
+        "probe_provider": probe_provider,
+    }
 
 
 def handle_regie_context_template(

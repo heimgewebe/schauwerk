@@ -23,6 +23,8 @@ from .cli_handlers import (
     handle_learn_render,
     handle_login,
     handle_logout,
+    handle_overview_serve,
+    handle_overview_snapshot,
     handle_quality,
     handle_regie_context_compile,
     handle_regie_context_template,
@@ -136,6 +138,16 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_regie_serve(
                 review_bundle=args.review_bundle,
                 port=args.port,
+                open_browser=not args.no_browser,
+            )
+        elif args.provider == "overview" and args.command == "snapshot":
+            result = handle_overview_snapshot(
+                output=args.output, probe_provider=args.probe_provider
+            )
+        elif args.provider == "overview" and args.command == "serve":
+            result = handle_overview_serve(
+                port=args.port,
+                probe_provider=args.probe_provider,
                 open_browser=not args.no_browser,
             )
         elif args.command == "status":

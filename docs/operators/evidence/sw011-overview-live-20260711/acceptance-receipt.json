@@ -1,0 +1,47 @@
+{
+  "accepted_at": "2026-07-11T03:36:29Z",
+  "claims": {
+    "active_sw009_and_regie_jobs_projected": true,
+    "bounded_display_profiles": true,
+    "corrupt_local_receipts_isolated": true,
+    "every_observation_time_and_source_bound": true,
+    "expired_regie_authorization_explicit": true,
+    "explicit_fullscreen_action": true,
+    "fragment_session_token": true,
+    "freshness_recomputed": true,
+    "no_post_routes": true,
+    "owner_only_snapshots": true,
+    "provider_identifiers_excluded": true,
+    "provider_outage_preserves_local_diagnostics": true,
+    "read_only_loopback_http": true,
+    "registry_backed_navigation": true,
+    "summary_counts_recomputed": true
+  },
+  "file_sha256": {
+    "docs/operators/evidence/sw011-overview-live-20260711/failure-matrix.json": "46ed64117eea86e84ab71ebfb5f539d72d41a66cda9d55750b39bfed15f81167",
+    "docs/operators/evidence/sw011-overview-live-20260711/interface-contract.json": "e4ff8f9c0045e49b7f11366bac21f1b9d32d4d0f18ef078799670f82b5642e6d",
+    "docs/operators/evidence/sw011-overview-live-20260711/overview-snapshot.json": "e918669a371a693ce9ed7a1050fe4e4921f38a139c8c62212accec0e734b515a",
+    "src/schauwerk/cli_handlers.py": "1f034b6dbab0ee18fb9292e0d53123970f7dd30365d6c0e1978b2787cfb2ee8b",
+    "src/schauwerk/cli_parser.py": "a3e4c59a065227e85c335eafad8ece9e8b921707c5c1b32e5d9f6c7739d67973",
+    "src/schauwerk/overview/collector.py": "4ea40b31336d01402fe8a07e520648caf7cac401a3808da50fad3c343a782433",
+    "src/schauwerk/overview/html.py": "092e8c7bccdb9f9b017afc88626b5a6721b6ece11a5162c5477d6b97bcb153c2",
+    "src/schauwerk/overview/model.py": "3414c62aa3ac94d5571cc9a7a07936e2a2894c5471db577c3be691fd06ba6748",
+    "src/schauwerk/overview/server.py": "0ec7af7c93fd84cf540538f71627783cbe8239eaa33f3b6c13c924a86ace0c64",
+    "src/schauwerk/runner.py": "d49a35159611f36e861d3aef193749b70b3082c4950f8f9c480bb86e7d7e429a",
+    "tests/overview/test_collector.py": "29d72cd5c49c90fd2fade8ae56201eda9c8cf8b62e6054d348a03606ddf85a59",
+    "tests/overview/test_overview_cli.py": "94df614428e608690884bb3623a7f2b2a89b2e85e9eb7abf16d4800c615727c8",
+    "tests/overview/test_overview_evidence.py": "2e5935f7433421dffd5dc4cfbce29ed554e5c087fe56d56139a324e7fc54e997",
+    "tests/overview/test_overview_server.py": "2df1bf0693fbbfa3b93760d4b392347bf81ed2bcd5de00984075104f232cd417"
+  },
+  "fixture_only": true,
+  "full_suite": {
+    "failed": 0,
+    "passed": 428,
+    "registry_validation": "pass",
+    "ruff": "pass"
+  },
+  "productive_provider_mutation_attempted": false,
+  "repeatability_verified": true,
+  "schema_version": "sw011-overview-acceptance.v1",
+  "sensitivity_findings": []
+}

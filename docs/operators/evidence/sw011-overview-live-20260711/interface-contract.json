@@ -1,0 +1,33 @@
+{
+  "bind_host": "127.0.0.1",
+  "content_security_policy": true,
+  "external_assets": false,
+  "fullscreen_action_explicit": true,
+  "loopback_host_header_required": true,
+  "mutation_attempted": false,
+  "post_routes": false,
+  "private_api_requires_token": true,
+  "profiles": {
+    "incident": {
+      "fullscreen": true,
+      "refresh_seconds": 15
+    },
+    "operator": {
+      "fullscreen": false,
+      "refresh_seconds": 60
+    },
+    "wallboard": {
+      "fullscreen": true,
+      "refresh_seconds": 30
+    }
+  },
+  "provider_identifiers_in_ui": false,
+  "read_only": true,
+  "refresh_bounds_seconds": [
+    15,
+    3600
+  ],
+  "schema_version": "sw011-overview-interface-contract.v1",
+  "serial_http": true,
+  "session_token_transport": "url-fragment-to-tab-session-storage"
+}
