@@ -16,7 +16,7 @@ def _sha(text: str) -> str:
 def _write_fixture(root: Path) -> Path:
     rendered = root / "rendered"
     rendered.mkdir(parents=True)
-    overview = "flowchart TD\n  A[Cabinet]\n"
+    overview = "flowchart TD\n  A[Heimgewebe-Systemkatalog]\n"
     registry = "flowchart TD\n  B[Registry]\n"
     (rendered / "ecosystem-map.mmd").write_text(overview, encoding="utf-8")
     (rendered / "ecosystem-registry-map.mmd").write_text(registry, encoding="utf-8")
@@ -24,7 +24,7 @@ def _write_fixture(root: Path) -> Path:
         "schemaVersion": 1,
         "kind": "cabinet_ecosystem_map_artifact_manifest",
         "source": {
-            "repository": "heimgewebe/cabinet",
+            "repository": "heimgewebe/heimgewebe-katalog",
             "commit": "a" * 40,
             "generatedAt": "2026-07-05T00:00:00Z",
         },
@@ -59,8 +59,8 @@ def test_render_ecosystem_map_html_writes_source_handoff(tmp_path: Path) -> None
     assert receipt["mode"] == "source_html"
     assert receipt["diagram_rendered"] is False
     assert receipt["source_commit"] == "a" * 40
-    assert "Cabinet commit" in html
-    assert "A[Cabinet]" in html
+    assert "System catalog commit" in html
+    assert "A[Heimgewebe-Systemkatalog]" in html
     assert "B[Registry]" in html
     assert "read-only presentation handoff" in html
 
