@@ -9,7 +9,7 @@ This directory proves the implementation contract without mutating a productive 
 - `live-plan.json` proves the complete no-mutation plan binding and required execution sequence.
 - `provider-capabilities.json` records the sanitized live Miro MCP capability observation used during implementation.
 - `failure-matrix.json` lists the exercised fail-closed and recovery cases.
-- `acceptance-receipt.json` binds the 381-test validation, capability result and critical source/evidence hashes.
+- `acceptance-receipt.json` binds the 407-test repository validation, capability result and critical source/evidence hashes.
 
 The checked-in fixture files are intentionally not owner-only after a normal Git checkout. Productive loaders reject such files. Real drafts, bundles, authorizations, plans, journals and receipts are written locally with mode `0600`.
 

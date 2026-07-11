@@ -1,0 +1,145 @@
+{
+  "approval_reference": "fixture:sw010-acceptance",
+  "approved_by": "fixture-operator",
+  "approved_operation_ids": [
+    "replace-reviewed-summary"
+  ],
+  "authorization": {
+    "approval_reference": "fixture:sw010-acceptance",
+    "approved": true,
+    "approved_at": "2026-07-11T02:00:00Z",
+    "approved_by": "fixture-operator",
+    "authorization_digest": "636bb780b684c0bd971548d3ebe240f590aeca285cbf456f794d3a0ba38b11de",
+    "authorization_id": "regie-e5c54f7fe3bdd956a4f8ec5a-authorization",
+    "boundary": {
+      "explicit_live_apply": true,
+      "gate_receipt_bound": true,
+      "operation_bundle_bound": true,
+      "single_use": true
+    },
+    "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "expires_at": "2026-07-11T02:15:00Z",
+    "gate_receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+    "operation_bundle_digest": "5768a751976fa30d28f43ebdd4c7d2cfd7dbad1a14bf5995871993a616675f83",
+    "region_id": "managed-summary",
+    "schema_version": "typed-region-live-authorization.v1",
+    "surface_alias": "sw009-fixture-board"
+  },
+  "boundary": {
+    "explicit_apply_still_required": true,
+    "no_provider_mutation": true,
+    "partial_approval_applied": true,
+    "provider_identifiers_excluded": true
+  },
+  "decided_at": "2026-07-11T02:00:00Z",
+  "decision_digest": "075c47340173cfbad1a25428bf2f115e86bdb05494309416b46cd64c83e2f588",
+  "decisions": [
+    {
+      "decision": "approve",
+      "operation_id": "replace-reviewed-summary"
+    },
+    {
+      "decision": "reject",
+      "operation_id": "replace-reviewed-detail"
+    }
+  ],
+  "deferred_operation_ids": [],
+  "plan": {
+    "authorization": {
+      "approval_reference": "fixture:sw010-acceptance",
+      "approved_at": "2026-07-11T02:00:00Z",
+      "approved_by": "fixture-operator",
+      "authorization_id": "regie-e5c54f7fe3bdd956a4f8ec5a-authorization",
+      "expires_at": "2026-07-11T02:15:00Z"
+    },
+    "boundary": {
+      "exact_text_replacement_only": true,
+      "managed_region_only": true,
+      "provider_identifiers_not_returned": true,
+      "provider_references_prohibited_in_inputs": true,
+      "reviewed_authorization_required": true
+    },
+    "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "live_apply_attempted": false,
+    "marker": "schauwerk-region:managed-summary",
+    "mutation_attempted": false,
+    "ok": true,
+    "operation": "render-update",
+    "operation_count": 1,
+    "operations": [
+      {
+        "action": "replace-text",
+        "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+        "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+        "operation_id": "replace-reviewed-summary",
+        "region_id": "managed-summary"
+      }
+    ],
+    "plan_digest": "7b3bf472962b7385d0ba6a9fe3e0081950af15e5eb4b2c418b7715703e06d506",
+    "ready_for_live_apply": true,
+    "region_id": "managed-summary",
+    "required_capabilities": [
+      "layout_read",
+      "layout_update"
+    ],
+    "required_sequence": [
+      "check_kill_switch",
+      "reserve_single_use_authorization",
+      "capture_verified_before_snapshot",
+      "read_live_dsl",
+      "verify_unique_managed_region_matches",
+      "persist_prepared_journal",
+      "apply_exact_text_replacements",
+      "read_live_dsl_after_apply",
+      "verify_semantics_and_idempotency",
+      "capture_verified_after_snapshot",
+      "persist_transaction_receipt"
+    ],
+    "restore_required": true,
+    "schema_version": "typed-region-live-apply-plan.v1",
+    "source_receipts": {
+      "authorization_digest": "636bb780b684c0bd971548d3ebe240f590aeca285cbf456f794d3a0ba38b11de",
+      "gate_receipt_digest": "ee575e0f0be38ea09aa5dc3e660cb3bfb39e0cd56e202f1a063adb940b35f06c",
+      "operation_bundle_digest": "5768a751976fa30d28f43ebdd4c7d2cfd7dbad1a14bf5995871993a616675f83"
+    },
+    "surface_alias": "sw009-fixture-board"
+  },
+  "rejected_operation_ids": [
+    "replace-reviewed-detail"
+  ],
+  "review_digest": "e5c54f7fe3bdd956a4f8ec5ae02f137dd5261e391d45985e1dc2f03eef65efeb",
+  "review_id": "sw010-regie-fixture",
+  "schema_version": "schauwerk-regie-decision-receipt.v1",
+  "selected_bundle": {
+    "boundary": {
+      "exact_text_replacement_only": true,
+      "managed_region_only": true,
+      "provider_references_prohibited": true,
+      "restore_required": true,
+      "review_required": true
+    },
+    "bundle_digest": "5768a751976fa30d28f43ebdd4c7d2cfd7dbad1a14bf5995871993a616675f83",
+    "bundle_id": "regie-e5c54f7fe3bdd956a4f8ec5a-selected",
+    "expected_snapshot_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "marker": "schauwerk-region:managed-summary",
+    "operation": "render-update",
+    "operations": [
+      {
+        "action": "replace-text",
+        "new_text": "[schauwerk-region:managed-summary] NEW FIXTURE SUMMARY",
+        "old_text": "[schauwerk-region:managed-summary] OLD FIXTURE SUMMARY",
+        "operation_id": "replace-reviewed-summary",
+        "region_id": "managed-summary"
+      }
+    ],
+    "region_id": "managed-summary",
+    "schema_version": "typed-region-live-operation-bundle.v1",
+    "surface_alias": "sw009-fixture-board"
+  },
+  "source_receipts": {
+    "authorization_digest": "636bb780b684c0bd971548d3ebe240f590aeca285cbf456f794d3a0ba38b11de",
+    "plan_digest": "7b3bf472962b7385d0ba6a9fe3e0081950af15e5eb4b2c418b7715703e06d506",
+    "review_digest": "e5c54f7fe3bdd956a4f8ec5ae02f137dd5261e391d45985e1dc2f03eef65efeb",
+    "selected_bundle_digest": "5768a751976fa30d28f43ebdd4c7d2cfd7dbad1a14bf5995871993a616675f83"
+  }
+}

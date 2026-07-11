@@ -1,5 +1,5 @@
 {
-  "accepted_at": "2026-07-11T01:37:06Z",
+  "accepted_at": "2026-07-11T03:12:01Z",
   "claims": {
     "allowlisted_alias_and_expected_revision_bound": true,
     "atomic_single_use_reservation": true,
@@ -11,6 +11,8 @@
     "drift_protected_restore": true,
     "exact_full_dsl_postflight": true,
     "explicit_expiring_authorization": true,
+    "failed_apply_receipts_exactly_validated": true,
+    "failed_restore_retry_receipt_bound": true,
     "kill_switch_present": true,
     "layout_dsl_size_limited": true,
     "loaded_authorization_schema_stable": true,
@@ -23,19 +25,19 @@
   },
   "file_sha256": {
     "docs/operators/evidence/sw009-live-executor-20260711/authorization.json": "a2190a2fa32b737173b1db7c4e05a48bf2774f7c1c0926e7e78dbb3d514ece45",
-    "docs/operators/evidence/sw009-live-executor-20260711/failure-matrix.json": "4e922a7c7c5c8252489b30b6dac8a0c8d2e19d78caffce3fec6cfd3698b9e106",
+    "docs/operators/evidence/sw009-live-executor-20260711/failure-matrix.json": "126e69c8e0e503c53c4529f61a16e93c5c5b0e1cdca4596cbf564d2f8ebee2b0",
     "docs/operators/evidence/sw009-live-executor-20260711/gate-receipt.json": "0a01141462089315818bdf40b419b83fe12a80801344bc5ceb4d1c304832b114",
     "docs/operators/evidence/sw009-live-executor-20260711/live-plan.json": "2bb906250efbda43b8aa48f7172ee0df5bbda047e93658f68d150c7aa0e2e6f1",
     "docs/operators/evidence/sw009-live-executor-20260711/operation-bundle.json": "3cc4f9b1b647e5eed505f40f5d624467ba14c5a82233bc24de87272b3e28f3fc",
     "docs/operators/evidence/sw009-live-executor-20260711/operation-draft.json": "1fa60a69ff6c759542c2309d6c2399efff65c5ed21274348e855306e73b24079",
     "docs/operators/evidence/sw009-live-executor-20260711/provider-capabilities.json": "93c9874ac6d33886e8fc1536ad7fe4c2195e9fa82b450f5977e7d365346b3a33",
-    "src/schauwerk/cli_handlers.py": "fa8b23a4348a5280eef1e7e8d203f35d31ff27b015960fbdbc013c0be9f3d07d",
-    "src/schauwerk/cli_parser.py": "928d3edebeaa5b29b204f1d8ebb009a95a97717f202b0799a7640567f03396e2",
-    "src/schauwerk/operator/live_apply.py": "b5582915f2d3f849d217de1e726cebd0a6055b60885ba8e5a9de9c228cb61002",
-    "src/schauwerk/runner.py": "d485c9a0b61615660d6a4d806484d9c7293665b53637a4d2186f9f069f0866be",
+    "src/schauwerk/cli_handlers.py": "0abb8d90aff68eae39911399639db2de41a7338db5bdc4d2042132daac953ce9",
+    "src/schauwerk/cli_parser.py": "080204d17d72f0b5785c2f9c90ee9523db8b2e594ce63cc14d7bb966f5d14886",
+    "src/schauwerk/operator/live_apply.py": "90c9bc17fa1d6003d6e93b20170fa32f24437a2590acdc4a4779bc45f665edc2",
+    "src/schauwerk/runner.py": "08f48ded45895a82e7b4107cdad767711335e311c0e40be2bbfee1122411de4f",
     "src/schauwerk/surfaces/miro/managed_region_runtime.py": "b8cd393aff21a0aca8ad2590465c7dffb0adf863028fe45a1dc9d6b54ca83d6d",
     "tests/miro/test_managed_region_runtime.py": "10f5dcffcacf9ee13509a4668d236e7aa175c4c722f33fdc9b4b8ac301aab1b9",
-    "tests/operator/test_live_apply.py": "ce375925b767016ce894b7293b14b8f792d995aee7ae1930c48d817914e06eb3",
+    "tests/operator/test_live_apply.py": "2b727464e741ae9b8b06fb748bf1338d8c3015855472e8fb77c48b6ae36571f2",
     "tests/operator/test_live_apply_evidence.py": "9d5526af0f26c52ba1dfbf8ea334f86725bb6ef596173ffd94966bd9b7953ab1",
     "tests/operator/test_live_apply_handlers.py": "9bf77e49d42236cd90cf488ba0bcc55de0a5e6bb4b1f75a9abdc81aead3afa1c",
     "tests/test_cli.py": "a2820daff56546783a9051545d628de7bab29ad78d0e6b1c033c0906801fb32a"
@@ -43,7 +45,7 @@
   "fixture_only": true,
   "full_suite": {
     "failed": 0,
-    "passed": 381,
+    "passed": 407,
     "registry_validation": "pass",
     "ruff": "pass"
   },

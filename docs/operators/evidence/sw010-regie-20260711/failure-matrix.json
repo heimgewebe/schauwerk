@@ -1,0 +1,20 @@
+{
+  "cases": [
+    "unknown or provider-linked source references fail closed",
+    "stale and uncertainty projections cannot be hand-edited",
+    "decisions must cover every operation exactly once",
+    "zero approved operations cannot create effect authority",
+    "changed decisions cannot replace an immutable decision receipt",
+    "invalid decision, apply and restore confirmations fail closed",
+    "expired authorization blocks before provider discovery",
+    "active kill switch blocks before provider discovery",
+    "invalid loopback host or session token blocks private API access",
+    "non-JSON or oversized requests fail closed",
+    "tampered transaction and restore receipts fail before projection",
+    "apply replay does not repeat provider mutation",
+    "restore replay does not repeat inverse mutation",
+    "browser projections omit journal and local output paths"
+  ],
+  "productive_provider_mutation_attempted": false,
+  "schema_version": "sw010-regie-failure-matrix.v1"
+}

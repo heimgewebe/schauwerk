@@ -77,6 +77,16 @@ from .operator.sw003_closeout import LIVE_GATE_EVALUATION_SCHEMA_VERSION
 from .pilots.grabowski import write_grabowski_pilot
 from .pilots.grabowski_operational import write_operational_pilot
 from .pilots.software import write_software_pilot
+from .regie.model import (
+    compile_regie_context,
+    compile_review_bundle,
+    load_regie_context,
+    load_review_bundle,
+    read_private_json,
+    write_private_json,
+)
+from .regie.server import serve_regie
+from .regie.service import RegieController
 from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.client import MiroMCPClient
@@ -89,6 +99,118 @@ from .visual.grammar import (
     write_visual_grammar,
     zoomlandkarte_template,
 )
+
+
+def handle_regie_context_template(
+    *, review_id: str, title: str, output: str
+) -> dict[str, Any]:
+    draft = {
+        "review_id": review_id,
+        "title": title,
+        "summary": "EDIT ME: bounded purpose of this review",
+        "instructions": ["EDIT ME: review instruction"],
+        "sources": [
+            {
+                "source_id": "edit-me-source",
+                "title": "EDIT ME: source title",
+                "revision": "EDIT ME",
+                "observed_at": datetime.now(UTC)
+                .replace(microsecond=0)
+                .isoformat()
+                .replace("+00:00", "Z"),
+                "freshness": "unknown",
+                "visibility": "private",
+                "citation": "source:edit-me",
+                "uncertainty": 1.0,
+            }
+        ],
+        "context": [
+            {
+                "label": "EDIT ME: constraint",
+                "value": "EDIT ME: bounded context",
+                "state": "constraint",
+                "source_id": "edit-me-source",
+            }
+        ],
+    }
+    destination = write_private_json(
+        Path(output), draft, label="Regie context draft"
+    )
+    return {
+        "schema_version": "schauwerk-regie-context-template-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "review_id": review_id,
+        "output_path": str(destination),
+    }
+
+
+def handle_regie_context_compile(*, draft_path: str, output: str) -> dict[str, Any]:
+    draft = read_private_json(Path(draft_path), label="Regie context draft")
+    context = compile_regie_context(draft)
+    destination = write_private_json(Path(output), context, label="Regie context")
+    return {
+        "schema_version": "schauwerk-regie-context-compile-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "review_id": context["review_id"],
+        "context_digest": context["context_digest"],
+        "output_path": str(destination),
+    }
+
+
+def handle_regie_review(
+    *, context_path: str, gate_path: str, bundle_path: str, output: str
+) -> dict[str, Any]:
+    review = compile_review_bundle(
+        context=load_regie_context(Path(context_path)),
+        gate_receipt=load_live_apply_gate(Path(gate_path)),
+        operation_bundle=load_live_operation_bundle(Path(bundle_path)),
+    )
+    destination = write_private_json(
+        Path(output), review, label="Regie review bundle"
+    )
+    return {
+        "schema_version": "schauwerk-regie-review-compile-receipt.v1",
+        "ok": True,
+        "mutation_attempted": False,
+        "review_id": review["review_id"],
+        "review_digest": review["review_digest"],
+        "operation_count": len(review["operations"]),
+        "stale_source_ids": review["stale_source_ids"],
+        "maximum_uncertainty": review["maximum_uncertainty"],
+        "output_path": str(destination),
+    }
+
+
+def handle_regie_serve(
+    *, review_bundle: str, port: int, open_browser: bool
+) -> dict[str, Any]:
+    review = load_review_bundle(Path(review_bundle))
+    client = MiroMCPClient()
+
+    async def provider_factory() -> MiroManagedRegionProvider:
+        catalogue = (await client.tools()).to_dict()
+        return MiroManagedRegionProvider(
+            client.settings, client.storage, cached_tools=catalogue
+        )
+
+    controller = RegieController(
+        review_bundle=review,
+        state_root=client.settings.state_root.parent / "regie",
+        journal_root=client.settings.state_root / "transactions",
+        kill_switch_path=client.settings.state_root / "LIVE_APPLY_DISABLED",
+        provider_factory=provider_factory,
+    )
+    serve_regie(
+        controller, port=port, open_browser=open_browser
+    )
+    return {
+        "schema_version": "schauwerk-regie-server-stop-receipt.v1",
+        "ok": True,
+        "loopback_only": True,
+        "review_digest": controller.review["review_digest"],
+    }
 
 
 def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:

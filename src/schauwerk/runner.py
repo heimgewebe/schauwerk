@@ -24,6 +24,10 @@ from .cli_handlers import (
     handle_login,
     handle_logout,
     handle_quality,
+    handle_regie_context_compile,
+    handle_regie_context_template,
+    handle_regie_review,
+    handle_regie_serve,
     handle_region_apply_receipt,
     handle_region_apply_scaffold,
     handle_region_apply_simulation,
@@ -113,6 +117,27 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.provider == "visual" and args.command == "grammar":
             result = handle_visual_grammar(output=args.output)
+        elif args.provider == "regie" and args.command == "context-template":
+            result = handle_regie_context_template(
+                review_id=args.review_id, title=args.title, output=args.output
+            )
+        elif args.provider == "regie" and args.command == "context-compile":
+            result = handle_regie_context_compile(
+                draft_path=args.draft, output=args.output
+            )
+        elif args.provider == "regie" and args.command == "review":
+            result = handle_regie_review(
+                context_path=args.context,
+                gate_path=args.gate,
+                bundle_path=args.bundle,
+                output=args.output,
+            )
+        elif args.provider == "regie" and args.command == "serve":
+            result = handle_regie_serve(
+                review_bundle=args.review_bundle,
+                port=args.port,
+                open_browser=not args.no_browser,
+            )
         elif args.command == "status":
             result = handle_status(live=args.live)
         elif args.command == "login":

@@ -1,0 +1,52 @@
+{
+  "boundary": {
+    "local_private_only": true,
+    "no_mutation_authority": true,
+    "provider_identifiers_excluded": true
+  },
+  "context": [
+    {
+      "label": "Scope",
+      "source_id": "repo-snapshot",
+      "state": "constraint",
+      "value": "One allowlisted managed fixture region"
+    },
+    {
+      "label": "Revision risk",
+      "source_id": "board-snapshot",
+      "state": "risk",
+      "value": "A current preflight snapshot remains mandatory"
+    }
+  ],
+  "context_digest": "bbf405feedf4db0b97d1769a3e579ccc95306a699d9d72abe838dc91908039e5",
+  "instructions": [
+    "Inspect source freshness and uncertainty.",
+    "Decide every operation independently."
+  ],
+  "review_id": "sw010-regie-fixture",
+  "schema_version": "schauwerk-regie-context.v1",
+  "sources": [
+    {
+      "citation": "repo:fixture@20260711",
+      "freshness": "fresh",
+      "observed_at": "2026-07-11T01:45:00Z",
+      "revision": "fixture-main-20260711",
+      "source_id": "repo-snapshot",
+      "title": "Fixture repository snapshot",
+      "uncertainty": 0.02,
+      "visibility": "internal"
+    },
+    {
+      "citation": "snapshot:fixture-before",
+      "freshness": "stale",
+      "observed_at": "2026-07-10T20:00:00Z",
+      "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "source_id": "board-snapshot",
+      "title": "Fixture board snapshot",
+      "uncertainty": 0.35,
+      "visibility": "private"
+    }
+  ],
+  "summary": "Review two bounded fixture changes without productive provider effect.",
+  "title": "Fixture managed-region review"
+}

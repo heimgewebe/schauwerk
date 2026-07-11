@@ -144,6 +144,7 @@ The transaction journal always lives below the canonical Schauwerk state root. O
 - Preflight mismatch consumes the single-use authorization without touching Miro.
 - Provider response loss after a mutation triggers a fresh board read; actually applied operations are detected and reversed.
 - A failed restore reconstructs its current state and attempts to return to the committed after-state.
+- A restore retry after successful recovery is accepted only when the prior failure receipt binds the original transaction digest and the updated committed journal digest.
 - If automatic rollback cannot prove the expected digest, the receipt requires manual recovery and never claims restore readiness.
 - External board drift blocks restore before the first inverse operation.
 
