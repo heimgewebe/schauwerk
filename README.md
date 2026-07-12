@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Product surface complete; integrated and durable local v1.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013 sowie die providerneutralen Grundlagen für Quellenadapter, sichere Wartungsvorschläge, sichtbarkeitsgebundene Suche und überprüfbare Betriebs- und Recovery-Artefakte bis SW-017.
+**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017 sowie das semantische Visual System v2 für hochwertige Miro-Schauwerke in SW-018.
 
 ## Zielbild
 
@@ -98,6 +98,26 @@ schauwerk miro snapshot sw002-fixture --json
 
 Board-URLs werden lokal in einer Datei mit Modus `0600` persistiert; eine bestehende Alias-Zuordnung wird nur mit `--replace` geändert. Der Snapshot ersetzt Provider-IDs und URLs durch Digests, entfernt volatile Identitäts- und Zeitfelder, erkennt doppelte Referenzen, liest das Board zweimal und schreibt nur bei identischem Inhalts- und Paginationsergebnis über einen symlink-sicheren Zielpfad ein Artefakt. `--no-comments`, `--output`, `--item-limit`, `--comment-limit` und `--max-pages` begrenzen den Leseumfang.
 
+## Visual System v2
+
+```bash
+schauwerk visual system-v2 --json
+schauwerk visual reference-v2 \
+  --spec-output /tmp/schauwerk-v2/board-spec.json \
+  --dsl-output /tmp/schauwerk-v2/board.dsl \
+  --quality-output /tmp/schauwerk-v2/quality.json \
+  --json
+schauwerk visual review-v2 \
+  ~/.local/state/schauwerk/miro/live-tests/visual-v2/live-test-receipt.json \
+  review-input.json \
+  --output visual-review.json \
+  --json
+```
+
+Visual System v2 wählt Miro-Objekte nach ihrer Informationsfunktion, erzwingt einen vollständigen Lesepfad sowie eine eindeutige Titel-/Kernaussagen-Hierarchie und blockiert überfüllte Frames, dekorative Farbverwendung, Connector-Wirrwarr und Haftnotizen als Ersatz für fertige Fakten. Eine Freigabe benötigt mindestens 90/100 und null Blocker. Der Remote-Readback beweist die Umsetzung des Plans, nicht automatisch seine ästhetische Qualität.
+
+Siehe `docs/visual/schauwerk-visual-system-v2.md`.
+
 ## Learning View
 
 ```bash
@@ -177,5 +197,6 @@ Siehe `docs/integration/source-adapters-v1.md` und `docs/operations/durable-oper
 - SW-015: ausschließlich vorschlagende Wartung für verwaltete Regionen; fremde Regionen und widersprüchliche Quellen werden blockiert
 - SW-016: optionale lokale Suche und beleggebundene Hinweise unter strikter Sichtbarkeitsgrenze
 - SW-017: lokale Betriebsprofile, Health-, Backup-, gestagte Restore-, OAuth-Rotations- und Kill-Switch-Drill-Verträge
+- SW-018: semantisches Visual System v2 mit narrativer Boardarchitektur, zweckgebundener Objektwahl, messbarer Dichte und strengem Qualitätsgate
 
 Siehe `docs/roadmap.md`.

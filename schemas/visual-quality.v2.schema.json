@@ -1,0 +1,95 @@
+{
+  "$id": "https://heimgewebe.org/schauwerk/schemas/visual-quality.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "blockers": {
+      "type": "array"
+    },
+    "board_digest": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category_scores": {
+      "type": "object"
+    },
+    "connector_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "frame_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "geometry_contract": {
+      "type": "object"
+    },
+    "mutation_attempted": {
+      "const": false
+    },
+    "object_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "provider_auto_sized_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "quality_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "remote_geometry_required": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "schauwerk-visual-quality.v2"
+    },
+    "score": {
+      "maximum": 100,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "semantic_color_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sticky_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "threshold": {
+      "const": 90
+    },
+    "warnings": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "ok",
+    "score",
+    "threshold",
+    "category_scores",
+    "blockers",
+    "warnings",
+    "frame_count",
+    "object_count",
+    "connector_count",
+    "sticky_count",
+    "semantic_color_count",
+    "provider_auto_sized_count",
+    "geometry_contract",
+    "board_digest",
+    "mutation_attempted",
+    "remote_geometry_required",
+    "quality_digest"
+  ],
+  "title": "Schauwerk Visual Quality v2",
+  "type": "object"
+}

@@ -1,0 +1,74 @@
+{
+  "automatic_quality": {
+    "automatic_aesthetic_claim": false,
+    "quality_digest": "e629485c29a848948a433f9b35f0eb7b6f312b8cbe0c1a95b6054a01b120bbff",
+    "score": 100
+  },
+  "axes": {
+    "aesthetic_character": {
+      "finding": "The result is a restrained editorial information deck; visual interest comes from rhythm, semantic contrast and purposeful object variation instead of decoration.",
+      "verdict": "PASS"
+    },
+    "density_and_whitespace": {
+      "finding": "The 1120 by 630 frames preserve a 60-pixel safety margin and deliberate whitespace without reducing the board to decorative emptiness.",
+      "verdict": "PASS"
+    },
+    "hierarchy": {
+      "finding": "Each frame has one dominant title, one thesis and one bounded main visual without a competing headline layer.",
+      "verdict": "PASS"
+    },
+    "information_architecture": {
+      "finding": "Seven finite frames form cover, reading map, object choice, architecture, quality gate, before/after synthesis and evidence appendix.",
+      "verdict": "PASS"
+    },
+    "object_selection": {
+      "finding": "Comparisons use tables, evidence uses a document and table, relationships use seven connectors, decisions and risks use shapes, and finished content uses zero sticky notes.",
+      "verdict": "PASS"
+    },
+    "palette_and_consistency": {
+      "finding": "Five restrained semantic colour roles distinguish structure, evidence, decision and risk while text and shape remain redundant cues.",
+      "verdict": "PASS"
+    },
+    "readability": {
+      "finding": "Frame-level preview text is readable and aligned; overview mode exposes the narrative sequence rather than attempting to show body copy.",
+      "verdict": "PASS"
+    }
+  },
+  "board_alias": "schauwerk-visual-system-v2-20260712",
+  "board_digest": "7ccc0cb5b22aea2fc4e3a6da94f146ca0893c74d1388765bb956ecc26871270e",
+  "board_reference_digest": "6a84f345a0902078",
+  "failed_axes": [],
+  "method": {
+    "authenticated_provider_screenshot": "not_available",
+    "design_surface": "deterministic board-spec visual preview",
+    "excluded_capture": "Unauthenticated Miro private-access page was excluded from visual evidence.",
+    "provider_binding": "exact remote item-type and connector-count conformance"
+  },
+  "mutation_attempted": false,
+  "non_claims": [
+    "universal aesthetic preference",
+    "pixel-identical Miro UI rendering",
+    "authenticated Miro screenshot evidence",
+    "permission to alter existing unrelated boards"
+  ],
+  "remote_conformance": {
+    "geometry_used_for_aesthetic_score": false,
+    "mismatches": {},
+    "observed": {
+      "connector_count": 7,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 38,
+      "table_count": 3
+    }
+  },
+  "review_digest": "4725e79da68a3a8774bc4305801757f6235bd8cdae6fe8f6ff891ca63957995b",
+  "reviewed_at": "2026-07-12T22:12:26Z",
+  "reviewer": "Schauwerk operator review",
+  "schema_version": "schauwerk-visual-review.v2",
+  "source_receipts": {
+    "live_receipt_digest": "70fd3ccae79a1de92c42a27259f2e0bd85f338ef3b91e0d248e8303da1840c03",
+    "quality_digest": "e629485c29a848948a433f9b35f0eb7b6f312b8cbe0c1a95b6054a01b120bbff"
+  },
+  "verdict": "PASS"
+}

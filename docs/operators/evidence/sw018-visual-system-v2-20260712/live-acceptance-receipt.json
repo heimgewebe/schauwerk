@@ -1,0 +1,94 @@
+{
+  "board_alias": "schauwerk-visual-system-v2-20260712",
+  "board_digest": "7ccc0cb5b22aea2fc4e3a6da94f146ca0893c74d1388765bb956ecc26871270e",
+  "board_reference_digest": "6a84f345a0902078",
+  "board_urls_included": false,
+  "credentials_included": false,
+  "live_artifact_hashes": {
+    "board_dsl_sha256": "90b526735ee78b7faccb417651a4832200ebb957e51f01d132577075b0130162",
+    "board_spec_sha256": "bfc3fac7df7afd548f5ebba11ce79464d9042e8313d4c6b2e261405818be5330",
+    "live_test_receipt_sha256": "e9c944b5421193a3e996e8340516b48040bca8e111f1db59d98e05a0364c69ef",
+    "quality_v2_sha256": "02af017cffd9bdea7cf7058b82ea295be420bfdf4afe19e526bfa29008834710",
+    "remote_snapshot_sha256": "da50684f221b65dc383d945c4cd2e170f70362c8d0a629f934c53a55ae0872fb",
+    "visual_review_receipt_sha256": "a02d0ab52baf4c71beda142b09c0f6ba62fe5a56d073767ecf7c5a9f6f89c47f"
+  },
+  "provider_ids_included": false,
+  "remote_conformance": {
+    "expected_minimums": {
+      "connector_count": 7,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 38,
+      "table_count": 3
+    },
+    "geometry_used_for_aesthetic_score": false,
+    "mismatches": {},
+    "observed": {
+      "connector_count": 7,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 38,
+      "table_count": 3
+    },
+    "ok": true
+  },
+  "schema_version": "schauwerk-visual-live-acceptance.v2",
+  "visual_review": {
+    "axes": {
+      "aesthetic_character": {
+        "finding": "The result is a restrained editorial information deck; visual interest comes from rhythm, semantic contrast and purposeful object variation instead of decoration.",
+        "verdict": "PASS"
+      },
+      "density_and_whitespace": {
+        "finding": "The 1120 by 630 frames preserve a 60-pixel safety margin and deliberate whitespace without reducing the board to decorative emptiness.",
+        "verdict": "PASS"
+      },
+      "hierarchy": {
+        "finding": "Each frame has one dominant title, one thesis and one bounded main visual without a competing headline layer.",
+        "verdict": "PASS"
+      },
+      "information_architecture": {
+        "finding": "Seven finite frames form cover, reading map, object choice, architecture, quality gate, before/after synthesis and evidence appendix.",
+        "verdict": "PASS"
+      },
+      "object_selection": {
+        "finding": "Comparisons use tables, evidence uses a document and table, relationships use seven connectors, decisions and risks use shapes, and finished content uses zero sticky notes.",
+        "verdict": "PASS"
+      },
+      "palette_and_consistency": {
+        "finding": "Five restrained semantic colour roles distinguish structure, evidence, decision and risk while text and shape remain redundant cues.",
+        "verdict": "PASS"
+      },
+      "readability": {
+        "finding": "Frame-level preview text is readable and aligned; overview mode exposes the narrative sequence rather than attempting to show body copy.",
+        "verdict": "PASS"
+      }
+    },
+    "method": {
+      "authenticated_provider_screenshot": "not_available",
+      "design_surface": "deterministic board-spec visual preview",
+      "excluded_capture": "Unauthenticated Miro private-access page was excluded from visual evidence.",
+      "provider_binding": "exact remote item-type and connector-count conformance"
+    },
+    "non_claims": [
+      "universal aesthetic preference",
+      "pixel-identical Miro UI rendering",
+      "authenticated Miro screenshot evidence",
+      "permission to alter existing unrelated boards"
+    ],
+    "review_digest": "4725e79da68a3a8774bc4305801757f6235bd8cdae6fe8f6ff891ca63957995b",
+    "verdict": "PASS"
+  },
+  "visual_system_quality": {
+    "automatic_aesthetic_claim": false,
+    "blockers": 0,
+    "geometry_contract": {
+      "declared_boxes": "design_review_only",
+      "table_doc": "provider_auto_sized_type_and_anchor_verified",
+      "text_shape_sticky": "provider_dimensions_requested"
+    },
+    "provider_auto_sized_count": 4,
+    "score": 100,
+    "warnings": 0
+  }
+}

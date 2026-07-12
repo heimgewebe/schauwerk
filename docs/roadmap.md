@@ -189,6 +189,21 @@ No service was installed and no live provider or host effect was performed. Sche
 
 **Gate:** passed locally for profile determinism, required/optional health, backup integrity, staged restore mismatch, path safety, rotation boundaries and drill evidence. The operational gate remains open until the target-specific live exercises are authorized and recorded.
 
+## SW-018 — Visual System v2
+
+**Implementation status:** complete for the deterministic repository contract and reference renderer. Visual System v2 separates the semantic board specification, the quality gate and the Miro renderer. It assigns frames, shapes, connectors, tables, documents and sticky notes by information function; requires a finite reading path, one title and thesis per frame, a semantic five-role palette, consistent frame rhythm and at least 42 percent deliberate white space. Finished facts rendered as sticky notes, unseparated evidence, connector clutter and count-rich but narratively weak boards fail closed.
+
+The canonical seven-frame reference board contains no sticky notes. It uses a cover, reading map, object-selection matrix, information-architecture model, quality gate, before/after synthesis and evidence appendix. Local release requires at least 90/100 and no blockers. Remote Miro readback proves the plan was created; aesthetic acceptance additionally requires an actual UI review because provider geometry can be incomplete.
+
+Command graph:
+
+- contract path: `visual system-v2 → versioned manifest`;
+- compile path: `visual reference-v2 → board spec + quality receipt + Miro DSL`;
+- live path: `quality gate → fresh allowlisted board → before snapshot → layout create → after snapshot → readback conformance`;
+- review path: `rendered board → separate UI inspection → bounded visual review receipt`.
+
+**Gate:** passed by adversarial narrative, object-misuse, density, connector and digest tests plus one new Education-team reference board with remote conformance and human-visible UI review.
+
 ## Release levels
 
 ### Foundation
@@ -202,6 +217,9 @@ SW-011 through SW-013.
 
 ### Integrated and durable
 SW-014 through SW-017.
+
+### Visually governed
+SW-018.
 
 ## Explicit non-goals for the first releases
 

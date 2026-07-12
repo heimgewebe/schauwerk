@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/schemas/visual-board.v2.schema.json",
+  "title": "Schauwerk Visual Board v2",
+  "type": "object",
+  "required": ["schema_version", "title", "purpose", "reading_path", "frames", "visual_system_digest", "remote_readback_role", "board_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-visual-board.v2"},
+    "title": {"type": "string", "minLength": 1},
+    "purpose": {"type": "string", "minLength": 1},
+    "reading_path": {"type": "array", "minItems": 5, "uniqueItems": true, "items": {"type": "string"}},
+    "frames": {"type": "array", "minItems": 5, "maxItems": 9, "items": {"type": "object"}},
+    "visual_system_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "remote_readback_role": {"const": "conformance_only"},
+    "board_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}

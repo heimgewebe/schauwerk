@@ -1,0 +1,6 @@
+{
+  "manifest_digest": "6e592b295cff0ef8084b8955201b0f8b9ea32741f1ec67a6eb0b27b68d0f106c",
+  "mutation_attempted": false,
+  "output": "/home/alex/.local/state/schauwerk/miro/live-tests/schauwerk-visual-system-v2-20260712/visual-system.json",
+  "schema_version": "schauwerk-visual-system-write-receipt.v2"
+}

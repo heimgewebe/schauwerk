@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/schemas/visual-review.v2.schema.json",
+  "title": "Schauwerk Visual Review v2",
+  "type": "object",
+  "required": ["schema_version", "reviewed_at", "reviewer", "board_alias", "board_reference_digest", "board_digest", "method", "axes", "verdict", "failed_axes", "automatic_quality", "remote_conformance", "non_claims", "source_receipts", "mutation_attempted", "review_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-visual-review.v2"},
+    "reviewed_at": {"type": "string", "format": "date-time"},
+    "reviewer": {"type": "string", "minLength": 1},
+    "board_alias": {"type": "string", "minLength": 1},
+    "board_reference_digest": {"type": "string", "pattern": "^[0-9a-f]{8,64}$"},
+    "board_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "method": {"type": "object"},
+    "axes": {"type": "object", "minProperties": 7, "maxProperties": 7},
+    "verdict": {"enum": ["PASS", "FAIL"]},
+    "failed_axes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "automatic_quality": {"type": "object"},
+    "remote_conformance": {"type": "object"},
+    "non_claims": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "source_receipts": {"type": "object"},
+    "mutation_attempted": {"const": false},
+    "review_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}

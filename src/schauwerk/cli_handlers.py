@@ -136,6 +136,19 @@ from .visual.grammar import (
     write_visual_grammar,
     zoomlandkarte_template,
 )
+from .visual.system_v2 import (
+    compile_visual_review,
+    reference_board_spec,
+    render_board_dsl,
+    validate_board_spec,
+    visual_system_manifest,
+)
+from .visual.system_v2 import (
+    write_json as write_visual_json,
+)
+from .visual.system_v2 import (
+    write_text as write_visual_text,
+)
 
 
 def _durable_output(
@@ -492,6 +505,237 @@ def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:
         "validation": validate_visual_grammar(manifest),
         "manifest": manifest,
     }
+
+
+def handle_visual_system_v2(*, output: str | None) -> dict[str, Any]:
+    manifest = visual_system_manifest()
+    if output:
+        destination = write_visual_json(Path(output), manifest)
+        return {
+            "schema_version": "schauwerk-visual-system-write-receipt.v2",
+            "manifest_digest": manifest["manifest_digest"],
+            "output": str(destination),
+            "mutation_attempted": False,
+        }
+    return manifest
+
+
+def handle_visual_reference_v2(
+    *, spec_output: str | None, dsl_output: str | None, quality_output: str | None
+) -> dict[str, Any]:
+    spec = reference_board_spec()
+    quality = validate_board_spec(spec)
+    rendered = render_board_dsl(spec)
+    outputs: dict[str, str] = {}
+    if spec_output:
+        outputs["spec"] = str(write_visual_json(Path(spec_output), spec))
+    if dsl_output:
+        outputs["dsl"] = str(write_visual_text(Path(dsl_output), rendered))
+    if quality_output:
+        outputs["quality"] = str(write_visual_json(Path(quality_output), quality))
+    return {
+        "schema_version": "schauwerk-visual-reference-compile.v2",
+        "board_digest": spec["board_digest"],
+        "quality": quality,
+        "frame_count": len(spec["frames"]),
+        "object_count": sum(len(frame["objects"]) for frame in spec["frames"]),
+        "dsl_line_count": len([line for line in rendered.splitlines() if line.strip()]),
+        "outputs": outputs,
+        "mutation_attempted": False,
+    }
+
+
+def handle_visual_review_v2(*, live_receipt: str, review_input: str, output: str) -> dict[str, Any]:
+    value = compile_visual_review(
+        read_durable_json(Path(live_receipt), label="Visual System v2 live receipt"),
+        read_durable_json(Path(review_input), label="Visual System v2 review input"),
+    )
+    destination = write_visual_json(Path(output), value)
+    return {
+        "schema_version": "schauwerk-visual-review-write-receipt.v2",
+        "review_digest": value["review_digest"],
+        "verdict": value["verdict"],
+        "output": str(destination),
+        "mutation_attempted": False,
+    }
+
+
+def handle_visual_v2_live_test(
+    *,
+    alias: str,
+    board_name: str,
+    output_dir: str | None,
+    replace_alias: bool,
+    reuse_existing_alias: bool,
+    resume_after_layout: bool,
+    item_limit: int,
+    comment_limit: int,
+    max_pages: int,
+    include_comments: bool,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    spec = reference_board_spec()
+    quality = validate_board_spec(spec)
+    rendered = render_board_dsl(spec)
+    base = Path(output_dir) if output_dir else active.settings.snapshots_root / "live-tests" / alias
+    base.mkdir(parents=True, exist_ok=True, mode=0o700)
+    write_visual_json(base / "visual-system.json", visual_system_manifest())
+    write_visual_json(base / "board-spec.json", spec)
+    write_visual_json(base / "quality-v2.json", quality)
+    write_visual_text(base / "board.dsl", rendered)
+
+    if replace_alias and reuse_existing_alias:
+        raise ValueError("replace and reuse are mutually exclusive")
+    if resume_after_layout and not reuse_existing_alias:
+        raise ValueError("resume after layout requires reuse existing alias")
+    if reuse_existing_alias:
+        allowlist = BoardAllowlist(active.settings.board_allowlist_path)
+        entry = next((item for item in allowlist.list() if item.alias == alias), None)
+        if entry is None:
+            raise ValueError("Visual System v2 reuse requires an allowlisted alias")
+        board = {
+            "alias": entry.alias,
+            "reference_digest": entry.reference_digest,
+            "reused_existing_alias": True,
+        }
+    else:
+        board = asyncio.run(
+            active.board_create(
+                alias=alias,
+                name=board_name,
+                description=(
+                    "Schauwerk Visual System v2 reference board: semantic object choice, "
+                    "narrative hierarchy and evidence-separated design."
+                ),
+                replace_alias=replace_alias,
+                invocation_source="schauwerk-visual-system-v2",
+            )
+        ).to_dict()
+        board["reused_existing_alias"] = False
+    write_visual_json(base / "board-binding.json", board)
+    if resume_after_layout:
+        before_path = base / "before.json"
+        if not before_path.is_file() or before_path.is_symlink():
+            raise ValueError("resume after layout requires a safe before snapshot")
+        before = {
+            "board_alias": alias,
+            "output_path": str(before_path),
+            "resumed_from_existing": True,
+        }
+        layout = {
+            "success": True,
+            "resumed_after_layout": True,
+            "created_count": None,
+        }
+    else:
+        before = asyncio.run(
+            active.snapshot(
+                alias=alias,
+                output_path=base / "before.json",
+                item_limit=item_limit,
+                comment_limit=comment_limit,
+                max_pages=max_pages,
+                include_comments=include_comments,
+            )
+        ).to_dict()
+        layout = asyncio.run(
+            active.layout_create(
+                alias=alias,
+                dsl=rendered,
+                invocation_source="schauwerk-visual-system-v2",
+            )
+        ).to_dict()
+    after = asyncio.run(
+        active.snapshot(
+            alias=alias,
+            output_path=base / "after.json",
+            item_limit=item_limit,
+            comment_limit=comment_limit,
+            max_pages=max_pages,
+            include_comments=include_comments,
+        )
+    ).to_dict()
+    layout_read = asyncio.run(
+        active.layout_read_summary(alias=alias, invocation_source="schauwerk-visual-system-v2")
+    ).to_dict()
+    expected = {
+        "frame_count": len(spec["frames"]),
+        "connector_count": sum(
+            item["kind"] == "connector" for frame in spec["frames"] for item in frame["objects"]
+        ),
+        "doc_count": sum(
+            item["kind"] == "doc" for frame in spec["frames"] for item in frame["objects"]
+        ),
+        "table_count": sum(
+            item["kind"] == "table" for frame in spec["frames"] for item in frame["objects"]
+        ),
+        "remote_item_count": len(spec["frames"])
+        + sum(item["kind"] != "connector" for frame in spec["frames"] for item in frame["objects"]),
+    }
+    snapshot_document = json.loads((base / "after.json").read_text(encoding="utf-8"))
+    snapshot_items = snapshot_document.get("items")
+    if not isinstance(snapshot_items, list):
+        raise ValueError("Visual System v2 after snapshot has no item list")
+    type_counts: dict[str, int] = {}
+    for item in snapshot_items:
+        if isinstance(item, dict) and isinstance(item.get("type"), str):
+            type_counts[item["type"]] = type_counts.get(item["type"], 0) + 1
+    observed = {
+        "frame_count": type_counts.get("frame", 0),
+        "connector_count": int(layout_read.get("connector_count", 0)),
+        "doc_count": type_counts.get("doc_format", 0),
+        "table_count": type_counts.get("data_table_format", 0),
+        "remote_item_count": len(snapshot_items),
+    }
+    mismatches = {
+        key: {"expected_minimum": value, "observed": observed[key]}
+        for key, value in expected.items()
+        if observed[key] < value
+    }
+    if mismatches:
+        raise ValueError("Visual System v2 remote readback does not conform to the compiled plan")
+    remote_conformance = {
+        "ok": True,
+        "expected_minimums": expected,
+        "observed": observed,
+        "mismatches": {},
+        "geometry_used_for_aesthetic_score": False,
+    }
+    live_test_record = create_live_test_record(
+        active.settings,
+        alias=alias,
+        reference_digest=str(board.get("reference_digest", "")),
+        topic="Schauwerk Visual System v2",
+        board_name=board_name,
+        output_dir=base,
+    ).to_dict()
+    result = {
+        "schema_version": "schauwerk-visual-system-live-test.v2",
+        "alias": alias,
+        "board_name": board_name,
+        "board": board,
+        "before": before,
+        "layout": layout,
+        "after": after,
+        "layout_read": layout_read,
+        "local_quality": quality,
+        "remote_conformance": remote_conformance,
+        "visual_review": {
+            "status": "pending_separate_ui_review",
+            "automatic_score_prohibited": True,
+        },
+        "output_dir": str(base),
+        "live_test_record": live_test_record,
+        "mutation_attempted": True,
+        "existing_board_mutation_attempted": reuse_existing_alias,
+        "partial_live_run_recovered": reuse_existing_alias,
+        "resumed_after_layout": resume_after_layout,
+        "remote_cleanup_supported": False,
+        "remote_cleanup_attempted": False,
+    }
+    write_visual_json(base / "live-test-receipt.json", result)
+    return result
 
 
 def handle_education_render(*, input_path: str, variant: str, output: str | None) -> dict[str, Any]:

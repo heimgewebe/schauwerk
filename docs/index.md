@@ -17,7 +17,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 4. [Learning View v1](education/learning-view-v1.md)
 5. [Education variants and offline packages](education/variants-offline.md)
 6. [Visual Grammar v1](visuals/miro-visual-grammar-v1.md)
-7. [Miro live recovery](operations/miro-live-recovery.md)
+7. [Visual System v2](visual/schauwerk-visual-system-v2.md)
+8. [Visual System v2 live reference](operators/visual-system-v2-live.md)
+9. [Miro live recovery](operations/miro-live-recovery.md)
 8. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
 9. [SW-009 reviewed live executor v1](operators/sw009-live-executor-v1.md)
 10. [SW-010 Regie v1](operators/sw010-regie-v1.md)
@@ -67,8 +69,12 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/search-index.v1.schema.json`
 - `schemas/operations-health.v1.schema.json`
 - `schemas/backup-manifest.v1.schema.json`
+- `schemas/visual-system.v2.schema.json`
+- `schemas/visual-board.v2.schema.json`
+- `schemas/visual-quality.v2.schema.json`
+- `schemas/visual-review.v2.schema.json`
 - `registry/`
 
 ## Current status
 
-The local product surface through SW-013 and repository-level integrated/durable v1 contracts through SW-017 are implemented. Schauwerk now normalizes declared local source observations with visible failure state, compiles proposal-only maintenance for managed regions, provides cited visibility-aware local search and produces deterministic health, backup, staged-restore, OAuth-rotation and kill-switch-drill artifacts. Productive Miro writes remain operation-specific and require the existing review, authorization, apply, postflight and restore chain. Real collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation, executed backups/restores and live recovery drills remain separate target-bound effects.
+The local product surface through SW-013, repository-level integrated/durable v1 contracts through SW-017 and the semantic Visual System v2 in SW-018 are implemented. Schauwerk now normalizes declared local source observations with visible failure state, compiles proposal-only maintenance for managed regions, provides cited visibility-aware local search and produces deterministic health, backup, staged-restore, OAuth-rotation and kill-switch-drill artifacts. Visual System v2 now rejects missing narrative structure, semantic object misuse, weak hierarchy and excessive density before rendering. Productive Miro writes remain operation-specific and require the existing review, authorization, apply, postflight and restore chain. Real collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation, executed backups/restores and live recovery drills remain separate target-bound effects.

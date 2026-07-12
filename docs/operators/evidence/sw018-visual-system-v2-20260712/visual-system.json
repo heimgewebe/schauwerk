@@ -1,0 +1,247 @@
+{
+  "color_roles": {
+    "decision": {
+      "background": "#FFF8DD",
+      "border": "#B7791F",
+      "foreground": "#3C2F12"
+    },
+    "evidence": {
+      "background": "#EAF8F0",
+      "border": "#2F855A",
+      "foreground": "#173B2D"
+    },
+    "ink": {
+      "background": "#F8FAFC",
+      "border": "#BCCCDC",
+      "foreground": "#102A43"
+    },
+    "risk": {
+      "background": "#FFE8E8",
+      "border": "#C53030",
+      "foreground": "#4A1010"
+    },
+    "structure": {
+      "background": "#E6F6F8",
+      "border": "#147D92",
+      "foreground": "#0B3C49"
+    }
+  },
+  "font_levels": {
+    "body": 18,
+    "caption": 14,
+    "display": 38,
+    "heading": 24
+  },
+  "frame_roles": [
+    "cover",
+    "map",
+    "object_selection",
+    "architecture",
+    "quality_gate",
+    "example",
+    "evidence"
+  ],
+  "limits": {
+    "frame_margin": 60,
+    "grid": 20,
+    "max_body_characters": 220,
+    "max_connector_ratio": 0.35,
+    "max_doc_characters": 900,
+    "max_frames": 9,
+    "max_objects_per_frame": 9,
+    "max_stickies_per_board": 2,
+    "max_visual_coverage": 0.58,
+    "min_frames": 5
+  },
+  "manifest_digest": "6e592b295cff0ef8084b8955201b0f8b9ea32741f1ec67a6eb0b27b68d0f106c",
+  "object_kinds": [
+    "connector",
+    "doc",
+    "shape",
+    "sticky",
+    "table",
+    "text"
+  ],
+  "official_miro_references": [
+    "https://miro.com/de/",
+    "https://miro.com/de/templates/",
+    "https://miro.com/de/capabilities/slides/",
+    "https://miro.com/de/capabilities/diagrams/",
+    "https://help.miro.com/hc/de"
+  ],
+  "principles": [
+    "information architecture before decoration",
+    "one main claim per frame",
+    "object type follows information function",
+    "colour encodes role and is never the only cue",
+    "reading path is explicit and finite",
+    "evidence is accessible but visually subordinate",
+    "declared design boxes are authoritative for overlap and density review",
+    "Miro tables and documents are provider-auto-sized and verified by type and anchor",
+    "remote readback proves conformance, not aesthetics"
+  ],
+  "role_contract": {
+    "action": {
+      "colors": [
+        "decision",
+        "structure"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape"
+      ]
+    },
+    "caption": {
+      "colors": [
+        "ink"
+      ],
+      "fonts": [
+        "caption"
+      ],
+      "kinds": [
+        "text"
+      ]
+    },
+    "comparison": {
+      "colors": [
+        "ink"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "table"
+      ]
+    },
+    "decision": {
+      "colors": [
+        "decision"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape"
+      ]
+    },
+    "entity": {
+      "colors": [
+        "structure",
+        "ink"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape"
+      ]
+    },
+    "evidence": {
+      "colors": [
+        "evidence"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape",
+        "table",
+        "doc"
+      ]
+    },
+    "explanation": {
+      "colors": [
+        "ink"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "doc"
+      ]
+    },
+    "open_input": {
+      "colors": [
+        "decision"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "sticky"
+      ]
+    },
+    "orientation": {
+      "colors": [
+        "structure"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape"
+      ]
+    },
+    "relation": {
+      "colors": [
+        "structure",
+        "ink"
+      ],
+      "fonts": [
+        "caption"
+      ],
+      "kinds": [
+        "connector"
+      ]
+    },
+    "risk": {
+      "colors": [
+        "risk"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "shape"
+      ]
+    },
+    "source": {
+      "colors": [
+        "evidence"
+      ],
+      "fonts": [
+        "body"
+      ],
+      "kinds": [
+        "doc",
+        "table"
+      ]
+    },
+    "thesis": {
+      "colors": [
+        "ink",
+        "structure"
+      ],
+      "fonts": [
+        "heading"
+      ],
+      "kinds": [
+        "text"
+      ]
+    },
+    "title": {
+      "colors": [
+        "ink"
+      ],
+      "fonts": [
+        "display"
+      ],
+      "kinds": [
+        "text"
+      ]
+    }
+  },
+  "schema_version": "schauwerk-visual-system.v2"
+}
