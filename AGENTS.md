@@ -27,7 +27,7 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - Semantic services are optional enrichments and must not block the core workflow.
 
 ## Current Scope
-The local product surface through SW-013 and the repository-level integrated/durable v1 contracts through SW-017 are implemented. Reviewed live apply and Regie exist and remain operation-specific. Source collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation and live recovery drills require separate target-bound authorization and evidence.
+The local product surface through SW-013, the repository-level integrated/durable v1 contracts through SW-017 and Visual System v2 in SW-018 are implemented. Reviewed live apply and Regie exist and remain operation-specific. Source collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation and live recovery drills require separate target-bound authorization and evidence.
 
 ## Required Checks
 Run `make validate`.
@@ -41,6 +41,7 @@ Run `make validate`.
 - authentication and mutation code under `src/schauwerk/surfaces/` and `src/schauwerk/operator/`
 - pilot source compilers under `src/schauwerk/pilots/`
 - durable integration and recovery contracts under `src/schauwerk/durable/`
+- Visual System v2 contracts and renderer under `src/schauwerk/visual/system_v2.py`
 
 ## Forbidden Content
 - OAuth credentials and refresh tokens

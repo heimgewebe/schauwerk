@@ -1,0 +1,635 @@
+{
+  "board_digest": "7ccc0cb5b22aea2fc4e3a6da94f146ca0893c74d1388765bb956ecc26871270e",
+  "frames": [
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f1_cover",
+      "number": 1,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Schauwerk Visual System v2",
+          "font_level": "display",
+          "h": 80,
+          "id": "f1_cover_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Klarheit vor Dekoration. Bedeutung vor Objektmenge.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f1_cover_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "Ein Schauwerk führt in 10 Sekunden zur Orientierung – und in wenigen Minuten zur belastbaren Einsicht.",
+          "font_level": "body",
+          "h": 160,
+          "id": "cover_rule",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 960,
+          "x": 80,
+          "y": 300
+        }
+      ],
+      "role": "cover",
+      "title": "Schauwerk Visual System v2",
+      "w": 1120,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f2_map",
+      "number": 2,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Lesekarte",
+          "font_level": "display",
+          "h": 80,
+          "id": "f2_map_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Jeder Inhalt erhält einen sichtbaren Platz im Erkenntnisweg.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f2_map_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "1\nOrientieren",
+          "font_level": "body",
+          "h": 120,
+          "id": "map_a",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "2\nVerstehen",
+          "font_level": "body",
+          "h": 120,
+          "id": "map_b",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 340,
+          "y": 300
+        },
+        {
+          "color_role": "decision",
+          "content": "3\nBewerten",
+          "font_level": "body",
+          "h": 120,
+          "id": "map_c",
+          "kind": "shape",
+          "role": "decision",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 600,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "content": "4\nBelegen",
+          "font_level": "body",
+          "h": 120,
+          "id": "map_d",
+          "kind": "shape",
+          "role": "evidence",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 860,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "weiter",
+          "font_level": "caption",
+          "from": "map_a",
+          "id": "map_ab",
+          "kind": "connector",
+          "role": "relation",
+          "to": "map_b"
+        },
+        {
+          "color_role": "structure",
+          "content": "prüfen",
+          "font_level": "caption",
+          "from": "map_b",
+          "id": "map_bc",
+          "kind": "connector",
+          "role": "relation",
+          "to": "map_c"
+        },
+        {
+          "color_role": "structure",
+          "content": "sichern",
+          "font_level": "caption",
+          "from": "map_c",
+          "id": "map_cd",
+          "kind": "connector",
+          "role": "relation",
+          "to": "map_d"
+        }
+      ],
+      "role": "map",
+      "title": "Lesekarte",
+      "w": 1120,
+      "x": 1300,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f3_objects",
+      "number": 3,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Objektwahl",
+          "font_level": "display",
+          "h": 80,
+          "id": "f3_objects_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Nicht alles ist eine Haftnotiz. Die Form trägt die Bedeutung.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f3_objects_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "ink",
+          "columns": [
+            "Inhalt",
+            "Objekt",
+            "Warum"
+          ],
+          "content": "Inhalt → Miro-Objekt Inhalt Objekt Warum Beziehung Connector Richtung sichtbar Vergleich Tabelle Dichte ohne Kartenwand Erklärung Dokument Text bleibt lesbar Offene Idee Haftnotiz bewusst veränderlich",
+          "font_level": "body",
+          "h": 220,
+          "id": "objects_matrix",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "comparison",
+          "rows": [
+            [
+              "Beziehung",
+              "Connector",
+              "Richtung sichtbar"
+            ],
+            [
+              "Vergleich",
+              "Tabelle",
+              "Dichte ohne Kartenwand"
+            ],
+            [
+              "Erklärung",
+              "Dokument",
+              "Text bleibt lesbar"
+            ],
+            [
+              "Offene Idee",
+              "Haftnotiz",
+              "bewusst veränderlich"
+            ]
+          ],
+          "title": "Inhalt → Miro-Objekt",
+          "w": 680,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "risk",
+          "content": "Blocker\nHaftnotizen für fertige Fakten oder lange Erklärungen",
+          "font_level": "body",
+          "h": 180,
+          "id": "objects_guard",
+          "kind": "shape",
+          "role": "risk",
+          "shape": "round_rectangle",
+          "w": 240,
+          "x": 800,
+          "y": 320
+        }
+      ],
+      "role": "object_selection",
+      "title": "Objektwahl",
+      "w": 1120,
+      "x": 2600,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f4_architecture",
+      "number": 4,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Informationsarchitektur",
+          "font_level": "display",
+          "h": 80,
+          "id": "f4_architecture_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Ein Frame beantwortet eine Hauptfrage – nicht sieben Nebenfragen.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f4_architecture_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "Einstieg\nWorum geht es?",
+          "font_level": "body",
+          "h": 120,
+          "id": "arch_a",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "Kern\nWas gilt?",
+          "font_level": "body",
+          "h": 120,
+          "id": "arch_b",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 340,
+          "y": 300
+        },
+        {
+          "color_role": "decision",
+          "content": "Synthese\nWas folgt?",
+          "font_level": "body",
+          "h": 120,
+          "id": "arch_c",
+          "kind": "shape",
+          "role": "decision",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 600,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "content": "Evidenz\nWoher wissen wir es?",
+          "font_level": "body",
+          "h": 120,
+          "id": "arch_d",
+          "kind": "shape",
+          "role": "evidence",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 860,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "fokussieren",
+          "font_level": "caption",
+          "from": "arch_a",
+          "id": "arch_ab",
+          "kind": "connector",
+          "role": "relation",
+          "to": "arch_b"
+        },
+        {
+          "color_role": "structure",
+          "content": "verdichten",
+          "font_level": "caption",
+          "from": "arch_b",
+          "id": "arch_bc",
+          "kind": "connector",
+          "role": "relation",
+          "to": "arch_c"
+        },
+        {
+          "color_role": "structure",
+          "content": "belegen",
+          "font_level": "caption",
+          "from": "arch_c",
+          "id": "arch_cd",
+          "kind": "connector",
+          "role": "relation",
+          "to": "arch_d"
+        }
+      ],
+      "role": "architecture",
+      "title": "Informationsarchitektur",
+      "w": 1120,
+      "x": 3900,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f5_quality",
+      "number": 5,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Qualitätsgate v2",
+          "font_level": "display",
+          "h": 80,
+          "id": "f5_quality_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Viele Objekte ergeben noch kein gutes Board.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f5_quality_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "ink",
+          "columns": [
+            "Dimension",
+            "Muss gelten"
+          ],
+          "content": "Freigabekriterien Dimension Muss gelten Narration Lesepfad vollständig Hierarchie Titel und Kernaussage eindeutig Dichte mindestens 42 % Weißraum Semantik Objekt und Farbe erfüllen eine Rolle",
+          "font_level": "body",
+          "h": 220,
+          "id": "quality_matrix",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "comparison",
+          "rows": [
+            [
+              "Narration",
+              "Lesepfad vollständig"
+            ],
+            [
+              "Hierarchie",
+              "Titel und Kernaussage eindeutig"
+            ],
+            [
+              "Dichte",
+              "mindestens 42 % Weißraum"
+            ],
+            [
+              "Semantik",
+              "Objekt und Farbe erfüllen eine Rolle"
+            ]
+          ],
+          "title": "Freigabekriterien",
+          "w": 680,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "decision",
+          "content": "Freigabe\n≥ 90 Punkte\n0 Blocker",
+          "font_level": "body",
+          "h": 180,
+          "id": "quality_decision",
+          "kind": "shape",
+          "role": "decision",
+          "shape": "rhombus",
+          "w": 240,
+          "x": 800,
+          "y": 320
+        }
+      ],
+      "role": "quality_gate",
+      "title": "Qualitätsgate v2",
+      "w": 1120,
+      "x": 5200,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f6_example",
+      "number": 6,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Vorher / Nachher",
+          "font_level": "display",
+          "h": 80,
+          "id": "f6_example_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Der Unterschied liegt in der Ordnung, nicht im Schmuck.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f6_example_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "risk",
+          "content": "Vorher\nTechnisch reich\nvisuell gleichgewichtet\nkein klarer Fokus",
+          "font_level": "body",
+          "h": 200,
+          "id": "example_before",
+          "kind": "shape",
+          "role": "risk",
+          "shape": "round_rectangle",
+          "w": 360,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "content": "Nachher\n7 Rollenframes\nklare Dramaturgie\nsemantische Objekte",
+          "font_level": "body",
+          "h": 200,
+          "id": "example_after",
+          "kind": "shape",
+          "role": "evidence",
+          "shape": "round_rectangle",
+          "w": 360,
+          "x": 680,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "neu ordnen",
+          "font_level": "caption",
+          "from": "example_before",
+          "id": "example_change",
+          "kind": "connector",
+          "role": "relation",
+          "to": "example_after"
+        }
+      ],
+      "role": "example",
+      "title": "Vorher / Nachher",
+      "w": 1120,
+      "x": 6500,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "f7_evidence",
+      "number": 7,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Evidenz und Grenzen",
+          "font_level": "display",
+          "h": 80,
+          "id": "f7_evidence_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Gestaltung bleibt prüfbar, ohne sich als objektive Schönheit auszugeben.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "f7_evidence_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "evidence",
+          "content": "# Forschungsbasis\n\nMiro: Canvas, Diagramme, Präsentationen, Vorlagen, Focus Mode, Layers und Hilfecenter.\n\nDer deterministische Plan wird vollständig geprüft; der Remote-Readback bestätigt nur die Umsetzung.",
+          "font_level": "body",
+          "h": 220,
+          "id": "evidence_sources",
+          "kind": "doc",
+          "provider_geometry": "auto_sized",
+          "role": "source",
+          "w": 600,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "columns": [
+            "Grenze"
+          ],
+          "content": "Nicht-Ansprüche Grenze kein universeller Geschmack keine automatische Fremdboard-Änderung keine Schönheit durch Objektzählung",
+          "font_level": "body",
+          "h": 200,
+          "id": "evidence_limits",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "evidence",
+          "rows": [
+            [
+              "kein universeller Geschmack"
+            ],
+            [
+              "keine automatische Fremdboard-Änderung"
+            ],
+            [
+              "keine Schönheit durch Objektzählung"
+            ]
+          ],
+          "title": "Nicht-Ansprüche",
+          "w": 280,
+          "x": 760,
+          "y": 300
+        }
+      ],
+      "role": "evidence",
+      "title": "Evidenz und Grenzen",
+      "w": 1120,
+      "x": 7800,
+      "y": 0
+    }
+  ],
+  "purpose": "Reference board for semantic object choice, narrative hierarchy and meaningful visual quality gates.",
+  "reading_path": [
+    "f1_cover",
+    "f2_map",
+    "f3_objects",
+    "f4_architecture",
+    "f5_quality",
+    "f6_example",
+    "f7_evidence"
+  ],
+  "remote_readback_role": "conformance_only",
+  "schema_version": "schauwerk-visual-board.v2",
+  "title": "Schauwerk Visual System v2 – Klarheit vor Dekoration",
+  "visual_system_digest": "6e592b295cff0ef8084b8955201b0f8b9ea32741f1ec67a6eb0b27b68d0f106c"
+}

@@ -1626,3 +1626,115 @@ def test_runner_dispatches_sw009_bundle_compile(monkeypatch, capsys) -> None:
     assert code == 0
     assert observed == {"draft_path": "draft.json", "output": "bundle.json"}
     assert json.loads(capsys.readouterr().out)["ok"] is True
+
+def test_runner_dispatches_visual_system_v2(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_system(*, output):
+        observed["output"] = output
+        return {"schema_version": "schauwerk-visual-system.v2", "manifest_digest": "a" * 64}
+
+    monkeypatch.setattr(runner, "handle_visual_system_v2", fake_system)
+    code = runner.main(["visual", "system-v2", "--output", "system.json", "--json"])
+    assert code == 0
+    assert observed == {"output": "system.json"}
+    assert json.loads(capsys.readouterr().out)["schema_version"] == "schauwerk-visual-system.v2"
+
+
+def test_runner_dispatches_visual_reference_v2(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_reference(**kwargs):
+        observed.update(kwargs)
+        return {"schema_version": "schauwerk-visual-reference-compile.v2", "frame_count": 7}
+
+    monkeypatch.setattr(runner, "handle_visual_reference_v2", fake_reference)
+    code = runner.main(
+        [
+            "visual",
+            "reference-v2",
+            "--spec-output",
+            "spec.json",
+            "--dsl-output",
+            "board.dsl",
+            "--quality-output",
+            "quality.json",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "spec_output": "spec.json",
+        "dsl_output": "board.dsl",
+        "quality_output": "quality.json",
+    }
+    assert json.loads(capsys.readouterr().out)["frame_count"] == 7
+
+
+def test_runner_dispatches_visual_v2_live_test(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_live(**kwargs):
+        observed.update(kwargs)
+        return {"schema_version": "schauwerk-visual-system-live-test.v2", "alias": kwargs["alias"]}
+
+    monkeypatch.setattr(runner, "handle_visual_v2_live_test", fake_live)
+    code = runner.main(
+        [
+            "miro",
+            "visual-v2-live-test",
+            "--alias",
+            "visual-v2-a",
+            "--board-name",
+            "Visual v2 A",
+            "--output-dir",
+            "/tmp/visual-v2-a",
+            "--no-comments",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "alias": "visual-v2-a",
+        "board_name": "Visual v2 A",
+        "output_dir": "/tmp/visual-v2-a",
+        "replace_alias": False,
+        "reuse_existing_alias": False,
+        "resume_after_layout": False,
+        "item_limit": 200,
+        "comment_limit": 50,
+        "max_pages": 20,
+        "include_comments": False,
+    }
+    assert json.loads(capsys.readouterr().out)["alias"] == "visual-v2-a"
+
+
+def test_runner_dispatches_visual_review_v2(monkeypatch, capsys) -> None:
+    observed = {}
+
+    def fake_review(**kwargs):
+        observed.update(kwargs)
+        return {
+            "schema_version": "schauwerk-visual-review-write-receipt.v2",
+            "verdict": "PASS",
+        }
+
+    monkeypatch.setattr(runner, "handle_visual_review_v2", fake_review)
+    code = runner.main(
+        [
+            "visual",
+            "review-v2",
+            "live.json",
+            "review-input.json",
+            "--output",
+            "review.json",
+            "--json",
+        ]
+    )
+    assert code == 0
+    assert observed == {
+        "live_receipt": "live.json",
+        "review_input": "review-input.json",
+        "output": "review.json",
+    }
+    assert json.loads(capsys.readouterr().out)["verdict"] == "PASS"

@@ -106,6 +106,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     visual_grammar.add_argument("--output")
     visual_grammar.add_argument("--json", action="store_true")
+    visual_system_v2 = visual_commands.add_parser(
+        "system-v2", help="validate or write the semantic Visual System v2 manifest"
+    )
+    visual_system_v2.add_argument("--output")
+    visual_system_v2.add_argument("--json", action="store_true")
+    visual_reference_v2 = visual_commands.add_parser(
+        "reference-v2", help="compile the canonical Visual System v2 reference board"
+    )
+    visual_reference_v2.add_argument("--spec-output")
+    visual_reference_v2.add_argument("--dsl-output")
+    visual_reference_v2.add_argument("--quality-output")
+    visual_reference_v2.add_argument("--json", action="store_true")
+    visual_review_v2 = visual_commands.add_parser(
+        "review-v2", help="bind a human visual review to one live Visual System v2 receipt"
+    )
+    visual_review_v2.add_argument("live_receipt")
+    visual_review_v2.add_argument("review_input")
+    visual_review_v2.add_argument("--output", required=True)
+    visual_review_v2.add_argument("--json", action="store_true")
 
     regie = providers.add_parser("regie", help="local receipt-bound review interface")
     regie_commands = regie.add_subparsers(dest="command", required=True)
@@ -383,6 +402,31 @@ def build_parser() -> argparse.ArgumentParser:
     quality.add_argument("--expected-min-docs", type=_bounded_integer(0, 1000), default=0)
     quality.add_argument("--expected-min-tables", type=_bounded_integer(0, 1000), default=0)
     quality.add_argument("--json", action="store_true")
+
+    visual_live = commands.add_parser(
+        "visual-v2-live-test", help="create and verify the canonical Visual System v2 board"
+    )
+    visual_live.add_argument("--alias", default="schauwerk-visual-system-v2-20260712")
+    visual_live.add_argument(
+        "--board-name", default="Schauwerk Visual System v2 – Klarheit vor Dekoration"
+    )
+    visual_live.add_argument("--output-dir")
+    visual_live.add_argument("--replace-alias", action="store_true")
+    visual_live.add_argument(
+        "--reuse-existing-alias",
+        action="store_true",
+        help="continue a previously created Visual System v2 test board",
+    )
+    visual_live.add_argument(
+        "--resume-after-layout",
+        action="store_true",
+        help="verify and close a partial run whose layout was already created",
+    )
+    visual_live.add_argument("--item-limit", type=_bounded_integer(10, 1000), default=200)
+    visual_live.add_argument("--comment-limit", type=_bounded_integer(1, 50), default=50)
+    visual_live.add_argument("--max-pages", type=_bounded_integer(1, 100), default=20)
+    visual_live.add_argument("--no-comments", action="store_true")
+    visual_live.add_argument("--json", action="store_true")
 
     learn = commands.add_parser("learn", help="render learning views for Miro")
     learn_commands = learn.add_subparsers(dest="learn_command", required=True)

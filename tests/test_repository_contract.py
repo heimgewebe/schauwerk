@@ -43,5 +43,11 @@ def test_canonical_docs_exist() -> None:
         "docs/index.md",
         "docs/architecture/schauwerk.md",
         "docs/roadmap.md",
+        "docs/visual/schauwerk-visual-system-v2.md",
+        "docs/operators/visual-system-v2-live.md",
+        "schemas/visual-system.v2.schema.json",
+        "schemas/visual-board.v2.schema.json",
+        "schemas/visual-quality.v2.schema.json",
+        "schemas/visual-review.v2.schema.json",
     ):
         assert (root / relative).is_file(), relative

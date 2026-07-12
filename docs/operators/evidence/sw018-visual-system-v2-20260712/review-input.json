@@ -1,0 +1,49 @@
+{
+  "axes": {
+    "aesthetic_character": {
+      "finding": "The result is a restrained editorial information deck; visual interest comes from rhythm, semantic contrast and purposeful object variation instead of decoration.",
+      "verdict": "PASS"
+    },
+    "density_and_whitespace": {
+      "finding": "The 1120 by 630 frames preserve a 60-pixel safety margin and deliberate whitespace without reducing the board to decorative emptiness.",
+      "verdict": "PASS"
+    },
+    "hierarchy": {
+      "finding": "Each frame has one dominant title, one thesis and one bounded main visual without a competing headline layer.",
+      "verdict": "PASS"
+    },
+    "information_architecture": {
+      "finding": "Seven finite frames form cover, reading map, object choice, architecture, quality gate, before/after synthesis and evidence appendix.",
+      "verdict": "PASS"
+    },
+    "object_selection": {
+      "finding": "Comparisons use tables, evidence uses a document and table, relationships use seven connectors, decisions and risks use shapes, and finished content uses zero sticky notes.",
+      "verdict": "PASS"
+    },
+    "palette_and_consistency": {
+      "finding": "Five restrained semantic colour roles distinguish structure, evidence, decision and risk while text and shape remain redundant cues.",
+      "verdict": "PASS"
+    },
+    "readability": {
+      "finding": "Frame-level preview text is readable and aligned; overview mode exposes the narrative sequence rather than attempting to show body copy.",
+      "verdict": "PASS"
+    }
+  },
+  "board_digest": "7ccc0cb5b22aea2fc4e3a6da94f146ca0893c74d1388765bb956ecc26871270e",
+  "method": {
+    "authenticated_provider_screenshot": "not_available",
+    "design_surface": "deterministic board-spec visual preview",
+    "excluded_capture": "Unauthenticated Miro private-access page was excluded from visual evidence.",
+    "provider_binding": "exact remote item-type and connector-count conformance"
+  },
+  "non_claims": [
+    "universal aesthetic preference",
+    "pixel-identical Miro UI rendering",
+    "authenticated Miro screenshot evidence",
+    "permission to alter existing unrelated boards"
+  ],
+  "reviewed_at": "2026-07-12T22:12:26Z",
+  "reviewer": "Schauwerk operator review",
+  "schema_version": "schauwerk-visual-review-input.v2",
+  "verdict": "PASS"
+}

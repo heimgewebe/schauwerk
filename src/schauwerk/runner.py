@@ -83,6 +83,10 @@ from .cli_handlers import (
     handle_status,
     handle_tools,
     handle_visual_grammar,
+    handle_visual_reference_v2,
+    handle_visual_review_v2,
+    handle_visual_system_v2,
+    handle_visual_v2_live_test,
 )
 from .cli_parser import build_parser
 from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
@@ -138,6 +142,20 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.provider == "visual" and args.command == "grammar":
             result = handle_visual_grammar(output=args.output)
+        elif args.provider == "visual" and args.command == "system-v2":
+            result = handle_visual_system_v2(output=args.output)
+        elif args.provider == "visual" and args.command == "reference-v2":
+            result = handle_visual_reference_v2(
+                spec_output=args.spec_output,
+                dsl_output=args.dsl_output,
+                quality_output=args.quality_output,
+            )
+        elif args.provider == "visual" and args.command == "review-v2":
+            result = handle_visual_review_v2(
+                live_receipt=args.live_receipt,
+                review_input=args.review_input,
+                output=args.output,
+            )
         elif args.provider == "regie" and args.command == "context-template":
             result = handle_regie_context_template(
                 review_id=args.review_id, title=args.title, output=args.output
@@ -319,6 +337,19 @@ def main(argv: list[str] | None = None) -> int:
                 expected_min_connectors=args.expected_min_connectors,
                 expected_min_docs=args.expected_min_docs,
                 expected_min_tables=args.expected_min_tables,
+            )
+        elif args.command == "visual-v2-live-test":
+            result = handle_visual_v2_live_test(
+                alias=args.alias,
+                board_name=args.board_name,
+                output_dir=args.output_dir,
+                replace_alias=args.replace_alias,
+                reuse_existing_alias=args.reuse_existing_alias,
+                resume_after_layout=args.resume_after_layout,
+                item_limit=args.item_limit,
+                comment_limit=args.comment_limit,
+                max_pages=args.max_pages,
+                include_comments=not args.no_comments,
             )
         elif args.command == "learn" and args.learn_command == "render":
             result = handle_learn_render(

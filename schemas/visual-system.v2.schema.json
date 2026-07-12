@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/schemas/visual-system.v2.schema.json",
+  "title": "Schauwerk Visual System v2",
+  "type": "object",
+  "required": ["schema_version", "principles", "frame_roles", "object_kinds", "font_levels", "color_roles", "role_contract", "limits", "official_miro_references", "manifest_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-visual-system.v2"},
+    "principles": {"type": "array", "minItems": 8, "items": {"type": "string"}},
+    "frame_roles": {"type": "array", "minItems": 7, "uniqueItems": true, "items": {"type": "string"}},
+    "object_kinds": {"type": "array", "minItems": 6, "uniqueItems": true, "items": {"type": "string"}},
+    "font_levels": {"type": "object"},
+    "color_roles": {"type": "object", "minProperties": 5},
+    "role_contract": {"type": "object", "minProperties": 10},
+    "limits": {"type": "object"},
+    "official_miro_references": {"type": "array", "minItems": 5, "items": {"type": "string", "format": "uri"}},
+    "manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}
