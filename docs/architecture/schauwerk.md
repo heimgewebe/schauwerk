@@ -1,7 +1,7 @@
 ---
 id: schauwerk-architecture
 role: norm
-status: proposed
+status: active
 doc_type: architecture
 title: Schauwerk architecture
 summary: System boundaries, components, data model, and invariants.
@@ -21,7 +21,7 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 
 - **core:** projects, views, sources, regions, proposals, publications, snapshots, and receipts.
 - **registry:** Git-versioned declarations with stable identifiers and schema validation.
-- **sources:** adapters for Git/GitHub, Lenskit, Cabinet, Vault, Leitstand, Chronik, and optional semantic services.
+- **sources:** adapters for Git/GitHub, Lenskit, Systemkatalog, Vault, Leitstand, Chronik, and optional semantic services.
 - **compiler:** turns source packages and templates into proposed view plans.
 - **surface adapters:** Miro first; later HTML, SVG, PowerPoint, Mermaid, and Obsidian Canvas.
 - **snapshot:** normalizes external surfaces into deterministic comparable state.
@@ -32,6 +32,7 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 - **publish:** sanitization and immutable publication bundles.
 - **archive:** snapshots, exports, previews, retention, and restore points.
 - **observability:** health, OAuth state, provider reachability, freshness, jobs, and failures.
+- **durable contracts:** normalized source observations, proposal-only maintenance, visibility-aware search, backup manifests and staged recovery verification.
 
 ## Region modes
 
@@ -93,7 +94,7 @@ Miro is the first collaborative surface. The direct adapter must use OAuth 2.1 w
 
 ## Deployment shape
 
-Initial operation is local on heim-pc with a Python CLI, filesystem registry, SQLite cache/index when needed, and a loopback-bound web surface. A later persistent internal or public deployment may run on heimserver after publication and access-control gates are proven.
+Operation is local on heim-pc with a Python CLI, filesystem registry, optional local index and loopback-bound web surfaces. No public host is selected. Persistent internal or public deployment remains a separate target-bound decision after access-control, backup and recovery acceptance.
 
 ## Non-goals
 

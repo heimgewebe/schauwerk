@@ -8,6 +8,31 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from .durable.adapters import (
+    adapter_catalog,
+    compile_observation_file,
+    compile_observation_set,
+    load_observation,
+    load_observation_set,
+)
+from .durable.common import read_json as read_durable_json
+from .durable.common import write_json as write_durable_json
+from .durable.maintenance import compile_maintenance_proposal
+from .durable.operations import (
+    compile_backup_manifest,
+    compile_health_receipt,
+    compile_kill_switch_drill,
+    compile_oauth_rotation_plan,
+    load_backup_manifest,
+    operation_profiles,
+    verify_staged_restore,
+)
+from .durable.search import (
+    compile_search_index,
+    load_search_index,
+    search_index,
+    semantic_suggestions,
+)
 from .ecosystem_map import render_ecosystem_map_html
 from .education.variants import write_education_variant, write_offline_package
 from .education.view import (
@@ -113,9 +138,132 @@ from .visual.grammar import (
 )
 
 
-def handle_overview_snapshot(
-    *, output: str, probe_provider: bool
+def _durable_output(
+    value: dict[str, Any], *, output: str | None, digest_field: str
 ) -> dict[str, Any]:
+    if output is None:
+        return value
+    destination = write_durable_json(Path(output), value)
+    return {
+        "schema_version": "schauwerk-durable-write-receipt.v1",
+        "ok": True,
+        "output": str(destination),
+        "artifact_schema": value["schema_version"],
+        "artifact_digest": value[digest_field],
+        "artifact_write_performed": True,
+        "provider_mutation_attempted": False,
+    }
+
+
+def handle_durable_adapter_catalog(*, output: str | None) -> dict[str, Any]:
+    return _durable_output(adapter_catalog(), output=output, digest_field="catalog_digest")
+
+
+def handle_durable_adapter_collect(
+    *, input_path: str, evaluated_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_observation_file(Path(input_path), evaluated_at=evaluated_at)
+    return _durable_output(value, output=output, digest_field="observation_digest")
+
+
+def handle_durable_adapter_set(
+    *, observations: list[str], created_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_observation_set(
+        [load_observation(Path(path)) for path in observations], created_at=created_at
+    )
+    return _durable_output(value, output=output, digest_field="set_digest")
+
+
+def handle_durable_maintenance(
+    *, previous: str, current: str, region: str, created_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_maintenance_proposal(
+        load_observation_set(Path(previous)),
+        load_observation_set(Path(current)),
+        region_id=region,
+        created_at=created_at,
+    )
+    return _durable_output(value, output=output, digest_field="proposal_digest")
+
+
+def handle_durable_search_index(
+    *, observation_set: str, created_at: str, disabled_reason: str | None, output: str
+) -> dict[str, Any]:
+    value = compile_search_index(
+        load_observation_set(Path(observation_set)),
+        created_at=created_at,
+        disabled_reason=disabled_reason,
+    )
+    return _durable_output(value, output=output, digest_field="index_digest")
+
+
+def handle_durable_search_query(
+    *, index: str, query: str, visibility: str, limit: int
+) -> dict[str, Any]:
+    return search_index(
+        load_search_index(Path(index)), query=query, visibility=visibility, limit=limit
+    )
+
+
+def handle_durable_search_suggest(*, index: str, visibility: str) -> dict[str, Any]:
+    return semantic_suggestions(load_search_index(Path(index)), visibility=visibility)
+
+
+def handle_durable_profiles(*, output: str | None) -> dict[str, Any]:
+    return _durable_output(operation_profiles(), output=output, digest_field="profile_digest")
+
+
+def handle_durable_health(*, input_path: str, observed_at: str, output: str) -> dict[str, Any]:
+    value = compile_health_receipt(
+        read_durable_json(Path(input_path), label="health input"), observed_at=observed_at
+    )
+    return _durable_output(value, output=output, digest_field="health_digest")
+
+
+def handle_durable_backup(
+    *, declaration: str, root: str, created_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_backup_manifest(
+        read_durable_json(Path(declaration), label="backup declaration"),
+        root=Path(root),
+        created_at=created_at,
+    )
+    return _durable_output(value, output=output, digest_field="manifest_digest")
+
+
+def handle_durable_restore_verify(
+    *, manifest: str, staged_root: str, verified_at: str, output: str
+) -> dict[str, Any]:
+    value = verify_staged_restore(
+        load_backup_manifest(Path(manifest)),
+        staged_root=Path(staged_root),
+        verified_at=verified_at,
+    )
+    return _durable_output(value, output=output, digest_field="verification_digest")
+
+
+def handle_durable_rotation_plan(
+    *, input_path: str, created_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_oauth_rotation_plan(
+        read_durable_json(Path(input_path), label="OAuth rotation input"),
+        created_at=created_at,
+    )
+    return _durable_output(value, output=output, digest_field="plan_digest")
+
+
+def handle_durable_kill_switch_drill(
+    *, input_path: str, created_at: str, output: str
+) -> dict[str, Any]:
+    value = compile_kill_switch_drill(
+        read_durable_json(Path(input_path), label="kill-switch drill input"),
+        created_at=created_at,
+    )
+    return _durable_output(value, output=output, digest_field="drill_digest")
+
+
+def handle_overview_snapshot(*, output: str, probe_provider: bool) -> dict[str, Any]:
     client = MiroMCPClient()
     snapshot = asyncio.run(
         collect_overview(
@@ -139,9 +287,7 @@ def handle_overview_snapshot(
     }
 
 
-def handle_overview_serve(
-    *, port: int, probe_provider: bool, open_browser: bool
-) -> dict[str, Any]:
+def handle_overview_serve(*, port: int, probe_provider: bool, open_browser: bool) -> dict[str, Any]:
     client = MiroMCPClient()
 
     async def snapshot_factory() -> dict[str, Any]:
@@ -150,9 +296,7 @@ def handle_overview_serve(
             probe_provider=probe_provider,
         )
 
-    serve_overview(
-        snapshot_factory, port=port, open_browser=open_browser
-    )
+    serve_overview(snapshot_factory, port=port, open_browser=open_browser)
     return {
         "schema_version": "schauwerk-overview-server-stop-receipt.v1",
         "ok": True,
@@ -162,9 +306,7 @@ def handle_overview_serve(
     }
 
 
-def handle_regie_context_template(
-    *, review_id: str, title: str, output: str
-) -> dict[str, Any]:
+def handle_regie_context_template(*, review_id: str, title: str, output: str) -> dict[str, Any]:
     draft = {
         "review_id": review_id,
         "title": title,
@@ -194,9 +336,7 @@ def handle_regie_context_template(
             }
         ],
     }
-    destination = write_private_json(
-        Path(output), draft, label="Regie context draft"
-    )
+    destination = write_private_json(Path(output), draft, label="Regie context draft")
     return {
         "schema_version": "schauwerk-regie-context-template-receipt.v1",
         "ok": True,
@@ -228,9 +368,7 @@ def handle_regie_review(
         gate_receipt=load_live_apply_gate(Path(gate_path)),
         operation_bundle=load_live_operation_bundle(Path(bundle_path)),
     )
-    destination = write_private_json(
-        Path(output), review, label="Regie review bundle"
-    )
+    destination = write_private_json(Path(output), review, label="Regie review bundle")
     return {
         "schema_version": "schauwerk-regie-review-compile-receipt.v1",
         "ok": True,
@@ -244,17 +382,13 @@ def handle_regie_review(
     }
 
 
-def handle_regie_serve(
-    *, review_bundle: str, port: int, open_browser: bool
-) -> dict[str, Any]:
+def handle_regie_serve(*, review_bundle: str, port: int, open_browser: bool) -> dict[str, Any]:
     review = load_review_bundle(Path(review_bundle))
     client = MiroMCPClient()
 
     async def provider_factory() -> MiroManagedRegionProvider:
         catalogue = (await client.tools()).to_dict()
-        return MiroManagedRegionProvider(
-            client.settings, client.storage, cached_tools=catalogue
-        )
+        return MiroManagedRegionProvider(client.settings, client.storage, cached_tools=catalogue)
 
     controller = RegieController(
         review_bundle=review,
@@ -263,9 +397,7 @@ def handle_regie_serve(
         kill_switch_path=client.settings.state_root / "LIVE_APPLY_DISABLED",
         provider_factory=provider_factory,
     )
-    serve_regie(
-        controller, port=port, open_browser=open_browser
-    )
+    serve_regie(controller, port=port, open_browser=open_browser)
     return {
         "schema_version": "schauwerk-regie-server-stop-receipt.v1",
         "ok": True,
@@ -348,9 +480,7 @@ def handle_publication_withdraw(
     )
 
 
-def handle_publication_serve(
-    *, store_root: str, port: int, open_browser: bool
-) -> dict[str, Any]:
+def handle_publication_serve(*, store_root: str, port: int, open_browser: bool) -> dict[str, Any]:
     return serve_publications(Path(store_root), port=port, open_browser=open_browser)
 
 
@@ -364,9 +494,7 @@ def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:
     }
 
 
-def handle_education_render(
-    *, input_path: str, variant: str, output: str | None
-) -> dict[str, Any]:
+def handle_education_render(*, input_path: str, variant: str, output: str | None) -> dict[str, Any]:
     return write_education_variant(
         input_path=Path(input_path),
         variant=variant,
@@ -374,9 +502,7 @@ def handle_education_render(
     )
 
 
-def handle_education_offline(
-    *, input_path: str, output_dir: str, variant: str
-) -> dict[str, Any]:
+def handle_education_offline(*, input_path: str, output_dir: str, variant: str) -> dict[str, Any]:
     return write_offline_package(
         input_path=Path(input_path),
         output_dir=Path(output_dir),
@@ -836,9 +962,7 @@ def handle_region_sw009_live_bundle_template(
 ) -> dict[str, Any]:
     region = load_region_declaration(Path(input_path))
     value = compile_live_operation_bundle_template(region=region, bundle_id=bundle_id)
-    destination = write_live_artifact(
-        Path(output), value, label="live operation draft"
-    )
+    destination = write_live_artifact(Path(output), value, label="live operation draft")
     return {
         "schema_version": "typed-region-live-operation-draft-template-receipt.v1",
         "ok": True,
@@ -850,13 +974,9 @@ def handle_region_sw009_live_bundle_template(
     }
 
 
-def handle_region_sw009_live_bundle_compile(
-    *, draft_path: str, output: str
-) -> dict[str, Any]:
+def handle_region_sw009_live_bundle_compile(*, draft_path: str, output: str) -> dict[str, Any]:
     bundle = load_live_operation_draft(Path(draft_path))
-    destination = write_live_artifact(
-        Path(output), bundle, label="live operation bundle"
-    )
+    destination = write_live_artifact(Path(output), bundle, label="live operation bundle")
     return {
         "schema_version": "typed-region-live-operation-bundle-compile-receipt.v1",
         "ok": True,
@@ -894,9 +1014,7 @@ def handle_region_sw009_live_authorization_create(
         expires_at=approved_at + timedelta(minutes=valid_minutes),
         authorization_id=authorization_id,
     )
-    destination = write_live_artifact(
-        Path(output), value, label="live authorization"
-    )
+    destination = write_live_artifact(Path(output), value, label="live authorization")
     return {
         "schema_version": "typed-region-live-authorization-create-receipt.v1",
         "ok": True,
@@ -952,9 +1070,7 @@ def handle_region_sw009_live_apply(
         raise ValueError("live apply kill switch is enabled")
     live_artifact_destination(Path(output), label="live transaction receipt")
     live_tools = asyncio.run(active.tools()).to_dict()
-    provider = MiroManagedRegionProvider(
-        active.settings, active.storage, cached_tools=live_tools
-    )
+    provider = MiroManagedRegionProvider(active.settings, active.storage, cached_tools=live_tools)
     root = active.settings.state_root / "transactions"
     return asyncio.run(
         execute_live_apply(
@@ -977,9 +1093,7 @@ def handle_region_sw009_live_restore(
     load_live_transaction_receipt(Path(transaction_receipt))
     live_artifact_destination(Path(output), label="live restore receipt")
     live_tools = asyncio.run(active.tools()).to_dict()
-    provider = MiroManagedRegionProvider(
-        active.settings, active.storage, cached_tools=live_tools
-    )
+    provider = MiroManagedRegionProvider(active.settings, active.storage, cached_tools=live_tools)
     return asyncio.run(
         restore_live_apply(
             transaction_receipt_path=Path(transaction_receipt),
@@ -1134,7 +1248,6 @@ def handle_region_apply_receipt(
         fixture_operations=fixture_operations,
         output_path=Path(output) if output else None,
     )
-
 
 
 def handle_region_operation_contract(

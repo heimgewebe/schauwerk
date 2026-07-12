@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/source-observation.v1.schema.json",
+  "title": "Schauwerk Source Observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "adapter_id", "optional_adapter", "source", "observed_at",
+    "expires_at", "evaluated_at", "status", "current_usable", "facts", "citations",
+    "errors", "registry_digest", "input_digest", "mutation_attempted", "observation_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-source-observation.v1"},
+    "adapter_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*$"},
+    "optional_adapter": {"type": "boolean"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "authority", "visibility", "freshness", "reference_digest"],
+      "properties": {
+        "id": {"type": "string"}, "kind": {"type": "string"},
+        "authority": {"enum": ["canonical", "operational", "derived"]},
+        "visibility": {"enum": ["private", "shared", "classroom", "public", "archived"]},
+        "freshness": {"type": "string"},
+        "reference_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "observed_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "status": {"enum": ["healthy", "stale", "partial", "failed"]},
+    "current_usable": {"type": "boolean"},
+    "facts": {"type": "array", "items": {"type": "object"}},
+    "citations": {"type": "array", "items": {"type": "object"}},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "input_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "mutation_attempted": {"const": false},
+    "observation_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -130,9 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     regie_review.add_argument("--bundle", required=True)
     regie_review.add_argument("--output", required=True)
     regie_review.add_argument("--json", action="store_true")
-    regie_serve = regie_commands.add_parser(
-        "serve", help="run the Regie interface on 127.0.0.1"
-    )
+    regie_serve = regie_commands.add_parser("serve", help="run the Regie interface on 127.0.0.1")
     regie_serve.add_argument("review_bundle")
     regie_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
     regie_serve.add_argument("--no-browser", action="store_true")
@@ -156,9 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     overview_serve.add_argument("--no-browser", action="store_true")
     overview_serve.add_argument("--json", action="store_true")
 
-    stage = providers.add_parser(
-        "stage", help="build separated SW-012 presentation packages"
-    )
+    stage = providers.add_parser("stage", help="build separated SW-012 presentation packages")
     stage_commands = stage.add_subparsers(dest="command", required=True)
     stage_build = stage_commands.add_parser(
         "build", help="render public and presenter outputs from one presentation model"
@@ -212,6 +208,124 @@ def build_parser() -> argparse.ArgumentParser:
     publish_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
     publish_serve.add_argument("--no-browser", action="store_true")
     publish_serve.add_argument("--json", action="store_true")
+
+    durable = providers.add_parser(
+        "durable", help="local SW-014 to SW-017 integration and recovery contracts"
+    )
+    durable_commands = durable.add_subparsers(dest="command", required=True)
+
+    adapter_catalog = durable_commands.add_parser(
+        "adapter-catalog", help="show the deterministic local adapter catalogue"
+    )
+    adapter_catalog.add_argument("--output")
+    adapter_catalog.add_argument("--json", action="store_true")
+
+    adapter_collect = durable_commands.add_parser(
+        "adapter-collect", help="compile one declared local adapter input"
+    )
+    adapter_collect.add_argument("input")
+    adapter_collect.add_argument("--at", required=True)
+    adapter_collect.add_argument("--output", required=True)
+    adapter_collect.add_argument("--json", action="store_true")
+
+    adapter_set = durable_commands.add_parser(
+        "adapter-set", help="compile a deterministic set of source observations"
+    )
+    adapter_set.add_argument("observations", nargs="+")
+    adapter_set.add_argument("--created-at", required=True)
+    adapter_set.add_argument("--output", required=True)
+    adapter_set.add_argument("--json", action="store_true")
+
+    maintenance = durable_commands.add_parser(
+        "maintenance-propose", help="compare observations and emit a review-only proposal"
+    )
+    maintenance.add_argument("previous")
+    maintenance.add_argument("current")
+    maintenance.add_argument("--region", required=True)
+    maintenance.add_argument("--created-at", required=True)
+    maintenance.add_argument("--output", required=True)
+    maintenance.add_argument("--json", action="store_true")
+
+    search_index = durable_commands.add_parser(
+        "search-index", help="compile an optional visibility-aware local index"
+    )
+    search_index.add_argument("observation_set")
+    search_index.add_argument("--created-at", required=True)
+    search_index.add_argument("--disabled-reason")
+    search_index.add_argument("--output", required=True)
+    search_index.add_argument("--json", action="store_true")
+
+    search_query = durable_commands.add_parser(
+        "search-query", help="query one local index with a visibility boundary"
+    )
+    search_query.add_argument("index")
+    search_query.add_argument("query")
+    search_query.add_argument(
+        "--visibility",
+        choices=("private", "shared", "classroom", "public", "archived"),
+        required=True,
+    )
+    search_query.add_argument("--limit", type=_bounded_integer(1, 100), default=20)
+    search_query.add_argument("--json", action="store_true")
+
+    search_suggest = durable_commands.add_parser(
+        "search-suggest", help="derive cited relationship, orphan and contradiction hints"
+    )
+    search_suggest.add_argument("index")
+    search_suggest.add_argument(
+        "--visibility",
+        choices=("private", "shared", "classroom", "public", "archived"),
+        required=True,
+    )
+    search_suggest.add_argument("--json", action="store_true")
+
+    profiles = durable_commands.add_parser(
+        "profiles", help="show deterministic local operation profiles"
+    )
+    profiles.add_argument("--output")
+    profiles.add_argument("--json", action="store_true")
+
+    health = durable_commands.add_parser(
+        "health", help="aggregate declared component health without probing"
+    )
+    health.add_argument("input")
+    health.add_argument("--at", required=True)
+    health.add_argument("--output", required=True)
+    health.add_argument("--json", action="store_true")
+
+    backup = durable_commands.add_parser(
+        "backup-manifest", help="checksum declared non-secret files without copying them"
+    )
+    backup.add_argument("declaration")
+    backup.add_argument("--root", required=True)
+    backup.add_argument("--created-at", required=True)
+    backup.add_argument("--output", required=True)
+    backup.add_argument("--json", action="store_true")
+
+    restore = durable_commands.add_parser(
+        "restore-verify", help="verify a staged restore without overwriting live state"
+    )
+    restore.add_argument("manifest")
+    restore.add_argument("--staged-root", required=True)
+    restore.add_argument("--verified-at", required=True)
+    restore.add_argument("--output", required=True)
+    restore.add_argument("--json", action="store_true")
+
+    rotation = durable_commands.add_parser(
+        "oauth-rotation-plan", help="compile a no-token OAuth rotation plan"
+    )
+    rotation.add_argument("input")
+    rotation.add_argument("--created-at", required=True)
+    rotation.add_argument("--output", required=True)
+    rotation.add_argument("--json", action="store_true")
+
+    drill = durable_commands.add_parser(
+        "kill-switch-drill", help="compile evidence for a completed kill-switch drill"
+    )
+    drill.add_argument("input")
+    drill.add_argument("--created-at", required=True)
+    drill.add_argument("--output", required=True)
+    drill.add_argument("--json", action="store_true")
 
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)

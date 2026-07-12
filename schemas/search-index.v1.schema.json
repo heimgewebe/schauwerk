@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/search-index.v1.schema.json",
+  "title": "Schauwerk Search Index v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "created_at", "state", "core_blocked", "source_set_digest", "documents", "errors", "index_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-search-index.v1"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "state": {"enum": ["ready", "disabled", "degraded"]},
+    "core_blocked": {"const": false},
+    "source_set_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "documents": {"type": "array", "items": {"type": "object"}},
+    "errors": {"type": "array", "items": {"type": "string"}},
+    "index_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -73,6 +73,15 @@ sources:
     freshness: live
     depends_on:
       - repo.grabowski
+  - id: lenskit.repobrief-bundle
+    title: Lenskit RepoBrief bundle
+    kind: generated-artifact
+    authority: derived
+    visibility: private
+    reference: lenskit:repobrief-bundle
+    freshness: on-demand
+    depends_on:
+      - repo.lenskit
   - id: repo.bureau
     title: Bureau source repository
     kind: git-repository
@@ -100,4 +109,11 @@ sources:
     authority: canonical
     visibility: private
     reference: heimgewebe/schauwerk
+    freshness: on-merge
+  - id: systemkatalog.ecosystem-map
+    title: Canonical Systemkatalog ecosystem map artifact
+    kind: generated-artifact
+    authority: canonical
+    visibility: shared
+    reference: systemkatalog:ecosystem-map-artifact
     freshness: on-merge

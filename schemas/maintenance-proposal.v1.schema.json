@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/maintenance-proposal.v1.schema.json",
+  "title": "Schauwerk Maintenance Proposal v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "created_at", "region", "previous_set_digest", "current_set_digest", "registry_digest", "operations", "blocked", "contradictions", "summary", "review_required", "provider_effect_authorized", "mutation_attempted", "proposal_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-maintenance-proposal.v1"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "region": {"type": "object"},
+    "previous_set_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "current_set_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "operations": {"type": "array", "items": {"type": "object"}},
+    "blocked": {"type": "array", "items": {"type": "object"}},
+    "contradictions": {"type": "array", "items": {"type": "object"}},
+    "summary": {"type": "object"},
+    "review_required": {"const": true},
+    "provider_effect_authorized": {"const": false},
+    "mutation_attempted": {"const": false},
+    "proposal_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
