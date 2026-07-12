@@ -21,7 +21,7 @@ Deliver architecture, ownership boundaries, visibility model, region modes, vers
 
 ## SW-001 — Direct Miro MCP client
 
-**Implementation status:** complete; live Miro authorization and tool discovery were accepted against the `Dev team` Miro workspace during SW-002 live acceptance.
+**Implementation status:** complete. SW-002 was historically accepted against the former `Dev team`. The current productive identity was re-authorized on 2026-07-12 for the Miro `Education team`; the active boards are organized in Space `Schauwerk`. Team and Space assignment remain provider/UI facts and are not inferred from OAuth files alone.
 
 Implement OAuth 2.1 with PKCE, restrictive credential storage, refresh, Streamable HTTP, tool discovery, health diagnostics, and team/server binding.
 
@@ -53,7 +53,7 @@ Complete project, view, source, surface, publication, region, and policy contrac
 
 ## SW-005 — Grabowski pilot
 
-**Implementation status:** complete for the useful-pilot gate. `schauwerk pilot grabowski` renders the declared static operator contract. `schauwerk pilot grabowski-operational` adds bounded, expiring host, runtime, current-work and known-gap observations while keeping source authority, stale state and collection failure explicit. Deterministic acceptance evidence is committed under `docs/operators/evidence/grabowski-pilot-20260710/` and `docs/operators/evidence/grabowski-operational-20260710/`. Continuous collection and the cross-project overview remain later SW-011/SW-014 work.
+**Implementation status:** complete for the useful-pilot gate. `schauwerk pilot grabowski` renders the declared static operator contract. `schauwerk pilot grabowski-operational` adds bounded, expiring host, runtime, current-work and known-gap observations while keeping source authority, stale state and collection failure explicit. Deterministic acceptance evidence is committed under `docs/operators/evidence/grabowski-pilot-20260710/` and `docs/operators/evidence/grabowski-operational-20260710/`. The resilient cross-project overview is complete in SW-011. Source collection now enters through the explicit SW-014 observation contract rather than being embedded in this pilot.
 
 Build system architecture, capabilities, hosts, runtime state, current work, and known-gap views from real sources.
 
@@ -159,27 +159,35 @@ Implement publication preview, privacy checks, sanitized immutable bundles, stab
 
 ## SW-014 — Source adapters
 
-Add in order: Git/GitHub, Lenskit, Cabinet, Vault, Obsidian Bridge, Leitstand, Chronik, and optional semantic enrichment. Each adapter declares authority, freshness, errors, fixtures, and tests.
+**Implementation status:** complete for the local provider-neutral v1 contract. Git, GitHub, Systemkatalog, Lenskit/RepoBrief and generic declared-local adapters compile Registry-bound observations with authority, visibility, observed/expiry/evaluation times, citations, errors and deterministic digests. Healthy, stale, partial and failed states are explicit; non-healthy facts cannot appear current or authoritative, and failed collection cannot emit facts.
 
-**Gate:** adapter failure is visible and cannot silently fabricate fresh data.
+Real transport collectors remain separate integrations. They require their own credentials, authority, error and freshness acceptance and may not silently make optional sources prerequisites.
+
+**Gate:** passed by deterministic healthy, stale, partial, failed, visibility and tamper fixtures.
 
 ## SW-015 — Automated maintenance
 
-Detect source changes, propose updates, maintain allowlisted regions, flag stale statements, collect open decisions, and generate focus and timeline views.
+**Implementation status:** complete for the local proposal-first v1 contract. Previous and current observation sets produce digest-bound added, updated and removed fact proposals, stale/missing-source blockers and contradiction evidence. Only Registry regions with management mode `managed` are eligible; all other ownership modes fail before operations. The compiler grants no provider authority and reports `mutation_attempted=false`.
 
-**Gate:** automation cannot mutate human-owned regions.
+Scheduling and accepted live effects remain external. Any accepted proposal must still pass Regie and the SW-009 authorization, apply, postflight and restore chain.
+
+**Gate:** passed by managed, read-only, stale-source and contradiction fixtures.
 
 ## SW-016 — Search and semantics
 
-Add cross-project search, relationship suggestions, clustering, similar views, orphan detection, and contradiction hints.
+**Implementation status:** complete for the optional local v1 contract. A deterministic cited index enforces visibility at query time and exposes freshness and effective authority. Local relationship, contradiction and orphan hints carry confidence and evidence. Disabled or degraded search returns visible errors with `core_blocked=false` and has no model or network dependency.
 
-**Gate:** semantic services remain optional and non-blocking.
+External embeddings or semantic services are optional future adapters, not a core dependency.
+
+**Gate:** passed by visibility-isolation, citation, disabled-service and confidence/evidence fixtures.
 
 ## SW-017 — Operations and recovery
 
-Add systemd operation, health checks, metrics, backup, retention, restore drills, OAuth rotation, kill switch, incident runbooks, and deployment profiles.
+**Implementation status:** complete for the repository-level local v1 contracts. Deterministic role profiles, declared health aggregation, secret-excluding backup manifests, staged restore verification, no-token OAuth rotation plans, kill-switch drill receipts and incident runbooks are implemented. Symlinks, traversal and secret-like backup paths fail closed.
 
-**Gate:** provider outage, token loss, and faulty bulk mutation have tested recovery paths.
+No service was installed and no live provider or host effect was performed. Scheduled services, executed backups, live restore, live OAuth rotation, public hosting and live kill-switch drills remain target-bound acceptance operations with their own receipts.
+
+**Gate:** passed locally for profile determinism, required/optional health, backup integrity, staged restore mismatch, path safety, rotation boundaries and drill evidence. The operational gate remains open until the target-specific live exercises are authorized and recorded.
 
 ## Release levels
 

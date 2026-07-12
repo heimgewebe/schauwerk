@@ -11,6 +11,19 @@ from .cli_handlers import (
     handle_board_list,
     handle_board_remove,
     handle_doctor,
+    handle_durable_adapter_catalog,
+    handle_durable_adapter_collect,
+    handle_durable_adapter_set,
+    handle_durable_backup,
+    handle_durable_health,
+    handle_durable_kill_switch_drill,
+    handle_durable_maintenance,
+    handle_durable_profiles,
+    handle_durable_restore_verify,
+    handle_durable_rotation_plan,
+    handle_durable_search_index,
+    handle_durable_search_query,
+    handle_durable_search_suggest,
     handle_ecosystem_render,
     handle_education_offline,
     handle_education_render,
@@ -130,9 +143,7 @@ def main(argv: list[str] | None = None) -> int:
                 review_id=args.review_id, title=args.title, output=args.output
             )
         elif args.provider == "regie" and args.command == "context-compile":
-            result = handle_regie_context_compile(
-                draft_path=args.draft, output=args.output
-            )
+            result = handle_regie_context_compile(draft_path=args.draft, output=args.output)
         elif args.provider == "regie" and args.command == "review":
             result = handle_regie_review(
                 context_path=args.context,
@@ -196,6 +207,74 @@ def main(argv: list[str] | None = None) -> int:
                 store_root=args.store_root,
                 port=args.port,
                 open_browser=not args.no_browser,
+            )
+        elif args.provider == "durable" and args.command == "adapter-catalog":
+            result = handle_durable_adapter_catalog(output=args.output)
+        elif args.provider == "durable" and args.command == "adapter-collect":
+            result = handle_durable_adapter_collect(
+                input_path=args.input, evaluated_at=args.at, output=args.output
+            )
+        elif args.provider == "durable" and args.command == "adapter-set":
+            result = handle_durable_adapter_set(
+                observations=args.observations,
+                created_at=args.created_at,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "maintenance-propose":
+            result = handle_durable_maintenance(
+                previous=args.previous,
+                current=args.current,
+                region=args.region,
+                created_at=args.created_at,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "search-index":
+            result = handle_durable_search_index(
+                observation_set=args.observation_set,
+                created_at=args.created_at,
+                disabled_reason=args.disabled_reason,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "search-query":
+            result = handle_durable_search_query(
+                index=args.index,
+                query=args.query,
+                visibility=args.visibility,
+                limit=args.limit,
+            )
+        elif args.provider == "durable" and args.command == "search-suggest":
+            result = handle_durable_search_suggest(index=args.index, visibility=args.visibility)
+        elif args.provider == "durable" and args.command == "profiles":
+            result = handle_durable_profiles(output=args.output)
+        elif args.provider == "durable" and args.command == "health":
+            result = handle_durable_health(
+                input_path=args.input, observed_at=args.at, output=args.output
+            )
+        elif args.provider == "durable" and args.command == "backup-manifest":
+            result = handle_durable_backup(
+                declaration=args.declaration,
+                root=args.root,
+                created_at=args.created_at,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "restore-verify":
+            result = handle_durable_restore_verify(
+                manifest=args.manifest,
+                staged_root=args.staged_root,
+                verified_at=args.verified_at,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "oauth-rotation-plan":
+            result = handle_durable_rotation_plan(
+                input_path=args.input,
+                created_at=args.created_at,
+                output=args.output,
+            )
+        elif args.provider == "durable" and args.command == "kill-switch-drill":
+            result = handle_durable_kill_switch_drill(
+                input_path=args.input,
+                created_at=args.created_at,
+                output=args.output,
             )
         elif args.command == "status":
             result = handle_status(live=args.live)
@@ -320,13 +399,8 @@ def main(argv: list[str] | None = None) -> int:
             args.command == "region"
             and args.region_command == "sw009-live-apply-candidate-template"
         ):
-            result = handle_region_sw009_live_apply_candidate_template(
-                output=args.output
-            )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw009-live-apply-candidate-check"
-        ):
+            result = handle_region_sw009_live_apply_candidate_template(output=args.output)
+        elif args.command == "region" and args.region_command == "sw009-live-apply-candidate-check":
             result = handle_region_sw009_live_apply_candidate_check(
                 candidate_path=args.candidate, output=args.output
             )
@@ -338,10 +412,7 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_region_sw009_live_bundle_compile(
                 draft_path=args.draft, output=args.output
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw009-live-authorization-create"
-        ):
+        elif args.command == "region" and args.region_command == "sw009-live-authorization-create":
             result = handle_region_sw009_live_authorization_create(
                 gate_path=args.gate,
                 bundle_path=args.bundle,
@@ -404,30 +475,19 @@ def main(argv: list[str] | None = None) -> int:
                 evaluation_receipt=args.evaluation_receipt,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-review-packet"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-review-packet":
             result = handle_region_sw003_live_gate_review_packet(
                 status_receipt=args.status_receipt,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-evidence-packet"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-evidence-packet":
             result = handle_region_sw003_live_gate_evidence_packet(
                 review_packet=args.review_packet,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-requirements"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-requirements":
             result = handle_region_sw003_live_gate_requirements(output=args.output)
-        elif (
-            args.command == "region" and args.region_command == "sw003-live-gate-template"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-template":
             result = handle_region_sw003_live_gate_template(output=args.output)
         elif args.command == "logout":
             result = handle_logout()

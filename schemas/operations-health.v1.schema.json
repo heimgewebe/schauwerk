@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/operations-health.v1.schema.json",
+  "title": "Schauwerk Operations Health Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_at", "state", "ready", "components", "required_failed", "required_degraded", "mutation_attempted", "health_digest"],
+  "properties": {
+    "schema_version": {"const": "schauwerk-health-receipt.v1"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "state": {"enum": ["ready", "degraded", "failed"]},
+    "ready": {"type": "boolean"},
+    "components": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "required_failed": {"type": "array", "items": {"type": "string"}},
+    "required_degraded": {"type": "array", "items": {"type": "string"}},
+    "mutation_attempted": {"const": false},
+    "health_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

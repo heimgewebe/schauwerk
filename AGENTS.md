@@ -27,7 +27,7 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - Semantic services are optional enrichments and must not block the core workflow.
 
 ## Current Scope
-The repository is in useful-pilot foundation phase. Controlled Miro read/write primitives, registry inspection, Learning View rendering and deterministic pilot projections exist. Productive typed live apply, Regie, public deployment and automatic source synchronization remain gated by their roadmap contracts.
+The local product surface through SW-013 and the repository-level integrated/durable v1 contracts through SW-017 are implemented. Reviewed live apply and Regie exist and remain operation-specific. Source collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation and live recovery drills require separate target-bound authorization and evidence.
 
 ## Required Checks
 Run `make validate`.
@@ -40,6 +40,7 @@ Run `make validate`.
 - `.github/workflows/`
 - authentication and mutation code under `src/schauwerk/surfaces/` and `src/schauwerk/operator/`
 - pilot source compilers under `src/schauwerk/pilots/`
+- durable integration and recovery contracts under `src/schauwerk/durable/`
 
 ## Forbidden Content
 - OAuth credentials and refresh tokens

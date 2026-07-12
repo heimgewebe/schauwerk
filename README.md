@@ -6,12 +6,12 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Useful-pilot foundation.** Dieses Repository enthält Architektur, vollständige Registry-Verträge, den direkten Miro-MCP-Zugriff, allowlist-gebundene Snapshots, den abgeschlossenen isolierten Schreibnachweis, Learning-View-Varianten, eine reproduzierbare Grabowski-Operator-Projektion, deterministische Bühne-Ausgaben und den lokalen, reviewgebundenen Schaufenster-Publikationskern.
+**Product surface complete; integrated and durable local v1.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013 sowie die providerneutralen Grundlagen für Quellenadapter, sichere Wartungsvorschläge, sichtbarkeitsgebundene Suche und überprüfbare Betriebs- und Recovery-Artefakte bis SW-017.
 
 ## Zielbild
 
 ```text
-Repositories · GitHub · Cabinet · Vault · Dokumente
+Repositories · GitHub · Systemkatalog · Vault · Dokumente
                          │
                          ▼
                        Fundus
@@ -148,6 +148,17 @@ Das Schaufenster übernimmt nur explizit deklarierte öffentliche Quellen und Fe
 
 Siehe `docs/publications/schaufenster-v1.md`.
 
+## Integrierter und dauerhafter Betrieb
+
+Die Befehle unter `schauwerk durable` arbeiten ausschließlich mit deklarierten lokalen Eingaben. Sie erzeugen normalisierte Quellenbeobachtungen, Review-Vorschläge, lokale Suchindizes, Gesundheitsbelege, Backup-Manifeste sowie gestagte Restore- und Recovery-Belege. Kein Befehl installiert Dienste, liest OAuth-Token oder mutiert Miro.
+
+```bash
+schauwerk durable adapter-catalog --json
+schauwerk durable profiles --json
+```
+
+Siehe `docs/integration/source-adapters-v1.md` und `docs/operations/durable-operations-v1.md`.
+
 ## Aktueller Umsetzungsschnitt
 
 - SW-000: Architektur und Verträge
@@ -162,5 +173,9 @@ Siehe `docs/publications/schaufenster-v1.md`.
 - SW-011: Registry-gebundene Übersicht und resiliente lokale Live-Ansichten
 - SW-012: deterministische HTML-, PDF-, PowerPoint-, Handout- und Offline-Pakete mit getrennten Sprecherhinweisen und Zeitplanung
 - SW-013: explizite Publication-Preview, unveränderliche lokale Versionen, digestgebundene stabile Links, Ablauf, Rücknahme und loopbackgebundene Read-only-Auslieferung
+- SW-014: lokale, Registry-gebundene Quellenadapter mit sichtbaren Healthy-/Stale-/Partial-/Failed-Zuständen
+- SW-015: ausschließlich vorschlagende Wartung für verwaltete Regionen; fremde Regionen und widersprüchliche Quellen werden blockiert
+- SW-016: optionale lokale Suche und beleggebundene Hinweise unter strikter Sichtbarkeitsgrenze
+- SW-017: lokale Betriebsprofile, Health-, Backup-, gestagte Restore-, OAuth-Rotations- und Kill-Switch-Drill-Verträge
 
 Siehe `docs/roadmap.md`.

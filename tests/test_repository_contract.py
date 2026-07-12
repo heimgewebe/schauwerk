@@ -16,7 +16,7 @@ def test_seeded_registry_is_valid() -> None:
         "projects": 3,
         "publications": 1,
         "regions": 4,
-        "sources": 12,
+        "sources": 14,
         "surfaces": 5,
         "views": 4,
     }
@@ -28,7 +28,7 @@ def test_registry_status_is_deterministic_and_inspectable() -> None:
     second = registry_status(root)
     assert first == second
     assert first["valid"] is True
-    assert first["counts"]["sources"] == 12
+    assert first["counts"]["sources"] == 14
     assert len(first["registry_digest"]) == 64
     view = registry_show("views", "grabowski.operator-overview", root)["item"]
     assert view["project_id"] == "grabowski"
