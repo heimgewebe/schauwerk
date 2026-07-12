@@ -30,11 +30,7 @@ def _stable_digest(value: object) -> str:
 
 def _receipt_digest(value: dict) -> str:
     return _stable_digest(
-        {
-            key: item
-            for key, item in value.items()
-            if key not in {"output_path", "receipt_digest"}
-        }
+        {key: item for key, item in value.items() if key not in {"output_path", "receipt_digest"}}
     )
 
 
@@ -212,9 +208,7 @@ def test_load_region_apply_simulation_receipt_rejects_wrong_schema(tmp_path) -> 
 def test_simulation_postflight_receipt_is_restore_ready() -> None:
     simulation = ready_apply_simulation_receipt()
 
-    result = compile_region_simulation_postflight_receipt(
-        apply_simulation_receipt=simulation
-    )
+    result = compile_region_simulation_postflight_receipt(apply_simulation_receipt=simulation)
 
     assert result["schema_version"] == "typed-region-postflight-receipt.v1"
     assert result["ok"] is True
@@ -246,9 +240,7 @@ def test_simulation_postflight_receipt_blocks_unready_simulation() -> None:
     simulation["ready_for_postflight"] = False
     simulation["blocked_reasons"] = ["after_snapshot_idempotency_unverified"]
 
-    result = compile_region_simulation_postflight_receipt(
-        apply_simulation_receipt=simulation
-    )
+    result = compile_region_simulation_postflight_receipt(apply_simulation_receipt=simulation)
 
     assert result["ok"] is False
     assert result["ready_for_restore"] is False

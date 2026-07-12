@@ -48,9 +48,9 @@ class ManagedRegionProvider(Protocol):
 
 
 def _stable_digest(value: Any) -> str:
-    encoded = json.dumps(
-        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-    ).encode("utf-8")
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -66,11 +66,7 @@ def _receipt_digest(value: Mapping[str, Any]) -> str:
 
 def _manifest_digest(value: Mapping[str, Any], digest_key: str) -> str:
     return _stable_digest(
-        {
-            key: item
-            for key, item in value.items()
-            if key not in {digest_key, "output_path"}
-        }
+        {key: item for key, item in value.items() if key not in {digest_key, "output_path"}}
     )
 
 
@@ -223,17 +219,13 @@ def validate_live_operation_bundle(value: Mapping[str, Any]) -> dict[str, Any]:
             "new_text",
         }:
             raise ValueError(f"live operation bundle operations[{index}] fields are invalid")
-        operation_id = _safe_id(
-            raw.get("operation_id"), label=f"operations[{index}].operation_id"
-        )
+        operation_id = _safe_id(raw.get("operation_id"), label=f"operations[{index}].operation_id")
         if operation_id in identifiers:
             raise ValueError("live operation bundle operation ids must be unique")
         identifiers.add(operation_id)
         if raw.get("action") != "replace-text":
             raise ValueError("live operation action must be replace-text")
-        operation_region = _safe_id(
-            raw.get("region_id"), label=f"operations[{index}].region_id"
-        )
+        operation_region = _safe_id(raw.get("region_id"), label=f"operations[{index}].region_id")
         if operation_region != region_id:
             raise ValueError("live operation targets a different region")
         old_text = _safe_text(raw.get("old_text"), label=f"operations[{index}].old_text")
@@ -263,9 +255,7 @@ def validate_live_operation_bundle(value: Mapping[str, Any]) -> dict[str, Any]:
     for index, (left_label, left) in enumerate(operation_texts):
         for right_label, right in operation_texts[index + 1 :]:
             if left == right or left in right or right in left:
-                raise ValueError(
-                    f"live operation texts overlap: {left_label} and {right_label}"
-                )
+                raise ValueError(f"live operation texts overlap: {left_label} and {right_label}")
 
     boundary = value.get("boundary")
     expected_boundary = {
@@ -372,9 +362,7 @@ def validate_live_authorization(value: Mapping[str, Any]) -> dict[str, Any]:
     }
     if normalized["boundary"] != expected_boundary:
         raise ValueError("live authorization boundary is invalid")
-    declared = _digest(
-        normalized["authorization_digest"], label="authorization_digest"
-    )
+    declared = _digest(normalized["authorization_digest"], label="authorization_digest")
     actual = _manifest_digest(value, "authorization_digest")
     if declared != actual:
         raise ValueError("live authorization digest mismatch")
@@ -581,9 +569,7 @@ def validate_live_apply_plan(value: Mapping[str, Any]) -> dict[str, Any]:
             "restore_required": True,
         },
     }
-    validation_bundle["bundle_digest"] = _manifest_digest(
-        validation_bundle, "bundle_digest"
-    )
+    validation_bundle["bundle_digest"] = _manifest_digest(validation_bundle, "bundle_digest")
     normalized_operations = validate_live_operation_bundle(validation_bundle)["operations"]
 
     authorization = value.get("authorization")
@@ -610,12 +596,8 @@ def validate_live_apply_plan(value: Mapping[str, Any]) -> dict[str, Any]:
             authorization.get("approval_reference"), label="approval_reference"
         ),
     }
-    approved_at = _parse_timestamp(
-        normalized_authorization["approved_at"], label="approved_at"
-    )
-    expires_at = _parse_timestamp(
-        normalized_authorization["expires_at"], label="expires_at"
-    )
+    approved_at = _parse_timestamp(normalized_authorization["approved_at"], label="approved_at")
+    expires_at = _parse_timestamp(normalized_authorization["expires_at"], label="expires_at")
     if expires_at <= approved_at or (expires_at - approved_at).total_seconds() > 86_400:
         raise ValueError("live apply plan authorization window is invalid")
 
@@ -677,9 +659,7 @@ def validate_live_apply_plan(value: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def load_live_apply_plan(path: Path) -> dict[str, Any]:
-    return validate_live_apply_plan(
-        _read_json(path, label="live apply plan", owner_only=True)
-    )
+    return validate_live_apply_plan(_read_json(path, label="live apply plan", owner_only=True))
 
 
 def validate_live_transaction_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -762,9 +742,7 @@ def validate_live_transaction_receipt(value: Mapping[str, Any]) -> dict[str, Any
     if not isinstance(mutation_receipts, list) or len(mutation_receipts) != operation_count:
         raise ValueError("live transaction mutation receipts are invalid")
     normalized_mutations = [
-        _sanitized_mutation_receipt(item)
-        for item in mutation_receipts
-        if isinstance(item, Mapping)
+        _sanitized_mutation_receipt(item) for item in mutation_receipts if isinstance(item, Mapping)
     ]
     if len(normalized_mutations) != operation_count:
         raise ValueError("live transaction mutation receipts are invalid")
@@ -780,8 +758,7 @@ def validate_live_transaction_receipt(value: Mapping[str, Any]) -> dict[str, Any
     }:
         raise ValueError("live transaction source receipt fields are invalid")
     normalized_sources = {
-        key: _digest(source_receipts.get(key), label=key)
-        for key in source_receipts
+        key: _digest(source_receipts.get(key), label=key) for key in source_receipts
     }
     expected_boundary = {
         "managed_region_only": True,
@@ -847,9 +824,7 @@ def validate_live_transaction_failure_receipt(
         raise ValueError("live transaction failure receipt restore state is invalid")
     mutation_attempted = value.get("mutation_attempted")
     rollback_attempted = value.get("rollback_attempted")
-    if not isinstance(mutation_attempted, bool) or not isinstance(
-        rollback_attempted, bool
-    ):
+    if not isinstance(mutation_attempted, bool) or not isinstance(rollback_attempted, bool):
         raise ValueError("live transaction failure mutation state is invalid")
     if rollback_attempted is not mutation_attempted:
         raise ValueError("live transaction failure rollback state is invalid")
@@ -903,8 +878,7 @@ def validate_live_transaction_failure_receipt(
     }:
         raise ValueError("live transaction failure source receipts are invalid")
     normalized_sources = {
-        key: _digest(source_receipts.get(key), label=key)
-        for key in source_receipts
+        key: _digest(source_receipts.get(key), label=key) for key in source_receipts
     }
     expected_boundary = {
         "managed_region_only": True,
@@ -982,9 +956,7 @@ def validate_live_restore_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
     restored_snapshot_digest = _digest(
         value.get("restored_snapshot_digest"), label="restored_snapshot_digest"
     )
-    restored_dsl_digest = _digest(
-        value.get("restored_dsl_digest"), label="restored_dsl_digest"
-    )
+    restored_dsl_digest = _digest(value.get("restored_dsl_digest"), label="restored_dsl_digest")
     journal_path = _safe_text(value.get("journal_path"), label="journal_path")
     source_receipts = value.get("source_receipts")
     if not isinstance(source_receipts, Mapping) or set(source_receipts) != {
@@ -993,8 +965,7 @@ def validate_live_restore_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
     }:
         raise ValueError("live restore source receipt fields are invalid")
     normalized_sources = {
-        key: _digest(source_receipts.get(key), label=key)
-        for key in source_receipts
+        key: _digest(source_receipts.get(key), label=key) for key in source_receipts
     }
     expected_boundary = {
         "managed_region_only": True,
@@ -1074,8 +1045,7 @@ def validate_live_restore_failure_receipt(value: Mapping[str, Any]) -> dict[str,
     }:
         raise ValueError("live restore failure source receipt fields are invalid")
     normalized_sources = {
-        key: _digest(source_receipts.get(key), label=key)
-        for key in source_receipts
+        key: _digest(source_receipts.get(key), label=key) for key in source_receipts
     }
     expected_boundary = {
         "managed_region_only": True,
@@ -1198,18 +1168,14 @@ def _verify_before_dsl(dsl: str, operations: Sequence[Mapping[str, str]], marker
             raise ValueError(f"operation {operation['operation_id']} is outside the managed region")
 
 
-def _expected_after_dsl(
-    before_dsl: str, operations: Sequence[Mapping[str, str]]
-) -> str:
+def _expected_after_dsl(before_dsl: str, operations: Sequence[Mapping[str, str]]) -> str:
     expected = before_dsl
     for operation in operations:
         if expected.count(operation["old_text"]) != 1:
             raise ValueError(
                 f"operation {operation['operation_id']} cannot compile an exact after-state"
             )
-        expected = expected.replace(
-            operation["old_text"], operation["new_text"], 1
-        )
+        expected = expected.replace(operation["old_text"], operation["new_text"], 1)
     return expected
 
 
@@ -1378,9 +1344,7 @@ async def execute_live_apply(
     _approved_at, authorization_expires_at = _execution_authorization_window(
         authorization, now=current
     )
-    transaction_id = _safe_id(
-        authorization.get("authorization_id"), label="transaction_id"
-    )
+    transaction_id = _safe_id(authorization.get("authorization_id"), label="transaction_id")
     source_receipts = plan.get("source_receipts")
     if not isinstance(source_receipts, Mapping):
         raise ValueError("live apply plan source receipts are missing")
@@ -1411,9 +1375,7 @@ async def execute_live_apply(
         raise ValueError("live transaction directory is unsafe")
     journal_path = directory / "journal.json"
     canonical_receipt_path = directory / "transaction-receipt.json"
-    receipt_path = live_artifact_destination(
-        output_path, label="live transaction receipt"
-    )
+    receipt_path = live_artifact_destination(output_path, label="live transaction receipt")
     try:
         directory.mkdir(mode=0o700, exist_ok=False)
         os.chmod(directory, 0o700)
@@ -1533,9 +1495,7 @@ async def execute_live_apply(
         for operation in operations:
             if kill_switch_status(kill_switch_path)["enabled"]:
                 raise ValueError("live apply kill switch was enabled during execution")
-            operation_time = (
-                current if now is not None else datetime.now(UTC).astimezone(UTC)
-            )
+            operation_time = current if now is not None else datetime.now(UTC).astimezone(UTC)
             if operation_time >= authorization_expires_at:
                 raise ValueError("live authorization expired during execution")
             mutation_calls += 1
@@ -1707,9 +1667,7 @@ async def _recover_restore_to_after(
         recovered_dsl_digest = hashlib.sha256(recovered_dsl.encode("utf-8")).hexdigest()
         if recovered_dsl_digest != expected_after_dsl_digest:
             raise ValueError("restore recovery DSL digest mismatch")
-        recovered = _snapshot_dict(
-            await provider.snapshot(alias=alias, output_path=snapshot_path)
-        )
+        recovered = _snapshot_dict(await provider.snapshot(alias=alias, output_path=snapshot_path))
         if recovered["content_digest"] != expected_after_digest:
             raise ValueError("restore recovery snapshot digest mismatch")
     except Exception as exc:
@@ -1739,9 +1697,7 @@ async def restore_live_apply(
     journal_path = Path(str(transaction.get("journal_path", "")))
     journal = _load_journal(journal_path)
     canonical_restore_path = journal_path.parent / "restore-receipt.json"
-    requested_restore_path = live_artifact_destination(
-        output_path, label="live restore receipt"
-    )
+    requested_restore_path = live_artifact_destination(output_path, label="live restore receipt")
     if journal.get("status") == "restored":
         existing = validate_live_restore_receipt(
             _read_json(
@@ -1766,8 +1722,8 @@ async def restore_live_apply(
         if prior_value.get("ok") is not False:
             raise ValueError("committed journal has an invalid canonical restore receipt")
         prior_failure = validate_live_restore_failure_receipt(prior_value)
-    journal_digest_matches_transaction = (
-        journal.get("journal_digest") == transaction.get("committed_journal_digest")
+    journal_digest_matches_transaction = journal.get("journal_digest") == transaction.get(
+        "committed_journal_digest"
     )
     journal_digest_matches_retry = bool(
         prior_failure
@@ -1776,8 +1732,7 @@ async def restore_live_apply(
         and prior_failure["surface_alias"] == journal.get("surface_alias")
         and prior_failure["region_id"] == journal.get("region_id")
         and prior_failure["source_receipts"]["transaction_receipt_digest"] == declared
-        and prior_failure["source_receipts"]["journal_digest"]
-        == journal.get("journal_digest")
+        and prior_failure["source_receipts"]["journal_digest"] == journal.get("journal_digest")
         and prior_failure["journal_path"] == str(journal_path)
     )
     if not (journal_digest_matches_transaction or journal_digest_matches_retry):
@@ -1835,9 +1790,7 @@ async def restore_live_apply(
         if restored_dsl_digest != expected_before_dsl_digest:
             raise ValueError("live restore DSL digest mismatch")
         restored_path = journal_path.parent / "restored.json"
-        restored = _snapshot_dict(
-            await provider.snapshot(alias=alias, output_path=restored_path)
-        )
+        restored = _snapshot_dict(await provider.snapshot(alias=alias, output_path=restored_path))
         if restored["content_digest"] != expected_before_digest:
             raise ValueError("live restore snapshot digest mismatch")
     except Exception as exc:
@@ -1894,8 +1847,8 @@ async def restore_live_apply(
     journal["status"] = "restored"
     journal["restored_snapshot_digest"] = restored["content_digest"]
     journal["restored_dsl_digest"] = hashlib.sha256(restored_dsl.encode("utf-8")).hexdigest()
-    journal["restored_at"] = datetime.now(UTC).replace(microsecond=0).isoformat().replace(
-        "+00:00", "Z"
+    journal["restored_at"] = (
+        datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
     _write_journal(journal_path, journal)
     result = {
@@ -1999,12 +1952,14 @@ def compile_live_authorization(
         "region_id": declaration.region_id,
         "expected_snapshot_digest": declaration.expected_snapshot_digest,
         "approved_by": approved_by,
-        "approved_at": approved_at.astimezone(UTC).replace(microsecond=0).isoformat().replace(
-            "+00:00", "Z"
-        ),
-        "expires_at": expires_at.astimezone(UTC).replace(microsecond=0).isoformat().replace(
-            "+00:00", "Z"
-        ),
+        "approved_at": approved_at.astimezone(UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "expires_at": expires_at.astimezone(UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
         "approval_reference": approval_reference,
         "approved": True,
         "boundary": {

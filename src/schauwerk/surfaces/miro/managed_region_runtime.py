@@ -217,9 +217,7 @@ class MiroManagedRegionProvider:
     async def read_dsl(self, *, alias: str) -> str:
         return await run_layout_read_dsl(self.settings, self.storage, alias=alias)
 
-    async def replace_text(
-        self, *, alias: str, old_text: str, new_text: str
-    ) -> dict[str, Any]:
+    async def replace_text(self, *, alias: str, old_text: str, new_text: str) -> dict[str, Any]:
         return (
             await run_layout_replace_text(
                 self.settings,

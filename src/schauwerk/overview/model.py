@@ -52,9 +52,7 @@ _JOB_STATES = frozenset(
 
 def stable_digest(value: Any) -> str:
     return hashlib.sha256(
-        json.dumps(
-            value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-        ).encode("utf-8")
+        json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
     ).hexdigest()
 
 
@@ -110,19 +108,11 @@ def _derived_freshness(
     generated = _parsed_timestamp(generated_at)
     if observed > generated:
         return "unknown"
-    return (
-        "fresh"
-        if (generated - observed).total_seconds() <= stale_after_seconds
-        else "stale"
-    )
+    return "fresh" if (generated - observed).total_seconds() <= stale_after_seconds else "stale"
 
 
 def _bounded_int(value: Any, *, label: str, minimum: int, maximum: int) -> int:
-    if (
-        isinstance(value, bool)
-        or not isinstance(value, int)
-        or not minimum <= value <= maximum
-    ):
+    if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise ValueError(f"{label} is invalid")
     return value
 
@@ -219,13 +209,9 @@ def validate_observation(value: Mapping[str, Any], *, index: int = 0) -> dict[st
         "observation_id": _safe_id(
             value.get("observation_id"), label=f"observations[{index}].observation_id"
         ),
-        "category": _safe_id(
-            value.get("category"), label=f"observations[{index}].category"
-        ),
+        "category": _safe_id(value.get("category"), label=f"observations[{index}].category"),
         "label": _text(value.get("label"), label=f"observations[{index}].label"),
-        "value": _text(
-            value.get("value"), label=f"observations[{index}].value", allow_empty=True
-        ),
+        "value": _text(value.get("value"), label=f"observations[{index}].value", allow_empty=True),
         "state": state,
         "freshness": freshness,
         "severity": severity,
@@ -269,8 +255,7 @@ def validate_profile(value: Mapping[str, Any], *, index: int = 0) -> dict[str, A
     ):
         raise ValueError(f"display_profiles[{index}].visible_sections is invalid")
     normalized_sections = [
-        _safe_id(item, label=f"display_profiles[{index}].visible_sections")
-        for item in sections
+        _safe_id(item, label=f"display_profiles[{index}].visible_sections") for item in sections
     ]
     if any(section not in _PROFILE_SECTIONS for section in normalized_sections):
         raise ValueError(f"display_profiles[{index}].visible_sections is invalid")
@@ -369,9 +354,7 @@ def _validate_navigation(projects: Any) -> list[dict[str, Any]]:
                         view.get("surface_provider"),
                         label=f"projects[{index}].views[{view_index}].surface_provider",
                     ),
-                    "audiences": sorted(
-                        _safe_id(item, label="audience") for item in audiences
-                    ),
+                    "audiences": sorted(_safe_id(item, label="audience") for item in audiences),
                     "publication_ids": sorted(
                         _safe_id(item, label="publication_id") for item in publications
                     ),
@@ -487,9 +470,7 @@ def _validate_publications(publications: Any) -> list[dict[str, Any]]:
                 "publication_id": publication_id,
                 "view_id": _safe_id(item.get("view_id"), label=f"publications[{index}].view_id"),
                 "status": _safe_id(item.get("status"), label=f"publications[{index}].status"),
-                "audience": _safe_id(
-                    item.get("audience"), label=f"publications[{index}].audience"
-                ),
+                "audience": _safe_id(item.get("audience"), label=f"publications[{index}].audience"),
                 "artifact_state": artifact_state,
                 "source_revision": _text(
                     item.get("source_revision"),
@@ -582,9 +563,7 @@ def validate_overview_snapshot(value: Mapping[str, Any]) -> dict[str, Any]:
                 f"overview publication {publication['publication_id']} expiry state mismatch"
             )
         if publication["artifact_state"] == "missing":
-            expected_freshness = (
-                "error" if publication["status"] == "active" else "unknown"
-            )
+            expected_freshness = "error" if publication["status"] == "active" else "unknown"
         else:
             expected_freshness = _derived_freshness(
                 observed_at=publication["observed_at"],
@@ -612,9 +591,7 @@ def validate_overview_snapshot(value: Mapping[str, Any]) -> dict[str, Any]:
             "message",
         }:
             raise ValueError("overview failures are invalid")
-        failure_id = _safe_id(
-            item.get("failure_id"), label=f"failures[{index}].failure_id"
-        )
+        failure_id = _safe_id(item.get("failure_id"), label=f"failures[{index}].failure_id")
         if failure_id in failure_ids:
             raise ValueError("overview failure ids must be unique")
         failure_ids.add(failure_id)
@@ -624,17 +601,13 @@ def validate_overview_snapshot(value: Mapping[str, Any]) -> dict[str, Any]:
         normalized_failures.append(
             {
                 "failure_id": failure_id,
-                "source": _text(
-                    item.get("source"), label=f"failures[{index}].source"
-                ),
+                "source": _text(item.get("source"), label=f"failures[{index}].source"),
                 "observed_at": _timestamp(
                     item.get("observed_at"),
                     label=f"failures[{index}].observed_at",
                 ),
                 "severity": severity,
-                "message": _text(
-                    item.get("message"), label=f"failures[{index}].message"
-                ),
+                "message": _text(item.get("message"), label=f"failures[{index}].message"),
             }
         )
     profiles_raw = value.get("display_profiles")
@@ -702,9 +675,7 @@ def validate_overview_snapshot(value: Mapping[str, Any]) -> dict[str, Any]:
     if normalized_summary["stale_count"] != expected_stale:
         raise ValueError("overview summary stale count mismatch")
     provider_observations = [
-        item
-        for item in observations
-        if item["observation_id"] == "provider.miro.live"
+        item for item in observations if item["observation_id"] == "provider.miro.live"
     ]
     if len(provider_observations) != 1:
         raise ValueError("overview provider observation is missing or duplicated")

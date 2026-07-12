@@ -58,11 +58,7 @@ def test_interface_and_failure_evidence_cover_t008_acceptance() -> None:
 
 
 def test_regie_evidence_contains_no_sensitive_runtime_reference() -> None:
-    text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in ROOT.iterdir()
-        if path.is_file()
-    )
+    text = "\n".join(path.read_text(encoding="utf-8") for path in ROOT.iterdir() if path.is_file())
     patterns = (
         r"(?i)(?:/home/|/Users/|[A-Z]:\\)",
         r"(?i)https?://(?:www\.)?miro\.com|moveToWidget=",

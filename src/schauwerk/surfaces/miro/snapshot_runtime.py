@@ -39,7 +39,6 @@ def prepare_snapshot_destination(path: Path) -> Path:
     return destination
 
 
-
 def write_snapshot_json(path: Path, value: dict) -> None:
     """Atomically write one snapshot file without changing an existing parent mode."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -67,6 +66,7 @@ def write_snapshot_json(path: Path, value: dict) -> None:
         except FileNotFoundError:
             pass
         raise
+
 
 def verify_snapshot_pair(
     first: SnapshotRead, second: SnapshotRead, *, alias: str

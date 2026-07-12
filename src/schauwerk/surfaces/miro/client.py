@@ -121,9 +121,7 @@ class MiroMCPClient:
             if not path.is_file():
                 raise MiroCredentialError("Cached auth health receipt is unsafe")
             if path.stat().st_mode & 0o077:
-                raise MiroCredentialError(
-                    "Cached auth health receipt has unsafe permissions"
-                )
+                raise MiroCredentialError("Cached auth health receipt has unsafe permissions")
             value = json.loads(path.read_text(encoding="utf-8"))
         except MiroCredentialError:
             raise
@@ -132,9 +130,7 @@ class MiroMCPClient:
         if not isinstance(value, dict):
             raise MiroCredentialError("Cached auth health receipt is invalid")
         if value.get("schema_version") != MIRO_AUTH_HEALTH_SCHEMA_VERSION:
-            raise MiroCredentialError(
-                "Cached auth health receipt has an unsupported schema"
-            )
+            raise MiroCredentialError("Cached auth health receipt has an unsupported schema")
         return value
 
     def cached_auth_history(self) -> dict[str, Any]:
@@ -163,9 +159,7 @@ class MiroMCPClient:
             raise MiroCredentialError("Cached auth history is invalid")
         return value
 
-    def _persist_auth_history(
-        self, receipt: dict[str, Any], *, keep: int = 100
-    ) -> dict[str, Any]:
+    def _persist_auth_history(self, receipt: dict[str, Any], *, keep: int = 100) -> dict[str, Any]:
         history = self.cached_auth_history()
         entries = [entry for entry in history.get("entries", []) if isinstance(entry, dict)]
         entries.append(receipt)
@@ -183,7 +177,6 @@ class MiroMCPClient:
             "count": len(entries),
             "recent": entries[-5:],
         }
-
 
     def _recommend_next_command(
         self, local_status: dict[str, Any], live_status: dict[str, Any]
@@ -221,9 +214,7 @@ class MiroMCPClient:
             "renewal_required": renewal_required,
             "renewal_required_known": checked_live,
             "safe_for_live_board_operations": live_authorized is True,
-            "recommended_next_command": self._recommend_next_command(
-                local_status, live_status
-            ),
+            "recommended_next_command": self._recommend_next_command(local_status, live_status),
             "live": live_status,
         }
         write_json_owner_only(self.settings.auth_health_path, receipt)
@@ -296,9 +287,7 @@ class MiroMCPClient:
             "live_authorized": live_authorized,
             "renewal_required": renewal_required,
             "safe_for_live_board_operations": live_authorized is True,
-            "recommended_next_command": self._recommend_next_command(
-                local_status, live_status
-            ),
+            "recommended_next_command": self._recommend_next_command(local_status, live_status),
             "local": local_status,
             "live": live_status,
             "last_health": last_health,

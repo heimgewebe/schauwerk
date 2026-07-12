@@ -30,9 +30,7 @@ from .model import (
     write_private_json,
 )
 
-ProviderFactory = Callable[
-    [], ManagedRegionProvider | Awaitable[ManagedRegionProvider]
-]
+ProviderFactory = Callable[[], ManagedRegionProvider | Awaitable[ManagedRegionProvider]]
 
 
 def _safe_root(path: Path, *, label: str) -> Path:
@@ -173,14 +171,11 @@ class RegieController:
             provider = await provider
         return provider
 
-
     def state(self, *, now: datetime | None = None) -> dict[str, Any]:
         current = (now or datetime.now(UTC)).astimezone(UTC).replace(microsecond=0)
         with self._lock:
             decision = (
-                load_decision_receipt(self.decision_path)
-                if self.decision_path.exists()
-                else None
+                load_decision_receipt(self.decision_path) if self.decision_path.exists() else None
             )
             transaction = (
                 _load_transaction_receipt(self.transaction_path)
@@ -188,15 +183,11 @@ class RegieController:
                 else None
             )
             restore = (
-                _load_restore_receipt(self.restore_path)
-                if self.restore_path.exists()
-                else None
+                _load_restore_receipt(self.restore_path) if self.restore_path.exists() else None
             )
             authorization_expired = bool(
                 decision
-                and _timestamp_expired(
-                    decision["authorization"]["expires_at"], now=current
-                )
+                and _timestamp_expired(decision["authorization"]["expires_at"], now=current)
             )
             kill_switch = kill_switch_status(self.kill_switch_path)
             transaction_ok = bool(transaction and transaction.get("ok") is True)
@@ -223,9 +214,7 @@ class RegieController:
                     )
                 },
                 "decision": _decision_projection(decision) if decision else None,
-                "transaction": (
-                    _transaction_projection(transaction) if transaction else None
-                ),
+                "transaction": (_transaction_projection(transaction) if transaction else None),
                 "restore": _restore_projection(restore) if restore else None,
                 "controls": {
                     "can_decide": decision is None,
@@ -282,12 +271,9 @@ class RegieController:
         decisions = payload.get("decisions")
         if not isinstance(decisions, Mapping):
             raise ValueError("Regie decision request decisions are invalid")
-        expected_ids = {
-            operation["operation_id"] for operation in self.review["operations"]
-        }
+        expected_ids = {operation["operation_id"] for operation in self.review["operations"]}
         if set(decisions) != expected_ids or any(
-            decision not in {"approve", "reject", "defer"}
-            for decision in decisions.values()
+            decision not in {"approve", "reject", "defer"} for decision in decisions.values()
         ):
             raise ValueError("Regie decisions must cover every operation exactly once")
         if payload.get("confirmation") != "APPROVE_LIVE_APPLY":
@@ -310,19 +296,16 @@ class RegieController:
                     for operation in self.review["operations"]
                 ]
                 approved_at = datetime.fromisoformat(
-                    existing["authorization"]["approved_at"].removesuffix("Z")
-                    + "+00:00"
+                    existing["authorization"]["approved_at"].removesuffix("Z") + "+00:00"
                 ).astimezone(UTC)
                 expires_at = datetime.fromisoformat(
-                    existing["authorization"]["expires_at"].removesuffix("Z")
-                    + "+00:00"
+                    existing["authorization"]["expires_at"].removesuffix("Z") + "+00:00"
                 ).astimezone(UTC)
                 existing_minutes = int((expires_at - approved_at).total_seconds() // 60)
                 if (
                     existing["decisions"] == requested
                     and existing["approved_by"] == payload.get("approved_by")
-                    and existing["approval_reference"]
-                    == payload.get("approval_reference")
+                    and existing["approval_reference"] == payload.get("approval_reference")
                     and existing_minutes == valid_minutes
                 ):
                     result = _decision_projection(existing)
@@ -347,12 +330,8 @@ class RegieController:
                 receipt["authorization"],
                 label="Regie authorization",
             )
-            write_private_json(
-                self.plan_path, receipt["plan"], label="Regie live plan"
-            )
-            write_private_json(
-                self.decision_path, receipt, label="Regie decision receipt"
-            )
+            write_private_json(self.plan_path, receipt["plan"], label="Regie live plan")
+            write_private_json(self.decision_path, receipt, label="Regie decision receipt")
             return _decision_projection(receipt)
 
     async def apply(self, payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -369,9 +348,7 @@ class RegieController:
                 result = _transaction_projection(existing)
                 result["replayed_without_mutation"] = True
                 return result
-            if _timestamp_expired(
-                decision["authorization"]["expires_at"], now=datetime.now(UTC)
-            ):
+            if _timestamp_expired(decision["authorization"]["expires_at"], now=datetime.now(UTC)):
                 raise ValueError("Regie authorization has expired")
             if kill_switch_status(self.kill_switch_path)["enabled"]:
                 raise ValueError("live apply kill switch is enabled")

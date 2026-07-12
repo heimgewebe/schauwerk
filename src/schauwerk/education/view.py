@@ -183,10 +183,7 @@ def render_learning_dsl(view: LearningView) -> str:
     for index, step in enumerate(view.steps, start=1):
         minutes = f" ({step.minutes} min)" if step.minutes else ""
         output = f"<p><b>Ergebnis:</b> {step.output}</p>" if step.output else ""
-        step_content = (
-            f"<p><b>{index}. {step.title}{minutes}</b></p>"
-            f"<p>{step.activity}</p>{output}"
-        )
+        step_content = f"<p><b>{index}. {step.title}{minutes}</b></p><p>{step.activity}</p>{output}"
         step_lines.append(
             _line(
                 f"step{index}",
@@ -221,8 +218,7 @@ def render_learning_dsl(view: LearningView) -> str:
             x=wide_mid_x,
             y=190,
             markdown=(
-                f"# Erklaerfaden\n\nLeitfrage: {view.guiding_question}"
-                f"\n\nRolle: {view.author_role}"
+                f"# Erklaerfaden\n\nLeitfrage: {view.guiding_question}\n\nRolle: {view.author_role}"
             ),
         ),
         table(
@@ -241,10 +237,7 @@ def render_learning_dsl(view: LearningView) -> str:
             y=930,
             title="Begriffe",
             columns=("Begriff", "Notiz"),
-            rows=tuple(
-                (term, "klaeren")
-                for term in (view.key_terms or ("Schluesselbegriff",))
-            ),
+            rows=tuple((term, "klaeren") for term in (view.key_terms or ("Schluesselbegriff",))),
         ),
     ]
     lines = [

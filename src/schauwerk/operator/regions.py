@@ -252,9 +252,7 @@ def load_region_restore_receipt(path: Path) -> dict[str, Any]:
     return _impl(path)
 
 
-def load_snapshot_mapping_receipt(
-    path: Path, *, label: str = "snapshot"
-) -> dict[str, Any]:
+def load_snapshot_mapping_receipt(path: Path, *, label: str = "snapshot") -> dict[str, Any]:
     from schauwerk.operator.receipts import load_snapshot_mapping_receipt as _impl
 
     return _impl(path, label=label)
@@ -476,9 +474,7 @@ def compile_region_sw009_live_apply_candidate_receipt(
         compile_region_sw009_live_apply_candidate_receipt as _impl,
     )
 
-    return _impl(
-        candidate=candidate, candidate_path=candidate_path, output_path=output_path
-    )
+    return _impl(candidate=candidate, candidate_path=candidate_path, output_path=output_path)
 
 
 def load_region_operation_contract(path: Path) -> dict[str, Any]:

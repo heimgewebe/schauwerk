@@ -88,9 +88,7 @@ def test_registry_navigation_and_every_observation_is_time_bound(tmp_path: Path)
     schauwerk = next(
         project for project in snapshot["projects"] if project["project_id"] == "schauwerk"
     )
-    assert [view["view_id"] for view in schauwerk["views"]] == [
-        "schauwerk.delivery-status"
-    ]
+    assert [view["view_id"] for view in schauwerk["views"]] == ["schauwerk.delivery-status"]
     assert all(
         observation["observed_at"]
         and observation["source"]
@@ -125,31 +123,22 @@ def test_provider_outage_remains_diagnostically_useful(tmp_path: Path) -> None:
     assert snapshot["summary"]["project_count"] == 3
     assert snapshot["publications"]
     provider = next(
-        item
-        for item in snapshot["observations"]
-        if item["observation_id"] == "provider.miro.live"
+        item for item in snapshot["observations"] if item["observation_id"] == "provider.miro.live"
     )
     assert provider["state"] == "error"
     assert provider["freshness"] == "error"
     assert provider["error"] == "Miro network unavailable"
     assert any(
-        failure["failure_id"] == "provider.miro.unavailable"
-        for failure in snapshot["failures"]
+        failure["failure_id"] == "provider.miro.unavailable" for failure in snapshot["failures"]
     )
     assert snapshot["boundary"]["provider_failure_does_not_block_local_diagnostics"]
 
 
 def test_stale_cached_health_is_explicit(tmp_path: Path) -> None:
-    client = FakeMiroClient(
-        tmp_path / "miro", cached=cached_health("2026-07-11T02:00:00Z")
-    )
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    client = FakeMiroClient(tmp_path / "miro", cached=cached_health("2026-07-11T02:00:00Z"))
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     provider = next(
-        item
-        for item in snapshot["observations"]
-        if item["observation_id"] == "provider.miro.live"
+        item for item in snapshot["observations"] if item["observation_id"] == "provider.miro.live"
     )
     assert provider["state"] == "ok"
     assert provider["freshness"] == "stale"
@@ -197,9 +186,7 @@ def test_active_transaction_and_regie_jobs_are_projected_without_paths(
     os.utime(decision_path, (timestamp, timestamp))
 
     client = FakeMiroClient(state_root, cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     jobs = {job["kind"]: job for job in snapshot["jobs"]}
     assert jobs["live-transaction"]["status"] == "committed"
     assert jobs["regie-session"]["status"] == "authorization-expired"
@@ -217,9 +204,7 @@ def test_corrupt_local_job_becomes_failure_not_collection_abort(tmp_path: Path) 
     journal_path.write_text("{}", encoding="utf-8")
     journal_path.chmod(0o600)
     client = FakeMiroClient(state_root, cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     assert snapshot["projects"]
     assert any(
         failure["failure_id"].startswith("transaction.")
@@ -230,9 +215,7 @@ def test_corrupt_local_job_becomes_failure_not_collection_abort(tmp_path: Path) 
 
 def test_profiles_are_bounded_and_snapshot_is_owner_only(tmp_path: Path) -> None:
     client = FakeMiroClient(tmp_path / "miro", cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     profiles = {profile["profile_id"]: profile for profile in snapshot["display_profiles"]}
     assert profiles["wallboard"]["fullscreen"] is True
     assert profiles["incident"]["refresh_seconds"] == 15
@@ -244,9 +227,7 @@ def test_profiles_are_bounded_and_snapshot_is_owner_only(tmp_path: Path) -> None
 
 def test_snapshot_tamper_is_rejected(tmp_path: Path) -> None:
     client = FakeMiroClient(tmp_path / "miro", cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     snapshot["summary"]["project_count"] = 99
     snapshot["snapshot_digest"] = manifest_digest(snapshot, "snapshot_digest")
     with pytest.raises(ValueError, match="project count mismatch"):
@@ -271,24 +252,16 @@ def test_provider_probe_exception_is_projected_not_raised(tmp_path: Path) -> Non
     assert snapshot["projects"]
     assert snapshot["summary"]["provider_state"] == "error"
     provider = next(
-        item
-        for item in snapshot["observations"]
-        if item["observation_id"] == "provider.miro.live"
+        item for item in snapshot["observations"] if item["observation_id"] == "provider.miro.live"
     )
     assert provider["error"] == "fixture provider transport failure"
 
 
 def test_freshness_and_provider_summary_cannot_be_relabelled(tmp_path: Path) -> None:
-    client = FakeMiroClient(
-        tmp_path / "miro", cached=cached_health("2026-07-11T02:00:00Z")
-    )
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    client = FakeMiroClient(tmp_path / "miro", cached=cached_health("2026-07-11T02:00:00Z"))
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     provider = next(
-        item
-        for item in snapshot["observations"]
-        if item["observation_id"] == "provider.miro.live"
+        item for item in snapshot["observations"] if item["observation_id"] == "provider.miro.live"
     )
     provider["freshness"] = "fresh"
     snapshot["summary"]["stale_count"] -= 1
@@ -296,9 +269,7 @@ def test_freshness_and_provider_summary_cannot_be_relabelled(tmp_path: Path) -> 
     with pytest.raises(ValueError, match="freshness mismatch"):
         validate_overview_snapshot(snapshot)
 
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     snapshot["summary"]["provider_state"] = "degraded"
     snapshot["snapshot_digest"] = manifest_digest(snapshot, "snapshot_digest")
     with pytest.raises(ValueError, match="provider state mismatch"):
@@ -307,9 +278,7 @@ def test_freshness_and_provider_summary_cannot_be_relabelled(tmp_path: Path) -> 
 
 def test_snapshot_loader_requires_owner_only_permissions(tmp_path: Path) -> None:
     client = FakeMiroClient(tmp_path / "miro", cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     path = write_snapshot(tmp_path / "overview.json", snapshot)
     path.chmod(0o644)
     with pytest.raises(ValueError, match="owner-only"):
@@ -318,21 +287,15 @@ def test_snapshot_loader_requires_owner_only_permissions(tmp_path: Path) -> None
 
 def test_profile_publication_and_failure_contracts_are_strict(tmp_path: Path) -> None:
     client = FakeMiroClient(tmp_path / "miro", cached=cached_health())
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     snapshot["display_profiles"][0]["visible_sections"].append("unknown-section")
     snapshot["snapshot_digest"] = manifest_digest(snapshot, "snapshot_digest")
     with pytest.raises(ValueError, match="visible_sections is invalid"):
         validate_overview_snapshot(snapshot)
 
-    snapshot = asyncio.run(
-        collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW)
-    )
+    snapshot = asyncio.run(collect_overview(miro_client=client, repo_root=Path.cwd(), now=NOW))
     snapshot["publications"].append(dict(snapshot["publications"][0]))
-    snapshot["summary"]["stale_count"] += int(
-        snapshot["publications"][0]["freshness"] == "stale"
-    )
+    snapshot["summary"]["stale_count"] += int(snapshot["publications"][0]["freshness"] == "stale")
     snapshot["snapshot_digest"] = manifest_digest(snapshot, "snapshot_digest")
     with pytest.raises(ValueError, match="publication ids must be unique"):
         validate_overview_snapshot(snapshot)

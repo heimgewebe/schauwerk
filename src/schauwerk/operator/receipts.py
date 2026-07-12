@@ -45,8 +45,6 @@ def load_fixture_operations(path: Path) -> list[dict[str, Any]]:
     return raw
 
 
-
-
 def _sw003_live_gate_requirements() -> list[dict[str, str]]:
     from schauwerk.operator.sw003_closeout import required_sw003_live_gate_evidence
 
@@ -77,9 +75,7 @@ _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS = (
 )
 
 
-SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION = (
-    "typed-region-sw009-live-apply-candidate.v1"
-)
+SW009_LIVE_APPLY_CANDIDATE_SCHEMA_VERSION = "typed-region-sw009-live-apply-candidate.v1"
 SW009_LIVE_APPLY_CANDIDATE_RECEIPT_SCHEMA_VERSION = (
     "typed-region-sw009-live-apply-candidate-receipt.v1"
 )
@@ -97,9 +93,7 @@ def _stable_digest(value: Any) -> str:
 
 def _without_runtime_fields(value: dict[str, Any]) -> dict[str, Any]:
     return {
-        key: item
-        for key, item in value.items()
-        if key not in {"output_path", "receipt_digest"}
+        key: item for key, item in value.items() if key not in {"output_path", "receipt_digest"}
     }
 
 
@@ -475,8 +469,7 @@ def compile_region_postflight_receipt(
     if apply_receipt.get("schema_version") != "typed-region-apply-receipt.v1":
         blocked_reasons.append("apply_receipt_schema_unsupported")
     apply_ready = (
-        apply_receipt.get("ok") is True
-        and apply_receipt.get("ready_for_postflight") is True
+        apply_receipt.get("ok") is True and apply_receipt.get("ready_for_postflight") is True
     )
     if not apply_ready:
         blocked_reasons.append("apply_receipt_not_ready")
@@ -598,10 +591,7 @@ def compile_region_simulation_postflight_receipt(
         raise ValueError("apply simulation receipt must contain an object")
 
     blocked_reasons: list[str] = []
-    if (
-        apply_simulation_receipt.get("schema_version")
-        != "typed-region-apply-simulation-receipt.v1"
-    ):
+    if apply_simulation_receipt.get("schema_version") != "typed-region-apply-simulation-receipt.v1":
         blocked_reasons.append("apply_simulation_receipt_schema_unsupported")
     simulation_ready = (
         apply_simulation_receipt.get("ok") is True
@@ -712,8 +702,7 @@ def compile_region_restore_receipt(
     if postflight_receipt.get("schema_version") != "typed-region-postflight-receipt.v1":
         blocked_reasons.append("postflight_receipt_schema_unsupported")
     postflight_ready = (
-        postflight_receipt.get("ok") is True
-        and postflight_receipt.get("ready_for_restore") is True
+        postflight_receipt.get("ok") is True and postflight_receipt.get("ready_for_restore") is True
     )
     if not postflight_ready:
         blocked_reasons.append("postflight_receipt_not_ready")
@@ -752,13 +741,11 @@ def compile_region_restore_receipt(
     if (
         isinstance(postflight_source_receipts, dict)
         and _has_simulation_boundary(postflight_receipt)
-        and _is_sha256_digest(
-            postflight_source_receipts.get("apply_simulation_receipt_digest")
-        )
+        and _is_sha256_digest(postflight_source_receipts.get("apply_simulation_receipt_digest"))
     ):
-        source_receipts["apply_simulation_receipt_digest"] = (
-            postflight_source_receipts["apply_simulation_receipt_digest"]
-        )
+        source_receipts["apply_simulation_receipt_digest"] = postflight_source_receipts[
+            "apply_simulation_receipt_digest"
+        ]
     output_boundary = (
         _simulation_boundary()
         if _has_simulation_boundary(postflight_receipt)
@@ -805,8 +792,7 @@ def compile_region_sw009_live_apply_candidate_template(
         "candidate_id": "sw009-live-apply-candidate-YYYYMMDD",
         "scaffold_path": "apply-scaffold.json",
         "sw003_evidence_packet_path": (
-            "docs/operators/evidence/sw003-live-proof-20260709/"
-            "live-gate-evidence-packet.json"
+            "docs/operators/evidence/sw003-live-proof-20260709/live-gate-evidence-packet.json"
         ),
         "acknowledgements": _sw009_acknowledgement_template(accepted=False),
         "operator_notes": [
@@ -1001,9 +987,7 @@ def compile_region_sw009_live_apply_candidate_receipt(
                 str(evidence_packet_path) if evidence_packet_path is not None else None
             ),
         },
-        "acknowledgements": _validate_sw009_live_acknowledgements(
-            acknowledgements, []
-        ),
+        "acknowledgements": _validate_sw009_live_acknowledgements(acknowledgements, []),
         "gate_receipt": gate_receipt,
         "live_apply_gate": {
             "ready_for_live_apply": ready,
@@ -1068,8 +1052,7 @@ def _validate_sw003_live_gate_evidence_packet_for_sw009(
     if (
         not isinstance(live_apply_gate, dict)
         or live_apply_gate.get("ready_for_live_apply") is not False
-        or live_apply_gate.get("blocked_reasons")
-        != ["sw003_live_gate_evidence_packet_only"]
+        or live_apply_gate.get("blocked_reasons") != ["sw003_live_gate_evidence_packet_only"]
     ):
         blocked_reasons.append("sw003_live_gate_evidence_packet_live_apply_gate_invalid")
 
@@ -1116,8 +1099,7 @@ def _validate_sw009_live_acknowledgements(
     if not isinstance(acknowledgements, dict):
         acknowledgements = {}
     normalized = {
-        key: acknowledgements.get(key) is True
-        for key in _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS
+        key: acknowledgements.get(key) is True for key in _SW009_LIVE_APPLY_ACKNOWLEDGEMENTS
     }
     for key, accepted in normalized.items():
         if not accepted:
@@ -1208,9 +1190,7 @@ def compile_region_sw009_live_apply_gate_receipt(
     source_receipts = {
         "apply_scaffold_digest": scaffold_digest,
         "sw003_live_gate_evidence_packet_digest": sw003_packet_digest,
-        "sw003_live_gate_evidence_input_digest": sw003_source_receipts.get(
-            "evidence_input_digest"
-        ),
+        "sw003_live_gate_evidence_input_digest": sw003_source_receipts.get("evidence_input_digest"),
         "sw003_live_gate_review_packet_digest": sw003_source_receipts.get(
             "live_gate_review_packet_digest"
         ),
@@ -1322,9 +1302,7 @@ def compile_region_simulation_closeout_receipt(
     if not isinstance(restore_source_receipts, dict):
         blocked_reasons.append("restore_receipt_source_receipts_missing")
         restore_source_receipts = {}
-    apply_simulation_receipt_digest = restore_source_receipts.get(
-        "apply_simulation_receipt_digest"
-    )
+    apply_simulation_receipt_digest = restore_source_receipts.get("apply_simulation_receipt_digest")
     simulation_provenance_valid = _is_sha256_digest(apply_simulation_receipt_digest)
     if not simulation_provenance_valid:
         blocked_reasons.append("restore_receipt_simulation_provenance_missing")
@@ -1345,8 +1323,7 @@ def compile_region_simulation_closeout_receipt(
     pre_item_count = pre_apply_snapshot.get("item_count")
     restored_item_count = restored_snapshot.get("item_count")
     item_count_matches = (
-        not isinstance(pre_item_count, int)
-        or restored_item_count == pre_item_count
+        not isinstance(pre_item_count, int) or restored_item_count == pre_item_count
     )
     restored_to_pre_apply_snapshot = (
         isinstance(pre_board_alias, str)
@@ -1401,6 +1378,7 @@ def compile_region_simulation_closeout_receipt(
     else:
         value["output_path"] = None
     return value
+
 
 def load_region_operation_contract(path: Path) -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label="operation contract")
@@ -1540,7 +1518,6 @@ def compile_region_operation_contract(
     return value
 
 
-
 def load_region_apply_simulation_receipt(path: Path) -> dict[str, Any]:
     raw = _load_json_or_yaml(path, label="apply simulation")
     if not isinstance(raw, dict):
@@ -1646,9 +1623,7 @@ def compile_region_apply_simulation_receipt(
         "idempotency_verified": idempotency_verified,
     }
     source_receipts = {
-        "operation_contract_digest": _stable_digest(
-            _without_runtime_fields(operation_contract)
-        ),
+        "operation_contract_digest": _stable_digest(_without_runtime_fields(operation_contract)),
         "after_snapshot_digest": _stable_digest(normalized_after),
         "after_snapshot_input_digest": _stable_digest(after_snapshot),
     }

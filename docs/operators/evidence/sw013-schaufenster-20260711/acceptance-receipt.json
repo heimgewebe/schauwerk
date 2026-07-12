@@ -1,5 +1,5 @@
 {
-  "acceptance_digest": "88628daaff65b9b7956d03204ca106dd8e2b41990cc47eab8e9923825141ba75",
+  "acceptance_digest": "4ef48fdc62a7f9da30a17869f07088965e7866018c071d4400348bc8c6696e8b",
   "artifacts": {
     "active-link.json": {
       "bytes": 565,
@@ -89,19 +89,19 @@
   "implementation_file_sha256": {
     "README.md": "5148ba0696c5a1f6aa9dbf2e8902e7e945c570ecb1b674be541d913fbfc9c743",
     "docs/architecture/schauwerk.md": "bce9148b26f3d0557011ef11a69ce1bb130b3b03717e9c24c80e58752acd886f",
-    "docs/index.md": "5c8be9eae3d03b377959c6eca661c4923508f9be4097d27b3e59fff39f2d2839",
+    "docs/index.md": "1e06e8a2c8b9fdca42b308159b9de083714f3ee0065f090fe8c99fb8346d6792",
     "docs/operators/evidence/sw013-schaufenster-20260711/README.md": "df366180fc1ac913fc7b6f1e95c73f082fc328fd7a88258829749da9e9b9262a",
     "docs/publications/schaufenster-v1.md": "fe9476d71d9d89f7da959d5600e68c01015bfe871afd64ee0db87370082b22ab",
     "docs/roadmap.md": "86ad4cc2313d9b27ba04fddb0023c7965f862f5b8b9e6aa47c22fa0abe1f610e",
     "registry/publications.yaml": "86919e675a216492729012e940cd1120a85a3537b10d0eb318c268ed5f2ed6ac",
     "schemas/publication-boundary.v1.schema.json": "632ba1f12a7f9f41923c571a01e5f88e1eeea0742b9a60cda9eba5045cf90c70",
-    "src/schauwerk/cli_handlers.py": "e72dd74abfda9633349f88b5820b9df572521baf295b17a4098c3544d909b3e1",
-    "src/schauwerk/cli_parser.py": "b1ea4e811f9c7143239822bf663f0963ee9d88c5eeb14eb3a3b075928e7b3f49",
+    "src/schauwerk/cli_handlers.py": "4e75cbea83b57e02a79f94d888228d0936bab48517d0c09f5c24b164d0554148",
+    "src/schauwerk/cli_parser.py": "0dcfaaa35787cbfe9eae5467b6d519aa48f93d55b657119b3e2bcaa76bec3671",
     "src/schauwerk/publication/__init__.py": "b177b4a1f534d50d2756e8b5c80ae39b10acfcf854beb3fd256a8c7c7abaf593",
     "src/schauwerk/publication/model.py": "9cdd8c26b982beec8ac417e8a82d95aeb02f0ddfac23a0c58613911b8dab0681",
     "src/schauwerk/publication/server.py": "16d2538ec372e5ab163b4a8484e854f0805eeb5b954ad46b8febbdcdd37450ee",
     "src/schauwerk/publication/store.py": "c42335b4546e9245a98e8e975bffbc61d00d642ceb0d315b237fc7b82747fd27",
-    "src/schauwerk/runner.py": "c889e8ca6923ab681060ce411a2ec2e7ac288b35bcec28e3c1addc26d9403d7c",
+    "src/schauwerk/runner.py": "eaf4bb7c3bee61c6166eda06544bcdd0d8c0924abc7b1f63d051beae75b11dbb",
     "tests/publication/test_publication_boundary.py": "b2d2f8f6cf40ee1880c6673710f37aee5076fc2879b733fa79e17842883afc38",
     "tests/publication/test_publication_cli.py": "467c6e21115e8fbb99634033ddd0f05ae7d509bf1ff399a33071529f3179a176",
     "tests/publication/test_publication_fixtures.py": "0dfd1b28592c60c47ac169d78e7bb15313010f3fc2ee0f208bf2f583f3a6a3d8"

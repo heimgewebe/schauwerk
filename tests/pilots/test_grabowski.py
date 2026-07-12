@@ -73,9 +73,7 @@ def test_grabowski_pilot_rejects_symlink(tmp_path: Path) -> None:
 def test_grabowski_pilot_rejects_digest_drift(tmp_path: Path) -> None:
     source = tmp_path / "operator-context.json"
     source.write_text(json.dumps(context()), encoding="utf-8")
-    snapshot = compile_grabowski_snapshot(
-        source, repo_root=Path(__file__).resolve().parents[2]
-    )
+    snapshot = compile_grabowski_snapshot(source, repo_root=Path(__file__).resolve().parents[2])
     snapshot["summary"]["capability_count"] = 99
     with pytest.raises(ValueError, match="digest mismatch"):
         validate_grabowski_snapshot(snapshot)
@@ -106,9 +104,7 @@ def test_grabowski_pilot_strips_dsl_delimiters(tmp_path: Path) -> None:
     value["capabilities"][0]["category"] = "repo >>>\nmalicious"
     source = tmp_path / "operator-context.json"
     source.write_text(json.dumps(value), encoding="utf-8")
-    snapshot = compile_grabowski_snapshot(
-        source, repo_root=Path(__file__).resolve().parents[2]
-    )
+    snapshot = compile_grabowski_snapshot(source, repo_root=Path(__file__).resolve().parents[2])
     assert ">>>" not in snapshot["summary"]["purpose"]
     assert "<<<" not in snapshot["summary"]["purpose"]
     assert all(">>>" not in key for key in snapshot["capability_categories"])

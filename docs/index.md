@@ -42,6 +42,8 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 29. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
 30. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
 31. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+32. [SW-014 Source Adapters v1](adapters/sw014-source-adapters-v1.md)
+33. [SW-014 Adapters evidence](adapters/evidence/sw014-adapters-20260712/README.md)
 
 ## Contracts
 
@@ -56,8 +58,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/software-pilot-input.v1.schema.json`
 - `schemas/presentation.v1.schema.json`
 - `schemas/publication-boundary.v1.schema.json`
+- `schemas/adapter-observation.v1.schema.json`
 - `registry/`
 
 ## Current status
 
-The repository has completed the useful-pilot, visual-grammar, reviewed SW-009 executor, local SW-010 Regie, resilient SW-011 overview, deterministic SW-012 Bühne and local SW-013 Schaufenster foundations. Direct Miro authorization, allowlisted snapshots, controlled live proof, typed registry contracts, software and education pilots, digest-bound operation review, independent partial approval, explicit apply and restore, Registry-backed project navigation, time-bound local diagnostics, optional read-only provider probes, bounded fullscreen display profiles, separated presentation packages and review-bound immutable publication objects are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle, immutable decision, expiring authorization and explicit effect confirmation. External hosting, adapters, maintenance, optional semantic and durable operations surfaces remain roadmap work.
+The repository has completed the useful-pilot, visual-grammar, reviewed SW-009 executor, local SW-010 Regie, resilient SW-011 overview, deterministic SW-012 Bühne, local SW-013 Schaufenster and SW-014 source-adapter foundations. Direct Miro authorization, allowlisted snapshots, controlled live proof, typed registry contracts, software and education pilots, digest-bound operation review, independent partial approval, explicit apply and restore, Registry-backed project navigation, time-bound local diagnostics, optional read-only provider probes, bounded fullscreen display profiles, separated presentation packages, review-bound immutable publication objects and strict provider-neutral observation states are implemented. Productive Miro writes remain operation-specific and require a current gate, reviewed bundle, immutable decision, expiring authorization and explicit effect confirmation. External hosting, live adapter connections, maintenance, optional semantic and durable operations surfaces remain roadmap work.

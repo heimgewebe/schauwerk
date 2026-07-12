@@ -41,9 +41,7 @@ def safe_logout(client: MiroMCPClient) -> dict[str, bool]:
     auth_health_removed = _unlink_entry(
         client.settings.auth_health_path, label="auth health receipt"
     )
-    auth_history_removed = _unlink_entry(
-        client.settings.auth_history_path, label="auth history"
-    )
+    auth_history_removed = _unlink_entry(client.settings.auth_history_path, label="auth history")
     return {
         "state_removed": state_removed,
         "cache_removed": cache_removed,

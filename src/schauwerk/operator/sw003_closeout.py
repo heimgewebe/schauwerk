@@ -121,9 +121,7 @@ def _contains_provider_identifier(value: object) -> bool:
     return False
 
 
-def _live_gate_digest(
-    value: dict[str, Any], key: str, blocked_reasons: list[str]
-) -> str | None:
+def _live_gate_digest(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> str | None:
     raw = value.get(key)
     if not isinstance(raw, str):
         blocked_reasons.append(f"evidence_{key}_missing")
@@ -135,9 +133,7 @@ def _live_gate_digest(
         return None
 
 
-def _normalized_live_gate_scope(
-    value: object, blocked_reasons: list[str]
-) -> dict[str, Any]:
+def _normalized_live_gate_scope(value: object, blocked_reasons: list[str]) -> dict[str, Any]:
     if not isinstance(value, dict):
         blocked_reasons.append("board_scope_evidence_missing")
         return {"surface_alias": None, "allowlisted": False}
@@ -206,8 +202,7 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
             blocked_reasons.append(f"evidence_{key}_missing_or_false")
 
     evidence_digests = {
-        key: _live_gate_digest(evidence, key, blocked_reasons)
-        for key in _LIVE_GATE_DIGEST_FIELDS
+        key: _live_gate_digest(evidence, key, blocked_reasons) for key in _LIVE_GATE_DIGEST_FIELDS
     }
     board_scope = _normalized_live_gate_scope(evidence.get("board_scope"), blocked_reasons)
 
@@ -251,7 +246,6 @@ def evaluate_sw003_live_gate_claim(evidence: object) -> dict[str, Any]:
             },
         },
     }
-
 
 
 def load_sw003_closeout_evidence(path: Path) -> dict[str, Any]:
@@ -300,9 +294,7 @@ def _validate_digest_bound_receipt(
         keys=(digest_key,),
     )
     digest_input = {
-        key: value
-        for key, value in raw.items()
-        if key not in {digest_key, "output_path"}
+        key: value for key, value in raw.items() if key not in {digest_key, "output_path"}
     }
     if raw[digest_key] != _stable_digest(digest_input):
         raise ValueError(f"{receipt_label} digest mismatch")
@@ -345,8 +337,7 @@ def _validate_boolean_boundary(
 ) -> dict[str, Any]:
     boundary = raw.get("boundary")
     if not isinstance(boundary, dict) or any(
-        boundary.get(key) is not expected_value
-        for key, expected_value in expected.items()
+        boundary.get(key) is not expected_value for key, expected_value in expected.items()
     ):
         raise ValueError(f"{receipt_label} has invalid boundary")
     return boundary
@@ -425,9 +416,7 @@ def compile_sw003_live_gate_status_receipt(
         "ready_for_live_acceptance_review": ready_for_live_acceptance_review,
         "ready_for_live_apply": False,
         "candidate_claim_valid": candidate_valid,
-        "candidate_closes_live_sw003_gate": evaluation.get(
-            "candidate_closes_live_sw003_gate"
-        )
+        "candidate_closes_live_sw003_gate": evaluation.get("candidate_closes_live_sw003_gate")
         is True,
         "requirements_digest_matches": requirements_digest_matches,
         "blocked_reasons": blocked_reasons,
@@ -620,10 +609,7 @@ def compile_sw003_live_gate_evidence_packet(
         "live_miro_access_attempted": False,
         "closes_live_sw003_gate": False,
         "creates_live_acceptance": False,
-        "ready_for_live_acceptance_review": packet.get(
-            "ready_for_live_acceptance_review"
-        )
-        is True,
+        "ready_for_live_acceptance_review": packet.get("ready_for_live_acceptance_review") is True,
         "ready_for_live_apply": False,
         "source_schema_versions": {
             "live_gate_evaluation": LIVE_GATE_EVALUATION_SCHEMA_VERSION,
@@ -637,9 +623,7 @@ def compile_sw003_live_gate_evidence_packet(
             "review_packet_ok": packet.get("ok") is True,
             "review_packet_blocked_reasons": list(packet.get("blocked_reasons") or []),
             "status_blocked_reasons": list(packet.get("status_blocked_reasons") or []),
-            "human_review_required": packet.get("review_scope", {}).get(
-                "human_review_required"
-            )
+            "human_review_required": packet.get("review_scope", {}).get("human_review_required")
             is True,
         },
         "live_apply_gate": {
@@ -822,9 +806,7 @@ def _verified(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> bo
     return verified
 
 
-def _evidence_digest(
-    value: dict[str, Any], key: str, blocked_reasons: list[str]
-) -> str | None:
+def _evidence_digest(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> str | None:
     raw = value.get(key)
     if not isinstance(raw, str):
         blocked_reasons.append(f"evidence_{key}_missing")
@@ -836,9 +818,7 @@ def _evidence_digest(
         return raw
 
 
-def _evidence_text(
-    value: dict[str, Any], key: str, blocked_reasons: list[str]
-) -> str | None:
+def _evidence_text(value: dict[str, Any], key: str, blocked_reasons: list[str]) -> str | None:
     raw = value.get(key)
     if not isinstance(raw, str) or not raw.strip():
         blocked_reasons.append(f"evidence_{key}_missing")
@@ -944,8 +924,7 @@ def compile_sw003_closeout_receipt(
     if restore_receipt.get("schema_version") != "typed-region-restore-receipt.v1":
         blocked_reasons.append("restore_receipt_schema_unsupported")
     restore_ready = (
-        restore_receipt.get("ok") is True
-        and restore_receipt.get("ready_for_closeout") is True
+        restore_receipt.get("ok") is True and restore_receipt.get("ready_for_closeout") is True
     )
     if not restore_ready:
         blocked_reasons.append("restore_receipt_not_ready")
@@ -980,12 +959,8 @@ def compile_sw003_closeout_receipt(
         "create_verified": _verified(verification, "create_verified", blocked_reasons),
         "read_verified": _verified(verification, "read_verified", blocked_reasons),
         "update_verified": _verified(verification, "update_verified", blocked_reasons),
-        "marker_scope_verified": _verified(
-            verification, "marker_scope_verified", blocked_reasons
-        ),
-        "idempotency_verified": _verified(
-            verification, "idempotency_verified", blocked_reasons
-        ),
+        "marker_scope_verified": _verified(verification, "marker_scope_verified", blocked_reasons),
+        "idempotency_verified": _verified(verification, "idempotency_verified", blocked_reasons),
     }
     normalized_verification.update(
         {
@@ -1012,9 +987,9 @@ def compile_sw003_closeout_receipt(
         "closeout_evidence_digest": _stable_digest(evidence),
     }
     ready = not blocked_reasons
-    cleanup_complete = cleanup.get("mode") == "restored-snapshot" and cleanup.get(
-        "verified"
-    ) is True
+    cleanup_complete = (
+        cleanup.get("mode") == "restored-snapshot" and cleanup.get("verified") is True
+    )
     cleanup_boundary_accepted = cleanup.get("mode") == "explicit-boundary" and ready
     value = {
         "schema_version": SCHEMA_VERSION,

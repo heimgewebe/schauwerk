@@ -358,9 +358,7 @@ def test_apply_receipt_rejects_external_reference_keys() -> None:
     operations[0]["external_ref"] = "item-123"
 
     with pytest.raises(ValueError, match="unsupported keys"):
-        compile_region_apply_receipt(
-            scaffold=ready_apply_scaffold(), fixture_operations=operations
-        )
+        compile_region_apply_receipt(scaffold=ready_apply_scaffold(), fixture_operations=operations)
 
 
 def test_apply_receipt_blocks_snapshot_digest_mismatch() -> None:
@@ -488,12 +486,11 @@ def after_snapshot_receipt(digest: str = "e" * 64, alias: str | None = None) -> 
         "item_count": 6,
         "repeatability_verified": True,
         "sanitized_references": True,
-        "fixture_operations_digest": apply_receipt["source_receipts"][
-            "fixture_operations_digest"
-        ],
+        "fixture_operations_digest": apply_receipt["source_receipts"]["fixture_operations_digest"],
         "idempotency_key": apply_receipt["idempotency"]["key"],
         "idempotency_verified": True,
     }
+
 
 def test_postflight_receipt_is_fixture_only_and_ready_for_restore() -> None:
     from schauwerk.operator.regions import compile_region_postflight_receipt
@@ -764,8 +761,9 @@ def test_sw009_live_apply_gate_opens_with_sw003_evidence_and_acknowledgements() 
         "requires_sw003_live_gate": True,
         "requires_human_operator_apply": True,
     }
-    assert result["source_receipts"]["sw003_live_gate_evidence_packet_digest"] == (
-        ready_sw003_evidence_packet()["evidence_packet_digest"]
+    assert (
+        result["source_receipts"]["sw003_live_gate_evidence_packet_digest"]
+        == (ready_sw003_evidence_packet()["evidence_packet_digest"])
     )
     assert "compile_postflight_receipt" in result["required_live_sequence"]
     assert result["restore_required"] is True
@@ -783,12 +781,8 @@ def test_sw009_live_apply_gate_blocks_missing_acknowledgements() -> None:
     assert result["ok"] is False
     assert result["ready_for_live_apply"] is False
     assert result["live_apply_gate"]["ready_for_live_apply"] is False
-    assert "acknowledgement_missing:operator_confirms_review_packet" in result[
-        "blocked_reasons"
-    ]
-    assert "acknowledgement_missing:operator_confirms_restore_strategy" in result[
-        "blocked_reasons"
-    ]
+    assert "acknowledgement_missing:operator_confirms_review_packet" in result["blocked_reasons"]
+    assert "acknowledgement_missing:operator_confirms_restore_strategy" in result["blocked_reasons"]
 
 
 def test_sw009_live_apply_gate_blocks_tampered_sw003_evidence_packet() -> None:
@@ -804,9 +798,7 @@ def test_sw009_live_apply_gate_blocks_tampered_sw003_evidence_packet() -> None:
 
     assert result["ok"] is False
     assert result["ready_for_live_apply"] is False
-    assert "sw003_live_gate_evidence_packet_must_not_enable_apply" in result[
-        "blocked_reasons"
-    ]
+    assert "sw003_live_gate_evidence_packet_must_not_enable_apply" in result["blocked_reasons"]
 
 
 def test_sw009_live_apply_gate_writes_and_loads(tmp_path) -> None:
@@ -890,9 +882,7 @@ def test_sw009_live_apply_candidate_check_opens_gate_from_manifest(tmp_path) -> 
         candidate_path=candidate_path,
     )
 
-    assert result["schema_version"] == (
-        "typed-region-sw009-live-apply-candidate-receipt.v1"
-    )
+    assert result["schema_version"] == ("typed-region-sw009-live-apply-candidate-receipt.v1")
     assert result["ok"] is True
     assert result["ready_for_live_apply"] is True
     assert result["live_apply_attempted"] is False

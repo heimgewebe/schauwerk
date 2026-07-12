@@ -48,7 +48,7 @@ def sample() -> dict:
                     "Abgabe ist ausschließlich das Modell ohne Namen oder Noten."
                 ),
             },
-        }
+        },
     }
 
 
@@ -109,12 +109,8 @@ def test_offline_package_is_deterministic_and_network_free(tmp_path: Path) -> No
     source = write_input(tmp_path)
     first = tmp_path / "first"
     second = tmp_path / "second"
-    receipt_a = write_offline_package(
-        input_path=source, output_dir=first, variant="student"
-    )
-    receipt_b = write_offline_package(
-        input_path=source, output_dir=second, variant="student"
-    )
+    receipt_a = write_offline_package(input_path=source, output_dir=first, variant="student")
+    receipt_b = write_offline_package(input_path=source, output_dir=second, variant="student")
 
     assert tree_bytes(first) == tree_bytes(second)
     assert receipt_a["manifest_sha256"] == receipt_b["manifest_sha256"]
@@ -177,9 +173,7 @@ def test_offline_package_refuses_existing_directory(tmp_path: Path) -> None:
     destination = tmp_path / "offline"
     destination.mkdir()
     with pytest.raises(ValueError, match="already exists"):
-        write_offline_package(
-            input_path=source, output_dir=destination, variant="student"
-        )
+        write_offline_package(input_path=source, output_dir=destination, variant="student")
 
 
 def test_source_digest_is_based_on_normalized_contract() -> None:

@@ -51,9 +51,7 @@ def software_input() -> dict:
                 "outcome": "Useful increment.",
             }
         ],
-        "work": [
-            {"id": "pr-1", "title": "Current change", "status": "merged", "kind": "pr"}
-        ],
+        "work": [{"id": "pr-1", "title": "Current change", "status": "merged", "kind": "pr"}],
         "tests": {"status": "green", "passed": 3, "failed": 0},
         "risks": [
             {
@@ -89,9 +87,9 @@ def test_software_pilot_is_generic_deterministic_and_sanitized(tmp_path: Path) -
     assert "Software-Projektion" in dsl
     assert "Entscheidungen und Roadmap" in dsl
     assert "Quellsystem bleibt maßgeblich" in dsl
-    assert 'w=4600' in dsl.splitlines()[0]
-    assert 'x=-1725' in dsl
-    assert 'x=1725' in dsl
+    assert "w=4600" in dsl.splitlines()[0]
+    assert "x=-1725" in dsl
+    assert "x=1725" in dsl
 
 
 def test_software_pilot_writes_atomic_evidence(tmp_path: Path) -> None:

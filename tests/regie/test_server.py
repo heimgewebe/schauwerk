@@ -58,9 +58,9 @@ def raw_request(
                 f"Content-Length: {len(raw_body)}",
             ]
         )
-    request = (
-        f"{method} {path} HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n"
-    ).encode("ascii") + raw_body
+    request = (f"{method} {path} HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n").encode(
+        "ascii"
+    ) + raw_body
 
     client, server_socket = socket.socketpair()
     try:
@@ -131,9 +131,7 @@ def test_private_state_requires_session_and_valid_loopback_host(
     assert status == 403
     assert json.loads(body)["error"] == "invalid Regie session"
 
-    status, _headers, body = raw_request(
-        handler, "GET", "/api/state", token=token
-    )
+    status, _headers, body = raw_request(handler, "GET", "/api/state", token=token)
     assert status == 200
     assert json.loads(body)["review"]["title"] == "Private title"
 
@@ -203,9 +201,7 @@ def test_post_routes_require_json_token_and_dispatch_exact_payload(
 def test_server_refuses_non_loopback_bind_and_uses_serial_http() -> None:
     with pytest.raises(ValueError, match="must bind"):
         build_regie_server(StubController(), host="0.0.0.0")
-    server, address, _token = build_regie_server(
-        StubController(), port=0, session_token="s" * 40
-    )
+    server, address, _token = build_regie_server(StubController(), port=0, session_token="s" * 40)
     try:
         assert server.__class__.__name__ == "HTTPServer"
         assert address.startswith("http://127.0.0.1:")

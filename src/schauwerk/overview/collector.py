@@ -27,9 +27,7 @@ from .model import (
     validate_overview_snapshot,
 )
 
-_TERMINAL_TRANSACTION_STATES = frozenset(
-    {"preflight_failed", "rolled_back", "restored"}
-)
+_TERMINAL_TRANSACTION_STATES = frozenset({"preflight_failed", "rolled_back", "restored"})
 _ACTIVE_TRANSACTION_STATES = frozenset(
     {"reserved", "prepared", "applying", "committed", "rollback_failed"}
 )
@@ -60,11 +58,7 @@ def _freshness(
         return "error"
     if observed_at > now:
         return "unknown"
-    return (
-        "fresh"
-        if (now - observed_at).total_seconds() <= stale_after_seconds
-        else "stale"
-    )
+    return "fresh" if (now - observed_at).total_seconds() <= stale_after_seconds else "stale"
 
 
 def _observation(
@@ -152,9 +146,7 @@ def _navigation(registry: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any
     surfaces = {item["id"]: item for item in registry["surfaces"]}
     publications_by_view: dict[str, list[str]] = {}
     for publication in registry["publications"]:
-        publications_by_view.setdefault(publication["view_id"], []).append(
-            publication["id"]
-        )
+        publications_by_view.setdefault(publication["view_id"], []).append(publication["id"])
     views_by_project: dict[str, list[dict[str, Any]]] = {}
     for view in registry["views"]:
         surface = surfaces[view["surface_ref"]]
@@ -200,9 +192,7 @@ def _artifact_observations(
             continue
         target = root / output_path
         exists = target.is_file() and not target.is_symlink()
-        observed = (
-            datetime.fromtimestamp(target.stat().st_mtime, tz=UTC) if exists else now
-        )
+        observed = datetime.fromtimestamp(target.stat().st_mtime, tz=UTC) if exists else now
         required = surface["status"] == "active"
         state = "ok" if exists else "error" if required else "inactive"
         severity = "info" if exists or not required else "warning"
@@ -317,18 +307,14 @@ def _transaction_jobs(
             transaction_id = _journal_identifier(
                 journal.get("transaction_id"), label="transaction id"
             )
-            region_id = _journal_identifier(
-                journal.get("region_id"), label="transaction region id"
-            )
+            region_id = _journal_identifier(journal.get("region_id"), label="transaction region id")
             status = journal.get("status")
             if status in _TERMINAL_TRANSACTION_STATES:
                 continue
             if status not in _ACTIVE_TRANSACTION_STATES:
                 raise ValueError("transaction journal status is unsupported")
             observed = datetime.fromtimestamp(journal_path.stat().st_mtime, tz=UTC)
-            freshness = (
-                "fresh" if (now - observed).total_seconds() <= 3600 else "stale"
-            )
+            freshness = "fresh" if (now - observed).total_seconds() <= 3600 else "stale"
             jobs.append(
                 {
                     "job_id": f"transaction.{transaction_id}",
@@ -403,14 +389,8 @@ def _regie_jobs(
             if decision_path.exists():
                 decision = load_decision_receipt(decision_path)
                 review_id = decision["review_id"]
-                authorization_expires = _from_timestamp(
-                    decision["authorization"]["expires_at"]
-                )
-                phase = (
-                    "authorization-expired"
-                    if authorization_expires <= now
-                    else "approved"
-                )
+                authorization_expires = _from_timestamp(decision["authorization"]["expires_at"])
+                phase = "authorization-expired" if authorization_expires <= now else "approved"
                 observed_path = decision_path
             if transaction_path.exists():
                 transaction = _validate_transaction_file(transaction_path)
@@ -435,11 +415,7 @@ def _regie_jobs(
                     ),
                     "source": "local Regie receipt chain",
                     "observed_at": _iso(observed),
-                    "freshness": (
-                        "fresh"
-                        if (now - observed).total_seconds() <= 3600
-                        else "stale"
-                    ),
+                    "freshness": ("fresh" if (now - observed).total_seconds() <= 3600 else "stale"),
                     "project_id": "schauwerk",
                     "view_id": "schauwerk.delivery-status",
                 }
@@ -508,9 +484,7 @@ async def collect_overview(
     )
     observations.extend(artifact_observations)
     failures.extend(artifact_failures)
-    publications, publication_failures = _publication_observations(
-        registry, root=root, now=current
-    )
+    publications, publication_failures = _publication_observations(registry, root=root, now=current)
     failures.extend(publication_failures)
 
     local_status = miro_client.status()
@@ -561,20 +535,14 @@ async def collect_overview(
             cached = miro_client.cached_auth_health()
             if cached:
                 provider_observed = _from_timestamp(cached["observed_at"])
-                provider_state = (
-                    "ok"
-                    if cached.get("safe_for_live_board_operations")
-                    else "error"
-                )
+                provider_state = "ok" if cached.get("safe_for_live_board_operations") else "error"
                 provider_value = (
                     "cached live authorization check passed"
                     if provider_state == "ok"
                     else "cached live authorization check failed"
                 )
                 if provider_state == "error":
-                    provider_error = (
-                        "Cached provider health is not safe for live operations"
-                    )
+                    provider_error = "Cached provider health is not safe for live operations"
         except Exception as exc:
             provider_state = "error"
             provider_value = "cached provider health is unreadable"
@@ -613,9 +581,7 @@ async def collect_overview(
     transaction_jobs, transaction_failures = _transaction_jobs(
         state_root / "transactions", now=current
     )
-    regie_jobs, regie_failures = _regie_jobs(
-        state_root.parent / "regie", now=current
-    )
+    regie_jobs, regie_failures = _regie_jobs(state_root.parent / "regie", now=current)
     jobs = transaction_jobs + regie_jobs
     failures.extend(transaction_failures)
     failures.extend(regie_failures)

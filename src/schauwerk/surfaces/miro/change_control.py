@@ -18,7 +18,7 @@ def validate_marker(marker: str) -> str:
     prefix = "schauwerk-sw003-"
     if not value.startswith(prefix):
         raise MiroCredentialError("SW-003 marker has an unsafe shape")
-    rest = value[len(prefix):]
+    rest = value[len(prefix) :]
     if "-" not in rest:
         raise MiroCredentialError("SW-003 marker has an unsafe shape")
     timestamp, suffix = rest.split("-", 1)
@@ -35,11 +35,13 @@ def build_plan(*, board_alias: str, marker: str, cleanup_required: bool = True) 
     safe_marker = validate_marker(marker)
     create_token = f"CREATE {safe_marker}"
     update_token = f"UPDATE {safe_marker}"
-    create_dsl = "\n".join((
-        f"frame sw003_frame x=0 y=0 w=900 h=500 title='{create_token}'",
-        f"text sw003_text x=40 y=80 w=760 h=120 content='{create_token}'",
-        f"sticky sw003_sticky x=40 y=240 w=240 h=240 content='{create_token}'",
-    ))
+    create_dsl = "\n".join(
+        (
+            f"frame sw003_frame x=0 y=0 w=900 h=500 title='{create_token}'",
+            f"text sw003_text x=40 y=80 w=760 h=120 content='{create_token}'",
+            f"sticky sw003_sticky x=40 y=240 w=240 h=240 content='{create_token}'",
+        )
+    )
     return {
         "board_alias": board_alias,
         "marker": safe_marker,
@@ -74,9 +76,7 @@ def prepare_receipt_destination(path: Path) -> Path:
     return destination
 
 
-def failure_receipt(
-    *, alias: str, marker: str, stage: str, exc: BaseException
-) -> dict[str, Any]:
+def failure_receipt(*, alias: str, marker: str, stage: str, exc: BaseException) -> dict[str, Any]:
     safe_marker = validate_marker(marker)
     return {
         "schema_version": 1,

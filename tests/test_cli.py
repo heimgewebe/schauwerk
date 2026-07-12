@@ -536,19 +536,22 @@ def test_region_apply_simulation_cli_writes_real_receipt(tmp_path, capsys) -> No
     _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
     _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "operation-contract",
-            str(scaffold),
-            "--fixture",
-            str(fixture),
-            "--output",
-            str(contract_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "operation-contract",
+                str(scaffold),
+                "--fixture",
+                str(fixture),
+                "--output",
+                str(contract_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     _write_json(
@@ -603,19 +606,22 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
     _write_json(scaffold, _ready_apply_scaffold_for_cli_chain())
     _write_json(fixture, {"fixture_operations": _fixture_operations_for_cli_chain()})
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "operation-contract",
-            str(scaffold),
-            "--fixture",
-            str(fixture),
-            "--output",
-            str(contract_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "operation-contract",
+                str(scaffold),
+                "--fixture",
+                str(fixture),
+                "--output",
+                str(contract_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
     _write_json(
@@ -632,19 +638,22 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
             "idempotency_verified": True,
         },
     )
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "apply-simulation",
-            str(contract_path),
-            "--after-snapshot",
-            str(after_snapshot_path),
-            "--output",
-            str(apply_simulation_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "apply-simulation",
+                str(contract_path),
+                "--after-snapshot",
+                str(after_snapshot_path),
+                "--output",
+                str(apply_simulation_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     code = runner.main(
@@ -680,19 +689,22 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
         },
     )
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "restore-receipt",
-            str(output),
-            "--restored-snapshot",
-            str(restored_snapshot_path),
-            "--output",
-            str(restore_output),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "restore-receipt",
+                str(output),
+                "--restored-snapshot",
+                str(restored_snapshot_path),
+                "--output",
+                str(restore_output),
+                "--json",
+            ]
+        )
+        == 0
+    )
     restore_stdout = json.loads(capsys.readouterr().out)
     restore_written = json.loads(restore_output.read_text(encoding="utf-8"))
     assert restore_stdout["schema_version"] == "typed-region-restore-receipt.v1"
@@ -702,17 +714,20 @@ def test_region_simulation_cli_chain_reaches_restore_receipt(tmp_path, capsys) -
     assert restore_written["ready_for_closeout"] is True
     assert restore_written["boundary"]["simulation_only"] is True
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "simulation-closeout",
-            str(restore_output),
-            "--output",
-            str(closeout_output),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "simulation-closeout",
+                str(restore_output),
+                "--output",
+                str(closeout_output),
+                "--json",
+            ]
+        )
+        == 0
+    )
     closeout_stdout = json.loads(capsys.readouterr().out)
     closeout_written = json.loads(closeout_output.read_text(encoding="utf-8"))
     assert closeout_stdout["schema_version"] == (
@@ -759,14 +774,10 @@ def test_runner_dispatches_region_simulation_postflight(monkeypatch, capsys) -> 
     observed = {}
 
     def fake_simulation_postflight(*, apply_simulation_receipt, output):
-        observed.update(
-            apply_simulation_receipt=apply_simulation_receipt, output=output
-        )
+        observed.update(apply_simulation_receipt=apply_simulation_receipt, output=output)
         return {"schema_version": "typed-region-postflight-receipt.v1", "ok": True}
 
-    monkeypatch.setattr(
-        runner, "handle_region_simulation_postflight", fake_simulation_postflight
-    )
+    monkeypatch.setattr(runner, "handle_region_simulation_postflight", fake_simulation_postflight)
     code = runner.main(
         [
             "miro",
@@ -826,9 +837,7 @@ def test_runner_dispatches_region_postflight(monkeypatch, capsys) -> None:
     observed = {}
 
     def fake_postflight(*, apply_receipt, after_snapshot, output):
-        observed.update(
-            apply_receipt=apply_receipt, after_snapshot=after_snapshot, output=output
-        )
+        observed.update(apply_receipt=apply_receipt, after_snapshot=after_snapshot, output=output)
         return {"schema_version": "typed-region-postflight-receipt.v1", "ok": True}
 
     monkeypatch.setattr(runner, "handle_region_postflight", fake_postflight)
@@ -861,9 +870,7 @@ def test_runner_dispatches_region_restore_receipt(monkeypatch, capsys) -> None:
     observed = {}
 
     def fake_restore(*, postflight, restored_snapshot, output):
-        observed.update(
-            postflight=postflight, restored_snapshot=restored_snapshot, output=output
-        )
+        observed.update(postflight=postflight, restored_snapshot=restored_snapshot, output=output)
         return {"schema_version": "typed-region-restore-receipt.v1", "ok": True}
 
     monkeypatch.setattr(runner, "handle_region_restore_receipt", fake_restore)
@@ -939,9 +946,7 @@ def test_runner_dispatches_region_sw003_live_gate_status(monkeypatch, capsys) ->
             "closes_live_sw003_gate": False,
         }
 
-    monkeypatch.setattr(
-        runner, "handle_region_sw003_live_gate_status", fake_live_gate_status
-    )
+    monkeypatch.setattr(runner, "handle_region_sw003_live_gate_status", fake_live_gate_status)
     code = runner.main(
         [
             "miro",
@@ -975,9 +980,7 @@ def test_runner_dispatches_region_sw003_live_gate_review_packet(monkeypatch, cap
             "closes_live_sw003_gate": False,
         }
 
-    monkeypatch.setattr(
-        runner, "handle_region_sw003_live_gate_review_packet", fake_review_packet
-    )
+    monkeypatch.setattr(runner, "handle_region_sw003_live_gate_review_packet", fake_review_packet)
     code = runner.main(
         [
             "miro",
@@ -1084,9 +1087,7 @@ def test_runner_dispatches_region_sw009_live_apply_gate(monkeypatch, capsys) -> 
     assert result["ready_for_live_apply"] is True
 
 
-def test_runner_dispatches_region_sw009_live_apply_candidate_template(
-    monkeypatch, capsys
-) -> None:
+def test_runner_dispatches_region_sw009_live_apply_candidate_template(monkeypatch, capsys) -> None:
     observed = {}
 
     def fake_template(*, output):
@@ -1096,9 +1097,7 @@ def test_runner_dispatches_region_sw009_live_apply_candidate_template(
             "mutation_attempted": False,
         }
 
-    monkeypatch.setattr(
-        runner, "handle_region_sw009_live_apply_candidate_template", fake_template
-    )
+    monkeypatch.setattr(runner, "handle_region_sw009_live_apply_candidate_template", fake_template)
     code = runner.main(
         [
             "miro",
@@ -1117,9 +1116,7 @@ def test_runner_dispatches_region_sw009_live_apply_candidate_template(
     assert result["mutation_attempted"] is False
 
 
-def test_runner_dispatches_region_sw009_live_apply_candidate_check(
-    monkeypatch, capsys
-) -> None:
+def test_runner_dispatches_region_sw009_live_apply_candidate_check(monkeypatch, capsys) -> None:
     observed = {}
 
     def fake_check(*, candidate_path, output):
@@ -1130,9 +1127,7 @@ def test_runner_dispatches_region_sw009_live_apply_candidate_check(
             "live_apply_attempted": False,
         }
 
-    monkeypatch.setattr(
-        runner, "handle_region_sw009_live_apply_candidate_check", fake_check
-    )
+    monkeypatch.setattr(runner, "handle_region_sw009_live_apply_candidate_check", fake_check)
     code = runner.main(
         [
             "miro",
@@ -1151,9 +1146,7 @@ def test_runner_dispatches_region_sw009_live_apply_candidate_check(
         "output": "candidate-receipt.json",
     }
     result = json.loads(capsys.readouterr().out)
-    assert result["schema_version"] == (
-        "typed-region-sw009-live-apply-candidate-receipt.v1"
-    )
+    assert result["schema_version"] == ("typed-region-sw009-live-apply-candidate-receipt.v1")
     assert result["ready_for_live_apply"] is True
     assert result["live_apply_attempted"] is False
 
@@ -1169,9 +1162,7 @@ def test_runner_dispatches_region_sw003_live_gate_requirements(monkeypatch, caps
             "requirements": [],
         }
 
-    monkeypatch.setattr(
-        runner, "handle_region_sw003_live_gate_requirements", fake_requirements
-    )
+    monkeypatch.setattr(runner, "handle_region_sw003_live_gate_requirements", fake_requirements)
     code = runner.main(
         [
             "miro",
@@ -1250,18 +1241,21 @@ def test_grabowski_pilot_cli(tmp_path, capsys) -> None:
     )
     snapshot = tmp_path / "snapshot.json"
     dsl = tmp_path / "view.dsl"
-    assert runner.main(
-        [
-            "pilot",
-            "grabowski",
-            str(source),
-            "--snapshot-output",
-            str(snapshot),
-            "--dsl-output",
-            str(dsl),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "pilot",
+                "grabowski",
+                str(source),
+                "--snapshot-output",
+                str(snapshot),
+                "--dsl-output",
+                str(dsl),
+                "--json",
+            ]
+        )
+        == 0
+    )
     result = json.loads(capsys.readouterr().out)
     assert result["provider_mutation_attempted"] is False
     assert snapshot.is_file()
@@ -1511,9 +1505,7 @@ def test_runner_dispatches_sw009_live_plan(monkeypatch, capsys) -> None:
 def test_runner_dispatches_sw009_live_apply_and_restore(monkeypatch, capsys) -> None:
     observed = {}
 
-    def fake_apply(
-        *, gate_path, bundle_path, authorization_path, plan_path, output
-    ):
+    def fake_apply(*, gate_path, bundle_path, authorization_path, plan_path, output):
         observed["apply"] = {
             "gate_path": gate_path,
             "bundle_path": bundle_path,

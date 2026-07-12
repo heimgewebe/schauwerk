@@ -52,9 +52,7 @@ def make_regie_handler(
                 "frame-ancestors 'none'; form-action 'self'",
             )
 
-        def _send_bytes(
-            self, status: HTTPStatus, body: bytes, *, content_type: str
-        ) -> None:
+        def _send_bytes(self, status: HTTPStatus, body: bytes, *, content_type: str) -> None:
             self.send_response(status)
             self._security_headers(content_type=content_type)
             self.send_header("Content-Length", str(len(body)))
@@ -62,9 +60,7 @@ def make_regie_handler(
             self.wfile.write(body)
 
         def _json(self, status: HTTPStatus, value: Any) -> None:
-            body = (
-                json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n"
-            ).encode("utf-8")
+            body = (json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
             self._send_bytes(status, body, content_type="application/json; charset=utf-8")
 
         def _valid_host(self) -> bool:
@@ -200,9 +196,7 @@ def serve_regie(
     port: int = 0,
     open_browser: bool = True,
 ) -> None:
-    server, address, _token = build_regie_server(
-        controller, host=host, port=port
-    )
+    server, address, _token = build_regie_server(controller, host=host, port=port)
     if open_browser:
         webbrowser.open(address)
     try:

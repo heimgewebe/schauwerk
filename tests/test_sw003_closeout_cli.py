@@ -151,9 +151,7 @@ def _complete_live_gate_claim() -> dict:
     }
 
 
-def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(
-    tmp_path, capsys
-) -> None:
+def test_sw003_live_gate_cli_writes_local_evaluation_without_miro_access(tmp_path, capsys) -> None:
     evidence_path = tmp_path / "live-gate-evidence.json"
     output_path = tmp_path / "live-gate-evaluation.json"
     _write_json(evidence_path, _complete_live_gate_claim())
@@ -252,9 +250,7 @@ def test_sw003_live_gate_requirements_cli_writes_local_checklist(tmp_path, capsy
     stdout_receipt = json.loads(capsys.readouterr().out)
     written = json.loads(output_path.read_text(encoding="utf-8"))
     required_keys = {item["key"] for item in written["requirements"]}
-    assert stdout_receipt["schema_version"] == (
-        "typed-region-sw003-live-gate-requirements.v1"
-    )
+    assert stdout_receipt["schema_version"] == ("typed-region-sw003-live-gate-requirements.v1")
     assert "live_create_attempted" in required_keys
     assert "cleanup_verified_or_boundary_accepted" in required_keys
     assert stdout_receipt == written
@@ -308,16 +304,19 @@ def test_sw003_live_gate_template_evidence_fails_closed_when_evaluated(tmp_path,
     evidence_path = tmp_path / "template-evidence.json"
     evaluation_path = tmp_path / "template-evaluation.json"
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-template",
-            "--output",
-            str(template_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-template",
+                "--output",
+                str(template_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     template_receipt = json.loads(template_path.read_text(encoding="utf-8"))
     _write_json(evidence_path, template_receipt["evidence_template"])
     capsys.readouterr()
@@ -341,9 +340,7 @@ def test_sw003_live_gate_template_evidence_fails_closed_when_evaluated(tmp_path,
     assert evaluation["candidate_closes_live_sw003_gate"] is False
     assert evaluation["closes_live_sw003_gate"] is False
     assert "live_gate_claim_not_requested" in evaluation["blocked_reasons"]
-    assert "evidence_live_create_attempted_missing_or_false" in evaluation[
-        "blocked_reasons"
-    ]
+    assert "evidence_live_create_attempted_missing_or_false" in evaluation["blocked_reasons"]
 
 
 def test_sw003_live_gate_status_cli_writes_local_status_receipt(tmp_path, capsys) -> None:
@@ -353,30 +350,36 @@ def test_sw003_live_gate_status_cli_writes_local_status_receipt(tmp_path, capsys
     evidence = _complete_live_gate_claim()
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate",
-            str(evidence_path),
-            "--output",
-            str(evaluation_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate",
+                str(evidence_path),
+                "--output",
+                str(evaluation_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-status",
-            str(evaluation_path),
-            "--output",
-            str(status_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-status",
+                str(evaluation_path),
+                "--output",
+                str(status_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
 
     stdout_receipt = json.loads(capsys.readouterr().out)
     written = json.loads(status_path.read_text(encoding="utf-8"))
@@ -422,42 +425,51 @@ def test_sw003_live_gate_review_packet_cli_writes_local_packet(tmp_path, capsys)
     evidence = _complete_live_gate_claim()
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate",
-            str(evidence_path),
-            "--output",
-            str(evaluation_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate",
+                str(evidence_path),
+                "--output",
+                str(evaluation_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-status",
-            str(evaluation_path),
-            "--output",
-            str(status_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-status",
+                str(evaluation_path),
+                "--output",
+                str(status_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-review-packet",
-            str(status_path),
-            "--output",
-            str(packet_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-review-packet",
+                str(status_path),
+                "--output",
+                str(packet_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
 
     stdout_packet = json.loads(capsys.readouterr().out)
     written = json.loads(packet_path.read_text(encoding="utf-8"))
@@ -504,54 +516,66 @@ def test_sw003_live_gate_evidence_packet_cli_writes_local_packet(tmp_path, capsy
     evidence = _complete_live_gate_claim()
     evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate",
-            str(evidence_path),
-            "--output",
-            str(evaluation_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate",
+                str(evidence_path),
+                "--output",
+                str(evaluation_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-status",
-            str(evaluation_path),
-            "--output",
-            str(status_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-status",
+                str(evaluation_path),
+                "--output",
+                str(status_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-review-packet",
-            str(status_path),
-            "--output",
-            str(review_packet_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-review-packet",
+                str(status_path),
+                "--output",
+                str(review_packet_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
-    assert runner.main(
-        [
-            "miro",
-            "region",
-            "sw003-live-gate-evidence-packet",
-            str(review_packet_path),
-            "--output",
-            str(evidence_packet_path),
-            "--json",
-        ]
-    ) == 0
+    assert (
+        runner.main(
+            [
+                "miro",
+                "region",
+                "sw003-live-gate-evidence-packet",
+                str(review_packet_path),
+                "--output",
+                str(evidence_packet_path),
+                "--json",
+            ]
+        )
+        == 0
+    )
 
     stdout_packet = json.loads(capsys.readouterr().out)
     written = json.loads(evidence_packet_path.read_text(encoding="utf-8"))
@@ -737,9 +761,9 @@ def test_sw009_live_apply_gate_cli_blocks_without_acknowledgements(tmp_path, cap
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is False
     assert result["ready_for_live_apply"] is False
-    assert "acknowledgement_missing:operator_confirms_provider_redaction" in result[
-        "blocked_reasons"
-    ]
+    assert (
+        "acknowledgement_missing:operator_confirms_provider_redaction" in result["blocked_reasons"]
+    )
 
 
 def _ready_sw009_candidate_manifest(tmp_path) -> dict:
@@ -797,9 +821,7 @@ def test_sw009_live_apply_candidate_template_cli_writes_template(tmp_path, capsy
     assert set(result["acknowledgements"].values()) == {False}
 
 
-def test_sw009_live_apply_candidate_check_cli_writes_ready_receipt(
-    tmp_path, capsys
-) -> None:
+def test_sw009_live_apply_candidate_check_cli_writes_ready_receipt(tmp_path, capsys) -> None:
     candidate_path = tmp_path / "candidate.json"
     output_path = tmp_path / "candidate-receipt.json"
     candidate_path.write_text(
@@ -822,9 +844,7 @@ def test_sw009_live_apply_candidate_check_cli_writes_ready_receipt(
     result = json.loads(capsys.readouterr().out)
     written = json.loads(output_path.read_text(encoding="utf-8"))
     assert result == written
-    assert result["schema_version"] == (
-        "typed-region-sw009-live-apply-candidate-receipt.v1"
-    )
+    assert result["schema_version"] == ("typed-region-sw009-live-apply-candidate-receipt.v1")
     assert result["ok"] is True
     assert result["ready_for_live_apply"] is True
     assert result["live_apply_attempted"] is False
@@ -833,9 +853,7 @@ def test_sw009_live_apply_candidate_check_cli_writes_ready_receipt(
     assert result["boundary"]["does_not_execute_live_apply"] is True
 
 
-def test_sw009_live_apply_candidate_check_cli_blocks_missing_ack(
-    tmp_path, capsys
-) -> None:
+def test_sw009_live_apply_candidate_check_cli_blocks_missing_ack(tmp_path, capsys) -> None:
     candidate = _ready_sw009_candidate_manifest(tmp_path)
     candidate["acknowledgements"]["operator_confirms_postflight_plan"] = False
     candidate.pop("candidate_digest")
@@ -857,6 +875,7 @@ def test_sw009_live_apply_candidate_check_cli_blocks_missing_ack(
     result = json.loads(capsys.readouterr().out)
     assert result["ok"] is False
     assert result["ready_for_live_apply"] is False
-    assert "gate:acknowledgement_missing:operator_confirms_postflight_plan" in result[
-        "blocked_reasons"
-    ]
+    assert (
+        "gate:acknowledgement_missing:operator_confirms_postflight_plan"
+        in result["blocked_reasons"]
+    )

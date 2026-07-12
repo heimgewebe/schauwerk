@@ -81,18 +81,12 @@ def test_inspect_delegates_without_exposing_identifiers(tmp_path, monkeypatch) -
     client = MiroMCPClient(settings=settings)
     observed = {}
 
-    async def fake_inspect(
-        _settings, _storage, *, query, owned_by_me, limit, max_pages
-    ):
-        observed.update(
-            query=query, owned=owned_by_me, limit=limit, pages=max_pages
-        )
+    async def fake_inspect(_settings, _storage, *, query, owned_by_me, limit, max_pages):
+        observed.update(query=query, owned=owned_by_me, limit=limit, pages=max_pages)
         return {"read_only": True, "identity": {"complete": True}}
 
     monkeypatch.setattr(client_module, "run_read_only_inspection", fake_inspect)
-    result = asyncio.run(
-        client.inspect(query="grabowski", owned_by_me=True, max_pages=3)
-    )
+    result = asyncio.run(client.inspect(query="grabowski", owned_by_me=True, max_pages=3))
 
     assert result == {"read_only": True, "identity": {"complete": True}}
     assert observed == {

@@ -124,9 +124,7 @@ def _normalized_items(
     return sorted(result, key=lambda item: item[fields[0]])
 
 
-def compile_software_snapshot(
-    input_path: Path, *, repo_root: Path | None = None
-) -> dict[str, Any]:
+def compile_software_snapshot(input_path: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
     root = (repo_root or Path(__file__).resolve().parents[3]).resolve()
     value, source_sha256 = _read_json(input_path)
     _validate_input(value, repo_root=root)
@@ -177,9 +175,7 @@ def compile_software_snapshot(
     roadmap = _normalized_items(
         value["roadmap"], fields=("id", "title", "status", "outcome"), label="roadmap"
     )
-    work = _normalized_items(
-        value["work"], fields=("id", "title", "status", "kind"), label="work"
-    )
+    work = _normalized_items(value["work"], fields=("id", "title", "status", "kind"), label="work")
     risks = _normalized_items(
         value["risks"], fields=("id", "title", "severity", "status", "mitigation"), label="risks"
     )
@@ -341,9 +337,7 @@ def validate_software_snapshot(
                 raise ValueError(f"software pilot {collection} fields are invalid")
             for field in fields:
                 value = item.get(field)
-                if value != _safe_text(
-                    value, label=f"{collection}[{index}].{field}", maximum=240
-                ):
+                if value != _safe_text(value, label=f"{collection}[{index}].{field}", maximum=240):
                     raise ValueError(
                         f"software pilot {collection}[{index}].{field} is not normalized"
                     )

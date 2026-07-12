@@ -33,9 +33,7 @@ class FakeClient:
         }
 
 
-def test_snapshot_handler_writes_owner_only_valid_snapshot(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_snapshot_handler_writes_owner_only_valid_snapshot(tmp_path: Path, monkeypatch) -> None:
     import schauwerk.cli_handlers as handlers
 
     client = FakeClient(tmp_path / "miro")

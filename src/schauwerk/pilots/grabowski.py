@@ -331,9 +331,7 @@ def write_grabowski_pilot(
     snapshot = compile_grabowski_snapshot(operator_context, repo_root=repo_root)
     dsl = render_grabowski_dsl(snapshot)
     if snapshot_output is not None:
-        _write_text_atomic(
-            snapshot_output, json.dumps(snapshot, indent=2, sort_keys=True) + "\n"
-        )
+        _write_text_atomic(snapshot_output, json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
     if dsl_output is not None:
         _write_text_atomic(dsl_output, dsl)
     return {

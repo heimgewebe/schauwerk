@@ -68,9 +68,7 @@ def _publish_directory_noreplace(source: Path, destination: Path, *, label: str)
     if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
         raise PresentationModelError(f"{label} appeared during build")
     if error_number in {errno.EINVAL, errno.ENOSYS, errno.ENOTSUP}:
-        raise PresentationModelError(
-            "atomic no-replace directory publication is unavailable"
-        )
+        raise PresentationModelError("atomic no-replace directory publication is unavailable")
     raise OSError(error_number, os.strerror(error_number), destination)
 
 

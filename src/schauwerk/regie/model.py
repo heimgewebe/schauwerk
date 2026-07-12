@@ -42,9 +42,9 @@ _DECISIONS = frozenset({"approve", "reject", "defer"})
 
 
 def stable_digest(value: Any) -> str:
-    encoded = json.dumps(
-        value, ensure_ascii=False, separators=(",", ":"), sort_keys=True
-    ).encode("utf-8")
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -174,9 +174,7 @@ def _normalize_source(value: Mapping[str, Any], *, index: int) -> dict[str, Any]
         "source_id": _safe_id(value.get("source_id"), label=f"sources[{index}].source_id"),
         "title": _line(value.get("title"), label=f"sources[{index}].title"),
         "revision": _line(value.get("revision"), label=f"sources[{index}].revision"),
-        "observed_at": _timestamp(
-            value.get("observed_at"), label=f"sources[{index}].observed_at"
-        ),
+        "observed_at": _timestamp(value.get("observed_at"), label=f"sources[{index}].observed_at"),
         "freshness": freshness,
         "visibility": visibility,
         "citation": _line(value.get("citation"), label=f"sources[{index}].citation"),
@@ -261,8 +259,7 @@ def validate_regie_context(value: Mapping[str, Any]) -> dict[str, Any]:
     ):
         raise ValueError("Regie instructions are invalid")
     instructions = [
-        _line(item, label=f"instructions[{index}]")
-        for index, item in enumerate(raw_instructions)
+        _line(item, label=f"instructions[{index}]") for index, item in enumerate(raw_instructions)
     ]
     expected_boundary = {
         "local_private_only": True,
@@ -370,9 +367,7 @@ def compile_review_bundle(
         "sources": sources,
         "context": review_context["context"],
         "stale_source_ids": sorted(
-            source["source_id"]
-            for source in sources
-            if source["freshness"] != "fresh"
+            source["source_id"] for source in sources if source["freshness"] != "fresh"
         ),
         "maximum_uncertainty": max(source["uncertainty"] for source in sources),
         "operations": operations,
@@ -462,9 +457,7 @@ def validate_review_bundle(value: Mapping[str, Any]) -> dict[str, Any]:
         expected_operations.append(expected_presented)
     stale_source_ids = value.get("stale_source_ids")
     expected_stale = sorted(
-        source["source_id"]
-        for source in context["sources"]
-        if source["freshness"] != "fresh"
+        source["source_id"] for source in context["sources"] if source["freshness"] != "fresh"
     )
     if stale_source_ids != expected_stale:
         raise ValueError("Regie review stale source projection mismatch")
@@ -563,9 +556,7 @@ def compile_decision_receipt(
             raise ValueError(f"Regie decision for {operation_id} is invalid")
         normalized_decisions.append({"operation_id": operation_id, "decision": decision})
     approved_ids = {
-        item["operation_id"]
-        for item in normalized_decisions
-        if item["decision"] == "approve"
+        item["operation_id"] for item in normalized_decisions if item["decision"] == "approve"
     }
     selected_bundle = _selected_bundle(review, approved_ids)
     if confirmation != "APPROVE_LIVE_APPLY":
@@ -601,14 +592,10 @@ def compile_decision_receipt(
         "decisions": normalized_decisions,
         "approved_operation_ids": sorted(approved_ids),
         "rejected_operation_ids": sorted(
-            item["operation_id"]
-            for item in normalized_decisions
-            if item["decision"] == "reject"
+            item["operation_id"] for item in normalized_decisions if item["decision"] == "reject"
         ),
         "deferred_operation_ids": sorted(
-            item["operation_id"]
-            for item in normalized_decisions
-            if item["decision"] == "defer"
+            item["operation_id"] for item in normalized_decisions if item["decision"] == "defer"
         ),
         "selected_bundle": selected_bundle,
         "authorization": authorization,
@@ -673,10 +660,7 @@ def validate_decision_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
     }
     if plan["authorization"] != expected_plan_authorization:
         raise ValueError("Regie decision plan does not match authorization")
-    if (
-        plan["source_receipts"]["authorization_digest"]
-        != authorization["authorization_digest"]
-    ):
+    if plan["source_receipts"]["authorization_digest"] != authorization["authorization_digest"]:
         raise ValueError("Regie decision plan authorization digest mismatch")
     decisions = value.get("decisions")
     if not isinstance(decisions, list) or not decisions:
@@ -733,9 +717,7 @@ def validate_decision_receipt(value: Mapping[str, Any]) -> dict[str, Any]:
         "review_digest": review_digest,
         "decided_at": decided_at,
         "approved_by": _line(value.get("approved_by"), label="approved_by"),
-        "approval_reference": _line(
-            value.get("approval_reference"), label="approval_reference"
-        ),
+        "approval_reference": _line(value.get("approval_reference"), label="approval_reference"),
         "decisions": normalized_decisions,
         "selected_bundle": bundle,
         "authorization": authorization,

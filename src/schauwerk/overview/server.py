@@ -67,9 +67,7 @@ def make_overview_handler(
             return _host_name(self.headers.get("Host", "")) in _ALLOWED_HOSTS
 
         def _authorized(self) -> bool:
-            return secrets.compare_digest(
-                self.headers.get("X-Schauwerk-Session", ""), token
-            )
+            return secrets.compare_digest(self.headers.get("X-Schauwerk-Session", ""), token)
 
         def do_GET(self) -> None:
             if not self._valid_host():
@@ -84,9 +82,7 @@ def make_overview_handler(
                 )
                 return
             if path == "/style.css":
-                self._send(
-                    HTTPStatus.OK, STYLE_CSS.encode(), "text/css; charset=utf-8"
-                )
+                self._send(HTTPStatus.OK, STYLE_CSS.encode(), "text/css; charset=utf-8")
                 return
             if path == "/app.js":
                 self._send(

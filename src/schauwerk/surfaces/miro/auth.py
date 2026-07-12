@@ -24,8 +24,6 @@ class CallbackResult:
     state: str | None
 
 
-
-
 def _open_browser_nonblocking(url: str) -> bool:
     """Launch a local browser without blocking the asyncio event loop."""
     commands: list[list[str]] = []
@@ -52,6 +50,7 @@ def _open_browser_nonblocking(url: str) -> bool:
         except OSError:
             continue
     return False
+
 
 def parse_callback_url(value: str, *, expected_path: str | None = None) -> CallbackResult:
     """Parse a full callback URL or request target without exposing its contents."""
@@ -109,8 +108,7 @@ class LoopbackCallbackServer:
         except TimeoutError as exc:
             duration = self.settings.authorization_timeout_seconds
             raise MiroAuthorizationError(
-                "Timed out waiting for Miro authorization "
-                f"after {duration:g} seconds"
+                f"Timed out waiting for Miro authorization after {duration:g} seconds"
             ) from exc
         return result.code, result.state
 
@@ -141,8 +139,10 @@ class LoopbackCallbackServer:
             status = "200 OK"
             body = "Miro authorization complete. You may close this tab."
         except Exception as exc:
-            error = exc if isinstance(exc, MiroAuthorizationError) else MiroAuthorizationError(
-                "Invalid OAuth callback"
+            error = (
+                exc
+                if isinstance(exc, MiroAuthorizationError)
+                else MiroAuthorizationError("Invalid OAuth callback")
             )
             if self._future is not None and not self._future.done():
                 self._future.set_exception(error)

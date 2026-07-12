@@ -37,9 +37,7 @@ def test_sw009_acceptance_evidence_is_cross_bound_and_non_authoritative() -> Non
     assert bundle["surface_alias"] == region.surface_alias == "sw009-fixture-board"
     assert authorization["gate_receipt_digest"] == gate["receipt_digest"]
     assert authorization["operation_bundle_digest"] == bundle["bundle_digest"]
-    assert plan["source_receipts"]["authorization_digest"] == authorization[
-        "authorization_digest"
-    ]
+    assert plan["source_receipts"]["authorization_digest"] == authorization["authorization_digest"]
     assert authorization["expires_at"] == "2026-07-11T00:15:00Z"
     assert plan["mutation_attempted"] is False
     assert plan["live_apply_attempted"] is False

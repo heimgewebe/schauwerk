@@ -105,9 +105,7 @@ def validate_registry(repo_root: Path) -> dict[str, int]:
     def require_known(values: list[str], known: set[str], *, location: str, field: str) -> None:
         for value in values:
             if value not in known:
-                raise RegistryValidationError(
-                    f"{location}: unknown {field} value {value!r}"
-                )
+                raise RegistryValidationError(f"{location}: unknown {field} value {value!r}")
 
     for item in loaded["sources"]:
         require_known(
@@ -136,9 +134,7 @@ def validate_registry(repo_root: Path) -> dict[str, int]:
         if source_id in visited:
             return
         if source_id in visiting:
-            raise RegistryValidationError(
-                f"sources.yaml: dependency cycle includes {source_id!r}"
-            )
+            raise RegistryValidationError(f"sources.yaml: dependency cycle includes {source_id!r}")
         visiting.add(source_id)
         for dependency in source_dependencies[source_id]:
             visit_source(dependency)

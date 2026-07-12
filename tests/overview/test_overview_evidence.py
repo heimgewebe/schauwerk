@@ -35,16 +35,12 @@ def test_fixture_snapshot_proves_provider_outage_without_local_diagnostic_loss()
     regie = next(job for job in snapshot["jobs"] if job["kind"] == "regie-session")
     assert regie["status"] == "authorization-expired"
     provider = next(
-        item
-        for item in snapshot["observations"]
-        if item["observation_id"] == "provider.miro.live"
+        item for item in snapshot["observations"] if item["observation_id"] == "provider.miro.live"
     )
     assert provider["state"] == "error"
     assert provider["freshness"] == "error"
     assert provider["error"] == "fixture provider outage"
-    assert snapshot["boundary"][
-        "provider_failure_does_not_block_local_diagnostics"
-    ]
+    assert snapshot["boundary"]["provider_failure_does_not_block_local_diagnostics"]
 
 
 def test_interface_profiles_and_failure_matrix_cover_t009_acceptance() -> None:
@@ -75,11 +71,7 @@ def test_interface_profiles_and_failure_matrix_cover_t009_acceptance() -> None:
 
 
 def test_evidence_contains_no_sensitive_runtime_reference() -> None:
-    text = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in ROOT.iterdir()
-        if path.is_file()
-    )
+    text = "\n".join(path.read_text(encoding="utf-8") for path in ROOT.iterdir() if path.is_file())
     patterns = (
         r"(?i)(?:/home/|/Users/|[A-Z]:\\)",
         r"(?i)https?://(?:www\.)?miro\.com|moveToWidget=",

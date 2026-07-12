@@ -155,9 +155,10 @@ def test_partial_approval_compiles_new_bundle_authorization_and_plan() -> None:
         operation["operation_id"] for operation in decision["selected_bundle"]["operations"]
     ] == [first]
     assert decision["plan"]["operations"] == decision["selected_bundle"]["operations"]
-    assert decision["plan"]["authorization"]["authorization_id"] == decision[
-        "authorization"
-    ]["authorization_id"]
+    assert (
+        decision["plan"]["authorization"]["authorization_id"]
+        == decision["authorization"]["authorization_id"]
+    )
     assert (
         decision["plan"]["source_receipts"]["authorization_digest"]
         == decision["authorization"]["authorization_digest"]

@@ -285,33 +285,25 @@ def test_failed_restore_with_recovered_after_state_can_be_retried(tmp_path: Path
     class FlakyRestoreProvider(FakeProvider):
         fail_inverse_once = True
 
-        async def replace_text(
-            self, *, alias: str, old_text: str, new_text: str
-        ) -> dict:
+        async def replace_text(self, *, alias: str, old_text: str, new_text: str) -> dict:
             if self.fail_inverse_once and old_text == NEW_ONE and new_text == OLD_ONE:
                 self.fail_inverse_once = False
                 raise ValueError("fixture inverse failure")
-            return await super().replace_text(
-                alias=alias, old_text=old_text, new_text=new_text
-            )
+            return await super().replace_text(alias=alias, old_text=old_text, new_text=new_text)
 
     provider = FlakyRestoreProvider()
     calls = {"provider": 0}
     active = controller(tmp_path, provider, calls)
     active.decide(decision_payload())
     asyncio.run(active.apply({"confirmation": "EXECUTE_LIVE_APPLY"}))
-    failed = asyncio.run(
-        active.restore({"confirmation": "RESTORE_LIVE_APPLY"})
-    )
+    failed = asyncio.run(active.restore({"confirmation": "RESTORE_LIVE_APPLY"}))
     assert failed["ok"] is False
     assert failed["rollback_to_after_succeeded"] is True
     assert failed["still_restore_ready"] is True
     state = active.state()
     assert state["phase"] == "restore-failed"
     assert state["controls"]["can_restore"] is True
-    restored = asyncio.run(
-        active.restore({"confirmation": "RESTORE_LIVE_APPLY"})
-    )
+    restored = asyncio.run(active.restore({"confirmation": "RESTORE_LIVE_APPLY"}))
     assert restored["ok"] is True
     assert active.state()["phase"] == "restored"
     assert calls["provider"] == 3

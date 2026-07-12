@@ -122,8 +122,6 @@ def load_region_declaration(path: Path) -> RegionDeclaration:
     return parse_region_declaration(raw)
 
 
-
-
 def _load_json_or_yaml(path: Path, *, label: str) -> Any:
     candidate = path.expanduser().absolute()
     if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents):

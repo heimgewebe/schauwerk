@@ -29,9 +29,7 @@ def raw_request(
     headers = [f"Host: {host}", "Connection: close"]
     if token:
         headers.append(f"X-Schauwerk-Session: {token}")
-    request = (
-        f"{method} {path} HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n"
-    ).encode("ascii")
+    request = (f"{method} {path} HTTP/1.1\r\n" + "\r\n".join(headers) + "\r\n\r\n").encode("ascii")
     client, server_socket = socket.socketpair()
     try:
         client.sendall(request)
@@ -100,9 +98,7 @@ def test_state_requires_token_and_loopback_host(handler_token) -> None:
     status, _headers, body = raw_request(handler, "GET", "/api/state")
     assert status == 403
     assert json.loads(body)["error"] == "invalid overview session"
-    status, _headers, body = raw_request(
-        handler, "GET", "/api/state", token=token
-    )
+    status, _headers, body = raw_request(handler, "GET", "/api/state", token=token)
     assert status == 200
     assert json.loads(body)["summary"]["provider_state"] == "error"
     status, _headers, body = raw_request(
@@ -114,9 +110,7 @@ def test_state_requires_token_and_loopback_host(handler_token) -> None:
 
 def test_service_is_read_only(handler_token) -> None:
     handler, token = handler_token
-    status, _headers, body = raw_request(
-        handler, "POST", "/api/state", token=token
-    )
+    status, _headers, body = raw_request(handler, "POST", "/api/state", token=token)
     assert status == 405
     assert json.loads(body)["error"] == "read-only service"
 
@@ -126,21 +120,15 @@ def test_collection_exception_is_redacted_and_bounded() -> None:
         raise RuntimeError("fixture collection failure")
 
     handler = make_overview_handler(exploding, session_token="o" * 40)
-    status, _headers, body = raw_request(
-        handler, "GET", "/api/state", token="o" * 40
-    )
+    status, _headers, body = raw_request(handler, "GET", "/api/state", token="o" * 40)
     assert status == 500
-    assert json.loads(body)["error"] == (
-        "overview collection failed: fixture collection failure"
-    )
+    assert json.loads(body)["error"] == ("overview collection failed: fixture collection failure")
 
 
 def test_server_refuses_non_loopback_and_fragment_contains_token() -> None:
     with pytest.raises(ValueError, match="must bind"):
         build_overview_server(snapshot_factory, host="0.0.0.0")
-    server, address, token = build_overview_server(
-        snapshot_factory, port=0, session_token="o" * 40
-    )
+    server, address, token = build_overview_server(snapshot_factory, port=0, session_token="o" * 40)
     try:
         assert server.__class__.__name__ == "HTTPServer"
         assert address.endswith("#" + token)

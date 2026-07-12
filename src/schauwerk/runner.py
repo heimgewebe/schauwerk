@@ -7,6 +7,7 @@ import sys
 from typing import Any
 
 from .cli_handlers import (
+    handle_adapter_fixture,
     handle_board_add,
     handle_board_list,
     handle_board_remove,
@@ -130,9 +131,7 @@ def main(argv: list[str] | None = None) -> int:
                 review_id=args.review_id, title=args.title, output=args.output
             )
         elif args.provider == "regie" and args.command == "context-compile":
-            result = handle_regie_context_compile(
-                draft_path=args.draft, output=args.output
-            )
+            result = handle_regie_context_compile(draft_path=args.draft, output=args.output)
         elif args.provider == "regie" and args.command == "review":
             result = handle_regie_review(
                 context_path=args.context,
@@ -197,6 +196,8 @@ def main(argv: list[str] | None = None) -> int:
                 port=args.port,
                 open_browser=not args.no_browser,
             )
+        elif args.provider == "adapter" and args.command == "fixture":
+            result = handle_adapter_fixture(status=args.status, output=args.output)
         elif args.command == "status":
             result = handle_status(live=args.live)
         elif args.command == "login":
@@ -320,13 +321,8 @@ def main(argv: list[str] | None = None) -> int:
             args.command == "region"
             and args.region_command == "sw009-live-apply-candidate-template"
         ):
-            result = handle_region_sw009_live_apply_candidate_template(
-                output=args.output
-            )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw009-live-apply-candidate-check"
-        ):
+            result = handle_region_sw009_live_apply_candidate_template(output=args.output)
+        elif args.command == "region" and args.region_command == "sw009-live-apply-candidate-check":
             result = handle_region_sw009_live_apply_candidate_check(
                 candidate_path=args.candidate, output=args.output
             )
@@ -338,10 +334,7 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_region_sw009_live_bundle_compile(
                 draft_path=args.draft, output=args.output
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw009-live-authorization-create"
-        ):
+        elif args.command == "region" and args.region_command == "sw009-live-authorization-create":
             result = handle_region_sw009_live_authorization_create(
                 gate_path=args.gate,
                 bundle_path=args.bundle,
@@ -404,30 +397,19 @@ def main(argv: list[str] | None = None) -> int:
                 evaluation_receipt=args.evaluation_receipt,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-review-packet"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-review-packet":
             result = handle_region_sw003_live_gate_review_packet(
                 status_receipt=args.status_receipt,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-evidence-packet"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-evidence-packet":
             result = handle_region_sw003_live_gate_evidence_packet(
                 review_packet=args.review_packet,
                 output=args.output,
             )
-        elif (
-            args.command == "region"
-            and args.region_command == "sw003-live-gate-requirements"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-requirements":
             result = handle_region_sw003_live_gate_requirements(output=args.output)
-        elif (
-            args.command == "region" and args.region_command == "sw003-live-gate-template"
-        ):
+        elif args.command == "region" and args.region_command == "sw003-live-gate-template":
             result = handle_region_sw003_live_gate_template(output=args.output)
         elif args.command == "logout":
             result = handle_logout()

@@ -175,9 +175,7 @@ def _normalize_learning_view(view: LearningView) -> LearningView:
     return LearningView(
         topic=_safe_text(view.topic, label="learn.topic"),
         audience=_safe_text(view.audience, label="learn.audience"),
-        guiding_question=_safe_text(
-            view.guiding_question, label="learn.guiding_question"
-        ),
+        guiding_question=_safe_text(view.guiding_question, label="learn.guiding_question"),
         goals=tuple(
             _safe_text(value, label=f"learn.goals[{index}]")
             for index, value in enumerate(view.goals)
@@ -185,9 +183,7 @@ def _normalize_learning_view(view: LearningView) -> LearningView:
         steps=tuple(
             LearningStep(
                 title=_safe_text(step.title, label=f"learn.steps[{index}].title"),
-                activity=_safe_text(
-                    step.activity, label=f"learn.steps[{index}].activity"
-                ),
+                activity=_safe_text(step.activity, label=f"learn.steps[{index}].activity"),
                 minutes=step.minutes,
                 output=(
                     _safe_text(step.output, label=f"learn.steps[{index}].output")
@@ -345,10 +341,10 @@ def _document(*, title: str, source_digest: str, variant: str, body: str) -> str
     template = template_by_family("education")
     style = html_theme_css(template.family)
     return (
-        "<!doctype html>\n<html lang=\"de\"><head><meta charset=\"utf-8\">"
+        '<!doctype html>\n<html lang="de"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f"<title>{html.escape(title)}</title><style>{style}</style></head><body>"
-        f"<header><h1>{html.escape(title)}</h1><p class=\"meta\">Variante: {variant} · "
+        f'<header><h1>{html.escape(title)}</h1><p class="meta">Variante: {variant} · '
         f"Quelle: {source_digest[:16]} · Grammatik: {GRAMMAR_SCHEMA_VERSION} · "
         f"Template: {template.name}</p></header><main>{body}</main>"
         "<footer><p>Offline nutzbar · keine Netzwerk- oder Miro-Abhängigkeit · "
@@ -528,9 +524,7 @@ def write_education_variant(
     return receipt
 
 
-def write_offline_package(
-    *, input_path: Path, output_dir: Path, variant: str
-) -> dict[str, Any]:
+def write_offline_package(*, input_path: Path, output_dir: Path, variant: str) -> dict[str, Any]:
     source = load_education_source(input_path)
     document, variant_receipt = render_education_variant(source, variant)
     destination = _safe_destination(output_dir)
@@ -545,8 +539,7 @@ def write_offline_package(
             source_digest=source.source_digest,
             variant=f"offline-{variant}",
             body=(
-                f'<nav><h2>Ansicht</h2><p><a href="{filename}">'
-                f"{html.escape(variant)}</a></p></nav>"
+                f'<nav><h2>Ansicht</h2><p><a href="{filename}">{html.escape(variant)}</a></p></nav>'
             ),
         )
         (temporary / "index.html").write_text(index, encoding="utf-8")

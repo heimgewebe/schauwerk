@@ -87,9 +87,7 @@ def ready_restore_receipt() -> dict:
         scaffold=scaffold, fixture_operations=fixture_operations()
     )
     after = snapshot(declaration.surface_alias, "e" * 64) | {
-        "fixture_operations_digest": apply_receipt["source_receipts"][
-            "fixture_operations_digest"
-        ],
+        "fixture_operations_digest": apply_receipt["source_receipts"]["fixture_operations_digest"],
         "idempotency_key": apply_receipt["idempotency"]["key"],
         "idempotency_verified": True,
     }
@@ -567,9 +565,7 @@ def test_sw003_live_gate_status_receipt_summarizes_candidate_without_closing(tmp
     }
     assert len(result["status_digest"]) == 64
     status_digest_input = {
-        key: item
-        for key, item in result.items()
-        if key not in {"output_path", "status_digest"}
+        key: item for key, item in result.items() if key not in {"output_path", "status_digest"}
     }
     assert result["status_digest"] == _stable_digest(status_digest_input)
 
@@ -770,9 +766,7 @@ def test_sw003_live_gate_review_packet_rejects_tampered_status() -> None:
 
 
 def _live_gate_review_packet() -> dict[str, Any]:
-    return compile_sw003_live_gate_review_packet(
-        status_receipt=_live_gate_status_receipt()
-    )
+    return compile_sw003_live_gate_review_packet(status_receipt=_live_gate_status_receipt())
 
 
 def test_sw003_live_gate_review_packet_loads_versioned_packet(tmp_path) -> None:
@@ -889,9 +883,10 @@ def test_sw003_live_gate_evidence_packet_writes_local_packet(tmp_path) -> None:
     assert result["ready_for_live_apply"] is False
     assert result["closes_live_sw003_gate"] is False
     assert result["creates_live_acceptance"] is False
-    assert result["source_receipts"]["live_gate_review_packet_digest"] == review_packet[
-        "review_packet_digest"
-    ]
+    assert (
+        result["source_receipts"]["live_gate_review_packet_digest"]
+        == review_packet["review_packet_digest"]
+    )
     assert result["source_schema_versions"] == {
         "live_gate_evaluation": "typed-region-sw003-live-gate-evaluation.v1",
         "live_gate_status": "typed-region-sw003-live-gate-status.v1",
@@ -935,9 +930,7 @@ def test_sw003_live_gate_evidence_packet_blocks_unready_review_packet() -> None:
     assert result["summary"]["review_packet_blocked_reasons"] == [
         "live_gate_status_not_ready_for_review"
     ]
-    assert result["summary"]["status_blocked_reasons"] == [
-        "live_gate_candidate_invalid"
-    ]
+    assert result["summary"]["status_blocked_reasons"] == ["live_gate_candidate_invalid"]
 
 
 def test_sw003_live_gate_evidence_packet_rejects_tampered_review_packet() -> None:

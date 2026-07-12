@@ -80,15 +80,13 @@ def test_learning_view_v1_1_keeps_dense_doc_and_tables_apart() -> None:
 def test_learning_view_v1_1_spaces_six_learning_steps_without_overlap() -> None:
     data = sample()
     data["steps"] = [
-        {"title": f"Schritt {index}", "activity": "arbeiten", "minutes": 5}
-        for index in range(1, 7)
+        {"title": f"Schritt {index}", "activity": "arbeiten", "minutes": 5} for index in range(1, 7)
     ]
     rendered = render_learning_dsl(parse_learning_view(data))
 
     step_y_values = [_number(rendered, f"step{index}", "y") for index in range(1, 7)]
     assert all(
-        (next_y - current_y) >= 250
-        for current_y, next_y in zip(step_y_values, step_y_values[1:])
+        (next_y - current_y) >= 250 for current_y, next_y in zip(step_y_values, step_y_values[1:])
     )
     assert _number(rendered, "step6", "y") < _number(rendered, "flow", "h")
     assert "e_step_5 CONNECTOR from=step5 to=step6" in rendered

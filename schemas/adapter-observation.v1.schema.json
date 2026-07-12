@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.local/schauwerk/adapter-observation.v1.schema.json",
+  "title": "Schauwerk SW-014 adapter observation v1",
+  "description": "Provider-neutral source adapter observation with deterministic digest and strict health states.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adapter_id",
+    "observed_at",
+    "stale_after_seconds",
+    "status",
+    "payload_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "adapter-observation.v1"
+    },
+    "adapter_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stale_after_seconds": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "status": {
+      "enum": [
+        "healthy",
+        "stale",
+        "partial",
+        "failed"
+      ]
+    },
+    "error_code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "payload_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "payload": {
+      "type": [
+        "object",
+        "null"
+      ]
+    }
+  }
+}

@@ -52,9 +52,11 @@ async def run_read_only_inspection(
                 timeout=httpx.Timeout(settings.network_timeout_seconds),
                 headers={"User-Agent": "schauwerk/0.1"},
             ) as http_client:
-                async with streamable_http_client(
-                    settings.server_url, http_client=http_client
-                ) as (read_stream, write_stream, _session_id):
+                async with streamable_http_client(settings.server_url, http_client=http_client) as (
+                    read_stream,
+                    write_stream,
+                    _session_id,
+                ):
                     async with ClientSession(read_stream, write_stream) as session:
                         await session.initialize()
                         return await inspect_read_only(
@@ -72,9 +74,7 @@ async def run_read_only_inspection(
             raise nested from exc
         if not isinstance(exc, Exception):
             raise
-        raise MiroConnectionError(
-            f"Miro read-only inspection failed: {redact_text(exc)}"
-        ) from exc
+        raise MiroConnectionError(f"Miro read-only inspection failed: {redact_text(exc)}") from exc
 
 
 async def inspect_default(

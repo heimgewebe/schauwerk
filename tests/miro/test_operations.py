@@ -85,9 +85,7 @@ def test_board_inspection_paginates_without_returning_names() -> None:
 
 def test_board_inspection_reports_empty_page_anomaly() -> None:
     async def call_tool(_name, _arguments):
-        return result(
-            {"data": [], "total": 2, "has_more": True, "nextCursor": "1"}
-        )
+        return result({"data": [], "total": 2, "has_more": True, "nextCursor": "1"})
 
     inspected = asyncio.run(inspect_boards(call_tool))
 

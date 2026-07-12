@@ -22,9 +22,7 @@ def test_live_authorization_handler_requires_exact_confirmation(tmp_path: Path) 
     assert not (tmp_path / "authorization.json").exists()
 
 
-def test_apply_kill_switch_blocks_before_live_tool_discovery(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_apply_kill_switch_blocks_before_live_tool_discovery(tmp_path: Path, monkeypatch) -> None:
     from types import SimpleNamespace
 
     import schauwerk.cli_handlers as handlers
@@ -41,9 +39,7 @@ def test_apply_kill_switch_blocks_before_live_tool_discovery(
             raise AssertionError("tool discovery must not run")
 
     reviewed = {"schema_version": "typed-region-live-apply-plan.v1"}
-    monkeypatch.setattr(
-        handlers, "_compile_live_plan_from_paths", lambda **_kwargs: reviewed
-    )
+    monkeypatch.setattr(handlers, "_compile_live_plan_from_paths", lambda **_kwargs: reviewed)
     monkeypatch.setattr(handlers, "load_live_apply_plan", lambda _path: reviewed)
     enable_kill_switch(tmp_path / "LIVE_APPLY_DISABLED", reason="operator stop")
     with pytest.raises(ValueError, match="kill switch is enabled"):

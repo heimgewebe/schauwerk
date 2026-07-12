@@ -54,17 +54,13 @@ def test_context_template_compile_and_review_handlers(tmp_path: Path) -> None:
     )
     draft_path.write_text(json.dumps(draft), encoding="utf-8")
     draft_path.chmod(0o600)
-    compiled = handle_regie_context_compile(
-        draft_path=str(draft_path), output=str(context_path)
-    )
+    compiled = handle_regie_context_compile(draft_path=str(draft_path), output=str(context_path))
     assert compiled["ok"] is True
     context = load_regie_context(context_path)
     assert context["review_id"] == "regie-cli-test"
 
     gate_path = owner_copy(EVIDENCE / "gate-receipt.json", tmp_path / "gate.json")
-    bundle_path = owner_copy(
-        EVIDENCE / "operation-bundle.json", tmp_path / "bundle.json"
-    )
+    bundle_path = owner_copy(EVIDENCE / "operation-bundle.json", tmp_path / "bundle.json")
     receipt = handle_regie_review(
         context_path=str(context_path),
         gate_path=str(gate_path),

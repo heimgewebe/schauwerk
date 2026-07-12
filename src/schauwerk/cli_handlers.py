@@ -113,9 +113,7 @@ from .visual.grammar import (
 )
 
 
-def handle_overview_snapshot(
-    *, output: str, probe_provider: bool
-) -> dict[str, Any]:
+def handle_overview_snapshot(*, output: str, probe_provider: bool) -> dict[str, Any]:
     client = MiroMCPClient()
     snapshot = asyncio.run(
         collect_overview(
@@ -139,9 +137,7 @@ def handle_overview_snapshot(
     }
 
 
-def handle_overview_serve(
-    *, port: int, probe_provider: bool, open_browser: bool
-) -> dict[str, Any]:
+def handle_overview_serve(*, port: int, probe_provider: bool, open_browser: bool) -> dict[str, Any]:
     client = MiroMCPClient()
 
     async def snapshot_factory() -> dict[str, Any]:
@@ -150,9 +146,7 @@ def handle_overview_serve(
             probe_provider=probe_provider,
         )
 
-    serve_overview(
-        snapshot_factory, port=port, open_browser=open_browser
-    )
+    serve_overview(snapshot_factory, port=port, open_browser=open_browser)
     return {
         "schema_version": "schauwerk-overview-server-stop-receipt.v1",
         "ok": True,
@@ -162,9 +156,7 @@ def handle_overview_serve(
     }
 
 
-def handle_regie_context_template(
-    *, review_id: str, title: str, output: str
-) -> dict[str, Any]:
+def handle_regie_context_template(*, review_id: str, title: str, output: str) -> dict[str, Any]:
     draft = {
         "review_id": review_id,
         "title": title,
@@ -194,9 +186,7 @@ def handle_regie_context_template(
             }
         ],
     }
-    destination = write_private_json(
-        Path(output), draft, label="Regie context draft"
-    )
+    destination = write_private_json(Path(output), draft, label="Regie context draft")
     return {
         "schema_version": "schauwerk-regie-context-template-receipt.v1",
         "ok": True,
@@ -228,9 +218,7 @@ def handle_regie_review(
         gate_receipt=load_live_apply_gate(Path(gate_path)),
         operation_bundle=load_live_operation_bundle(Path(bundle_path)),
     )
-    destination = write_private_json(
-        Path(output), review, label="Regie review bundle"
-    )
+    destination = write_private_json(Path(output), review, label="Regie review bundle")
     return {
         "schema_version": "schauwerk-regie-review-compile-receipt.v1",
         "ok": True,
@@ -244,17 +232,13 @@ def handle_regie_review(
     }
 
 
-def handle_regie_serve(
-    *, review_bundle: str, port: int, open_browser: bool
-) -> dict[str, Any]:
+def handle_regie_serve(*, review_bundle: str, port: int, open_browser: bool) -> dict[str, Any]:
     review = load_review_bundle(Path(review_bundle))
     client = MiroMCPClient()
 
     async def provider_factory() -> MiroManagedRegionProvider:
         catalogue = (await client.tools()).to_dict()
-        return MiroManagedRegionProvider(
-            client.settings, client.storage, cached_tools=catalogue
-        )
+        return MiroManagedRegionProvider(client.settings, client.storage, cached_tools=catalogue)
 
     controller = RegieController(
         review_bundle=review,
@@ -263,9 +247,7 @@ def handle_regie_serve(
         kill_switch_path=client.settings.state_root / "LIVE_APPLY_DISABLED",
         provider_factory=provider_factory,
     )
-    serve_regie(
-        controller, port=port, open_browser=open_browser
-    )
+    serve_regie(controller, port=port, open_browser=open_browser)
     return {
         "schema_version": "schauwerk-regie-server-stop-receipt.v1",
         "ok": True,
@@ -348,9 +330,7 @@ def handle_publication_withdraw(
     )
 
 
-def handle_publication_serve(
-    *, store_root: str, port: int, open_browser: bool
-) -> dict[str, Any]:
+def handle_publication_serve(*, store_root: str, port: int, open_browser: bool) -> dict[str, Any]:
     return serve_publications(Path(store_root), port=port, open_browser=open_browser)
 
 
@@ -364,9 +344,7 @@ def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:
     }
 
 
-def handle_education_render(
-    *, input_path: str, variant: str, output: str | None
-) -> dict[str, Any]:
+def handle_education_render(*, input_path: str, variant: str, output: str | None) -> dict[str, Any]:
     return write_education_variant(
         input_path=Path(input_path),
         variant=variant,
@@ -374,9 +352,7 @@ def handle_education_render(
     )
 
 
-def handle_education_offline(
-    *, input_path: str, output_dir: str, variant: str
-) -> dict[str, Any]:
+def handle_education_offline(*, input_path: str, output_dir: str, variant: str) -> dict[str, Any]:
     return write_offline_package(
         input_path=Path(input_path),
         output_dir=Path(output_dir),
@@ -836,9 +812,7 @@ def handle_region_sw009_live_bundle_template(
 ) -> dict[str, Any]:
     region = load_region_declaration(Path(input_path))
     value = compile_live_operation_bundle_template(region=region, bundle_id=bundle_id)
-    destination = write_live_artifact(
-        Path(output), value, label="live operation draft"
-    )
+    destination = write_live_artifact(Path(output), value, label="live operation draft")
     return {
         "schema_version": "typed-region-live-operation-draft-template-receipt.v1",
         "ok": True,
@@ -850,13 +824,9 @@ def handle_region_sw009_live_bundle_template(
     }
 
 
-def handle_region_sw009_live_bundle_compile(
-    *, draft_path: str, output: str
-) -> dict[str, Any]:
+def handle_region_sw009_live_bundle_compile(*, draft_path: str, output: str) -> dict[str, Any]:
     bundle = load_live_operation_draft(Path(draft_path))
-    destination = write_live_artifact(
-        Path(output), bundle, label="live operation bundle"
-    )
+    destination = write_live_artifact(Path(output), bundle, label="live operation bundle")
     return {
         "schema_version": "typed-region-live-operation-bundle-compile-receipt.v1",
         "ok": True,
@@ -894,9 +864,7 @@ def handle_region_sw009_live_authorization_create(
         expires_at=approved_at + timedelta(minutes=valid_minutes),
         authorization_id=authorization_id,
     )
-    destination = write_live_artifact(
-        Path(output), value, label="live authorization"
-    )
+    destination = write_live_artifact(Path(output), value, label="live authorization")
     return {
         "schema_version": "typed-region-live-authorization-create-receipt.v1",
         "ok": True,
@@ -952,9 +920,7 @@ def handle_region_sw009_live_apply(
         raise ValueError("live apply kill switch is enabled")
     live_artifact_destination(Path(output), label="live transaction receipt")
     live_tools = asyncio.run(active.tools()).to_dict()
-    provider = MiroManagedRegionProvider(
-        active.settings, active.storage, cached_tools=live_tools
-    )
+    provider = MiroManagedRegionProvider(active.settings, active.storage, cached_tools=live_tools)
     root = active.settings.state_root / "transactions"
     return asyncio.run(
         execute_live_apply(
@@ -977,9 +943,7 @@ def handle_region_sw009_live_restore(
     load_live_transaction_receipt(Path(transaction_receipt))
     live_artifact_destination(Path(output), label="live restore receipt")
     live_tools = asyncio.run(active.tools()).to_dict()
-    provider = MiroManagedRegionProvider(
-        active.settings, active.storage, cached_tools=live_tools
-    )
+    provider = MiroManagedRegionProvider(active.settings, active.storage, cached_tools=live_tools)
     return asyncio.run(
         restore_live_apply(
             transaction_receipt_path=Path(transaction_receipt),
@@ -1136,7 +1100,6 @@ def handle_region_apply_receipt(
     )
 
 
-
 def handle_region_operation_contract(
     *, scaffold: str, fixture: str, output: str | None
 ) -> dict[str, Any]:
@@ -1203,3 +1166,17 @@ def handle_region_restore_receipt(
         restored_snapshot=snapshot,
         output_path=Path(output) if output else None,
     )
+
+
+def handle_adapter_fixture(*, status: str, output: str | None) -> dict[str, Any]:
+    from schauwerk.adapters.model import create_observation
+
+    observation = create_observation(
+        adapter_id="sw014-local-fixture",
+        observed_at="2026-07-12T10:00:00Z",
+        stale_after_seconds=3600,
+        status=status,
+        error_code="fixture_failed" if status in ("failed", "partial") else None,
+        payload={"message": f"this is a {status} fixture"} if status != "failed" else None,
+    )
+    return _write_local_cli_receipt(observation, output)

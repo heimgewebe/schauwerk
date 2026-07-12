@@ -130,9 +130,7 @@ def build_parser() -> argparse.ArgumentParser:
     regie_review.add_argument("--bundle", required=True)
     regie_review.add_argument("--output", required=True)
     regie_review.add_argument("--json", action="store_true")
-    regie_serve = regie_commands.add_parser(
-        "serve", help="run the Regie interface on 127.0.0.1"
-    )
+    regie_serve = regie_commands.add_parser("serve", help="run the Regie interface on 127.0.0.1")
     regie_serve.add_argument("review_bundle")
     regie_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
     regie_serve.add_argument("--no-browser", action="store_true")
@@ -156,9 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     overview_serve.add_argument("--no-browser", action="store_true")
     overview_serve.add_argument("--json", action="store_true")
 
-    stage = providers.add_parser(
-        "stage", help="build separated SW-012 presentation packages"
-    )
+    stage = providers.add_parser("stage", help="build separated SW-012 presentation packages")
     stage_commands = stage.add_subparsers(dest="command", required=True)
     stage_build = stage_commands.add_parser(
         "build", help="render public and presenter outputs from one presentation model"
@@ -212,6 +208,15 @@ def build_parser() -> argparse.ArgumentParser:
     publish_serve.add_argument("--port", type=_bounded_integer(0, 65535), default=0)
     publish_serve.add_argument("--no-browser", action="store_true")
     publish_serve.add_argument("--json", action="store_true")
+
+    adapter = providers.add_parser("adapter", help="provider-neutral SW-014 source adapters")
+    adapter_commands = adapter.add_subparsers(dest="command", required=True)
+    adapter_fixture = adapter_commands.add_parser("fixture", help="generate local adapter fixtures")
+    adapter_fixture.add_argument(
+        "--status", choices=("healthy", "stale", "partial", "failed"), required=True
+    )
+    adapter_fixture.add_argument("--output")
+    adapter_fixture.add_argument("--json", action="store_true")
 
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)

@@ -127,7 +127,7 @@ class FakeProvider:
         fail_after_mutation_call: int | None = None,
     ) -> None:
         self.dsl = "\n".join(
-            f"item-{index + 1} TEXT content=\"[{MARKER}] OLD {index + 1}\""
+            f'item-{index + 1} TEXT content="[{MARKER}] OLD {index + 1}"'
             for index in range(operation_count)
         )
         self._capabilities = capabilities or {"layout_read", "layout_update"}
@@ -166,10 +166,7 @@ class FakeProvider:
         if self.dsl.count(old_text) != 1:
             raise RuntimeError("old text not unique")
         self.dsl = self.dsl.replace(old_text, new_text, 1)
-        if (
-            self.fail_after_mutation_call == self.replace_calls
-            and not self.failed_once
-        ):
+        if self.fail_after_mutation_call == self.replace_calls and not self.failed_once:
             self.failed_once = True
             raise RuntimeError("provider response lost after mutation")
         return {
@@ -347,8 +344,8 @@ def test_execution_rechecks_authorization_expiry_before_provider_access(
     tmp_path: Path,
 ) -> None:
     expired = plan()
-    expired["authorization"]["expires_at"] = (NOW + timedelta(seconds=30)).isoformat().replace(
-        "+00:00", "Z"
+    expired["authorization"]["expires_at"] = (
+        (NOW + timedelta(seconds=30)).isoformat().replace("+00:00", "Z")
     )
     expired["plan_digest"] = _manifest_digest(expired, "plan_digest")
     provider = FakeProvider()
@@ -711,12 +708,8 @@ def test_provider_intermediate_dsl_digest_mismatch_triggers_rollback(
     tmp_path: Path,
 ) -> None:
     class WrongDigestProvider(FakeProvider):
-        async def replace_text(
-            self, *, alias: str, old_text: str, new_text: str
-        ) -> dict:
-            receipt = await super().replace_text(
-                alias=alias, old_text=old_text, new_text=new_text
-            )
+        async def replace_text(self, *, alias: str, old_text: str, new_text: str) -> dict:
+            receipt = await super().replace_text(alias=alias, old_text=old_text, new_text=new_text)
             if old_text.startswith(f"[{MARKER}] OLD"):
                 receipt["result_dsl_digest"] = "f" * 64
             return receipt
@@ -856,9 +849,10 @@ def test_transaction_failure_receipts_are_strictly_validated(tmp_path: Path) -> 
     )
     persisted_apply = json.loads(apply_path.read_text(encoding="utf-8"))
     assert apply_failure["rollback_succeeded"] is True
-    assert validate_live_transaction_failure_receipt(persisted_apply)[
-        "manual_recovery_required"
-    ] is False
+    assert (
+        validate_live_transaction_failure_receipt(persisted_apply)["manual_recovery_required"]
+        is False
+    )
     persisted_apply["manual_recovery_required"] = True
     persisted_apply["receipt_digest"] = _receipt_digest(persisted_apply)
     with pytest.raises(ValueError, match="recovery state is invalid"):
