@@ -1368,11 +1368,22 @@ def test_grabowski_operational_pilot_cli(tmp_path, capsys) -> None:
 def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
     observed = {}
 
-    def fake_software(*, input_path, snapshot_output, dsl_output):
+    def fake_software(
+        *,
+        input_path,
+        snapshot_output,
+        dsl_output,
+        visual_spec_output,
+        visual_quality_output,
+        visual_dsl_output,
+    ):
         observed.update(
             input_path=input_path,
             snapshot_output=snapshot_output,
             dsl_output=dsl_output,
+            visual_spec_output=visual_spec_output,
+            visual_quality_output=visual_quality_output,
+            visual_dsl_output=visual_dsl_output,
         )
         return {"project_id": "lenskit", "provider_mutation_attempted": False}
 
@@ -1386,6 +1397,12 @@ def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
             "snapshot.json",
             "--dsl-output",
             "view.dsl",
+            "--visual-spec-output",
+            "visual.json",
+            "--visual-quality-output",
+            "quality.json",
+            "--visual-dsl-output",
+            "visual.dsl",
             "--json",
         ]
     )
@@ -1394,6 +1411,9 @@ def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
         "input_path": "input.json",
         "snapshot_output": "snapshot.json",
         "dsl_output": "view.dsl",
+        "visual_spec_output": "visual.json",
+        "visual_quality_output": "quality.json",
+        "visual_dsl_output": "visual.dsl",
     }
     assert json.loads(capsys.readouterr().out)["project_id"] == "lenskit"
 
@@ -1689,6 +1709,8 @@ def test_runner_dispatches_visual_v2_live_test(monkeypatch, capsys) -> None:
             "Visual v2 A",
             "--output-dir",
             "/tmp/visual-v2-a",
+            "--spec-input",
+            "software-board.json",
             "--no-comments",
             "--json",
         ]
@@ -1698,6 +1720,7 @@ def test_runner_dispatches_visual_v2_live_test(monkeypatch, capsys) -> None:
         "alias": "visual-v2-a",
         "board_name": "Visual v2 A",
         "output_dir": "/tmp/visual-v2-a",
+        "spec_input": "software-board.json",
         "replace_alias": False,
         "reuse_existing_alias": False,
         "resume_after_layout": False,

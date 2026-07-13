@@ -70,6 +70,9 @@ def build_parser() -> argparse.ArgumentParser:
     software.add_argument("input")
     software.add_argument("--snapshot-output")
     software.add_argument("--dsl-output")
+    software.add_argument("--visual-spec-output")
+    software.add_argument("--visual-quality-output")
+    software.add_argument("--visual-dsl-output")
     software.add_argument("--json", action="store_true")
 
     education = providers.add_parser(
@@ -404,13 +407,17 @@ def build_parser() -> argparse.ArgumentParser:
     quality.add_argument("--json", action="store_true")
 
     visual_live = commands.add_parser(
-        "visual-v2-live-test", help="create and verify the canonical Visual System v2 board"
+        "visual-v2-live-test", help="create and verify a Visual System v2 board"
     )
     visual_live.add_argument("--alias", default="schauwerk-visual-system-v2-20260712")
     visual_live.add_argument(
         "--board-name", default="Schauwerk Visual System v2 – Klarheit vor Dekoration"
     )
     visual_live.add_argument("--output-dir")
+    visual_live.add_argument(
+        "--spec-input",
+        help="validated Visual System v2 board specification; defaults to the reference board",
+    )
     visual_live.add_argument("--replace-alias", action="store_true")
     visual_live.add_argument(
         "--reuse-existing-alias",

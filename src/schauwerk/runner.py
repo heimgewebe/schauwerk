@@ -131,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
                 input_path=args.input,
                 snapshot_output=args.snapshot_output,
                 dsl_output=args.dsl_output,
+                visual_spec_output=args.visual_spec_output,
+                visual_quality_output=args.visual_quality_output,
+                visual_dsl_output=args.visual_dsl_output,
             )
         elif args.provider == "education" and args.command == "render":
             result = handle_education_render(
@@ -343,6 +346,7 @@ def main(argv: list[str] | None = None) -> int:
                 alias=args.alias,
                 board_name=args.board_name,
                 output_dir=args.output_dir,
+                spec_input=args.spec_input,
                 replace_alias=args.replace_alias,
                 reuse_existing_alias=args.reuse_existing_alias,
                 resume_after_layout=args.resume_after_layout,

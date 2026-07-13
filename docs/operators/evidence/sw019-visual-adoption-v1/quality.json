@@ -1,0 +1,30 @@
+{
+  "blockers": [],
+  "board_digest": "b55b1df55a82fa36749dc674015b0fb66fda88f00e860d6e180b96453e17957c",
+  "category_scores": {
+    "architecture": 20,
+    "consistency": 20,
+    "density": 20,
+    "hierarchy": 20,
+    "semantics": 20
+  },
+  "connector_count": 8,
+  "frame_count": 7,
+  "geometry_contract": {
+    "declared_boxes": "design_review_only",
+    "table_doc": "provider_auto_sized_type_and_anchor_verified",
+    "text_shape_sticky": "provider_dimensions_requested"
+  },
+  "mutation_attempted": false,
+  "object_count": 42,
+  "ok": true,
+  "provider_auto_sized_count": 4,
+  "quality_digest": "9561bdd504193a7b0bc6c48f8ed3b08a58b15d2cbc405d2640c347996e0e83c2",
+  "remote_geometry_required": false,
+  "schema_version": "schauwerk-visual-quality.v2",
+  "score": 100,
+  "semantic_color_count": 5,
+  "sticky_count": 0,
+  "threshold": 90,
+  "warnings": []
+}

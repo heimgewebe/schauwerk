@@ -572,10 +572,15 @@ def handle_visual_v2_live_test(
     comment_limit: int,
     max_pages: int,
     include_comments: bool,
+    spec_input: str | None = None,
     client: MiroMCPClient | None = None,
 ) -> dict[str, Any]:
     active = client or MiroMCPClient()
-    spec = reference_board_spec()
+    spec = (
+        read_durable_json(Path(spec_input), label="Visual System v2 board specification")
+        if spec_input
+        else reference_board_spec()
+    )
     quality = validate_board_spec(spec)
     rendered = render_board_dsl(spec)
     base = Path(output_dir) if output_dir else active.settings.snapshots_root / "live-tests" / alias
@@ -605,8 +610,8 @@ def handle_visual_v2_live_test(
                 alias=alias,
                 name=board_name,
                 description=(
-                    "Schauwerk Visual System v2 reference board: semantic object choice, "
-                    "narrative hierarchy and evidence-separated design."
+                    f"Schauwerk Visual System v2 board: {spec['title']}. "
+                    f"Purpose: {spec['purpose']}"
                 ),
                 replace_alias=replace_alias,
                 invocation_source="schauwerk-visual-system-v2",
@@ -706,7 +711,7 @@ def handle_visual_v2_live_test(
         active.settings,
         alias=alias,
         reference_digest=str(board.get("reference_digest", "")),
-        topic="Schauwerk Visual System v2",
+        topic=str(spec["title"]),
         board_name=board_name,
         output_dir=base,
     ).to_dict()
@@ -714,6 +719,8 @@ def handle_visual_v2_live_test(
         "schema_version": "schauwerk-visual-system-live-test.v2",
         "alias": alias,
         "board_name": board_name,
+        "content_source": "provided_spec" if spec_input else "reference_board",
+        "spec_input": spec_input,
         "board": board,
         "before": before,
         "layout": layout,
@@ -798,12 +805,21 @@ def handle_grabowski_operational_pilot(
 
 
 def handle_software_pilot(
-    *, input_path: str, snapshot_output: str | None, dsl_output: str | None
+    *,
+    input_path: str,
+    snapshot_output: str | None,
+    dsl_output: str | None,
+    visual_spec_output: str | None = None,
+    visual_quality_output: str | None = None,
+    visual_dsl_output: str | None = None,
 ) -> dict[str, Any]:
     return write_software_pilot(
         input_path=Path(input_path),
         snapshot_output=Path(snapshot_output) if snapshot_output else None,
         dsl_output=Path(dsl_output) if dsl_output else None,
+        visual_spec_output=Path(visual_spec_output) if visual_spec_output else None,
+        visual_quality_output=(Path(visual_quality_output) if visual_quality_output else None),
+        visual_dsl_output=Path(visual_dsl_output) if visual_dsl_output else None,
     )
 
 
