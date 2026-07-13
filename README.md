@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017 sowie das semantische Visual System v2 für hochwertige Miro-Schauwerke in SW-018.
+**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017, das semantische Visual System v2 in SW-018 und den rendererübergreifenden Darstellungsrouter in SW-019.
 
 ## Zielbild
 
@@ -118,6 +118,19 @@ Visual System v2 wählt Miro-Objekte nach ihrer Informationsfunktion, erzwingt e
 
 Siehe `docs/visual/schauwerk-visual-system-v2.md`.
 
+## Darstellungsrouter v1
+
+```bash
+schauwerk visual route \
+  docs/operators/fixtures/operator-ecosystem-representation-v1.json \
+  --output-dir /tmp/schauwerk-representation \
+  --json
+```
+
+Der Router bewertet Darstellungsabsicht und Anforderungen, wählt begründet Mermaid, JSON Canvas, Miro-native, Tabelle, Dokument oder ein Hybridpaket und bindet alle erzeugten Artefakte an dieselbe normalisierte Eingabe. Mermaid liefert eine formale, diffbare Diagrammquelle; `.canvas` eine portable räumliche Komposition; Miro editierbare Präsentationsflächen. Rendererabdeckung und Nichtbehauptungen bleiben im Manifest explizit.
+
+Siehe `docs/plans/schauwerk-representation-router-v1.md`.
+
 ## Learning View
 
 ```bash
@@ -198,5 +211,6 @@ Siehe `docs/integration/source-adapters-v1.md` und `docs/operations/durable-oper
 - SW-016: optionale lokale Suche und beleggebundene Hinweise unter strikter Sichtbarkeitsgrenze
 - SW-017: lokale Betriebsprofile, Health-, Backup-, gestagte Restore-, OAuth-Rotations- und Kill-Switch-Drill-Verträge
 - SW-018: semantisches Visual System v2 mit narrativer Boardarchitektur, zweckgebundener Objektwahl, messbarer Dichte und strengem Qualitätsgate
+- SW-019: semantischer Darstellungsrouter mit Mermaid-, JSON-Canvas-, Miro-, Tabellen- und Dokumentausgabe sowie expliziter Rendererabdeckung
 
 Siehe `docs/roadmap.md`.

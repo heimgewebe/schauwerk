@@ -49,5 +49,6 @@ def test_canonical_docs_exist() -> None:
         "schemas/visual-board.v2.schema.json",
         "schemas/visual-quality.v2.schema.json",
         "schemas/visual-review.v2.schema.json",
+        "schemas/representation-input.v1.schema.json",
     ):
         assert (root / relative).is_file(), relative

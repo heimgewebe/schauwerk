@@ -136,6 +136,7 @@ from .visual.grammar import (
     write_visual_grammar,
     zoomlandkarte_template,
 )
+from .visual.representation import compile_representation_package
 from .visual.system_v2 import (
     compile_visual_review,
     reference_board_spec,
@@ -495,6 +496,13 @@ def handle_publication_withdraw(
 
 def handle_publication_serve(*, store_root: str, port: int, open_browser: bool) -> dict[str, Any]:
     return serve_publications(Path(store_root), port=port, open_browser=open_browser)
+
+
+def handle_visual_route(*, input_path: str, output_dir: str) -> dict[str, Any]:
+    return compile_representation_package(
+        input_path=Path(input_path),
+        output_dir=Path(output_dir),
+    )
 
 
 def handle_visual_grammar(*, output: str | None) -> dict[str, Any]:

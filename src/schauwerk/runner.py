@@ -85,6 +85,7 @@ from .cli_handlers import (
     handle_visual_grammar,
     handle_visual_reference_v2,
     handle_visual_review_v2,
+    handle_visual_route,
     handle_visual_system_v2,
     handle_visual_v2_live_test,
 )
@@ -158,6 +159,11 @@ def main(argv: list[str] | None = None) -> int:
                 live_receipt=args.live_receipt,
                 review_input=args.review_input,
                 output=args.output,
+            )
+        elif args.provider == "visual" and args.command == "route":
+            result = handle_visual_route(
+                input_path=args.input,
+                output_dir=args.output_dir,
             )
         elif args.provider == "regie" and args.command == "context-template":
             result = handle_regie_context_template(

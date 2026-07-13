@@ -129,6 +129,13 @@ def build_parser() -> argparse.ArgumentParser:
     visual_review_v2.add_argument("--output", required=True)
     visual_review_v2.add_argument("--json", action="store_true")
 
+    visual_route = visual_commands.add_parser(
+        "route", help="compile a renderer-routed Mermaid, JSON Canvas and Miro package"
+    )
+    visual_route.add_argument("input")
+    visual_route.add_argument("--output-dir", required=True)
+    visual_route.add_argument("--json", action="store_true")
+
     regie = providers.add_parser("regie", help="local receipt-bound review interface")
     regie_commands = regie.add_subparsers(dest="command", required=True)
     regie_context_template = regie_commands.add_parser(
