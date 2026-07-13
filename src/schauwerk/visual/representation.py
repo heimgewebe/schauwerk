@@ -667,10 +667,10 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
         table_object(
             "route_matrix",
             "comparison",
-            100,
+            140,
             260,
-            880,
-            180,
+            800,
+            160,
             "Ausgewählte Renderer",
             ("Format", "Rolle", "Begründung"),
             route_rows,
@@ -682,10 +682,10 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
             shape_object(
                 str(node["id"]),
                 role,
-                100 + index * 480,
+                140 + index * 440,
                 460,
-                400,
-                100,
+                360,
+                80,
                 str(node["label"]),
                 color=color,
             )
@@ -698,7 +698,7 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
                 80 + index * 240,
                 300,
                 200,
-                110,
+                120,
                 name,
                 color="decision",
             )
