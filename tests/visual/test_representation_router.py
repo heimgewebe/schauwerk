@@ -126,6 +126,8 @@ def test_miro_renderer_uses_a_distinct_six_frame_composition() -> None:
     assert board["entry_frame"] == "route_cover"
     assert board["presentation_path"] == board["reading_path"]
     assert quality["ok"] is True
+    assert quality["score"] == 100
+    assert quality["warnings"] == []
     assert len(quality["shape_types"]) >= 4
     assert quality["composition_profile"] == "miro-native-composition.v1"
 
