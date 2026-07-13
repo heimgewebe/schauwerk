@@ -19,6 +19,7 @@ BOARD_SCHEMA = "schauwerk-visual-board.v2"
 QUALITY_SCHEMA = "schauwerk-visual-quality.v2"
 REVIEW_INPUT_SCHEMA = "schauwerk-visual-review-input.v2"
 REVIEW_SCHEMA = "schauwerk-visual-review.v2"
+NATIVE_COMPOSITION_PROFILE = "miro-native-composition.v1"
 
 _FRAME_ROLES = (
     "cover",
@@ -41,8 +42,77 @@ _SUPPORTED_SHAPES = {
     "rhombus",
     "hexagon",
     "octagon",
+    "can",
+    "right_arrow",
 }
 _FONT_SIZES = {"display": 38, "heading": 24, "body": 18, "caption": 14}
+
+_ROLE_SHAPES = {
+    "orientation": "circle",
+    "entity": "rectangle",
+    "evidence": "can",
+    "decision": "rhombus",
+    "risk": "octagon",
+    "action": "right_arrow",
+}
+_RELATION_STYLES = {
+    "authority": {
+        "shape": "straight",
+        "stroke_color": "#102A43",
+        "stroke_style": "normal",
+        "end_cap": "filled_triangle",
+    },
+    "flow": {
+        "shape": "elbowed",
+        "stroke_color": "#147D92",
+        "stroke_style": "normal",
+        "end_cap": "arrow",
+    },
+    "evidence": {
+        "shape": "straight",
+        "stroke_color": "#2F855A",
+        "stroke_style": "dotted",
+        "end_cap": "arrow",
+    },
+    "feedback": {
+        "shape": "curved",
+        "stroke_color": "#B7791F",
+        "stroke_style": "dashed",
+        "end_cap": "arrow",
+    },
+    "risk": {
+        "shape": "elbowed",
+        "stroke_color": "#C53030",
+        "stroke_style": "dashed",
+        "end_cap": "filled_triangle",
+    },
+    "association": {
+        "shape": "straight",
+        "stroke_color": "#52606D",
+        "stroke_style": "normal",
+        "end_cap": "none",
+    },
+}
+
+
+def _relation_type(label: str) -> str:
+    lowered = label.casefold()
+    if any(
+        token in lowered
+        for token in ("beleg", "evidenz", "digest", "signal", "verlauf", "beobacht")
+    ):
+        return "evidence"
+    if any(token in lowered for token in ("prüf", "feedback", "eskal", "zurück", "wird gemessen")):
+        return "feedback"
+    if any(token in lowered for token in ("risiko", "block", "fehler", "warn")):
+        return "risk"
+    if any(token in lowered for token in ("autor", "freig", "entscheid", "delegiert", "steuert")):
+        return "authority"
+    if any(token in lowered for token in ("gehört", "besteht", "enthält")):
+        return "association"
+    return "flow"
+
+
 _SAFE_ID = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
 _REVIEW_AXES = (
     "information_architecture",
@@ -101,6 +171,8 @@ def visual_system_manifest() -> dict[str, Any]:
             "declared design boxes are authoritative for overlap and density review",
             "Miro tables and documents are provider-auto-sized and verified by type and anchor",
             "remote readback proves conformance, not aesthetics",
+            "Miro-native shape and connector grammar must carry meaning before labels are read",
+            "every board declares a controlled entry frame and finite presentation path",
         ],
         "frame_roles": list(_FRAME_ROLES),
         "object_kinds": sorted(_OBJECT_KINDS),
@@ -125,6 +197,8 @@ def visual_system_manifest() -> dict[str, Any]:
             "max_rich_characters": 900,
             "grid": 20,
             "frame_margin": 60,
+            "min_shape_types_when_applicable": 2,
+            "min_relation_types_when_applicable": 2,
         },
         "official_miro_references": [
             "https://miro.com/de/",
@@ -174,7 +248,7 @@ def _shape(
     content: str,
     *,
     color: str,
-    shape: str = "round_rectangle",
+    shape: str | None = None,
 ) -> dict[str, Any]:
     return {
         "id": identifier,
@@ -187,11 +261,16 @@ def _shape(
         "content": content,
         "font_level": "body",
         "color_role": color,
-        "shape": shape,
+        "shape": shape or _ROLE_SHAPES.get(role, "round_rectangle"),
     }
 
 
-def _connector(identifier: str, source: str, target: str, label: str) -> dict[str, Any]:
+def _connector(
+    identifier: str, source: str, target: str, label: str, *, relation_type: str | None = None
+) -> dict[str, Any]:
+    semantic_type = relation_type or _relation_type(label)
+    if semantic_type not in _RELATION_STYLES:
+        raise ValueError(f"unsupported relation type: {semantic_type}")
     return {
         "id": identifier,
         "kind": "connector",
@@ -201,6 +280,7 @@ def _connector(identifier: str, source: str, target: str, label: str) -> dict[st
         "content": label,
         "font_level": "caption",
         "color_role": "structure",
+        "relation_type": semantic_type,
     }
 
 
@@ -286,12 +366,29 @@ def finalize_board_spec(
 ) -> dict[str, Any]:
     """Bind a caller-composed frame sequence to the current Visual System v2 contract."""
 
-    normalized_frames = [dict(frame) for frame in frames]
+    normalized_frames: list[dict[str, Any]] = []
+    for source_frame in frames:
+        frame = dict(source_frame)
+        normalized_objects: list[dict[str, Any]] = []
+        for source_object in frame.get("objects", []):
+            item = dict(source_object)
+            if item.get("kind") == "shape" and item.get("shape") in {None, "round_rectangle"}:
+                item["shape"] = _ROLE_SHAPES.get(
+                    str(item.get("role")), item.get("shape", "round_rectangle")
+                )
+            if item.get("kind") == "connector" and "relation_type" not in item:
+                item["relation_type"] = _relation_type(str(item.get("content", "")))
+            normalized_objects.append(item)
+        frame["objects"] = normalized_objects
+        normalized_frames.append(frame)
     value: dict[str, Any] = {
         "schema_version": BOARD_SCHEMA,
         "title": title,
         "purpose": purpose,
         "reading_path": [frame["id"] for frame in normalized_frames],
+        "entry_frame": normalized_frames[0]["id"] if normalized_frames else None,
+        "presentation_path": [frame["id"] for frame in normalized_frames],
+        "composition_profile": NATIVE_COMPOSITION_PROFILE,
         "frames": normalized_frames,
         "visual_system_digest": visual_system_manifest()["manifest_digest"],
         "remote_readback_role": "conformance_only",
@@ -561,6 +658,9 @@ def reference_board_spec() -> dict[str, Any]:
             "meaningful visual quality gates."
         ),
         "reading_path": [frame["id"] for frame in frames],
+        "entry_frame": frames[0]["id"] if frames else None,
+        "presentation_path": [frame["id"] for frame in frames],
+        "composition_profile": NATIVE_COMPOSITION_PROFILE,
         "frames": frames,
         "visual_system_digest": visual_system_manifest()["manifest_digest"],
         "remote_readback_role": "conformance_only",
@@ -603,6 +703,12 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     reading_path = spec.get("reading_path")
     if not isinstance(reading_path, list) or reading_path != frame_ids:
         block("reading_path", "reading path must list every frame exactly once in display order")
+    if spec.get("composition_profile") != NATIVE_COMPOSITION_PROFILE:
+        block("composition_profile", "board must declare the Miro-native composition profile")
+    if spec.get("entry_frame") != (frame_ids[0] if frame_ids else None):
+        block("entry_frame", "controlled entry frame must be the first frame in the reading path")
+    if spec.get("presentation_path") != frame_ids:
+        block("presentation_path", "presentation path must cover the finite reading path exactly")
     roles = [frame.get("role") for frame in frames if isinstance(frame, Mapping)]
     if roles and roles[0] != "cover":
         block("cover_missing", "reading path must begin with a cover frame")
@@ -618,6 +724,8 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     non_connector_count = 0
     used_colors: set[str] = set()
     dimension_pairs: set[tuple[int, int]] = set()
+    shape_types: set[str] = set()
+    relation_types: set[str] = set()
     categories = {
         "architecture": 20,
         "semantics": 20,
@@ -726,6 +834,9 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                 used_colors.add(str(color_role))
             else:
                 block("unknown_colour", "unknown semantic colour role", object=object_id)
+            if kind == "shape":
+                shape_name = str(raw_object.get("shape", "round_rectangle"))
+                shape_types.add(shape_name)
             if (
                 kind == "shape"
                 and raw_object.get("shape", "round_rectangle") not in _SUPPORTED_SHAPES
@@ -753,6 +864,16 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             if kind == "sticky":
                 sticky_count += 1
             if kind == "connector":
+                relation_type = raw_object.get("relation_type")
+                if relation_type not in _RELATION_STYLES:
+                    block(
+                        "connector_semantics",
+                        "connector must declare a supported semantic relation type",
+                        object=object_id,
+                        relation_type=relation_type,
+                    )
+                else:
+                    relation_types.add(str(relation_type))
                 connector_count += 1
                 connectors.append(raw_object)
                 continue
@@ -842,6 +963,32 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             connectors=connector_count,
             visual_objects=non_connector_count,
         )
+    shape_count = sum(
+        1
+        for frame in frames
+        if isinstance(frame, Mapping)
+        for item in frame.get("objects", [])
+        if isinstance(item, Mapping) and item.get("kind") == "shape"
+    )
+    if shape_count >= 3 and len(shape_types) < limits["min_shape_types_when_applicable"]:
+        block(
+            "shape_grammar",
+            "Miro-native boards with several shapes must use more than one semantic shape type",
+            shape_count=shape_count,
+            shape_types=sorted(shape_types),
+        )
+    if connector_count >= 4 and len(relation_types) < limits["min_relation_types_when_applicable"]:
+        block(
+            "relation_grammar",
+            "connector-rich boards must encode at least two semantic relation types",
+            connector_count=connector_count,
+            relation_types=sorted(relation_types),
+        )
+    if "map" not in roles:
+        block(
+            "overview_missing",
+            "Miro-native boards require a dedicated overview or reading-map frame",
+        )
     if len(dimension_pairs) > 1:
         warn(
             "frame_size_variance",
@@ -855,9 +1002,26 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
 
     for finding in blockers:
         code = finding["code"]
-        if code in {"reading_path", "cover_missing", "evidence_not_terminal", "frame_count"}:
+        if code in {
+            "reading_path",
+            "presentation_path",
+            "entry_frame",
+            "composition_profile",
+            "cover_missing",
+            "evidence_not_terminal",
+            "frame_count",
+            "overview_missing",
+        }:
             categories["architecture"] = max(0, categories["architecture"] - 10)
-        elif code in {"object_misuse", "colour_misuse", "object_role", "sticky_dominance"}:
+        elif code in {
+            "object_misuse",
+            "colour_misuse",
+            "object_role",
+            "sticky_dominance",
+            "shape_grammar",
+            "relation_grammar",
+            "connector_semantics",
+        }:
             categories["semantics"] = max(0, categories["semantics"] - 7)
         elif code in {"hierarchy", "font_hierarchy"}:
             categories["hierarchy"] = max(0, categories["hierarchy"] - 10)
@@ -892,6 +1056,11 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         "sticky_count": sticky_count,
         "semantic_color_count": len(used_colors),
         "provider_auto_sized_count": provider_auto_sized_count,
+        "shape_types": sorted(shape_types),
+        "relation_types": sorted(relation_types),
+        "entry_frame": spec.get("entry_frame"),
+        "presentation_path": spec.get("presentation_path"),
+        "composition_profile": spec.get("composition_profile"),
         "geometry_contract": {
             "declared_boxes": "design_review_only",
             "text_shape_sticky": "provider_dimensions_requested",
@@ -1011,13 +1180,16 @@ def render_board_dsl(spec: Mapping[str, Any]) -> str:
                     )
                 )
             elif kind == "connector":
+                style = _RELATION_STYLES[item["relation_type"]]
                 lines.append(
                     dsl.line(
                         item["id"],
                         "CONNECTOR",
                         **{"from": item["from"], "to": item["to"]},
-                        shape="elbowed",
-                        end_cap="arrow",
+                        shape=style["shape"],
+                        stroke_color=style["stroke_color"],
+                        stroke_style=style["stroke_style"],
+                        end_cap=style["end_cap"],
                         content=item["content"],
                     )
                 )
