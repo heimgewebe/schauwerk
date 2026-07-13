@@ -1,0 +1,679 @@
+{
+  "board_digest": "b55b1df55a82fa36749dc674015b0fb66fda88f00e860d6e180b96453e17957c",
+  "frames": [
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_cover",
+      "number": 1,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Lenskit und RepoBrief",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_cover_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Ein quellgebundener \u00dcberblick: System, Entscheidungen, Lieferung, Risiken und Belege.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_cover_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "Repositories deterministisch, zitierbar und mit klarer Autorit\u00e4t f\u00fcr Menschen und Agenten aufbereiten.",
+          "font_level": "body",
+          "h": 180,
+          "id": "software_purpose",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 960,
+          "x": 80,
+          "y": 300
+        }
+      ],
+      "role": "cover",
+      "title": "Lenskit und RepoBrief",
+      "w": 1120,
+      "x": 0,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_map",
+      "number": 2,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Lesekarte",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_map_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Die Reihenfolge trennt Orientierung, Bewertung und Belege.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_map_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "1\nSystem",
+          "font_level": "body",
+          "h": 120,
+          "id": "software_map_system",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 80,
+          "y": 320
+        },
+        {
+          "color_role": "structure",
+          "content": "2\nEntscheidungen",
+          "font_level": "body",
+          "h": 120,
+          "id": "software_map_decision",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 340,
+          "y": 320
+        },
+        {
+          "color_role": "decision",
+          "content": "3\nLieferung",
+          "font_level": "body",
+          "h": 120,
+          "id": "software_map_delivery",
+          "kind": "shape",
+          "role": "decision",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 600,
+          "y": 320
+        },
+        {
+          "color_role": "evidence",
+          "content": "4\nBelege",
+          "font_level": "body",
+          "h": 120,
+          "id": "software_map_evidence",
+          "kind": "shape",
+          "role": "evidence",
+          "shape": "round_rectangle",
+          "w": 180,
+          "x": 860,
+          "y": 320
+        },
+        {
+          "color_role": "structure",
+          "content": "begr\u00fcndet",
+          "font_level": "caption",
+          "from": "software_map_system",
+          "id": "software_map_a",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_map_decision"
+        },
+        {
+          "color_role": "structure",
+          "content": "steuert",
+          "font_level": "caption",
+          "from": "software_map_decision",
+          "id": "software_map_b",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_map_delivery"
+        },
+        {
+          "color_role": "structure",
+          "content": "wird gepr\u00fcft",
+          "font_level": "caption",
+          "from": "software_map_delivery",
+          "id": "software_map_c",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_map_evidence"
+        }
+      ],
+      "role": "map",
+      "title": "Lesekarte",
+      "w": 1120,
+      "x": 1300,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_architecture",
+      "number": 3,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "System und Verantwortung",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_architecture_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "4 Komponenten werden als lesbare Systembeziehungen verdichtet.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_architecture_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "structure",
+          "content": "Systemkern\n3 von 4 Komponenten sichtbar\nSnapshot 960df10aa9e2\n+ 1 weitere im Snapshot",
+          "font_level": "body",
+          "h": 140,
+          "id": "software_architecture_system",
+          "kind": "shape",
+          "role": "orientation",
+          "shape": "round_rectangle",
+          "w": 240,
+          "x": 440,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "Agent Consumption Contract\nDefiniert Autorit\u00e4t, Lesereihenfolge und Zitierpflichten.\nStatus: active",
+          "font_level": "body",
+          "h": 100,
+          "id": "software_component_1",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 240,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "verantwortet",
+          "font_level": "caption",
+          "from": "software_architecture_system",
+          "id": "software_architecture_link_1",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_component_1"
+        },
+        {
+          "color_role": "structure",
+          "content": "Atlas\nErfasst Dateisysteme \u00fcber explizite Root- und Sicherheitsvertr\u00e4ge.\nStatus: active",
+          "font_level": "body",
+          "h": 100,
+          "id": "software_component_2",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 240,
+          "x": 800,
+          "y": 300
+        },
+        {
+          "color_role": "structure",
+          "content": "verantwortet",
+          "font_level": "caption",
+          "from": "software_architecture_system",
+          "id": "software_architecture_link_2",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_component_2"
+        },
+        {
+          "color_role": "structure",
+          "content": "RepoBrief\nErzeugt portable Repository-Bundles und Reading Packs.\nStatus: active",
+          "font_level": "body",
+          "h": 100,
+          "id": "software_component_3",
+          "kind": "shape",
+          "role": "entity",
+          "shape": "round_rectangle",
+          "w": 240,
+          "x": 440,
+          "y": 460
+        },
+        {
+          "color_role": "structure",
+          "content": "verantwortet",
+          "font_level": "caption",
+          "from": "software_architecture_system",
+          "id": "software_architecture_link_3",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_component_3"
+        }
+      ],
+      "role": "architecture",
+      "title": "System und Verantwortung",
+      "w": 1120,
+      "x": 2600,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_decisions",
+      "number": 4,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Entscheidungen",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_decisions_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "3 Entscheidungen erkl\u00e4ren, warum die Architektur so aussieht.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_decisions_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "ink",
+          "columns": [
+            "Entscheidung",
+            "Status",
+            "Wirkung"
+          ],
+          "content": "Entscheidungsstand Entscheidung Status Wirkung Canonical artifact remains authoritative accepted Reading Packs navigieren, ersetzen aber nie den\u2026 MCP adapter remains read-only accepted Agentenzugriff darf keine versteckte Spiegel- o\u2026 Snapshot creation is explicit accepted Frische Daten entstehen nur durch einen sichtba\u2026",
+          "font_level": "body",
+          "h": 220,
+          "id": "software_decision_table",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "comparison",
+          "rows": [
+            [
+              "Canonical artifact remains authoritative",
+              "accepted",
+              "Reading Packs navigieren, ersetzen aber nie den\u2026"
+            ],
+            [
+              "MCP adapter remains read-only",
+              "accepted",
+              "Agentenzugriff darf keine versteckte Spiegel- o\u2026"
+            ],
+            [
+              "Snapshot creation is explicit",
+              "accepted",
+              "Frische Daten entstehen nur durch einen sichtba\u2026"
+            ]
+          ],
+          "title": "Entscheidungsstand",
+          "w": 620,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "decision",
+          "content": "Pr\u00fcffrage\nIst die Wirkung jeder Entscheidung sichtbar?",
+          "font_level": "body",
+          "h": 180,
+          "id": "software_decision_guard",
+          "kind": "shape",
+          "role": "decision",
+          "shape": "rhombus",
+          "w": 280,
+          "x": 760,
+          "y": 320
+        }
+      ],
+      "role": "decision",
+      "title": "Entscheidungen",
+      "w": 1120,
+      "x": 3900,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_delivery",
+      "number": 5,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Roadmap und laufende Arbeit",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_delivery_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Die geplante Folge und der aktuelle Arbeitsstand werden in einer gemeinsamen Lesefl\u00e4che gepr\u00fcft.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_delivery_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "decision",
+          "content": "1 \u00b7 Broader read-only adapter\nnext \u00b7 Mehr Artefaktrollen werden \u00fcber denselben Integrit\u00e4tsvertrag lesbar.",
+          "font_level": "body",
+          "h": 60,
+          "id": "software_roadmap_step_1",
+          "kind": "shape",
+          "role": "action",
+          "shape": "round_rectangle",
+          "w": 440,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "decision",
+          "content": "2 \u00b7 Retrieval evaluation\nactive \u00b7 Recall, Citation Range und Grounding werden messbar verbessert.",
+          "font_level": "body",
+          "h": 60,
+          "id": "software_roadmap_step_2",
+          "kind": "shape",
+          "role": "action",
+          "shape": "round_rectangle",
+          "w": 440,
+          "x": 80,
+          "y": 400
+        },
+        {
+          "color_role": "structure",
+          "content": "danach",
+          "font_level": "caption",
+          "from": "software_roadmap_step_1",
+          "id": "software_roadmap_link_1",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_roadmap_step_2"
+        },
+        {
+          "color_role": "decision",
+          "content": "3 \u00b7 MCP snapshot_create\nplanned \u00b7 Snapshot-Erzeugung wird explizit und getrennt von Lesezugriffen ang\u2026",
+          "font_level": "body",
+          "h": 60,
+          "id": "software_roadmap_step_3",
+          "kind": "shape",
+          "role": "action",
+          "shape": "round_rectangle",
+          "w": 440,
+          "x": 80,
+          "y": 500
+        },
+        {
+          "color_role": "structure",
+          "content": "danach",
+          "font_level": "caption",
+          "from": "software_roadmap_step_2",
+          "id": "software_roadmap_link_2",
+          "kind": "connector",
+          "role": "relation",
+          "to": "software_roadmap_step_3"
+        },
+        {
+          "color_role": "ink",
+          "columns": [
+            "Arbeit",
+            "Art",
+            "Status"
+          ],
+          "content": "Aktuelle Arbeit Arbeit Art Status Portable refresh output root pull-request merged Offene Pull Requests repository-state none Test, Lint, Contracts und Merge-Validierung validation green",
+          "font_level": "body",
+          "h": 220,
+          "id": "software_work",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "comparison",
+          "rows": [
+            [
+              "Portable refresh output root",
+              "pull-request",
+              "merged"
+            ],
+            [
+              "Offene Pull Requests",
+              "repository-state",
+              "none"
+            ],
+            [
+              "Test, Lint, Contracts und Merge-Validierung",
+              "validation",
+              "green"
+            ]
+          ],
+          "title": "Aktuelle Arbeit",
+          "w": 440,
+          "x": 600,
+          "y": 300
+        }
+      ],
+      "role": "delivery",
+      "title": "Roadmap und laufende Arbeit",
+      "w": 1120,
+      "x": 5200,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_risk",
+      "number": 6,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Risiken und Testsignal",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_risk_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Einzelne Risiken werden als Handlungsobjekte gezeigt und direkt dem Testsignal gegen\u00fcbergestellt.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_risk_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "risk",
+          "content": "Metrics Snapshot & Validation ist rot\nmedium \u00b7 open\nGegenma\u00dfnahme: Diagnostischen Workflow getrennt untersuchen; gr\u00fcne Kernvalidierung nicht \u00fcberdehnen.",
+          "font_level": "body",
+          "h": 200,
+          "id": "software_risk_1",
+          "kind": "shape",
+          "role": "risk",
+          "shape": "round_rectangle",
+          "w": 300,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "risk",
+          "content": "Retrieval-Qualit\u00e4t bleibt messbar begrenzt\nhigh \u00b7 managed\nGegenma\u00dfnahme: Eval-S\u00e4tze, Citation-Range-Pr\u00fcfung und Grounding-Vertr\u00e4ge weiter ausbauen.\n+ 1 weitere im Snapshot",
+          "font_level": "body",
+          "h": 200,
+          "id": "software_risk_2",
+          "kind": "shape",
+          "role": "risk",
+          "shape": "round_rectangle",
+          "w": 300,
+          "x": 400,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "content": "Tests\n6/6 bestanden\nrequired validation workflows green",
+          "font_level": "body",
+          "h": 180,
+          "id": "software_tests",
+          "kind": "shape",
+          "role": "evidence",
+          "shape": "round_rectangle",
+          "w": 280,
+          "x": 760,
+          "y": 300
+        }
+      ],
+      "role": "risk",
+      "title": "Risiken und Testsignal",
+      "w": 1120,
+      "x": 6500,
+      "y": 0
+    },
+    {
+      "background_role": "ink",
+      "h": 630,
+      "id": "software_evidence",
+      "number": 7,
+      "objects": [
+        {
+          "color_role": "ink",
+          "content": "Evidenz und Grenzen",
+          "font_level": "display",
+          "h": 80,
+          "id": "software_evidence_title",
+          "kind": "text",
+          "role": "title",
+          "w": 960,
+          "x": 80,
+          "y": 60
+        },
+        {
+          "color_role": "ink",
+          "content": "Der Snapshot ist pr\u00fcfbar; Aktualit\u00e4t und Vollst\u00e4ndigkeit werden nicht erfunden.",
+          "font_level": "heading",
+          "h": 80,
+          "id": "software_evidence_thesis",
+          "kind": "text",
+          "role": "thesis",
+          "w": 960,
+          "x": 80,
+          "y": 160
+        },
+        {
+          "color_role": "evidence",
+          "content": "# Quellenbindung\n\n- github.lenskit \u00b7 Revision 0ec3cf2938a6 \u00b7 heimgewebe/lenskit\n- repo.lenskit \u00b7 Revision 0ec3cf2938a6 \u00b7 heimgewebe/lenskit\n\nSnapshot: 960df10aa9e2c4635f9c3c102b470e71ca3e95a5fa76e30059c84f7fc184c7d0\nAktualit\u00e4tsgrenze: Revisionen sind belegt; ein Beobachtungszeitpunkt wird nicht behauptet.",
+          "font_level": "body",
+          "h": 220,
+          "id": "software_sources",
+          "kind": "doc",
+          "provider_geometry": "auto_sized",
+          "role": "source",
+          "w": 600,
+          "x": 80,
+          "y": 300
+        },
+        {
+          "color_role": "evidence",
+          "columns": [
+            "Grenze"
+          ],
+          "content": "Nicht-Anspr\u00fcche Grenze kein Livezustand ohne Beobachtungszeit keine Provider-Mutation keine Vollansicht aller Datens\u00e4tze",
+          "font_level": "body",
+          "h": 200,
+          "id": "software_non_claims",
+          "kind": "table",
+          "provider_geometry": "auto_sized",
+          "role": "evidence",
+          "rows": [
+            [
+              "kein Livezustand ohne Beobachtungszeit"
+            ],
+            [
+              "keine Provider-Mutation"
+            ],
+            [
+              "keine Vollansicht aller Datens\u00e4tze"
+            ]
+          ],
+          "title": "Nicht-Anspr\u00fcche",
+          "w": 280,
+          "x": 760,
+          "y": 300
+        }
+      ],
+      "role": "evidence",
+      "title": "Evidenz und Grenzen",
+      "w": 1120,
+      "x": 7800,
+      "y": 0
+    }
+  ],
+  "purpose": "Narrative, source-bound software-project overview.",
+  "reading_path": [
+    "software_cover",
+    "software_map",
+    "software_architecture",
+    "software_decisions",
+    "software_delivery",
+    "software_risk",
+    "software_evidence"
+  ],
+  "remote_readback_role": "conformance_only",
+  "schema_version": "schauwerk-visual-board.v2",
+  "title": "Lenskit und RepoBrief \u2014 Visual System v2",
+  "visual_system_digest": "f079119019ddd218e2b80b905e0186b59d28b93d5fd98752cd82328805f174b3"
+}

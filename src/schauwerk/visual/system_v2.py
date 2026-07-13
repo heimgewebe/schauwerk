@@ -27,6 +27,9 @@ _FRAME_ROLES = (
     "architecture",
     "quality_gate",
     "example",
+    "decision",
+    "delivery",
+    "risk",
     "evidence",
 )
 _OBJECT_KINDS = {"text", "shape", "table", "doc", "sticky", "connector"}
@@ -119,6 +122,7 @@ def visual_system_manifest() -> dict[str, Any]:
             "max_visual_coverage": 0.58,
             "max_body_characters": 220,
             "max_doc_characters": 900,
+            "max_rich_characters": 900,
             "grid": 20,
             "frame_margin": 60,
         },
@@ -275,6 +279,26 @@ def _frame(
             _text(f"{identifier}_thesis", "thesis", 80, 160, 960, 80, thesis, font="heading"),
         ],
     }
+
+
+def finalize_board_spec(
+    *, title: str, purpose: str, frames: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Bind a caller-composed frame sequence to the current Visual System v2 contract."""
+
+    normalized_frames = [dict(frame) for frame in frames]
+    value: dict[str, Any] = {
+        "schema_version": BOARD_SCHEMA,
+        "title": title,
+        "purpose": purpose,
+        "reading_path": [frame["id"] for frame in normalized_frames],
+        "frames": normalized_frames,
+        "visual_system_digest": visual_system_manifest()["manifest_digest"],
+        "remote_readback_role": "conformance_only",
+    }
+    value["board_digest"] = _digest(value)
+    validate_board_spec(value)
+    return value
 
 
 def reference_board_spec() -> dict[str, Any]:
@@ -762,7 +786,9 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             coverage += (w * h) / (width * height)
             length = _text_length(raw_object.get("content", ""))
             maximum = (
-                limits["max_doc_characters"] if kind == "doc" else limits["max_body_characters"]
+                limits["max_rich_characters"]
+                if kind in {"doc", "table"}
+                else limits["max_body_characters"]
             )
             if length > maximum:
                 block(

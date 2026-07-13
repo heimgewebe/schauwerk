@@ -33,6 +33,22 @@ The gate scores five equal dimensions:
 
 Release requires at least 90/100 and no blocker. The declared plan is the source for visual review because Miro readback may omit geometry. Remote readback proves creation and conformance only.
 
+Rich tables and documents may carry up to 900 characters because they are the designated dense-information objects. Plain text and shapes remain limited to 220 characters. This distinction prevents both card-wall sprawl and artificial rejection of legitimate comparisons.
+
+## Real-content adoption
+
+The reference board is no longer the only v2 producer. `schauwerk pilot software` can compile a validated `software-pilot-snapshot.v1` into a seven-frame Visual System v2 board:
+
+1. cover and purpose;
+2. reading map;
+3. architecture and source binding;
+4. decisions;
+5. roadmap and current work;
+6. risks and tests;
+7. evidence and non-claims.
+
+Large collections are deliberately bounded to a few readable rows plus an explicit omitted-item count. The full source snapshot remains digest-bound. The previous four-column software DSL remains available as a compatibility path while v2 adoption is evaluated.
+
 ## Official Miro basis
 
 The design is informed by Miro's official Canvas, template, presentation, diagram and Help Center material. In particular, it uses the distinction between diagrams, tables, timelines, documents and presentation frames, and follows Miro's own emphasis on focus, layers, full-screen presentation and modular handling of large boards.
@@ -42,7 +58,6 @@ The design is informed by Miro's official Canvas, template, presentation, diagra
 - https://miro.com/de/capabilities/slides/
 - https://miro.com/de/capabilities/diagrams/
 - https://help.miro.com/hc/de
-
 
 ## Human review binding
 

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from schauwerk.cli_handlers import handle_visual_v2_live_test
 from schauwerk.surfaces.miro.live_test_index import read_live_test_records
+from schauwerk.visual.system_v2 import reference_board_spec
 
 
 class Receipt:
@@ -124,3 +125,34 @@ def test_visual_v2_live_test_binds_local_quality_and_remote_conformance(tmp_path
     assert (output / "live-test-receipt.json").exists()
     records = read_live_test_records(client.settings)
     assert [record.alias for record in records] == ["visual-v2-fixture"]
+
+
+def test_visual_v2_live_test_accepts_a_provided_board_spec(tmp_path: Path) -> None:
+    client = FakeClient(tmp_path / "snapshots")
+    output = tmp_path / "out"
+    spec_path = tmp_path / "software-board.json"
+    spec_path.write_text(
+        json.dumps(reference_board_spec(), sort_keys=True),
+        encoding="utf-8",
+    )
+
+    result = handle_visual_v2_live_test(
+        alias="visual-v2-provided",
+        board_name="Provided Visual v2",
+        output_dir=str(output),
+        replace_alias=False,
+        reuse_existing_alias=False,
+        resume_after_layout=False,
+        item_limit=100,
+        comment_limit=10,
+        max_pages=5,
+        include_comments=False,
+        spec_input=str(spec_path),
+        client=client,
+    )
+
+    assert result["content_source"] == "provided_spec"
+    assert result["spec_input"] == str(spec_path)
+    assert result["local_quality"]["ok"] is True
+    assert result["remote_conformance"]["ok"] is True
+    assert client.calls[0][1]["description"].startswith("Schauwerk Visual System v2 board:")

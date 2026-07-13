@@ -12,9 +12,16 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from schauwerk.pilots.software_visual_v2 import compose_software_visual_board
 from schauwerk.registry_runtime import load_registry
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION, software_template, state_label
 from schauwerk.visual.miro_dsl import doc, line, table
+from schauwerk.visual.system_v2 import (
+    audit_board_spec,
+)
+from schauwerk.visual.system_v2 import (
+    render_board_dsl as render_visual_board_dsl,
+)
 
 INPUT_SCHEMA_VERSION = "software-pilot-input.v1"
 SNAPSHOT_SCHEMA_VERSION = "software-pilot-snapshot.v1"
@@ -124,9 +131,7 @@ def _normalized_items(
     return sorted(result, key=lambda item: item[fields[0]])
 
 
-def compile_software_snapshot(
-    input_path: Path, *, repo_root: Path | None = None
-) -> dict[str, Any]:
+def compile_software_snapshot(input_path: Path, *, repo_root: Path | None = None) -> dict[str, Any]:
     root = (repo_root or Path(__file__).resolve().parents[3]).resolve()
     value, source_sha256 = _read_json(input_path)
     _validate_input(value, repo_root=root)
@@ -177,9 +182,7 @@ def compile_software_snapshot(
     roadmap = _normalized_items(
         value["roadmap"], fields=("id", "title", "status", "outcome"), label="roadmap"
     )
-    work = _normalized_items(
-        value["work"], fields=("id", "title", "status", "kind"), label="work"
-    )
+    work = _normalized_items(value["work"], fields=("id", "title", "status", "kind"), label="work")
     risks = _normalized_items(
         value["risks"], fields=("id", "title", "severity", "status", "mitigation"), label="risks"
     )
@@ -341,9 +344,7 @@ def validate_software_snapshot(
                 raise ValueError(f"software pilot {collection} fields are invalid")
             for field in fields:
                 value = item.get(field)
-                if value != _safe_text(
-                    value, label=f"{collection}[{index}].{field}", maximum=240
-                ):
+                if value != _safe_text(value, label=f"{collection}[{index}].{field}", maximum=240):
                     raise ValueError(
                         f"software pilot {collection}[{index}].{field} is not normalized"
                     )
@@ -368,6 +369,21 @@ def validate_software_snapshot(
         raise ValueError("software pilot test counts are invalid")
     if passed + failed != total:
         raise ValueError("software pilot test counts do not add up")
+
+
+def compile_software_visual_board(
+    snapshot: Mapping[str, Any], *, repo_root: Path | None = None
+) -> dict[str, Any]:
+    """Validate a software snapshot before composing its Visual System v2 board."""
+
+    validate_software_snapshot(snapshot, repo_root=repo_root)
+    return compose_software_visual_board(snapshot)
+
+
+def render_software_visual_v2_dsl(
+    snapshot: Mapping[str, Any], *, repo_root: Path | None = None
+) -> str:
+    return render_visual_board_dsl(compile_software_visual_board(snapshot, repo_root=repo_root))
 
 
 def render_software_dsl(snapshot: Mapping[str, Any], *, repo_root: Path | None = None) -> str:
@@ -500,6 +516,9 @@ def write_software_pilot(
     input_path: Path,
     snapshot_output: Path | None,
     dsl_output: Path | None,
+    visual_spec_output: Path | None = None,
+    visual_quality_output: Path | None = None,
+    visual_dsl_output: Path | None = None,
     repo_root: Path | None = None,
 ) -> dict[str, Any]:
     snapshot = compile_software_snapshot(input_path, repo_root=repo_root)
@@ -508,7 +527,41 @@ def write_software_pilot(
         _write_atomic(snapshot_output, json.dumps(snapshot, indent=2, sort_keys=True) + "\n")
     if dsl_output is not None:
         _write_atomic(dsl_output, dsl)
-    return {
+
+    visual_requested = any(
+        path is not None for path in (visual_spec_output, visual_quality_output, visual_dsl_output)
+    )
+    visual_receipt: dict[str, Any] | None = None
+    if visual_requested:
+        visual_spec = compile_software_visual_board(snapshot, repo_root=repo_root)
+        visual_quality = audit_board_spec(visual_spec)
+        visual_dsl = render_visual_board_dsl(visual_spec)
+        if visual_spec_output is not None:
+            _write_atomic(
+                visual_spec_output,
+                json.dumps(visual_spec, indent=2, sort_keys=True) + "\n",
+            )
+        if visual_quality_output is not None:
+            _write_atomic(
+                visual_quality_output,
+                json.dumps(visual_quality, indent=2, sort_keys=True) + "\n",
+            )
+        if visual_dsl_output is not None:
+            _write_atomic(visual_dsl_output, visual_dsl)
+        visual_receipt = {
+            "board_digest": visual_spec["board_digest"],
+            "quality_digest": visual_quality["quality_digest"],
+            "quality_score": visual_quality["score"],
+            "quality_ok": visual_quality["ok"],
+            "frame_count": visual_quality["frame_count"],
+            "object_count": visual_quality["object_count"],
+            "spec_output": str(visual_spec_output) if visual_spec_output else None,
+            "quality_output": str(visual_quality_output) if visual_quality_output else None,
+            "dsl_output": str(visual_dsl_output) if visual_dsl_output else None,
+            "dsl_line_count": len([item for item in visual_dsl.splitlines() if item.strip()]),
+        }
+
+    receipt: dict[str, Any] = {
         "schema_version": "software-pilot-render-receipt.v1",
         "project_id": snapshot["project_id"],
         "view_id": snapshot["view_id"],
@@ -520,3 +573,6 @@ def write_software_pilot(
         "dsl_line_count": len([item for item in dsl.splitlines() if item.strip()]),
         "provider_mutation_attempted": False,
     }
+    if visual_receipt is not None:
+        receipt["visual_v2"] = visual_receipt
+    return receipt

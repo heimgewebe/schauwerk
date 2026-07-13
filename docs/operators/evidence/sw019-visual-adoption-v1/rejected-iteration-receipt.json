@@ -1,0 +1,115 @@
+{
+  "board_alias": "schauwerk-software-visual-v2-lenskit-20260713",
+  "board_digest": "47b880b0adf8d4c39410099b4181a1eaa8c95269e6927475f913cffb9b19dd6e",
+  "board_reference_digest": "a77a50d319e8dd61",
+  "board_urls_included": false,
+  "content_source": "provided_spec",
+  "credentials_included": false,
+  "iteration": "rejected-table-heavy",
+  "layout": {
+    "created_count": 39,
+    "failed_count": 0,
+    "result_dsl_digest": "31de0916039fa87a5d5ea8ed8b2099e47f0f8567751741213c0a600be242953c",
+    "success": true
+  },
+  "local_quality": {
+    "automatic_aesthetic_claim": false,
+    "blockers": [],
+    "connector_count": 3,
+    "frame_count": 7,
+    "object_count": 32,
+    "quality_digest": "8b96187a10dfe61fc479431ef78b070c3650f2bdc935156e8d7ad18290379103",
+    "score": 100,
+    "sticky_count": 0,
+    "warnings": []
+  },
+  "provider_ids_included": false,
+  "raw_archive": {
+    "committed_to_repository": false,
+    "name": "sw019-visual-adoption-live-raw-20260713.tar.gz",
+    "sha256": "d8576b4a29fc6976f3520390caeb554c9b3f7c493cdcb0c024eea5340c54c43b"
+  },
+  "raw_artifact_hashes": {
+    "after.json": "77ece60010d063ed1c74f7243ef207c3de4f645e1b01b4489d7abc2f9620f130",
+    "before.json": "7f5d7b28f20b6448925813b0594001baf447048bd53409e338a9572e1c1046f5",
+    "board-binding.json": "c4a9c3875dd75ecf078c9901262c5acdeba8256809d5e3026c462f29e61f027f",
+    "board-spec.json": "b4f7d3640a640ce6f343fff11d6c049bdf7bd3c6f1e5c6a46ce0d1cd893eb286",
+    "board.dsl": "9a6302f35d202c237d4c0824ae7aa37e2cf1b68a7419f380942f9d9c36eb26aa",
+    "live-test-receipt.json": "ca452d6e478d62e936ac970bb1a722277f03362cf9c0aff95ce4431a8b074f18",
+    "quality-v2.json": "301354e85e0016ad9c81fb8ff601fa0c0a7bef7409010bac52178c2a3ea5cd12",
+    "review-input.json": "161aefa4c2f8a014d65529ea800b63f41095c3a2fe0934bcb777d8e653cf59b5",
+    "visual-review-receipt.json": "18c4f1d17e8c8ece2fe06b3e0b14ea48f1d3c2f795a9b3e94f39ae59b827d90e",
+    "visual-system.json": "e6f082f025b78e9910e3d693a8888e7d8eebc40f42712b7f15ec9c960f637db0"
+  },
+  "rejection_reason": "Human review failed aesthetic_character and object_selection because six tables across seven frames produced a form-like rhythm despite a 100/100 automatic score.",
+  "remote_conformance": {
+    "expected_minimums": {
+      "connector_count": 3,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 36,
+      "table_count": 6
+    },
+    "geometry_used_for_aesthetic_score": false,
+    "mismatches": {},
+    "observed": {
+      "connector_count": 3,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 36,
+      "table_count": 6
+    },
+    "ok": true
+  },
+  "schema_version": "schauwerk-visual-rejected-iteration.v1",
+  "visual_review": {
+    "axes": {
+      "aesthetic_character": {
+        "finding": "The first live composition is too table-heavy: six tables across seven frames create a form-like rhythm instead of a deliberately varied editorial board.",
+        "verdict": "FAIL"
+      },
+      "density_and_whitespace": {
+        "finding": "Declared boxes remain within the frame margins and the local density gate reports no overflow or crowding.",
+        "verdict": "PASS"
+      },
+      "hierarchy": {
+        "finding": "Every frame has one title and one thesis, with a finite reading sequence from orientation to evidence.",
+        "verdict": "PASS"
+      },
+      "information_architecture": {
+        "finding": "The seven-frame sequence separates system, decisions, delivery, risks and evidence coherently.",
+        "verdict": "PASS"
+      },
+      "object_selection": {
+        "finding": "Architecture, roadmap and risks are rendered mainly as tables even where relationships, sequence and individual risk actions would be clearer as shapes and connectors.",
+        "verdict": "FAIL"
+      },
+      "palette_and_consistency": {
+        "finding": "Semantic colour roles are consistent and redundant with text and shape cues.",
+        "verdict": "PASS"
+      },
+      "readability": {
+        "finding": "Text lengths are bounded, source revisions remain visible and remote type/count conformance is exact.",
+        "verdict": "PASS"
+      }
+    },
+    "failed_axes": [
+      "object_selection",
+      "aesthetic_character"
+    ],
+    "method": {
+      "authenticated_provider_screenshot": "not_available",
+      "design_surface": "deterministic board-spec visual preview",
+      "excluded_capture": "No authenticated provider screenshot was available; no unauthenticated capture was used.",
+      "provider_binding": "exact remote item-type and connector-count conformance"
+    },
+    "non_claims": [
+      "universal aesthetic preference",
+      "pixel-identical Miro UI rendering",
+      "authenticated Miro screenshot evidence",
+      "permission to alter existing unrelated boards"
+    ],
+    "review_digest": "d92deae61e77413e7ffdf8b9e5b51e3cb20b86be766318e7252cf767ed81e4c9",
+    "verdict": "FAIL"
+  }
+}

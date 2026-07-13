@@ -8,10 +8,14 @@ import pytest
 
 from schauwerk.pilots.software import (
     compile_software_snapshot,
+    compile_software_visual_board,
     render_software_dsl,
+    render_software_visual_v2_dsl,
     validate_software_snapshot,
     write_software_pilot,
 )
+from schauwerk.pilots.software_visual_v2 import compose_software_visual_board
+from schauwerk.visual.system_v2 import audit_board_spec
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -51,9 +55,7 @@ def software_input() -> dict:
                 "outcome": "Useful increment.",
             }
         ],
-        "work": [
-            {"id": "pr-1", "title": "Current change", "status": "merged", "kind": "pr"}
-        ],
+        "work": [{"id": "pr-1", "title": "Current change", "status": "merged", "kind": "pr"}],
         "tests": {"status": "green", "passed": 3, "failed": 0},
         "risks": [
             {
@@ -89,9 +91,9 @@ def test_software_pilot_is_generic_deterministic_and_sanitized(tmp_path: Path) -
     assert "Software-Projektion" in dsl
     assert "Entscheidungen und Roadmap" in dsl
     assert "Quellsystem bleibt maßgeblich" in dsl
-    assert 'w=4600' in dsl.splitlines()[0]
-    assert 'x=-1725' in dsl
-    assert 'x=1725' in dsl
+    assert "w=4600" in dsl.splitlines()[0]
+    assert "x=-1725" in dsl
+    assert "x=1725" in dsl
 
 
 def test_software_pilot_writes_atomic_evidence(tmp_path: Path) -> None:
@@ -109,6 +111,7 @@ def test_software_pilot_writes_atomic_evidence(tmp_path: Path) -> None:
     assert receipt["project_id"] == "lenskit"
     assert receipt["provider_mutation_attempted"] is False
     assert receipt["dsl_line_count"] > 10
+    assert "visual_v2" not in receipt
 
 
 def test_software_pilot_rejects_duplicate_semantic_ids(tmp_path: Path) -> None:
@@ -229,3 +232,136 @@ def test_software_pilot_marks_failed_tests_as_failed_not_unavailable(tmp_path: P
 
     assert "✕ fehlgeschlagen — red" in rendered
     assert "nicht verfügbar — red" not in rendered
+
+
+def test_software_visual_v2_is_deterministic_narrative_and_quality_gated(
+    tmp_path: Path,
+) -> None:
+    snapshot = compile_software_snapshot(write_input(tmp_path), repo_root=ROOT)
+
+    first = compile_software_visual_board(snapshot, repo_root=ROOT)
+    second = compile_software_visual_board(snapshot, repo_root=ROOT)
+    quality = audit_board_spec(first)
+
+    assert first == second
+    assert first["reading_path"] == [
+        "software_cover",
+        "software_map",
+        "software_architecture",
+        "software_decisions",
+        "software_delivery",
+        "software_risk",
+        "software_evidence",
+    ]
+    assert [frame["role"] for frame in first["frames"]] == [
+        "cover",
+        "map",
+        "architecture",
+        "decision",
+        "delivery",
+        "risk",
+        "evidence",
+    ]
+    assert quality["ok"] is True
+    assert quality["score"] >= 90
+    assert quality["blockers"] == []
+    assert quality["sticky_count"] == 0
+    assert quality["connector_count"] >= 4
+    assert (
+        sum(item["kind"] == "table" for frame in first["frames"] for item in frame["objects"]) == 3
+    )
+    encoded = json.dumps(first, ensure_ascii=False)
+    assert snapshot["snapshot_digest"] in encoded
+    assert snapshot["sources"][0]["revision"][:12] in encoded
+    assert "Aktualitätsgrenze" in encoded
+
+    dsl = render_software_visual_v2_dsl(snapshot, repo_root=ROOT)
+    assert "System und Verantwortung" in dsl
+    assert "Evidenz und Grenzen" in dsl
+    assert sum(1 for line in dsl.splitlines() if " FRAME " in line) == 7
+
+
+def test_software_visual_v2_bounds_large_collections_without_hiding_omissions(
+    tmp_path: Path,
+) -> None:
+    value = software_input()
+    value["components"] = [
+        {
+            "id": f"component-{index:02d}",
+            "title": f"Component {index}",
+            "responsibility": f"Responsibility {index}",
+            "status": "active",
+        }
+        for index in range(10)
+    ]
+    snapshot = compile_software_snapshot(write_input(tmp_path, value), repo_root=ROOT)
+
+    board = compile_software_visual_board(snapshot, repo_root=ROOT)
+    architecture = next(
+        frame for frame in board["frames"] if frame["id"] == "software_architecture"
+    )
+    system = next(
+        item for item in architecture["objects"] if item["id"] == "software_architecture_system"
+    )
+    component_shapes = [
+        item for item in architecture["objects"] if item["id"].startswith("software_component_")
+    ]
+
+    assert len(component_shapes) == 3
+    assert "+ 7 weitere im Snapshot" in system["content"]
+    assert audit_board_spec(board)["ok"] is True
+
+
+def test_software_pilot_visual_v2_outputs_are_explicit_and_digest_bound(
+    tmp_path: Path,
+) -> None:
+    source = write_input(tmp_path)
+    spec = tmp_path / "visual" / "board.json"
+    quality = tmp_path / "visual" / "quality.json"
+    visual_dsl = tmp_path / "visual" / "board.dsl"
+
+    receipt = write_software_pilot(
+        input_path=source,
+        snapshot_output=None,
+        dsl_output=None,
+        visual_spec_output=spec,
+        visual_quality_output=quality,
+        visual_dsl_output=visual_dsl,
+        repo_root=ROOT,
+    )
+
+    assert spec.is_file()
+    assert quality.is_file()
+    assert visual_dsl.is_file()
+    assert receipt["visual_v2"]["quality_ok"] is True
+    assert receipt["visual_v2"]["quality_score"] >= 90
+    assert (
+        receipt["visual_v2"]["board_digest"]
+        == json.loads(spec.read_text(encoding="utf-8"))["board_digest"]
+    )
+    assert (
+        receipt["visual_v2"]["quality_digest"]
+        == json.loads(quality.read_text(encoding="utf-8"))["quality_digest"]
+    )
+    assert receipt["provider_mutation_attempted"] is False
+
+
+def test_software_visual_v2_bounds_source_evidence_density(tmp_path: Path) -> None:
+    snapshot = compile_software_snapshot(write_input(tmp_path), repo_root=ROOT)
+    expanded = json.loads(json.dumps(snapshot))
+    expanded["sources"] = [
+        {
+            **snapshot["sources"][index % len(snapshot["sources"])],
+            "source_id": f"source-{index}-" + "x" * 80,
+            "reference": "reference-" + "y" * 240,
+        }
+        for index in range(12)
+    ]
+
+    board = compose_software_visual_board(expanded)
+    evidence = next(frame for frame in board["frames"] if frame["id"] == "software_evidence")
+    source_doc = next(item for item in evidence["objects"] if item["id"] == "software_sources")
+
+    assert "+ 7 weitere Quellen im gebundenen Snapshot" in source_doc["content"]
+    assert len(source_doc["content"]) <= 900
+    assert audit_board_spec(board)["ok"] is True

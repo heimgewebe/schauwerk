@@ -1,0 +1,111 @@
+{
+  "board_alias": "schauwerk-software-visual-v2-lenskit-20260713-v2",
+  "board_digest": "b55b1df55a82fa36749dc674015b0fb66fda88f00e860d6e180b96453e17957c",
+  "board_reference_digest": "2da2ead75af686d1",
+  "board_urls_included": false,
+  "content_source": "provided_spec",
+  "credentials_included": false,
+  "iteration": "final-improved",
+  "layout": {
+    "created_count": 49,
+    "failed_count": 0,
+    "result_dsl_digest": "5ad53747498ca967b35ac305a8a8ee2cb6bb0ce2edd109e8ed1cd5ae8a431241",
+    "success": true
+  },
+  "local_quality": {
+    "automatic_aesthetic_claim": false,
+    "blockers": [],
+    "connector_count": 8,
+    "frame_count": 7,
+    "object_count": 42,
+    "quality_digest": "9561bdd504193a7b0bc6c48f8ed3b08a58b15d2cbc405d2640c347996e0e83c2",
+    "score": 100,
+    "sticky_count": 0,
+    "warnings": []
+  },
+  "provider_ids_included": false,
+  "raw_archive": {
+    "committed_to_repository": false,
+    "name": "sw019-visual-adoption-live-raw-20260713.tar.gz",
+    "sha256": "d8576b4a29fc6976f3520390caeb554c9b3f7c493cdcb0c024eea5340c54c43b"
+  },
+  "raw_artifact_hashes": {
+    "after.json": "cad02ef8101a322e989bbf0446cea97df26c7dd866aef2d90593e84b3d0ba6ff",
+    "before.json": "587ba162b529c7f8d14f9ac50e9677168899b52a49154aaa44b0d3b1b4590e68",
+    "board-binding.json": "ac7442f32cb9d0481543ca439420c5a9f83348a88d7bca7b65d967211b37c002",
+    "board-spec.json": "d8aaa41553c1ef3c342c869930cf2bfa6101bca9bbd26f1cdcb55508ae4eb210",
+    "board.dsl": "4cff92b19c7ff6ba73213e1c404558403d16c77310810771a912c72ec4b10d12",
+    "live-test-receipt.json": "1692a63eed4a3a451e4a28ad64baddc84ababce6e2a500fd1e7d344d32c42aae",
+    "quality-v2.json": "520c1144c2e30da1f4be1a0df0ae877eec46b835d8e3b304b5c68d88eef97cf7",
+    "review-input.json": "5915bb4b161fe9bb2c936a5f6a7945942900fd6d5424c0e9145411c0f7226f9e",
+    "visual-review-receipt.json": "d92f728bdf17630a60d2ddf7bb1592588e88a2022b353d1aab03f651f37934f7",
+    "visual-system.json": "e6f082f025b78e9910e3d693a8888e7d8eebc40f42712b7f15ec9c960f637db0"
+  },
+  "remote_conformance": {
+    "expected_minimums": {
+      "connector_count": 8,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 41,
+      "table_count": 3
+    },
+    "geometry_used_for_aesthetic_score": false,
+    "mismatches": {},
+    "observed": {
+      "connector_count": 8,
+      "doc_count": 1,
+      "frame_count": 7,
+      "remote_item_count": 41,
+      "table_count": 3
+    },
+    "ok": true
+  },
+  "schema_version": "schauwerk-visual-live-acceptance.v2",
+  "visual_review": {
+    "axes": {
+      "aesthetic_character": {
+        "finding": "The improved composition has a restrained editorial rhythm: orientation shapes, a relationship diagram, one decision comparison, a roadmap sequence, individual risk objects and a separate evidence appendix replace the rejected table-wall effect.",
+        "verdict": "PASS"
+      },
+      "density_and_whitespace": {
+        "finding": "All declared objects remain inside the 1120 by 630 frames, align to the 20-pixel grid and pass the density gate without warnings or crowding blockers.",
+        "verdict": "PASS"
+      },
+      "hierarchy": {
+        "finding": "Each of the seven frames has one dominant title, one thesis and one bounded primary visual; no secondary headline competes for attention.",
+        "verdict": "PASS"
+      },
+      "information_architecture": {
+        "finding": "The finite sequence moves from purpose and reading map through architecture, decisions, delivery and risks to an evidence appendix with explicit non-claims.",
+        "verdict": "PASS"
+      },
+      "object_selection": {
+        "finding": "Architecture uses connected component shapes, roadmap uses sequenced action shapes, risks use individual risk shapes, dense comparisons use three tables, sources use one document and completed facts use zero sticky notes.",
+        "verdict": "PASS"
+      },
+      "palette_and_consistency": {
+        "finding": "All five semantic colour roles appear consistently and remain redundant with labels and shape roles; colour is not the sole state cue.",
+        "verdict": "PASS"
+      },
+      "readability": {
+        "finding": "Display text is clipped deterministically, omitted collections are disclosed, source revisions and snapshot digest remain visible, and remote item-type/count conformance is exact.",
+        "verdict": "PASS"
+      }
+    },
+    "failed_axes": [],
+    "method": {
+      "authenticated_provider_screenshot": "not_available",
+      "design_surface": "deterministic board-spec visual preview",
+      "excluded_capture": "No authenticated provider screenshot was available; no unauthenticated or private-access-page capture was used.",
+      "provider_binding": "exact remote item-type and connector-count conformance"
+    },
+    "non_claims": [
+      "universal aesthetic preference",
+      "pixel-identical Miro UI rendering",
+      "authenticated Miro screenshot evidence",
+      "permission to alter existing unrelated boards"
+    ],
+    "review_digest": "7f0000d5c6f4688affa39248bd93bfbc672e24cec2879900226d50d9c4af71f9",
+    "verdict": "PASS"
+  }
+}
