@@ -131,6 +131,43 @@ def test_rich_objects_declare_provider_auto_sizing() -> None:
     )
 
 
+def test_native_composition_declares_entry_path_and_semantic_grammar() -> None:
+    spec = reference_board_spec()
+    quality = validate_board_spec(spec)
+    assert spec["composition_profile"] == "miro-native-composition.v1"
+    assert spec["entry_frame"] == spec["reading_path"][0]
+    assert spec["presentation_path"] == spec["reading_path"]
+    assert len(quality["shape_types"]) >= 2
+    assert len(quality["relation_types"]) >= 2
+
+
+def test_flat_shape_wall_is_rejected() -> None:
+    spec = reference_board_spec()
+    for frame in spec["frames"]:
+        for item in frame["objects"]:
+            if item["kind"] == "shape":
+                item["shape"] = "round_rectangle"
+    quality = audit_board_spec(spec)
+    assert any(item["code"] == "shape_grammar" for item in quality["blockers"])
+
+
+def test_connector_rich_board_requires_semantic_relation_variety() -> None:
+    spec = reference_board_spec()
+    for frame in spec["frames"]:
+        for item in frame["objects"]:
+            if item["kind"] == "connector":
+                item["relation_type"] = "flow"
+    quality = audit_board_spec(spec)
+    assert any(item["code"] == "relation_grammar" for item in quality["blockers"])
+
+
+def test_renderer_encodes_relation_semantics_before_labels() -> None:
+    rendered = render_board_dsl(reference_board_spec())
+    assert "stroke_style=dotted" in rendered
+    assert "stroke_style=dashed" in rendered
+    assert "shape=curved" in rendered or "shape=straight" in rendered
+
+
 def test_visual_outputs_reject_parent_symlink(tmp_path: Path) -> None:
     from schauwerk.visual.system_v2 import write_json
 
