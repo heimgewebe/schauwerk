@@ -19,36 +19,37 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 6. [Visual Grammar v1](visuals/miro-visual-grammar-v1.md)
 7. [Visual System v2](visual/schauwerk-visual-system-v2.md)
 8. [Visual System v2 live reference](operators/visual-system-v2-live.md)
-9. [Miro live recovery](operations/miro-live-recovery.md)
-8. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
-9. [SW-009 reviewed live executor v1](operators/sw009-live-executor-v1.md)
-10. [SW-010 Regie v1](operators/sw010-regie-v1.md)
-11. [SW-010 Regie evidence](operators/evidence/sw010-regie-20260711/README.md)
-12. [SW-011 overview and live views v1](operators/sw011-overview-live-v1.md)
-13. [SW-011 overview evidence](operators/evidence/sw011-overview-live-20260711/README.md)
-14. [SW-012 Bühne v1](presentations/buehne-v1.md)
-15. [SW-012 Bühne evidence](operators/evidence/sw012-buehne-20260711/README.md)
-16. [SW-013 Schaufenster v1](publications/schaufenster-v1.md)
-17. [SW-013 Schaufenster evidence](operators/evidence/sw013-schaufenster-20260711/README.md)
-18. [SW-014 source adapters v1](integration/source-adapters-v1.md)
-19. [SW-015 automated maintenance v1](operations/automated-maintenance-v1.md)
-20. [SW-016 search and semantics v1](search/search-semantics-v1.md)
-21. [SW-017 durable operations v1](operations/durable-operations-v1.md)
-22. [SW-017 incident runbooks](operations/incidents/durable-runbooks-v1.md)
-23. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
-24. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
-25. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
-26. [Registry](registry.md)
-27. [Grabowski useful pilot](pilots/grabowski.md)
-28. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
-29. [Grabowski operational pilot](pilots/grabowski-operational.md)
-30. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
-31. [Generic software pilot](pilots/software.md)
-32. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
-33. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
-34. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
-35. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
-36. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+9. [Representation Router v1](plans/schauwerk-representation-router-v1.md)
+10. [Miro live recovery](operations/miro-live-recovery.md)
+11. [Typed Region Plan v1](operators/typed-region-plan-v1.md)
+12. [SW-009 reviewed live executor v1](operators/sw009-live-executor-v1.md)
+13. [SW-010 Regie v1](operators/sw010-regie-v1.md)
+14. [SW-010 Regie evidence](operators/evidence/sw010-regie-20260711/README.md)
+15. [SW-011 overview and live views v1](operators/sw011-overview-live-v1.md)
+16. [SW-011 overview evidence](operators/evidence/sw011-overview-live-20260711/README.md)
+17. [SW-012 Bühne v1](presentations/buehne-v1.md)
+18. [SW-012 Bühne evidence](operators/evidence/sw012-buehne-20260711/README.md)
+19. [SW-013 Schaufenster v1](publications/schaufenster-v1.md)
+20. [SW-013 Schaufenster evidence](operators/evidence/sw013-schaufenster-20260711/README.md)
+21. [SW-014 source adapters v1](integration/source-adapters-v1.md)
+22. [SW-015 automated maintenance v1](operations/automated-maintenance-v1.md)
+23. [SW-016 search and semantics v1](search/search-semantics-v1.md)
+24. [SW-017 durable operations v1](operations/durable-operations-v1.md)
+25. [SW-017 incident runbooks](operations/incidents/durable-runbooks-v1.md)
+26. [SW-003 / SW-009 plan hygiene](operators/sw003-sw009-planhygiene.md)
+27. [SW-003 controlled live proof plan](operators/sw003-controlled-live-proof-plan.md)
+28. [SW-003 live proof evidence](operators/evidence/sw003-live-proof-20260709/README.md)
+29. [Registry](registry.md)
+30. [Grabowski useful pilot](pilots/grabowski.md)
+31. [Grabowski pilot evidence](operators/evidence/grabowski-pilot-20260710/README.md)
+32. [Grabowski operational pilot](pilots/grabowski-operational.md)
+33. [Grabowski operational evidence](operators/evidence/grabowski-operational-20260710/README.md)
+34. [Generic software pilot](pilots/software.md)
+35. [Lenskit software-pilot evidence](operators/evidence/lenskit-pilot-20260710/README.md)
+36. [Education variants evidence](operators/evidence/education-variants-20260710/README.md)
+37. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
+38. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
+39. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
 
 ## Contracts
 
@@ -73,8 +74,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/visual-board.v2.schema.json`
 - `schemas/visual-quality.v2.schema.json`
 - `schemas/visual-review.v2.schema.json`
+- `schemas/representation-input.v1.schema.json`
 - `registry/`
 
 ## Current status
 
-The local product surface through SW-013, repository-level integrated/durable v1 contracts through SW-017 and the semantic Visual System v2 in SW-018 are implemented. Schauwerk now normalizes declared local source observations with visible failure state, compiles proposal-only maintenance for managed regions, provides cited visibility-aware local search and produces deterministic health, backup, staged-restore, OAuth-rotation and kill-switch-drill artifacts. Visual System v2 now rejects missing narrative structure, semantic object misuse, weak hierarchy and excessive density before rendering. Productive Miro writes remain operation-specific and require the existing review, authorization, apply, postflight and restore chain. Real collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation, executed backups/restores and live recovery drills remain separate target-bound effects.
+The local product surface through SW-013, repository-level integrated/durable v1 contracts through SW-017, the semantic Visual System v2 in SW-018 and the renderer-routed representation package in SW-019 are implemented. Schauwerk now normalizes declared local source observations with visible failure state, compiles proposal-only maintenance for managed regions, provides cited visibility-aware local search and produces deterministic health, backup, staged-restore, OAuth-rotation and kill-switch-drill artifacts. Visual System v2 now rejects missing narrative structure, semantic object misuse, weak hierarchy and excessive density before rendering. Productive Miro writes remain operation-specific and require the existing review, authorization, apply, postflight and restore chain. Real collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation, executed backups/restores and live recovery drills remain separate target-bound effects.

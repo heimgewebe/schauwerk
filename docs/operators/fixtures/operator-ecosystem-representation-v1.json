@@ -1,0 +1,47 @@
+{
+  "schema_version": "schauwerk-representation-input.v1",
+  "id": "operator_ecosystem",
+  "title": "Operator-Ökosystem",
+  "purpose": "Zeigt Autorität, Ausführung, technische Wahrheiten, Beobachtung und Rückkopplung im maschinenlesbaren Operatorbetrieb.",
+  "intent": "mixed",
+  "groups": [
+    {"id": "authority", "label": "Autorität"},
+    {"id": "control", "label": "Steuerung"},
+    {"id": "execution", "label": "Ausführung"},
+    {"id": "evidence", "label": "Evidenz"}
+  ],
+  "nodes": [
+    {"id": "alex", "label": "Alex", "kind": "human", "group": "authority", "summary": "Setzt Ziele, Grenzen und Prioritäten."},
+    {"id": "bureau", "label": "Bureau", "kind": "system", "group": "control", "summary": "Hält Aufgaben, Zustände, Abhängigkeiten und Abschlussbelege."},
+    {"id": "grabowski", "label": "Grabowski", "kind": "system", "group": "execution", "summary": "Führt geprüfte Operatorarbeit über Werkzeuge und Laufzeiten aus."},
+    {"id": "repositories", "label": "Repositories", "kind": "store", "group": "execution", "summary": "Kanonische Quelltexte, Tests und Dokumentation."},
+    {"id": "github", "label": "GitHub", "kind": "service", "group": "execution", "summary": "PR-, Review-, CI- und Mergeoberfläche."},
+    {"id": "runtime", "label": "Laufzeiten", "kind": "service", "group": "execution", "summary": "Produktive Dienste und lokale Operatorprozesse."},
+    {"id": "systemkatalog", "label": "Systemkatalog", "kind": "store", "group": "evidence", "summary": "Kanonische System- und Beziehungskarte."},
+    {"id": "chronik", "label": "Chronik", "kind": "evidence", "group": "evidence", "summary": "Zeitgebundene Beobachtungen und Abschlussereignisse."},
+    {"id": "quality_gate", "label": "Prüfgate", "kind": "decision", "group": "control", "summary": "Entscheidet anhand von Tests, Diff und Evidenz über Wirkung."},
+    {"id": "kill_switch", "label": "Kill-Switch", "kind": "risk", "group": "control", "summary": "Stoppt Operatorwirkung bei unklarem oder gefährlichem Zustand."}
+  ],
+  "edges": [
+    {"id": "e01", "from": "alex", "to": "bureau", "label": "setzt Priorität", "kind": "authority"},
+    {"id": "e02", "from": "bureau", "to": "grabowski", "label": "delegiert Aufgabe", "kind": "authority"},
+    {"id": "e03", "from": "grabowski", "to": "repositories", "label": "ändert kontrolliert", "kind": "flow"},
+    {"id": "e04", "from": "repositories", "to": "github", "label": "liefert Diff", "kind": "flow"},
+    {"id": "e05", "from": "github", "to": "quality_gate", "label": "liefert CI und Review", "kind": "evidence"},
+    {"id": "e06", "from": "quality_gate", "to": "runtime", "label": "gibt Wirkung frei", "kind": "flow"},
+    {"id": "e07", "from": "runtime", "to": "chronik", "label": "erzeugt Beobachtung", "kind": "evidence"},
+    {"id": "e08", "from": "chronik", "to": "bureau", "label": "meldet Verlauf zurück", "kind": "feedback"},
+    {"id": "e09", "from": "systemkatalog", "to": "grabowski", "label": "liefert Orientierung", "kind": "evidence"},
+    {"id": "e10", "from": "kill_switch", "to": "grabowski", "label": "blockiert Wirkung", "kind": "risk"}
+  ],
+  "requirements": {
+    "formal_relations": true,
+    "free_spatial_layout": true,
+    "presentation": true,
+    "collaboration": true,
+    "rich_text": true,
+    "structured_comparison": true,
+    "portable_offline": true
+  },
+  "requested_formats": ["mermaid", "canvas", "miro_native", "table", "document"]
+}

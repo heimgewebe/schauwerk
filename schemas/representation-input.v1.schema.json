@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/schemas/representation-input.v1.schema.json",
+  "title": "Schauwerk Representation Input v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "purpose",
+    "intent",
+    "groups",
+    "nodes",
+    "edges",
+    "requirements",
+    "requested_formats"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-representation-input.v1"},
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 160},
+    "purpose": {"type": "string", "minLength": 1, "maxLength": 500},
+    "intent": {
+      "enum": [
+        "architecture",
+        "process",
+        "sequence",
+        "state",
+        "timeline",
+        "comparison",
+        "knowledge_map",
+        "narrative",
+        "presentation",
+        "mixed"
+      ]
+    },
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 100}
+        },
+        "additionalProperties": false
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "kind"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 120},
+          "kind": {
+            "enum": [
+              "human",
+              "system",
+              "service",
+              "store",
+              "decision",
+              "risk",
+              "action",
+              "evidence",
+              "concept"
+            ]
+          },
+          "group": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "summary": {"type": "string", "maxLength": 500}
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "from", "to", "label", "kind"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "from": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "to": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 120},
+          "kind": {
+            "enum": [
+              "authority",
+              "flow",
+              "evidence",
+              "feedback",
+              "risk",
+              "association"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requirements": {
+      "type": "object",
+      "properties": {
+        "formal_relations": {"type": "boolean"},
+        "free_spatial_layout": {"type": "boolean"},
+        "presentation": {"type": "boolean"},
+        "collaboration": {"type": "boolean"},
+        "rich_text": {"type": "boolean"},
+        "structured_comparison": {"type": "boolean"},
+        "portable_offline": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "requested_formats": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["mermaid", "canvas", "miro_native", "table", "document"]
+      }
+    }
+  },
+  "additionalProperties": false
+}
