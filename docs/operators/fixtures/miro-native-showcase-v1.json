@@ -1,0 +1,143 @@
+{
+  "schema_version": "schauwerk-miro-native-bundle.v1",
+  "bundle_id": "schauwerk-native-showcase-20260714",
+  "operations": [
+    {
+      "operation_id": "native-executor-flow",
+      "kind": "diagram",
+      "title": "Schauwerk Native Executor",
+      "diagram_type": "flowchart",
+      "diagram_dsl": "graphdir LR\npalette #fff6b6 #c6dcff #adf0c7\n\nn1 Operator flowchart-terminator 2\nn2 Kontext lesen flowchart-process 0\nn3 Native Form wählen flowchart-decision 1\nn4 Diagramm erstellen flowchart-process 0\nn5 Dokument erstellen flowchart-process 0\nn6 Datenansicht erstellen flowchart-process 0\nn7 Readback prüfen flowchart-process 0\nn8 Beleg abschließen flowchart-terminator 2\n\nc n1 startet n2\nc n2 - n3\nc n3 Diagramm n4\nc n3 Dokument n5\nc n3 Tabelle n6\nc n4 - n7\nc n5 - n7\nc n6 - n7\nc n7 bestätigt n8\n\ncluster c1 \"Schauwerk Native Executor\" n1 n2 n3 n4 n5 n6 n7 n8",
+      "x": -1800,
+      "y": -900
+    },
+    {
+      "operation_id": "native-contract-document",
+      "kind": "document",
+      "content": "# Schauwerk: native Miro-Fähigkeiten\n\nDieses Board prüft Miro nicht als flache Bildfläche, sondern als Sammlung editierbarer, semantischer Objekte.\n\n## Verwendete Formen\n\n- natives Flussdiagramm für formale Beziehungen\n- lebendes Dokument für Erläuterungen\n- Kanban-Datenansicht für strukturierten Status\n- Mermaid-Code-Widget für die sichtbare Quelle\n- Kommentar für kollaborative Abnahme\n\n## Wahrheitsgrenze\n\nJede Mutation wird über das passende Miro-Werkzeug zurückgelesen. Der Ablauf ist sequenziell und nicht global atomar, weil Miro nicht für jeden Itemtyp einen sicheren Lösch- oder Rollbackpfad anbietet.",
+      "x": 700,
+      "y": -900
+    },
+    {
+      "operation_id": "native-lanes-kanban",
+      "kind": "table",
+      "table_title": "Native Miro-Lanes",
+      "columns": [
+        {
+          "column_type": "text",
+          "column_title": "Lane",
+          "isTitle": true
+        },
+        {
+          "column_type": "text",
+          "column_title": "Zweck"
+        },
+        {
+          "column_type": "select",
+          "column_title": "Status",
+          "options": [
+            {
+              "displayValue": "Geplant",
+              "color": "#E7E7E7"
+            },
+            {
+              "displayValue": "Verifiziert",
+              "color": "#C6DCFF"
+            }
+          ]
+        }
+      ],
+      "rows": [
+        {
+          "cells": [
+            {
+              "columnTitle": "Lane",
+              "value": "Natives Diagramm"
+            },
+            {
+              "columnTitle": "Zweck",
+              "value": "Formale Beziehungen editierbar darstellen"
+            },
+            {
+              "columnTitle": "Status",
+              "value": "Verifiziert"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "columnTitle": "Lane",
+              "value": "Lebendes Dokument"
+            },
+            {
+              "columnTitle": "Zweck",
+              "value": "Erläuterungen direkt im Board pflegen"
+            },
+            {
+              "columnTitle": "Status",
+              "value": "Verifiziert"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "columnTitle": "Lane",
+              "value": "Datenansicht"
+            },
+            {
+              "columnTitle": "Zweck",
+              "value": "Status als Kanban, Timeline, Tabelle oder Baum zeigen"
+            },
+            {
+              "columnTitle": "Status",
+              "value": "Verifiziert"
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "columnTitle": "Lane",
+              "value": "Interaktiver Prototyp"
+            },
+            {
+              "columnTitle": "Zweck",
+              "value": "Mehrschirmige Interaktionen erlebbar machen"
+            },
+            {
+              "columnTitle": "Status",
+              "value": "Geplant"
+            }
+          ]
+        }
+      ],
+      "view": {
+        "layout": "kanban",
+        "group_by_column": "Status",
+        "view_name": "Fähigkeitsstand"
+      },
+      "x": -1800,
+      "y": 700
+    },
+    {
+      "operation_id": "mermaid-source-widget",
+      "kind": "code_widget",
+      "title": "Mermaid-Quelle: Operator zu Miro",
+      "language": "Mermaid",
+      "line_numbers_visible": true,
+      "width": 1100,
+      "code": "flowchart LR\n  Operator[Operator] --> Kontext[Kontext lesen]\n  Kontext --> Router{Darstellungsform wählen}\n  Router --> Diagramm[Natives Diagramm]\n  Router --> Dokument[Lebendes Dokument]\n  Router --> Daten[Datenansicht]\n  Diagramm --> Readback[Typisierter Readback]\n  Dokument --> Readback\n  Daten --> Readback\n  Readback --> Beleg[Receipt]",
+      "x": 700,
+      "y": 700
+    },
+    {
+      "operation_id": "acceptance-comment",
+      "kind": "comment",
+      "content": "Live-Prüfpunkt: Alle nativen Elemente wurden erstellt und über ihren jeweiligen typisierten Readback verifiziert.",
+      "x": 0,
+      "y": 1900
+    }
+  ]
+}

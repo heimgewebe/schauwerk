@@ -1,0 +1,73 @@
+{
+  "schema_version": "schauwerk-miro-native-bundle.v1",
+  "bundle_id": "native-executor-test-v1",
+  "operations": [
+    {
+      "operation_id": "architecture-diagram",
+      "kind": "diagram",
+      "title": "Operator flow",
+      "diagram_type": "flowchart",
+      "diagram_dsl": "node a label=Operator\nnode b label=Schauwerk\nedge a b",
+      "x": -1200,
+      "y": -600
+    },
+    {
+      "operation_id": "explanation-document",
+      "kind": "document",
+      "content": "# Native Miro\n\nEditable provider objects with receipt-bound readback.",
+      "x": 200,
+      "y": -600
+    },
+    {
+      "operation_id": "status-kanban",
+      "kind": "table",
+      "table_title": "Native lanes",
+      "columns": [
+        {"column_type": "text", "column_title": "Lane", "isTitle": true},
+        {
+          "column_type": "select",
+          "column_title": "Status",
+          "options": [
+            {"displayValue": "Planned", "color": "#B8B8B8"},
+            {"displayValue": "Verified", "color": "#2D9BF0"}
+          ]
+        }
+      ],
+      "rows": [
+        {
+          "cells": [
+            {"columnTitle": "Lane", "value": "Native diagram"},
+            {"columnTitle": "Status", "value": "Verified"}
+          ]
+        },
+        {
+          "cells": [
+            {"columnTitle": "Lane", "value": "Living document"},
+            {"columnTitle": "Status", "value": "Verified"}
+          ]
+        }
+      ],
+      "view": {"layout": "kanban", "group_by_column": "Status"},
+      "x": -1200,
+      "y": 500
+    },
+    {
+      "operation_id": "mermaid-source",
+      "kind": "code_widget",
+      "title": "Editable Mermaid source",
+      "language": "Mermaid",
+      "line_numbers_visible": true,
+      "width": 900,
+      "code": "flowchart LR\n  Operator --> Schauwerk\n  Schauwerk --> Miro",
+      "x": 500,
+      "y": 500
+    },
+    {
+      "operation_id": "review-marker",
+      "kind": "comment",
+      "content": "Schauwerk native executor verification marker",
+      "x": 0,
+      "y": 1400
+    }
+  ]
+}

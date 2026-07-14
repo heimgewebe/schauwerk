@@ -1,0 +1,316 @@
+{
+  "atomic": false,
+  "board_alias": "schauwerk-miro-native-showcase-20260714",
+  "board_reference_digest": "1aae4e377fd6482af769a77e",
+  "bundle_digest": "413b47056839b1feb8ff1308194cb01c5553b323d6ebc73a581fcc84d7bc9afa",
+  "bundle_id": "schauwerk-native-showcase-20260714",
+  "call_count": 21,
+  "calls": [
+    {
+      "index": 1,
+      "input_digest": "300daa78c7492a4dc48e1da24267572ecd45b9b0e3b72c7d76446a9760b6852f",
+      "output_digest": "0373caf2d6aea7573b792567c6d426dd55032f2db3edf2bc52f08f0c96482d1b",
+      "tool": "user_who_am_i"
+    },
+    {
+      "index": 2,
+      "input_digest": "3eff9b74ec3e501d467d81a6f8d3bd36100706758874b291fc88bd176c2e1c18",
+      "output_digest": "076a8823d14a46f2a565ef9e4949ea27fe95bbd5128743438621db1143f814b1",
+      "tool": "board_list_items"
+    },
+    {
+      "index": 3,
+      "input_digest": "8c12e156cca2e3a068090da704e214cef6bc4c048659049216774f3889fecf35",
+      "output_digest": "eef46741adfc3a9f76294d3b78f37a45f113092ac9d44ee77c7a038a88ff09a1",
+      "tool": "context_explore"
+    },
+    {
+      "index": 4,
+      "input_digest": "da92d1e90e8c3371695e6efb9659009691b296804ac30b2889a95cd9f1662ddc",
+      "output_digest": "cbb9ef8ac50bc89e26e4de1950028642f3b1514e9a1a9ee92d8a224cc02a6e48",
+      "tool": "diagram_get_dsl"
+    },
+    {
+      "index": 5,
+      "input_digest": "f1041e5597dad0f9938339ff9e30a31183ed41dd8841ccd44d5a9e5e404f2785",
+      "output_digest": "c6a4f2187384388f56272f5eb1916ae76b88f3f5830038e8063cd4481e354cd8",
+      "tool": "diagram_create"
+    },
+    {
+      "index": 6,
+      "input_digest": "cac63d54456a9e6b0189f28ee7e1f5c68521dd8ea278d72b3e3475378c532c37",
+      "output_digest": "4970ed24e9d4d9fd1ebbadb3d9a3cd2f542dcfef8454f8edfadccd6b08346517",
+      "tool": "context_get"
+    },
+    {
+      "index": 7,
+      "input_digest": "474c41cc744221e6def1831cd78b5bfb52f43e3bf64eca78c0132a3852bf69ae",
+      "output_digest": "d0b4314a5088f7ca71fa2b1cc9e31397c365c7dd6acc2b4275709b41470b2b7f",
+      "tool": "doc_create"
+    },
+    {
+      "index": 8,
+      "input_digest": "4dc7d55796a5430063725c536cfec21bb88d6d11f91b403e0cec3237f5ed41b7",
+      "output_digest": "fe6a07429b4106cb08394ff81bc69f14bbff9ab1ed93c6e2bcf2c106baff6bc8",
+      "tool": "doc_get"
+    },
+    {
+      "index": 9,
+      "input_digest": "0472ba20a724a613c5366b8257e5b80c292117cfad43532bc459b99f1dac1fc5",
+      "output_digest": "4e94322a5cffc47044be513a8eb01cba5f1007b3b5b8c4f91e81932d9a70694d",
+      "tool": "table_create"
+    },
+    {
+      "index": 10,
+      "input_digest": "a437bfb85d5c15787b2bcbfd1355b36a404bd792768118ae7aaf70b6b4d5b651",
+      "output_digest": "199adabbacdf0d22c8922bad488f0f6a59852fce830a56dd01b60034fbf5b564",
+      "tool": "table_sync_rows"
+    },
+    {
+      "index": 11,
+      "input_digest": "30bd595e2e547dffaebf4f7d61ca1687789ded2299c8788002d832a870927bc9",
+      "output_digest": "576660cd50986dc23b24087f7dd9e07075616e3b272251acee34d24319117987",
+      "tool": "table_list_rows"
+    },
+    {
+      "index": 12,
+      "input_digest": "788a496783cebf6cc383b6daef10300deac2350783c7eb818a65e90e551884f7",
+      "output_digest": "0a6e88a800758b2de793208196f67734500087ee9f56ae91a1d2245dc2ee55a2",
+      "tool": "table_update_view"
+    },
+    {
+      "index": 13,
+      "input_digest": "80c8aec3feef742798ffca047bb9dadf152a29a0f351ca37910f5f29cd5bc49f",
+      "output_digest": "59e7eebc8fe3cd228689b9262698b2b36cd55ba5d9f4f24af2c8e7a83f46cc97",
+      "tool": "code_widget_create"
+    },
+    {
+      "index": 14,
+      "input_digest": "35689d1cba90e0aa0839b8dfabd972ab01ca8c83cfcbd26b0ca0a1a442e187b3",
+      "output_digest": "34b0e02da4d96b7478280c60923c95dd4eada437d0a79a8ec6d63e05404da509",
+      "tool": "code_widget_get"
+    },
+    {
+      "index": 15,
+      "input_digest": "300daa78c7492a4dc48e1da24267572ecd45b9b0e3b72c7d76446a9760b6852f",
+      "output_digest": "0373caf2d6aea7573b792567c6d426dd55032f2db3edf2bc52f08f0c96482d1b",
+      "tool": "user_who_am_i"
+    },
+    {
+      "index": 16,
+      "input_digest": "3eff9b74ec3e501d467d81a6f8d3bd36100706758874b291fc88bd176c2e1c18",
+      "output_digest": "0b84c3a4322982f1e0c9f6497eb66069819b59ca3f91d80a87dc3519bfe604ec",
+      "tool": "board_list_items"
+    },
+    {
+      "index": 17,
+      "input_digest": "8c12e156cca2e3a068090da704e214cef6bc4c048659049216774f3889fecf35",
+      "output_digest": "d0a9612826a59c8432dd09687d23aba62c6e6c6cd6b1279edd0d3156453bc319",
+      "tool": "context_explore"
+    },
+    {
+      "index": 18,
+      "input_digest": "1dfa36a46377694d3cbcf0d04b22d0660a5b78cadb3fbae89fd93ef950d0138c",
+      "output_digest": "24b28a153bdb72c315660bbd99ceec0e09332772590cad590f51058e09a0fe31",
+      "tool": "comment_list_comments"
+    },
+    {
+      "index": 19,
+      "input_digest": "1dfa36a46377694d3cbcf0d04b22d0660a5b78cadb3fbae89fd93ef950d0138c",
+      "output_digest": "24b28a153bdb72c315660bbd99ceec0e09332772590cad590f51058e09a0fe31",
+      "tool": "comment_list_comments"
+    },
+    {
+      "index": 20,
+      "input_digest": "3eff9b74ec3e501d467d81a6f8d3bd36100706758874b291fc88bd176c2e1c18",
+      "output_digest": "0b84c3a4322982f1e0c9f6497eb66069819b59ca3f91d80a87dc3519bfe604ec",
+      "tool": "board_list_items"
+    },
+    {
+      "index": 21,
+      "input_digest": "8c12e156cca2e3a068090da704e214cef6bc4c048659049216774f3889fecf35",
+      "output_digest": "d0a9612826a59c8432dd09687d23aba62c6e6c6cd6b1279edd0d3156453bc319",
+      "tool": "context_explore"
+    }
+  ],
+  "completed_operation_count": 5,
+  "completed_operations": [
+    {
+      "call_indexes": [
+        4,
+        5,
+        6
+      ],
+      "item_reference_digest": "51c6245aef4ec5d69baab2ba",
+      "kind": "diagram",
+      "operation_id": "native-executor-flow",
+      "readback": {
+        "content_digest": "72eaa7508e8ab052d7010291607fd044285b828d9009da0ea9afd85997718904",
+        "content_present": true,
+        "contract_digest": "4ea980fc6733d8b8e4a5a601336c49a0f5a4f0899ee3167a9a28756d347b01f3",
+        "diagram_type": "flowchart"
+      },
+      "verified": true
+    },
+    {
+      "call_indexes": [
+        7,
+        8
+      ],
+      "item_reference_digest": "7fc091eb7cdacdc3414a2b7e",
+      "kind": "document",
+      "operation_id": "native-contract-document",
+      "readback": {
+        "content_digest": "f9f3c3961e9a2a5587df11a4006df727cd688a39c44ad2935a0c386fc54b6a2a",
+        "content_matches": true,
+        "content_version": 0
+      },
+      "verified": true
+    },
+    {
+      "call_indexes": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "item_reference_digest": "55f80b573dc2858687390b61",
+      "kind": "table",
+      "operation_id": "native-lanes-kanban",
+      "readback": {
+        "layout": "kanban",
+        "reported_total": 4,
+        "row_count": 4,
+        "rows_digest": "1cef42043e5927ac2a115ca17df6d10c7f94c72c08a0dc487791e6e1bab00002",
+        "submitted_row_count": 4
+      },
+      "verified": true
+    },
+    {
+      "call_indexes": [
+        13,
+        14
+      ],
+      "item_reference_digest": "8be89fb67b2b1ddf056ead62",
+      "kind": "code_widget",
+      "operation_id": "mermaid-source-widget",
+      "readback": {
+        "code_digest": "64ee2dc61a617cc83cb281c21008ff4f8597370186d08b1bf884a7fbed7006cc",
+        "code_matches": true,
+        "language": "Mermaid",
+        "title_digest": "d9973911a8a41e6a5d1b5c85a99007616664a0ced84002552eef7073d66d6208"
+      },
+      "verified": true
+    },
+    {
+      "call_indexes": [
+        18,
+        19
+      ],
+      "item_reference_digest": null,
+      "kind": "comment",
+      "operation_id": "acceptance-comment",
+      "readback": {
+        "comment_present": true,
+        "comment_reference_digest": "f2d64304531d6787e6540606",
+        "content_digest": "6a55172940616f218cf9f7f09bf996a491812bcab4af72462f40dd2d2ae2aca6",
+        "reconciled_existing": true
+      },
+      "verified": true
+    }
+  ],
+  "error_code": null,
+  "execution_digest": "8c6eb60a5f44a781145feb70d4f5e1989a37b411281db6fa7e6944a7cadf13a1",
+  "execution_state": "complete",
+  "failed_operation_id": null,
+  "live_tool_count": 33,
+  "mutation_attempted": true,
+  "operation_count": 5,
+  "partial_mutation": false,
+  "pending_operation_id": null,
+  "pending_tool": null,
+  "postflight": {
+    "context": {
+      "context_digest": "05624a977a48327b63573ca4403c572a622a5ee5419ada507f0ad754f67fba1d",
+      "item_count": 3,
+      "item_types": {
+        "diagram": 1,
+        "document": 1,
+        "table": 1
+      }
+    },
+    "inventory": {
+      "inventory_digest": "e165a469655e47cc1e8011120073fc524434c0b785057a57d6616696ddff59bc",
+      "item_count": 5,
+      "item_types": {
+        "ai_generation_result": 1,
+        "code": 1,
+        "data_table_format": 1,
+        "diagram": 1,
+        "doc_format": 1
+      }
+    }
+  },
+  "preflight": {
+    "context": {
+      "context_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "item_count": 0,
+      "item_types": {}
+    },
+    "inventory": {
+      "inventory_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "item_count": 0,
+      "item_types": {}
+    }
+  },
+  "required_tools": [
+    "board_list_items",
+    "code_widget_create",
+    "code_widget_get",
+    "comment_create",
+    "comment_list_comments",
+    "context_explore",
+    "context_get",
+    "diagram_create",
+    "diagram_get_dsl",
+    "doc_create",
+    "doc_get",
+    "table_create",
+    "table_list_rows",
+    "table_sync_rows",
+    "table_update_view",
+    "user_who_am_i"
+  ],
+  "resume_completed_operation_count": 4,
+  "resume_preflight": {
+    "context": {
+      "context_digest": "05624a977a48327b63573ca4403c572a622a5ee5419ada507f0ad754f67fba1d",
+      "item_count": 3,
+      "item_types": {
+        "diagram": 1,
+        "document": 1,
+        "table": 1
+      }
+    },
+    "inventory": {
+      "inventory_digest": "e165a469655e47cc1e8011120073fc524434c0b785057a57d6616696ddff59bc",
+      "item_count": 5,
+      "item_types": {
+        "ai_generation_result": 1,
+        "code": 1,
+        "data_table_format": 1,
+        "diagram": 1,
+        "doc_format": 1
+      }
+    }
+  },
+  "resumed_from_execution_digest": "2c8e15bc93859de6b6893fe793b656c3ccafaff7031e704118318247a79e3ebc",
+  "schema_version": "schauwerk-miro-native-execution-receipt.v1",
+  "success": true,
+  "truth_boundary": {
+    "provider_operations_are_sequential": true,
+    "receipt_contains_provider_content": false,
+    "rollback_available_for_all_item_types": false,
+    "visual_quality_proven": false
+  }
+}

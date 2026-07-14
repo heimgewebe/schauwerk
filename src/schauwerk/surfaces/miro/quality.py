@@ -25,8 +25,10 @@ _CONNECTOR_TYPES = {"connector", "line", "arrow"}
 _DOC_TYPES = {"doc", "doc_format", "document"}
 _TABLE_TYPES = {"data_table_format", "table"}
 _FRAME_TYPES = {"frame"}
+_NATIVE_DIAGRAM_TYPES = {"diagram"}
 _STICKY_TYPES = {"sticky", "sticky_note"}
 _TEXTUAL_TYPES = _STICKY_TYPES | {"text", "shape"} | _DOC_TYPES | _TABLE_TYPES
+_GEOMETRY_OPTIONAL_TYPES = _DOC_TYPES | _TABLE_TYPES | {"text"}
 _TEXT_TAG = re.compile(r"<[^>]+>")
 
 
@@ -53,9 +55,11 @@ class BoardQualityReceipt:
     checked_dimensions: tuple[str, ...]
     item_count: int
     visual_item_count: int
+    geometry_eligible_item_count: int
     geometry_coverage_percent: int
     frame_count: int
     connector_count: int
+    native_diagram_count: int
     sticky_count: int
     doc_count: int
     table_count: int
@@ -190,6 +194,9 @@ def inspect_snapshot_quality(
     connector_count = sum(
         count for item_type, count in type_counts.items() if item_type in _CONNECTOR_TYPES
     )
+    native_diagram_count = sum(
+        count for item_type, count in type_counts.items() if item_type in _NATIVE_DIAGRAM_TYPES
+    )
     doc_count = sum(count for item_type, count in type_counts.items() if item_type in _DOC_TYPES)
     table_count = sum(
         count for item_type, count in type_counts.items() if item_type in _TABLE_TYPES
@@ -209,11 +216,18 @@ def inspect_snapshot_quality(
     visual_item_count = len(visual_items)
     boxes = [(item, _box(item)) for item in visual_items]
     boxed_items = [(item, box) for item, box in boxes if box is not None]
+    geometry_eligible_items = [
+        item for item in visual_items if _item_type(item) not in _GEOMETRY_OPTIONAL_TYPES
+    ]
+    geometry_eligible_item_count = len(geometry_eligible_items)
+    geometry_eligible_boxes = [item for item in geometry_eligible_items if _box(item) is not None]
     geometry_coverage = (
-        100 if not visual_items else round(100 * len(boxed_items) / len(visual_items))
+        100
+        if not geometry_eligible_items
+        else round(100 * len(geometry_eligible_boxes) / len(geometry_eligible_items))
     )
 
-    if visual_items and geometry_coverage < 80:
+    if geometry_eligible_items and geometry_coverage < 80:
         findings.append(
             QualityFinding(
                 severity="warn",
@@ -221,7 +235,8 @@ def inspect_snapshot_quality(
                 message="Too few visual items expose geometry for reliable overlap checks.",
                 evidence={
                     "visual_item_count": visual_item_count,
-                    "boxed_item_count": len(boxed_items),
+                    "geometry_eligible_item_count": geometry_eligible_item_count,
+                    "boxed_eligible_item_count": len(geometry_eligible_boxes),
                     "geometry_coverage_percent": geometry_coverage,
                 },
             )
@@ -299,7 +314,7 @@ def inspect_snapshot_quality(
                 },
             )
         )
-    elif connector_count == 0 and visual_item_count > 6:
+    elif connector_count == 0 and native_diagram_count == 0 and visual_item_count > 6:
         findings.append(
             QualityFinding(
                 severity="warn",
@@ -364,9 +379,11 @@ def inspect_snapshot_quality(
         checked_dimensions=_CHECKED_DIMENSIONS,
         item_count=len(items),
         visual_item_count=visual_item_count,
+        geometry_eligible_item_count=geometry_eligible_item_count,
         geometry_coverage_percent=geometry_coverage,
         frame_count=frame_count,
         connector_count=connector_count,
+        native_diagram_count=native_diagram_count,
         sticky_count=sticky_count,
         doc_count=doc_count,
         table_count=table_count,

@@ -1,0 +1,30 @@
+{
+  "board_alias": "schauwerk-miro-native-showcase-20260714",
+  "checked_dimensions": [
+    "frame_structure",
+    "overlap",
+    "readability",
+    "connectors",
+    "doc_table_effect",
+    "sticky_balance"
+  ],
+  "connector_count": 0,
+  "doc_count": 1,
+  "findings": [],
+  "frame_count": 1,
+  "geometry_coverage_percent": 100,
+  "geometry_eligible_item_count": 4,
+  "item_count": 10,
+  "max_overlap_ratio": 0.0,
+  "mutation_attempted": false,
+  "native_diagram_count": 1,
+  "ok": true,
+  "output_path": "/home/alex/.local/state/schauwerk/miro/native-executor-20260714/release-quality.json",
+  "overlap_pair_count": 0,
+  "readability_warning_count": 0,
+  "sanitized_references": true,
+  "score": 100,
+  "sticky_count": 0,
+  "table_count": 1,
+  "visual_item_count": 10
+}

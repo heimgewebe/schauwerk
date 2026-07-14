@@ -1,0 +1,157 @@
+{
+  "atomic": false,
+  "board_alias": "schauwerk-miro-native-showcase-20260714",
+  "board_reference_digest": "1aae4e377fd6482af769a77e",
+  "bundle_digest": "4beb592cf0386130be430ae788e981ac0ce777fcd9662e17043d6ebc61828edc",
+  "bundle_id": "schauwerk-native-stage-20260714",
+  "call_count": 8,
+  "calls": [
+    {
+      "index": 1,
+      "input_digest": "300daa78c7492a4dc48e1da24267572ecd45b9b0e3b72c7d76446a9760b6852f",
+      "output_digest": "0373caf2d6aea7573b792567c6d426dd55032f2db3edf2bc52f08f0c96482d1b",
+      "tool": "user_who_am_i"
+    },
+    {
+      "index": 2,
+      "input_digest": "3eff9b74ec3e501d467d81a6f8d3bd36100706758874b291fc88bd176c2e1c18",
+      "output_digest": "0b84c3a4322982f1e0c9f6497eb66069819b59ca3f91d80a87dc3519bfe604ec",
+      "tool": "board_list_items"
+    },
+    {
+      "index": 3,
+      "input_digest": "8c12e156cca2e3a068090da704e214cef6bc4c048659049216774f3889fecf35",
+      "output_digest": "d0a9612826a59c8432dd09687d23aba62c6e6c6cd6b1279edd0d3156453bc319",
+      "tool": "context_explore"
+    },
+    {
+      "index": 4,
+      "input_digest": "32b9e485068c16a2bf452552cc38230ca14240311ee7e44a1d528e4d67ca7956",
+      "output_digest": "698ecbf0c0c3e2696c0049c06cbe37228131521dcc3e1dbc27381451f52dc641",
+      "tool": "layout_get_dsl"
+    },
+    {
+      "index": 5,
+      "input_digest": "0f5e5baf4d9f37bf8b9e6aaf8efdfe9336cc51145d1216f6e83d573ced595f5f",
+      "output_digest": "c1b892ab6594714ce8009d251f15b69586788e1f592c6729a09b01d4b7f41f73",
+      "tool": "layout_create"
+    },
+    {
+      "index": 6,
+      "input_digest": "f5d59b00d55fb8795747ebc17dd9024af96ebb842911e279381a624149739cfc",
+      "output_digest": "dc6d61d8b1c84e318df2da96ec799aa9ed92dee02e104a5bda9f883810f5f259",
+      "tool": "layout_read"
+    },
+    {
+      "index": 7,
+      "input_digest": "3eff9b74ec3e501d467d81a6f8d3bd36100706758874b291fc88bd176c2e1c18",
+      "output_digest": "af8a34daf46ac897aed7d7e8c40cc8766647cb907a0b738ecaf12dde0d2622ae",
+      "tool": "board_list_items"
+    },
+    {
+      "index": 8,
+      "input_digest": "8c12e156cca2e3a068090da704e214cef6bc4c048659049216774f3889fecf35",
+      "output_digest": "0db789cfe7dd23f1113d4914230de2c992c6ad4b25249d360a065a1f072e6957",
+      "tool": "context_explore"
+    }
+  ],
+  "completed_operation_count": 1,
+  "completed_operations": [
+    {
+      "call_indexes": [
+        4,
+        5,
+        6
+      ],
+      "item_reference_digest": "1aae4e377fd6482af769a77e",
+      "kind": "layout",
+      "operation_id": "native-stage",
+      "readback": {
+        "board_dsl_digest": "2e89323fa02c314f5e43732a394e6768469e5537a3d1dc588a86710bc41a42df",
+        "board_item_count": 3,
+        "contract_digest": "b2f0afcd57470c8ebc52ef7d1d8eceb0062dce9b446d333160a8bdbebec82458",
+        "created_count": 5,
+        "failed_item_count": 0,
+        "result_dsl_digest": "79588edaa93d66412a22c8a9af1e1042e5742dfd525e55d77dc658e21b83e71c",
+        "skipped_item_count": 3
+      },
+      "verified": true
+    }
+  ],
+  "error_code": null,
+  "execution_digest": "e687fce321a5c421fca33a67d685f43b4b26bb49a62ebc968dad645277913bf5",
+  "execution_state": "complete",
+  "failed_operation_id": null,
+  "live_tool_count": 33,
+  "mutation_attempted": true,
+  "operation_count": 1,
+  "partial_mutation": false,
+  "pending_operation_id": null,
+  "pending_tool": null,
+  "postflight": {
+    "context": {
+      "context_digest": "5b8bc1926a00990af7251a94c15bd0767f7dec49b69955c8d1ba3b5c73db6525",
+      "item_count": 4,
+      "item_types": {
+        "diagram": 1,
+        "document": 1,
+        "frame": 1,
+        "table": 1
+      }
+    },
+    "inventory": {
+      "inventory_digest": "ed5ccda2e56a91e3bfb848235edc3d3f3786c9cb4be51ec917fba967ff4a8844",
+      "item_count": 10,
+      "item_types": {
+        "ai_generation_result": 1,
+        "code": 1,
+        "data_table_format": 1,
+        "diagram": 1,
+        "doc_format": 1,
+        "frame": 1,
+        "text": 4
+      }
+    }
+  },
+  "preflight": {
+    "context": {
+      "context_digest": "05624a977a48327b63573ca4403c572a622a5ee5419ada507f0ad754f67fba1d",
+      "item_count": 3,
+      "item_types": {
+        "diagram": 1,
+        "document": 1,
+        "table": 1
+      }
+    },
+    "inventory": {
+      "inventory_digest": "e165a469655e47cc1e8011120073fc524434c0b785057a57d6616696ddff59bc",
+      "item_count": 5,
+      "item_types": {
+        "ai_generation_result": 1,
+        "code": 1,
+        "data_table_format": 1,
+        "diagram": 1,
+        "doc_format": 1
+      }
+    }
+  },
+  "required_tools": [
+    "board_list_items",
+    "context_explore",
+    "layout_create",
+    "layout_get_dsl",
+    "layout_read",
+    "user_who_am_i"
+  ],
+  "resume_completed_operation_count": 0,
+  "resume_preflight": null,
+  "resumed_from_execution_digest": null,
+  "schema_version": "schauwerk-miro-native-execution-receipt.v1",
+  "success": true,
+  "truth_boundary": {
+    "provider_operations_are_sequential": true,
+    "receipt_contains_provider_content": false,
+    "rollback_available_for_all_item_types": false,
+    "visual_quality_proven": false
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "schauwerk-miro-native-bundle.v1",
+  "bundle_id": "schauwerk-native-stage-20260714",
+  "operations": [
+    {
+      "operation_id": "native-stage",
+      "kind": "layout",
+      "dsl": "native_stage FRAME x=-550 y=500 w=6000 h=3800 fill=#F8FAFC \"Schauwerk – Native Miro Fähigkeiten\"\nnative_title TEXT parent=native_stage x=3000 y=120 w=5400 font=open_sans size=40 align=left color=#102A43 \"Schauwerk – Native Miro Fähigkeiten\"\nnative_subtitle TEXT parent=native_stage x=3000 y=220 w=5400 font=open_sans size=22 align=left color=#486581 \"Editierbare Providerobjekte · typisierte Readbacks · fortsetzbare Belege\"\nnative_left_caption TEXT parent=native_stage x=1450 y=3560 w=2400 font=open_sans size=18 align=left color=#486581 \"Formale Beziehungen und lebende Erläuterungen\"\nnative_right_caption TEXT parent=native_stage x=4550 y=3560 w=2400 font=open_sans size=18 align=left color=#486581 \"Strukturierte Daten und sichtbare Quellen\""
+    }
+  ]
+}

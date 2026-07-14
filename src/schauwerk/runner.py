@@ -37,6 +37,8 @@ from .cli_handlers import (
     handle_learn_render,
     handle_login,
     handle_logout,
+    handle_native_apply,
+    handle_native_check,
     handle_overview_serve,
     handle_overview_snapshot,
     handle_publication_preview,
@@ -315,6 +317,15 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_tools()
         elif args.command == "capabilities":
             result = handle_capability_audit()
+        elif args.command == "native" and args.native_command == "check":
+            result = handle_native_check(input_path=args.input)
+        elif args.command == "native" and args.native_command == "apply":
+            result = handle_native_apply(
+                alias=args.alias,
+                input_path=args.input,
+                output=args.output,
+                resume=args.resume,
+            )
         elif args.command == "doctor":
             result = handle_doctor(live=not args.no_live)
         elif args.command == "inspect":

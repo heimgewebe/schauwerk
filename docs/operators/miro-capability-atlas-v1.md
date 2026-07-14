@@ -16,7 +16,7 @@ Schauwerk behandelt Miro nicht als einen einzelnen Renderer. Die Plattform beste
 
 Der Live-MCP-Katalog ist die operative Wahrheit. Dokumentation ist eine Produktreferenz, aber kein Beleg dafür, dass ein Werkzeug im verbundenen Team, Plan oder Serverrelease verfügbar ist.
 
-## Neuer Schauwerk-Vertrag
+## Schauwerk-Vertrag
 
 `schauwerk miro capabilities --json` liest den Live-Katalog und erzeugt `schauwerk-miro-capability-audit.v1`.
 
@@ -25,7 +25,7 @@ Der Bericht:
 - gruppiert Werkzeuge nach Produktrolle;
 - bewahrt unbekannte neue Providerwerkzeuge als `provider_extensions`;
 - meldet verschwundene bekannte Werkzeuge;
-- trennt bereits ausgeführte Laufzeitpfade von Werkzeugen, die im Darstellungs-Ausführungsplan inkorporiert sind;
+- trennt bereits ausgeführte Laufzeitpfade von Werkzeugen, die nur im Darstellungs-Ausführungsplan inkorporiert sind;
 - bewertet vollständige Fähigkeitsketten statt einzelner Toolnamen;
 - hält nicht verfügbare Lebenszyklen fail-closed.
 
@@ -38,14 +38,40 @@ Jedes Paket mit `miro_native` enthält zusätzlich `miro-execution-plan.json`. D
 | bestehendes Board | Identität, Boardauflösung, Context Explore/Get | Ziel und Kontext vor Mutation |
 | Architektur, Prozess, Sequenz, Zustand | natives Diagramm | Context Get |
 | längere Erklärung | Miro-Dokument | Doc Get |
-| Vergleich, Zeitplan, Wissensbaum, Prozessstatus | Datenbanktabelle mit Table-, Timeline-, Tree- oder Kanban-Ansicht | Rows und Update History |
-| Mermaid-Quelle | Code-Widget mit Mermaid-Syntax | Code Widget Get/List |
+| Vergleich, Zeitplan, Wissensbaum, Prozessstatus | Datenbanktabelle mit Table-, Timeline-, Tree- oder Kanban-Ansicht | Rows und Layout-Rückgabe |
+| Mermaid-Quelle | Code-Widget mit Mermaid-Syntax | Code Widget Get |
 | Präsentation oder gemischtes Modell | interaktiver Tablet-Prototyp als optionale Ergänzung | Context Get |
 | kollaborative Abnahme | verankerte Kommentare | Comment List |
 | gerenderte Ergänzung | privater Bildupload und Image Readback | Image Data/URL |
 | räumliche Grundkomposition | Layout DSL | Layout Read und Board Inventory |
 
-Der Plan führt alle benötigten und optionalen Tools auf. Er mutiert selbst kein Board. Die vorhandene Schauwerk-Gate-, Review- und Readback-Kette bleibt zuständig für Autorisierung und Ausführung.
+Der Plan mutiert selbst kein Board. Die Ausführung erfolgt nur über typisierte, schema- und receipt-gebundene Laufzeitpfade.
+
+## Operative Abdeckung vom 14. Juli 2026
+
+Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Nach Einführung des Native Executors sind davon 26 Werkzeuge in produktiven Schauwerk-Laufzeitpfaden enthalten:
+
+- Identität und Boardauflösung;
+- Board-Inventar und Kontext;
+- Layout-Vertrag, Erstellung, Readback und verwaltete Layout-Updates;
+- native Diagramme;
+- Dokumenterstellung und Readback;
+- Tabellenerstellung, Zeilensynchronisierung, Zeilen-Readback und Ansichtswechsel;
+- Code-Widget-Erstellung und Readback;
+- Kommentarerstellung und Readback;
+- Bild-Upload und Bild-Readback.
+
+Damit steigt die operative Abdeckung von 36,4 auf 78,8 Prozent. Die planerische Inkorporation bleibt bei 100 Prozent.
+
+Noch nicht operative, aber eingeplante Werkzeuge sind:
+
+- `doc_update`;
+- `table_get_latest_update_history`;
+- `code_widget_list_items`;
+- `code_widget_update`;
+- `code_widget_delete`;
+- `prototype_get_upload_url`;
+- `prototype_create`.
 
 ## Nachgewiesene Providergrenze: Bilder
 
@@ -59,6 +85,6 @@ Der Fähigkeitsatlas begründet nicht:
 
 - eine Mutationsfreigabe;
 - die Verfügbarkeit von REST- oder Web-SDK-Zugangsdaten;
-- visuelle Qualität ohne echte Sichtprüfung;
+- subjektive visuelle Qualität ohne Sichtprüfung;
 - erfolgreiche Providerdarstellung ohne Remote-Readback;
 - das sichere Löschen eines Itemtyps, der von keiner verbundenen Oberfläche typisiert gelöscht werden kann.

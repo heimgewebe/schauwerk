@@ -165,3 +165,47 @@ def test_quality_receipt_write_is_owner_only(tmp_path) -> None:
     assert written["sanitized_references"] is True
     assert destination.stat().st_mode & 0o077 == 0
     os.chmod(destination, 0o600)
+
+
+def test_quality_understands_native_diagrams_and_provider_opaque_geometry() -> None:
+    items = [
+        item("frame", ref="stage", x=0, y=0, w=4000, h=2400),
+        item("diagram", ref="diagram", x=-800, y=-300, w=1200, h=700),
+        item("code", ref="code", x=800, y=500, w=1000, h=600),
+        {
+            "ref": "doc",
+            "type": "doc_format",
+            "position": {"x": 800, "y": -300},
+            "data": {"content": "living document"},
+        },
+        {
+            "ref": "table",
+            "type": "data_table_format",
+            "position": {"x": -800, "y": 500},
+            "data": {"content": "structured data"},
+        },
+    ]
+    for index in range(4):
+        items.append(
+            {
+                "ref": f"text-{index}",
+                "type": "text",
+                "position": {"x": index * 100, "y": -900},
+                "parent": {"id": "stage"},
+                "data": {"content": "orientation"},
+            }
+        )
+
+    receipt = inspect_snapshot_quality(
+        snapshot(items),
+        expected_min_docs=1,
+        expected_min_tables=1,
+    )
+
+    assert receipt.ok is True
+    assert receipt.score == 100
+    assert receipt.native_diagram_count == 1
+    assert receipt.geometry_eligible_item_count == 3
+    assert receipt.geometry_coverage_percent == 100
+    assert "geometry_coverage_low" not in finding_codes(receipt)
+    assert "no_connectors_on_dense_board" not in finding_codes(receipt)

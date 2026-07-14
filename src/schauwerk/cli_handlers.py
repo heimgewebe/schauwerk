@@ -130,6 +130,7 @@ from .surfaces.miro.capability_audit import audit_tool_catalogue
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
+from .surfaces.miro.native_executor import load_native_bundle, required_tools
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .visual.grammar import (
     validate_visual_grammar,
@@ -855,6 +856,38 @@ def handle_tools(client: MiroMCPClient | None = None) -> dict[str, Any]:
 def handle_capability_audit(client: MiroMCPClient | None = None) -> dict[str, Any]:
     catalogue = asyncio.run((client or MiroMCPClient()).tools()).to_dict()
     return audit_tool_catalogue(catalogue)
+
+
+def handle_native_check(*, input_path: str) -> dict[str, Any]:
+    bundle = load_native_bundle(Path(input_path))
+    return {
+        "schema_version": "schauwerk-miro-native-check.v1",
+        "ok": True,
+        "bundle_id": bundle["bundle_id"],
+        "bundle_digest": bundle["bundle_digest"],
+        "operation_count": len(bundle["operations"]),
+        "operation_kinds": [operation["kind"] for operation in bundle["operations"]],
+        "required_tools": list(required_tools(bundle)),
+        "mutation_attempted": False,
+    }
+
+
+def handle_native_apply(
+    *,
+    alias: str,
+    input_path: str,
+    output: str,
+    resume: str | None = None,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    return asyncio.run(
+        (client or MiroMCPClient()).native_apply(
+            alias=alias,
+            input_path=Path(input_path),
+            output_path=Path(output),
+            resume_path=Path(resume) if resume else None,
+        )
+    )
 
 
 def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:
