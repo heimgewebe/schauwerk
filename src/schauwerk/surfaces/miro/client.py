@@ -21,6 +21,7 @@ from .live_test_runtime import (
     run_layout_read_summary,
 )
 from .models import MiroSettings, ToolCatalogue
+from .native_runtime import run_native_bundle
 from .readonly import run_read_only_inspection
 from .runtime import quiet_provider_stderr
 from .safe_logout import safe_logout
@@ -355,6 +356,23 @@ class MiroMCPClient:
             comment_limit=comment_limit,
             max_pages=max_pages,
             include_comments=include_comments,
+        )
+
+    async def native_apply(
+        self,
+        *,
+        alias: str,
+        input_path: Path,
+        output_path: Path,
+        resume_path: Path | None = None,
+    ) -> dict[str, Any]:
+        return await run_native_bundle(
+            self.settings,
+            self.storage,
+            alias=alias,
+            input_path=input_path,
+            output_path=output_path,
+            resume_path=resume_path,
         )
 
     async def layout_create(

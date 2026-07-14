@@ -376,6 +376,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     capabilities.add_argument("--json", action="store_true")
 
+    native = commands.add_parser(
+        "native", help="validate or execute receipt-bound native Miro bundles"
+    )
+    native_commands = native.add_subparsers(dest="native_command", required=True)
+    native_check = native_commands.add_parser(
+        "check", help="validate a native bundle without contacting Miro"
+    )
+    native_check.add_argument("input")
+    native_check.add_argument("--json", action="store_true")
+    native_apply = native_commands.add_parser(
+        "apply", help="execute a native bundle on one allowlisted board"
+    )
+    native_apply.add_argument("alias")
+    native_apply.add_argument("input")
+    native_apply.add_argument("--output", required=True)
+    native_apply.add_argument(
+        "--resume", help="resume from a hash-bound in-progress or failed execution receipt"
+    )
+    native_apply.add_argument("--json", action="store_true")
+
     doctor = commands.add_parser("doctor", help="diagnose local and live Miro auth state")
     doctor.add_argument("--no-live", action="store_true", help="skip the live MCP check")
     doctor.add_argument("--json", action="store_true")

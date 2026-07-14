@@ -4,7 +4,7 @@ import copy
 
 import pytest
 
-from schauwerk.surfaces.miro.capability_audit import audit_tool_catalogue
+from schauwerk.surfaces.miro.capability_audit import TOOL_FAMILIES, audit_tool_catalogue
 
 
 def catalogue(*names: str) -> dict:
@@ -63,3 +63,17 @@ def test_audit_rejects_duplicate_or_invalid_tool_records() -> None:
 
     with pytest.raises(ValueError, match="entry 0"):
         audit_tool_catalogue({"tools": [{}]})
+
+
+def test_live_baseline_reports_native_executor_runtime_coverage() -> None:
+    names = sorted(set().union(*TOOL_FAMILIES.values()))
+    report = audit_tool_catalogue(catalogue(*names))
+
+    integration = report["adapter_integration"]
+    assert report["observed_tool_count"] == 33
+    assert integration["runtime_integrated_observed_count"] == 26
+    assert integration["runtime_integration_coverage_percent"] == 78.8
+    assert "diagram_create" in integration["runtime_integrated_tools"]
+    assert "table_update_view" in integration["runtime_integrated_tools"]
+    assert "code_widget_update" not in integration["runtime_integrated_tools"]
+    assert "prototype_create" not in integration["runtime_integrated_tools"]

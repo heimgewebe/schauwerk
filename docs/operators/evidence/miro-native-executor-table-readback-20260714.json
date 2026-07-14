@@ -1,0 +1,28 @@
+{
+  "board_alias": "schauwerk-miro-native-showcase-20260714",
+  "board_reference_digest": "1aae4e377fd6482af769a77e",
+  "bundle_digest": "413b47056839b1feb8ff1308194cb01c5553b323d6ebc73a581fcc84d7bc9afa",
+  "columns_digest": "a6d4cac6457f544f6664ef7d515b3c0669faf3d0449dafc10847aa154e4a4a1b",
+  "evidence_digest": "201558487654b47578d4b6f9660cd862db72df3db92bdaa4cb19892bffb4f261",
+  "expected_column_titles": [
+    "Lane",
+    "Status",
+    "Zweck"
+  ],
+  "expected_row_count": 4,
+  "observed_column_titles": [
+    "Lane",
+    "Status",
+    "Zweck"
+  ],
+  "observed_row_count": 4,
+  "operation_digest": "531fecfdf5cfac545982d0687c6f9f2e1f4b46f688349c930e72ac602b42d70c",
+  "operation_id": "native-lanes-kanban",
+  "provider_content_included": false,
+  "reported_total": 4,
+  "rows_digest": "1cef42043e5927ac2a115ca17df6d10c7f94c72c08a0dc487791e6e1bab00002",
+  "schema_version": "schauwerk-miro-native-table-readback-evidence.v1",
+  "submitted_rows_match": true,
+  "success": true,
+  "table_reference_digest": "55f80b573dc2858687390b61"
+}

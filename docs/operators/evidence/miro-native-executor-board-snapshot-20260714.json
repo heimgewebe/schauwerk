@@ -1,0 +1,240 @@
+{
+  "board_alias": "schauwerk-miro-native-showcase-20260714",
+  "comments": [
+    {
+      "id": "f2d64304531d6787e6540606",
+      "mentionedUsers": [],
+      "messages": [
+        {
+          "content": "Live-Prüfpunkt: Alle nativen Elemente wurden erstellt und über ihren jeweiligen typisierten Readback verifiziert.",
+          "id": "c21542934999e8b3c91cfa0e",
+          "reactions": []
+        }
+      ],
+      "position": {
+        "type": "canvas",
+        "x": 0,
+        "y": 1900
+      },
+      "reactions": [],
+      "resolved": false
+    }
+  ],
+  "content_digest": "42f298a8f6644292c7aafd87bb28c48d84f5a87fb24b0169013d1c633f5c07f1",
+  "items": [
+    {
+      "data": {
+        "code": "flowchart LR\n  Operator[Operator] --> Kontext[Kontext lesen]\n  Kontext --> Router{Darstellungsform wählen}\n  Router --> Diagramm[Natives Diagramm]\n  Router --> Dokument[Lebendes Dokument]\n  Router --> Daten[Datenansicht]\n  Diagramm --> Readback[Typisierter Readback]\n  Dokument --> Readback\n  Daten --> Readback\n  Readback --> Beleg[Receipt]",
+        "language": "Mermaid",
+        "lineNumbersVisible": true,
+        "title": "Mermaid-Quelle: Operator zu Miro"
+      },
+      "geometry": {
+        "height": 229.98,
+        "width": 1100
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": 700,
+        "y": 700
+      },
+      "ref": "3b95e2730e6fbc5e2cdf38f5",
+      "type": "code"
+    },
+    {
+      "data": {
+        "content": "<h1>Schauwerk: native Miro-Fähigkeiten</h1><p>Dieses Board prüft Miro nicht als flache Bildfläche, sondern als Sammlung editierbarer, semantischer Objekte.</p><h2>Verwendete Formen</h2><ol><li data-list=\"bullet\">natives Flussdiagramm für formale Beziehungen</li><li data-list=\"bullet\">lebendes Dokument für Erläuterungen</li><li data-list=\"bullet\">Kanban-Datenansicht für strukturierten Status</li><li data-list=\"bullet\">Mermaid-Code-Widget für die sichtbare Quelle</li><li data-list=\"bullet\">Kommentar für kollaborative Abnahme</li></ol><h2>Wahrheitsgrenze</h2><p>Jede Mutation wird über das passende Miro-Werkzeug zurückgelesen. Der Ablauf ist sequenziell und nicht global atomar, weil Miro nicht für jeden Itemtyp einen sicheren Lösch- oder Rollbackpfad anbietet.</p>",
+        "contentType": "html",
+        "contentVersion": 0,
+        "html": "<h1>Schauwerk: native Miro-Fähigkeiten</h1><p>Dieses Board prüft Miro nicht als flache Bildfläche, sondern als Sammlung editierbarer, semantischer Objekte.</p><h2>Verwendete Formen</h2><ol><li data-list=\"bullet\">natives Flussdiagramm für formale Beziehungen</li><li data-list=\"bullet\">lebendes Dokument für Erläuterungen</li><li data-list=\"bullet\">Kanban-Datenansicht für strukturierten Status</li><li data-list=\"bullet\">Mermaid-Code-Widget für die sichtbare Quelle</li><li data-list=\"bullet\">Kommentar für kollaborative Abnahme</li></ol><h2>Wahrheitsgrenze</h2><p>Jede Mutation wird über das passende Miro-Werkzeug zurückgelesen. Der Ablauf ist sequenziell und nicht global atomar, weil Miro nicht für jeden Itemtyp einen sicheren Lösch- oder Rollbackpfad anbietet.</p>"
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": 700,
+        "y": -900
+      },
+      "ref": "53981ac0aeb6581ae110cbfc",
+      "type": "doc_format"
+    },
+    {
+      "data": {
+        "content": "Editierbare Providerobjekte · typisierte Readbacks · fortsetzbare Belege"
+      },
+      "geometry": {
+        "width": 5399.99999999
+      },
+      "parent": {
+        "id": "716709be0045c5eb0ab4f4b2"
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "parent_top_left",
+        "x": 3000,
+        "y": 220
+      },
+      "ref": "df77493325e5fc07024f6999",
+      "style": {
+        "color": "#486581",
+        "fillColor": "#ffffff",
+        "fillOpacity": "0.0",
+        "fontFamily": "open_sans",
+        "fontSize": "22",
+        "textAlign": "left"
+      },
+      "type": "text"
+    },
+    {
+      "data": {
+        "content": "Formale Beziehungen und lebende Erläuterungen"
+      },
+      "geometry": {
+        "width": 2400.0
+      },
+      "parent": {
+        "id": "716709be0045c5eb0ab4f4b2"
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "parent_top_left",
+        "x": 1450,
+        "y": 3560
+      },
+      "ref": "b4e16c4c6e0e8e1be9fec466",
+      "style": {
+        "color": "#486581",
+        "fillColor": "#ffffff",
+        "fillOpacity": "0.0",
+        "fontFamily": "open_sans",
+        "fontSize": "18",
+        "textAlign": "left"
+      },
+      "type": "text"
+    },
+    {
+      "data": {
+        "content": "Schauwerk – Native Miro Fähigkeiten"
+      },
+      "geometry": {
+        "width": 5400
+      },
+      "parent": {
+        "id": "716709be0045c5eb0ab4f4b2"
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "parent_top_left",
+        "x": 3000,
+        "y": 120
+      },
+      "ref": "f600af59c3f5fa5b25495b83",
+      "style": {
+        "color": "#102a43",
+        "fillColor": "#ffffff",
+        "fillOpacity": "0.0",
+        "fontFamily": "open_sans",
+        "fontSize": "40",
+        "textAlign": "left"
+      },
+      "type": "text"
+    },
+    {
+      "data": {
+        "content": "Strukturierte Daten und sichtbare Quellen"
+      },
+      "geometry": {
+        "width": 2400.0
+      },
+      "parent": {
+        "id": "716709be0045c5eb0ab4f4b2"
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "parent_top_left",
+        "x": 4550,
+        "y": 3560
+      },
+      "ref": "e074dcfc521da7307bb2a08c",
+      "style": {
+        "color": "#486581",
+        "fillColor": "#ffffff",
+        "fillOpacity": "0.0",
+        "fontFamily": "open_sans",
+        "fontSize": "18",
+        "textAlign": "left"
+      },
+      "type": "text"
+    },
+    {
+      "data": {
+        "format": "custom",
+        "showContent": true,
+        "title": "Schauwerk – Native Miro Fähigkeiten",
+        "type": "freeform"
+      },
+      "geometry": {
+        "height": 3800,
+        "width": 6000
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": -550,
+        "y": 500
+      },
+      "ref": "716709be0045c5eb0ab4f4b2",
+      "style": {
+        "fillColor": "#f8fafc"
+      },
+      "type": "frame"
+    },
+    {
+      "data": {
+        "title": "Schauwerk Native Executor"
+      },
+      "geometry": {
+        "height": 900,
+        "width": 1600
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": -1800,
+        "y": -900
+      },
+      "ref": "e28311f81403217eb5d43354",
+      "type": "diagram"
+    },
+    {
+      "data": {},
+      "geometry": {
+        "height": 100,
+        "width": 100
+      },
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": 0,
+        "y": 0
+      },
+      "ref": "18a7ee76db05be74c484832f",
+      "type": "ai_generation_result"
+    },
+    {
+      "data": {},
+      "position": {
+        "origin": "center",
+        "relativeTo": "canvas_center",
+        "x": -1800,
+        "y": 700
+      },
+      "ref": "a4866fc7844f365e025ff0e5",
+      "type": "data_table_format"
+    }
+  ],
+  "repeatability_verified": true,
+  "sanitized_references": true,
+  "schema_version": 1,
+  "verified_reads": 2
+}
