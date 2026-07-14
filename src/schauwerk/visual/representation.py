@@ -11,6 +11,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
+
 from .composer_v2 import (
     connector_object,
     document_object,
@@ -807,6 +809,13 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             }
         )
     if "miro_native" in plan["selected_formats"]:
+        execution_plan = compile_miro_execution_plan(model, plan)
+        artifacts.append(
+            {
+                "role": "miro_execution_plan",
+                **_write_json(output_dir / "miro-execution-plan.json", execution_plan),
+            }
+        )
         board = render_miro_board(model, plan)
         quality = validate_board_spec(board)
         dsl = render_board_dsl(board)
