@@ -126,6 +126,7 @@ from .regie.server import serve_regie
 from .regie.service import RegieController
 from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist
+from .surfaces.miro.capability_audit import audit_tool_catalogue
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
@@ -849,6 +850,11 @@ def handle_login(
 
 def handle_tools(client: MiroMCPClient | None = None) -> dict[str, Any]:
     return asyncio.run((client or MiroMCPClient()).tools()).to_dict()
+
+
+def handle_capability_audit(client: MiroMCPClient | None = None) -> dict[str, Any]:
+    catalogue = asyncio.run((client or MiroMCPClient()).tools()).to_dict()
+    return audit_tool_catalogue(catalogue)
 
 
 def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:

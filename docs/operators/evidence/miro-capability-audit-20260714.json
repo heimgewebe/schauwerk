@@ -1,0 +1,463 @@
+{
+  "adapter_integration": {
+    "execution_planner_tools": [
+      "board_create",
+      "board_list_items",
+      "board_search_boards",
+      "code_widget_create",
+      "code_widget_delete",
+      "code_widget_get",
+      "code_widget_list_items",
+      "code_widget_update",
+      "comment_create",
+      "comment_list_comments",
+      "context_explore",
+      "context_get",
+      "diagram_create",
+      "diagram_get_dsl",
+      "doc_create",
+      "doc_get",
+      "doc_update",
+      "image_create",
+      "image_get_data",
+      "image_get_upload_url",
+      "image_get_url",
+      "layout_create",
+      "layout_get_dsl",
+      "layout_read",
+      "layout_update",
+      "prototype_create",
+      "prototype_get_upload_url",
+      "table_create",
+      "table_get_latest_update_history",
+      "table_list_rows",
+      "table_sync_rows",
+      "table_update_view",
+      "user_who_am_i"
+    ],
+    "incorporated_observed_tools": [
+      "board_create",
+      "board_list_items",
+      "board_search_boards",
+      "code_widget_create",
+      "code_widget_delete",
+      "code_widget_get",
+      "code_widget_list_items",
+      "code_widget_update",
+      "comment_create",
+      "comment_list_comments",
+      "context_explore",
+      "context_get",
+      "diagram_create",
+      "diagram_get_dsl",
+      "doc_create",
+      "doc_get",
+      "doc_update",
+      "image_create",
+      "image_get_data",
+      "image_get_upload_url",
+      "image_get_url",
+      "layout_create",
+      "layout_get_dsl",
+      "layout_read",
+      "layout_update",
+      "prototype_create",
+      "prototype_get_upload_url",
+      "table_create",
+      "table_get_latest_update_history",
+      "table_list_rows",
+      "table_sync_rows",
+      "table_update_view",
+      "user_who_am_i"
+    ],
+    "incorporation_coverage_percent": 100.0,
+    "runtime_integrated_observed_count": 12,
+    "runtime_integrated_tools": [
+      "board_create",
+      "board_list_items",
+      "board_search_boards",
+      "comment_list_comments",
+      "image_create",
+      "image_get_data",
+      "image_get_upload_url",
+      "image_get_url",
+      "layout_create",
+      "layout_read",
+      "layout_update",
+      "user_who_am_i"
+    ],
+    "runtime_integration_coverage_percent": 36.4,
+    "unincorporated_observed_tools": []
+  },
+  "audit_digest": "1d350c3785f706c9de3422fa66a07e9334c86ee70b2bbd7e2d64db11a27f56e8",
+  "does_not_establish": [
+    "permission to mutate a board",
+    "support for capabilities absent from the live MCP catalogue",
+    "visual quality of generated output",
+    "availability of Web SDK or REST credentials"
+  ],
+  "families": {
+    "code_widgets": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "code_widget_create",
+        "code_widget_delete",
+        "code_widget_get",
+        "code_widget_list_items",
+        "code_widget_update"
+      ],
+      "observed_count": 5,
+      "observed_tools": [
+        "code_widget_create",
+        "code_widget_delete",
+        "code_widget_get",
+        "code_widget_list_items",
+        "code_widget_update"
+      ]
+    },
+    "collaboration": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "comment_create",
+        "comment_list_comments"
+      ],
+      "observed_count": 2,
+      "observed_tools": [
+        "comment_create",
+        "comment_list_comments"
+      ]
+    },
+    "context": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "context_explore",
+        "context_get"
+      ],
+      "observed_count": 2,
+      "observed_tools": [
+        "context_explore",
+        "context_get"
+      ]
+    },
+    "diagrams": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "diagram_create",
+        "diagram_get_dsl"
+      ],
+      "observed_count": 2,
+      "observed_tools": [
+        "diagram_create",
+        "diagram_get_dsl"
+      ]
+    },
+    "documents": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "doc_create",
+        "doc_get",
+        "doc_update"
+      ],
+      "observed_count": 3,
+      "observed_tools": [
+        "doc_create",
+        "doc_get",
+        "doc_update"
+      ]
+    },
+    "identity_and_boards": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "board_create",
+        "board_list_items",
+        "board_search_boards",
+        "user_who_am_i"
+      ],
+      "observed_count": 4,
+      "observed_tools": [
+        "board_create",
+        "board_list_items",
+        "board_search_boards",
+        "user_who_am_i"
+      ]
+    },
+    "images": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "image_create",
+        "image_get_data",
+        "image_get_upload_url",
+        "image_get_url"
+      ],
+      "observed_count": 4,
+      "observed_tools": [
+        "image_create",
+        "image_get_data",
+        "image_get_upload_url",
+        "image_get_url"
+      ]
+    },
+    "layout": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "layout_create",
+        "layout_get_dsl",
+        "layout_read",
+        "layout_update"
+      ],
+      "observed_count": 4,
+      "observed_tools": [
+        "layout_create",
+        "layout_get_dsl",
+        "layout_read",
+        "layout_update"
+      ]
+    },
+    "prototypes": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "prototype_create",
+        "prototype_get_upload_url"
+      ],
+      "observed_count": 2,
+      "observed_tools": [
+        "prototype_create",
+        "prototype_get_upload_url"
+      ]
+    },
+    "provider_extension": {
+      "known_family_coverage_percent": null,
+      "known_family_tools": [],
+      "observed_count": 0,
+      "observed_tools": []
+    },
+    "tables": {
+      "known_family_coverage_percent": 100.0,
+      "known_family_tools": [
+        "table_create",
+        "table_get_latest_update_history",
+        "table_list_rows",
+        "table_sync_rows",
+        "table_update_view"
+      ],
+      "observed_count": 5,
+      "observed_tools": [
+        "table_create",
+        "table_get_latest_update_history",
+        "table_list_rows",
+        "table_sync_rows",
+        "table_update_view"
+      ]
+    }
+  },
+  "high_value_lanes": {
+    "context_first_read": {
+      "available": true,
+      "available_tools": [
+        "context_explore",
+        "context_get"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "executable_source_view": {
+      "available": true,
+      "available_tools": [
+        "code_widget_create",
+        "code_widget_get",
+        "code_widget_update",
+        "code_widget_delete"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "interactive_prototype": {
+      "available": true,
+      "available_tools": [
+        "prototype_get_upload_url",
+        "prototype_create"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "living_document": {
+      "available": true,
+      "available_tools": [
+        "doc_create",
+        "doc_get",
+        "doc_update"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "managed_image_lifecycle": {
+      "available": false,
+      "available_tools": [
+        "image_get_upload_url",
+        "image_create",
+        "image_get_data",
+        "image_get_url"
+      ],
+      "coverage_percent": 80.0,
+      "missing_tools": [
+        "image_delete"
+      ]
+    },
+    "native_diagram": {
+      "available": true,
+      "available_tools": [
+        "diagram_get_dsl",
+        "diagram_create"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "review_comments": {
+      "available": true,
+      "available_tools": [
+        "comment_create",
+        "comment_list_comments"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    },
+    "structured_data_views": {
+      "available": true,
+      "available_tools": [
+        "table_create",
+        "table_sync_rows",
+        "table_list_rows",
+        "table_update_view"
+      ],
+      "coverage_percent": 100.0,
+      "missing_tools": []
+    }
+  },
+  "known_tools_absent": [],
+  "observed_tool_count": 33,
+  "observed_tools": [
+    "board_create",
+    "board_list_items",
+    "board_search_boards",
+    "code_widget_create",
+    "code_widget_delete",
+    "code_widget_get",
+    "code_widget_list_items",
+    "code_widget_update",
+    "comment_create",
+    "comment_list_comments",
+    "context_explore",
+    "context_get",
+    "diagram_create",
+    "diagram_get_dsl",
+    "doc_create",
+    "doc_get",
+    "doc_update",
+    "image_create",
+    "image_get_data",
+    "image_get_upload_url",
+    "image_get_url",
+    "layout_create",
+    "layout_get_dsl",
+    "layout_read",
+    "layout_update",
+    "prototype_create",
+    "prototype_get_upload_url",
+    "table_create",
+    "table_get_latest_update_history",
+    "table_list_rows",
+    "table_sync_rows",
+    "table_update_view",
+    "user_who_am_i"
+  ],
+  "platform_layers": {
+    "mcp": {
+      "role": "agent-facing content discovery, creation, maintenance, and readback",
+      "status": "live_operational"
+    },
+    "rest_api": {
+      "incorporation": "architectural boundary documented; not authorized by MCP OAuth",
+      "role": "board lifecycle, sharing, membership, and provider administration",
+      "status": "separate_application_credentials_required"
+    },
+    "web_sdk": {
+      "incorporation": "reserved for a separate interactive Schauwerk companion app",
+      "role": "viewport, selection, UI panels, realtime events, attention, sessions, storage, groups, history, and custom tools",
+      "status": "embedded_board_application_required"
+    }
+  },
+  "priorities": [
+    {
+      "lane": "context_first_read",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 1,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "native_diagram",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 2,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "structured_data_views",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 3,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "living_document",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 4,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "executable_source_view",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 5,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "interactive_prototype",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 6,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "review_comments",
+      "missing_tools": [],
+      "provider_available": true,
+      "rank": 7,
+      "recommendation": "integrate into the representation execution planner"
+    },
+    {
+      "lane": "managed_image_lifecycle",
+      "missing_tools": [
+        "image_delete"
+      ],
+      "provider_available": false,
+      "rank": 8,
+      "recommendation": "keep fail-closed and track as provider capability gap"
+    }
+  ],
+  "protocol_version": "2025-11-25",
+  "provider_extensions": [],
+  "schema_version": "schauwerk-miro-capability-audit.v1",
+  "server_name": "Miro MCP",
+  "server_version": "3.2.4",
+  "truth_boundary": {
+    "image_delete_available": false,
+    "layout_can_delete_unsupported_images": false,
+    "operational_authority": "live MCP catalogue",
+    "product_reference": "official Miro MCP, REST API, and Web SDK documentation"
+  },
+  "unavailable_lanes": [
+    "managed_image_lifecycle"
+  ]
+}

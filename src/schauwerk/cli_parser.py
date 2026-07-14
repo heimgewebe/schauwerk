@@ -371,6 +371,11 @@ def build_parser() -> argparse.ArgumentParser:
     tools = commands.add_parser("tools", help="show the Miro tool catalogue")
     tools.add_argument("--json", action="store_true")
 
+    capabilities = commands.add_parser(
+        "capabilities", help="audit live Miro capabilities and Schauwerk integration coverage"
+    )
+    capabilities.add_argument("--json", action="store_true")
+
     doctor = commands.add_parser("doctor", help="diagnose local and live Miro auth state")
     doctor.add_argument("--no-live", action="store_true", help="skip the live MCP check")
     doctor.add_argument("--json", action="store_true")

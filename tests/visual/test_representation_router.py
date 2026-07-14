@@ -144,6 +144,7 @@ def test_package_is_deterministic_and_manifest_bound(tmp_path: Path) -> None:
         "route-plan.json",
         "diagram.mmd",
         "composition.canvas",
+        "miro-execution-plan.json",
         "miro-board.json",
         "miro-board.dsl",
         "miro-quality.json",
@@ -164,6 +165,9 @@ def test_package_is_deterministic_and_manifest_bound(tmp_path: Path) -> None:
         "coverage is explicit per renderer artifact"
     )
     artifacts = {item["role"]: item for item in manifest["artifacts"]}
+    execution_plan = json.loads((tmp_path / "first" / "miro-execution-plan.json").read_text())
+    assert execution_plan["schema_version"] == "schauwerk-miro-execution-plan.v1"
+    assert artifacts["miro_execution_plan"]["sha256"]
     assert artifacts["mermaid_source"]["coverage"]["complete_nodes"] is True
     assert artifacts["mermaid_source"]["coverage"]["complete_edges"] is True
     assert artifacts["json_canvas"]["coverage"]["complete_nodes"] is True
