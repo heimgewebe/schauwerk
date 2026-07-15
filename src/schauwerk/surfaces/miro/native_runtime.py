@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import fcntl
 import hashlib
+import ipaddress
 import os
 import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from mcp import ClientSession
@@ -38,6 +40,34 @@ from .snapshot_runtime import prepare_snapshot_destination, write_snapshot_json
 
 async def _authorization_required(_value: str = "") -> tuple[str, str | None]:
     raise MiroAuthorizationRequired("Miro login must be renewed")
+
+
+def _validated_upload_url(value: str) -> str:
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise MiroConnectionError("Miro prototype upload URL is invalid") from exc
+    hostname = (parsed.hostname or "").rstrip(".").lower()
+    if (
+        parsed.scheme != "https"
+        or not hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or port not in {None, 443}
+        or "." not in hostname
+        or hostname == "localhost"
+        or hostname.endswith((".localhost", ".local", ".internal"))
+    ):
+        raise MiroConnectionError("Miro prototype upload URL is unsafe")
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        address = None
+    if address is not None and not address.is_global:
+        raise MiroConnectionError("Miro prototype upload URL is unsafe")
+    return value
 
 
 def _tool_document(tools: list[Any]) -> list[dict[str, Any]]:
@@ -160,12 +190,38 @@ async def run_native_bundle(
             try:
                 with quiet_provider_stderr():
                     async with threadless_dns_resolution():
-                        async with httpx.AsyncClient(
-                            auth=oauth,
-                            follow_redirects=True,
-                            timeout=httpx.Timeout(settings.network_timeout_seconds),
-                            headers={"User-Agent": "schauwerk/0.1"},
-                        ) as http_client:
+                        async with (
+                            httpx.AsyncClient(
+                                auth=oauth,
+                                follow_redirects=True,
+                                timeout=httpx.Timeout(settings.network_timeout_seconds),
+                                headers={"User-Agent": "schauwerk/0.1"},
+                            ) as http_client,
+                            httpx.AsyncClient(
+                                follow_redirects=False,
+                                timeout=httpx.Timeout(settings.network_timeout_seconds),
+                                headers={"User-Agent": "schauwerk/0.1"},
+                                trust_env=False,
+                            ) as upload_client,
+                        ):
+
+                            async def upload_html(upload_url: str, payload: bytes) -> None:
+                                try:
+                                    response = await upload_client.put(
+                                        _validated_upload_url(upload_url),
+                                        content=payload,
+                                        headers={"Content-Type": "text/html"},
+                                    )
+                                except httpx.HTTPError as exc:
+                                    raise MiroConnectionError(
+                                        "Miro prototype HTML upload failed"
+                                    ) from exc
+                                if response.status_code < 200 or response.status_code >= 300:
+                                    raise MiroConnectionError(
+                                        "Miro prototype HTML upload failed with HTTP "
+                                        f"{response.status_code}"
+                                    )
+
                             async with streamable_http_client(
                                 settings.server_url, http_client=http_client
                             ) as (read_stream, write_stream, _session_id):
@@ -180,6 +236,8 @@ async def run_native_bundle(
                                         bundle=bundle,
                                         checkpoint=checkpoint,
                                         resume_receipt=resume_receipt,
+                                        bundle_root=input_path.expanduser().absolute().parent,
+                                        upload_html=upload_html,
                                     )
             except MiroError:
                 raise
