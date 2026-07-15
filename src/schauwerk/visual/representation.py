@@ -21,6 +21,11 @@ from .composer_v2 import (
     table_object,
     text_object,
 )
+from .delivery import (
+    compile_representation_native_bundle,
+    render_representation_document,
+    render_representation_table,
+)
 from .system_v2 import (
     finalize_board_spec,
     render_board_dsl,
@@ -787,16 +792,19 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
     all_edge_ids = [str(edge["id"]) for edge in model["edges"]]
     full_coverage = _coverage(model=model, node_ids=all_node_ids, edge_ids=all_edge_ids)
     artifacts: list[dict[str, Any]] = []
+    mermaid_source: str | None = None
+    layout_dsl: str | None = None
+    document_source: str | None = None
     artifacts.append({"role": "normalized_input", **_write_json(output_dir / "input.json", model)})
     artifacts.append({"role": "route_plan", **_write_json(output_dir / "route-plan.json", plan)})
 
     if "mermaid" in plan["selected_formats"]:
-        mermaid = render_mermaid(model, plan)
+        mermaid_source = render_mermaid(model, plan)
         artifacts.append(
             {
                 "role": "mermaid_source",
                 "coverage": full_coverage,
-                **_write_text(output_dir / "diagram.mmd", mermaid),
+                **_write_text(output_dir / "diagram.mmd", mermaid_source),
             }
         )
     if "canvas" in plan["selected_formats"]:
@@ -818,7 +826,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         )
         board = render_miro_board(model, plan)
         quality = validate_board_spec(board)
-        dsl = render_board_dsl(board)
+        layout_dsl = render_board_dsl(board)
         miro_coverage = _miro_coverage(model, board)
         artifacts.append(
             {
@@ -828,37 +836,44 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             }
         )
         artifacts.append(
-            {"role": "miro_layout_dsl", **_write_text(output_dir / "miro-board.dsl", dsl)}
+            {
+                "role": "miro_layout_dsl",
+                **_write_text(output_dir / "miro-board.dsl", layout_dsl),
+            }
         )
         artifacts.append(
             {"role": "miro_quality", **_write_json(output_dir / "miro-quality.json", quality)}
         )
     if "document" in plan["selected_formats"]:
-        lines = [f"# {model['title']}", "", model["purpose"], "", "## Elemente", ""]
-        for node in model["nodes"]:
-            suffix = f" — {node['summary']}" if node["summary"] else ""
-            lines.append(f"- **{node['label']}** ({node['kind']}){suffix}")
-        lines.extend(["", "## Beziehungen", ""])
-        for edge in model["edges"]:
-            lines.append(f"- `{edge['from']}` — {edge['label']} → `{edge['to']}`")
+        document_source = render_representation_document(model)
         artifacts.append(
             {
                 "role": "narrative_document",
                 "coverage": full_coverage,
-                **_write_text(output_dir / "overview.md", "\n".join(lines) + "\n"),
+                **_write_text(output_dir / "overview.md", document_source),
             }
         )
     if "table" in plan["selected_formats"]:
-        rows = ["id\tlabel\tkind\tgroup"]
-        rows.extend(
-            f"{node['id']}\t{node['label']}\t{node['kind']}\t{node['group'] or ''}"
-            for node in model["nodes"]
-        )
         artifacts.append(
             {
                 "role": "node_table",
                 "coverage": _coverage(model=model, node_ids=all_node_ids, edge_ids=[]),
-                **_write_text(output_dir / "nodes.tsv", "\n".join(rows) + "\n"),
+                **_write_text(output_dir / "nodes.tsv", render_representation_table(model)),
+            }
+        )
+
+    native_bundle = compile_representation_native_bundle(
+        model,
+        plan,
+        layout_dsl=layout_dsl,
+        mermaid_source=mermaid_source,
+        document_source=document_source,
+    )
+    if native_bundle is not None:
+        artifacts.append(
+            {
+                "role": "miro_native_bundle",
+                **_write_json(output_dir / "miro-native-bundle.json", native_bundle),
             }
         )
 

@@ -150,6 +150,7 @@ def test_package_is_deterministic_and_manifest_bound(tmp_path: Path) -> None:
         "miro-quality.json",
         "overview.md",
         "nodes.tsv",
+        "miro-native-bundle.json",
         "manifest.json",
         "receipt.json",
     }

@@ -136,6 +136,20 @@ def build_parser() -> argparse.ArgumentParser:
     visual_route.add_argument("--output-dir", required=True)
     visual_route.add_argument("--json", action="store_true")
 
+    visual_package_check = visual_commands.add_parser(
+        "package-check", help="validate one representation package"
+    )
+    visual_package_check.add_argument("package_dir")
+    visual_package_check.add_argument("--json", action="store_true")
+    visual_deliver = visual_commands.add_parser(
+        "deliver", help="deliver one representation package through Miro"
+    )
+    visual_deliver.add_argument("alias")
+    visual_deliver.add_argument("package_dir")
+    visual_deliver.add_argument("--output-dir", required=True)
+    visual_deliver.add_argument("--resume", action="store_true")
+    visual_deliver.add_argument("--json", action="store_true")
+
     regie = providers.add_parser("regie", help="local receipt-bound review interface")
     regie_commands = regie.add_subparsers(dest="command", required=True)
     regie_context_template = regie_commands.add_parser(
