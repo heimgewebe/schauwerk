@@ -50,6 +50,8 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 37. [Visual Grammar evidence](operators/evidence/visual-grammar-20260711/README.md)
 38. [SW-009 live-executor evidence](operators/evidence/sw009-live-executor-20260711/README.md)
 39. [Ecosystem Map HTML Handoff](ecosystem-map-handoff.md)
+40. [Miro capability atlas v1](operators/miro-capability-atlas-v1.md)
+41. [Miro managed image lifecycle v1](operators/miro-managed-image-lifecycle-v1.md)
 
 ## Contracts
 
@@ -75,6 +77,9 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/visual-quality.v2.schema.json`
 - `schemas/visual-review.v2.schema.json`
 - `schemas/representation-input.v1.schema.json`
+- `schemas/miro-managed-image.v1.schema.json`
+- `schemas/miro-managed-image-replace-receipt.v1.schema.json`
+- `schemas/miro-managed-image-delete-receipt.v1.schema.json`
 - `registry/`
 
 ## Current status

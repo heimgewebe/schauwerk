@@ -412,6 +412,66 @@ def build_parser() -> argparse.ArgumentParser:
     companion_check.add_argument("output_dir")
     companion_check.add_argument("--json", action="store_true")
 
+    rest = commands.add_parser(
+        "rest", help="manage the separately authorized Miro REST application"
+    )
+    rest_commands = rest.add_subparsers(dest="rest_command", required=True)
+    rest_status = rest_commands.add_parser(
+        "status", help="show local Miro REST credential state without network access"
+    )
+    rest_status.add_argument("--json", action="store_true")
+    rest_install = rest_commands.add_parser(
+        "token-install", help="install a REST credential from one owner-only file"
+    )
+    rest_install.add_argument("source")
+    rest_install.add_argument("--replace", action="store_true")
+    rest_install.add_argument("--json", action="store_true")
+    rest_doctor = rest_commands.add_parser("doctor", help="verify the live Miro REST token context")
+    rest_doctor.add_argument("--require-write", action="store_true")
+    rest_doctor.add_argument("--json", action="store_true")
+
+    managed_image = commands.add_parser(
+        "managed-image", help="check, replace, or delete one Schauwerk-managed Miro image"
+    )
+    managed_image_commands = managed_image.add_subparsers(
+        dest="managed_image_command", required=True
+    )
+    managed_check = managed_image_commands.add_parser(
+        "check", help="validate a managed image identity and optional replacement source"
+    )
+    managed_check.add_argument("alias")
+    managed_check.add_argument("identity")
+    managed_check.add_argument("--image")
+    managed_check.add_argument(
+        "--content-type",
+        choices=("image/svg+xml", "image/png", "image/jpeg", "image/webp"),
+    )
+    managed_check.add_argument("--json", action="store_true")
+    managed_replace = managed_image_commands.add_parser(
+        "replace", help="run a receipt-bound create-verify-delete image saga"
+    )
+    managed_replace.add_argument("alias")
+    managed_replace.add_argument("identity")
+    managed_replace.add_argument("image")
+    managed_replace.add_argument(
+        "--content-type",
+        required=True,
+        choices=("image/svg+xml", "image/png", "image/jpeg", "image/webp"),
+    )
+    managed_replace.add_argument("--title", required=True)
+    managed_replace.add_argument("--receipt-output", required=True)
+    managed_replace.add_argument("--identity-output", required=True)
+    managed_replace.add_argument("--max-pages", type=_bounded_integer(1, 100), default=100)
+    managed_replace.add_argument("--json", action="store_true")
+    managed_delete = managed_image_commands.add_parser(
+        "delete", help="delete only the exact item in one managed image identity"
+    )
+    managed_delete.add_argument("alias")
+    managed_delete.add_argument("identity")
+    managed_delete.add_argument("--receipt-output", required=True)
+    managed_delete.add_argument("--max-pages", type=_bounded_integer(1, 100), default=100)
+    managed_delete.add_argument("--json", action="store_true")
+
     doctor = commands.add_parser("doctor", help="diagnose local and live Miro auth state")
     doctor.add_argument("--no-live", action="store_true", help="skip the live MCP check")
     doctor.add_argument("--json", action="store_true")

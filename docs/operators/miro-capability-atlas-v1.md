@@ -11,23 +11,24 @@ title: Miro capability atlas v1
 Schauwerk behandelt Miro nicht als einen einzelnen Renderer. Die Plattform besteht aus drei getrennten Fähigkeitsflächen mit unterschiedlichen Autorisierungs- und Laufzeitgrenzen:
 
 1. **Miro MCP** ist die operative Agentenfläche für Board-Suche, Kontextlesen, Layouts, native Diagramme, Dokumente, Datenbanktabellen, Code-Widgets, Prototypen, Bilder und Kommentare.
-2. **Miro REST API** ist eine separate Anwendungsfläche für Board-Lebenszyklus, Freigaben, Mitglieder und administrative Provideroperationen. Ein MCP-OAuth-Token begründet keine REST-Autorität.
-3. **Miro Web SDK** ist eine eingebettete interaktive Anwendungsfläche für Viewport, Auswahl, Panels, Modale, Echtzeitereignisse, Aufmerksamkeit, Sitzungen, Storage, Gruppen, History und eigene Board-Werkzeuge.
+2. **Miro REST API** ist eine separate Anwendungsfläche. Schauwerk nutzt sie ausschließlich über eine eigenständig autorisierte Anwendung für typisierte Bild-GET- und Bild-DELETE-Operationen; ein MCP-OAuth-Token begründet keine REST-Autorität.
+3. **Miro Web SDK** ist eine eingebettete interaktive Anwendungsfläche für Viewport, Auswahl, Panels und Echtzeitereignisse.
 
-Der Live-MCP-Katalog ist die operative Wahrheit. Dokumentation ist eine Produktreferenz, aber kein Beleg dafür, dass ein Werkzeug im verbundenen Team, Plan oder Serverrelease verfügbar ist.
+Der Live-MCP-Katalog ist die operative Wahrheit für MCP. REST- und Web-SDK-Verfügbarkeit werden getrennt geprüft und dürfen nicht aus dem MCP-Katalog abgeleitet werden.
 
 ## Schauwerk-Vertrag
 
-`schauwerk miro capabilities --json` liest den Live-Katalog und erzeugt `schauwerk-miro-capability-audit.v1`.
+`schauwerk miro capabilities --json` liest den Live-MCP-Katalog und erzeugt `schauwerk-miro-capability-audit.v1`.
 
 Der Bericht:
 
-- gruppiert Werkzeuge nach Produktrolle;
-- bewahrt unbekannte neue Providerwerkzeuge als `provider_extensions`;
+- gruppiert MCP-Werkzeuge nach Produktrolle;
+- bewahrt unbekannte Providerwerkzeuge als `provider_extensions`;
 - meldet verschwundene bekannte Werkzeuge;
-- trennt bereits ausgeführte Laufzeitpfade von Werkzeugen, die nur im Darstellungs-Ausführungsplan inkorporiert sind;
-- bewertet vollständige Fähigkeitsketten statt einzelner Toolnamen;
-- hält nicht verfügbare Lebenszyklen fail-closed.
+- trennt Laufzeitpfade von Planungsabdeckung;
+- hält die MCP-Lane für verwaltete Bilder ohne `image_delete` weiterhin fail-closed;
+- weist den kombinierten MCP/REST-Lebenszyklus separat unter `cross_surface_lanes` aus;
+- trennt Adapterimplementierung, Credential-Konfiguration und live bestätigte REST-Autorisierung.
 
 ## Repräsentationsrouter
 
@@ -38,45 +39,46 @@ Jedes Paket mit `miro_native` enthält zusätzlich `miro-execution-plan.json`. D
 | bestehendes Board | Identität, Boardauflösung, Context Explore/Get | Ziel und Kontext vor Mutation |
 | Architektur, Prozess, Sequenz, Zustand | natives Diagramm | Context Get |
 | längere Erklärung | Miro-Dokument | Doc Get |
-| Vergleich, Zeitplan, Wissensbaum, Prozessstatus | Datenbanktabelle mit Table-, Timeline-, Tree- oder Kanban-Ansicht | Rows und Layout-Rückgabe |
-| Mermaid-Quelle | Code-Widget mit Mermaid-Syntax | Code Widget Get |
-| Präsentation oder gemischtes Modell | interaktiver Tablet-Prototyp als optionale Ergänzung | Context Get |
+| Vergleich, Zeitplan, Wissensbaum, Prozessstatus | Datenbanktabelle | Rows und Layout-Rückgabe |
+| Mermaid-Quelle | Code-Widget | Code Widget Get |
+| Präsentation oder gemischtes Modell | interaktiver Prototyp | Context Get |
 | kollaborative Abnahme | verankerte Kommentare | Comment List |
-| gerenderte Ergänzung | privater Bildupload und Image Readback | Image Data/URL |
+| gerenderte Ergänzung | privater Bildupload | Image Data/URL |
 | räumliche Grundkomposition | Layout DSL | Layout Read und Board Inventory |
 
 Der Plan mutiert selbst kein Board. Die Ausführung erfolgt nur über typisierte, schema- und receipt-gebundene Laufzeitpfade.
 
-## Operative Abdeckung vom 15. Juli 2026
+## Operative MCP-Abdeckung vom 15. Juli 2026
 
-Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Alle 33 Werkzeuge besitzen jetzt produktive, schema- und receipt-gebundene Schauwerk-Laufzeitpfade:
+Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Alle 33 Werkzeuge besitzen produktive Schauwerk-Laufzeitpfade. Die operative und planerische MCP-Abdeckung beträgt jeweils 100 Prozent; `unincorporated_observed_tools` ist leer.
 
-- Identität, Boardauflösung, Inventar und Kontext;
-- Layout-Vertrag, Erstellung, Readback und verwaltete Layout-Updates;
-- native Diagramme;
-- Dokumenterstellung, Readback und digestgebundene Aktualisierung;
-- Tabellenerstellung, Zeilensynchronisierung, Zeilen-Readback, Ansichtswechsel und Update-Historie;
-- Code-Widget-Erstellung, Readback, paginiertes Inventar, Update und Löschung;
-- statische HTML-Prototypen über tokenisierte Uploadslots und Context-Readback;
-- Kommentarerstellung und Readback;
-- Bild-Upload und Bild-Readback.
+100 Prozent MCP-Abdeckung bedeutet nicht, dass jede Miro-Produktoberfläche verfügbar ist. Der Live-MCP besitzt `image_create`, `image_get_data`, `image_get_upload_url` und `image_get_url`, aber kein `image_delete`.
 
-Die operative und planerische Abdeckung beträgt damit jeweils 100 Prozent. `unincorporated_observed_tools` ist leer. Der Live-Audit ist unter `docs/operators/evidence/miro-capability-audit-20260715.json` gebunden.
+## Verwalteter Bild-Lebenszyklus
 
-100 Prozent MCP-Abdeckung bedeutet nicht, dass jede Miro-Produktoberfläche verfügbar ist: REST API und Web SDK besitzen weiterhin getrennte Anwendungs- und Autorisierungsgrenzen. Ebenso bleibt ein vollständiger Bild-Lebenszyklus blockiert, weil der Live-MCP kein `image_delete` bereitstellt.
+Schauwerk ergänzt die fehlende MCP-Löschfähigkeit durch einen eng begrenzten REST-Adapter:
 
-## Nachgewiesene Providergrenze: Bilder
+- Upload, Create und vollständiger Board-Readback bleiben beim MCP;
+- REST darf nur das exakte Bild aus einer verwalteten Identität lesen oder löschen;
+- das REST-Credential liegt getrennt vom MCP-OAuth-Zustand;
+- der REST-Doctor verlangt für Mutation `boards:write`;
+- der CLI-Pfad bietet keine freie URL- oder Item-ID-Löschung;
+- Boardziel, Item-ID, Parent, Position, Breite und Quelldigest sind receipt-gebunden;
+- Inventare werden vollständig paginiert und auf doppelte IDs, Seiten und Cursor geprüft.
 
-Der Live-MCP besitzt `image_create`, `image_get_data`, `image_get_upload_url` und `image_get_url`, aber kein `image_delete`.
+Ersetzen ist eine **Create–Verify–Delete-Saga**, keine providerweit atomare Operation. Erst wird das neue Bild erstellt und exakt zurückgelesen. Danach wird das alte Bild gelöscht und seine Abwesenheit erneut über MCP bewiesen. Ein fehlerhaft angelegtes Neublick wird kompensierend gelöscht. Ein mehrdeutiger Ausgang erzwingt `manual_reconciliation_required`.
 
-Ein gezieltes `layout_read` auf ein Bild meldet das Bild als nicht unterstützten Itemtyp und liefert keine löschbare DSL-Zeile. Deshalb darf `layout_update` nicht als generischer Bild-Löschersatz behandelt werden. Atomisches Ersetzen verwalteter Bilder bleibt blockiert, bis Miro eine typisierte Löschfähigkeit bereitstellt oder eine getrennt autorisierte Providerfläche den Lebenszyklus sicher abbildet.
+Die lokale Laufzeit ist implementiert. Der kombinierte Lebenszyklus gilt jedoch erst dann als verfügbar, wenn ein separates REST-Credential installiert und seine Live-Autorisierung bestätigt ist. Der aktuelle Rechnerzustand enthält kein solches Credential; daher liegt noch kein produktiver Live-Löschbeleg vor.
+
+Der detaillierte Betriebsvertrag steht in `docs/operators/miro-managed-image-lifecycle-v1.md`.
 
 ## Grenzen
 
 Der Fähigkeitsatlas begründet nicht:
 
 - eine Mutationsfreigabe;
-- die Verfügbarkeit von REST- oder Web-SDK-Zugangsdaten;
+- die Verfügbarkeit oder Live-Autorisierung eines REST-Credentials;
+- eine providerweite atomare Bildersetzung;
 - subjektive visuelle Qualität ohne Sichtprüfung;
 - erfolgreiche Providerdarstellung ohne Remote-Readback;
-- das sichere Löschen eines Itemtyps, der von keiner verbundenen Oberfläche typisiert gelöscht werden kann.
+- eine Löschberechtigung für nicht verwaltete oder nicht allowlistgebundene Items.

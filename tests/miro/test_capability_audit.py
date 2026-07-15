@@ -46,6 +46,12 @@ def test_audit_preserves_extensions_and_marks_real_provider_gaps() -> None:
     ]
     assert report["truth_boundary"]["image_delete_available"] is False
     assert report["truth_boundary"]["layout_can_delete_unsupported_images"] is False
+    cross_surface = report["cross_surface_lanes"]["managed_image_lifecycle"]
+    assert cross_surface["adapter_implemented"] is True
+    assert cross_surface["rest_delete_adapter"] == "implemented_fail_closed"
+    assert cross_surface["rest_credential_configured"] is False
+    assert cross_surface["available"] is False
+    assert cross_surface["globally_atomic"] is False
     assert len(report["audit_digest"]) == 64
 
 
@@ -78,3 +84,24 @@ def test_live_baseline_reports_complete_native_runtime_coverage() -> None:
     assert "table_get_latest_update_history" in integration["runtime_integrated_tools"]
     assert "code_widget_update" in integration["runtime_integrated_tools"]
     assert "prototype_create" in integration["runtime_integrated_tools"]
+
+
+def test_audit_reports_separate_rest_authority_without_changing_mcp_truth() -> None:
+    names = sorted(set().union(*TOOL_FAMILIES.values()))
+    report = audit_tool_catalogue(
+        catalogue(*names),
+        rest_status={
+            "credential": {"exists": True},
+            "live_authorized_known": True,
+            "live_authorized": True,
+        },
+    )
+
+    assert report["observed_tool_count"] == 33
+    assert report["high_value_lanes"]["managed_image_lifecycle"]["available"] is False
+    cross_surface = report["cross_surface_lanes"]["managed_image_lifecycle"]
+    assert cross_surface["available"] is True
+    assert cross_surface["mcp_image_delete_available"] is False
+    assert cross_surface["rest_credential_configured"] is True
+    assert cross_surface["rest_live_authorized"] is True
+    assert cross_surface["provider_semantics"] == "create-verify-delete-saga"

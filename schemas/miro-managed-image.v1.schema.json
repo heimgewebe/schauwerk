@@ -1,0 +1,58 @@
+{
+  "$id": "https://heimgewebe.example/schemas/miro-managed-image.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "asset_key": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "board_alias": {
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$",
+      "type": "string"
+    },
+    "item_id": {
+      "pattern": "^[0-9]{1,32}$",
+      "type": "string"
+    },
+    "parent_id": {
+      "pattern": "^[0-9]{1,32}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "schauwerk-miro-managed-image.v1"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "width": {
+      "exclusiveMinimum": 0,
+      "maximum": 1000000,
+      "type": "number"
+    },
+    "x": {
+      "maximum": 1000000,
+      "minimum": -1000000,
+      "type": "number"
+    },
+    "y": {
+      "maximum": 1000000,
+      "minimum": -1000000,
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema_version",
+    "board_alias",
+    "asset_key",
+    "item_id",
+    "parent_id",
+    "source_sha256",
+    "x",
+    "y",
+    "width"
+  ],
+  "title": "Schauwerk managed Miro image identity v1",
+  "type": "object"
+}
