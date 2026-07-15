@@ -396,6 +396,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     native_apply.add_argument("--json", action="store_true")
 
+    companion = commands.add_parser(
+        "companion", help="build or verify the static Miro Web SDK companion"
+    )
+    companion_commands = companion.add_subparsers(dest="companion_command", required=True)
+    companion_build = companion_commands.add_parser(
+        "build", help="build a deterministic HTTPS-deployable companion bundle"
+    )
+    companion_build.add_argument("input")
+    companion_build.add_argument("--output-dir", required=True)
+    companion_build.add_argument("--json", action="store_true")
+    companion_check = companion_commands.add_parser(
+        "check", help="verify one previously built companion bundle"
+    )
+    companion_check.add_argument("output_dir")
+    companion_check.add_argument("--json", action="store_true")
+
     doctor = commands.add_parser("doctor", help="diagnose local and live Miro auth state")
     doctor.add_argument("--no-live", action="store_true", help="skip the live MCP check")
     doctor.add_argument("--json", action="store_true")

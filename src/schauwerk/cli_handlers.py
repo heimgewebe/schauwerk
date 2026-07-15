@@ -132,6 +132,7 @@ from .surfaces.miro.live_test_index import create_live_test_record, prune_live_t
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
 from .surfaces.miro.native_executor import load_native_bundle, required_tools
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
+from .surfaces.miro.web_sdk_companion import build_companion, verify_companion
 from .visual.grammar import (
     validate_visual_grammar,
     visual_grammar_manifest,
@@ -888,6 +889,14 @@ def handle_native_apply(
             resume_path=Path(resume) if resume else None,
         )
     )
+
+
+def handle_companion_build(*, input_path: str, output_dir: str) -> dict[str, Any]:
+    return build_companion(input_path=Path(input_path), output_dir=Path(output_dir))
+
+
+def handle_companion_check(*, output_dir: str) -> dict[str, Any]:
+    return verify_companion(output_dir=Path(output_dir))
 
 
 def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:

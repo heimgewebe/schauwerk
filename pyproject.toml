@@ -30,6 +30,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "schauwerk.schemas" = ["*.json"]
+"schauwerk.web_sdk_assets" = ["*.html", "*.js", "*.css"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

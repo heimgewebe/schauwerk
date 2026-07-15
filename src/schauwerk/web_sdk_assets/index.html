@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Schauwerk Miro Companion</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="launcher">
+    <main class="launcher-card" aria-live="polite">
+      <p class="eyebrow">Schauwerk</p>
+      <h1>Miro-Begleitanwendung</h1>
+      <p id="launcher-status">Initialisierung …</p>
+      <a id="standalone-link" class="button secondary" href="panel.html" hidden>Standalone-Ansicht öffnen</a>
+    </main>
+    <script src="https://miro.com/app/static/sdk/v2/miro.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
