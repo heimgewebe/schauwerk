@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schemas/schauwerk/visual-regression.v1.schema.json",
+  "title": "Schauwerk Visual Regression v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ok",
+    "regression",
+    "baseline_preview_digest",
+    "candidate_preview_digest",
+    "baseline_package_digest",
+    "candidate_package_digest",
+    "baseline_blocker_count",
+    "candidate_blocker_count",
+    "new_blockers",
+    "resolved_blockers",
+    "added_objects",
+    "removed_objects",
+    "changed_objects",
+    "moved_objects",
+    "does_not_establish",
+    "regression_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-visual-regression.v1"},
+    "ok": {"type": "boolean"},
+    "regression": {"type": "boolean"},
+    "baseline_preview_digest": {"$ref": "#/$defs/digest"},
+    "candidate_preview_digest": {"$ref": "#/$defs/digest"},
+    "baseline_package_digest": {"$ref": "#/$defs/digest"},
+    "candidate_package_digest": {"$ref": "#/$defs/digest"},
+    "baseline_blocker_count": {"type": "integer", "minimum": 0},
+    "candidate_blocker_count": {"type": "integer", "minimum": 0},
+    "new_blockers": {"$ref": "#/$defs/digest_list"},
+    "resolved_blockers": {"$ref": "#/$defs/digest_list"},
+    "added_objects": {"$ref": "#/$defs/object_key_list"},
+    "removed_objects": {"$ref": "#/$defs/object_key_list"},
+    "changed_objects": {"$ref": "#/$defs/object_key_list"},
+    "moved_objects": {"$ref": "#/$defs/object_key_list"},
+    "does_not_establish": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 180}
+    },
+    "regression_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "digest_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/digest"}
+    },
+    "object_key_list": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]{0,95}/[a-z][a-z0-9_]{0,95}$"
+      }
+    }
+  }
+}

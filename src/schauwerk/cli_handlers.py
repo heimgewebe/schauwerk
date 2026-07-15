@@ -147,6 +147,7 @@ from .visual.grammar import (
     write_visual_grammar,
     zoomlandkarte_template,
 )
+from .visual.preview import build_visual_preview, write_visual_regression
 from .visual.representation import compile_representation_package
 from .visual.system_v2 import (
     compile_visual_review,
@@ -518,6 +519,21 @@ def handle_visual_route(*, input_path: str, output_dir: str) -> dict[str, Any]:
 
 def handle_visual_package_check(*, package_dir: str) -> dict[str, Any]:
     return check_representation_package(Path(package_dir))
+
+
+def handle_visual_preview(*, package_dir: str, output_dir: str) -> dict[str, Any]:
+    return build_visual_preview(
+        package_dir=Path(package_dir),
+        output_dir=Path(output_dir),
+    )
+
+
+def handle_visual_compare(*, baseline: str, candidate: str, output: str) -> dict[str, Any]:
+    return write_visual_regression(
+        baseline_path=Path(baseline),
+        candidate_path=Path(candidate),
+        output=Path(output),
+    )
 
 
 def handle_visual_deliver(

@@ -93,9 +93,11 @@ from .cli_handlers import (
     handle_stage_build,
     handle_status,
     handle_tools,
+    handle_visual_compare,
     handle_visual_deliver,
     handle_visual_grammar,
     handle_visual_package_check,
+    handle_visual_preview,
     handle_visual_reference_v2,
     handle_visual_review_v2,
     handle_visual_route,
@@ -180,6 +182,17 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.provider == "visual" and args.command == "package-check":
             result = handle_visual_package_check(package_dir=args.package_dir)
+        elif args.provider == "visual" and args.command == "preview":
+            result = handle_visual_preview(
+                package_dir=args.package_dir,
+                output_dir=args.output_dir,
+            )
+        elif args.provider == "visual" and args.command == "compare":
+            result = handle_visual_compare(
+                baseline=args.baseline,
+                candidate=args.candidate,
+                output=args.output,
+            )
         elif args.provider == "visual" and args.command == "deliver":
             result = handle_visual_deliver(
                 alias=args.alias,

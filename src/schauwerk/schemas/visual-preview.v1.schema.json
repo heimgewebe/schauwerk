@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schemas/schauwerk/visual-preview.v1.schema.json",
+  "title": "Schauwerk Visual Preview v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ok",
+    "package_digest",
+    "board_digest",
+    "quality_digest",
+    "quality_score",
+    "frame_count",
+    "object_count",
+    "blocker_count",
+    "warning_count",
+    "issue_counts",
+    "frames",
+    "index_path",
+    "index_sha256",
+    "index_bytes",
+    "does_not_establish",
+    "preview_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "schauwerk-visual-preview.v1"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "package_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "board_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "quality_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "quality_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "frame_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "object_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "blocker_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "warning_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "issue_counts": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "frames": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/frame"
+      }
+    },
+    "does_not_establish": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 180
+      }
+    },
+    "preview_digest": {
+      "$ref": "#/$defs/digest"
+    },
+    "index_path": {
+      "const": "index.html"
+    },
+    "index_sha256": {
+      "$ref": "#/$defs/digest"
+    },
+    "index_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2000000
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "box": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "number"
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "frame_id",
+        "object_ids",
+        "message",
+        "fingerprint"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "severity": {
+          "enum": [
+            "blocker",
+            "warning"
+          ]
+        },
+        "frame_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        },
+        "object_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 96
+          }
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "details": {
+          "type": "object"
+        },
+        "fingerprint": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "role",
+        "content_digest",
+        "declared_box",
+        "estimated_box",
+        "issue_codes",
+        "object_digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        },
+        "kind": {
+          "enum": [
+            "text",
+            "shape",
+            "table",
+            "doc",
+            "sticky",
+            "connector"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "content_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "declared_box": {
+          "$ref": "#/$defs/box"
+        },
+        "estimated_box": {
+          "$ref": "#/$defs/box"
+        },
+        "issue_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          }
+        },
+        "object_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "number",
+        "role",
+        "title",
+        "width",
+        "height",
+        "objects",
+        "issues",
+        "frame_digest",
+        "svg_path",
+        "svg_sha256",
+        "svg_bytes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/object"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          }
+        },
+        "frame_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "svg_path": {
+          "type": "string",
+          "pattern": "^frame-[0-9]{2,3}-[a-z][a-z0-9_]{0,95}\\.svg$"
+        },
+        "svg_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "svg_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000000
+        }
+      }
+    }
+  }
+}
