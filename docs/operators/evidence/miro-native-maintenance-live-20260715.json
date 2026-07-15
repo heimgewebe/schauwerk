@@ -1,0 +1,160 @@
+{
+  "schema_version": "schauwerk-miro-native-maintenance-live-evidence.v1",
+  "observed_on": "2026-07-15",
+  "source_receipt_sha256": "f314a436ae535702c2ca70e99f712028adff7c0e927880994bc3a50f0ee45b23",
+  "source_snapshot_sha256": "bb07f7aed7d5dd3b3626455bd78e8a378a9fe23fc9aa36d953d49e84420dbdc7",
+  "board_reference_digest": "e2881a6aee5cefedb5f96893",
+  "bundle_id": "miro-runtime-complete-live-20260715",
+  "bundle_digest": "7f7382300a53fbae880fede9a65a51f9be93cb85c0e5d616c7919f338763c753",
+  "execution_digest": "e35c4b67f152e1f4383a139fc0ac234e1a9a3dd1fa0332b0a5694143765598f5",
+  "success": true,
+  "execution_state": "complete",
+  "live_tool_count": 33,
+  "required_tools": [
+    "board_list_items",
+    "code_widget_delete",
+    "code_widget_get",
+    "code_widget_list_items",
+    "code_widget_update",
+    "context_explore",
+    "context_get",
+    "doc_get",
+    "doc_update",
+    "prototype_create",
+    "prototype_get_upload_url",
+    "table_get_latest_update_history",
+    "user_who_am_i"
+  ],
+  "operation_count": 6,
+  "completed_operation_count": 6,
+  "operations": [
+    {
+      "operation_id": "document-update-live",
+      "kind": "document_update",
+      "verified": true,
+      "call_count": 3,
+      "readback": {
+        "after_content_digest": "65642c6cb025e02fee9f4729eda16eb056ebb39c2974a760f96d508aabbab052",
+        "after_content_version": 1,
+        "before_content_digest": "82749131fbf5910a8cdbc76bf5182dc274ecdc9a7cdc876cd92ecfae483e09d1",
+        "before_content_version": 0,
+        "content_matches": true,
+        "occurrence_count": 1,
+        "replace_all": false
+      }
+    },
+    {
+      "operation_id": "table-history-live",
+      "kind": "table_history",
+      "verified": true,
+      "call_count": 1,
+      "readback": {
+        "entries_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "entry_count": 0,
+        "latest_text_digest": null,
+        "latest_text_matches": true
+      }
+    },
+    {
+      "operation_id": "code-inventory-live",
+      "kind": "code_widget_inventory",
+      "verified": true,
+      "call_count": 1,
+      "readback": {
+        "inventory_digest": "172557b66827851dfebe8aa6c1c5d07827e8b25e9aac283c52363cf10ae22718",
+        "item_count": 2,
+        "page_count": 1,
+        "reported_total": 2
+      }
+    },
+    {
+      "operation_id": "code-update-live",
+      "kind": "code_widget_update",
+      "verified": true,
+      "call_count": 3,
+      "readback": {
+        "after_digest": "38c2ac81ce867cdf20afc48d8a9eee53644b64f475469f183fd63ecaa0284978",
+        "before_digest": "69c3aca7ea2ddbc967bf71dfd07b1782abbafa64dbbd4f45d1637b6ba4321353",
+        "fields_match": true,
+        "updated_fields": [
+          "code",
+          "title",
+          "width"
+        ]
+      }
+    },
+    {
+      "operation_id": "prototype-live",
+      "kind": "prototype",
+      "verified": true,
+      "call_count": 4,
+      "readback": {
+        "context_digest": "358b8f3611373e25380c4246b3e1e7191402e0f0ef01bac1cc7aeecfc2bfa237",
+        "device_type": "tablet",
+        "failed_image_count": 0,
+        "orientation": "landscape",
+        "screen_count": 1,
+        "screen_digests": [
+          "262856f733e578731222370bd43e260a26397cf25d379919635deb870b8db285"
+        ],
+        "successful_image_count": 0
+      }
+    },
+    {
+      "operation_id": "code-delete-live",
+      "kind": "code_widget_delete",
+      "verified": true,
+      "call_count": 4,
+      "readback": {
+        "after_count": 1,
+        "before_count": 2,
+        "deleted_item_digest": "132476f9d84456a6d79c653055e920add7970fdbd90e506f9c3239f0d272c872",
+        "page_count": 1,
+        "target_absent": true
+      }
+    }
+  ],
+  "expected_created_item_count": 1,
+  "expected_deleted_item_count": 1,
+  "expected_net_item_count_delta": 0,
+  "observed_item_count_delta": 0,
+  "preflight_inventory": {
+    "inventory_digest": "bdad83513e5932091e980fea54604a019b0df0541447fb53d69bce5ad9131db6",
+    "item_count": 4,
+    "item_types": {
+      "code": 2,
+      "data_table_format": 1,
+      "doc_format": 1
+    },
+    "page_count": 1
+  },
+  "postflight_inventory": {
+    "inventory_digest": "e4eb8a4001870aa0ed84f90ef66369c9f23d1c34a8f757f7c45dce6acf434822",
+    "item_count": 4,
+    "item_types": {
+      "ai_generation_result": 1,
+      "code": 1,
+      "data_table_format": 1,
+      "doc_format": 1
+    },
+    "page_count": 1
+  },
+  "snapshot": {
+    "item_count": 4,
+    "content_digest": "91a141c4ce2728b9716935fc9a7adcb5c1115bb25b50f171a941fbd216200257",
+    "repeatability_verified": true,
+    "sanitized_references": true
+  },
+  "privacy": {
+    "contains_board_url": false,
+    "contains_provider_item_ids": false,
+    "contains_upload_url_or_token": false,
+    "contains_provider_content": false
+  },
+  "does_not_establish": [
+    "global provider transactionality",
+    "automatic reconciliation of an uncertain non-comment mutation",
+    "visual quality without a separate visual inspection",
+    "Miro Web SDK or REST API authority"
+  ]
+}

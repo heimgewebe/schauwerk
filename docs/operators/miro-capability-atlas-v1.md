@@ -47,31 +47,23 @@ Jedes Paket mit `miro_native` enthält zusätzlich `miro-execution-plan.json`. D
 
 Der Plan mutiert selbst kein Board. Die Ausführung erfolgt nur über typisierte, schema- und receipt-gebundene Laufzeitpfade.
 
-## Operative Abdeckung vom 14. Juli 2026
+## Operative Abdeckung vom 15. Juli 2026
 
-Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Nach Einführung des Native Executors sind davon 26 Werkzeuge in produktiven Schauwerk-Laufzeitpfaden enthalten:
+Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Alle 33 Werkzeuge besitzen jetzt produktive, schema- und receipt-gebundene Schauwerk-Laufzeitpfade:
 
-- Identität und Boardauflösung;
-- Board-Inventar und Kontext;
+- Identität, Boardauflösung, Inventar und Kontext;
 - Layout-Vertrag, Erstellung, Readback und verwaltete Layout-Updates;
 - native Diagramme;
-- Dokumenterstellung und Readback;
-- Tabellenerstellung, Zeilensynchronisierung, Zeilen-Readback und Ansichtswechsel;
-- Code-Widget-Erstellung und Readback;
+- Dokumenterstellung, Readback und digestgebundene Aktualisierung;
+- Tabellenerstellung, Zeilensynchronisierung, Zeilen-Readback, Ansichtswechsel und Update-Historie;
+- Code-Widget-Erstellung, Readback, paginiertes Inventar, Update und Löschung;
+- statische HTML-Prototypen über tokenisierte Uploadslots und Context-Readback;
 - Kommentarerstellung und Readback;
 - Bild-Upload und Bild-Readback.
 
-Damit steigt die operative Abdeckung von 36,4 auf 78,8 Prozent. Die planerische Inkorporation bleibt bei 100 Prozent.
+Die operative und planerische Abdeckung beträgt damit jeweils 100 Prozent. `unincorporated_observed_tools` ist leer. Der Live-Audit ist unter `docs/operators/evidence/miro-capability-audit-20260715.json` gebunden.
 
-Noch nicht operative, aber eingeplante Werkzeuge sind:
-
-- `doc_update`;
-- `table_get_latest_update_history`;
-- `code_widget_list_items`;
-- `code_widget_update`;
-- `code_widget_delete`;
-- `prototype_get_upload_url`;
-- `prototype_create`.
+100 Prozent MCP-Abdeckung bedeutet nicht, dass jede Miro-Produktoberfläche verfügbar ist: REST API und Web SDK besitzen weiterhin getrennte Anwendungs- und Autorisierungsgrenzen. Ebenso bleibt ein vollständiger Bild-Lebenszyklus blockiert, weil der Live-MCP kein `image_delete` bereitstellt.
 
 ## Nachgewiesene Providergrenze: Bilder
 

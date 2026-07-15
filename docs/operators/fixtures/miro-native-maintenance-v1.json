@@ -1,0 +1,61 @@
+{
+  "schema_version": "schauwerk-miro-native-bundle.v1",
+  "bundle_id": "miro-native-maintenance-template-v1",
+  "operations": [
+    {
+      "operation_id": "update-document",
+      "kind": "document_update",
+      "target_miro_url": "https://miro.com/app/board/BOARD_ID=/?moveToWidget=DOCUMENT_ID",
+      "expected_content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "old_content": "Stand: ALT",
+      "new_content": "Stand: VERIFIZIERT"
+    },
+    {
+      "operation_id": "read-table-history",
+      "kind": "table_history",
+      "target_miro_url": "https://miro.com/app/board/BOARD_ID=/?moveToWidget=TABLE_ID",
+      "row_id": "ROW_ID",
+      "expected_min_entries": 0
+    },
+    {
+      "operation_id": "inventory-code-widgets",
+      "kind": "code_widget_inventory",
+      "expected_min_count": 1
+    },
+    {
+      "operation_id": "update-code-widget",
+      "kind": "code_widget_update",
+      "target_miro_url": "https://miro.com/app/board/BOARD_ID=/?moveToWidget=CODE_WIDGET_ID",
+      "expected_before": {
+        "title": "Vorheriger Titel",
+        "width": 800
+      },
+      "set": {
+        "title": "Verifizierter Titel",
+        "width": 900
+      }
+    },
+    {
+      "operation_id": "create-prototype",
+      "kind": "prototype",
+      "screens": [
+        {
+          "path": "miro-native-maintenance-screen.html",
+          "sha256": "3830ba709056e3b7a0f33fdce0e9bbb9d7e7c6d82ccc1efaaccaf6436d95e899"
+        }
+      ],
+      "device_type": "tablet",
+      "orientation": "landscape",
+      "x": 1200,
+      "y": 0
+    },
+    {
+      "operation_id": "delete-code-widget",
+      "kind": "code_widget_delete",
+      "target_miro_url": "https://miro.com/app/board/BOARD_ID=/?moveToWidget=CODE_WIDGET_TO_DELETE_ID",
+      "expected_before": {
+        "title": "Zur kontrollierten Löschung"
+      }
+    }
+  ]
+}

@@ -65,15 +65,16 @@ def test_audit_rejects_duplicate_or_invalid_tool_records() -> None:
         audit_tool_catalogue({"tools": [{}]})
 
 
-def test_live_baseline_reports_native_executor_runtime_coverage() -> None:
+def test_live_baseline_reports_complete_native_runtime_coverage() -> None:
     names = sorted(set().union(*TOOL_FAMILIES.values()))
     report = audit_tool_catalogue(catalogue(*names))
 
     integration = report["adapter_integration"]
     assert report["observed_tool_count"] == 33
-    assert integration["runtime_integrated_observed_count"] == 26
-    assert integration["runtime_integration_coverage_percent"] == 78.8
+    assert integration["runtime_integrated_observed_count"] == 33
+    assert integration["runtime_integration_coverage_percent"] == 100.0
+    assert integration["unincorporated_observed_tools"] == []
     assert "diagram_create" in integration["runtime_integrated_tools"]
-    assert "table_update_view" in integration["runtime_integrated_tools"]
-    assert "code_widget_update" not in integration["runtime_integrated_tools"]
-    assert "prototype_create" not in integration["runtime_integrated_tools"]
+    assert "table_get_latest_update_history" in integration["runtime_integrated_tools"]
+    assert "code_widget_update" in integration["runtime_integrated_tools"]
+    assert "prototype_create" in integration["runtime_integrated_tools"]

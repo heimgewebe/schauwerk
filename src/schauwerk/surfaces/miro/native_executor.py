@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import stat
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import datetime
@@ -22,6 +23,7 @@ NATIVE_BUNDLE_SCHEMA = "schauwerk-miro-native-bundle.v1"
 NATIVE_RECEIPT_SCHEMA = "schauwerk-miro-native-execution-receipt.v1"
 ToolCaller = Callable[[str, dict[str, Any]], Awaitable[Any]]
 CheckpointWriter = Callable[[dict[str, Any]], None]
+HtmlUploader = Callable[[str, bytes], Awaitable[None]]
 
 
 class NativeBundleError(ValueError):
@@ -264,14 +266,26 @@ def required_tools(bundle: Mapping[str, Any]) -> tuple[str, ...]:
             tools.update({"diagram_get_dsl", "diagram_create", "context_get"})
         elif kind == "document":
             tools.update({"doc_create", "doc_get"})
+        elif kind == "document_update":
+            tools.update({"doc_get", "doc_update"})
         elif kind == "table":
             tools.update({"table_create", "table_list_rows"})
             if operation.get("rows"):
                 tools.add("table_sync_rows")
             if operation.get("view"):
                 tools.add("table_update_view")
+        elif kind == "table_history":
+            tools.add("table_get_latest_update_history")
         elif kind == "code_widget":
             tools.update({"code_widget_create", "code_widget_get"})
+        elif kind == "code_widget_inventory":
+            tools.add("code_widget_list_items")
+        elif kind == "code_widget_update":
+            tools.update({"code_widget_get", "code_widget_update"})
+        elif kind == "code_widget_delete":
+            tools.update({"code_widget_get", "code_widget_list_items", "code_widget_delete"})
+        elif kind == "prototype":
+            tools.update({"prototype_get_upload_url", "prototype_create", "context_get"})
         elif kind == "comment":
             tools.update({"comment_create", "comment_list_comments"})
         else:  # pragma: no cover - schema validation owns this branch
@@ -562,6 +576,111 @@ def _operation_position(operation: Mapping[str, Any]) -> dict[str, Any]:
     return {key: operation[key] for key in ("x", "y") if key in operation}
 
 
+def _expected_deleted_item_count(completed: Sequence[Mapping[str, Any]]) -> int:
+    return sum(1 for operation in completed if operation.get("kind") == "code_widget_delete")
+
+
+def _expected_net_item_delta(completed: Sequence[Mapping[str, Any]]) -> int:
+    return _expected_created_item_count(completed) - _expected_deleted_item_count(completed)
+
+
+def _verify_code_widget_fields(
+    widget: Mapping[str, Any], expected: Mapping[str, Any], *, label: str
+) -> None:
+    for key, value in expected.items():
+        returned = widget.get(key)
+        if key in {"width", "x", "y"}:
+            if not isinstance(returned, int | float) or abs(float(returned) - float(value)) > 0.01:
+                raise MiroToolError(f"Miro code-widget {label} {key} does not match")
+        elif returned != value:
+            raise MiroToolError(f"Miro code-widget {label} {key} does not match")
+
+
+def _widget_reference_set(items: Sequence[Any]) -> set[str]:
+    references: set[str] = set()
+    for item in items:
+        if not isinstance(item, Mapping):
+            raise MiroToolError("Miro code-widget inventory contains an invalid item")
+        reference = item.get("miro_url")
+        if not isinstance(reference, str) or not reference:
+            raise MiroToolError("Miro code-widget inventory lacks an item reference")
+        if reference in references:
+            raise MiroToolError("Miro code-widget inventory contains duplicate item references")
+        references.add(reference)
+    return references
+
+
+def _local_html_references(content: str) -> tuple[str, ...]:
+    candidates: list[str] = []
+    patterns = (
+        r"""(?:src|href)\s*=\s*["']([^"']+)["']""",
+        r"""url\(\s*["']?([^"')]+)""",
+        r"""srcset\s*=\s*["']([^"']+)["']""",
+    )
+    for pattern in patterns:
+        for match in re.findall(pattern, content, flags=re.IGNORECASE):
+            values = [part.strip().split()[0] for part in match.split(",")]
+            for value in values:
+                lowered = value.lower()
+                if not value or lowered.startswith(
+                    ("http://", "https://", "data:", "#", "mailto:", "tel:")
+                ):
+                    continue
+                candidates.append(value)
+    return tuple(sorted(set(candidates)))
+
+
+def _load_prototype_screens(
+    operation: Mapping[str, Any], *, bundle_root: Path | None
+) -> tuple[list[bytes], list[str]]:
+    if bundle_root is None:
+        raise NativeBundleError("prototype execution requires a bundle source directory")
+    root = bundle_root.expanduser().absolute()
+    if root.is_symlink() or any(parent.is_symlink() for parent in root.parents):
+        raise NativeBundleError("prototype bundle source directory is unsafe")
+    payloads: list[bytes] = []
+    digests: list[str] = []
+    seen_paths: set[str] = set()
+    for screen in operation["screens"]:
+        relative = Path(screen["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise NativeBundleError("prototype screen paths must stay below the bundle directory")
+        normalized = relative.as_posix()
+        if normalized in seen_paths:
+            raise NativeBundleError("prototype screen paths must be unique")
+        seen_paths.add(normalized)
+        candidate = _safe_input_path(root / relative, label="prototype screen")
+        try:
+            candidate.relative_to(root)
+        except ValueError as exc:
+            raise NativeBundleError("prototype screen path escapes the bundle directory") from exc
+        payload = candidate.read_bytes()
+        if len(payload) > 1_048_576:
+            raise NativeBundleError("prototype screen exceeds the 1 MiB provider limit")
+        digest = hashlib.sha256(payload).hexdigest()
+        if digest != screen["sha256"]:
+            raise NativeBundleError("prototype screen SHA-256 does not match the bundle")
+        try:
+            content = payload.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise NativeBundleError("prototype screens must be UTF-8 HTML") from exc
+        if re.search(r"<\s*script\b", content, flags=re.IGNORECASE) or re.search(
+            r"\son[a-z0-9_-]+\s*=", content, flags=re.IGNORECASE
+        ):
+            raise NativeBundleError(
+                "prototype screens must be static HTML without scripts or inline event handlers"
+            )
+        local_refs = _local_html_references(content)
+        if local_refs:
+            raise NativeBundleError(
+                "prototype screen contains local asset references without image-token authority: "
+                + ", ".join(local_refs[:5])
+            )
+        payloads.append(payload)
+        digests.append(digest)
+    return payloads, digests
+
+
 def _expected_created_item_count(completed: Sequence[Mapping[str, Any]]) -> int:
     total = 0
     for operation in completed:
@@ -574,9 +693,16 @@ def _expected_created_item_count(completed: Sequence[Mapping[str, Any]]) -> int:
             if isinstance(created_count, bool) or not isinstance(created_count, int):
                 raise MiroToolError("layout receipt lacks a valid created count")
             total += created_count
-        elif kind in {"diagram", "document", "table", "code_widget"}:
+        elif kind in {"diagram", "document", "table", "code_widget", "prototype"}:
             total += 1
-        elif kind != "comment":
+        elif kind not in {
+            "comment",
+            "document_update",
+            "table_history",
+            "code_widget_inventory",
+            "code_widget_update",
+            "code_widget_delete",
+        }:
             raise MiroToolError("native operation receipt contains an unknown kind")
     return total
 
@@ -607,6 +733,8 @@ async def execute_native_bundle(
     bundle: Mapping[str, Any],
     checkpoint: CheckpointWriter | None = None,
     resume_receipt: Mapping[str, Any] | None = None,
+    bundle_root: Path | None = None,
+    upload_html: HtmlUploader | None = None,
 ) -> dict[str, Any]:
     """Apply one validated bundle sequentially and checkpoint sanitized evidence."""
 
@@ -735,6 +863,54 @@ async def execute_native_bundle(
             cursor = next_cursor
         raise MiroToolError("Miro table readback exceeds the 20-page safety limit")
 
+    async def read_all_code_widgets(target_url: str) -> tuple[list[Any], int, int]:
+        items: list[Any] = []
+        cursor: str | None = None
+        seen_cursors: set[str] = set()
+        reported_total: int | None = None
+        for page_count in range(1, 21):
+            arguments: dict[str, Any] = {"limit": 50}
+            if cursor is not None:
+                arguments["cursor"] = cursor
+            payload = await invoke(
+                "code_widget_list_items",
+                _base_arguments(target_url, arguments),
+            )
+            if payload.get("success") is not True:
+                raise MiroToolError("Miro code-widget inventory failed")
+            page = _list(payload, "items")
+            total_value = payload.get("total")
+            if total_value is not None:
+                if (
+                    isinstance(total_value, bool)
+                    or not isinstance(total_value, int)
+                    or total_value < 0
+                ):
+                    raise MiroToolError("Miro code-widget inventory total is invalid")
+                if reported_total is None:
+                    reported_total = total_value
+                    if total_value > 1000:
+                        raise MiroToolError("Miro code-widget inventory exceeds the safety limit")
+                elif reported_total != total_value:
+                    raise MiroToolError(
+                        "Miro code-widget inventory total changed during pagination"
+                    )
+            items.extend(page)
+            next_cursor = payload.get("cursor")
+            if next_cursor is None:
+                total = len(items) if reported_total is None else reported_total
+                if len(items) != total:
+                    raise MiroToolError("Miro code-widget pagination is incomplete")
+                _widget_reference_set(items)
+                return items, total, page_count
+            if not isinstance(next_cursor, str) or not next_cursor:
+                raise MiroToolError("Miro code-widget pagination cursor is invalid")
+            if next_cursor in seen_cursors:
+                raise MiroToolError("Miro code-widget pagination repeated a cursor")
+            seen_cursors.add(next_cursor)
+            cursor = next_cursor
+        raise MiroToolError("Miro code-widget inventory exceeds the 20-page safety limit")
+
     async def read_all_comments(target_url: str) -> list[Any]:
         comments: list[Any] = []
         offset = 0
@@ -821,6 +997,8 @@ async def execute_native_bundle(
                 "context": after_context,
             },
             "expected_created_item_count": _expected_created_item_count(completed),
+            "expected_deleted_item_count": _expected_deleted_item_count(completed),
+            "expected_net_item_count_delta": _expected_net_item_delta(completed),
             "observed_item_count_delta": (
                 after_inventory["item_count"]
                 - (original_preflight or {"inventory": before_inventory})["inventory"]["item_count"]
@@ -851,8 +1029,8 @@ async def execute_native_bundle(
         if resume is not None:
             baseline_inventory = resume["preflight"]["inventory"]
             resume_item_delta = before_inventory["item_count"] - baseline_inventory["item_count"]
-            expected_resume_items = _expected_created_item_count(completed)
-            if resume_item_delta < expected_resume_items:
+            expected_resume_delta = _expected_net_item_delta(completed)
+            if resume_item_delta < expected_resume_delta:
                 raise MiroToolError(
                     "Miro board inventory does not expose the verified resume prefix"
                 )
@@ -1093,6 +1271,249 @@ async def execute_native_bundle(
                     "position_matches": position_matches,
                 }
 
+            elif kind == "document_update":
+                item_url = target_url
+                before = await invoke("doc_get", _base_arguments(item_url, {}))
+                before_content = before.get("content")
+                if not isinstance(before_content, str):
+                    raise MiroToolError("Miro document preflight lacks content")
+                before_digest = _text_digest(_normalized_text(before_content))
+                if before_digest != operation["expected_content_sha256"]:
+                    raise MiroToolError("Miro document preflight digest does not match")
+                occurrences = before_content.count(operation["old_content"])
+                if occurrences < 1:
+                    raise MiroToolError("Miro document preflight cannot find the exact old content")
+                replace_all = operation.get("replace_all", False)
+                expected_content = before_content.replace(
+                    operation["old_content"],
+                    operation["new_content"],
+                    -1 if replace_all else 1,
+                )
+                pending_operation_id = operation["operation_id"]
+                pending_tool = "doc_update"
+                if checkpoint is not None:
+                    checkpoint(build_receipt(success=False, error_code="in_progress"))
+                mutation_started = True
+                updated = await invoke(
+                    "doc_update",
+                    _base_arguments(
+                        item_url,
+                        {
+                            "old_content": operation["old_content"],
+                            "new_content": operation["new_content"],
+                            "replace_all": replace_all,
+                        },
+                    ),
+                )
+                if updated.get("success") is not True:
+                    raise MiroToolError("Miro document update failed")
+                after = await invoke("doc_get", _base_arguments(item_url, {}))
+                after_content = after.get("content")
+                if not isinstance(after_content, str):
+                    raise MiroToolError("Miro document update readback lacks content")
+                if _normalized_text(after_content) != _normalized_text(expected_content):
+                    raise MiroToolError("Miro document update readback does not match")
+                before_version = _integer(before, "content_version")
+                after_version = _integer(after, "content_version")
+                if after_version <= before_version:
+                    raise MiroToolError("Miro document content version did not advance")
+                readback = {
+                    "before_content_digest": before_digest,
+                    "after_content_digest": _text_digest(_normalized_text(after_content)),
+                    "occurrence_count": occurrences,
+                    "replace_all": replace_all,
+                    "before_content_version": before_version,
+                    "after_content_version": after_version,
+                    "content_matches": True,
+                }
+
+            elif kind == "table_history":
+                item_url = target_url
+                history = await invoke(
+                    "table_get_latest_update_history",
+                    _base_arguments(item_url, {"row_id": operation["row_id"]}),
+                )
+                entries = _list(history, "entries")
+                total = _integer(history, "total")
+                if len(entries) != total:
+                    raise MiroToolError("Miro table update history total is inconsistent")
+                minimum = operation.get("expected_min_entries", 0)
+                if total < minimum:
+                    raise MiroToolError("Miro table update history is shorter than expected")
+                expected_latest = operation.get("expected_latest_text")
+                latest_text: str | None = None
+                if entries:
+                    latest = entries[-1]
+                    if not isinstance(latest, Mapping):
+                        raise MiroToolError("Miro table update history contains an invalid entry")
+                    raw_latest = latest.get("text")
+                    if raw_latest is not None and not isinstance(raw_latest, str):
+                        raise MiroToolError("Miro table update history latest text is invalid")
+                    latest_text = raw_latest
+                if expected_latest is not None and latest_text != expected_latest:
+                    raise MiroToolError("Miro table update history latest text does not match")
+                readback = {
+                    "entry_count": total,
+                    "entries_digest": _digest(entries),
+                    "latest_text_digest": _text_digest(latest_text)
+                    if latest_text is not None
+                    else None,
+                    "latest_text_matches": expected_latest is None
+                    or latest_text == expected_latest,
+                }
+
+            elif kind == "code_widget_inventory":
+                items, total, page_count = await read_all_code_widgets(target_url)
+                minimum = operation.get("expected_min_count", 0)
+                if total < minimum:
+                    raise MiroToolError("Miro code-widget inventory is smaller than expected")
+                readback = {
+                    "item_count": len(items),
+                    "reported_total": total,
+                    "page_count": page_count,
+                    "inventory_digest": _digest(sorted(_digest(dict(item)) for item in items)),
+                }
+
+            elif kind == "code_widget_update":
+                item_url = target_url
+                before = await invoke("code_widget_get", _base_arguments(item_url, {}))
+                if before.get("success") is not True:
+                    raise MiroToolError("Miro code-widget update preflight failed")
+                _verify_code_widget_fields(before, operation["expected_before"], label="preflight")
+                pending_operation_id = operation["operation_id"]
+                pending_tool = "code_widget_update"
+                if checkpoint is not None:
+                    checkpoint(build_receipt(success=False, error_code="in_progress"))
+                mutation_started = True
+                updated = await invoke(
+                    "code_widget_update",
+                    _base_arguments(item_url, operation["set"]),
+                )
+                if updated.get("success") is not True:
+                    raise MiroToolError("Miro code-widget update failed")
+                after = await invoke("code_widget_get", _base_arguments(item_url, {}))
+                if after.get("success") is not True:
+                    raise MiroToolError("Miro code-widget update readback failed")
+                _verify_code_widget_fields(after, operation["set"], label="readback")
+                readback = {
+                    "before_digest": _digest(dict(before)),
+                    "after_digest": _digest(dict(after)),
+                    "updated_fields": sorted(operation["set"]),
+                    "fields_match": True,
+                }
+
+            elif kind == "code_widget_delete":
+                item_url = target_url
+                before = await invoke("code_widget_get", _base_arguments(item_url, {}))
+                if before.get("success") is not True:
+                    raise MiroToolError("Miro code-widget delete preflight failed")
+                _verify_code_widget_fields(before, operation["expected_before"], label="preflight")
+                items_before, total_before, _pages_before = await read_all_code_widgets(board_url)
+                if item_url not in _widget_reference_set(items_before):
+                    raise MiroToolError("Miro code-widget delete target is absent from inventory")
+                pending_operation_id = operation["operation_id"]
+                pending_tool = "code_widget_delete"
+                if checkpoint is not None:
+                    checkpoint(build_receipt(success=False, error_code="in_progress"))
+                mutation_started = True
+                deleted = await invoke("code_widget_delete", _base_arguments(item_url, {}))
+                if deleted.get("success") is not True:
+                    raise MiroToolError("Miro code-widget deletion failed")
+                items_after, total_after, page_count = await read_all_code_widgets(board_url)
+                if item_url in _widget_reference_set(items_after):
+                    raise MiroToolError(
+                        "Miro code-widget deletion readback still contains the target"
+                    )
+                if total_after != total_before - 1:
+                    raise MiroToolError(
+                        "Miro code-widget inventory did not decrease by exactly one"
+                    )
+                readback = {
+                    "before_count": total_before,
+                    "after_count": total_after,
+                    "page_count": page_count,
+                    "target_absent": True,
+                    "deleted_item_digest": _digest(dict(before)),
+                }
+
+            elif kind == "prototype":
+                if upload_html is None:
+                    raise NativeBundleError("prototype execution requires an HTML upload transport")
+                screen_payloads, screen_digests = _load_prototype_screens(
+                    operation, bundle_root=bundle_root
+                )
+                reservation = await invoke(
+                    "prototype_get_upload_url",
+                    _base_arguments(target_url, {"count": len(screen_payloads)}),
+                )
+                slots = _list(reservation, "result")
+                if len(slots) != len(screen_payloads):
+                    raise MiroToolError("Miro prototype upload reservation count does not match")
+                tokens: list[str] = []
+                for index, (slot, payload) in enumerate(zip(slots, screen_payloads, strict=True)):
+                    if not isinstance(slot, Mapping):
+                        raise MiroToolError("Miro prototype upload reservation is invalid")
+                    upload_url = slot.get("upload_url")
+                    token = slot.get("token")
+                    expires_in = slot.get("expires_in")
+                    if not isinstance(upload_url, str) or not upload_url.startswith("https://"):
+                        raise MiroToolError("Miro prototype upload URL is invalid")
+                    if not isinstance(token, str) or not token:
+                        raise MiroToolError("Miro prototype upload token is invalid")
+                    if (
+                        isinstance(expires_in, bool)
+                        or not isinstance(expires_in, int)
+                        or expires_in <= 0
+                    ):
+                        raise MiroToolError("Miro prototype upload expiry is invalid")
+                    await upload_html(upload_url, payload)
+                    calls.append(
+                        {
+                            "index": len(calls) + 1,
+                            "tool": "prototype_html_upload",
+                            "input_digest": _digest(
+                                {"screen_index": index, "content_sha256": screen_digests[index]}
+                            ),
+                            "output_digest": _digest({"uploaded": True}),
+                        }
+                    )
+                    tokens.append(token)
+                pending_operation_id = operation["operation_id"]
+                pending_tool = "prototype_create"
+                if checkpoint is not None:
+                    checkpoint(build_receipt(success=False, error_code="in_progress"))
+                mutation_started = True
+                created = await invoke(
+                    "prototype_create",
+                    _base_arguments(
+                        target_url,
+                        {
+                            "html_tokens": tokens,
+                            "device_type": operation.get("device_type", "desktop"),
+                            "orientation": operation.get("orientation", "landscape"),
+                            **_operation_position(operation),
+                        },
+                    ),
+                )
+                if created.get("success") is not True:
+                    raise MiroToolError("Miro prototype creation failed")
+                if _integer(created, "failed_image_count") != 0:
+                    raise MiroToolError("Miro prototype creation reported failed images")
+                item_url = _item_url(created, "prototype_create")
+                context = await invoke("context_get", _base_arguments(item_url, {}))
+                content = context.get("content")
+                if not isinstance(content, str) or not content.strip():
+                    raise MiroToolError("Miro prototype context readback is empty")
+                readback = {
+                    "screen_count": len(screen_payloads),
+                    "screen_digests": screen_digests,
+                    "context_digest": _text_digest(content),
+                    "successful_image_count": _integer(created, "successful_image_count"),
+                    "failed_image_count": 0,
+                    "device_type": operation.get("device_type", "desktop"),
+                    "orientation": operation.get("orientation", "landscape"),
+                }
+
             elif kind == "comment":
                 reconcile_pending = bool(
                     resume is not None
@@ -1171,7 +1592,7 @@ async def execute_native_bundle(
         if not isinstance(baseline_inventory, Mapping):
             raise MiroToolError("native execution lacks a baseline board inventory")
         observed_delta = after_inventory["item_count"] - baseline_inventory["item_count"]
-        expected_delta = _expected_created_item_count(completed)
+        expected_delta = _expected_net_item_delta(completed)
         if observed_delta < expected_delta:
             raise MiroToolError("Miro board inventory did not expose all created native items")
         receipt = build_receipt(success=True)
