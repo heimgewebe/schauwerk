@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Schauwerk</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="panel" aria-live="polite">
+      <header class="panel-header">
+        <div>
+          <p class="eyebrow">Schauwerk</p>
+          <h1 id="panel-title">Miro-Begleitung</h1>
+        </div>
+        <span id="mode-badge" class="badge">Lädt</span>
+      </header>
+
+      <section class="card" aria-labelledby="status-heading">
+        <div class="section-heading">
+          <h2 id="status-heading">Abnahmestand</h2>
+          <span id="state-badge" class="badge">—</span>
+        </div>
+        <dl class="metric-grid">
+          <div><dt>Qualität</dt><dd id="quality-score">—</dd></div>
+          <div><dt>Operationen</dt><dd id="operation-count">—</dd></div>
+          <div><dt>Snapshot</dt><dd id="snapshot-digest">—</dd></div>
+          <div><dt>Ausführung</dt><dd id="execution-digest">—</dd></div>
+        </dl>
+        <ul id="findings" class="findings"></ul>
+      </section>
+
+      <section class="card" aria-labelledby="board-heading">
+        <div class="section-heading">
+          <h2 id="board-heading">Board-Kontext</h2>
+          <button id="refresh-button" class="button secondary" type="button">Aktualisieren</button>
+        </div>
+        <p id="board-summary" class="muted">Boarddaten werden geladen.</p>
+        <p id="board-id" class="mono" hidden></p>
+      </section>
+
+      <section class="card" aria-labelledby="selection-heading">
+        <div class="section-heading">
+          <h2 id="selection-heading">Auswahl</h2>
+          <button id="focus-selection" class="button" type="button" disabled>Fokussieren</button>
+        </div>
+        <ol id="selection-list" class="item-list"></ol>
+      </section>
+
+      <section class="card" aria-labelledby="presentation-heading">
+        <div class="section-heading">
+          <h2 id="presentation-heading">Präsentationsweg</h2>
+          <span id="frame-position" class="muted">0 / 0</span>
+        </div>
+        <p id="frame-title" class="frame-title">Keine Frames verfügbar.</p>
+        <div class="button-row">
+          <button id="previous-frame" class="button secondary" type="button" disabled>Zurück</button>
+          <button id="focus-frame" class="button" type="button" disabled>Frame fokussieren</button>
+          <button id="next-frame" class="button secondary" type="button" disabled>Weiter</button>
+        </div>
+      </section>
+
+      <p id="error-message" class="error" hidden></p>
+    </main>
+    <script src="https://miro.com/app/static/sdk/v2/miro.js"></script>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

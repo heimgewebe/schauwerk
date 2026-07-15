@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.invalid/schemas/miro-web-sdk-companion.v1.schema.json",
+  "title": "Schauwerk Miro Web SDK companion configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "app_name",
+    "panel_title",
+    "panel_height",
+    "max_frames",
+    "selection_limit",
+    "show_board_id",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "schauwerk-miro-web-sdk-companion.v1"
+    },
+    "app_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "panel_title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "panel_height": {
+      "type": "integer",
+      "minimum": 240,
+      "maximum": 1200
+    },
+    "max_frames": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+    },
+    "selection_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "show_board_id": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "quality_score",
+        "operation_count",
+        "completed_operation_count",
+        "snapshot_digest",
+        "execution_digest",
+        "findings"
+      ],
+      "properties": {
+        "state": {
+          "enum": ["verified", "degraded", "failed", "unknown"]
+        },
+        "quality_score": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "operation_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "completed_operation_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "snapshot_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "execution_digest": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 240
+          }
+        }
+      }
+    }
+  }
+}

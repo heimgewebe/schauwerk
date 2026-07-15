@@ -11,6 +11,8 @@ from .cli_handlers import (
     handle_board_list,
     handle_board_remove,
     handle_capability_audit,
+    handle_companion_build,
+    handle_companion_check,
     handle_doctor,
     handle_durable_adapter_catalog,
     handle_durable_adapter_collect,
@@ -326,6 +328,10 @@ def main(argv: list[str] | None = None) -> int:
                 output=args.output,
                 resume=args.resume,
             )
+        elif args.command == "companion" and args.companion_command == "build":
+            result = handle_companion_build(input_path=args.input, output_dir=args.output_dir)
+        elif args.command == "companion" and args.companion_command == "check":
+            result = handle_companion_check(output_dir=args.output_dir)
         elif args.command == "doctor":
             result = handle_doctor(live=not args.no_live)
         elif args.command == "inspect":

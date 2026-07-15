@@ -1,0 +1,18 @@
+{
+  "schema_version": "schauwerk-miro-web-sdk-companion.v1",
+  "app_name": "Schauwerk Miro Companion",
+  "panel_title": "Schauwerk – Boardkontext und Abnahme",
+  "panel_height": 760,
+  "max_frames": 80,
+  "selection_limit": 20,
+  "show_board_id": false,
+  "status": {
+    "state": "verified",
+    "quality_score": 100,
+    "operation_count": 6,
+    "completed_operation_count": 6,
+    "snapshot_digest": "91a141c4ce2728b9716935fc9a7adcb5c1115bb25b50f171a941fbd216200257",
+    "execution_digest": "e35c4b67f152e1f4383a139fc0ac234e1a9a3dd1fa0332b0a5694143765598f5",
+    "findings": []
+  }
+}
