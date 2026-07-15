@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017, das semantische Visual System v2 in SW-018 und den rendererübergreifenden Darstellungsrouter in SW-019.
+**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017, das semantische Visual System v2 in SW-018, den rendererübergreifenden Darstellungsrouter in SW-019 und die paketgebundene Miro-Auslieferung in SW-020.
 
 ## Zielbild
 
@@ -131,6 +131,17 @@ Der Router bewertet Darstellungsabsicht und Anforderungen, wählt begründet Mer
 
 Siehe `docs/plans/schauwerk-representation-router-v1.md`.
 
+## Representation Delivery v1
+
+```bash
+schauwerk visual package-check /tmp/schauwerk-representation --json
+schauwerk visual deliver operator-ecosystem /tmp/schauwerk-representation --output-dir /tmp/schauwerk-delivery --json
+```
+
+`package-check` rekonstruiert alle deterministischen Artefakte und führt keinen Providerkontakt aus. `deliver` friert das geprüfte Native Bundle create-only ein, nutzt den vorhandenen Miro-Native-Executor und bindet Paket, Provider-Readback und Abschlussbeleg. Der Lauf ist sequenziell, nicht providerweit atomisch.
+
+Siehe `docs/operators/representation-delivery-v1.md`.
+
 ## Learning View
 
 ```bash
@@ -212,5 +223,6 @@ Siehe `docs/integration/source-adapters-v1.md` und `docs/operations/durable-oper
 - SW-017: lokale Betriebsprofile, Health-, Backup-, gestagte Restore-, OAuth-Rotations- und Kill-Switch-Drill-Verträge
 - SW-018: semantisches Visual System v2 mit narrativer Boardarchitektur, zweckgebundener Objektwahl, messbarer Dichte und strengem Qualitätsgate
 - SW-019: semantischer Darstellungsrouter mit Mermaid-, JSON-Canvas-, Miro-, Tabellen- und Dokumentausgabe sowie expliziter Rendererabdeckung
+- SW-020: paketgebundene Native-Bundle-Auslieferung mit vollständiger Rekonstruktion, eingefrorenem Provider-Payload, Checkpoint, Resume und Abschlussbeleg
 
 Siehe `docs/roadmap.md`.

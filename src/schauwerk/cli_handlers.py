@@ -136,6 +136,11 @@ from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .surfaces.miro.rest_client import MiroRestClient
 from .surfaces.miro.rest_credentials import MiroRestTokenStorage
 from .surfaces.miro.web_sdk_companion import build_companion, verify_companion
+from .visual.delivery import (
+    NativeDeliveryClient,
+    check_representation_package,
+)
+from .visual.delivery_runtime import deliver_representation_package
 from .visual.grammar import (
     validate_visual_grammar,
     visual_grammar_manifest,
@@ -508,6 +513,29 @@ def handle_visual_route(*, input_path: str, output_dir: str) -> dict[str, Any]:
     return compile_representation_package(
         input_path=Path(input_path),
         output_dir=Path(output_dir),
+    )
+
+
+def handle_visual_package_check(*, package_dir: str) -> dict[str, Any]:
+    return check_representation_package(Path(package_dir))
+
+
+def handle_visual_deliver(
+    *,
+    alias: str,
+    package_dir: str,
+    output_dir: str,
+    resume: bool,
+    client: NativeDeliveryClient | None = None,
+) -> dict[str, Any]:
+    return asyncio.run(
+        deliver_representation_package(
+            alias=alias,
+            package_dir=Path(package_dir),
+            output_dir=Path(output_dir),
+            client=client or MiroMCPClient(),
+            resume=resume,
+        )
     )
 
 

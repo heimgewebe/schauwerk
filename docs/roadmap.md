@@ -204,6 +204,20 @@ Command graph:
 
 **Gate:** passed by adversarial narrative, object-misuse, density, connector and digest tests plus one new Education-team reference board with remote conformance and human-visible UI review.
 
+## SW-019 — Representation Router v1
+
+**Implementation status:** complete for the deterministic multi-renderer package. One normalized representation input selects Mermaid, JSON Canvas, Miro-native, document and table outputs with explicit reasons, coverage and nonclaims. All artifacts are digest-bound to the same input and route plan.
+
+**Gate:** passed by deterministic rebuild, source-ID preservation, renderer coverage, Miro quality and adversarial input tests.
+
+## SW-020 — Representation Delivery v1
+
+**Implementation status:** complete for package-bound delivery through the existing Miro Native Executor. The runtime recomputes every deterministic artifact, rejects extra or semantically resigned changes, freezes the exact Native Bundle before provider contact, serializes one output through a nonblocking lock and binds provider postflight to an outer delivery receipt.
+
+Provider operations remain sequential and non-atomic. Aesthetic acceptance remains a separate UI review. REST authorization and the managed image lifecycle remain separate provider boundaries.
+
+**Gate:** passed by package-integrity, semantic-tamper, payload-freeze, lock, output-boundary, provider-readback and reconciliation tests.
+
 ## Release levels
 
 ### Foundation
@@ -219,7 +233,7 @@ SW-011 through SW-013.
 SW-014 through SW-017.
 
 ### Visually governed
-SW-018.
+SW-018 through SW-020.
 
 ## Explicit non-goals for the first releases
 

@@ -93,7 +93,9 @@ from .cli_handlers import (
     handle_stage_build,
     handle_status,
     handle_tools,
+    handle_visual_deliver,
     handle_visual_grammar,
+    handle_visual_package_check,
     handle_visual_reference_v2,
     handle_visual_review_v2,
     handle_visual_route,
@@ -175,6 +177,15 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_visual_route(
                 input_path=args.input,
                 output_dir=args.output_dir,
+            )
+        elif args.provider == "visual" and args.command == "package-check":
+            result = handle_visual_package_check(package_dir=args.package_dir)
+        elif args.provider == "visual" and args.command == "deliver":
+            result = handle_visual_deliver(
+                alias=args.alias,
+                package_dir=args.package_dir,
+                output_dir=args.output_dir,
+                resume=args.resume,
             )
         elif args.provider == "regie" and args.command == "context-template":
             result = handle_regie_context_template(

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.org/schauwerk/schemas/representation-delivery-receipt.v1.schema.json",
+  "title": "Schauwerk Representation Delivery Receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "success",
+    "package_digest",
+    "manifest_sha256",
+    "input_digest",
+    "plan_digest",
+    "native_bundle_digest",
+    "native_bundle_sha256",
+    "native_execution_digest",
+    "native_receipt_sha256",
+    "board_alias",
+    "selected_formats",
+    "native_operation_count",
+    "completed_operation_count",
+    "quality_score",
+    "provider_readback_verified",
+    "resumed",
+    "mutation_attempted",
+    "globally_atomic",
+    "truth_boundary",
+    "delivery_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-representation-delivery-receipt.v1"},
+    "success": {"const": true},
+    "package_digest": {"$ref": "#/$defs/sha256"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "input_digest": {"$ref": "#/$defs/sha256"},
+    "plan_digest": {"$ref": "#/$defs/sha256"},
+    "native_bundle_digest": {"$ref": "#/$defs/sha256"},
+    "native_bundle_sha256": {"$ref": "#/$defs/sha256"},
+    "native_execution_digest": {"$ref": "#/$defs/sha256"},
+    "native_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "board_alias": {"type": "string", "minLength": 1, "maxLength": 128},
+    "selected_formats": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["miro_native", "canvas", "document", "table", "mermaid"]}
+    },
+    "native_operation_count": {"type": "integer", "minimum": 1, "maximum": 20},
+    "completed_operation_count": {"type": "integer", "minimum": 1, "maximum": 20},
+    "quality_score": {
+      "anyOf": [{"type": "integer", "minimum": 0, "maximum": 100}, {"type": "null"}]
+    },
+    "provider_readback_verified": {"const": true},
+    "resumed": {"type": "boolean"},
+    "mutation_attempted": {"type": "boolean"},
+    "globally_atomic": {"const": false},
+    "truth_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_operations_are_sequential",
+        "rollback_available_for_all_item_types",
+        "package_integrity_recomputed_before_provider_contact",
+        "provider_payload_frozen_before_provider_contact",
+        "aesthetic_quality_requires_human_review"
+      ],
+      "properties": {
+        "provider_operations_are_sequential": {"const": true},
+        "rollback_available_for_all_item_types": {"const": false},
+        "package_integrity_recomputed_before_provider_contact": {"const": true},
+        "provider_payload_frozen_before_provider_contact": {"const": true},
+        "aesthetic_quality_requires_human_review": {"const": true}
+      }
+    },
+    "delivery_digest": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
