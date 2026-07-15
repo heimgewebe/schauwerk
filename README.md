@@ -6,7 +6,7 @@ Schauwerk ist die visuelle Arbeits-, Projektions- und Publikationsschicht des He
 
 ## Status
 
-**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017, das semantische Visual System v2 in SW-018, den rendererübergreifenden Darstellungsrouter in SW-019 und die paketgebundene Miro-Auslieferung in SW-020.
+**Product surface complete; integrated, durable and visually governed local v2.** Das Repository enthält die vollständigen lokalen Produktflächen bis SW-013, die providerneutralen Integrations- und Recovery-Verträge bis SW-017, das semantische Visual System v2 in SW-018, den rendererübergreifenden Darstellungsrouter in SW-019, die paketgebundene Miro-Auslieferung in SW-020 und die deterministische visuelle Vorab- und Regressionsprüfung in SW-021.
 
 ## Zielbild
 
@@ -142,6 +142,21 @@ schauwerk visual deliver operator-ecosystem /tmp/schauwerk-representation --outp
 
 Siehe `docs/operators/representation-delivery-v1.md`.
 
+## Visual Preview & Regression v1
+
+```bash
+schauwerk visual preview /tmp/schauwerk-representation \
+  --output-dir /tmp/schauwerk-preview --json
+schauwerk visual compare \
+  /tmp/schauwerk-preview-baseline/preview.json \
+  /tmp/schauwerk-preview-candidate/preview.json \
+  --output /tmp/schauwerk-visual-regression.json --json
+```
+
+`preview` erzeugt ohne Providerkontakt pro Frame ein digestgebundenes SVG sowie einen lokalen HTML-Index und erkennt leere Inhalte, Textüberlauf, Clipping und erwartbare Überlappungen. `compare` meldet semantische Änderungen und blockiert neue visuelle Blocker. Die Vorschau ersetzt weder Miro-Readback noch menschliche Sichtprüfung.
+
+Siehe `docs/operators/visual-preview-regression-v1.md`.
+
 ## Learning View
 
 ```bash
@@ -224,5 +239,6 @@ Siehe `docs/integration/source-adapters-v1.md` und `docs/operations/durable-oper
 - SW-018: semantisches Visual System v2 mit narrativer Boardarchitektur, zweckgebundener Objektwahl, messbarer Dichte und strengem Qualitätsgate
 - SW-019: semantischer Darstellungsrouter mit Mermaid-, JSON-Canvas-, Miro-, Tabellen- und Dokumentausgabe sowie expliziter Rendererabdeckung
 - SW-020: paketgebundene Native-Bundle-Auslieferung mit vollständiger Rekonstruktion, eingefrorenem Provider-Payload, Checkpoint, Resume und Abschlussbeleg
+- SW-021: deterministische Offline-SVG-Vorschau, Auto-Size-/Überlappungsprüfung und semantischer Baselinevergleich vor Providerkontakt
 
 Siehe `docs/roadmap.md`.

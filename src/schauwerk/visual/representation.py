@@ -683,20 +683,6 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
             route_rows,
         )
     )
-    for index, node in enumerate(nodes[8:10]):
-        role, color = _miro_role(str(node["kind"]))
-        frames[3]["objects"].append(
-            shape_object(
-                str(node["id"]),
-                role,
-                140 + index * 440,
-                460,
-                360,
-                80,
-                str(node["label"]),
-                color=color,
-            )
-        )
     for index, name in enumerate(plan["selected_formats"][:4]):
         frames[4]["objects"].append(
             shape_object(
@@ -708,6 +694,20 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
                 120,
                 name,
                 color="decision",
+            )
+        )
+    for index, node in enumerate(nodes[8:10]):
+        role, color = _miro_role(str(node["kind"]))
+        frames[4]["objects"].append(
+            shape_object(
+                str(node["id"]),
+                role,
+                140 + index * 440,
+                460,
+                360,
+                80,
+                str(node["label"]),
+                color=color,
             )
         )
     evidence_markdown = (

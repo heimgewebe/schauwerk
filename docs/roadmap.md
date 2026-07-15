@@ -218,6 +218,21 @@ Provider operations remain sequential and non-atomic. Aesthetic acceptance remai
 
 **Gate:** passed by package-integrity, semantic-tamper, payload-freeze, lock, output-boundary, provider-readback and reconciliation tests.
 
+## SW-021 — Visual Preview & Regression v1
+
+**Implementation status:** complete for the deterministic provider-free preview contract. A validated representation package now produces one owner-only SVG per Miro frame, a local HTML index and a digest-bound preview receipt. Conservative text and auto-size estimation detects empty content, text overflow, clipping, missing connector endpoints and expected object overlaps before any provider contact. Semantic comparison reports added, removed, changed and moved objects and fails when new visual blockers appear or blocker counts increase.
+
+The first preview run exposed a latent layout defect that the declared-box quality gate could not see: the auto-sized decision table grew from 160 to 256 pixels and overlapped the quality gate and kill switch. Both nodes were moved into an unused second row of the delivery frame; the canonical operator-ecosystem package now has zero preview blockers. Provider rendering, exact font metrics and human aesthetic acceptance remain separate evidence.
+
+Command graph:
+
+- preview path: `validated package → reconstructed Miro board → geometry analysis → SVG + HTML + preview receipt`;
+- integrity path: `preview receipt → exact file set + internal digests + SVG/HTML SHA-256`;
+- regression path: `baseline preview + candidate preview → semantic delta + blocker comparison`;
+- provider path: `passing local preview → separately authorized Representation Delivery`.
+
+**Gate:** passed by deterministic rebuild, prior auto-size overlap reproduction, text-overflow regression, exact-file-set, tamper, path-safety, schema and CLI tests.
+
 ## Release levels
 
 ### Foundation
@@ -233,7 +248,7 @@ SW-011 through SW-013.
 SW-014 through SW-017.
 
 ### Visually governed
-SW-018 through SW-020.
+SW-018 through SW-021.
 
 ## Explicit non-goals for the first releases
 

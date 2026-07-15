@@ -141,6 +141,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     visual_package_check.add_argument("package_dir")
     visual_package_check.add_argument("--json", action="store_true")
+    visual_preview = visual_commands.add_parser(
+        "preview", help="render and analyze a deterministic offline visual package preview"
+    )
+    visual_preview.add_argument("package_dir")
+    visual_preview.add_argument("--output-dir", required=True)
+    visual_preview.add_argument("--json", action="store_true")
+    visual_compare = visual_commands.add_parser(
+        "compare", help="compare two visual preview receipts for semantic regressions"
+    )
+    visual_compare.add_argument("baseline")
+    visual_compare.add_argument("candidate")
+    visual_compare.add_argument("--output", required=True)
+    visual_compare.add_argument("--json", action="store_true")
     visual_deliver = visual_commands.add_parser(
         "deliver", help="deliver one representation package through Miro"
     )
