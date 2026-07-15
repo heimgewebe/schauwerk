@@ -47,7 +47,7 @@ def _validated_upload_url(value: str) -> str:
         parsed = urlsplit(value)
         port = parsed.port
     except ValueError as exc:
-        raise MiroConnectionError("Miro prototype upload URL is invalid") from exc
+        raise MiroConnectionError("Miro upload URL is invalid") from exc
     hostname = (parsed.hostname or "").rstrip(".").lower()
     if (
         parsed.scheme != "https"
@@ -60,13 +60,13 @@ def _validated_upload_url(value: str) -> str:
         or hostname == "localhost"
         or hostname.endswith((".localhost", ".local", ".internal"))
     ):
-        raise MiroConnectionError("Miro prototype upload URL is unsafe")
+        raise MiroConnectionError("Miro upload URL is unsafe")
     try:
         address = ipaddress.ip_address(hostname)
     except ValueError:
         address = None
     if address is not None and not address.is_global:
-        raise MiroConnectionError("Miro prototype upload URL is unsafe")
+        raise MiroConnectionError("Miro upload URL is unsafe")
     return value
 
 
@@ -128,6 +128,13 @@ def _native_scope_lock(settings: MiroSettings, *, scope: str, material: str) -> 
 @contextmanager
 def native_board_lock(settings: MiroSettings, board_url: str) -> Iterator[Path]:
     with _native_scope_lock(settings, scope="board", material=board_url) as lock_path:
+        yield lock_path
+
+
+@contextmanager
+def native_asset_lock(settings: MiroSettings, *, board_url: str, asset_key: str) -> Iterator[Path]:
+    material = f"{board_url}\0{asset_key}"
+    with _native_scope_lock(settings, scope="asset", material=material) as lock_path:
         yield lock_path
 
 

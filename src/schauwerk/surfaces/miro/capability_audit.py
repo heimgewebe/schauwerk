@@ -153,7 +153,11 @@ def _lane_status(observed: set[str], tools: tuple[str, ...]) -> dict[str, Any]:
     }
 
 
-def audit_tool_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
+def audit_tool_catalogue(
+    catalogue: Mapping[str, Any],
+    *,
+    rest_status: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Compare one observed catalogue with Schauwerk's explicit integration surface."""
 
     names = _tool_names(catalogue)
@@ -187,6 +191,18 @@ def audit_tool_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
         lane: _lane_status(observed, tools) for lane, tools in sorted(HIGH_VALUE_LANES.items())
     }
     unavailable_lanes = sorted(name for name, value in lanes.items() if not value["available"])
+    credential = rest_status.get("credential") if isinstance(rest_status, Mapping) else None
+    credential_configured = (
+        credential.get("exists") is True if isinstance(credential, Mapping) else False
+    )
+    rest_live_known = (
+        rest_status.get("live_authorized_known") is True
+        if isinstance(rest_status, Mapping)
+        else False
+    )
+    rest_live_authorized = (
+        rest_status.get("live_authorized") is True if isinstance(rest_status, Mapping) else False
+    )
 
     priorities: list[dict[str, Any]] = []
     priority_order = (
@@ -239,6 +255,30 @@ def audit_tool_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
             ),
         },
         "high_value_lanes": lanes,
+        "cross_surface_lanes": {
+            "managed_image_lifecycle": {
+                "adapter_implemented": True,
+                "mcp_image_create_available": {
+                    "image_get_upload_url",
+                    "image_create",
+                    "board_list_items",
+                }.issubset(observed),
+                "mcp_image_delete_available": "image_delete" in observed,
+                "rest_delete_adapter": "implemented_fail_closed",
+                "rest_credential_configured": credential_configured,
+                "rest_live_authorized_known": rest_live_known,
+                "rest_live_authorized": rest_live_authorized,
+                "rest_required_scope": "boards:write",
+                "provider_semantics": "create-verify-delete-saga",
+                "globally_atomic": False,
+                "available": (
+                    {"image_get_upload_url", "image_create", "board_list_items"}.issubset(observed)
+                    and credential_configured
+                    and rest_live_known
+                    and rest_live_authorized
+                ),
+            }
+        },
         "unavailable_lanes": unavailable_lanes,
         "priorities": priorities,
         "platform_layers": {
@@ -248,8 +288,10 @@ def audit_tool_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
             },
             "rest_api": {
                 "status": "separate_application_credentials_required",
-                "role": "board lifecycle, sharing, membership, and provider administration",
-                "incorporation": "architectural boundary documented; not authorized by MCP OAuth",
+                "role": ("separately authorized image read/delete plus provider administration"),
+                "incorporation": (
+                    "managed image GET/DELETE adapter implemented; MCP OAuth is never reused"
+                ),
             },
             "web_sdk": {
                 "status": "embedded_board_application_required",
@@ -265,12 +307,17 @@ def audit_tool_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
             "product_reference": "official Miro MCP, REST API, and Web SDK documentation",
             "image_delete_available": "image_delete" in observed,
             "layout_can_delete_unsupported_images": False,
+            "managed_image_rest_adapter_implemented": True,
+            "managed_image_globally_atomic": False,
+            "managed_image_provider_semantics": "create-verify-delete-saga",
         },
         "does_not_establish": [
             "permission to mutate a board",
             "support for capabilities absent from the live MCP catalogue",
             "visual quality of generated output",
             "availability of Web SDK or REST credentials",
+            "live authorization of the separately configured REST application",
+            "provider-global atomic image replacement",
         ],
     }
     report["audit_digest"] = _digest(report)

@@ -129,9 +129,12 @@ from .surfaces.miro.board_registry import BoardAllowlist
 from .surfaces.miro.capability_audit import audit_tool_catalogue
 from .surfaces.miro.client import MiroMCPClient
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
+from .surfaces.miro.managed_image_service import check_managed_image
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
 from .surfaces.miro.native_executor import load_native_bundle, required_tools
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
+from .surfaces.miro.rest_client import MiroRestClient
+from .surfaces.miro.rest_credentials import MiroRestTokenStorage
 from .surfaces.miro.web_sdk_companion import build_companion, verify_companion
 from .visual.grammar import (
     validate_visual_grammar,
@@ -854,9 +857,15 @@ def handle_tools(client: MiroMCPClient | None = None) -> dict[str, Any]:
     return asyncio.run((client or MiroMCPClient()).tools()).to_dict()
 
 
-def handle_capability_audit(client: MiroMCPClient | None = None) -> dict[str, Any]:
+def handle_capability_audit(
+    client: MiroMCPClient | None = None,
+    rest_client: MiroRestClient | None = None,
+) -> dict[str, Any]:
     catalogue = asyncio.run((client or MiroMCPClient()).tools()).to_dict()
-    return audit_tool_catalogue(catalogue)
+    return audit_tool_catalogue(
+        catalogue,
+        rest_status=(rest_client or MiroRestClient()).status(),
+    )
 
 
 def handle_native_check(*, input_path: str) -> dict[str, Any]:
@@ -897,6 +906,90 @@ def handle_companion_build(*, input_path: str, output_dir: str) -> dict[str, Any
 
 def handle_companion_check(*, output_dir: str) -> dict[str, Any]:
     return verify_companion(output_dir=Path(output_dir))
+
+
+def handle_rest_status(rest_client: MiroRestClient | None = None) -> dict[str, Any]:
+    return (rest_client or MiroRestClient()).status()
+
+
+def handle_rest_token_install(
+    *,
+    source: str,
+    replace: bool = False,
+    storage: MiroRestTokenStorage | None = None,
+) -> dict[str, Any]:
+    return (storage or MiroRestTokenStorage()).install_from_file(Path(source), replace=replace)
+
+
+def handle_rest_doctor(
+    *,
+    require_write: bool = False,
+    rest_client: MiroRestClient | None = None,
+) -> dict[str, Any]:
+    return asyncio.run((rest_client or MiroRestClient()).doctor(require_write=require_write))
+
+
+def handle_managed_image_check(
+    *,
+    alias: str,
+    identity: str,
+    image: str | None,
+    content_type: str | None,
+) -> dict[str, Any]:
+    return check_managed_image(
+        alias=alias,
+        identity_path=Path(identity),
+        image_path=Path(image) if image else None,
+        content_type=content_type,
+    )
+
+
+def handle_managed_image_replace(
+    *,
+    alias: str,
+    identity: str,
+    image: str,
+    content_type: str,
+    title: str,
+    receipt_output: str,
+    identity_output: str,
+    max_pages: int,
+    client: MiroMCPClient | None = None,
+    rest_client: MiroRestClient | None = None,
+) -> dict[str, Any]:
+    return asyncio.run(
+        (client or MiroMCPClient()).managed_image_replace(
+            alias=alias,
+            identity_path=Path(identity),
+            image_path=Path(image),
+            content_type=content_type,
+            title=title,
+            receipt_path=Path(receipt_output),
+            identity_output_path=Path(identity_output),
+            rest_client=rest_client,
+            max_pages=max_pages,
+        )
+    )
+
+
+def handle_managed_image_delete(
+    *,
+    alias: str,
+    identity: str,
+    receipt_output: str,
+    max_pages: int,
+    client: MiroMCPClient | None = None,
+    rest_client: MiroRestClient | None = None,
+) -> dict[str, Any]:
+    return asyncio.run(
+        (client or MiroMCPClient()).managed_image_delete(
+            alias=alias,
+            identity_path=Path(identity),
+            receipt_path=Path(receipt_output),
+            rest_client=rest_client,
+            max_pages=max_pages,
+        )
+    )
 
 
 def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:

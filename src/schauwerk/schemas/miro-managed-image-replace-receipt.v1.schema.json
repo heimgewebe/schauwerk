@@ -1,0 +1,219 @@
+{
+  "$defs": {
+    "delete": {
+      "additionalProperties": false,
+      "properties": {
+        "delete_status": {
+          "oneOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "item_id": {
+          "pattern": "^[0-9]{1,32}$",
+          "type": "string"
+        },
+        "postflight_absent": {
+          "const": true
+        },
+        "preflight_present": {
+          "type": "boolean"
+        },
+        "provider": {
+          "enum": [
+            "rest",
+            "mcp"
+          ]
+        },
+        "reconciled_after_uncertain_delete": {
+          "type": "boolean"
+        },
+        "sanitized_references": {
+          "const": true
+        },
+        "success": {
+          "const": true
+        }
+      },
+      "required": [
+        "success",
+        "provider",
+        "item_id",
+        "preflight_present",
+        "delete_status",
+        "postflight_absent",
+        "reconciled_after_uncertain_delete",
+        "sanitized_references"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://heimgewebe.example/schemas/miro-managed-image-replace-receipt.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "success": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "geometry_matches": {
+            "const": true
+          },
+          "manual_reconciliation_required": {
+            "const": false
+          },
+          "new_item_present": {
+            "const": true
+          },
+          "old_item_absent": {
+            "const": true
+          },
+          "status": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "new_item_id",
+          "before_count",
+          "after_count",
+          "old_item_absent",
+          "new_item_present",
+          "geometry_matches",
+          "inventory_pages",
+          "delete_receipt"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "success": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "enum": [
+              "failed",
+              "manual_reconciliation_required"
+            ]
+          }
+        },
+        "required": [
+          "error_type",
+          "error"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "after_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "asset_key": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+      "type": "string"
+    },
+    "before_count": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "board_alias": {
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$",
+      "type": "string"
+    },
+    "delete_receipt": {
+      "$ref": "#/$defs/delete"
+    },
+    "error": {
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+    },
+    "error_type": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "geometry_matches": {
+      "type": "boolean"
+    },
+    "globally_atomic": {
+      "const": false
+    },
+    "inventory_pages": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "manual_reconciliation_required": {
+      "type": "boolean"
+    },
+    "new_item_id": {
+      "pattern": "^[0-9]{1,32}$",
+      "type": "string"
+    },
+    "new_item_present": {
+      "type": "boolean"
+    },
+    "old_item_absent": {
+      "type": "boolean"
+    },
+    "old_item_id": {
+      "pattern": "^[0-9]{1,32}$",
+      "type": "string"
+    },
+    "provider_semantics": {
+      "const": "create-verify-delete-saga"
+    },
+    "sanitized_references": {
+      "const": true
+    },
+    "schema_version": {
+      "const": "schauwerk-miro-managed-image-replace.v1"
+    },
+    "source_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "verified",
+        "failed",
+        "manual_reconciliation_required"
+      ]
+    },
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "success",
+    "status",
+    "board_alias",
+    "asset_key",
+    "old_item_id",
+    "source_sha256",
+    "provider_semantics",
+    "globally_atomic",
+    "manual_reconciliation_required",
+    "sanitized_references"
+  ],
+  "title": "Schauwerk managed Miro image replacement receipt v1",
+  "type": "object"
+}

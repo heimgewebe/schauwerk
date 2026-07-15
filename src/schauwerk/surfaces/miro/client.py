@@ -20,9 +20,14 @@ from .live_test_runtime import (
     run_board_create,
     run_layout_read_summary,
 )
+from .managed_image_service import (
+    run_managed_image_delete,
+    run_managed_image_replace,
+)
 from .models import MiroSettings, ToolCatalogue
 from .native_runtime import run_native_bundle
 from .readonly import run_read_only_inspection
+from .rest_client import MiroRestClient
 from .runtime import quiet_provider_stderr
 from .safe_logout import safe_logout
 from .snapshot_model import SnapshotReceipt
@@ -395,6 +400,52 @@ class MiroMCPClient:
 
     async def layout_read_summary(self, **kwargs: Any) -> LayoutReadSummary:
         return await run_layout_read_summary(self.settings, self.storage, **kwargs)
+
+    async def managed_image_replace(
+        self,
+        *,
+        alias: str,
+        identity_path: Path,
+        image_path: Path,
+        content_type: str,
+        title: str,
+        receipt_path: Path,
+        identity_output_path: Path,
+        rest_client: MiroRestClient | None = None,
+        max_pages: int = 100,
+    ) -> dict[str, Any]:
+        return await run_managed_image_replace(
+            self.settings,
+            self.storage,
+            alias=alias,
+            identity_path=identity_path,
+            image_path=image_path,
+            content_type=content_type,
+            title=title,
+            receipt_path=receipt_path,
+            identity_output_path=identity_output_path,
+            rest_client=rest_client,
+            max_pages=max_pages,
+        )
+
+    async def managed_image_delete(
+        self,
+        *,
+        alias: str,
+        identity_path: Path,
+        receipt_path: Path,
+        rest_client: MiroRestClient | None = None,
+        max_pages: int = 100,
+    ) -> dict[str, Any]:
+        return await run_managed_image_delete(
+            self.settings,
+            self.storage,
+            alias=alias,
+            identity_path=identity_path,
+            receipt_path=receipt_path,
+            rest_client=rest_client,
+            max_pages=max_pages,
+        )
 
     def cached_tools(self) -> dict[str, Any]:
         path = self.settings.catalogue_path

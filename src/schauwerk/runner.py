@@ -39,6 +39,9 @@ from .cli_handlers import (
     handle_learn_render,
     handle_login,
     handle_logout,
+    handle_managed_image_check,
+    handle_managed_image_delete,
+    handle_managed_image_replace,
     handle_native_apply,
     handle_native_check,
     handle_overview_serve,
@@ -82,6 +85,9 @@ from .cli_handlers import (
     handle_region_sw009_live_restore,
     handle_registry_show,
     handle_registry_status,
+    handle_rest_doctor,
+    handle_rest_status,
+    handle_rest_token_install,
     handle_snapshot,
     handle_software_pilot,
     handle_stage_build,
@@ -332,6 +338,40 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_companion_build(input_path=args.input, output_dir=args.output_dir)
         elif args.command == "companion" and args.companion_command == "check":
             result = handle_companion_check(output_dir=args.output_dir)
+        elif args.command == "rest" and args.rest_command == "status":
+            result = handle_rest_status()
+        elif args.command == "rest" and args.rest_command == "token-install":
+            result = handle_rest_token_install(
+                source=args.source,
+                replace=args.replace,
+            )
+        elif args.command == "rest" and args.rest_command == "doctor":
+            result = handle_rest_doctor(require_write=args.require_write)
+        elif args.command == "managed-image" and args.managed_image_command == "check":
+            result = handle_managed_image_check(
+                alias=args.alias,
+                identity=args.identity,
+                image=args.image,
+                content_type=args.content_type,
+            )
+        elif args.command == "managed-image" and args.managed_image_command == "replace":
+            result = handle_managed_image_replace(
+                alias=args.alias,
+                identity=args.identity,
+                image=args.image,
+                content_type=args.content_type,
+                title=args.title,
+                receipt_output=args.receipt_output,
+                identity_output=args.identity_output,
+                max_pages=args.max_pages,
+            )
+        elif args.command == "managed-image" and args.managed_image_command == "delete":
+            result = handle_managed_image_delete(
+                alias=args.alias,
+                identity=args.identity,
+                receipt_output=args.receipt_output,
+                max_pages=args.max_pages,
+            )
         elif args.command == "doctor":
             result = handle_doctor(live=not args.no_live)
         elif args.command == "inspect":
