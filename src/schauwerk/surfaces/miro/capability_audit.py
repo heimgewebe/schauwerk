@@ -6,9 +6,15 @@ import hashlib
 import json
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from importlib import resources
 from typing import Any
 
+from jsonschema import Draft202012Validator, FormatChecker
+
 AUDIT_SCHEMA = "schauwerk-miro-capability-audit.v1"
+REFERENCE_SCHEMA = "schauwerk-miro-mcp-tool-reference.v1"
+REFERENCE_RESOURCE = "miro-mcp-tools-reference.v1.json"
+REFERENCE_SCHEMA_RESOURCE = "miro-mcp-tool-reference.v1.schema.json"
 
 # Families describe product roles, not a frozen provider contract. Unknown tools are
 # preserved and reported instead of being rejected when Miro evolves.
@@ -142,6 +148,33 @@ def _tool_names(catalogue: Mapping[str, Any]) -> tuple[str, ...]:
     return tuple(sorted(names))
 
 
+def _load_tool_reference(reference: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    if reference is None:
+        resource = resources.files("schauwerk.schemas").joinpath(REFERENCE_RESOURCE)
+        try:
+            value = json.loads(resource.read_text(encoding="utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("Miro tool reference must be UTF-8 JSON") from exc
+    else:
+        value = dict(reference)
+    schema_resource = resources.files("schauwerk.schemas").joinpath(REFERENCE_SCHEMA_RESOURCE)
+    schema = json.loads(schema_resource.read_text(encoding="utf-8"))
+    errors = sorted(
+        Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value),
+        key=lambda error: list(error.path),
+    )
+    if errors:
+        error = errors[0]
+        location = ".".join(str(part) for part in error.path) or "root"
+        raise ValueError(f"invalid Miro tool reference at {location}: {error.message}")
+    tools = value["tools"]
+    if len(tools) != len(set(tools)):
+        raise ValueError("Miro tool reference contains duplicate tool names")
+    normalized = dict(value)
+    normalized["tools"] = sorted(tools)
+    return normalized
+
+
 def _lane_status(observed: set[str], tools: tuple[str, ...]) -> dict[str, Any]:
     available = [name for name in tools if name in observed]
     missing = [name for name in tools if name not in observed]
@@ -157,11 +190,17 @@ def audit_tool_catalogue(
     catalogue: Mapping[str, Any],
     *,
     rest_status: Mapping[str, Any] | None = None,
+    reference: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compare one observed catalogue with Schauwerk's explicit integration surface."""
 
     names = _tool_names(catalogue)
     observed = set(names)
+    tool_reference = _load_tool_reference(reference)
+    reference_names = tuple(tool_reference["tools"])
+    referenced = set(reference_names)
+    adapter_surface = INTEGRATED_TOOLS | PLANNER_TOOLS
+    reference_integrated = sorted(referenced & adapter_surface)
     known = set().union(*TOOL_FAMILIES.values())
     family_by_tool = {tool: family for family, tools in TOOL_FAMILIES.items() for tool in tools}
     family_tools: dict[str, list[str]] = defaultdict(list)
@@ -238,6 +277,29 @@ def audit_tool_catalogue(
         "server_version": catalogue.get("server_version"),
         "observed_tool_count": len(names),
         "observed_tools": list(names),
+        "official_reference": {
+            "schema_version": tool_reference["schema_version"],
+            "source_url": tool_reference["source_url"],
+            "observed_at": tool_reference["observed_at"],
+            "operational_authority": tool_reference["operational_authority"],
+            "tool_count": len(reference_names),
+            "tools": list(reference_names),
+            "reference_missing_live": sorted(referenced - observed),
+            "live_not_in_reference": sorted(observed - referenced),
+            "reference_integrated_tools": reference_integrated,
+            "reference_not_integrated": sorted(referenced - adapter_surface),
+            "live_reference_coverage_percent": (
+                round(100 * len(observed & referenced) / len(referenced), 1)
+                if referenced
+                else 0.0
+            ),
+            "adapter_reference_coverage_percent": (
+                round(100 * len(reference_integrated) / len(referenced), 1)
+                if referenced
+                else 0.0
+            ),
+            "diagnostic_only": True,
+        },
         "known_tools_absent": sorted(known - observed),
         "provider_extensions": sorted(observed - known),
         "families": families,
@@ -314,6 +376,7 @@ def audit_tool_catalogue(
         "does_not_establish": [
             "permission to mutate a board",
             "support for capabilities absent from the live MCP catalogue",
+            "provider availability inferred from the documentation reference",
             "visual quality of generated output",
             "availability of Web SDK or REST credentials",
             "live authorization of the separately configured REST application",

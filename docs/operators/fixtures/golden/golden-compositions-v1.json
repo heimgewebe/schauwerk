@@ -1,0 +1,37 @@
+{
+  "schema_version": "schauwerk-golden-compositions.v1",
+  "compositions": [
+    {
+      "id": "system_landscape",
+      "input": "system-landscape-v1.json",
+      "composition_axis": "spatial_authority_landscape",
+      "hierarchy": "domain_truth_before_control_before_delivery_before_observation",
+      "density": "medium_dense_clustered",
+      "object_selection": "systems_stores_services_and_evidence",
+      "expected_primary_format": "canvas"
+    },
+    {
+      "id": "decision_flow",
+      "input": "decision-flow-v1.json",
+      "composition_axis": "gated_top_down_process",
+      "hierarchy": "signal_before_review_before_decision_before_effect",
+      "density": "compact_sequential",
+      "object_selection": "actions_decisions_risks_and_evidence",
+      "expected_primary_format": "table"
+    },
+    {
+      "id": "narrative_journey",
+      "input": "narrative-journey-v1.json",
+      "composition_axis": "reader_journey_with_return_loop",
+      "hierarchy": "question_before_tension_before_choice_before_meaning",
+      "density": "sparse_story_beats",
+      "object_selection": "human_concepts_risk_decision_action_and_evidence",
+      "expected_primary_format": "document"
+    }
+  ],
+  "does_not_establish": [
+    "universal style suitability",
+    "provider rendering without live readback",
+    "automatic aesthetic acceptance"
+  ]
+}

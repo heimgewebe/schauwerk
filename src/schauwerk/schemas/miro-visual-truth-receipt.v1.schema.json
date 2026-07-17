@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.invalid/schemas/miro-visual-truth-receipt.v1.schema.json",
+  "title": "Schauwerk Miro visual truth receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "board_alias",
+    "board_reference_digest",
+    "board_content_digest",
+    "snapshot",
+    "capture",
+    "context",
+    "evidence_strength",
+    "does_not_establish",
+    "receipt_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-miro-visual-truth-receipt.v1"},
+    "board_alias": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$"
+    },
+    "board_reference_digest": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "board_content_digest": {"$ref": "#/$defs/digest"},
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes",
+        "repeatability_verified",
+        "sanitized_references",
+        "verified_reads"
+      ],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/digest"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 33554432},
+        "repeatability_verified": {"const": true},
+        "sanitized_references": {"const": true},
+        "verified_reads": {"const": 2}
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "bytes", "media_type", "width", "height", "captured_at"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/digest"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 26214400},
+        "media_type": {"enum": ["image/png", "image/jpeg", "image/webp"]},
+        "width": {"type": "integer", "minimum": 64, "maximum": 32768},
+        "height": {"type": "integer", "minimum": 64, "maximum": 32768},
+        "captured_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes",
+        "provider_origin",
+        "provider_url_digest",
+        "capture_tool",
+        "authentication",
+        "attestation_sha256"
+      ],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/digest"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 262144},
+        "provider_origin": {"const": "https://miro.com"},
+        "provider_url_digest": {"$ref": "#/$defs/digest"},
+        "capture_tool": {"type": "string", "minLength": 2, "maxLength": 120},
+        "authentication": {"const": "operator_attested_authenticated_board"},
+        "attestation_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "evidence_strength": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_surface_visible",
+        "operator_attestation",
+        "cryptographic_provider_attestation",
+        "automatic_aesthetic_verdict"
+      ],
+      "properties": {
+        "provider_surface_visible": {"const": true},
+        "operator_attestation": {"const": true},
+        "cryptographic_provider_attestation": {"const": false},
+        "automatic_aesthetic_verdict": {"const": false}
+      }
+    },
+    "does_not_establish": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    },
+    "receipt_digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

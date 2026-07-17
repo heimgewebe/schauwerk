@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.invalid/schemas/miro-mcp-tool-reference.v1.schema.json",
+  "title": "Schauwerk Miro MCP official tool reference v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_url",
+    "observed_at",
+    "operational_authority",
+    "tools"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "schauwerk-miro-mcp-tool-reference.v1"
+    },
+    "source_url": {
+      "type": "string",
+      "const": "https://developers.miro.com/docs/miro-mcp-prompts"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "operational_authority": {
+      "const": "diagnostic_only_live_catalogue_remains_authoritative"
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      }
+    }
+  }
+}

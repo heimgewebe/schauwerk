@@ -157,6 +157,30 @@ schauwerk visual compare \
 
 Siehe `docs/operators/visual-preview-regression-v1.md`.
 
+## Live Companion, Visual Truth und Golden Compositions
+
+```bash
+schauwerk miro companion gate-status --json
+schauwerk miro companion build \
+  docs/operators/fixtures/miro-web-sdk-companion-v1.json \
+  --output-dir /tmp/schauwerk-companion
+schauwerk miro companion release-create \
+  /tmp/schauwerk-companion \
+  --app-url https://companion.example.org/ \
+  --developer-app-label "Schauwerk Companion" \
+  --output /tmp/schauwerk-companion-release.json \
+  --json
+
+schauwerk miro visual-truth create \
+  snapshot.json capture.png capture-context.json \
+  --output visual-truth-receipt.json \
+  --json
+```
+
+Der Companion-Releasevertrag bindet das lokale Bundle an eine HTTPS-App-URL und prüft remote exakte Digests, Content-Types und Sicherheitsheader. Miro-App-Registrierung, Teaminstallation und OAuth bleiben eigenständige Gates; MCP-OAuth und REST-Credentials begründen keine Web-SDK-Autorität. `visual-truth` bindet eine authentifiziert attestierte Aufnahme an einen exakten, wiederholbaren Snapshot, ohne die Attestation als kryptografischen Beweis oder ästhetisches Urteil auszugeben. Drei Golden Compositions prüfen Systemlandschaft, Entscheidungsfluss und narrative Reise als unterschiedliche Leitformen mit null Preview-Blockern.
+
+Siehe `docs/operators/miro-web-sdk-companion-v1.md`, `docs/operators/miro-visual-truth-v1.md` und `docs/visual/golden-compositions-v1.md`.
+
 ## Learning View
 
 ```bash
