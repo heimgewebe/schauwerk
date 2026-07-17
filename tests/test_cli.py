@@ -1385,7 +1385,7 @@ def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
             visual_quality_output=visual_quality_output,
             visual_dsl_output=visual_dsl_output,
         )
-        return {"project_id": "lenskit", "provider_mutation_attempted": False}
+        return {"project_id": "repoground", "provider_mutation_attempted": False}
 
     monkeypatch.setattr(runner, "handle_software_pilot", fake_software)
     code = runner.main(
@@ -1415,7 +1415,7 @@ def test_runner_dispatches_generic_software_pilot(monkeypatch, capsys) -> None:
         "visual_quality_output": "quality.json",
         "visual_dsl_output": "visual.dsl",
     }
-    assert json.loads(capsys.readouterr().out)["project_id"] == "lenskit"
+    assert json.loads(capsys.readouterr().out)["project_id"] == "repoground"
 
 
 def test_runner_dispatches_education_variant(monkeypatch, capsys) -> None:

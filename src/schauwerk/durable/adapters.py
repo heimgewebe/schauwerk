@@ -65,8 +65,8 @@ ADAPTERS: tuple[AdapterSpec, ...] = (
         frozenset({"canonical", "derived"}),
     ),
     AdapterSpec(
-        "lenskit",
-        "Lenskit or RepoBrief bundle",
+        "repoground",
+        "RepoGround repository brief bundle",
         frozenset({"generated-artifact", "local-artifact"}),
         frozenset({"derived", "operational"}),
     ),

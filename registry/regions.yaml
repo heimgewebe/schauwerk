@@ -14,13 +14,13 @@ regions:
   management_mode: managed
   policy_id: managed-safe-default
   marker_prefix: SCHAUWERK:GRABOWSKI
-- id: lenskit.software-overview.readonly
-  view_id: lenskit.software-overview
-  surface_ref: local.lenskit-preview
-  title: Read-only Lenskit software overview
+- id: repoground.software-overview.readonly
+  view_id: repoground.software-overview
+  surface_ref: local.repoground-preview
+  title: Read-only RepoGround software overview
   management_mode: read-only
   policy_id: read-only-projection
-  marker_prefix: SCHAUWERK:SOFTWARE:LENSKIT
+  marker_prefix: SCHAUWERK:SOFTWARE:REPOGROUND
 - id: schauwerk.delivery-status.readonly
   view_id: schauwerk.delivery-status
   surface_ref: local.schauwerk-status-preview

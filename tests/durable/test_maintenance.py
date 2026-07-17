@@ -62,7 +62,7 @@ def test_contradictory_healthy_sources_are_not_auto_proposed() -> None:
     previous = observation_set(observation(value="same"))
     current = observation_set(
         observation(value="one"),
-        observation(source_id="repo.lenskit", value="two"),
+        observation(source_id="repo.repoground", value="two"),
     )
     proposal = compile_maintenance_proposal(
         previous,

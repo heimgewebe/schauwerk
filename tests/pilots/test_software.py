@@ -23,11 +23,11 @@ ROOT = Path(__file__).resolve().parents[2]
 def software_input() -> dict:
     return {
         "schema_version": "software-pilot-input.v1",
-        "project_id": "lenskit",
-        "view_id": "lenskit.software-overview",
+        "project_id": "repoground",
+        "view_id": "repoground.software-overview",
         "sources": [
-            {"source_id": "github.lenskit", "revision": "a" * 40},
-            {"source_id": "repo.lenskit", "revision": "a" * 40},
+            {"source_id": "github.repoground", "revision": "a" * 40},
+            {"source_id": "repo.repoground", "revision": "a" * 40},
         ],
         "title": "Fixture Software",
         "purpose": "A generic software pilot fixture.",
@@ -80,7 +80,7 @@ def test_software_pilot_is_generic_deterministic_and_sanitized(tmp_path: Path) -
     first = compile_software_snapshot(source, repo_root=ROOT)
     second = compile_software_snapshot(source, repo_root=ROOT)
     assert first == second
-    assert first["project_id"] == "lenskit"
+    assert first["project_id"] == "repoground"
     assert first["summary"]["component_count"] == 1
     assert first["summary"]["test_total"] == 3
     assert first["boundaries"]["provider_mutation_attempted"] is False
@@ -108,7 +108,7 @@ def test_software_pilot_writes_atomic_evidence(tmp_path: Path) -> None:
     )
     assert snapshot.is_file()
     assert dsl.is_file()
-    assert receipt["project_id"] == "lenskit"
+    assert receipt["project_id"] == "repoground"
     assert receipt["provider_mutation_attempted"] is False
     assert receipt["dsl_line_count"] > 10
     assert "visual_v2" not in receipt

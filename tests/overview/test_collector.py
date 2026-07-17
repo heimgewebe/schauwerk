@@ -82,7 +82,7 @@ def test_registry_navigation_and_every_observation_is_time_bound(tmp_path: Path)
     assert snapshot["summary"]["view_count"] == 4
     assert {project["project_id"] for project in snapshot["projects"]} == {
         "grabowski",
-        "lenskit",
+        "repoground",
         "schauwerk",
     }
     schauwerk = next(
