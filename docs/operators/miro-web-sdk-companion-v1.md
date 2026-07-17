@@ -68,6 +68,12 @@ Der HTTPS-Doctor prüft fail-closed:
 
 Der Releasebeleg enthält keine Tokens, Team-IDs oder Board-IDs. GitHub Pages ist für diesen Vertrag kein geeigneter Standardpfad, weil die benötigten benutzerdefinierten Sicherheits- und Einbettungsheader dort nicht verlässlich als Response-Header durchgesetzt werden können.
 
+### Kontrollierter GitHub-Pages-Fallback
+
+Für eine kostenlose, dauerhafte Funktionsprüfung kann der Workflow `companion-pages.yml` den kanonischen Companion aus `main` neu bauen und als GitHub-Pages-Artefakt veröffentlichen. Er verwendet SHA-fixierte Actions, minimale Repository- und Pages-Berechtigungen und entfernt die hostspezifische Datei `_headers`, statt ihre Wirkung vorzutäuschen.
+
+Dieser Pfad belegt nur eine reproduzierbare öffentliche HTTPS-App-URL. Er erfüllt den vollständigen Releasevertrag ausdrücklich nicht, solange CSP, `frame-ancestors`, Permissions-, Referrer- und `nosniff`-Header nicht als echte HTTP-Response-Header nachgewiesen sind. Der Pages-Host darf daher für Miro-Installation und In-Board-Readback verwendet werden, aber nicht als `release-doctor`-PASS oder als gleichwertiger Ersatz für einen headerfähigen Host verbucht werden.
+
 ## Externe Gates
 
 ```text
