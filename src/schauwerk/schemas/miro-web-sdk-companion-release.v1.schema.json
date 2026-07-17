@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.invalid/schemas/miro-web-sdk-companion-release.v1.schema.json",
+  "title": "Schauwerk Miro Web SDK companion release v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "app_url",
+    "developer_app_label",
+    "build_digest",
+    "release_digest",
+    "required_scopes",
+    "files",
+    "required_html_headers",
+    "external_gates",
+    "credential_boundaries",
+    "does_not_establish"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-miro-web-sdk-companion-release.v1"},
+    "app_url": {"type": "string", "format": "uri", "pattern": "^https://.+/$"},
+    "developer_app_label": {"type": "string", "minLength": 3, "maxLength": 120},
+    "build_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "release_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "required_scopes": {
+      "type": "array",
+      "const": ["boards:read"]
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index.html",
+        "panel.html",
+        "app.js",
+        "panel.js",
+        "core.js",
+        "styles.css",
+        "config.json",
+        "build-receipt.json"
+      ],
+      "properties": {
+        "index.html": {"$ref": "#/$defs/digest"},
+        "panel.html": {"$ref": "#/$defs/digest"},
+        "app.js": {"$ref": "#/$defs/digest"},
+        "panel.js": {"$ref": "#/$defs/digest"},
+        "core.js": {"$ref": "#/$defs/digest"},
+        "styles.css": {"$ref": "#/$defs/digest"},
+        "config.json": {"$ref": "#/$defs/digest"},
+        "build-receipt.json": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "required_html_headers": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "string"}}
+    },
+    "external_gates": {"$ref": "#/$defs/gates"},
+    "credential_boundaries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mcp_oauth_reused", "rest_credential_included", "web_sdk_token_included"],
+      "properties": {
+        "mcp_oauth_reused": {"const": false},
+        "rest_credential_included": {"const": false},
+        "web_sdk_token_included": {"const": false}
+      }
+    },
+    "does_not_establish": {
+      "type": "array",
+      "minItems": 4,
+      "uniqueItems": true,
+      "items": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "public_https_hosting",
+        "developer_app_registered",
+        "team_installation",
+        "oauth_authorized"
+      ],
+      "properties": {
+        "public_https_hosting": {"const": "unknown"},
+        "developer_app_registered": {"const": "unknown"},
+        "team_installation": {"const": "unknown"},
+        "oauth_authorized": {"const": "unknown"}
+      }
+    }
+  }
+}

@@ -13,6 +13,10 @@ from .cli_handlers import (
     handle_capability_audit,
     handle_companion_build,
     handle_companion_check,
+    handle_companion_gate_status,
+    handle_companion_release_check,
+    handle_companion_release_create,
+    handle_companion_release_doctor,
     handle_doctor,
     handle_durable_adapter_catalog,
     handle_durable_adapter_collect,
@@ -102,6 +106,8 @@ from .cli_handlers import (
     handle_visual_review_v2,
     handle_visual_route,
     handle_visual_system_v2,
+    handle_visual_truth_check,
+    handle_visual_truth_create,
     handle_visual_v2_live_test,
 )
 from .cli_parser import build_parser
@@ -362,6 +368,32 @@ def main(argv: list[str] | None = None) -> int:
             result = handle_companion_build(input_path=args.input, output_dir=args.output_dir)
         elif args.command == "companion" and args.companion_command == "check":
             result = handle_companion_check(output_dir=args.output_dir)
+        elif args.command == "companion" and args.companion_command == "gate-status":
+            result = handle_companion_gate_status()
+        elif args.command == "companion" and args.companion_command == "release-create":
+            result = handle_companion_release_create(
+                bundle_dir=args.bundle_dir,
+                app_url=args.app_url,
+                developer_app_label=args.developer_app_label,
+                output=args.output,
+            )
+        elif args.command == "companion" and args.companion_command == "release-check":
+            result = handle_companion_release_check(
+                manifest=args.manifest, bundle_dir=args.bundle_dir
+            )
+        elif args.command == "companion" and args.companion_command == "release-doctor":
+            result = handle_companion_release_doctor(
+                manifest=args.manifest, timeout=args.timeout
+            )
+        elif args.command == "visual-truth" and args.visual_truth_command == "create":
+            result = handle_visual_truth_create(
+                snapshot=args.snapshot,
+                capture=args.capture,
+                context=args.context,
+                output=args.output,
+            )
+        elif args.command == "visual-truth" and args.visual_truth_command == "check":
+            result = handle_visual_truth_check(receipt=args.receipt)
         elif args.command == "rest" and args.rest_command == "status":
             result = handle_rest_status()
         elif args.command == "rest" and args.rest_command == "token-install":

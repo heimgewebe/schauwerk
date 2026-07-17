@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://heimgewebe.invalid/schemas/miro-visual-truth-context.v1.schema.json",
+  "title": "Schauwerk Miro visual truth capture context v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider",
+    "page_kind",
+    "authenticated",
+    "board_alias",
+    "board_reference_digest",
+    "board_content_digest",
+    "provider_url",
+    "captured_at",
+    "capture_tool",
+    "operator_attestation",
+    "visible_board_markers"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-miro-visual-truth-context.v1"},
+    "provider": {"const": "miro"},
+    "page_kind": {"const": "board"},
+    "authenticated": {"const": true},
+    "board_alias": {
+      "type": "string",
+      "pattern": "^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$"
+    },
+    "board_reference_digest": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "board_content_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "provider_url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://miro\\.com/app/board/.+"
+    },
+    "captured_at": {"type": "string", "format": "date-time"},
+    "capture_tool": {"type": "string", "minLength": 2, "maxLength": 120},
+    "operator_attestation": {"type": "string", "minLength": 20, "maxLength": 1000},
+    "visible_board_markers": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 2, "maxLength": 200}
+    }
+  }
+}

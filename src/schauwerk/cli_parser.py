@@ -438,6 +438,50 @@ def build_parser() -> argparse.ArgumentParser:
     )
     companion_check.add_argument("output_dir")
     companion_check.add_argument("--json", action="store_true")
+    companion_gate_status = companion_commands.add_parser(
+        "gate-status", help="show external Web SDK gates without inferring provider state"
+    )
+    companion_gate_status.add_argument("--json", action="store_true")
+    companion_release_create = companion_commands.add_parser(
+        "release-create", help="bind a verified companion bundle to one HTTPS app URL"
+    )
+    companion_release_create.add_argument("bundle_dir")
+    companion_release_create.add_argument("--app-url", required=True)
+    companion_release_create.add_argument("--developer-app-label", required=True)
+    companion_release_create.add_argument("--output", required=True)
+    companion_release_create.add_argument("--json", action="store_true")
+    companion_release_check = companion_commands.add_parser(
+        "release-check", help="verify a companion release manifest and optional local bundle"
+    )
+    companion_release_check.add_argument("manifest")
+    companion_release_check.add_argument("--bundle-dir")
+    companion_release_check.add_argument("--json", action="store_true")
+    companion_release_doctor = companion_commands.add_parser(
+        "release-doctor", help="verify the deployed HTTPS companion fail-closed"
+    )
+    companion_release_doctor.add_argument("manifest")
+    companion_release_doctor.add_argument("--timeout", type=float, default=10.0)
+    companion_release_doctor.add_argument("--json", action="store_true")
+
+    visual_truth = commands.add_parser(
+        "visual-truth", help="bind an authenticated Miro capture to one verified snapshot"
+    )
+    visual_truth_commands = visual_truth.add_subparsers(
+        dest="visual_truth_command", required=True
+    )
+    visual_truth_create = visual_truth_commands.add_parser(
+        "create", help="create an owner-only visual-truth receipt"
+    )
+    visual_truth_create.add_argument("snapshot")
+    visual_truth_create.add_argument("capture")
+    visual_truth_create.add_argument("context")
+    visual_truth_create.add_argument("--output", required=True)
+    visual_truth_create.add_argument("--json", action="store_true")
+    visual_truth_check = visual_truth_commands.add_parser(
+        "check", help="verify one visual-truth receipt"
+    )
+    visual_truth_check.add_argument("receipt")
+    visual_truth_check.add_argument("--json", action="store_true")
 
     rest = commands.add_parser(
         "rest", help="manage the separately authorized Miro REST application"

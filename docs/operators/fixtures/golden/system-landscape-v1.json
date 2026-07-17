@@ -1,0 +1,45 @@
+{
+  "schema_version": "schauwerk-representation-input.v1",
+  "id": "golden_system_landscape",
+  "title": "Systemlandschaft",
+  "purpose": "Ordnet Systeme räumlich nach fachlicher Wahrheit, Steuerung, Ausführung und Evidenz, ohne eine zweite Statuswahrheit zu erzeugen.",
+  "intent": "knowledge_map",
+  "groups": [
+    {"id": "truth", "label": "Kanonische Wahrheit"},
+    {"id": "control", "label": "Steuerung"},
+    {"id": "delivery", "label": "Ausführung"},
+    {"id": "observation", "label": "Beobachtung"}
+  ],
+  "nodes": [
+    {"id": "world", "label": "Weltgewebe", "kind": "system", "group": "truth", "summary": "Fachliches Hauptsystem und Eigentümer seiner Domänenwahrheit."},
+    {"id": "catalog", "label": "Systemkatalog", "kind": "store", "group": "truth", "summary": "Kanonische Rollen- und Beziehungskarte."},
+    {"id": "bureau", "label": "Bureau", "kind": "system", "group": "control", "summary": "Aufgaben, Claims, Abhängigkeiten und Abschlussbelege."},
+    {"id": "grabowski", "label": "Grabowski", "kind": "service", "group": "delivery", "summary": "Geprüfte Ausführung in isolierten Arbeits- und Laufzeitspuren."},
+    {"id": "github", "label": "GitHub", "kind": "service", "group": "delivery", "summary": "Diff, Review, CI und Mergezustand."},
+    {"id": "runtime", "label": "Produktive Laufzeit", "kind": "service", "group": "delivery", "summary": "Beobachtbare Wirkung nach erfolgreichem Lieferpfad."},
+    {"id": "chronik", "label": "Chronik", "kind": "evidence", "group": "observation", "summary": "Zeitgebundene Ereignisse und Abschlussbelege."},
+    {"id": "leitstand", "label": "Leitstand", "kind": "system", "group": "observation", "summary": "Lesbare Projektion des aktuellen Zustands ohne Eigentumsübernahme."},
+    {"id": "schauwerk", "label": "Schauwerk", "kind": "system", "group": "observation", "summary": "Visuelle Erklärung aus kanonischen Projektionen."}
+  ],
+  "edges": [
+    {"id": "land01", "from": "world", "to": "catalog", "label": "liefert Systemrollen", "kind": "evidence"},
+    {"id": "land02", "from": "catalog", "to": "bureau", "label": "begrenzt Zuständigkeit", "kind": "authority"},
+    {"id": "land03", "from": "bureau", "to": "grabowski", "label": "delegiert Arbeit", "kind": "authority"},
+    {"id": "land04", "from": "grabowski", "to": "github", "label": "liefert geprüften Diff", "kind": "flow"},
+    {"id": "land05", "from": "github", "to": "runtime", "label": "gibt Lieferung frei", "kind": "flow"},
+    {"id": "land06", "from": "runtime", "to": "chronik", "label": "erzeugt Beobachtung", "kind": "evidence"},
+    {"id": "land07", "from": "chronik", "to": "leitstand", "label": "speist Projektion", "kind": "evidence"},
+    {"id": "land08", "from": "catalog", "to": "schauwerk", "label": "liefert Semantik", "kind": "evidence"},
+    {"id": "land09", "from": "leitstand", "to": "bureau", "label": "meldet Aufmerksamkeit", "kind": "feedback"}
+  ],
+  "requirements": {
+    "formal_relations": true,
+    "free_spatial_layout": true,
+    "presentation": true,
+    "collaboration": true,
+    "rich_text": false,
+    "structured_comparison": false,
+    "portable_offline": true
+  },
+  "requested_formats": ["canvas"]
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "schauwerk-representation-input.v1",
+  "id": "golden_narrative_journey",
+  "title": "Narrative Reise",
+  "purpose": "Führt Leser schrittweise von der Ausgangsfrage über Entdeckung und Entscheidung bis zum belegten Ergebnis.",
+  "intent": "narrative",
+  "groups": [
+    {"id": "orientation", "label": "Orientierung"},
+    {"id": "movement", "label": "Bewegung"},
+    {"id": "proof", "label": "Beleg"}
+  ],
+  "nodes": [
+    {"id": "question", "label": "1 · Die Frage", "kind": "human", "group": "orientation", "summary": "Ein konkretes Bedürfnis eröffnet die Reise und setzt den Maßstab für Relevanz."},
+    {"id": "terrain", "label": "2 · Das Gelände", "kind": "concept", "group": "orientation", "summary": "Systeme, Grenzen und bestehende Wahrheiten werden als verständliche Landschaft sichtbar."},
+    {"id": "tension", "label": "3 · Die Spannung", "kind": "risk", "group": "movement", "summary": "Widersprüche und Risiken bleiben sichtbar, statt in einer glatten Übersicht zu verschwinden."},
+    {"id": "choice", "label": "4 · Die Wahl", "kind": "decision", "group": "movement", "summary": "Eine nachvollziehbare Entscheidung benennt Nutzen, Folgen und verworfene Alternativen."},
+    {"id": "craft", "label": "5 · Die Umsetzung", "kind": "action", "group": "movement", "summary": "Die gewählte Veränderung wird in einer begrenzten und rücklesbaren Spur ausgeführt."},
+    {"id": "evidence", "label": "6 · Der Beleg", "kind": "evidence", "group": "proof", "summary": "Tests, visuelle Aufnahme und Provider-Readback zeigen, was tatsächlich entstanden ist."},
+    {"id": "meaning", "label": "7 · Die Bedeutung", "kind": "concept", "group": "proof", "summary": "Das Ergebnis wird auf die Ausgangsfrage zurückgeführt und erhält eine klare nächste Handlung."}
+  ],
+  "edges": [
+    {"id": "journey01", "from": "question", "to": "terrain", "label": "öffnet Blick", "kind": "flow"},
+    {"id": "journey02", "from": "terrain", "to": "tension", "label": "macht Bruch sichtbar", "kind": "flow"},
+    {"id": "journey03", "from": "tension", "to": "choice", "label": "fordert Entscheidung", "kind": "flow"},
+    {"id": "journey04", "from": "choice", "to": "craft", "label": "gibt Richtung", "kind": "authority"},
+    {"id": "journey05", "from": "craft", "to": "evidence", "label": "erzeugt Beleg", "kind": "evidence"},
+    {"id": "journey06", "from": "evidence", "to": "meaning", "label": "stiftet Bedeutung", "kind": "flow"},
+    {"id": "journey07", "from": "meaning", "to": "question", "label": "schärft nächste Frage", "kind": "feedback"}
+  ],
+  "requirements": {
+    "formal_relations": false,
+    "free_spatial_layout": true,
+    "presentation": true,
+    "collaboration": true,
+    "rich_text": true,
+    "structured_comparison": false,
+    "portable_offline": true
+  },
+  "requested_formats": ["document"]
+}

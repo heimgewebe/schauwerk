@@ -1,0 +1,44 @@
+{
+  "schema_version": "schauwerk-representation-input.v1",
+  "id": "golden_decision_flow",
+  "title": "Entscheidungsfluss",
+  "purpose": "Zeigt einen prüfbaren Entscheidungsweg mit klaren Eingängen, Gates, Abbruchpfaden und beobachtbaren Ergebnissen.",
+  "intent": "process",
+  "groups": [
+    {"id": "signal", "label": "Signal"},
+    {"id": "review", "label": "Prüfung"},
+    {"id": "decision", "label": "Entscheidung"},
+    {"id": "outcome", "label": "Wirkung"}
+  ],
+  "nodes": [
+    {"id": "request", "label": "Änderungswunsch", "kind": "concept", "group": "signal", "summary": "Benanntes Ziel mit Umfang und erwarteter Wirkung."},
+    {"id": "live_state", "label": "Livezustand", "kind": "evidence", "group": "signal", "summary": "Aktueller Git-, CI-, Laufzeit- und Claimzustand."},
+    {"id": "scope_check", "label": "Umfang prüfen", "kind": "action", "group": "review", "summary": "Abhängigkeiten, Konflikte und fremde Spuren werden abgegrenzt."},
+    {"id": "evidence_gate", "label": "Evidenz ausreichend?", "kind": "decision", "group": "decision", "summary": "Tests, Diff, Review und Rücklesung müssen die Prämissen tragen."},
+    {"id": "risk_gate", "label": "Risiko vertretbar?", "kind": "decision", "group": "decision", "summary": "Unklare oder irreversible Wirkung bleibt blockiert."},
+    {"id": "stop", "label": "Fail-closed stoppen", "kind": "risk", "group": "outcome", "summary": "Kein Vollzug; Ursache und nächste Evidenz werden registriert."},
+    {"id": "execute", "label": "Kontrolliert ausführen", "kind": "action", "group": "outcome", "summary": "Die freigegebene Änderung wird isoliert und receipt-gebunden angewendet."},
+    {"id": "readback", "label": "Wirkung rücklesen", "kind": "evidence", "group": "outcome", "summary": "Der reale Endzustand entscheidet über Erfolg oder Reconciliation."}
+  ],
+  "edges": [
+    {"id": "flow01", "from": "request", "to": "scope_check", "label": "öffnet Prüfung", "kind": "flow"},
+    {"id": "flow02", "from": "live_state", "to": "scope_check", "label": "belegt Ausgangslage", "kind": "evidence"},
+    {"id": "flow03", "from": "scope_check", "to": "evidence_gate", "label": "liefert Prüfpaket", "kind": "flow"},
+    {"id": "flow04", "from": "evidence_gate", "to": "stop", "label": "nein", "kind": "risk"},
+    {"id": "flow05", "from": "evidence_gate", "to": "risk_gate", "label": "ja", "kind": "flow"},
+    {"id": "flow06", "from": "risk_gate", "to": "stop", "label": "nein", "kind": "risk"},
+    {"id": "flow07", "from": "risk_gate", "to": "execute", "label": "ja", "kind": "flow"},
+    {"id": "flow08", "from": "execute", "to": "readback", "label": "prüft Wirkung", "kind": "evidence"},
+    {"id": "flow09", "from": "readback", "to": "scope_check", "label": "unklar: erneut prüfen", "kind": "feedback"}
+  ],
+  "requirements": {
+    "formal_relations": true,
+    "free_spatial_layout": false,
+    "presentation": true,
+    "collaboration": true,
+    "rich_text": false,
+    "structured_comparison": true,
+    "portable_offline": true
+  },
+  "requested_formats": ["table", "document"]
+}

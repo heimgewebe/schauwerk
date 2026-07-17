@@ -125,9 +125,16 @@ from .regie.model import (
 from .regie.server import serve_regie
 from .regie.service import RegieController
 from .registry_runtime import registry_show, registry_status
-from .surfaces.miro.board_registry import BoardAllowlist
+from .surfaces.miro.board_registry import BoardAllowlist, reference_digest
 from .surfaces.miro.capability_audit import audit_tool_catalogue
 from .surfaces.miro.client import MiroMCPClient
+from .surfaces.miro.companion_release import (
+    CompanionReleaseError,
+    check_release_manifest,
+    companion_gate_status,
+    create_release_manifest,
+    doctor_release,
+)
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.managed_image_service import check_managed_image
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
@@ -135,6 +142,11 @@ from .surfaces.miro.native_executor import load_native_bundle, required_tools
 from .surfaces.miro.quality import write_quality_receipt_from_snapshot_file
 from .surfaces.miro.rest_client import MiroRestClient
 from .surfaces.miro.rest_credentials import MiroRestTokenStorage
+from .surfaces.miro.visual_truth import (
+    check_visual_truth_receipt,
+    create_visual_truth_receipt,
+    load_visual_truth_context,
+)
 from .surfaces.miro.web_sdk_companion import build_companion, verify_companion
 from .visual.delivery import (
     NativeDeliveryClient,
@@ -950,6 +962,64 @@ def handle_companion_build(*, input_path: str, output_dir: str) -> dict[str, Any
 
 def handle_companion_check(*, output_dir: str) -> dict[str, Any]:
     return verify_companion(output_dir=Path(output_dir))
+
+
+def handle_companion_gate_status() -> dict[str, Any]:
+    return companion_gate_status()
+
+
+def handle_companion_release_create(
+    *, bundle_dir: str, app_url: str, developer_app_label: str, output: str
+) -> dict[str, Any]:
+    return create_release_manifest(
+        bundle_dir=Path(bundle_dir),
+        app_url=app_url,
+        developer_app_label=developer_app_label,
+        output=Path(output),
+    )
+
+
+def handle_companion_release_check(
+    *, manifest: str, bundle_dir: str | None = None
+) -> dict[str, Any]:
+    return check_release_manifest(
+        manifest_path=Path(manifest),
+        bundle_dir=Path(bundle_dir) if bundle_dir else None,
+    )
+
+
+def handle_companion_release_doctor(*, manifest: str, timeout: float) -> dict[str, Any]:
+    result = doctor_release(manifest_path=Path(manifest), timeout=timeout)
+    if result.get("success") is not True:
+        failures = result.get("failures")
+        summary = (
+            "; ".join(str(item) for item in failures[:3])
+            if isinstance(failures, list)
+            else "unknown failure"
+        )
+        raise CompanionReleaseError(f"companion HTTPS doctor failed: {summary}")
+    return result
+
+
+def handle_visual_truth_create(
+    *, snapshot: str, capture: str, context: str, output: str
+) -> dict[str, Any]:
+    context_value = load_visual_truth_context(Path(context))
+    active = MiroMCPClient()
+    board_url = BoardAllowlist(active.settings.board_allowlist_path).resolve(
+        context_value["board_alias"]
+    )
+    return create_visual_truth_receipt(
+        snapshot=Path(snapshot),
+        capture=Path(capture),
+        context=Path(context),
+        expected_board_reference_digest=reference_digest(board_url),
+        output=Path(output),
+    )
+
+
+def handle_visual_truth_check(*, receipt: str) -> dict[str, Any]:
+    return check_visual_truth_receipt(receipt=Path(receipt))
 
 
 def handle_rest_status(rest_client: MiroRestClient | None = None) -> dict[str, Any]:
