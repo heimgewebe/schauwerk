@@ -32,17 +32,17 @@ views:
   audiences:
   - operator
   - maintainer
-- id: lenskit.software-overview
-  project_id: lenskit
-  title: Lenskit software overview
+- id: repoground.software-overview
+  project_id: repoground
+  title: RepoGround software overview
   purpose: Reconstruct architecture, decisions, roadmap, delivery checks and risks through
     the generic software-pilot contract.
   visibility: private
   management_mode: read-only
   source_ids:
-  - github.lenskit
-  - repo.lenskit
-  surface_ref: local.lenskit-preview
+  - github.repoground
+  - repo.repoground
+  surface_ref: local.repoground-preview
   audiences:
   - operator
   - maintainer

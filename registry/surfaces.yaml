@@ -18,15 +18,15 @@ surfaces:
   management_mode: managed
   alias: grabowski-operator-overview
   output_path: docs/operators/evidence/grabowski-pilot-20260710/operator-overview.dsl
-- id: local.lenskit-preview
-  title: Lenskit software overview preview
+- id: local.repoground-preview
+  title: RepoGround software overview preview
   provider: filesystem
   kind: preview
   status: active
   visibility: private
   management_mode: read-only
-  alias: lenskit-software-overview
-  output_path: docs/operators/evidence/lenskit-pilot-20260710/software-overview.dsl
+  alias: repoground-software-overview
+  output_path: build/repoground/software-overview.dsl
 - id: local.schauwerk-status-preview
   title: Schauwerk delivery status preview
   provider: filesystem

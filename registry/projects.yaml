@@ -13,13 +13,13 @@ projects:
       - grabowski.runtime-observation
       - repo.bureau
       - repo.grabowski
-  - id: lenskit
-    title: Lenskit and RepoBrief
+  - id: repoground
+    title: RepoGround
     status: active
     visibility: private
     source_ids:
-      - github.lenskit
-      - repo.lenskit
+      - github.repoground
+      - repo.repoground
   - id: schauwerk
     title: Schauwerk visual projection layer
     status: active

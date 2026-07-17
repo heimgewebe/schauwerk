@@ -22,7 +22,7 @@ def test_catalog_declares_current_local_adapters() -> None:
         "git",
         "github",
         "systemkatalog",
-        "lenskit",
+        "repoground",
         "generic",
     ]
     assert all(item["failure_semantics"] == "visible-no-fabrication" for item in value["adapters"])
@@ -81,11 +81,16 @@ def test_fact_visibility_cannot_exceed_registry_source() -> None:
 
 def test_observation_and_set_digests_detect_tampering() -> None:
     first = observation()
-    second = observation(adapter_id="git", source_id="repo.lenskit", key="revision", value="def456")
+    second = observation(
+        adapter_id="git",
+        source_id="repo.repoground",
+        key="revision",
+        value="def456",
+    )
     value = compile_observation_set([second, first], created_at="2026-07-12T09:00:00Z")
     assert validate_observation_set(value) == value
     assert [item["source"]["id"] for item in value["observations"]] == [
-        "repo.lenskit",
+        "repo.repoground",
         "repo.schauwerk",
     ]
 

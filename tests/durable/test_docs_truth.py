@@ -18,8 +18,8 @@ def test_active_docs_match_post_sw017_local_state() -> None:
     assert "former `Dev team`" in roadmap
     assert "Miro `Education team`" in roadmap
     assert "Space `Schauwerk`" in roadmap
-    assert "Lenskit, Cabinet, Vault" not in architecture
-    assert "Lenskit, Systemkatalog, Vault" in architecture
+    assert "RepoGround, Cabinet, Vault" not in architecture
+    assert "RepoGround, Systemkatalog, Vault" in architecture
 
 
 def test_new_contract_docs_and_schemas_are_routed() -> None:

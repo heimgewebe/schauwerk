@@ -9,11 +9,11 @@ summary: Local, deterministic source normalization with explicit authority and f
 
 # Source adapters v1
 
-SW-014 defines a provider-neutral boundary between declared source material and Schauwerk views. The v1 implementation reads owner-supplied local JSON only. It does not contact GitHub, Systemkatalog, Lenskit, Miro or any other provider by itself.
+SW-014 defines a provider-neutral boundary between declared source material and Schauwerk views. The v1 implementation reads owner-supplied local JSON only. It does not contact GitHub, Systemkatalog, RepoGround, Miro or any other provider by itself.
 
 ## Adapter catalogue
 
-The built-in catalogue contains `git`, `github`, `systemkatalog`, `lenskit` and `generic`. Every adapter accepts only compatible Registry source kinds and authorities. The Registry remains the authority for source identity, visibility, freshness policy and dependencies.
+The built-in catalogue contains `git`, `github`, `systemkatalog`, `repoground` and `generic`. Every adapter accepts only compatible Registry source kinds and authorities. The Registry remains the authority for source identity, visibility, freshness policy and dependencies.
 
 ## Observation contract
 

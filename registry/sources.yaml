@@ -28,15 +28,15 @@ sources:
     freshness: live
     depends_on:
       - repo.grabowski
-  - id: github.lenskit
-    title: Lenskit GitHub repository
+  - id: github.repoground
+    title: RepoGround GitHub repository
     kind: github-repository
     authority: operational
     visibility: shared
-    reference: heimgewebe/lenskit
+    reference: heimgewebe/repoground
     freshness: live
     depends_on:
-      - repo.lenskit
+      - repo.repoground
   - id: github.schauwerk
     title: Schauwerk GitHub repository
     kind: github-repository
@@ -73,15 +73,6 @@ sources:
     freshness: live
     depends_on:
       - repo.grabowski
-  - id: lenskit.repobrief-bundle
-    title: Lenskit RepoBrief bundle
-    kind: generated-artifact
-    authority: derived
-    visibility: private
-    reference: lenskit:repobrief-bundle
-    freshness: on-demand
-    depends_on:
-      - repo.lenskit
   - id: repo.bureau
     title: Bureau source repository
     kind: git-repository
@@ -96,12 +87,12 @@ sources:
     visibility: private
     reference: heimgewebe/grabowski
     freshness: on-merge
-  - id: repo.lenskit
-    title: Lenskit source repository
+  - id: repo.repoground
+    title: RepoGround source repository
     kind: git-repository
     authority: canonical
     visibility: private
-    reference: heimgewebe/lenskit
+    reference: heimgewebe/repoground
     freshness: on-merge
   - id: repo.schauwerk
     title: Schauwerk source repository
@@ -110,6 +101,15 @@ sources:
     visibility: private
     reference: heimgewebe/schauwerk
     freshness: on-merge
+  - id: repoground.repository-brief-bundle
+    title: RepoGround repository brief bundle
+    kind: generated-artifact
+    authority: derived
+    visibility: private
+    reference: repoground:repository-brief-bundle
+    freshness: on-demand
+    depends_on:
+      - repo.repoground
   - id: systemkatalog.ecosystem-map
     title: Canonical Systemkatalog ecosystem map artifact
     kind: generated-artifact

@@ -53,7 +53,7 @@ def test_disabled_search_never_blocks_core() -> None:
 def test_semantic_hints_have_confidence_and_evidence() -> None:
     observations = observation_set(
         observation(value="one"),
-        observation(source_id="repo.lenskit", value="two"),
+        observation(source_id="repo.repoground", value="two"),
         observation(source_id="repo.grabowski", key="unique_fact", value="alone"),
     )
     index = compile_search_index(observations, created_at="2026-07-12T09:10:00Z")

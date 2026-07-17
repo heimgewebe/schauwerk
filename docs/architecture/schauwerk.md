@@ -21,7 +21,7 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 
 - **core:** projects, views, sources, regions, proposals, publications, snapshots, and receipts.
 - **registry:** Git-versioned declarations with stable identifiers and schema validation.
-- **sources:** adapters for Git/GitHub, Lenskit, Systemkatalog, Vault, Leitstand, Chronik, and optional semantic services.
+- **sources:** adapters for Git/GitHub, RepoGround, Systemkatalog, Vault, Leitstand, Chronik, and optional semantic services.
 - **compiler:** turns source packages and templates into proposed view plans.
 - **surface adapters:** Miro first; later HTML, SVG, PowerPoint, Mermaid, and Obsidian Canvas.
 - **snapshot:** normalizes external surfaces into deterministic comparable state.
