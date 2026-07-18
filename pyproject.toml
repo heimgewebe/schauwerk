@@ -23,6 +23,7 @@ dev = ["pytest>=8.3", "ruff>=0.15"]
 
 [project.scripts]
 schauwerk = "schauwerk.runner:main"
+schauwerk-miro-companion-serve = "schauwerk.surfaces.miro.companion_server:main"
 schauwerk-registry-validate = "schauwerk.registry_validation:main"
 
 [tool.setuptools.packages.find]
