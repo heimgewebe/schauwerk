@@ -133,3 +133,26 @@ def test_server_rejects_noncanonical_receipt_and_oversized_file(tmp_path: Path) 
     (oversized_bundle / "app.js").write_bytes(b"x" * (MAX_FILE_BYTES + 1))
     with pytest.raises(CompanionServerError, match="size limit"):
         verify_server_bundle(oversized_bundle)
+
+
+def test_server_rejects_symlinks_hardlinks_and_unexpected_entries(tmp_path: Path) -> None:
+    symlink_bundle = _bundle(tmp_path / "symlink")
+    symlink_target = tmp_path / "symlink-app.js"
+    symlink_target.write_bytes((symlink_bundle / "app.js").read_bytes())
+    (symlink_bundle / "app.js").unlink()
+    (symlink_bundle / "app.js").symlink_to(symlink_target)
+    with pytest.raises(CompanionServerError, match="unsafe or missing"):
+        verify_server_bundle(symlink_bundle)
+
+    hardlink_bundle = _bundle(tmp_path / "hardlink")
+    hardlink_target = tmp_path / "hardlink-app.js"
+    hardlink_target.write_bytes((hardlink_bundle / "app.js").read_bytes())
+    (hardlink_bundle / "app.js").unlink()
+    (hardlink_bundle / "app.js").hardlink_to(hardlink_target)
+    with pytest.raises(CompanionServerError, match="independent regular file"):
+        verify_server_bundle(hardlink_bundle)
+
+    unexpected_bundle = _bundle(tmp_path / "unexpected")
+    (unexpected_bundle / "operator-note.txt").write_text("not public", encoding="utf-8")
+    with pytest.raises(CompanionServerError, match="unexpected entry"):
+        verify_server_bundle(unexpected_bundle)
