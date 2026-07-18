@@ -74,6 +74,61 @@ Für eine kostenlose, dauerhafte Funktionsprüfung kann der Workflow `companion-
 
 Dieser Pfad belegt nur eine reproduzierbare öffentliche HTTPS-App-URL. Er erfüllt den vollständigen Releasevertrag ausdrücklich nicht, solange CSP, `frame-ancestors`, Permissions-, Referrer- und `nosniff`-Header nicht als echte HTTP-Response-Header nachgewiesen sind. Der Pages-Host darf daher für Miro-Installation und In-Board-Readback verwendet werden, aber nicht als `release-doctor`-PASS oder als gleichwertiger Ersatz für einen headerfähigen Host verbucht werden.
 
+## Headerfähiger Loopback-Host
+
+Der Repository-Host prüft das vollständige Bundle und bindet sich ausschließlich an eine Loopback-Adresse. Er liefert nur die acht öffentlichen Dateien aus dem verifizierten `build-receipt.json`; `_headers`, unbekannte Pfade, Traversalversuche und Schreibmethoden werden abgewiesen. Die nach dem Start verifizierten Bytes bleiben im Speicher, sodass nachträgliche Dateisystemänderungen nicht ungeprüft ausgeliefert werden.
+
+```text
+schauwerk-miro-companion-serve \
+  --bundle-root /srv/schauwerk-companion/bundle \
+  --bind 127.0.0.1 \
+  --port 18082
+```
+
+Der Start bricht unter anderem ab bei:
+
+- fehlenden, zusätzlichen, symlinkgebundenen oder mehrfach verlinkten Bundledateien;
+- abweichenden Datei- oder Receipt-Digests;
+- unvollständigem oder Miro-inkompatiblem Headervertrag;
+- einer nicht lokalen Bindeadresse.
+
+Der Prozess selbst terminiert kein TLS und darf nicht direkt an ein öffentliches Interface gebunden werden. Eine vorgeschaltete HTTPS-Schicht muss die Backend-Header unverändert weitergeben, Redirects vermeiden und anschließend mit `release-doctor` geprüft werden. Der öffentliche Host gilt erst als freigegeben, wenn zusätzlich der reale Miro-In-Board-Readback gegen dieselbe App-URL bestanden ist.
+
+### Systemd-Beispiel
+
+```ini
+[Unit]
+Description=Schauwerk Miro Companion
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/schauwerk-miro-companion-serve --bundle-root /srv/schauwerk-companion/bundle --bind 127.0.0.1 --port 18082
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=default.target
+```
+
+Die konkrete Installation muss den ausführbaren Pfad und die Bundle-Wurzel an einen digestgebundenen, read-only Releasepfad binden. Ein laufender Loopbackdienst allein belegt keine öffentliche Erreichbarkeit und keinen vollständigen Releasevertrag.
+
 ## Externe Gates
 
 ```text
