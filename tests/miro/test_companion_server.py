@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import socket
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,6 +20,21 @@ from schauwerk.surfaces.miro.web_sdk_companion import build_companion
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/miro-web-sdk-companion-v1.json"
+
+
+def test_server_script_remains_standalone_executable() -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "src/schauwerk/surfaces/miro/companion_server.py"),
+            "--help",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "--bundle-root" in completed.stdout
 
 
 def _bundle(tmp_path: Path) -> Path:

@@ -30,7 +30,9 @@ Der Builder akzeptiert ausschließlich das Schema `schauwerk-miro-web-sdk-compan
 - `index.html` als Miro-App-Einstieg;
 - `panel.html` als Boardpanel;
 - lokale Anwendungs-JavaScript- und CSS-Dateien;
-- das offizielle Miro Web SDK zur Laufzeit ausschließlich von `https://miro.com/app/static/sdk/v2/miro.js`;
+- das offizielle Miro Web SDK mit der Bootstrap-Datei
+  `https://miro.com/app/static/sdk/v2/miro.js` und ihren versionsgebundenen
+  Laufzeitchunks ausschließlich unter `https://miro.com/app/static/`;
 - eine normalisierte `config.json`;
 - statische Security-Header;
 - einen SHA-256-gebundenen `build-receipt.json`.
