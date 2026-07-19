@@ -1,18 +1,20 @@
 # Miro Web SDK Companion v1
 
-Stand: 17. Juli 2026
+Stand: 19. Juli 2026
 
 ## Zweck
 
-Der Companion ergänzt die receipt-gebundene MCP-Laufzeit um eine interaktive, im Miro-Board eingebettete Lesefläche. Er ersetzt weder den MCP-Executor noch die Miro REST API.
+Der Companion ergänzt die receipt-gebundene MCP-Laufzeit um eine interaktive, im Miro-Board eingebettete Lese- und Abnahmefläche. Eine eng begrenzte Schreibaktion ist nur nach Vorschau und expliziter Bestätigung verfügbar. Er ersetzt weder den MCP-Executor noch die Miro REST API.
 
 Die statische Anwendung zeigt:
 
 - den redigierten Ausführungs- und Qualitätsstand;
-- aktuellen Boardkontext;
+- aktuellen Boardkontext einschließlich kompaktem Objekttyp-Inventar;
 - die laufende Boardauswahl;
 - einen Fokusgriff auf ausgewählte Objekte;
-- einen deterministischen Präsentationsweg durch Frames;
+- einen filterbaren, deterministischen Präsentationsweg durch Frames;
+- den expliziten Provider-Fallbackvertrag und die verbleibenden fail-closed Lücken;
+- eine bestätigungspflichtige, app-eigene Abnahmekarte mit sessiongebundenem Undo;
 - einen Standalone-Fallback, wenn das Miro Web SDK nicht verfügbar ist.
 
 ## Bau
@@ -30,6 +32,7 @@ Der Builder akzeptiert ausschließlich das Schema `schauwerk-miro-web-sdk-compan
 - `index.html` als Miro-App-Einstieg;
 - `panel.html` als Boardpanel;
 - lokale Anwendungs-JavaScript- und CSS-Dateien;
+- kanonische Outline- und Farbsymbole für die bestehende Miro-App;
 - das offizielle Miro Web SDK mit der Bootstrap-Datei
   `https://miro.com/app/static/sdk/v2/miro.js` und ihren versionsgebundenen
   Laufzeitchunks ausschließlich unter `https://miro.com/app/static/`;
@@ -78,7 +81,7 @@ Dieser Pfad belegt nur eine reproduzierbare öffentliche HTTPS-App-URL. Er erfü
 
 ## Headerfähiger Loopback-Host
 
-Der Repository-Host prüft das vollständige Bundle und bindet sich ausschließlich an eine Loopback-Adresse. Er liefert nur die acht öffentlichen Dateien aus dem verifizierten `build-receipt.json`; `_headers`, unbekannte Pfade, Traversalversuche und Schreibmethoden werden abgewiesen. Die nach dem Start verifizierten Bytes bleiben im Speicher, sodass nachträgliche Dateisystemänderungen nicht ungeprüft ausgeliefert werden.
+Der Repository-Host prüft das vollständige Bundle und bindet sich ausschließlich an eine Loopback-Adresse. Er liefert nur die zehn öffentlichen Dateien aus dem verifizierten `build-receipt.json`; `_headers`, unbekannte Pfade, Traversalversuche und Schreibmethoden werden abgewiesen. Die nach dem Start verifizierten Bytes bleiben im Speicher, sodass nachträgliche Dateisystemänderungen nicht ungeprüft ausgeliefert werden.
 
 ```text
 schauwerk-miro-companion-serve \
@@ -148,21 +151,44 @@ Ohne gebundene Evidenz bleiben diese Gates `not_evidenced`. Ein erfolgreicher lo
 
 ## Miro-Vertrag
 
-Die App benötigt ausschließlich `boards:read`.
+Eine reine Lesekonfiguration benötigt ausschließlich `boards:read`. Die kanonische Abnahmekonfiguration benötigt zusätzlich `boards:write`, jedoch nur für die im Buildreceipt gebundene Aktion `create_review_card`.
 
-Der Launcher prüft `canOpenPanel()`, bevor er `openPanel()` aufruft. Das Panel liest `getInfo()`, `getSelection()` und Frames über `board.get({type: "frame"})`. Der Änderungszeitpunkt stammt aus der dokumentierten Eigenschaft `updatedAt`. Änderungen der Auswahl werden über `selection:update` übernommen. Fokussierung erfolgt lokal über `viewport.zoomTo()`.
+Der Launcher prüft `canOpenPanel()`, bevor er `openPanel()` aufruft. Das Panel liest `getInfo()`, `getSelection()`, das Boardinventar und Frames. Änderungen der Auswahl werden über `selection:update` übernommen. Fokussierung erfolgt lokal über `viewport.zoomTo()`.
 
-Es gibt keine Boardmutation, keinen Miro-OAuth-Token im Bundle, keinen REST-Zugriff und keine Verbindung zum MCP-Tokenbestand.
+### Enge Schreibgrenze
+
+- kein Schreiben beim Laden, Aktualisieren, Auswählen oder Navigieren;
+- keine freie Texteingabe, keine Bulkaktion und kein Cross-Board-Ziel;
+- zuerst lokale Vorschau, anschließend eigene Bestätigungscheckbox;
+- exakt eine `createCard`-Mutation;
+- app-eigene Metadaten binden Aktion, Panel-Sitzung sowie Snapshot- und Ausführungsdigest;
+- Metadaten werden nach dem Anlegen zurückgelesen; bei fehlendem Readback wird die Karte bestmöglich entfernt und die Aktion als fehlgeschlagen behandelt;
+- Undo darf ausschließlich das zuletzt in derselben Panel-Sitzung erzeugte und erneut metadatenverifizierte Objekt entfernen;
+- nach Undo wird die Abwesenheit per ID zurückgelesen.
+
+Es gibt keinen Miro-OAuth-Token im Bundle, keinen REST-Zugriff und keine Verbindung zum MCP-Tokenbestand.
+
+## Provider-Fallbacks
+
+Der Live-Executor löst jede Operation vor der ersten Mutation als `native`, `fallback` oder `blocked` auf. Fehlen native Erzeugungswerkzeuge, aber der Layoutvertrag ist vollständig verfügbar, werden folgende editierbare Ersatzdarstellungen erzeugt:
+
+- Dokument → Layout-Frame mit Textinhalt;
+- Tabelle → Layout-Frame mit Titel, Spalten und Zeilen;
+- Code-Widget → Layout-Codepanel mit Sprache und Quelltext;
+- Prototyp → geordnete Frameübersicht mit Screen-Digests.
+
+Der Receipt bewahrt die ursprüngliche Operationsart und ergänzt Fallbackmodus, Ausführungsart und Quelldigest. Updates, Löschungen, Inventar- und Historienoperationen werden nie umgedeutet; fehlt ihr natives Werkzeug, bricht der Executor vor jeder Mutation fail-closed ab. Ein älterer Resume-Receipt darf nur im rein nativen Modus weiterlaufen und niemals still in einen Fallback wechseln.
 
 ## Sicherheit
 
 - genau eine externe JavaScript-Abhängigkeit: das offizielle Miro Web SDK;
 - keine weiteren externen Skripte oder Styles;
-- keine Inline-Skripte, `eval`, `new Function` oder HTML-Injektion;
-- Providertexte werden ausschließlich über `textContent` dargestellt;
+- keine Inline-Skripte, `eval` oder `new Function`;
+- Providertexte und Vorschauen werden ausschließlich über `textContent` dargestellt;
+- das für die Miro-Karte erzeugte HTML wird ausschließlich aus festen Labels und explizit maskierten Werten zusammengesetzt;
 - Board-ID wird standardmäßig nicht angezeigt;
 - maximal 50 ausgewählte Objekte und 200 Frames;
-- CSP erlaubt Skripte nur vom eigenen Ursprung und von der exakten SDK-Datei;
+- CSP erlaubt Skripte nur vom eigenen Ursprung und von Miros exaktem statischem SDK-Pfad;
 - `frame-ancestors` erlaubt ausschließlich Miro;
 - Kamera, Mikrofon, Geolocation, Payment und USB sind deaktiviert.
 

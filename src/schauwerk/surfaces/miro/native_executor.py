@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 from jsonschema import Draft202012Validator
 
+from .capability_fallbacks import resolve_bundle_operations
 from .errors import MiroToolError
 from .inspection import checked_payload
 
@@ -318,6 +319,8 @@ def _validate_resume_receipt(
     bundle: Mapping[str, Any],
     board_alias: str,
     board_url: str,
+    provider_resolution_digest: str,
+    provider_fallback_count: int,
 ) -> dict[str, Any]:
     if value.get("schema_version") != NATIVE_RECEIPT_SCHEMA:
         raise NativeBundleError("native resume receipt has an unsupported schema")
@@ -332,6 +335,14 @@ def _validate_resume_receipt(
         raise NativeBundleError("native resume receipt is not resumable")
     if value.get("bundle_digest") != bundle["bundle_digest"]:
         raise NativeBundleError("native resume receipt belongs to a different bundle")
+    recorded_resolution = value.get("provider_resolution_digest")
+    if recorded_resolution is None:
+        if provider_fallback_count:
+            raise NativeBundleError(
+                "legacy native resume receipt cannot enter a provider fallback"
+            )
+    elif recorded_resolution != provider_resolution_digest:
+        raise NativeBundleError("native resume receipt provider resolution has drifted")
     if value.get("board_alias") != board_alias:
         raise NativeBundleError("native resume receipt belongs to a different board alias")
     if value.get("board_reference_digest") != _text_digest(board_url)[:24]:
@@ -740,10 +751,15 @@ async def execute_native_bundle(
 
     validated = validate_native_bundle(bundle)
     schemas = _tool_map(tool_catalogue)
-    required = required_tools(validated)
+    provider_resolution = resolve_bundle_operations(validated["operations"], set(schemas))
+    if provider_resolution["blocked_count"]:
+        missing = ", ".join(provider_resolution["blocked_tools"]) or "unknown tools"
+        raise NativeBundleError(f"live Miro catalogue lacks required tools: {missing}")
+    execution_operations = provider_resolution["execution_operations"]
+    required = required_tools({"operations": execution_operations})
     missing = sorted(set(required) - set(schemas))
     if missing:
-        raise NativeBundleError(f"live Miro catalogue lacks required tools: {', '.join(missing)}")
+        raise NativeBundleError(f"live Miro catalogue lacks resolved tools: {', '.join(missing)}")
     _board_key(board_url)
     resume = (
         _validate_resume_receipt(
@@ -751,6 +767,8 @@ async def execute_native_bundle(
             bundle=validated,
             board_alias=board_alias,
             board_url=board_url,
+            provider_resolution_digest=provider_resolution["resolution_digest"],
+            provider_fallback_count=provider_resolution["fallback_count"],
         )
         if resume_receipt is not None
         else None
@@ -954,6 +972,9 @@ async def execute_native_bundle(
             "board_reference_digest": _text_digest(board_url)[:24],
             "required_tools": list(required),
             "live_tool_count": len(schemas),
+            "provider_resolution_digest": provider_resolution["resolution_digest"],
+            "provider_resolution": provider_resolution["operation_resolutions"],
+            "provider_fallback_count": provider_resolution["fallback_count"],
             "operation_count": len(validated["operations"]),
             "completed_operation_count": len(completed),
             "completed_operations": list(completed),
@@ -1012,6 +1033,8 @@ async def execute_native_bundle(
                 "rollback_available_for_all_item_types": False,
                 "receipt_contains_provider_content": False,
                 "visual_quality_proven": False,
+                "provider_fallbacks_are_creation_only": True,
+                "provider_fallbacks_preserve_native_item_type": False,
             },
         }
         receipt["execution_digest"] = _digest(receipt)
@@ -1035,8 +1058,13 @@ async def execute_native_bundle(
                     "Miro board inventory does not expose the verified resume prefix"
                 )
 
-        for operation in validated["operations"][len(completed) :]:
-            current_operation_id = operation["operation_id"]
+        start_operation_index = len(completed)
+        for original_operation, operation in zip(
+            validated["operations"][start_operation_index:],
+            execution_operations[start_operation_index:],
+            strict=True,
+        ):
+            current_operation_id = original_operation["operation_id"]
             start_index = len(calls) + 1
             kind = operation["kind"]
             target_url = _target_url(board_url, operation)
@@ -1568,9 +1596,20 @@ async def execute_native_bundle(
             else:  # pragma: no cover - schema validation owns this branch
                 raise NativeBundleError(f"unsupported native operation kind: {kind}")
 
+            fallback = operation.get("provider_fallback")
+            if isinstance(fallback, Mapping):
+                readback = {
+                    **readback,
+                    "provider_mode": "fallback",
+                    "fallback": fallback["fallback"],
+                    "fallback_execution_kind": operation["kind"],
+                    "source_operation_digest": fallback["source_operation_digest"],
+                }
+            else:
+                readback = {**readback, "provider_mode": "native"}
             completed.append(
                 _operation_receipt(
-                    operation,
+                    original_operation,
                     item_url=item_url,
                     readback=readback,
                     call_indexes=range(start_index, len(calls) + 1),

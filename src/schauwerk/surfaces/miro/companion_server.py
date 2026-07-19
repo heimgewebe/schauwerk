@@ -22,6 +22,8 @@ PUBLIC_FILES = (
     "panel.js",
     "core.js",
     "styles.css",
+    "app-icon-outline.svg",
+    "app-icon-color.svg",
     "config.json",
     "build-receipt.json",
 )
@@ -29,6 +31,7 @@ CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
     ".js": "application/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
+    ".svg": "image/svg+xml",
     ".json": "application/json; charset=utf-8",
 }
 REQUIRED_HEADERS = {

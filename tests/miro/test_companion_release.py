@@ -61,7 +61,7 @@ def test_release_manifest_is_create_only_private_and_keeps_external_gates_open(
     bundle, manifest_path, manifest = _bundle_and_manifest(tmp_path)
 
     assert manifest["app_url"] == "https://example.test/miro-companion/"
-    assert manifest["required_scopes"] == ["boards:read"]
+    assert manifest["required_scopes"] == ["boards:read", "boards:write"]
     assert manifest["external_gates"] == {
         "public_https_hosting": "unknown",
         "developer_app_registered": "unknown",
@@ -117,6 +117,7 @@ def test_https_doctor_binds_content_types_headers_and_digests(tmp_path: Path) ->
                     ".js": "application/javascript",
                     ".css": "text/css",
                     ".json": "application/json",
+                    ".svg": "image/svg+xml",
                 }[suffix]
             }
         )

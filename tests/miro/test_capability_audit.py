@@ -105,3 +105,43 @@ def test_audit_reports_separate_rest_authority_without_changing_mcp_truth() -> N
     assert cross_surface["rest_credential_configured"] is True
     assert cross_surface["rest_live_authorized"] is True
     assert cross_surface["provider_semantics"] == "create-verify-delete-saga"
+
+
+def test_missing_creation_tools_resolve_to_explicit_layout_fallbacks() -> None:
+    report = audit_tool_catalogue(
+        catalogue(
+            "user_who_am_i",
+            "board_list_items",
+            "context_explore",
+            "layout_get_dsl",
+            "layout_create",
+            "layout_read",
+        )
+    )
+    living = report["high_value_lanes"]["living_document"]
+    assert living["available"] is False
+    assert living["effective_available"] is False
+    assert living["creation_fallback_available"] is True
+    assert living["mode"] == "fallback_with_gaps"
+    assert living["fallback"] == "layout_document"
+    assert living["fallback_covered_missing_tools"] == ["doc_create", "doc_get"]
+    assert living["uncovered_missing_tools"] == ["doc_update"]
+    table = report["high_value_lanes"]["structured_data_views"]
+    assert table["fallback"] == "layout_grid"
+    assert "table_get_latest_update_history" in table["uncovered_missing_tools"]
+    prototype = report["high_value_lanes"]["interactive_prototype"]
+    assert prototype["effective_available"] is True
+    assert prototype["mode"] == "fallback"
+    assert report["provider_fallbacks"]["layout_tools_available"] is True
+    assert report["provider_fallbacks"]["maintenance_operations_fail_closed"] is True
+    assert "living_document" in report["unavailable_lanes"]
+    assert "interactive_prototype" not in report["unavailable_lanes"]
+
+
+def test_fallbacks_remain_blocked_without_layout_toolset() -> None:
+    report = audit_tool_catalogue(
+        catalogue("user_who_am_i", "board_list_items", "context_explore")
+    )
+    assert report["high_value_lanes"]["living_document"]["mode"] == "blocked"
+    assert report["high_value_lanes"]["living_document"]["effective_available"] is False
+    assert "living_document" in report["unavailable_lanes"]

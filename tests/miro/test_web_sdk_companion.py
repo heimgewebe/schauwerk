@@ -25,21 +25,30 @@ FIXTURE = ROOT / "docs/operators/fixtures/miro-web-sdk-companion-v1.json"
 ASSET_ROOT = ROOT / "src/schauwerk/web_sdk_assets"
 
 
-def test_build_is_deterministic_and_read_only(tmp_path: Path) -> None:
+def test_build_is_deterministic_and_write_scope_is_narrow(tmp_path: Path) -> None:
     first = tmp_path / "first"
     second = tmp_path / "second"
     first_receipt = build_companion(input_path=FIXTURE, output_dir=first)
     second_receipt = build_companion(input_path=FIXTURE, output_dir=second)
 
     assert first_receipt["success"] is True
-    assert first_receipt["required_scopes"] == ["boards:read"]
-    assert first_receipt["security"]["board_write_authority"] is False
+    assert first_receipt["required_scopes"] == ["boards:read", "boards:write"]
+    assert first_receipt["security"]["board_write_authority"] is True
+    assert first_receipt["security"]["board_write_policy"] == {
+        "automatic_writes": False,
+        "allowed_actions": ["create_review_card"],
+        "confirmation_required": True,
+        "session_owned_undo": True,
+        "metadata_key": "schauwerk_action",
+    }
     assert first_receipt["security"]["rest_api_authority"] is False
     assert first_receipt["security"]["remote_javascript"] is True
     assert first_receipt["security"]["remote_javascript_origins"] == [
         MIRO_STATIC_SCRIPT_SOURCE
     ]
     assert first_receipt["build_digest"] == second_receipt["build_digest"]
+    assert "confirmed_review_card_write" in first_receipt["features"]
+    assert "provider_creation_fallbacks" in first_receipt["features"]
     assert first_receipt["file_count"] == len(ASSETS) + 3
     for name in (*ASSETS, "config.json", "_headers", "build-receipt.json"):
         assert (first / name).read_bytes() == (second / name).read_bytes()
@@ -57,6 +66,13 @@ def test_assets_use_text_content_and_only_the_official_miro_remote_script() -> N
     assert "textContent" in javascript
     assert "selection:update" in javascript
     assert "viewport.zoomTo" in javascript
+    assert "createCard" in javascript
+    assert "setMetadata" in javascript
+    assert "getMetadata" in javascript
+    assert "board.remove" in javascript
+    assert "write-confirm" in javascript
+    assert "Mutation unklar" in javascript
+    assert "state.writePolicy.enabled ? createActionSessionId" in javascript
     assert "canOpenPanel" in javascript
     assert "isMiroEmbedded" in javascript
     assert "parent !== scope" in javascript
@@ -146,8 +162,44 @@ def test_public_and_packaged_schemas_are_identical() -> None:
     packaged = ROOT / "src/schauwerk/schemas/miro-web-sdk-companion.v1.schema.json"
     assert public.read_bytes() == packaged.read_bytes()
     assert hashlib.sha256(public.read_bytes()).hexdigest() == (
-        "3a7ef884a244e31b09717b1dc284e5b038df207f82a1c4981d670278e40924d9"
+        "a6d336a9cc8f037fc2e68d8b5fc342528ce0da0c7d01d867ed2f9938dfd72d4c"
     )
+
+
+def test_read_only_config_does_not_request_write_scope(tmp_path: Path) -> None:
+    value = json.loads(FIXTURE.read_text())
+    value["write_actions"] = {
+        "enabled": False,
+        "allowed": [],
+        "require_confirmation": True,
+        "allow_undo": False,
+        "metadata_key": "schauwerk_action",
+    }
+    source = tmp_path / "read-only.json"
+    source.write_text(json.dumps(value))
+    receipt = build_companion(input_path=source, output_dir=tmp_path / "bundle")
+    assert receipt["required_scopes"] == ["boards:read"]
+    assert receipt["security"]["board_write_authority"] is False
+    assert receipt["security"]["board_write_policy"]["automatic_writes"] is False
+
+
+def test_repository_controlled_miro_icons_are_stable() -> None:
+    outline = ASSET_ROOT / "app-icon-outline.svg"
+    color = ASSET_ROOT / "app-icon-color.svg"
+    assert hashlib.sha256(outline.read_bytes()).hexdigest() == (
+        "103f8d1a4bf894f9b87f20019b1bbe68104a9d914fa680f5d35655bdf0188168"
+    )
+    assert hashlib.sha256(color.read_bytes()).hexdigest() == (
+        "b9a6625731a53101a2891f75a8482a49bb9ad69ffa3a2d16ef2175ece63485df"
+    )
+    for path in (outline, color):
+        text = path.read_text()
+        assert 'viewBox="0 0 32 32"' in text
+        assert "<script" not in text
+        assert "<image" not in text
+        assert "<text" not in text
+        assert "http://www.w3.org/2000/svg" in text
+
 
 def test_failed_build_leaves_no_partial_destination(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
