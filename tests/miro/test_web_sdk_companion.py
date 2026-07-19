@@ -12,6 +12,8 @@ import schauwerk.surfaces.miro.web_sdk_companion as companion_module
 from schauwerk.runner import main
 from schauwerk.surfaces.miro.web_sdk_companion import (
     ASSETS,
+    MIRO_SDK_URL,
+    MIRO_STATIC_SCRIPT_SOURCE,
     CompanionBuildError,
     build_companion,
     load_companion_config,
@@ -21,7 +23,6 @@ from schauwerk.surfaces.miro.web_sdk_companion import (
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/miro-web-sdk-companion-v1.json"
 ASSET_ROOT = ROOT / "src/schauwerk/web_sdk_assets"
-MIRO_SDK_URL = "https://miro.com/app/static/sdk/v2/miro.js"
 
 
 def test_build_is_deterministic_and_read_only(tmp_path: Path) -> None:
@@ -35,7 +36,9 @@ def test_build_is_deterministic_and_read_only(tmp_path: Path) -> None:
     assert first_receipt["security"]["board_write_authority"] is False
     assert first_receipt["security"]["rest_api_authority"] is False
     assert first_receipt["security"]["remote_javascript"] is True
-    assert first_receipt["security"]["remote_javascript_origins"] == [MIRO_SDK_URL]
+    assert first_receipt["security"]["remote_javascript_origins"] == [
+        MIRO_STATIC_SCRIPT_SOURCE
+    ]
     assert first_receipt["build_digest"] == second_receipt["build_digest"]
     assert first_receipt["file_count"] == len(ASSETS) + 3
     for name in (*ASSETS, "config.json", "_headers", "build-receipt.json"):
@@ -78,7 +81,8 @@ def test_bundle_headers_and_receipt_are_fail_closed(tmp_path: Path) -> None:
     build_companion(input_path=FIXTURE, output_dir=output)
     headers = (output / "_headers").read_text()
     assert "frame-ancestors https://miro.com https://*.miro.com" in headers
-    assert f"script-src 'self' {MIRO_SDK_URL}" in headers
+    assert f"script-src 'self' {MIRO_STATIC_SCRIPT_SOURCE};" in headers
+    assert "script-src 'self' https://miro.com;" not in headers
     assert "object-src 'none'" in headers
 
     panel = output / "panel.js"

@@ -21,14 +21,17 @@ from schauwerk.surfaces.miro.companion_release import (
     create_release_manifest,
     doctor_release,
 )
-from schauwerk.surfaces.miro.web_sdk_companion import build_companion
+from schauwerk.surfaces.miro.web_sdk_companion import (
+    MIRO_STATIC_SCRIPT_SOURCE,
+    build_companion,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/miro-web-sdk-companion-v1.json"
 HTML_HEADERS = {
     "content-type": "text/html; charset=utf-8",
     "content-security-policy": (
-        "default-src 'self'; script-src 'self' https://miro.com/app/static/sdk/v2/miro.js; "
+        f"default-src 'self'; script-src 'self' {MIRO_STATIC_SCRIPT_SOURCE}; "
         "frame-ancestors https://miro.com https://*.miro.com"
     ),
     "permissions-policy": "camera=(), microphone=(), geolocation=()",

@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote_to_bytes, urlsplit
 
+from .web_sdk_companion import MIRO_STATIC_SCRIPT_SOURCE
+
 PUBLIC_FILES = (
     "index.html",
     "panel.html",
@@ -130,7 +132,7 @@ def _parse_headers(payload: bytes) -> dict[str, str]:
     csp = headers["Content-Security-Policy"]
     required_csp = (
         "default-src 'self'",
-        "https://miro.com/app/static/sdk/v2/miro.js",
+        MIRO_STATIC_SCRIPT_SOURCE,
         "frame-ancestors https://miro.com https://*.miro.com",
     )
     if any(token not in csp for token in required_csp):

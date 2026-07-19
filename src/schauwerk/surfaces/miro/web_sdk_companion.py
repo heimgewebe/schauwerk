@@ -15,10 +15,12 @@ from jsonschema import Draft202012Validator
 
 ASSETS = ("index.html", "panel.html", "app.js", "panel.js", "core.js", "styles.css")
 BUILD_SCHEMA = "schauwerk-miro-web-sdk-companion-build.v1"
+MIRO_SDK_URL = "https://miro.com/app/static/sdk/v2/miro.js"
+MIRO_STATIC_SCRIPT_SOURCE = "https://miro.com/app/static/"
 HEADERS = (
     "/*\n"
     "  Content-Security-Policy: default-src 'self'; script-src 'self' "
-    "https://miro.com/app/static/sdk/v2/miro.js; "
+    f"{MIRO_STATIC_SCRIPT_SOURCE}; "
     "style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; "
     "base-uri 'none'; form-action 'none'; frame-ancestors https://miro.com "
     "https://*.miro.com\n"
@@ -104,9 +106,7 @@ def _manifest(
         "source_config_sha256": source_config_sha256,
         "security": {
             "remote_javascript": True,
-            "remote_javascript_origins": [
-                "https://miro.com/app/static/sdk/v2/miro.js"
-            ],
+            "remote_javascript_origins": [MIRO_STATIC_SCRIPT_SOURCE],
             "rest_api_authority": False,
             "board_write_authority": False,
             "inline_html_rendering": False,
