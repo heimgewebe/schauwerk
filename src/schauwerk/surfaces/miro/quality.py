@@ -13,6 +13,9 @@ from .snapshot_model import canonical_json
 from .snapshot_runtime import prepare_snapshot_destination, write_snapshot_json
 
 Severity = Literal["info", "warn", "fail"]
+ConnectorObservability = Literal[
+    "snapshot", "layout_read", "snapshot_and_layout_read", "unavailable"
+]
 _CHECKED_DIMENSIONS = (
     "frame_structure",
     "overlap",
@@ -58,7 +61,8 @@ class BoardQualityReceipt:
     geometry_eligible_item_count: int
     geometry_coverage_percent: int
     frame_count: int
-    connector_count: int
+    connector_count: int | None
+    connector_observability: ConnectorObservability
     native_diagram_count: int
     sticky_count: int
     doc_count: int
@@ -154,6 +158,15 @@ def _summary_count(layout_read: Mapping[str, Any] | None, key: str) -> int:
     return value
 
 
+def _observable_summary_count(layout_read: Mapping[str, Any] | None, key: str) -> int | None:
+    if not layout_read or key not in layout_read:
+        return None
+    value = layout_read.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
 def _snapshot_items(snapshot: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
     raw = snapshot.get("items")
     if not isinstance(raw, list):
@@ -191,7 +204,7 @@ def inspect_snapshot_quality(
         item_type = _item_type(item)
         type_counts[item_type] = type_counts.get(item_type, 0) + 1
 
-    connector_count = sum(
+    snapshot_connector_count = sum(
         count for item_type, count in type_counts.items() if item_type in _CONNECTOR_TYPES
     )
     native_diagram_count = sum(
@@ -207,7 +220,18 @@ def inspect_snapshot_quality(
     sticky_count = sum(
         count for item_type, count in type_counts.items() if item_type in _STICKY_TYPES
     )
-    connector_count = max(connector_count, _summary_count(layout_read, "connector_count"))
+    layout_connector_count = _observable_summary_count(layout_read, "connector_count")
+    if layout_connector_count is not None:
+        connector_count: int | None = max(snapshot_connector_count, layout_connector_count)
+        connector_observability: ConnectorObservability = (
+            "snapshot_and_layout_read" if snapshot_connector_count else "layout_read"
+        )
+    elif snapshot_connector_count:
+        connector_count = snapshot_connector_count
+        connector_observability = "snapshot"
+    else:
+        connector_count = None
+        connector_observability = "unavailable"
     doc_count = max(doc_count, _summary_count(layout_read, "doc_count"))
     table_count = max(table_count, _summary_count(layout_read, "table_count"))
     frame_count = max(frame_count, _summary_count(layout_read, "frame_count"))
@@ -302,7 +326,19 @@ def inspect_snapshot_quality(
             )
         )
 
-    if connector_count < expected_min_connectors:
+    if connector_count is None:
+        findings.append(
+            QualityFinding(
+                severity="fail" if expected_min_connectors else "info",
+                code="connector_observability_unavailable",
+                message=(
+                    "Connector count is unavailable because neither the snapshot nor layout "
+                    "readback exposes connector evidence."
+                ),
+                evidence={"expected_min_connectors": expected_min_connectors},
+            )
+        )
+    elif connector_count < expected_min_connectors:
         findings.append(
             QualityFinding(
                 severity="fail",
@@ -383,6 +419,7 @@ def inspect_snapshot_quality(
         geometry_coverage_percent=geometry_coverage,
         frame_count=frame_count,
         connector_count=connector_count,
+        connector_observability=connector_observability,
         native_diagram_count=native_diagram_count,
         sticky_count=sticky_count,
         doc_count=doc_count,
