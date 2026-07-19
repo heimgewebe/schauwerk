@@ -57,6 +57,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 44. [Miro Web SDK Companion v1](operators/miro-web-sdk-companion-v1.md)
 45. [Miro Visual Truth v1](operators/miro-visual-truth-v1.md)
 46. [Golden Compositions v1](visual/golden-compositions-v1.md)
+47. [Operator-Ökosystem auf heim-pc](operators/operator-ecosystem-heim-pc-v1.md)
 
 ## Contracts
 
