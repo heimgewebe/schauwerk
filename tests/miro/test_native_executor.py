@@ -1089,3 +1089,83 @@ def test_resume_rejects_missing_baseline_inventory() -> None:
                 resume_receipt=receipt,
             )
         )
+
+
+def test_live_executor_uses_creation_fallback_before_first_mutation() -> None:
+    bundle = validate_native_bundle(
+        {
+            "schema_version": "schauwerk-miro-native-bundle.v1",
+            "bundle_id": "document-fallback",
+            "operations": [
+                {
+                    "operation_id": "doc",
+                    "kind": "document",
+                    "content": "Ein editierbarer Fallback",
+                }
+            ],
+        }
+    )
+    fake = FakeMiro()
+    tools = catalogue(
+        "user_who_am_i",
+        "board_list_items",
+        "context_explore",
+        "layout_get_dsl",
+        "layout_create",
+        "layout_read",
+    )
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+    assert result["success"] is True
+    assert result["provider_fallback_count"] == 1
+    assert result["completed_operations"][0]["kind"] == "document"
+    readback = result["completed_operations"][0]["readback"]
+    assert readback["provider_mode"] == "fallback"
+    assert readback["fallback"] == "layout_document"
+    called = [name for name, _arguments in fake.calls]
+    assert "layout_create" in called
+    assert "doc_create" not in called
+
+
+def test_missing_maintenance_tool_does_not_fallback() -> None:
+    bundle = validate_native_bundle(
+        {
+            "schema_version": "schauwerk-miro-native-bundle.v1",
+            "bundle_id": "update-no-fallback",
+            "operations": [
+                {
+                    "operation_id": "update",
+                    "kind": "document_update",
+                    "target_miro_url": f"{BOARD_URL}?moveToWidget=doc",
+                    "expected_content_sha256": "a" * 64,
+                    "old_content": "old",
+                    "new_content": "new",
+                }
+            ],
+        }
+    )
+    tools = catalogue(
+        "user_who_am_i",
+        "board_list_items",
+        "context_explore",
+        "layout_get_dsl",
+        "layout_create",
+        "layout_read",
+    )
+    with pytest.raises(NativeBundleError, match="lacks required tools"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=FakeMiro(),
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+            )
+        )

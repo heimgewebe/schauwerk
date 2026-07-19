@@ -11,6 +11,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from .capability_fallbacks import CREATION_FALLBACKS, LAYOUT_TOOLS
+
 AUDIT_SCHEMA = "schauwerk-miro-capability-audit.v1"
 REFERENCE_SCHEMA = "schauwerk-miro-mcp-tool-reference.v1"
 REFERENCE_RESOURCE = "miro-mcp-tools-reference.v1.json"
@@ -102,10 +104,12 @@ HIGH_VALUE_LANES: dict[str, tuple[str, ...]] = {
         "table_sync_rows",
         "table_list_rows",
         "table_update_view",
+        "table_get_latest_update_history",
     ),
     "executable_source_view": (
         "code_widget_create",
         "code_widget_get",
+        "code_widget_list_items",
         "code_widget_update",
         "code_widget_delete",
     ),
@@ -117,6 +121,24 @@ HIGH_VALUE_LANES: dict[str, tuple[str, ...]] = {
         "image_get_data",
         "image_get_url",
         "image_delete",
+    ),
+}
+
+LANE_FALLBACK_KINDS: dict[str, str] = {
+    "living_document": "document",
+    "structured_data_views": "table",
+    "executable_source_view": "code_widget",
+    "interactive_prototype": "prototype",
+}
+
+LANE_FALLBACK_COVERED_TOOLS: dict[str, frozenset[str]] = {
+    "living_document": frozenset({"doc_create", "doc_get"}),
+    "structured_data_views": frozenset(
+        {"table_create", "table_sync_rows", "table_update_view", "table_list_rows"}
+    ),
+    "executable_source_view": frozenset({"code_widget_create", "code_widget_get"}),
+    "interactive_prototype": frozenset(
+        {"prototype_get_upload_url", "prototype_create", "context_get"}
     ),
 }
 
@@ -175,11 +197,39 @@ def _load_tool_reference(reference: Mapping[str, Any] | None = None) -> dict[str
     return normalized
 
 
-def _lane_status(observed: set[str], tools: tuple[str, ...]) -> dict[str, Any]:
+def _lane_status(observed: set[str], lane: str, tools: tuple[str, ...]) -> dict[str, Any]:
     available = [name for name in tools if name in observed]
     missing = [name for name in tools if name not in observed]
+    missing_set = set(missing)
+    fallback_kind = LANE_FALLBACK_KINDS.get(lane)
+    covered_tools = LANE_FALLBACK_COVERED_TOOLS.get(lane, frozenset())
+    fallback_covered_missing = sorted(missing_set & covered_tools)
+    uncovered_missing = sorted(missing_set - covered_tools)
+    layout_available = LAYOUT_TOOLS.issubset(observed)
+    fallback_available = bool(
+        fallback_covered_missing and fallback_kind in CREATION_FALLBACKS and layout_available
+    )
+    effective_available = not uncovered_missing and (
+        not fallback_covered_missing or fallback_available
+    )
+    if not missing:
+        mode = "native"
+    elif fallback_available and uncovered_missing:
+        mode = "fallback_with_gaps"
+    elif fallback_available:
+        mode = "fallback"
+    elif uncovered_missing and not fallback_covered_missing:
+        mode = "native_with_gaps"
+    else:
+        mode = "blocked"
     return {
         "available": not missing,
+        "effective_available": effective_available,
+        "creation_fallback_available": fallback_available,
+        "mode": mode,
+        "fallback": CREATION_FALLBACKS.get(fallback_kind) if fallback_available else None,
+        "fallback_covered_missing_tools": fallback_covered_missing,
+        "uncovered_missing_tools": uncovered_missing,
         "available_tools": available,
         "missing_tools": missing,
         "coverage_percent": round(100 * len(available) / len(tools), 1),
@@ -227,9 +277,12 @@ def audit_tool_catalogue(
     incorporated = sorted(observed & (INTEGRATED_TOOLS | PLANNER_TOOLS))
     unincorporated = sorted(observed - (INTEGRATED_TOOLS | PLANNER_TOOLS))
     lanes = {
-        lane: _lane_status(observed, tools) for lane, tools in sorted(HIGH_VALUE_LANES.items())
+        lane: _lane_status(observed, lane, tools)
+        for lane, tools in sorted(HIGH_VALUE_LANES.items())
     }
-    unavailable_lanes = sorted(name for name, value in lanes.items() if not value["available"])
+    unavailable_lanes = sorted(
+        name for name, value in lanes.items() if not value["effective_available"]
+    )
     credential = rest_status.get("credential") if isinstance(rest_status, Mapping) else None
     credential_configured = (
         credential.get("exists") is True if isinstance(credential, Mapping) else False
@@ -261,10 +314,22 @@ def audit_tool_catalogue(
                 "rank": rank,
                 "lane": lane,
                 "provider_available": status["available"],
+                "effective_available": status["effective_available"],
+                "mode": status["mode"],
+                "fallback": status["fallback"],
                 "missing_tools": status["missing_tools"],
+                "fallback_covered_missing_tools": status["fallback_covered_missing_tools"],
+                "uncovered_missing_tools": status["uncovered_missing_tools"],
                 "recommendation": (
                     "integrate into the representation execution planner"
                     if status["available"]
+                    else "use the deterministic editable layout fallback"
+                    if status["effective_available"]
+                    else (
+                        "use the creation fallback and keep uncovered maintenance operations "
+                        "fail-closed"
+                    )
+                    if status["creation_fallback_available"]
                     else "keep fail-closed and track as provider capability gap"
                 ),
             }
@@ -289,14 +354,10 @@ def audit_tool_catalogue(
             "reference_integrated_tools": reference_integrated,
             "reference_not_integrated": sorted(referenced - adapter_surface),
             "live_reference_coverage_percent": (
-                round(100 * len(observed & referenced) / len(referenced), 1)
-                if referenced
-                else 0.0
+                round(100 * len(observed & referenced) / len(referenced), 1) if referenced else 0.0
             ),
             "adapter_reference_coverage_percent": (
-                round(100 * len(reference_integrated) / len(referenced), 1)
-                if referenced
-                else 0.0
+                round(100 * len(reference_integrated) / len(referenced), 1) if referenced else 0.0
             ),
             "diagnostic_only": True,
         },
@@ -341,6 +402,19 @@ def audit_tool_catalogue(
                 ),
             }
         },
+        "provider_fallbacks": {
+            "layout_tools_available": LAYOUT_TOOLS.issubset(observed),
+            "creation_only": True,
+            "mappings": {
+                lane: {
+                    "native_kind": kind,
+                    "fallback": CREATION_FALLBACKS[kind],
+                    "mode": lanes[lane]["mode"],
+                }
+                for lane, kind in sorted(LANE_FALLBACK_KINDS.items())
+            },
+            "maintenance_operations_fail_closed": True,
+        },
         "unavailable_lanes": unavailable_lanes,
         "priorities": priorities,
         "platform_layers": {
@@ -361,7 +435,9 @@ def audit_tool_catalogue(
                     "viewport, selection, UI panels, realtime events, attention, "
                     "sessions, storage, groups, history, and custom tools"
                 ),
-                "incorporation": "reserved for a separate interactive Schauwerk companion app",
+                "incorporation": (
+                    "interactive companion with explicit, user-confirmed write actions"
+                ),
             },
         },
         "truth_boundary": {

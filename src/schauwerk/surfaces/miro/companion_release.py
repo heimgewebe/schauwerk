@@ -30,6 +30,8 @@ DEPLOYED_FILES = (
     "panel.js",
     "core.js",
     "styles.css",
+    "app-icon-outline.svg",
+    "app-icon-color.svg",
     "config.json",
     "build-receipt.json",
 )
@@ -37,6 +39,7 @@ CONTENT_TYPES = {
     ".html": ("text/html",),
     ".js": ("application/javascript", "text/javascript"),
     ".css": ("text/css",),
+    ".svg": ("image/svg+xml",),
     ".json": ("application/json",),
 }
 REQUIRED_HTML_HEADERS = {

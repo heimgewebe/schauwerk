@@ -1,4 +1,4 @@
-import { assertCompanionConfig, isMiroEmbedded } from './core.js';
+import { assertCompanionConfig, companionWritePolicy, isMiroEmbedded } from './core.js';
 
 const statusNode = document.querySelector('#launcher-status');
 const standaloneLink = document.querySelector('#standalone-link');
@@ -19,7 +19,10 @@ async function openCompanionPanel(config) {
   await ui.openPanel({
     url: './panel.html',
     height: config.panel_height,
-    data: { config_url: './config.json' },
+    data: {
+      config_url: './config.json',
+      write_enabled: companionWritePolicy(config).enabled,
+    },
   });
 }
 
@@ -41,7 +44,9 @@ async function initialize() {
         console.error(error);
       }
     });
-    statusNode.textContent = 'Bereit. Öffne Schauwerk über das App-Symbol in Miro.';
+    statusNode.textContent = companionWritePolicy(config).enabled
+      ? 'Bereit. Lesen und bestätigte Abnahmekarte verfügbar.'
+      : 'Bereit. Öffne Schauwerk über das App-Symbol in Miro.';
   } catch (error) {
     statusNode.textContent = 'Die Begleitanwendung konnte nicht initialisiert werden.';
     standaloneLink.hidden = false;

@@ -14,5 +14,20 @@
     "snapshot_digest": "91a141c4ce2728b9716935fc9a7adcb5c1115bb25b50f171a941fbd216200257",
     "execution_digest": "e35c4b67f152e1f4383a139fc0ac234e1a9a3dd1fa0332b0a5694143765598f5",
     "findings": []
+  },
+  "write_actions": {
+    "enabled": true,
+    "allowed": [
+      "create_review_card"
+    ],
+    "require_confirmation": true,
+    "allow_undo": true,
+    "metadata_key": "schauwerk_action"
+  },
+  "provider_fallbacks": {
+    "document": "layout_document",
+    "table": "layout_grid",
+    "code_widget": "layout_code_panel",
+    "prototype": "ordered_frames"
   }
 }

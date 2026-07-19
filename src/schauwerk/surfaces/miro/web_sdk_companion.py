@@ -13,7 +13,16 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-ASSETS = ("index.html", "panel.html", "app.js", "panel.js", "core.js", "styles.css")
+ASSETS = (
+    "index.html",
+    "panel.html",
+    "app.js",
+    "panel.js",
+    "core.js",
+    "styles.css",
+    "app-icon-outline.svg",
+    "app-icon-color.svg",
+)
 BUILD_SCHEMA = "schauwerk-miro-web-sdk-companion-build.v1"
 MIRO_SDK_URL = "https://miro.com/app/static/sdk/v2/miro.js"
 MIRO_STATIC_SCRIPT_SOURCE = "https://miro.com/app/static/"
@@ -66,6 +75,15 @@ def load_companion_config(path: str | Path) -> dict[str, Any]:
         error = errors[0]
         location = ".".join(str(part) for part in error.path) or "root"
         raise CompanionBuildError(f"invalid configuration at {location}: {error.message}")
+    write_actions = value.get("write_actions") or {
+        "enabled": False,
+        "allowed": [],
+        "require_confirmation": True,
+        "allow_undo": False,
+        "metadata_key": "schauwerk_action",
+    }
+    if write_actions["enabled"] and write_actions["allowed"] != ["create_review_card"]:
+        raise CompanionBuildError("enabled write policy must allow exactly create_review_card")
     status = value["status"]
     if status["completed_operation_count"] > status["operation_count"]:
         raise CompanionBuildError("completed operation count exceeds operation count")
@@ -87,12 +105,22 @@ def _asset(name: str) -> bytes:
 def _manifest(
     config: dict[str, Any], files: dict[str, str], *, source_config_sha256: str
 ) -> dict[str, Any]:
+    write_actions = config.get("write_actions") or {
+        "enabled": False,
+        "allowed": [],
+        "require_confirmation": True,
+        "allow_undo": False,
+        "metadata_key": "schauwerk_action",
+    }
+    required_scopes = ["boards:read"]
+    if write_actions["enabled"]:
+        required_scopes.append("boards:write")
     value: dict[str, Any] = {
         "schema_version": BUILD_SCHEMA,
         "app_name": config["app_name"],
         "entrypoint": "index.html",
         "panel": "panel.html",
-        "required_scopes": ["boards:read"],
+        "required_scopes": required_scopes,
         "features": [
             "board_context",
             "selection_readback",
@@ -100,6 +128,11 @@ def _manifest(
             "viewport_focus",
             "frame_navigation",
             "quality_receipt_summary",
+            "board_inventory_summary",
+            "frame_filter",
+            "provider_creation_fallbacks",
+            "confirmed_review_card_write",
+            "session_owned_undo",
             "standalone_fallback",
         ],
         "files": dict(sorted(files.items())),
@@ -108,7 +141,14 @@ def _manifest(
             "remote_javascript": True,
             "remote_javascript_origins": [MIRO_STATIC_SCRIPT_SOURCE],
             "rest_api_authority": False,
-            "board_write_authority": False,
+            "board_write_authority": write_actions["enabled"],
+            "board_write_policy": {
+                "automatic_writes": False,
+                "allowed_actions": write_actions["allowed"],
+                "confirmation_required": write_actions["require_confirmation"],
+                "session_owned_undo": write_actions["allow_undo"],
+                "metadata_key": write_actions["metadata_key"],
+            },
             "inline_html_rendering": False,
             "deployment_requires_https": True,
         },
@@ -117,6 +157,8 @@ def _manifest(
             "installation into a Miro team",
             "live execution outside a registered HTTPS app",
             "REST API or MCP authorization",
+            "permission for arbitrary, background, bulk, or cross-board mutations",
+            "native provider item types when a declared layout fallback is used",
             "immutability or content integrity of the provider-hosted Miro Web SDK",
         ],
     }

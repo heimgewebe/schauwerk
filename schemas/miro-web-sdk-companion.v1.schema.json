@@ -60,10 +60,18 @@
       ],
       "properties": {
         "state": {
-          "enum": ["verified", "degraded", "failed", "unknown"]
+          "enum": [
+            "verified",
+            "degraded",
+            "failed",
+            "unknown"
+          ]
         },
         "quality_score": {
-          "type": ["integer", "null"],
+          "type": [
+            "integer",
+            "null"
+          ],
           "minimum": 0,
           "maximum": 100
         },
@@ -78,11 +86,17 @@
           "maximum": 100000
         },
         "snapshot_digest": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "pattern": "^[0-9a-f]{64}$"
         },
         "execution_digest": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "pattern": "^[0-9a-f]{64}$"
         },
         "findings": {
@@ -93,6 +107,87 @@
             "minLength": 1,
             "maxLength": 240
           }
+        }
+      }
+    },
+    "write_actions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "allowed",
+        "require_confirmation",
+        "allow_undo",
+        "metadata_key"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "allowed": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 1,
+          "items": {
+            "enum": [
+              "create_review_card"
+            ]
+          }
+        },
+        "require_confirmation": {
+          "const": true
+        },
+        "allow_undo": {
+          "type": "boolean"
+        },
+        "metadata_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "allowed": {
+                "contains": {
+                  "const": "create_review_card"
+                },
+                "minContains": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "provider_fallbacks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document",
+        "table",
+        "code_widget",
+        "prototype"
+      ],
+      "properties": {
+        "document": {
+          "const": "layout_document"
+        },
+        "table": {
+          "const": "layout_grid"
+        },
+        "code_widget": {
+          "const": "layout_code_panel"
+        },
+        "prototype": {
+          "const": "ordered_frames"
         }
       }
     }

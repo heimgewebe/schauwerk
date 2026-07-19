@@ -10,18 +10,12 @@
   <body>
     <main class="panel" aria-live="polite">
       <header class="panel-header">
-        <div>
-          <p class="eyebrow">Schauwerk</p>
-          <h1 id="panel-title">Miro-Begleitung</h1>
-        </div>
+        <div><p class="eyebrow">Schauwerk</p><h1 id="panel-title">Miro-Begleitung</h1></div>
         <span id="mode-badge" class="badge">Lädt</span>
       </header>
 
-      <section class="card" aria-labelledby="status-heading">
-        <div class="section-heading">
-          <h2 id="status-heading">Abnahmestand</h2>
-          <span id="state-badge" class="badge">—</span>
-        </div>
+      <section class="card status-card" aria-labelledby="status-heading">
+        <div class="section-heading"><h2 id="status-heading">Abnahmestand</h2><span id="state-badge" class="badge">—</span></div>
         <dl class="metric-grid">
           <div><dt>Qualität</dt><dd id="quality-score">—</dd></div>
           <div><dt>Operationen</dt><dd id="operation-count">—</dd></div>
@@ -32,33 +26,39 @@
       </section>
 
       <section class="card" aria-labelledby="board-heading">
-        <div class="section-heading">
-          <h2 id="board-heading">Board-Kontext</h2>
-          <button id="refresh-button" class="button secondary" type="button">Aktualisieren</button>
-        </div>
-        <p id="board-summary" class="muted">Boarddaten werden geladen.</p>
-        <p id="board-id" class="mono" hidden></p>
+        <div class="section-heading"><h2 id="board-heading">Board</h2><button id="refresh-button" class="button secondary" type="button">Aktualisieren</button></div>
+        <p id="board-summary" class="muted">Boarddaten werden geladen.</p><p id="board-id" class="mono" hidden></p>
+        <div class="inventory-heading"><strong id="inventory-total">0 Objekte</strong></div>
+        <ul id="inventory-types" class="chip-list"></ul>
       </section>
 
       <section class="card" aria-labelledby="selection-heading">
-        <div class="section-heading">
-          <h2 id="selection-heading">Auswahl</h2>
-          <button id="focus-selection" class="button" type="button" disabled>Fokussieren</button>
-        </div>
+        <div class="section-heading"><h2 id="selection-heading">Auswahl</h2><button id="focus-selection" class="button" type="button" disabled>Fokussieren</button></div>
         <ol id="selection-list" class="item-list"></ol>
       </section>
 
       <section class="card" aria-labelledby="presentation-heading">
-        <div class="section-heading">
-          <h2 id="presentation-heading">Präsentationsweg</h2>
-          <span id="frame-position" class="muted">0 / 0</span>
-        </div>
+        <div class="section-heading"><h2 id="presentation-heading">Präsentationsweg</h2><span id="frame-position" class="muted">0 / 0</span></div>
+        <label class="field-label" for="frame-search">Frames filtern</label>
+        <input id="frame-search" class="input" type="search" autocomplete="off" placeholder="Titel suchen">
         <p id="frame-title" class="frame-title">Keine Frames verfügbar.</p>
-        <div class="button-row">
-          <button id="previous-frame" class="button secondary" type="button" disabled>Zurück</button>
-          <button id="focus-frame" class="button" type="button" disabled>Frame fokussieren</button>
-          <button id="next-frame" class="button secondary" type="button" disabled>Weiter</button>
-        </div>
+        <div class="button-row"><button id="previous-frame" class="button secondary" type="button" disabled>Zurück</button><button id="focus-frame" class="button" type="button" disabled>Fokussieren</button><button id="next-frame" class="button secondary" type="button" disabled>Weiter</button></div>
+      </section>
+
+      <section class="card" aria-labelledby="fallback-heading">
+        <div class="section-heading"><h2 id="fallback-heading">Provider-Fallbacks</h2><span class="badge" data-tone="neutral">Editierbar</span></div>
+        <p class="muted">Fehlende native Erzeugungswerkzeuge werden vor der ersten Mutation transparent in Layoutobjekte übersetzt. Pflege- und Löschaktionen bleiben fail-closed.</p>
+        <ul id="fallback-list" class="compact-list"></ul>
+      </section>
+
+      <section class="card write-card" aria-labelledby="write-heading">
+        <div class="section-heading"><h2 id="write-heading">Gezielte Boardaktion</h2><span id="write-badge" class="badge">Nur lesen</span></div>
+        <p id="write-summary" class="muted"></p>
+        <button id="preview-write" class="button" type="button" disabled>Abnahmekarte vorschauen</button>
+        <div id="write-preview" class="write-preview" hidden><strong id="write-preview-title"></strong><p id="write-preview-description"></p></div>
+        <label class="confirm-row"><input id="write-confirm" type="checkbox" disabled><span>Vorschau geprüft; genau diese Abnahmekarte anlegen.</span></label>
+        <div class="button-row"><button id="execute-write" class="button danger" type="button" disabled>Bestätigt anlegen</button><button id="undo-write" class="button secondary" type="button" disabled>Letzte Aktion rückgängig</button></div>
+        <p id="write-receipt" class="receipt" hidden></p>
       </section>
 
       <p id="error-message" class="error" hidden></p>
