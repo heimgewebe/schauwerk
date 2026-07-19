@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlsplit
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .web_sdk_companion import verify_companion
+from .web_sdk_companion import MIRO_STATIC_SCRIPT_SOURCE, verify_companion
 
 RELEASE_SCHEMA = "schauwerk-miro-web-sdk-companion-release.v1"
 GATE_STATUS_SCHEMA = "schauwerk-miro-web-sdk-companion-gate-status.v1"
@@ -45,7 +45,7 @@ REQUIRED_HTML_HEADERS = {
     "x-content-type-options": ("nosniff",),
     "content-security-policy": (
         "default-src 'self'",
-        "https://miro.com/app/static/sdk/v2/miro.js",
+        MIRO_STATIC_SCRIPT_SOURCE,
         "frame-ancestors https://miro.com https://*.miro.com",
     ),
 }
