@@ -84,10 +84,12 @@ def test_quality_fails_declared_connector_doc_table_expectations() -> None:
 
     assert receipt.ok is False
     assert {
-        "connector_count_below_expectation",
+        "connector_observability_unavailable",
         "doc_count_below_expectation",
         "table_count_below_expectation",
     }.issubset(finding_codes(receipt))
+    assert receipt.connector_count is None
+    assert receipt.connector_observability == "unavailable"
 
 
 def test_quality_accepts_structured_learning_like_snapshot() -> None:
@@ -113,6 +115,7 @@ def test_quality_accepts_structured_learning_like_snapshot() -> None:
     assert receipt.ok is True
     assert receipt.score == 100
     assert receipt.connector_count == 1
+    assert receipt.connector_observability == "snapshot"
     assert receipt.doc_count == 1
     assert receipt.table_count == 2
     assert receipt.findings == ()
@@ -134,8 +137,33 @@ def test_quality_can_use_layout_read_counts_as_rich_item_evidence() -> None:
 
     assert receipt.ok is True
     assert receipt.connector_count == 2
+    assert receipt.connector_observability == "layout_read"
     assert receipt.doc_count == 1
     assert receipt.table_count == 2
+
+
+def test_quality_reports_malformed_layout_connector_count_as_unavailable() -> None:
+    receipt = inspect_snapshot_quality(
+        snapshot([item("frame", ref="root", x=0, y=0, w=1000, h=800)]),
+        layout_read={"connector_count": "2"},
+    )
+
+    assert receipt.ok is True
+    assert receipt.connector_count is None
+    assert receipt.connector_observability == "unavailable"
+    assert "connector_observability_unavailable" in finding_codes(receipt)
+
+
+def test_quality_accepts_explicit_zero_from_layout_read() -> None:
+    receipt = inspect_snapshot_quality(
+        snapshot([item("frame", ref="root", x=0, y=0, w=1000, h=800)]),
+        layout_read={"connector_count": 0},
+    )
+
+    assert receipt.ok is True
+    assert receipt.connector_count == 0
+    assert receipt.connector_observability == "layout_read"
+    assert "connector_observability_unavailable" not in finding_codes(receipt)
 
 
 def test_quality_receipt_write_is_owner_only(tmp_path) -> None:

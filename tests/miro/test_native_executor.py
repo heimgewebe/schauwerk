@@ -125,6 +125,7 @@ class FakeMiro:
                 "message": "read",
                 "dsl": "frame-url FRAME x=0 y=0 w=100 h=100 title",
                 "item_count": 2,
+                "connector_count": 0,
                 "skipped_count": 0,
                 "miro_url": BOARD_URL,
             }
@@ -1013,6 +1014,148 @@ def test_pending_comment_without_exact_marker_fails_closed() -> None:
             )
         )
     assert "comment_create" not in [tool for tool, _arguments in fake.calls]
+
+
+def connector_layout_bundle() -> dict:
+    return validate_native_bundle(
+        {
+            "schema_version": "schauwerk-miro-native-bundle.v1",
+            "bundle_id": "connector-observability",
+            "operations": [
+                {
+                    "operation_id": "layout",
+                    "kind": "layout",
+                    "dsl": (
+                        "a SHAPE x=0 y=0 w=100 h=100 A\n"
+                        "b SHAPE x=200 y=0 w=100 h=100 B\n"
+                        "c SHAPE x=400 y=0 w=100 h=100 C\n"
+                        "ab CONNECTOR from=a to=b\n"
+                        "bc CONNECTOR from=b to=c"
+                    ),
+                }
+            ],
+        }
+    )
+
+
+class ConnectorLayoutMiro(FakeMiro):
+    def __init__(
+        self,
+        *,
+        layout_connector_count: object = 2,
+        board_connector_lines: int = 2,
+        include_connector_count: bool = True,
+    ) -> None:
+        super().__init__()
+        self.layout_connector_count = layout_connector_count
+        self.board_connector_lines = board_connector_lines
+        self.include_connector_count = include_connector_count
+
+    @staticmethod
+    def _dsl(connector_lines: int) -> str:
+        lines = [
+            "a SHAPE x=0 y=0 w=100 h=100 A",
+            "b SHAPE x=200 y=0 w=100 h=100 B",
+            "c SHAPE x=400 y=0 w=100 h=100 C",
+        ]
+        if connector_lines >= 1:
+            lines.append("ab CONNECTOR from=a to=b")
+        if connector_lines >= 2:
+            lines.append("bc CONNECTOR from=b to=c")
+        return "\n".join(lines)
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        value = await super().__call__(tool, arguments)
+        if tool == "board_list_items" and self.inventory_reads > 1:
+            value["data"] = [
+                {"id": "before", "type": "frame"},
+                {"id": "a", "type": "shape"},
+                {"id": "b", "type": "shape"},
+                {"id": "c", "type": "shape"},
+            ]
+            value["total"] = len(value["data"])
+        elif tool == "layout_create":
+            value.update(
+                {
+                    "created_count": 5,
+                    "result_dsl": self._dsl(2),
+                }
+            )
+        elif tool == "layout_read":
+            value.update(
+                {
+                    "dsl": self._dsl(self.board_connector_lines),
+                    "item_count": 5,
+                }
+            )
+            if self.include_connector_count:
+                value["connector_count"] = self.layout_connector_count
+            else:
+                value.pop("connector_count", None)
+        return value
+
+
+def test_layout_inventory_omission_of_verified_connectors_completes_truthfully() -> None:
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=ConnectorLayoutMiro(),
+            tool_catalogue=live_tools(connector_layout_bundle()),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=connector_layout_bundle(),
+        )
+    )
+
+    assert result["success"] is True
+    assert result["partial_mutation"] is False
+    assert result["provider_created_item_count"] == 5
+    assert result["board_inventory_visible_created_item_count"] == 3
+    assert result["expected_net_item_count_delta"] == 5
+    assert result["expected_board_inventory_item_count_delta"] == 3
+    assert result["observed_board_inventory_item_count_delta"] == 3
+    assert result["connector_evidence"] == {
+        "layout_operation_count": 1,
+        "layout_read_verified_operation_count": 1,
+        "layout_operations_with_connectors": 1,
+        "provider_created_connector_count": 2,
+        "board_inventory_connector_visibility": "not_assumed",
+    }
+    readback = result["completed_operations"][0]["readback"]
+    assert readback["board_inventory_visible_created_count"] == 3
+    assert readback["connector_evidence"] == {
+        "declared_count": 2,
+        "result_dsl_count": 2,
+        "layout_read_count": 2,
+        "board_dsl_count": 2,
+        "verified": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("fake", "message"),
+    [
+        (ConnectorLayoutMiro(include_connector_count=False), "invalid connector_count"),
+        (ConnectorLayoutMiro(layout_connector_count="2"), "invalid connector_count"),
+        (
+            ConnectorLayoutMiro(layout_connector_count=1, board_connector_lines=1),
+            "fewer connectors than declared",
+        ),
+    ],
+)
+def test_layout_connector_evidence_failures_remain_fail_closed(
+    fake: ConnectorLayoutMiro, message: str
+) -> None:
+    bundle = connector_layout_bundle()
+    with pytest.raises(NativeExecutionError, match=message):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=live_tools(bundle),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+            )
+        )
 
 
 class MissingCreatedItemMiro(FakeMiro):
