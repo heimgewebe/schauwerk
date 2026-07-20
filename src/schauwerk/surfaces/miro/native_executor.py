@@ -788,11 +788,12 @@ class ConnectorEvidence:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "schema_version": 2,
             "declared_count": self.declared_count,
             "result_dsl_count": self.result_dsl_count,
-            # Preserve the v1 operation-local fields for old receipt consumers.
-            "layout_read_count": self.created_count,
-            "board_dsl_count": self.created_count,
+            # Preserve the v1 cumulative post-create meanings for old readers.
+            "layout_read_count": self.layout_read_after_count,
+            "board_dsl_count": self.board_dsl_after_count,
             "layout_read_before_count": self.layout_read_before_count,
             "layout_read_after_count": self.layout_read_after_count,
             "board_dsl_before_count": self.board_dsl_before_count,

@@ -1133,6 +1133,7 @@ def test_layout_inventory_omission_of_verified_connectors_completes_truthfully()
     readback = result["completed_operations"][0]["readback"]
     assert readback["board_inventory_visible_created_count"] == 3
     assert readback["connector_evidence"] == {
+        "schema_version": 2,
         "declared_count": 2,
         "result_dsl_count": 2,
         "layout_read_count": 2,
@@ -1162,6 +1163,9 @@ def test_layout_connector_evidence_uses_delta_with_preexisting_connectors() -> N
     )
 
     evidence = result["completed_operations"][0]["readback"]["connector_evidence"]
+    assert evidence["schema_version"] == 2
+    assert evidence["layout_read_count"] == 4
+    assert evidence["board_dsl_count"] == 4
     assert evidence["layout_read_before_count"] == 2
     assert evidence["layout_read_after_count"] == 4
     assert evidence["created_count"] == 2
@@ -1278,6 +1282,8 @@ def test_multiple_layout_operations_use_operation_local_connector_deltas() -> No
         (0, 1),
         (1, 2),
     ]
+    assert [item["schema_version"] for item in evidence] == [2, 2]
+    assert [item["layout_read_count"] for item in evidence] == [1, 2]
     assert [item["created_count"] for item in evidence] == [1, 1]
 
 
