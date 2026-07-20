@@ -68,7 +68,7 @@ Der unabhängige Snapshot ist wiederholbar und enthält 34 über `board_list_ite
 
 `board_list_items` und der darauf aufbauende Qualitätslauf geben Connectoren nicht zurück. Deshalb meldete der äußere Delivery-Abschluss fälschlich 34 statt 40 erzeugte Objekte sowie `failed` und `partial_mutation`; der Qualitätslauf setzte den nicht beobachtbaren Connectorwert fälschlich auf null. Das ist kein fehlgeschlagenes Board: Layout und Mermaid-Operation sind vollständig verifiziert, Snapshot und Layout-Readback ergänzen sich widerspruchsfrei.
 
-Der nachhaltige Fix ist als Bureau-Task `OPERATOR-ECOSYSTEM-REDUNDANCY-V1-T036` registriert; die Registrierung wurde in Bureau-PR #728 veröffentlicht. Der Task verlangt getrennte Zählungen für Providererzeugung, allgemeines Inventar und Connectoren sowie negative Tests, damit echte Connectorverluste weiterhin fail-closed bleiben.
+Der nachhaltige Fix ist als Bureau-Task `OPERATOR-ECOSYSTEM-REDUNDANCY-V1-T039` registriert; die Registrierung wurde in Bureau-PR #728 veröffentlicht. Der Task verlangt getrennte Zählungen für Providererzeugung, allgemeines Inventar und Connectoren sowie negative Tests, damit echte Connectorverluste weiterhin fail-closed bleiben.
 
 Der Web-SDK-Companion bleibt eine getrennte Achse. Seine Developer-App-, Teaminstallations-, Hosting- und In-Board-OAuth-Gates werden durch diese native Board-Auslieferung nicht behauptet.
 
@@ -80,3 +80,39 @@ schauwerk visual package-check <representation-package>
 schauwerk visual preview <representation-package>
 schauwerk visual deliver <board-alias> <representation-package>
 ```
+
+## Visuelle Korrektur vom 20. Juli 2026
+
+Authentifizierte Aufnahmen des ausgelieferten Boards widerlegten die frühere ästhetische
+Einordnung. Der damalige Wert `100` belegte ausschließlich die maschinenlesbare Struktur:
+Objektzahlen, deklarierte Geometrie, Snapshot-Wiederholbarkeit und Connector-Evidenz. Er
+belegte nicht das tatsächliche Browser-Rendering.
+
+Die Aufnahmen zeigten vier konkrete Fehler:
+
+1. Mermaid wurde als Quelltext-Widget abgelegt, nicht als Diagramm gerendert.
+2. Miro positionierte lange Connector-Beschriftungen über benachbarten Knoten.
+3. Das automatisch dimensionierte Dokument im Beleg-Frame wuchs zu einer großen weißen
+   Fläche.
+4. Die automatisch dimensionierte Tabelle im Entscheidungs-Frame war in der Übersicht kaum
+   lesbar.
+
+Die nachhaltige Korrektur ist unter
+`OPERATOR-ECOSYSTEM-REDUNDANCY-V1-T040` gebunden. Sie ändert den Vertrag wie folgt:
+
+- Die ergänzende Mermaid-Repräsentation bleibt als quellgebundenes Artefakt erhalten. Auf
+  dem Miro-Board wird aus demselben semantischen Modell über `diagram_create` ein natives
+  Flussdiagramm erzeugt; ein Quelltext-Widget gilt nie wieder als gerenderte Darstellung.
+- Kompakte kontrollierte Frames enthalten keine providerseitig frei dimensionierten
+  Dokumente oder Tabellen. Beleg und Darstellungsentscheidung verwenden begrenzte Formen.
+- Semantische Beziehungen bleiben Connectoren; ausführliche Beziehungstexte liegen in einer
+  geometrisch begrenzten Legende. Ein statischer Risikocheck blockiert unzureichenden Abstand
+  für providerpositionierte Connector-Texte.
+- Jede neue Live-Lieferung trägt zunächst den Status
+  `pending_authenticated_provider_capture`. Eine visuelle Freigabe ist nur mit einer
+  authentifizierten Aufnahme des exakten Nachher-Zustands zulässig.
+- API- und DSL-Readbacks bleiben notwendige Konformitätsbelege, dürfen aber nicht mehr als
+  ästhetische Abnahme bezeichnet werden.
+
+Die Korrektur wird auf demselben allowlistgebundenen Board durchgeführt. Ein zweites Board
+oder eine parallele Kopie ist nicht Teil des Vertrags.

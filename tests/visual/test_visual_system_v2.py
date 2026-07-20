@@ -127,7 +127,8 @@ def test_rich_objects_declare_provider_auto_sizing() -> None:
     quality = validate_board_spec(spec)
     assert quality["provider_auto_sized_count"] == 4
     assert (
-        quality["geometry_contract"]["table_doc"] == "provider_auto_sized_type_and_anchor_verified"
+        quality["geometry_contract"]["table_doc"]
+        == "provider_auto_sized_unbounded_requires_provider_capture"
     )
 
 
@@ -177,3 +178,19 @@ def test_visual_outputs_reject_parent_symlink(tmp_path: Path) -> None:
     linked.symlink_to(real, target_is_directory=True)
     with pytest.raises(ValueError, match="must not contain symlinks"):
         write_json(linked / "receipt.json", {"ok": True})
+
+
+def test_long_provider_connector_label_with_insufficient_gap_is_reported_as_visual_risk() -> None:
+    spec = reference_board_spec()
+    frame = spec["frames"][1]
+    connector = next(item for item in frame["objects"] if item["kind"] == "connector")
+    connector["content"] = "ordnet Arbeit und folgende Aufgaben"
+    quality = audit_board_spec(spec)
+    risk = next(
+        item for item in quality["visual_risks"] if item["code"] == "connector_label_collision"
+    )
+    assert risk["evidence"]["gap"] < risk["evidence"]["required_gap"]
+    assert quality["ok"] is False
+    assert any(item["code"] == "connector_label_collision" for item in quality["blockers"])
+    assert quality["score"] < 100
+    assert quality["visual_acceptance"]["authenticated_provider_capture_required"] is True

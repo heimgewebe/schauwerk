@@ -116,3 +116,18 @@ def test_visual_review_rejects_invalid_local_quality_binding() -> None:
     live["local_quality"]["score"] = 89
     with pytest.raises(ValueError, match="quality score"):
         compile_visual_review(live, _review_input())
+
+
+def test_strict_live_review_requires_authenticated_provider_screenshot() -> None:
+    live = _live_receipt()
+    live["visual_acceptance"] = {
+        "authenticated_provider_capture_required": True,
+        "status": "pending_authenticated_provider_capture",
+        "automatic_aesthetic_verdict": False,
+    }
+    with pytest.raises(ValueError, match="requires an authenticated provider screenshot"):
+        compile_visual_review(live, _review_input())
+
+    review = _review_input()
+    review["method"]["authenticated_provider_screenshot"] = "available"
+    assert compile_visual_review(live, review)["verdict"] == "PASS"

@@ -308,6 +308,11 @@ def test_executor_runs_all_native_lanes_and_returns_sanitized_readbacks() -> Non
     assert receipt["completed_operation_count"] == 5
     assert receipt["partial_mutation"] is False
     assert receipt["atomic"] is False
+    assert receipt["visual_acceptance"] == {
+        "authenticated_provider_capture_required": True,
+        "status": "pending_authenticated_provider_capture",
+        "automatic_aesthetic_verdict": False,
+    }
     assert receipt["preflight"]["inventory"]["item_count"] == 1
     assert receipt["postflight"]["inventory"]["item_count"] == 5
     assert receipt["completed_operations"][0]["readback"]["content_present"] is True

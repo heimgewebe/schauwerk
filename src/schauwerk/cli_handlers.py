@@ -680,8 +680,7 @@ def handle_visual_v2_live_test(
                 alias=alias,
                 name=board_name,
                 description=(
-                    f"Schauwerk Visual System v2 board: {spec['title']}. "
-                    f"Purpose: {spec['purpose']}"
+                    f"Schauwerk Visual System v2 board: {spec['title']}. Purpose: {spec['purpose']}"
                 ),
                 replace_alias=replace_alias,
                 invocation_source="schauwerk-visual-system-v2",
@@ -798,6 +797,11 @@ def handle_visual_v2_live_test(
         "layout_read": layout_read,
         "local_quality": quality,
         "remote_conformance": remote_conformance,
+        "visual_acceptance": {
+            "authenticated_provider_capture_required": True,
+            "status": "pending_authenticated_provider_capture",
+            "automatic_aesthetic_verdict": False,
+        },
         "visual_review": {
             "status": "pending_separate_ui_review",
             "automatic_score_prohibited": True,

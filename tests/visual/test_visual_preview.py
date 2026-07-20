@@ -12,7 +12,6 @@ from jsonschema import Draft202012Validator
 from schauwerk.runner import main
 from schauwerk.visual.preview import (
     VisualPreviewError,
-    analyze_visual_board,
     build_visual_preview,
     compare_visual_previews,
     load_visual_preview,
@@ -23,7 +22,7 @@ from schauwerk.visual.representation import (
     render_miro_board,
     route_representation,
 )
-from schauwerk.visual.system_v2 import finalize_board_spec, validate_board_spec
+from schauwerk.visual.system_v2 import finalize_board_spec
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/operator-ecosystem-representation-v1.json"
@@ -92,7 +91,7 @@ def test_preview_is_deterministic_private_and_fully_bound(tmp_path: Path) -> Non
     assert "http://" not in html.lower()
 
 
-def test_preview_detects_the_previous_auto_sized_table_overlap() -> None:
+def test_quality_gate_blocks_the_previous_auto_sized_table_overlap_before_preview() -> None:
     model = load_representation_input(FIXTURE)
     plan = route_representation(model)
     board = render_miro_board(model, plan)
@@ -104,24 +103,13 @@ def test_preview_detects_the_previous_auto_sized_table_overlap() -> None:
         item for item in delivery["objects"] if item["id"] not in {"quality_gate", "kill_switch"}
     ]
     decision["objects"].extend(moved)
-    regressed = finalize_board_spec(
-        title=board["title"],
-        purpose=board["purpose"],
-        frames=frames,
-    )
 
-    assert validate_board_spec(regressed)["ok"] is True
-    preview = analyze_visual_board(regressed, package_digest="0" * 64)
-    overlap_objects = {
-        tuple(issue["object_ids"])
-        for frame in preview["frames"]
-        for issue in frame["issues"]
-        if issue["code"] == "object_overlap"
-    }
-    assert ("quality_gate", "route_matrix") in overlap_objects
-    assert ("kill_switch", "route_matrix") in overlap_objects
-    assert preview["blocker_count"] == 2
-    assert preview["ok"] is False
+    with pytest.raises(ValueError, match="object_overlap"):
+        finalize_board_spec(
+            title=board["title"],
+            purpose=board["purpose"],
+            frames=frames,
+        )
 
 
 def test_preview_comparison_detects_new_text_overflow(tmp_path: Path) -> None:

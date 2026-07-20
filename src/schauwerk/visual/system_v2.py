@@ -523,9 +523,9 @@ def reference_board_spec() -> dict[str, Any]:
                 "Evidenz\nWoher wissen wir es?",
                 color="evidence",
             ),
-            _connector("arch_ab", "arch_a", "arch_b", "fokussieren"),
-            _connector("arch_bc", "arch_b", "arch_c", "verdichten"),
-            _connector("arch_cd", "arch_c", "arch_d", "belegen"),
+            _connector("arch_ab", "arch_a", "arch_b", "Fokus", relation_type="flow"),
+            _connector("arch_bc", "arch_b", "arch_c", "Dichte", relation_type="flow"),
+            _connector("arch_cd", "arch_c", "arch_d", "Beleg", relation_type="evidence"),
         ]
     )
     frames.append(architecture)
@@ -682,12 +682,16 @@ def _text_length(value: Any) -> int:
 def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     blockers: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
+    visual_risks: list[dict[str, Any]] = []
 
     def block(code: str, message: str, **evidence: Any) -> None:
         blockers.append({"code": code, "message": message, "evidence": evidence})
 
     def warn(code: str, message: str, **evidence: Any) -> None:
         warnings.append({"code": code, "message": message, "evidence": evidence})
+
+    def visual_risk(code: str, message: str, **evidence: Any) -> None:
+        visual_risks.append({"code": code, "message": message, "evidence": evidence})
 
     if spec.get("schema_version") != BOARD_SCHEMA:
         block("schema", "unsupported board schema")
@@ -774,6 +778,7 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         local_ids: set[str] = set()
         connectors: list[Mapping[str, Any]] = []
         design_boxes: list[tuple[str, int, int, int, int]] = []
+        object_boxes: dict[str, tuple[int, int, int, int]] = {}
         for raw_object in objects:
             if not isinstance(raw_object, Mapping):
                 block("object_type", "visual object must be an object", frame=frame_id)
@@ -904,6 +909,7 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                     object=object_id,
                 )
             design_boxes.append((object_id, x, y, w, h))
+            object_boxes[object_id] = (x, y, w, h)
             coverage += (w * h) / (width * height)
             length = _text_length(raw_object.get("content", ""))
             maximum = (
@@ -933,12 +939,43 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                         overlap_area=overlap_w * overlap_h,
                     )
         for connector in connectors:
-            if connector.get("from") not in local_ids or connector.get("to") not in local_ids:
+            source_id = connector.get("from")
+            target_id = connector.get("to")
+            if source_id not in local_ids or target_id not in local_ids:
                 block(
                     "cross_frame_connector",
                     "connectors must stay inside one narrative frame",
                     object=connector.get("id"),
                 )
+                continue
+            label = " ".join(str(connector.get("content", "")).split())
+            source_box = object_boxes.get(str(source_id))
+            target_box = object_boxes.get(str(target_id))
+            if label and source_box and target_box:
+                source_x, source_y, source_w, source_h = source_box
+                target_x, target_y, target_w, target_h = target_box
+                same_row = min(source_y + source_h, target_y + target_h) > max(source_y, target_y)
+                if source_x <= target_x:
+                    gap = target_x - (source_x + source_w)
+                else:
+                    gap = source_x - (target_x + target_w)
+                required_gap = min(360, max(80, 20 + len(label) * 7))
+                if same_row and gap < required_gap:
+                    evidence = {
+                        "object": connector.get("id"),
+                        "gap": gap,
+                        "required_gap": required_gap,
+                    }
+                    visual_risk(
+                        "connector_label_collision",
+                        "provider-positioned connector label lacks a safe node gap",
+                        **evidence,
+                    )
+                    block(
+                        "connector_label_collision",
+                        "provider-positioned connector label lacks a safe node gap",
+                        **evidence,
+                    )
         if coverage > limits["max_visual_coverage"]:
             block(
                 "white_space",
@@ -1030,6 +1067,7 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             "text_density",
             "frame_overloaded",
             "connector_clutter",
+            "connector_label_collision",
             "object_overlap",
         }:
             categories["density"] = max(0, categories["density"] - 8)
@@ -1050,6 +1088,7 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         "category_scores": categories,
         "blockers": blockers,
         "warnings": warnings,
+        "visual_risks": visual_risks,
         "frame_count": len(frames),
         "object_count": non_connector_count + connector_count,
         "connector_count": connector_count,
@@ -1064,11 +1103,17 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         "geometry_contract": {
             "declared_boxes": "design_review_only",
             "text_shape_sticky": "provider_dimensions_requested",
-            "table_doc": "provider_auto_sized_type_and_anchor_verified",
+            "table_doc": "provider_auto_sized_unbounded_requires_provider_capture",
+            "connector_labels": "provider_positioning_requires_static_gap_or_bounded_text",
+        },
+        "visual_acceptance": {
+            "authenticated_provider_capture_required": True,
+            "automatic_aesthetic_verdict": False,
+            "status": "pending_provider_capture",
         },
         "board_digest": spec.get("board_digest"),
         "mutation_attempted": False,
-        "remote_geometry_required": False,
+        "remote_geometry_required": provider_auto_sized_count > 0,
     }
     value["quality_digest"] = _digest(value)
     return value
@@ -1277,6 +1322,13 @@ def compile_visual_review(
     }
     if normalized_method["authenticated_provider_screenshot"] not in {"available", "not_available"}:
         raise ValueError("authenticated provider screenshot status is invalid")
+    visual_acceptance = live_receipt.get("visual_acceptance")
+    if (
+        isinstance(visual_acceptance, Mapping)
+        and visual_acceptance.get("authenticated_provider_capture_required") is True
+        and normalized_method["authenticated_provider_screenshot"] != "available"
+    ):
+        raise ValueError("strict live visual review requires an authenticated provider screenshot")
     if normalized_method["design_surface"] != "deterministic board-spec visual preview":
         raise ValueError("visual review must name the deterministic design surface")
     if (

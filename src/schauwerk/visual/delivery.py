@@ -22,7 +22,6 @@ PACKAGE_RECEIPT_SCHEMA = "schauwerk-representation-receipt.v1"
 NATIVE_BUNDLE_SCHEMA = "schauwerk-miro-native-bundle.v1"
 
 _MAX_PACKAGE_FILE_BYTES = 2_000_000
-_MAX_MERMAID_WIDGET_BYTES = 5_800
 _MAX_DOCUMENT_BYTES = 75_000
 _MAX_TABLE_ROWS = 500
 _MAX_NATIVE_OPERATIONS = 20
@@ -114,6 +113,52 @@ def _table_rows(model: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _diagram_label(value: Any, *, maximum: int = 48) -> str:
+    text = " ".join(str(value).replace('"', "'").split())
+    if not text:
+        return "—"
+    return text if len(text) <= maximum else text[: maximum - 1].rstrip() + "…"
+
+
+def _native_flowchart_dsl(model: Mapping[str, Any]) -> str:
+    """Compile the semantic graph into Miro's native flowchart DSL."""
+
+    node_refs = {str(node["id"]): f"n{index}" for index, node in enumerate(model["nodes"], 1)}
+    shape_by_kind = {
+        "human": "flowchart-terminator",
+        "decision": "flowchart-decision",
+        "risk": "flowchart-decision",
+    }
+    lines = ["graphdir LR", "palette #E6F6F8 #FFF8DD #EAF8F0", ""]
+    for node in model["nodes"]:
+        reference = node_refs[str(node["id"])]
+        shape = shape_by_kind.get(str(node["kind"]), "flowchart-process")
+        palette_index = (
+            1
+            if node["kind"] in {"decision", "risk"}
+            else 2
+            if node["kind"] in {"store", "evidence"}
+            else 0
+        )
+        lines.append(f"{reference} {_diagram_label(node['label'])} {shape} {palette_index}")
+    lines.append("")
+    for edge in model["edges"]:
+        source = node_refs[str(edge["from"])]
+        target = node_refs[str(edge["to"])]
+        relation = "·".join(_diagram_label(edge["label"], maximum=32).split())
+        lines.append(f"c {source} {relation or '-'} {target}")
+    grouped: dict[str, list[str]] = {}
+    group_titles = {str(group["id"]): str(group["label"]) for group in model.get("groups", [])}
+    for node in model["nodes"]:
+        group = node.get("group")
+        if group:
+            grouped.setdefault(str(group), []).append(node_refs[str(node["id"])])
+    for index, (group_id, references) in enumerate(grouped.items(), 1):
+        title = _diagram_label(group_titles.get(group_id, group_id), maximum=60)
+        lines.append(f'cluster c{index} "{title}" {" ".join(references)}')
+    return "\n".join(lines) + "\n"
+
+
 def compile_representation_native_bundle(
     model: Mapping[str, Any],
     plan: Mapping[str, Any],
@@ -142,26 +187,17 @@ def compile_representation_native_bundle(
     if "mermaid" in selected:
         if not mermaid_source:
             raise RepresentationDeliveryError("Mermaid delivery requires exact source text")
-        chunks = _chunk_text(
-            mermaid_source,
-            maximum_bytes=_MAX_MERMAID_WIDGET_BYTES,
-            label="Mermaid source",
+        operations.append(
+            {
+                "operation_id": "rendered-semantic-diagram",
+                "kind": "diagram",
+                "title": f"{model['title']} · Gesamtmodell",
+                "diagram_type": "flowchart",
+                "diagram_dsl": _native_flowchart_dsl(model),
+                "x": 10600,
+                "y": 380,
+            }
         )
-        for index, chunk in enumerate(chunks, start=1):
-            suffix = f" {index}/{len(chunks)}" if len(chunks) > 1 else ""
-            operations.append(
-                {
-                    "operation_id": f"mermaid-source-{index}",
-                    "kind": "code_widget",
-                    "title": f"Mermaid source{suffix}",
-                    "language": "Mermaid",
-                    "line_numbers_visible": True,
-                    "width": 1000,
-                    "code": chunk,
-                    "x": 8000,
-                    "y": -1000 + (index - 1) * 900,
-                }
-            )
 
     if "document" in selected:
         if not document_source:

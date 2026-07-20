@@ -85,12 +85,21 @@ def test_package_check_recomputes_all_artifacts_and_native_tools(tmp_path: Path)
     assert result["native_operation_count"] == 4
     assert result["quality_score"] == 100
     assert {
-        "code_widget_create",
+        "diagram_create",
         "doc_create",
         "layout_create",
         "table_create",
     } <= set(result["required_tools"])
     assert result["mutation_attempted"] is False
+    bundle = json.loads((package / "miro-native-bundle.json").read_text())
+    kinds = [operation["kind"] for operation in bundle["operations"]]
+    assert "diagram" in kinds
+    assert "code_widget" not in kinds
+    diagram = next(
+        operation for operation in bundle["operations"] if operation["kind"] == "diagram"
+    )
+    assert diagram["diagram_type"] == "flowchart"
+    assert diagram["diagram_dsl"].startswith("graphdir LR\n")
 
 
 def test_package_check_rejects_an_unlisted_file(tmp_path: Path) -> None:

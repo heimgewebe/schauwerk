@@ -1242,6 +1242,11 @@ async def execute_native_bundle(
                 is not None
                 else None
             ),
+            "visual_acceptance": {
+                "authenticated_provider_capture_required": True,
+                "status": "pending_authenticated_provider_capture",
+                "automatic_aesthetic_verdict": False,
+            },
             "truth_boundary": {
                 "provider_operations_are_sequential": True,
                 "rollback_available_for_all_item_types": False,

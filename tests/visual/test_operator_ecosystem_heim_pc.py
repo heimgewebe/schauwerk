@@ -48,6 +48,14 @@ def test_operator_ecosystem_heim_pc_is_a_complete_clean_visual_model() -> None:
     assert plan["selected_formats"] == ["miro_native", "mermaid"]
     assert quality["ok"] is True
     assert quality["score"] == 100
+    assert quality["provider_auto_sized_count"] == 0
+    assert quality["visual_risks"] == []
+    assert quality["visual_acceptance"]["authenticated_provider_capture_required"] is True
+    assert all(
+        item["kind"] not in {"doc", "table"}
+        for frame in board["frames"]
+        for item in frame["objects"]
+    )
     assert preview["ok"] is True
     assert preview["blocker_count"] == 0
     assert preview["warning_count"] == 0
