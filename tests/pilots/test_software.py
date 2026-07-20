@@ -265,6 +265,7 @@ def test_software_visual_v2_is_deterministic_narrative_and_quality_gated(
     assert quality["ok"] is True
     assert quality["score"] >= 90
     assert quality["blockers"] == []
+    assert quality["visual_risks"] == []
     assert quality["sticky_count"] == 0
     assert quality["connector_count"] >= 4
     assert (

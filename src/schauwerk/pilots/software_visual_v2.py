@@ -131,19 +131,19 @@ def compose_software_visual_board(snapshot: Mapping[str, Any]) -> dict[str, Any]
                 "software_map_a",
                 "software_map_system",
                 "software_map_decision",
-                "begründet",
+                "Grund",
             ),
             connector_object(
                 "software_map_b",
                 "software_map_decision",
                 "software_map_delivery",
-                "steuert",
+                "Steuert",
             ),
             connector_object(
                 "software_map_c",
                 "software_map_delivery",
                 "software_map_evidence",
-                "wird geprüft",
+                "Prüft",
             ),
         ]
     )

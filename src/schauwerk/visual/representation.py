@@ -15,10 +15,8 @@ from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
 
 from .composer_v2 import (
     connector_object,
-    document_object,
     frame,
     shape_object,
-    table_object,
     text_object,
 )
 from .delivery import (
@@ -552,6 +550,13 @@ def _frame_nodes(
     nodes: Sequence[Mapping[str, Any]],
     edges: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Lay out a readable four-node relation strip.
+
+    Miro positions connector captions independently of node geometry. Relation
+    text therefore lives in one bounded legend while connectors remain semantic
+    but unlabelled.
+    """
+
     result: list[dict[str, Any]] = []
     selected = list(nodes[:4])
     selected_ids = {node["id"] for node in selected}
@@ -561,23 +566,44 @@ def _frame_nodes(
             shape_object(
                 node["id"],
                 role,
-                80 + index * 240,
-                300,
-                200,
-                120,
+                80 + index * 360,
+                340,
+                240,
+                140,
                 str(node["label"]),
                 color=color,
             )
         )
-    room = max(0, 7 - len(result))
+    room = min(2, max(0, 7 - len(result)))
+    relation_rows: list[str] = []
+    labels = {str(node["id"]): str(node["label"]) for node in selected}
     for edge in edges:
         if room == 0:
             break
         if edge["from"] in selected_ids and edge["to"] in selected_ids:
-            connector = connector_object(edge["id"], edge["from"], edge["to"], edge["label"])
+            connector = connector_object(edge["id"], edge["from"], edge["to"], "→")
             connector["relation_type"] = edge["kind"]
             result.append(connector)
+            source_label = labels[str(edge["from"])]
+            target_label = labels[str(edge["to"])]
+            relation_label = str(edge["label"])[:36]
+            relation_rows.append(
+                f"{source_label} → {target_label}: {relation_label}"
+            )
             room -= 1
+    if relation_rows:
+        result.append(
+            text_object(
+                f"{frame_id}_relations",
+                "caption",
+                80,
+                260,
+                1360,
+                60,
+                "   ·   ".join(relation_rows),
+                font="caption",
+            )
+        )
     if not result:
         result.append(
             text_object(
@@ -648,6 +674,11 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
             6200,
         ),
     ]
+    for index, item in enumerate(frames):
+        item["x"] = index * 1640
+        item["w"] = 1520
+        item["h"] = 760
+
     frames[0]["objects"].append(
         shape_object(
             "route_entry",
@@ -670,28 +701,29 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
         )
         for name in plan["selected_formats"][:5]
     )
-    frames[3]["objects"].append(
-        table_object(
-            "route_matrix",
-            "comparison",
-            140,
-            260,
-            800,
-            160,
-            "Ausgewählte Renderer",
-            ("Format", "Rolle", "Begründung"),
-            route_rows,
+    for index, (name, role, reason) in enumerate(route_rows):
+        frames[3]["objects"].append(
+            shape_object(
+                f"route_choice_{index + 1}",
+                "decision",
+                80 + (index % 3) * 480,
+                300 + (index // 3) * 180,
+                400,
+                120,
+                f"{name}\n{role} · {reason}",
+                color="decision",
+                shape="rhombus",
+            )
         )
-    )
     for index, name in enumerate(plan["selected_formats"][:4]):
         frames[4]["objects"].append(
             shape_object(
                 f"delivery_{name}",
                 "action",
-                80 + index * 240,
+                80 + index * 360,
                 300,
-                200,
-                120,
+                280,
+                140,
                 name,
                 color="decision",
             )
@@ -702,24 +734,33 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
             shape_object(
                 str(node["id"]),
                 role,
-                140 + index * 440,
-                460,
-                360,
-                80,
+                160 + index * 600,
+                520,
+                520,
+                100,
                 str(node["label"]),
                 color=color,
             )
         )
-    evidence_markdown = (
-        "# Repräsentationspaket\n\n"
-        f"- Eingabe: `{normalized['input_digest']}`\n"
-        f"- Plan: `{plan['plan_digest']}`\n"
-        f"- Knoten: {len(nodes)}\n"
-        f"- Beziehungen: {len(edges)}\n"
-        "- Automatische Gates bewerten Vertrag und Identität, nicht universelle Ästhetik."
+    evidence_summary = (
+        "Repräsentationspaket\n"
+        f"Eingabe {normalized['input_digest'][:16]}… · Plan {plan['plan_digest'][:16]}…\n"
+        f"{len(nodes)} Knoten · {len(edges)} Beziehungen\n"
+        "Vertrag und Identität automatisch geprüft. Visuelle Freigabe nur mit "
+        "authentifizierter Provider-Aufnahme."
     )
     frames[5]["objects"].append(
-        document_object("route_evidence_doc", 140, 280, 820, 220, evidence_markdown)
+        shape_object(
+            "route_evidence_card",
+            "evidence",
+            80,
+            300,
+            1360,
+            300,
+            evidence_summary,
+            color="evidence",
+            shape="can",
+        )
     )
     return finalize_board_spec(
         title=normalized["title"],
