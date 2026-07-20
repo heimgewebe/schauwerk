@@ -154,6 +154,16 @@ def test_quality_reports_malformed_layout_connector_count_as_unavailable() -> No
     assert "connector_observability_unavailable" in finding_codes(receipt)
 
 
+def test_quality_keeps_connector_blind_snapshot_zero_unavailable() -> None:
+    receipt = inspect_snapshot_quality(
+        snapshot([item("frame", ref="root", x=0, y=0, w=1000, h=800)])
+    )
+
+    assert receipt.connector_count is None
+    assert receipt.connector_observability == "unavailable"
+    assert "connector_observability_unavailable" in finding_codes(receipt)
+
+
 def test_quality_accepts_explicit_zero_from_layout_read() -> None:
     receipt = inspect_snapshot_quality(
         snapshot([item("frame", ref="root", x=0, y=0, w=1000, h=800)]),

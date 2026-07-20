@@ -221,12 +221,15 @@ def inspect_snapshot_quality(
         count for item_type, count in type_counts.items() if item_type in _STICKY_TYPES
     )
     layout_connector_count = _observable_summary_count(layout_read, "connector_count")
+    # A positive snapshot count proves visibility. Zero does not prove absence because
+    # board_list_items may omit connectors entirely; only layout_read can prove zero.
+    snapshot_connector_observable = snapshot_connector_count > 0
     if layout_connector_count is not None:
         connector_count: int | None = max(snapshot_connector_count, layout_connector_count)
         connector_observability: ConnectorObservability = (
-            "snapshot_and_layout_read" if snapshot_connector_count else "layout_read"
+            "snapshot_and_layout_read" if snapshot_connector_observable else "layout_read"
         )
-    elif snapshot_connector_count:
+    elif snapshot_connector_observable:
         connector_count = snapshot_connector_count
         connector_observability = "snapshot"
     else:
