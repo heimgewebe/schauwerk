@@ -22,6 +22,7 @@ from .errors import (
     redact_text,
 )
 from .inspection import result_payload
+from .layout_dsl import LayoutDslParseError, summarize_layout_dsl
 from .models import MiroSettings
 from .runtime import quiet_provider_stderr, threadless_dns_resolution
 
@@ -205,13 +206,16 @@ async def run_layout_read_summary(
     if payload.get("success") is False or payload.get("error_code"):
         raise MiroToolError("Miro layout_read reported an error")
     text = _layout_text(result, payload)
-    lines = tuple(line for line in text.splitlines() if line.strip())
+    try:
+        summary = summarize_layout_dsl(text)
+    except LayoutDslParseError as exc:
+        raise MiroToolError(f"Miro layout_read returned invalid DSL: {exc}") from exc
     return LayoutReadSummary(
-        line_count=len(lines),
-        frame_count=sum(" FRAME " in f" {line} " for line in lines),
-        connector_count=sum(" CONNECTOR " in f" {line} " for line in lines),
-        table_count=sum(" TABLE " in f" {line} " for line in lines),
-        doc_count=sum(" DOC " in f" {line} " for line in lines),
+        line_count=summary.line_count,
+        frame_count=summary.count("FRAME"),
+        connector_count=summary.count("CONNECTOR"),
+        table_count=summary.count("TABLE"),
+        doc_count=summary.count("DOC"),
         result_dsl_digest=_digest(text) if text else None,
         success=True,
     )

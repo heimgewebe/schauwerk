@@ -8,6 +8,7 @@ import os
 import re
 import stat
 from collections.abc import Awaitable, Callable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
@@ -19,6 +20,7 @@ from jsonschema import Draft202012Validator
 from .capability_fallbacks import resolve_bundle_operations
 from .errors import MiroToolError
 from .inspection import checked_payload
+from .layout_dsl import LayoutDslParseError, summarize_layout_dsl
 
 NATIVE_BUNDLE_SCHEMA = "schauwerk-miro-native-bundle.v1"
 NATIVE_RECEIPT_SCHEMA = "schauwerk-miro-native-execution-receipt.v1"
@@ -338,9 +340,7 @@ def _validate_resume_receipt(
     recorded_resolution = value.get("provider_resolution_digest")
     if recorded_resolution is None:
         if provider_fallback_count:
-            raise NativeBundleError(
-                "legacy native resume receipt cannot enter a provider fallback"
-            )
+            raise NativeBundleError("legacy native resume receipt cannot enter a provider fallback")
     elif recorded_resolution != provider_resolution_digest:
         raise NativeBundleError("native resume receipt provider resolution has drifted")
     if value.get("board_alias") != board_alias:
@@ -695,17 +695,111 @@ def _load_prototype_screens(
 def _layout_dsl_connector_count(value: str, *, label: str) -> int:
     if not isinstance(value, str) or not value.strip():
         raise MiroToolError(f"{label} is empty")
-    count = 0
-    for line in value.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith(("#", "//")):
-            continue
-        tokens = stripped.split()
-        if len(tokens) >= 2 and tokens[1] == "CONNECTOR":
-            count += 1
-        elif tokens[0] == "CONNECTOR":
-            raise MiroToolError(f"{label} contains a malformed connector declaration")
-    return count
+    try:
+        return summarize_layout_dsl(value).count("CONNECTOR")
+    except LayoutDslParseError as exc:
+        raise MiroToolError(f"{label} contains invalid connector syntax: {exc}") from exc
+
+
+@dataclass(frozen=True)
+class ConnectorEvidence:
+    """Operation-local connector counts derived from cumulative board readback."""
+
+    declared_count: int
+    result_dsl_count: int
+    layout_read_before_count: int
+    layout_read_after_count: int
+    board_dsl_before_count: int
+    board_dsl_after_count: int
+    created_count: int
+
+    @classmethod
+    def from_live(
+        cls,
+        *,
+        declared_count: int,
+        result_dsl_count: int,
+        layout_read_before_count: int,
+        layout_read_after_count: int,
+        board_dsl_before_count: int,
+        board_dsl_after_count: int,
+    ) -> ConnectorEvidence:
+        values = {
+            "declared_count": declared_count,
+            "result_dsl_count": result_dsl_count,
+            "layout_read_before_count": layout_read_before_count,
+            "layout_read_after_count": layout_read_after_count,
+            "board_dsl_before_count": board_dsl_before_count,
+            "board_dsl_after_count": board_dsl_after_count,
+        }
+        for name, value in values.items():
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise MiroToolError(f"layout connector evidence has an invalid {name}")
+        if layout_read_before_count != board_dsl_before_count:
+            raise MiroToolError("Miro layout connector evidence is inconsistent before creation")
+        if layout_read_after_count != board_dsl_after_count:
+            raise MiroToolError("Miro layout connector evidence is inconsistent after creation")
+        if layout_read_after_count < layout_read_before_count:
+            raise MiroToolError("Miro layout connector count decreased during creation")
+        if result_dsl_count != layout_read_after_count:
+            raise MiroToolError(
+                "Miro layout result connector count does not match the post-create board state"
+            )
+        created_count = layout_read_after_count - layout_read_before_count
+        if created_count < declared_count:
+            raise MiroToolError(
+                "Miro layout readback contains fewer newly created connectors than declared"
+            )
+        return cls(created_count=created_count, **values)
+
+    @classmethod
+    def from_receipt(cls, value: Any) -> ConnectorEvidence:
+        if not isinstance(value, Mapping) or value.get("verified") is not True:
+            raise MiroToolError("layout receipt lacks verified connector evidence")
+        declared = value.get("declared_count")
+        result = value.get("result_dsl_count")
+        if "layout_read_before_count" in value or "layout_read_after_count" in value:
+            before = value.get("layout_read_before_count")
+            after = value.get("layout_read_after_count")
+            board_before = value.get("board_dsl_before_count")
+            board_after = value.get("board_dsl_after_count")
+        else:
+            # v1 receipts recorded an operation-local count without cumulative baselines.
+            before = 0
+            after = value.get("layout_read_count")
+            board_before = 0
+            board_after = value.get("board_dsl_count")
+        evidence = cls.from_live(
+            declared_count=declared,
+            result_dsl_count=result,
+            layout_read_before_count=before,
+            layout_read_after_count=after,
+            board_dsl_before_count=board_before,
+            board_dsl_after_count=board_after,
+        )
+        recorded_created = value.get("created_count", evidence.created_count)
+        if (
+            isinstance(recorded_created, bool)
+            or not isinstance(recorded_created, int)
+            or recorded_created != evidence.created_count
+        ):
+            raise MiroToolError("layout receipt has an invalid created connector count")
+        return evidence
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "declared_count": self.declared_count,
+            "result_dsl_count": self.result_dsl_count,
+            # Preserve the v1 operation-local fields for old receipt consumers.
+            "layout_read_count": self.created_count,
+            "board_dsl_count": self.created_count,
+            "layout_read_before_count": self.layout_read_before_count,
+            "layout_read_after_count": self.layout_read_after_count,
+            "board_dsl_before_count": self.board_dsl_before_count,
+            "board_dsl_after_count": self.board_dsl_after_count,
+            "created_count": self.created_count,
+            "verified": True,
+        }
 
 
 def _expected_created_item_count(completed: Sequence[Mapping[str, Any]]) -> int:
@@ -740,25 +834,25 @@ def _layout_receipt_connector_count(operation: Mapping[str, Any]) -> int:
     readback = operation.get("readback")
     if not isinstance(readback, Mapping):
         raise MiroToolError("layout receipt lacks readback evidence")
-    evidence = readback.get("connector_evidence")
-    if not isinstance(evidence, Mapping) or evidence.get("verified") is not True:
-        raise MiroToolError("layout receipt lacks verified connector evidence")
-    declared = evidence.get("declared_count")
-    verified = evidence.get("layout_read_count")
+    evidence = ConnectorEvidence.from_receipt(readback.get("connector_evidence"))
     created = readback.get("created_count")
-    if isinstance(declared, bool) or not isinstance(declared, int) or declared < 0:
-        raise MiroToolError("layout receipt has an invalid declared connector count")
-    if isinstance(verified, bool) or not isinstance(verified, int) or verified < declared:
-        raise MiroToolError("layout receipt has an invalid verified connector count")
-    if isinstance(created, bool) or not isinstance(created, int) or created < verified:
+    if (
+        isinstance(created, bool)
+        or not isinstance(created, int)
+        or created < evidence.created_count
+    ):
         raise MiroToolError("layout receipt connector count exceeds its created count")
-    return verified
+    return evidence.created_count
 
 
 def _expected_inventory_visible_created_item_count(
     completed: Sequence[Mapping[str, Any]],
 ) -> int:
-    connector_count = sum(_layout_receipt_connector_count(operation) for operation in completed)
+    connector_count = sum(
+        _layout_receipt_connector_count(operation)
+        for operation in completed
+        if operation.get("kind") == "layout"
+    )
     return _expected_created_item_count(completed) - connector_count
 
 
@@ -772,12 +866,19 @@ def _expected_inventory_visible_net_item_delta(
 
 def _connector_evidence_summary(completed: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     layouts = [operation for operation in completed if operation.get("kind") == "layout"]
-    declared_counts = [_layout_receipt_connector_count(operation) for operation in layouts]
+    evidence = [
+        ConnectorEvidence.from_receipt(operation["readback"].get("connector_evidence"))
+        for operation in layouts
+        if isinstance(operation.get("readback"), Mapping)
+    ]
+    if len(evidence) != len(layouts):
+        raise MiroToolError("layout receipt lacks readback evidence")
     return {
         "layout_operation_count": len(layouts),
-        "layout_read_verified_operation_count": len(layouts),
-        "layout_operations_with_connectors": sum(count > 0 for count in declared_counts),
-        "provider_created_connector_count": sum(declared_counts),
+        "layout_read_verified_operation_count": len(evidence),
+        "layout_operations_with_connectors": sum(item.created_count > 0 for item in evidence),
+        "declared_connector_count": sum(item.declared_count for item in evidence),
+        "provider_created_connector_count": sum(item.created_count for item in evidence),
         "board_inventory_connector_visibility": "not_assumed",
     }
 
@@ -866,6 +967,38 @@ async def execute_native_bundle(
             }
         )
         return payload
+
+    async def read_layout_state(
+        target_url: str, *, label: str, allow_empty: bool
+    ) -> dict[str, Any]:
+        layout = await invoke(
+            "layout_read",
+            _base_arguments(target_url, {"mode": "full"}),
+        )
+        board_dsl = layout.get("dsl")
+        if layout.get("success") is not True or not isinstance(board_dsl, str):
+            raise MiroToolError(f"{label} is invalid")
+        item_count = _integer(layout, "item_count")
+        connector_count = _integer(layout, "connector_count")
+        skipped_count = _integer(layout, "skipped_count")
+        if not board_dsl.strip():
+            if not allow_empty or item_count != 0 or connector_count != 0:
+                raise MiroToolError(f"{label} is empty or inconsistent")
+            board_dsl_connector_count = 0
+        else:
+            if item_count < 1:
+                raise MiroToolError(f"{label} has DSL but no items")
+            board_dsl_connector_count = _layout_dsl_connector_count(board_dsl, label=f"{label} DSL")
+        if connector_count != board_dsl_connector_count:
+            raise MiroToolError(f"{label} connector evidence is inconsistent")
+        return {
+            "dsl": board_dsl,
+            "dsl_digest": _text_digest(board_dsl),
+            "item_count": item_count,
+            "connector_count": connector_count,
+            "board_dsl_connector_count": board_dsl_connector_count,
+            "skipped_count": skipped_count,
+        }
 
     async def read_complete_inventory() -> dict[str, Any]:
         cursor: str | None = None
@@ -1165,6 +1298,11 @@ async def execute_native_bundle(
                     raise MiroToolError("Miro layout contract lacks a specification")
                 if not isinstance(example, str) or not example.strip():
                     raise MiroToolError("Miro layout contract lacks an example")
+                before_layout = await read_layout_state(
+                    target_url,
+                    label="Miro layout preflight readback",
+                    allow_empty=True,
+                )
                 pending_operation_id = operation["operation_id"]
                 pending_tool = "layout_create"
                 if checkpoint is not None:
@@ -1196,49 +1334,38 @@ async def execute_native_bundle(
                     raise MiroToolError(
                         "Miro layout created count is below its declared connector count"
                     )
-                layout = await invoke(
-                    "layout_read",
-                    _base_arguments(target_url, {"mode": "full"}),
+                after_layout = await read_layout_state(
+                    target_url,
+                    label="Miro layout post-create readback",
+                    allow_empty=False,
                 )
-                board_dsl = layout.get("dsl")
-                if layout.get("success") is not True or not isinstance(board_dsl, str):
-                    raise MiroToolError("Miro layout readback is invalid")
-                if not board_dsl.strip() or _integer(layout, "item_count") < 1:
-                    raise MiroToolError("Miro layout readback is empty")
-                layout_connector_count = _integer(layout, "connector_count")
-                board_dsl_connector_count = _layout_dsl_connector_count(
-                    board_dsl, label="Miro layout readback DSL"
+                connector_evidence = ConnectorEvidence.from_live(
+                    declared_count=declared_connector_count,
+                    result_dsl_count=result_connector_count,
+                    layout_read_before_count=before_layout["connector_count"],
+                    layout_read_after_count=after_layout["connector_count"],
+                    board_dsl_before_count=before_layout["board_dsl_connector_count"],
+                    board_dsl_after_count=after_layout["board_dsl_connector_count"],
                 )
-                if layout_connector_count < declared_connector_count:
+                if created_count < connector_evidence.created_count:
                     raise MiroToolError(
-                        "Miro layout readback contains fewer connectors than declared"
-                    )
-                if not (
-                    result_connector_count == layout_connector_count == board_dsl_connector_count
-                ):
-                    raise MiroToolError("Miro layout connector evidence is inconsistent")
-                if created_count < layout_connector_count:
-                    raise MiroToolError(
-                        "Miro layout created count is below its verified connector count"
+                        "Miro layout created count is below its verified connector delta"
                     )
                 readback = {
                     "created_count": created_count,
                     "board_inventory_visible_created_count": (
-                        created_count - layout_connector_count
+                        created_count - connector_evidence.created_count
                     ),
                     "failed_item_count": len(failed_items),
                     "contract_digest": _digest({"spec": spec, "example": example}),
                     "result_dsl_digest": _text_digest(result_dsl),
-                    "board_dsl_digest": _text_digest(board_dsl),
-                    "board_item_count": _integer(layout, "item_count"),
-                    "skipped_item_count": _integer(layout, "skipped_count"),
-                    "connector_evidence": {
-                        "declared_count": declared_connector_count,
-                        "result_dsl_count": result_connector_count,
-                        "layout_read_count": layout_connector_count,
-                        "board_dsl_count": board_dsl_connector_count,
-                        "verified": True,
-                    },
+                    "board_dsl_before_digest": before_layout["dsl_digest"],
+                    "board_dsl_digest": after_layout["dsl_digest"],
+                    "board_item_count_before": before_layout["item_count"],
+                    "board_item_count": after_layout["item_count"],
+                    "skipped_item_count_before": before_layout["skipped_count"],
+                    "skipped_item_count": after_layout["skipped_count"],
+                    "connector_evidence": connector_evidence.to_dict(),
                 }
 
             elif kind == "diagram":
