@@ -98,9 +98,11 @@ Die Aufnahmen zeigten vier konkrete Fehler:
    lesbar.
 
 Die nachhaltige Korrektur ist unter
-`OPERATOR-ECOSYSTEM-REDUNDANCY-V1-T042` gebunden. Die ursprünglich vorgesehene T040 war
+`OPERATOR-ECOSYSTEM-REDUNDANCY-V1-T043` gebunden. Die ursprünglich vorgesehene T040 war
 bereits kanonisch durch eine unabhängige HausKI-Aufgabe belegt und durfte nicht überschrieben
-werden. Die Korrektur ändert den Vertrag wie folgt:
+werden. Die danach verwendete T042 wurde zwischenzeitlich kanonisch für die unabhängige
+Aufgabe `Classify and contain stray /tmp Git marker` registriert und darf ebenfalls nicht
+überschrieben werden. Die Korrektur ändert den Vertrag wie folgt:
 
 - Die ergänzende Mermaid-Repräsentation bleibt als quellgebundenes Artefakt erhalten. Auf
   dem Miro-Board wird aus demselben semantischen Modell über `diagram_create` ein natives
