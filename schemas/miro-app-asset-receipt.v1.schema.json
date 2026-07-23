@@ -1,0 +1,102 @@
+{
+  "$defs": {
+    "asset": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha256",
+        "filename"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/miro-app-asset-receipt.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "app_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "app_url": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    },
+    "assets": {
+      "additionalProperties": false,
+      "properties": {
+        "color": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/asset"
+            },
+            {
+              "properties": {
+                "filename": {
+                  "const": "app-icon-color.svg"
+                }
+              }
+            }
+          ]
+        },
+        "outline": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/asset"
+            },
+            {
+              "properties": {
+                "filename": {
+                  "const": "app-icon-outline.svg"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [
+        "outline",
+        "color"
+      ],
+      "type": "object"
+    },
+    "credential_material_included": {
+      "const": false
+    },
+    "provider_readback": {
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "schauwerk-miro-app-asset-receipt.v1"
+    },
+    "scopes": {
+      "const": [
+        "boards:read"
+      ]
+    },
+    "upload_responses": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "app_id",
+    "app_url",
+    "scopes",
+    "assets",
+    "upload_responses",
+    "provider_readback",
+    "credential_material_included"
+  ],
+  "title": "Schauwerk Miro App Asset Receipt v1",
+  "type": "object"
+}
