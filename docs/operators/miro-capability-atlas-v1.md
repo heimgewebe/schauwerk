@@ -84,6 +84,8 @@ Diese Evidenz bleibt ausdrücklich **supplemental**: Sie beweist weder den authe
 
 ## Verwalteter Bild-Lebenszyklus
 
+Stand 24. Juli 2026 ist die separate REST-App live mit exakt `boards:read` und `boards:write` autorisiert. Der Capability-Audit prüft diese Autorität nur dann live, wenn ein getrennt gespeichertes REST-Credential vorhanden ist, und projiziert die Lane ausschließlich bei bestätigtem `boards:write` als `cross_surface`. Fehlendes Credential, fehlender Write-Scope oder ein nicht belastbar erreichbarer Tokenkontext bleiben fail-closed.
+
 Schauwerk ergänzt die fehlende MCP-Löschfähigkeit durch einen eng begrenzten REST-Adapter:
 
 - Upload, Create und vollständiger Board-Readback bleiben beim MCP;

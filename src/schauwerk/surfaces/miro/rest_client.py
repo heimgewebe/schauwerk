@@ -99,6 +99,38 @@ class MiroRestClient:
             ],
         }
 
+    async def capability_status(self) -> dict[str, Any]:
+        """Return live REST authority when a separate credential is configured."""
+        status = self.status()
+        credential = status.get("credential")
+        if not isinstance(credential, Mapping) or credential.get("exists") is not True:
+            return status
+        try:
+            doctor = await self.doctor(require_write=True)
+        except MiroCredentialError:
+            return {
+                **status,
+                "boards_write_authorized": False,
+                "live_authorized": False,
+                "live_authorized_known": True,
+                "live_check_status": "unauthorized",
+            }
+        except MiroConnectionError:
+            return {
+                **status,
+                "boards_write_authorized": False,
+                "live_authorized": False,
+                "live_authorized_known": False,
+                "live_check_status": "unavailable",
+            }
+        return {
+            **status,
+            "boards_write_authorized": doctor.get("boards_write_authorized") is True,
+            "live_authorized": doctor.get("live_authorized") is True,
+            "live_authorized_known": True,
+            "live_check_status": "authorized",
+        }
+
     def _client(self, token: str) -> httpx.AsyncClient:
         return httpx.AsyncClient(
             base_url=self.settings.api_origin,

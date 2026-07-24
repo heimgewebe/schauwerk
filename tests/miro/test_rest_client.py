@@ -63,6 +63,60 @@ def test_doctor_reports_scopes_without_exposing_token_or_raw_ids(tmp_path: Path)
     assert "client-private" not in rendered
 
 
+def test_capability_status_skips_live_check_without_credential(tmp_path: Path) -> None:
+    settings = MiroRestSettings(state_root=tmp_path / "rest-state")
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        raise AssertionError("capability status must not contact Miro without a credential")
+
+    rest = MiroRestClient(
+        settings, MiroRestTokenStorage(settings), transport=httpx.MockTransport(handler)
+    )
+    result = asyncio.run(rest.capability_status())
+
+    assert result["credential"]["exists"] is False
+    assert result["live_authorized_known"] is False
+    assert result["live_authorized"] is None
+
+
+def test_capability_status_reports_live_write_authority(tmp_path: Path) -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/oauth-token"
+        return httpx.Response(200, json={"scopes": ["boards:read", "boards:write"]})
+
+    result = asyncio.run(client(tmp_path, handler).capability_status())
+
+    assert result["boards_write_authorized"] is True
+    assert result["live_authorized"] is True
+    assert result["live_authorized_known"] is True
+    assert result["live_check_status"] == "authorized"
+    assert TOKEN not in repr(result)
+
+
+def test_capability_status_fails_closed_on_missing_write_scope(tmp_path: Path) -> None:
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"scopes": ["boards:read"]})
+
+    result = asyncio.run(client(tmp_path, handler).capability_status())
+
+    assert result["boards_write_authorized"] is False
+    assert result["live_authorized"] is False
+    assert result["live_authorized_known"] is True
+    assert result["live_check_status"] == "unauthorized"
+
+
+def test_capability_status_keeps_authority_unknown_on_connection_failure(tmp_path: Path) -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("offline", request=request)
+
+    result = asyncio.run(client(tmp_path, handler).capability_status())
+
+    assert result["boards_write_authorized"] is False
+    assert result["live_authorized"] is False
+    assert result["live_authorized_known"] is False
+    assert result["live_check_status"] == "unavailable"
+
+
 def test_doctor_rejects_missing_write_scope(tmp_path: Path) -> None:
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"scopes": ["boards:read"]})

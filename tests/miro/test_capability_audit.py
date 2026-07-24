@@ -117,17 +117,61 @@ def test_audit_reports_separate_rest_authority_without_changing_mcp_truth() -> N
             "credential": {"exists": True},
             "live_authorized_known": True,
             "live_authorized": True,
+            "boards_write_authorized": True,
         },
     )
 
     assert report["observed_tool_count"] == 33
-    assert report["high_value_lanes"]["managed_image_lifecycle"]["available"] is False
+    managed = report["high_value_lanes"]["managed_image_lifecycle"]
+    assert managed["available"] is False
+    assert managed["effective_available"] is True
+    assert managed["mode"] == "cross_surface"
+    assert managed["fallback"] == "separate_rest_delete_adapter"
+    assert managed["fallback_covered_missing_tools"] == ["image_delete"]
+    assert managed["uncovered_missing_tools"] == []
+    assert "managed_image_lifecycle" not in report["unavailable_lanes"]
     cross_surface = report["cross_surface_lanes"]["managed_image_lifecycle"]
     assert cross_surface["available"] is True
     assert cross_surface["mcp_image_delete_available"] is False
     assert cross_surface["rest_credential_configured"] is True
     assert cross_surface["rest_live_authorized"] is True
+    assert cross_surface["rest_boards_write_authorized"] is True
     assert cross_surface["provider_semantics"] == "create-verify-delete-saga"
+    assert report["platform_layers"]["rest_api"]["status"] == "live_write_authorized"
+    assert (
+        report["truth_boundary"]["operational_authority"]
+        == "live MCP catalogue plus live separate REST doctor for cross-surface lanes"
+    )
+    assert (
+        "future validity of the separately configured REST authorization"
+        in report["does_not_establish"]
+    )
+    priority = next(
+        item for item in report["priorities"] if item["lane"] == "managed_image_lifecycle"
+    )
+    assert priority["effective_available"] is True
+    assert "separately authorized REST delete adapter" in priority["recommendation"]
+
+
+def test_audit_keeps_managed_image_lifecycle_unavailable_without_live_write_authority() -> None:
+    names = sorted(set().union(*TOOL_FAMILIES.values()))
+    report = audit_tool_catalogue(
+        catalogue(*names),
+        rest_status={
+            "credential": {"exists": True},
+            "live_authorized_known": True,
+            "live_authorized": True,
+            "boards_write_authorized": False,
+        },
+    )
+
+    managed = report["high_value_lanes"]["managed_image_lifecycle"]
+    cross_surface = report["cross_surface_lanes"]["managed_image_lifecycle"]
+    assert managed["effective_available"] is False
+    assert managed["mode"] == "native_with_gaps"
+    assert cross_surface["available"] is False
+    assert cross_surface["rest_boards_write_authorized"] is False
+    assert "managed_image_lifecycle" in report["unavailable_lanes"]
 
 
 def test_missing_creation_tools_resolve_to_explicit_layout_fallbacks() -> None:

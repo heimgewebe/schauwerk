@@ -5,6 +5,7 @@ from pathlib import Path
 
 from schauwerk import runner
 from schauwerk.cli_handlers import (
+    handle_capability_audit,
     handle_managed_image_check,
     handle_rest_status,
     handle_rest_token_install,
@@ -64,6 +65,42 @@ def test_handlers_install_status_and_check_without_network(tmp_path: Path) -> No
     assert TOKEN not in repr(installed)
     assert TOKEN not in repr(status)
     assert checked["source_changed"] is True
+
+
+def test_capability_handler_uses_live_rest_capability_status() -> None:
+    class ToolResult:
+        def to_dict(self):
+            return {
+                "tools": [
+                    {"name": name, "input_schema": {"type": "object"}}
+                    for name in (
+                        "board_list_items",
+                        "image_create",
+                        "image_get_upload_url",
+                    )
+                ],
+                "protocol_version": "test",
+                "server_name": "Miro MCP",
+                "server_version": "test",
+            }
+
+    class FakeMiro:
+        async def tools(self):
+            return ToolResult()
+
+    class FakeRest:
+        async def capability_status(self):
+            return {
+                "credential": {"exists": True},
+                "live_authorized_known": True,
+                "live_authorized": True,
+                "boards_write_authorized": True,
+            }
+
+    report = handle_capability_audit(FakeMiro(), FakeRest())
+
+    assert report["cross_surface_lanes"]["managed_image_lifecycle"]["available"] is True
+    assert report["high_value_lanes"]["managed_image_lifecycle"]["mode"] == "cross_surface"
 
 
 def test_runner_dispatches_rest_commands(monkeypatch, capsys) -> None:
