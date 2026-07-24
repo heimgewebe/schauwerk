@@ -922,9 +922,10 @@ def handle_capability_audit(
     rest_client: MiroRestClient | None = None,
 ) -> dict[str, Any]:
     catalogue = asyncio.run((client or MiroMCPClient()).tools()).to_dict()
+    active_rest = rest_client or MiroRestClient()
     return audit_tool_catalogue(
         catalogue,
-        rest_status=(rest_client or MiroRestClient()).status(),
+        rest_status=asyncio.run(active_rest.capability_status()),
     )
 
 

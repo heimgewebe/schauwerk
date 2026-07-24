@@ -1,0 +1,120 @@
+{
+  "authorization": {
+    "boards_write_authorized": true,
+    "companion_app_scopes_preserved": {
+      "all_other_observed_scopes": false,
+      "boards:read": true,
+      "boards:write": false
+    },
+    "credential_configured": true,
+    "credential_secure": true,
+    "credential_source_removed": true,
+    "live_authorized": true,
+    "scopes": [
+      "boards:read",
+      "boards:write"
+    ],
+    "separate_from_mcp_oauth": true,
+    "separate_rest_app_scopes": {
+      "all_other_observed_scopes": false,
+      "boards:read": true,
+      "boards:write": true
+    }
+  },
+  "capability_projection": {
+    "audit_digest": "ed311b86de2ac25937cf6e7b7a3ec5ff9385bf3fce87f09a9f899f505f44f2f0",
+    "cross_surface_managed_image_lifecycle": {
+      "adapter_implemented": true,
+      "available": true,
+      "globally_atomic": false,
+      "mcp_image_create_available": true,
+      "mcp_image_delete_available": false,
+      "provider_semantics": "create-verify-delete-saga",
+      "rest_boards_write_authorized": true,
+      "rest_credential_configured": true,
+      "rest_delete_adapter": "implemented_fail_closed",
+      "rest_live_authorized": true,
+      "rest_live_authorized_known": true,
+      "rest_required_scope": "boards:write"
+    },
+    "managed_image_lifecycle": {
+      "available": false,
+      "available_tools": [
+        "image_get_upload_url",
+        "image_create",
+        "image_get_data",
+        "image_get_url"
+      ],
+      "coverage_percent": 80.0,
+      "creation_fallback_available": false,
+      "effective_available": true,
+      "fallback": "separate_rest_delete_adapter",
+      "fallback_covered_missing_tools": [
+        "image_delete"
+      ],
+      "missing_tools": [
+        "image_delete"
+      ],
+      "mode": "cross_surface",
+      "uncovered_missing_tools": []
+    },
+    "rest_api_status": "live_write_authorized",
+    "unavailable_lanes": []
+  },
+  "cleanup": {
+    "allowlist_alias_removed": true,
+    "board_postflight_absent": true,
+    "isolated_board_deleted": true,
+    "provider_test_image_deleted_before_board_cleanup": true
+  },
+  "delete_proof": {
+    "after_count": 0,
+    "before_count": 1,
+    "delete_status": 204,
+    "globally_atomic": false,
+    "independent_rest_postflight_absent": true,
+    "inventory_pages": 2,
+    "local_receipt_sha256": "a559e6c3915c512db9f7e96653260003805d783a98a74f712783ece7380fa4cc",
+    "manual_reconciliation_required": false,
+    "old_item_absent": true,
+    "postflight_absent": true,
+    "preflight_present": true,
+    "provider": "rest",
+    "provider_semantics": "single-rest-delete-with-readback",
+    "reconciled_after_uncertain_delete": false,
+    "schema_version": "schauwerk-miro-managed-image-delete.v1",
+    "status": "verified",
+    "success": true
+  },
+  "does_not_establish": [
+    "future REST token validity",
+    "access to every Miro board",
+    "provider-global atomic replacement",
+    "permission to delete images without an exact managed identity"
+  ],
+  "isolated_board": {
+    "alias": "managed-image-rest-t001-20260724",
+    "board_id_sha256": "3e89db26c6e2708577ed1c4c83d91e6d26ed7eeb49b8a8972f8577885a668c22",
+    "board_reference_digest": "b2e358e83d0d5085",
+    "sharing_policy": {
+      "access": "private",
+      "accessPasswordRequired": false,
+      "inviteToAccountAndBoardLinkAccess": "no_access",
+      "organizationAccess": "private",
+      "teamAccess": "private"
+    }
+  },
+  "managed_identity": {
+    "asset_key": "t001-isolated-proof",
+    "identity_file_secure": true,
+    "item_id_sha256": "5fa3467831e2279f849b02146c8e0bd6c98829c4793bce46c8e99ba21fad4b7d",
+    "parent_id_sha256": "c563fe698cfb51ec4193228d8052145ec8c3469cdb72e7794e0fdd36ef3bed2d",
+    "source_sha256": "41ad36827f46a09813618dc14ec642ff5fce5e79ad36a76bd24bec19f5c2535f",
+    "width": 320.0,
+    "x": 0.0,
+    "y": 0.0
+  },
+  "observed_at": "2026-07-24",
+  "schema_version": "schauwerk-miro-managed-image-lifecycle-proof.v1",
+  "task_id": "SCHAUWERK-MIRO-MANAGED-IMAGE-LIFECYCLE-V1-T001"
+}

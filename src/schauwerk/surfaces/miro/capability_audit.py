@@ -303,9 +303,6 @@ def audit_tool_catalogue(
         lane: _lane_status(observed, lane, tools)
         for lane, tools in sorted(HIGH_VALUE_LANES.items())
     }
-    unavailable_lanes = sorted(
-        name for name, value in lanes.items() if not value["effective_available"]
-    )
     credential = rest_status.get("credential") if isinstance(rest_status, Mapping) else None
     credential_configured = (
         credential.get("exists") is True if isinstance(credential, Mapping) else False
@@ -317,6 +314,33 @@ def audit_tool_catalogue(
     )
     rest_live_authorized = (
         rest_status.get("live_authorized") is True if isinstance(rest_status, Mapping) else False
+    )
+    rest_write_authorized = (
+        rest_status.get("boards_write_authorized") is True
+        if isinstance(rest_status, Mapping)
+        else False
+    )
+    managed_cross_surface_available = (
+        {"image_get_upload_url", "image_create", "board_list_items"}.issubset(observed)
+        and credential_configured
+        and rest_live_known
+        and rest_live_authorized
+        and rest_write_authorized
+    )
+    if managed_cross_surface_available:
+        managed = dict(lanes["managed_image_lifecycle"])
+        managed.update(
+            {
+                "effective_available": True,
+                "mode": "cross_surface",
+                "fallback": "separate_rest_delete_adapter",
+                "fallback_covered_missing_tools": ["image_delete"],
+                "uncovered_missing_tools": [],
+            }
+        )
+        lanes["managed_image_lifecycle"] = managed
+    unavailable_lanes = sorted(
+        name for name, value in lanes.items() if not value["effective_available"]
     )
 
     priorities: list[dict[str, Any]] = []
@@ -346,6 +370,10 @@ def audit_tool_catalogue(
                 "recommendation": (
                     "integrate into the representation execution planner"
                     if status["available"]
+                    else (
+                        "use MCP create/readback with the separately authorized REST delete adapter"
+                    )
+                    if status["mode"] == "cross_surface"
                     else "use the deterministic editable layout fallback"
                     if status["effective_available"]
                     else (
@@ -428,15 +456,11 @@ def audit_tool_catalogue(
                 "rest_credential_configured": credential_configured,
                 "rest_live_authorized_known": rest_live_known,
                 "rest_live_authorized": rest_live_authorized,
+                "rest_boards_write_authorized": rest_write_authorized,
                 "rest_required_scope": "boards:write",
                 "provider_semantics": "create-verify-delete-saga",
                 "globally_atomic": False,
-                "available": (
-                    {"image_get_upload_url", "image_create", "board_list_items"}.issubset(observed)
-                    and credential_configured
-                    and rest_live_known
-                    and rest_live_authorized
-                ),
+                "available": managed_cross_surface_available,
             }
         },
         "provider_fallbacks": {
@@ -460,7 +484,11 @@ def audit_tool_catalogue(
                 "role": "agent-facing content discovery, creation, maintenance, and readback",
             },
             "rest_api": {
-                "status": "separate_application_credentials_required",
+                "status": (
+                    "live_write_authorized"
+                    if managed_cross_surface_available
+                    else "separate_application_credentials_required"
+                ),
                 "role": ("separately authorized image read/delete plus provider administration"),
                 "incorporation": (
                     "managed image GET/DELETE adapter implemented; MCP OAuth is never reused"
@@ -478,7 +506,11 @@ def audit_tool_catalogue(
             },
         },
         "truth_boundary": {
-            "operational_authority": "live MCP catalogue",
+            "operational_authority": (
+                "live MCP catalogue plus live separate REST doctor for cross-surface lanes"
+                if managed_cross_surface_available
+                else "live MCP catalogue"
+            ),
             "product_reference": "official Miro MCP, REST API, and Web SDK documentation",
             "image_delete_available": "image_delete" in observed,
             "layout_can_delete_unsupported_images": False,
@@ -493,8 +525,8 @@ def audit_tool_catalogue(
             "visual quality of generated output",
             "aesthetic acceptance from provider preview resources",
             "source truth from MCP UI feedback telemetry",
-            "availability of Web SDK or REST credentials",
-            "live authorization of the separately configured REST application",
+            "availability of Web SDK credentials",
+            "future validity of the separately configured REST authorization",
             "provider-global atomic image replacement",
         ],
     }

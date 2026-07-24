@@ -134,8 +134,12 @@ schauwerk miro managed-image delete BOARDALIAS IDENTITAET.json \
 - Ausgaben sind create-only und dürfen nicht mit Credentials, Allowlist, Katalogen oder Eingaben kollidieren;
 - Provider-URLs, Uploadslots, Tokenwerte sowie Nutzer- und Team-IDs erscheinen nicht in Receipts.
 
-## Betriebszustand vom 15. Juli 2026
+## Betriebszustand vom 24. Juli 2026
 
-Der Codepfad und seine lokalen Tests sind implementiert. Der Live-MCP besitzt weiterhin kein `image_delete`. Auf dem Rechner ist noch kein separates REST-Credential eingerichtet. Deshalb sind `rest doctor --require-write`, produktives Replace und produktives Delete bis zur eigenständigen REST-App-Autorisierung fail-closed.
+Die separate REST-Autorität ist eingerichtet und live verifiziert. Sie stammt aus einer eigenständigen privaten Miro-App und besitzt ausschließlich `boards:read` und `boards:write`. Das bestehende Schauwerk-Companion-App-Profil blieb unverändert bei `boards:read`; `boards:write` und alle weiteren beobachteten Scopes blieben dort deaktiviert. Das REST-Credential liegt owner-only außerhalb von Git und wurde nicht aus dem MCP-OAuth-Zustand abgeleitet.
 
-Ein lokaler grüner Test oder ein vorhandenes MCP-Credential begründet keinen Live-REST-Beleg.
+`rest doctor --require-write` bestätigt den Live-Tokenkontext und `boards:write`. Ein isoliertes privates Testboard belegte anschließend den exakten Delete-Vertrag: MCP-Inventar vor der Mutation ein Bild, REST-Preflight vorhanden, exaktes REST-DELETE mit HTTP 204, REST-Postflight abwesend und MCP-Inventar danach null Bilder. Der sanitierte Beleg liegt unter `docs/operators/evidence/miro-managed-image-lifecycle-proof-20260724.json`.
+
+Der Capability-Audit führt bei vorhandenem separatem Credential einen begrenzten Live-Doctor aus. Nur wenn Credential, erreichbarer Tokenkontext und `boards:write` gemeinsam bestätigt sind, wird `managed_image_lifecycle` als `cross_surface` effektiv verfügbar ausgewiesen. Ohne Credential, bei fehlendem Write-Scope oder bei nicht belastbar prüfbarer Providerverbindung bleibt die Lane fail-closed.
+
+Der Live-MCP besitzt weiterhin kein natives `image_delete`. Der funktionsfähige Lebenszyklus bleibt daher eine bewusst nicht atomare Cross-Surface-Saga: Create und vollständiger Readback über MCP, exakt gebundenes GET/DELETE über die separat autorisierte REST-App. Ein erfolgreicher Beleg garantiert weder zukünftige Token-Gültigkeit noch Zugriff auf jedes Board.
