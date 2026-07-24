@@ -90,6 +90,24 @@ def result_payload(result: Any) -> dict[str, Any]:
     return {}
 
 
+def result_resource_links(result: Any) -> tuple[str, ...]:
+    """Return MCP resource-link URIs without interpreting provider semantics."""
+    content = (
+        result.get("content", ()) if isinstance(result, Mapping) else getattr(result, "content", ())
+    )
+    links: list[str] = []
+    for item in content or ():
+        if isinstance(item, Mapping):
+            item_type = item.get("type")
+            uri = item.get("uri")
+        else:
+            item_type = getattr(item, "type", None)
+            uri = getattr(item, "uri", None)
+        if item_type == "resource_link" and isinstance(uri, str) and uri:
+            links.append(uri)
+    return tuple(links)
+
+
 def checked_payload(result: Any, tool_name: str) -> dict[str, Any]:
     """Reject MCP/provider-declared failures without echoing provider details."""
     if bool(getattr(result, "isError", False)):

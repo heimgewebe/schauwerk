@@ -86,6 +86,29 @@ def test_live_baseline_reports_complete_native_runtime_coverage() -> None:
     assert "prototype_create" in integration["runtime_integrated_tools"]
 
 
+def test_live_provider_extensions_distinguish_preview_from_ui_feedback() -> None:
+    names = sorted(set().union(*TOOL_FAMILIES.values()))
+    report = audit_tool_catalogue(catalogue(*names, "preview_resource_poll", "record_ui_feedback"))
+
+    integration = report["adapter_integration"]
+    assert report["observed_tool_count"] == 35
+    assert integration["runtime_integrated_observed_count"] == 34
+    assert integration["unincorporated_observed_tools"] == ["record_ui_feedback"]
+    assert integration["intentionally_unincorporated_observed_tools"] == ["record_ui_feedback"]
+    assert integration["actionable_unincorporated_observed_tools"] == []
+    assert integration["actionable_incorporation_coverage_percent"] == 100.0
+    assert report["provider_extension_roles"]["preview_resource_poll"] == {
+        "role": "supplemental_provider_preview",
+        "integration": "native_executor_optional",
+        "authoritative": False,
+    }
+    assert report["provider_extension_roles"]["record_ui_feedback"] == {
+        "role": "mcp_ui_feedback_telemetry",
+        "integration": "intentionally_not_integrated",
+        "authoritative": False,
+    }
+
+
 def test_audit_reports_separate_rest_authority_without_changing_mcp_truth() -> None:
     names = sorted(set().union(*TOOL_FAMILIES.values()))
     report = audit_tool_catalogue(
@@ -139,9 +162,7 @@ def test_missing_creation_tools_resolve_to_explicit_layout_fallbacks() -> None:
 
 
 def test_fallbacks_remain_blocked_without_layout_toolset() -> None:
-    report = audit_tool_catalogue(
-        catalogue("user_who_am_i", "board_list_items", "context_explore")
-    )
+    report = audit_tool_catalogue(catalogue("user_who_am_i", "board_list_items", "context_explore"))
     assert report["high_value_lanes"]["living_document"]["mode"] == "blocked"
     assert report["high_value_lanes"]["living_document"]["effective_available"] is False
     assert "living_document" in report["unavailable_lanes"]

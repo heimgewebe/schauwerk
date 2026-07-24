@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -19,7 +21,7 @@ from jsonschema import Draft202012Validator
 
 from .capability_fallbacks import resolve_bundle_operations
 from .errors import MiroToolError
-from .inspection import checked_payload
+from .inspection import checked_payload, result_resource_links
 from .layout_dsl import LayoutDslParseError, summarize_layout_dsl
 
 NATIVE_BUNDLE_SCHEMA = "schauwerk-miro-native-bundle.v1"
@@ -27,6 +29,9 @@ NATIVE_RECEIPT_SCHEMA = "schauwerk-miro-native-execution-receipt.v1"
 ToolCaller = Callable[[str, dict[str, Any]], Awaitable[Any]]
 CheckpointWriter = Callable[[dict[str, Any]], None]
 HtmlUploader = Callable[[str, bytes], Awaitable[None]]
+_MIRO_PREVIEW_RESOURCE_RE = re.compile(r"^miro-preview://create/[A-Za-z0-9_-]{16,128}$")
+_MAX_PROVIDER_PREVIEW_BYTES = 10 * 1024 * 1024
+_PROVIDER_PREVIEW_MIME_TYPES = frozenset({"image/png", "image/svg+xml"})
 
 
 class NativeBundleError(ValueError):
@@ -884,6 +889,34 @@ def _connector_evidence_summary(completed: Sequence[Mapping[str, Any]]) -> dict[
     }
 
 
+def _provider_preview_summary(
+    completed: Sequence[Mapping[str, Any]], *, live_poll_supported: bool
+) -> dict[str, Any]:
+    evidence = [
+        operation["readback"]["provider_preview"]
+        for operation in completed
+        if isinstance(operation.get("readback"), Mapping)
+        and isinstance(operation["readback"].get("provider_preview"), Mapping)
+    ]
+    status_counts: dict[str, int] = {}
+    for item in evidence:
+        status = item.get("status")
+        if isinstance(status, str):
+            status_counts[status] = status_counts.get(status, 0) + 1
+    return {
+        "live_poll_supported": live_poll_supported,
+        "create_operation_count": len(evidence),
+        "resource_offered_operation_count": sum(
+            item.get("resource_count", 0) > 0 for item in evidence
+        ),
+        "ready_operation_count": status_counts.get("ready", 0),
+        "status_counts": dict(sorted(status_counts.items())),
+        "supplemental_only": True,
+        "authenticated_provider_capture_still_required": True,
+        "automatic_aesthetic_verdict": False,
+    }
+
+
 def _operation_receipt(
     operation: Mapping[str, Any],
     *,
@@ -941,6 +974,7 @@ async def execute_native_bundle(
     )
     calls: list[dict[str, Any]] = list(resume.get("calls", [])) if resume else []
     completed: list[dict[str, Any]] = list(resume.get("completed_operations", [])) if resume else []
+    preview_resources_by_call_index: dict[int, tuple[str, ...]] = {}
     original_preflight = resume.get("preflight") if resume else None
     before_inventory: dict[str, Any] | None = None
     before_context: dict[str, Any] | None = None
@@ -959,15 +993,86 @@ async def execute_native_bundle(
         output_schema = schema.get("output_schema")
         if output_schema:
             _validate_instance(payload, output_schema, label=f"{tool_name} output")
+        call_index = len(calls) + 1
+        preview_resources = tuple(
+            sorted(
+                {
+                    uri
+                    for uri in result_resource_links(result)
+                    if _MIRO_PREVIEW_RESOURCE_RE.fullmatch(uri)
+                }
+            )
+        )
+        if preview_resources:
+            preview_resources_by_call_index[call_index] = preview_resources
         calls.append(
             {
-                "index": len(calls) + 1,
+                "index": call_index,
                 "tool": tool_name,
                 "input_digest": _digest(arguments),
                 "output_digest": _digest(payload),
+                "preview_resource_count": len(preview_resources),
+                "preview_resource_digests": [_text_digest(uri)[:24] for uri in preview_resources],
             }
         )
         return payload
+
+    async def provider_preview_evidence(call_index: int) -> dict[str, Any]:
+        resources = preview_resources_by_call_index.get(call_index, ())
+        evidence: dict[str, Any] = {
+            "resource_count": len(resources),
+            "resource_digests": [_text_digest(uri)[:24] for uri in resources],
+            "poll_attempted": False,
+            "poll_attempt_count": 0,
+            "poll_call_recorded": False,
+            "supplemental_only": True,
+            "authenticated_provider_capture_required": True,
+            "automatic_aesthetic_verdict": False,
+        }
+        if not resources:
+            return {**evidence, "status": "not_offered"}
+        if len(resources) != 1:
+            return {**evidence, "status": "ambiguous_resource_set"}
+        if "preview_resource_poll" not in schemas:
+            return {**evidence, "status": "poll_tool_unavailable"}
+        evidence = {**evidence, "poll_attempted": True, "poll_attempt_count": 1}
+        try:
+            preview = await invoke(
+                "preview_resource_poll",
+                {
+                    "preview_resource": resources[0],
+                    "is_repository": True,
+                    "invocation_source": "schauwerk-miro-native-executor",
+                },
+            )
+        except Exception:
+            # Supplemental evidence must never turn an otherwise verified mutation into failure.
+            return {**evidence, "status": "poll_error"}
+        evidence = {**evidence, "poll_call_recorded": True}
+        status = preview.get("status")
+        if status in {"pending", "failed"}:
+            return {**evidence, "status": status}
+        if status != "ready":
+            return {**evidence, "status": "invalid_status"}
+        mime_type = preview.get("mime_type")
+        encoded = preview.get("data_base64")
+        if mime_type not in _PROVIDER_PREVIEW_MIME_TYPES or not isinstance(encoded, str):
+            return {**evidence, "status": "invalid_ready_payload"}
+        if len(encoded) > ((_MAX_PROVIDER_PREVIEW_BYTES * 4) // 3) + 8:
+            return {**evidence, "status": "preview_too_large", "mime_type": mime_type}
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError, TypeError):
+            return {**evidence, "status": "invalid_ready_payload", "mime_type": mime_type}
+        if len(content) > _MAX_PROVIDER_PREVIEW_BYTES:
+            return {**evidence, "status": "preview_too_large", "mime_type": mime_type}
+        return {
+            **evidence,
+            "status": "ready",
+            "mime_type": mime_type,
+            "byte_count": len(content),
+            "content_sha256": hashlib.sha256(content).hexdigest(),
+        }
 
     async def read_layout_state(
         target_url: str, *, label: str, allow_empty: bool
@@ -1220,6 +1325,9 @@ async def execute_native_bundle(
                 _expected_inventory_visible_created_item_count(completed)
             ),
             "connector_evidence": _connector_evidence_summary(completed),
+            "provider_preview_evidence": _provider_preview_summary(
+                completed, live_poll_supported="preview_resource_poll" in schemas
+            ),
             "expected_created_item_count": _expected_created_item_count(completed),
             "expected_deleted_item_count": _expected_deleted_item_count(completed),
             "expected_net_item_count_delta": _expected_net_item_delta(completed),
@@ -1289,6 +1397,7 @@ async def execute_native_bundle(
             target_url = _target_url(board_url, operation)
             item_url: str | None = None
             readback: dict[str, Any]
+            preview_call_index: int | None = None
 
             if kind == "layout":
                 contract = await invoke(
@@ -1318,6 +1427,7 @@ async def execute_native_bundle(
                     "layout_create",
                     _base_arguments(target_url, {"dsl": operation["dsl"]}),
                 )
+                preview_call_index = len(calls)
                 item_url = _item_url(created, "layout_create")
                 failed_items = _list(created, "failed_items")
                 created_count = _integer(created, "created_count")
@@ -1401,6 +1511,7 @@ async def execute_native_bundle(
                         },
                     ),
                 )
+                preview_call_index = len(calls)
                 item_url = _item_url(created, "diagram_create")
                 context = await invoke("context_get", _base_arguments(item_url, {}))
                 content = context.get("content")
@@ -1429,6 +1540,7 @@ async def execute_native_bundle(
                         },
                     ),
                 )
+                preview_call_index = len(calls)
                 item_url = _item_url(created, "doc_create")
                 document = await invoke("doc_get", _base_arguments(item_url, {}))
                 content = document.get("content")
@@ -1459,6 +1571,7 @@ async def execute_native_bundle(
                         },
                     ),
                 )
+                preview_call_index = len(calls)
                 item_url = _item_url(created, "table_create")
                 rows = operation.get("rows", [])
                 if rows:
@@ -1508,6 +1621,7 @@ async def execute_native_bundle(
                         },
                     ),
                 )
+                preview_call_index = len(calls)
                 item_url = _item_url(created, "code_widget_create")
                 widget = await invoke("code_widget_get", _base_arguments(item_url, {}))
                 if widget.get("code") != operation["code"]:
@@ -1776,6 +1890,7 @@ async def execute_native_bundle(
                         },
                     ),
                 )
+                preview_call_index = len(calls)
                 if created.get("success") is not True:
                     raise MiroToolError("Miro prototype creation failed")
                 if _integer(created, "failed_image_count") != 0:
@@ -1860,6 +1975,11 @@ async def execute_native_bundle(
                 }
             else:
                 readback = {**readback, "provider_mode": "native"}
+            if preview_call_index is not None:
+                readback = {
+                    **readback,
+                    "provider_preview": await provider_preview_evidence(preview_call_index),
+                }
             completed.append(
                 _operation_receipt(
                     original_operation,
