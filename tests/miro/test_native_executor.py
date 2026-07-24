@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import copy
 import hashlib
 import json
 import stat
 from importlib.resources import files
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -31,6 +33,8 @@ from schauwerk.surfaces.miro.native_runtime import (
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "tests/fixtures/miro-native-bundle-v1.json"
 BOARD_URL = "https://miro.com/app/board/uXjVNativeTest=/"
+PREVIEW_RESOURCE = "miro-preview://create/abcdefghijklmnop"
+PREVIEW_BYTES = b"provider-preview-png"
 
 
 def catalogue(*names: str) -> list[dict]:
@@ -45,9 +49,17 @@ def catalogue(*names: str) -> list[dict]:
 
 
 class FakeMiro:
-    def __init__(self, *, document_matches: bool = True) -> None:
+    def __init__(
+        self,
+        *,
+        document_matches: bool = True,
+        provider_preview: bool = False,
+        provider_preview_status: str = "ready",
+    ) -> None:
         self.calls: list[tuple[str, dict]] = []
         self.document_matches = document_matches
+        self.provider_preview = provider_preview
+        self.provider_preview_status = provider_preview_status
         self.inventory_reads = 0
         self.context_reads = 0
         self.comment_created = False
@@ -135,7 +147,24 @@ class FakeMiro:
                 "data": {"spec": "node/edge", "example": "node a"},
             }
         if tool == "diagram_create":
-            return {"miro_url": f"{BOARD_URL}?moveToWidget=diagram"}
+            payload = {"miro_url": f"{BOARD_URL}?moveToWidget=diagram"}
+            if not self.provider_preview:
+                return payload
+            return SimpleNamespace(
+                structuredContent=payload,
+                content=[SimpleNamespace(type="resource_link", uri=PREVIEW_RESOURCE)],
+                isError=False,
+            )
+        if tool == "preview_resource_poll":
+            assert self.provider_preview is True
+            assert arguments["preview_resource"] == PREVIEW_RESOURCE
+            if self.provider_preview_status != "ready":
+                return {"status": self.provider_preview_status}
+            return {
+                "status": "ready",
+                "mime_type": "image/png",
+                "data_base64": base64.b64encode(PREVIEW_BYTES).decode("ascii"),
+            }
         if tool == "context_get":
             return {
                 "miro_url": arguments["miro_url"],
@@ -234,6 +263,71 @@ class FakeMiro:
 
 def live_tools(bundle: dict) -> list[dict]:
     return catalogue(*required_tools(bundle))
+
+
+def test_provider_preview_is_supplemental_digest_bound_evidence() -> None:
+    bundle = load_native_bundle(FIXTURE)
+    fake = FakeMiro(provider_preview=True)
+    tools = catalogue(*required_tools(bundle), "preview_resource_poll")
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+
+    diagram = next(
+        operation for operation in receipt["completed_operations"] if operation["kind"] == "diagram"
+    )
+    preview = diagram["readback"]["provider_preview"]
+    encoded = json.dumps(receipt, sort_keys=True)
+
+    assert preview["status"] == "ready"
+    assert preview["mime_type"] == "image/png"
+    assert preview["byte_count"] == len(PREVIEW_BYTES)
+    assert preview["content_sha256"] == hashlib.sha256(PREVIEW_BYTES).hexdigest()
+    assert preview["supplemental_only"] is True
+    assert preview["authenticated_provider_capture_required"] is True
+    assert preview["poll_attempt_count"] == 1
+    assert preview["poll_call_recorded"] is True
+    assert receipt["provider_preview_evidence"]["ready_operation_count"] == 1
+    assert receipt["provider_preview_evidence"]["automatic_aesthetic_verdict"] is False
+    assert receipt["visual_acceptance"]["status"] == "pending_authenticated_provider_capture"
+    assert [name for name, _arguments in fake.calls].count("preview_resource_poll") == 1
+    assert PREVIEW_RESOURCE not in encoded
+    assert base64.b64encode(PREVIEW_BYTES).decode("ascii") not in encoded
+
+
+def test_pending_provider_preview_does_not_fail_verified_create() -> None:
+    bundle = load_native_bundle(FIXTURE)
+    fake = FakeMiro(provider_preview=True, provider_preview_status="pending")
+    tools = catalogue(*required_tools(bundle), "preview_resource_poll")
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+
+    diagram = next(
+        operation for operation in receipt["completed_operations"] if operation["kind"] == "diagram"
+    )
+    preview = diagram["readback"]["provider_preview"]
+
+    assert receipt["success"] is True
+    assert preview["status"] == "pending"
+    assert preview["poll_attempt_count"] == 1
+    assert preview["poll_call_recorded"] is True
+    assert receipt["provider_preview_evidence"]["status_counts"]["pending"] == 1
+    assert receipt["visual_acceptance"]["status"] == "pending_authenticated_provider_capture"
 
 
 def test_bundle_is_validated_and_required_tools_are_complete() -> None:

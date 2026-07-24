@@ -12,6 +12,7 @@ from schauwerk.surfaces.miro.inspection import (
     inspect_boards,
     inspect_identity,
     inspect_read_only,
+    result_resource_links,
 )
 
 
@@ -20,6 +21,24 @@ def result(payload: dict, *, is_error: bool = False) -> SimpleNamespace:
         structuredContent=payload,
         content=[],
         isError=is_error,
+    )
+
+
+def test_result_resource_links_reads_typed_and_mapping_items() -> None:
+    typed = SimpleNamespace(type="resource_link", uri="miro-preview://create/abcdefghijklmnop")
+    response = SimpleNamespace(
+        structuredContent={"success": True},
+        content=[
+            typed,
+            {"type": "resource_link", "uri": "https://example.invalid/resource"},
+            SimpleNamespace(type="text", text="ignored"),
+        ],
+        isError=False,
+    )
+
+    assert result_resource_links(response) == (
+        "miro-preview://create/abcdefghijklmnop",
+        "https://example.invalid/resource",
     )
 
 

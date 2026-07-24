@@ -95,6 +95,22 @@ INTEGRATED_TOOLS = frozenset(
     }
 )
 
+SUPPLEMENTAL_INTEGRATED_TOOLS = frozenset({"preview_resource_poll"})
+INTENTIONALLY_UNINCORPORATED_TOOLS = frozenset({"record_ui_feedback"})
+PROVIDER_EXTENSION_ROLES: dict[str, dict[str, Any]] = {
+    "preview_resource_poll": {
+        "role": "supplemental_provider_preview",
+        "integration": "native_executor_optional",
+        "authoritative": False,
+    },
+    "record_ui_feedback": {
+        "role": "mcp_ui_feedback_telemetry",
+        "integration": "intentionally_not_integrated",
+        "authoritative": False,
+    },
+}
+
+
 HIGH_VALUE_LANES: dict[str, tuple[str, ...]] = {
     "context_first_read": ("context_explore", "context_get"),
     "native_diagram": ("diagram_get_dsl", "diagram_create"),
@@ -249,7 +265,7 @@ def audit_tool_catalogue(
     tool_reference = _load_tool_reference(reference)
     reference_names = tuple(tool_reference["tools"])
     referenced = set(reference_names)
-    adapter_surface = INTEGRATED_TOOLS | PLANNER_TOOLS
+    adapter_surface = INTEGRATED_TOOLS | PLANNER_TOOLS | SUPPLEMENTAL_INTEGRATED_TOOLS
     reference_integrated = sorted(referenced & adapter_surface)
     known = set().union(*TOOL_FAMILIES.values())
     family_by_tool = {tool: family for family, tools in TOOL_FAMILIES.items() for tool in tools}
@@ -272,10 +288,17 @@ def audit_tool_catalogue(
             ),
         }
 
-    integrated = sorted(observed & INTEGRATED_TOOLS)
+    integrated_surface = INTEGRATED_TOOLS | SUPPLEMENTAL_INTEGRATED_TOOLS
+    incorporated_surface = integrated_surface | PLANNER_TOOLS
+    integrated = sorted(observed & integrated_surface)
     planned = sorted(observed & PLANNER_TOOLS)
-    incorporated = sorted(observed & (INTEGRATED_TOOLS | PLANNER_TOOLS))
-    unincorporated = sorted(observed - (INTEGRATED_TOOLS | PLANNER_TOOLS))
+    incorporated = sorted(observed & incorporated_surface)
+    unincorporated = sorted(observed - incorporated_surface)
+    intentionally_unincorporated = sorted(
+        observed & INTENTIONALLY_UNINCORPORATED_TOOLS & set(unincorporated)
+    )
+    actionable_unincorporated = sorted(set(unincorporated) - set(intentionally_unincorporated))
+    actionable_observed = observed - set(intentionally_unincorporated)
     lanes = {
         lane: _lane_status(observed, lane, tools)
         for lane, tools in sorted(HIGH_VALUE_LANES.items())
@@ -363,6 +386,10 @@ def audit_tool_catalogue(
         },
         "known_tools_absent": sorted(known - observed),
         "provider_extensions": sorted(observed - known),
+        "provider_extension_roles": {
+            name: PROVIDER_EXTENSION_ROLES[name]
+            for name in sorted(observed & set(PROVIDER_EXTENSION_ROLES))
+        },
         "families": families,
         "adapter_integration": {
             "runtime_integrated_tools": integrated,
@@ -373,8 +400,18 @@ def audit_tool_catalogue(
             "execution_planner_tools": planned,
             "incorporated_observed_tools": incorporated,
             "unincorporated_observed_tools": unincorporated,
+            "intentionally_unincorporated_observed_tools": intentionally_unincorporated,
+            "actionable_unincorporated_observed_tools": actionable_unincorporated,
             "incorporation_coverage_percent": (
                 round(100 * len(incorporated) / len(names), 1) if names else 0.0
+            ),
+            "actionable_incorporation_coverage_percent": (
+                round(
+                    100 * len(set(incorporated) & actionable_observed) / len(actionable_observed),
+                    1,
+                )
+                if actionable_observed
+                else 100.0
             ),
         },
         "high_value_lanes": lanes,
@@ -454,6 +491,8 @@ def audit_tool_catalogue(
             "support for capabilities absent from the live MCP catalogue",
             "provider availability inferred from the documentation reference",
             "visual quality of generated output",
+            "aesthetic acceptance from provider preview resources",
+            "source truth from MCP UI feedback telemetry",
             "availability of Web SDK or REST credentials",
             "live authorization of the separately configured REST application",
             "provider-global atomic image replacement",

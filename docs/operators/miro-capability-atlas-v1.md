@@ -65,9 +65,22 @@ Der Plan mutiert selbst kein Board. Die Ausführung erfolgt nur über typisierte
 
 ## Operative MCP-Abdeckung
 
-Der verbundene Miro MCP 3.2.4 stellt 33 Werkzeuge bereit. Alle beobachteten Werkzeuge besitzen produktive Schauwerk-Laufzeit- oder Plannerpfade; `unincorporated_observed_tools` ist leer.
+Stand 24. Juli 2026 stellt der verbundene Miro MCP 3.2.4 35 Werkzeuge bereit. Gegenüber dem zuvor beobachteten 33-Werkzeug-Katalog sind `preview_resource_poll` und `record_ui_feedback` hinzugekommen. Schauwerk behandelt diese Erweiterungen unterschiedlich:
 
-Diese 100-prozentige **Livekatalogabdeckung** ist keine 100-prozentige Abdeckung der offiziellen Referenz oder der gesamten Miro-Plattform. Der Live-MCP besitzt `image_create`, `image_get_data`, `image_get_upload_url` und `image_get_url`, aber kein `image_delete`.
+- `preview_resource_poll` ist als optionale, ergänzende Provider-Vorschau in den Native Executor integriert;
+- `record_ui_feedback` bleibt absichtlich außerhalb von Laufzeit- und Plannerwahrheit, weil ein Daumen-Rating UI-Telemetrie und keine fachliche oder operative Quelle ist.
+
+Damit sind 34 von 35 beobachteten Werkzeugen technisch integriert. `unincorporated_observed_tools` enthält ausschließlich `record_ui_feedback`, `intentionally_unincorporated_observed_tools` benennt dieselbe bewusste Grenze und `actionable_unincorporated_observed_tools` ist leer. Die handlungsrelevante Livekatalogabdeckung beträgt damit 100 Prozent; die rohe Abdeckung über alle Werkzeuge liegt darunter, weil UI-Feedback absichtlich nicht als Systemfähigkeit vereinnahmt wird.
+
+Diese **Livekatalogabdeckung** ist keine 100-prozentige Abdeckung der offiziellen Referenz oder der gesamten Miro-Plattform. Der Live-MCP besitzt `image_create`, `image_get_data`, `image_get_upload_url` und `image_get_url`, aber kein `image_delete`.
+
+## Provider-Vorschau als ergänzende Evidenz
+
+Create-Ergebnisse dürfen einen MCP-Resource-Link auf eine kurzlebige Provider-Vorschau liefern. Der Native Executor erkennt ausschließlich streng formatierte `miro-preview://create/...`-Ressourcen und fragt jede angebotene Vorschau höchstens einmal über `preview_resource_poll` ab. Das begrenzt zusätzliche Provideraufrufe und verhindert Warteschleifen im Mutationspfad.
+
+Der Receipt speichert weder die Resource-URI noch Base64-Vorschaudaten. Er enthält ausschließlich Digest, Status und bei einer fertigen PNG- oder SVG-Vorschau MIME-Typ, Bytezahl und SHA-256. Vorschauen über 10 MiB oder ungültige Antworten werden nicht übernommen. Eine ausstehende, fehlgeschlagene oder fehlerhafte Vorschau macht eine ansonsten verifizierte Create-Operation nicht nachträglich zu einer fehlgeschlagenen Mutation.
+
+Diese Evidenz bleibt ausdrücklich **supplemental**: Sie beweist weder den authentifizierten Nachher-Zustand des Boards noch ästhetische Qualität. `visual_acceptance.status` bleibt deshalb `pending_authenticated_provider_capture`, bis eine getrennte authentifizierte Provideraufnahme tatsächlich geprüft wurde.
 
 ## Verwalteter Bild-Lebenszyklus
 
