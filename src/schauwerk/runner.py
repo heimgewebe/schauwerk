@@ -55,6 +55,8 @@ from .cli_handlers import (
     handle_publication_serve,
     handle_publication_status,
     handle_publication_withdraw,
+    handle_python_thread_stack_inspect,
+    handle_python_thread_stack_repair,
     handle_quality,
     handle_regie_context_compile,
     handle_regie_context_template,
@@ -125,7 +127,14 @@ def emit(value: Any, *, as_json: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.provider == "ecosystem" and args.command == "render":
+        if args.provider == "runtime" and args.command == "python-thread-stack":
+            if args.runtime_action == "inspect":
+                result = handle_python_thread_stack_inspect(executable=args.executable)
+            elif args.runtime_action == "repair":
+                result = handle_python_thread_stack_repair(source=args.source, output=args.output)
+            else:
+                raise AssertionError(f"unhandled runtime action: {args.runtime_action}")
+        elif args.provider == "ecosystem" and args.command == "render":
             result = handle_ecosystem_render(
                 manifest=args.manifest,
                 output=args.output,

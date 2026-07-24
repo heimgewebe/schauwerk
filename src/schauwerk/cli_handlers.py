@@ -60,6 +60,10 @@ from .operator.live_apply import (
     write_live_apply_plan,
     write_live_artifact,
 )
+from .operator.python_runtime import (
+    inspect_python_thread_stack,
+    repair_python_thread_stack,
+)
 from .operator.receipts import _stable_digest
 from .operator.regions import (
     compile_region_apply_receipt,
@@ -895,6 +899,14 @@ def handle_software_pilot(
         visual_quality_output=(Path(visual_quality_output) if visual_quality_output else None),
         visual_dsl_output=Path(visual_dsl_output) if visual_dsl_output else None,
     )
+
+
+def handle_python_thread_stack_inspect(*, executable: str | None = None) -> dict[str, Any]:
+    return inspect_python_thread_stack(Path(executable) if executable else None)
+
+
+def handle_python_thread_stack_repair(*, source: str, output: str) -> dict[str, Any]:
+    return repair_python_thread_stack(Path(source), Path(output))
 
 
 def handle_status(*, live: bool = False, client: MiroMCPClient | None = None) -> dict[str, Any]:
