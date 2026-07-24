@@ -383,6 +383,27 @@ def build_parser() -> argparse.ArgumentParser:
     drill.add_argument("--output", required=True)
     drill.add_argument("--json", action="store_true")
 
+    runtime = providers.add_parser(
+        "runtime", help="inspect and prepare local Schauwerk runtime repairs"
+    )
+    runtime_commands = runtime.add_subparsers(dest="command", required=True)
+    python_stack = runtime_commands.add_parser(
+        "python-thread-stack",
+        help="inspect or prepare a non-executable GNU_STACK repair",
+    )
+    python_stack_commands = python_stack.add_subparsers(dest="runtime_action", required=True)
+    python_stack_inspect = python_stack_commands.add_parser(
+        "inspect", help="inspect one Python executable without mutation"
+    )
+    python_stack_inspect.add_argument("executable", nargs="?")
+    python_stack_inspect.add_argument("--json", action="store_true")
+    python_stack_repair = python_stack_commands.add_parser(
+        "repair", help="write a create-only repaired executable without replacing the source"
+    )
+    python_stack_repair.add_argument("source")
+    python_stack_repair.add_argument("--output", required=True)
+    python_stack_repair.add_argument("--json", action="store_true")
+
     miro = providers.add_parser("miro", help="direct Miro MCP connection")
     commands = miro.add_subparsers(dest="command", required=True)
 

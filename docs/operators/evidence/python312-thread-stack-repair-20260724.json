@@ -1,0 +1,97 @@
+{
+  "cleanup": {
+    "diagnostic_python_3_12_11_removed": true,
+    "local_repair_receipt_retained": true,
+    "original_backup_retained": true,
+    "reproduced_candidate_removed": true,
+    "temporary_elf_tools_removed": true
+  },
+  "does_not_establish": [
+    "future validity of the repaired binary after a uv reinstall or upgrade",
+    "that every Python extension module declares a non-executable stack",
+    "permission to weaken W^X or REST authorization checks"
+  ],
+  "failed_operations_without_effect": [
+    "root package installation from an unreachable package mirror",
+    "root package installation from paths hidden by privileged-worker isolation",
+    "patchelf clear-execstack attempt on a copy",
+    "execstack clear attempt on a copy"
+  ],
+  "observed_at": "2026-07-24",
+  "postflight": {
+    "clone3": "success",
+    "direct_python_3_12_12_thread_start": "passed",
+    "normal_uv_project_rest_doctor": "passed",
+    "project_virtualenv_thread_start": "passed",
+    "rest_boards_write_authorized": true,
+    "rest_live_authorized": true,
+    "rest_scopes": [
+      "boards:read",
+      "boards:write"
+    ],
+    "rest_separate_from_mcp_oauth": true,
+    "thread_stack_mprotect": "PROT_READ|PROT_WRITE -> success"
+  },
+  "repair": {
+    "after_gnu_stack_flags": 6,
+    "after_gnu_stack_state": "non_executable",
+    "atomic_replacement_digest_guarded": true,
+    "create_only_reproduction_byte_identical": true,
+    "credential_changed": false,
+    "host_wx_relaxed": false,
+    "method": "replace one strictly validated ABI PT_NOTE program-header entry with PT_GNU_STACK",
+    "miro_scope_changed": false,
+    "program_header_index": 5,
+    "root_required": false
+  },
+  "repository_guard": {
+    "cleanup_inode_bound": true,
+    "descriptor_bound_output_readback": true,
+    "gnu_linux_abi_note_content_bound": true,
+    "inspection_schema": "schauwerk-python-thread-stack-inspection.v1",
+    "output_mode_umask_independent": true,
+    "output_parent_owner_controlled": true,
+    "repair_output_create_only": true,
+    "repair_schema": "schauwerk-python-thread-stack-repair.v1",
+    "source_auto_replaced": false
+  },
+  "reproduction": {
+    "diagnostic_uv_python_3_12_11_removed": true,
+    "diagnostic_uv_python_3_12_11_thread_start": "failed",
+    "direct_uv_python_3_12_12_thread_start_before": "failed",
+    "error_message": "can't start new thread",
+    "error_type": "RuntimeError",
+    "project_virtualenv_thread_start_before": "failed",
+    "system_python_3_10_thread_start": "passed"
+  },
+  "root_cause": {
+    "before_gnu_stack_state": "missing",
+    "before_pt_note_count": 1,
+    "before_thread_stack_mprotect": "PROT_READ|PROT_WRITE|PROT_EXEC -> EPERM",
+    "host_wx_enforcement_working": true,
+    "level": "ELF program-header metadata",
+    "provider_response_used_for_diagnosis": false,
+    "resource_limits_ruled_out": {
+      "cgroup_pid_ceiling_observed": false,
+      "memory_pressure_observed": false,
+      "rlimit_nproc_hard": 234504,
+      "rlimit_nproc_soft": 234504,
+      "thread_stack_bytes": 8388608
+    }
+  },
+  "runtime": {
+    "active_link_count": 1,
+    "active_mode": "0755",
+    "architecture": "x86_64-linux-gnu",
+    "bytes": 27830632,
+    "implementation": "uv-managed CPython",
+    "original_sha256": "52f97dd7591d651870416792ec5d9b8fe656669fe726a9fed4ec3140ecba8ae4",
+    "python_version": "3.12.12",
+    "repaired_sha256": "e082b57e5bd1f4604480fca642cc276ae59b669a0d7b9c87e6b4b5cbf3544ac2",
+    "rollback_backup_mode": "0700",
+    "rollback_backup_retained": true,
+    "rollback_directory_owner_only": true
+  },
+  "schema_version": "schauwerk-python-thread-stack-repair-proof.v1",
+  "task_id": "SCHAUWERK-MIRO-MANAGED-IMAGE-LIFECYCLE-V1-T002"
+}
