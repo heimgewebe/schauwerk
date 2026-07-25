@@ -58,6 +58,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 45. [Miro Visual Truth v1](operators/miro-visual-truth-v1.md)
 46. [Golden Compositions v1](visual/golden-compositions-v1.md)
 47. [Operator-Ökosystem auf heim-pc](operators/operator-ecosystem-heim-pc-v1.md)
+48. [Miro companion evidence refresh](operations/miro-companion-evidence-refresh.md)
 
 ## Contracts
 
@@ -98,4 +99,4 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 
 ## Current status
 
-The local product surface through SW-013, repository-level integrated/durable v1 contracts through SW-017, Visual System v2 in SW-018, the representation package in SW-019, package-bound Representation Delivery in SW-020 and deterministic offline visual preview/regression in SW-021 are implemented. The live-companion and visual-truth slice adds provider-reference drift reporting, a digest- and header-bound HTTPS companion release, authenticated-capture receipts and three distinct Golden Compositions. Public hosting, Miro Developer App registration, team installation and Web SDK OAuth remain explicit external gates; `companion gate-status` can evaluate them only from fresh, mutually bound provider readbacks and a live HTTPS doctor. Productive writes remain operation-specific, sequential and non-atomic; provider rendering and human aesthetic acceptance remain separate evidence.
+The local product surface through SW-013, repository-level integrated/durable v1 contracts through SW-017, Visual System v2 in SW-018, the representation package in SW-019, package-bound Representation Delivery in SW-020 and deterministic offline visual preview/regression in SW-021 are implemented. The live-companion and visual-truth slice adds provider-reference drift reporting, a digest- and header-bound HTTPS companion release, authenticated-capture receipts and three distinct Golden Compositions. The bounded companion evidence refresh adds owner-only immutable generations, explicit active/superseded attention state, live deployment revalidation and a hardened non-interactive systemd timer without automating provider login, consent, scope changes or board mutation. Productive writes remain operation-specific, sequential and non-atomic; provider rendering and human aesthetic acceptance remain separate evidence.
