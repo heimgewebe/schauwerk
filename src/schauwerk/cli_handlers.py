@@ -132,6 +132,12 @@ from .registry_runtime import registry_show, registry_status
 from .surfaces.miro.board_registry import BoardAllowlist, reference_digest
 from .surfaces.miro.capability_audit import audit_tool_catalogue
 from .surfaces.miro.client import MiroMCPClient
+from .surfaces.miro.companion_evidence import (
+    capture_evidence,
+    check_evidence_config,
+    evidence_status,
+    install_evidence_timer,
+)
 from .surfaces.miro.companion_release import (
     CompanionReleaseError,
     check_release_manifest,
@@ -1029,6 +1035,34 @@ def handle_companion_release_doctor(*, manifest: str, timeout: float) -> dict[st
         )
         raise CompanionReleaseError(f"companion HTTPS doctor failed: {summary}")
     return result
+
+
+def handle_companion_evidence_config_check(*, config: str) -> dict[str, Any]:
+    return check_evidence_config(config)
+
+
+def handle_companion_evidence_capture(
+    *, config: str, force: bool, timeout: float
+) -> dict[str, Any]:
+    return capture_evidence(config, force=force, timeout=timeout)
+
+
+def handle_companion_evidence_status(*, config: str, timeout: float) -> dict[str, Any]:
+    return evidence_status(config, timeout=timeout)
+
+
+def handle_companion_evidence_install_timer(
+    *, config: str, cli_executable: str | None, interval_hours: float,
+    randomized_delay_minutes: int, enable: bool, replace: bool,
+) -> dict[str, Any]:
+    return install_evidence_timer(
+        config,
+        cli_executable=cli_executable,
+        interval_hours=interval_hours,
+        randomized_delay_minutes=randomized_delay_minutes,
+        enable=enable,
+        replace=replace,
+    )
 
 
 def handle_visual_truth_create(

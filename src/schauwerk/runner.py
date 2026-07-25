@@ -13,6 +13,10 @@ from .cli_handlers import (
     handle_capability_audit,
     handle_companion_build,
     handle_companion_check,
+    handle_companion_evidence_capture,
+    handle_companion_evidence_config_check,
+    handle_companion_evidence_install_timer,
+    handle_companion_evidence_status,
     handle_companion_gate_status,
     handle_companion_release_check,
     handle_companion_release_create,
@@ -398,6 +402,23 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "companion" and args.companion_command == "release-doctor":
             result = handle_companion_release_doctor(
                 manifest=args.manifest, timeout=args.timeout
+            )
+        elif args.command == "companion" and args.companion_command == "evidence-config-check":
+            result = handle_companion_evidence_config_check(config=args.config)
+        elif args.command == "companion" and args.companion_command == "evidence-capture":
+            result = handle_companion_evidence_capture(
+                config=args.config, force=args.force, timeout=args.timeout
+            )
+        elif args.command == "companion" and args.companion_command == "evidence-status":
+            result = handle_companion_evidence_status(config=args.config, timeout=args.timeout)
+        elif args.command == "companion" and args.companion_command == "evidence-install-timer":
+            result = handle_companion_evidence_install_timer(
+                config=args.config,
+                cli_executable=args.cli_executable,
+                interval_hours=args.interval_hours,
+                randomized_delay_minutes=args.randomized_delay_minutes,
+                enable=args.enable,
+                replace=args.replace,
             )
         elif args.command == "visual-truth" and args.visual_truth_command == "create":
             result = handle_visual_truth_create(

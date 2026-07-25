@@ -487,6 +487,34 @@ def build_parser() -> argparse.ArgumentParser:
     companion_release_doctor.add_argument("manifest")
     companion_release_doctor.add_argument("--timeout", type=float, default=10.0)
     companion_release_doctor.add_argument("--json", action="store_true")
+    companion_evidence_check = companion_commands.add_parser(
+        "evidence-config-check", help="validate one owner-only companion evidence config"
+    )
+    companion_evidence_check.add_argument("config")
+    companion_evidence_check.add_argument("--json", action="store_true")
+    companion_evidence_capture = companion_commands.add_parser(
+        "evidence-capture", help="refresh provider evidence without provider mutation"
+    )
+    companion_evidence_capture.add_argument("config")
+    companion_evidence_capture.add_argument("--force", action="store_true")
+    companion_evidence_capture.add_argument("--timeout", type=float, default=10.0)
+    companion_evidence_capture.add_argument("--json", action="store_true")
+    companion_evidence_status = companion_commands.add_parser(
+        "evidence-status", help="verify the current immutable evidence generation"
+    )
+    companion_evidence_status.add_argument("config")
+    companion_evidence_status.add_argument("--timeout", type=float, default=10.0)
+    companion_evidence_status.add_argument("--json", action="store_true")
+    companion_evidence_timer = companion_commands.add_parser(
+        "evidence-install-timer", help="install the bounded local evidence refresh timer"
+    )
+    companion_evidence_timer.add_argument("config")
+    companion_evidence_timer.add_argument("--cli-executable")
+    companion_evidence_timer.add_argument("--interval-hours", type=float, default=6.0)
+    companion_evidence_timer.add_argument("--randomized-delay-minutes", type=int, default=15)
+    companion_evidence_timer.add_argument("--enable", action="store_true")
+    companion_evidence_timer.add_argument("--replace", action="store_true")
+    companion_evidence_timer.add_argument("--json", action="store_true")
 
     visual_truth = commands.add_parser(
         "visual-truth", help="bind an authenticated Miro capture to one verified snapshot"
