@@ -460,8 +460,12 @@ def build_parser() -> argparse.ArgumentParser:
     companion_check.add_argument("output_dir")
     companion_check.add_argument("--json", action="store_true")
     companion_gate_status = companion_commands.add_parser(
-        "gate-status", help="show external Web SDK gates without inferring provider state"
+        "gate-status", help="evaluate external Web SDK gates from explicit bound evidence"
     )
+    companion_gate_status.add_argument("--manifest")
+    companion_gate_status.add_argument("--app-config-readback")
+    companion_gate_status.add_argument("--in-board-readback")
+    companion_gate_status.add_argument("--timeout", type=float, default=10.0)
     companion_gate_status.add_argument("--json", action="store_true")
     companion_release_create = companion_commands.add_parser(
         "release-create", help="bind a verified companion bundle to one HTTPS app URL"

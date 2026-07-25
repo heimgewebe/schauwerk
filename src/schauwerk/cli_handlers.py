@@ -981,8 +981,21 @@ def handle_companion_check(*, output_dir: str) -> dict[str, Any]:
     return verify_companion(output_dir=Path(output_dir))
 
 
-def handle_companion_gate_status() -> dict[str, Any]:
-    return companion_gate_status()
+def handle_companion_gate_status(
+    *,
+    manifest: str | None = None,
+    app_config_readback: str | None = None,
+    in_board_readback: str | None = None,
+    timeout: float = 10.0,
+) -> dict[str, Any]:
+    return companion_gate_status(
+        manifest_path=Path(manifest) if manifest else None,
+        app_config_readback=(
+            Path(app_config_readback) if app_config_readback else None
+        ),
+        in_board_readback=Path(in_board_readback) if in_board_readback else None,
+        timeout=timeout,
+    )
 
 
 def handle_companion_release_create(

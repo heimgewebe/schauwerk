@@ -5,6 +5,8 @@ PYTHON ?= $(VENV_BIN)python
 RUFF ?= $(VENV_BIN)ruff
 PYTEST ?= $(VENV_BIN)pytest
 
+export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH),)
+
 lint:
 	$(RUFF) check src tests
 

@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlsplit
@@ -21,6 +22,35 @@ from .web_sdk_companion import MIRO_STATIC_SCRIPT_SOURCE, verify_companion
 
 RELEASE_SCHEMA = "schauwerk-miro-web-sdk-companion-release.v1"
 GATE_STATUS_SCHEMA = "schauwerk-miro-web-sdk-companion-gate-status.v1"
+APP_CONFIG_READBACK_SCHEMA = "schauwerk-miro-web-sdk-app-config-readback.v1"
+IN_BOARD_READBACK_SCHEMA = "schauwerk-miro-web-sdk-provider-readback.v1"
+EVIDENCE_MAX_LIFETIME = timedelta(hours=48)
+IN_BOARD_REQUIRED_CHECKS = frozenset(
+    {
+        "board_id_present",
+        "build_digest_exact",
+        "error_message_absent",
+        "frame_readback_complete",
+        "miro_live",
+        "panel_public_origin",
+        "read_api_available",
+        "ready",
+        "sdk_error_absent",
+        "state_verified",
+        "write_api_available",
+    }
+)
+APP_CONFIG_REQUIRED_CHECKS = frozenset(
+    {
+        "app_label_present",
+        "app_url_exact",
+        "dashboard_authenticated",
+        "in_board_readback_success",
+        "no_scope_disabled",
+        "scopes_exact",
+        "team_present",
+    }
+)
 RELEASE_SCHEMA_FILE = "miro-web-sdk-companion-release.v1.schema.json"
 MAX_HTTP_BYTES = 8 * 1024 * 1024
 DEPLOYED_FILES = (
@@ -287,9 +317,74 @@ def check_release_manifest(
     }
 
 
-def companion_gate_status() -> dict[str, Any]:
-    """Report the external Web SDK gates without inferring provider state."""
+def _evidence_canonical(value: Any) -> bytes:
+    return (
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
 
+
+def _parse_evidence_time(value: Any, label: str) -> datetime:
+    if not isinstance(value, str):
+        raise CompanionReleaseError(f"{label} must be an ISO-8601 timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise CompanionReleaseError(f"{label} must be an ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        raise CompanionReleaseError(f"{label} must include a timezone")
+    return parsed.astimezone(UTC)
+
+
+def _load_gate_evidence(
+    *,
+    path: str | Path,
+    label: str,
+    expected_schema: str,
+    required_checks: frozenset[str],
+    now: datetime,
+) -> tuple[dict[str, Any], str]:
+    source = _safe_regular_file(path, label)
+    payload = source.read_bytes()
+    try:
+        value = json.loads(payload.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CompanionReleaseError(f"{label} must be UTF-8 JSON") from exc
+    if not isinstance(value, dict) or value.get("schema_version") != expected_schema:
+        raise CompanionReleaseError(f"{label} schema version does not match")
+    observed_digest = value.get("receipt_digest")
+    if not isinstance(observed_digest, str):
+        raise CompanionReleaseError(f"{label} receipt digest is missing")
+    unsigned = dict(value)
+    unsigned.pop("receipt_digest")
+    if observed_digest != _digest(_evidence_canonical(unsigned)):
+        raise CompanionReleaseError(f"{label} receipt digest does not match")
+    checks = value.get("checks")
+    if (
+        value.get("success") is not True
+        or not isinstance(checks, Mapping)
+        or not checks
+        or any(result is not True for result in checks.values())
+    ):
+        raise CompanionReleaseError(f"{label} is not a successful complete readback")
+    missing_checks = sorted(required_checks.difference(checks))
+    if missing_checks:
+        raise CompanionReleaseError(
+            f"{label} is missing required checks: {', '.join(missing_checks)}"
+        )
+    observed_at = _parse_evidence_time(value.get("observed_at"), f"{label} observed_at")
+    expires_at = _parse_evidence_time(value.get("expires_at"), f"{label} expires_at")
+    if observed_at > expires_at:
+        raise CompanionReleaseError(f"{label} expires before it was observed")
+    if expires_at - observed_at > EVIDENCE_MAX_LIFETIME:
+        raise CompanionReleaseError(f"{label} lifetime exceeds the allowed maximum")
+    if observed_at > now + timedelta(minutes=5):
+        raise CompanionReleaseError(f"{label} observation is implausibly in the future")
+    if expires_at <= now:
+        raise CompanionReleaseError(f"{label} has expired")
+    return value, _digest(payload)
+
+
+def _open_gate_status() -> dict[str, Any]:
     value: dict[str, Any] = {
         "schema_version": GATE_STATUS_SCHEMA,
         "status": "open",
@@ -297,7 +392,7 @@ def companion_gate_status() -> dict[str, Any]:
             "public_https_hosting": {
                 "state": "not_evidenced",
                 "required_evidence": (
-                    "successful companion release-doctor receipt bound to the exact release digest"
+                    "successful live companion release doctor bound to the exact release digest"
                 ),
             },
             "developer_app_registered": {
@@ -313,7 +408,7 @@ def companion_gate_status() -> dict[str, Any]:
             "oauth_authorized": {
                 "state": "not_evidenced",
                 "required_evidence": (
-                    "interactive Web SDK app authorization and authenticated in-board readback"
+                    "interactive Web SDK authorization and authenticated in-board readback"
                 ),
             },
         },
@@ -330,14 +425,190 @@ def companion_gate_status() -> dict[str, Any]:
             "github_pages_satisfies_header_contract": False,
         },
         "next_action": (
-            "select an HTTPS host that preserves the required CSP and frame headers, deploy the "
-            "exact bundle, run release-doctor, then register and install the Miro Developer App"
+            "provide the exact release manifest, Developer App readback and authenticated "
+            "in-board readback to evaluate the live gates"
         ),
         "does_not_establish": [
             "absence of an externally created Miro Developer App",
             "absence of a deployment outside Schauwerk-managed evidence",
             "permission to reuse MCP OAuth or REST credentials",
             "provider authorization or installation state",
+        ],
+    }
+    value["gate_digest"] = _digest(_canonical(value))
+    return value
+
+
+def companion_gate_status(
+    *,
+    manifest_path: str | Path | None = None,
+    app_config_readback: str | Path | None = None,
+    in_board_readback: str | Path | None = None,
+    timeout: float = 10.0,
+    fetcher: Fetcher | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Evaluate external Web SDK gates only from explicit, fresh, bound evidence."""
+
+    supplied = (manifest_path, app_config_readback, in_board_readback)
+    if all(value is None for value in supplied):
+        return _open_gate_status()
+    if any(value is None for value in supplied):
+        raise CompanionReleaseError(
+            "gate evidence requires manifest, app-config readback and in-board readback together"
+        )
+
+    effective_now = (now or datetime.now(UTC)).astimezone(UTC)
+    manifest = _load_manifest(manifest_path)
+    in_board, in_board_sha256 = _load_gate_evidence(
+        path=in_board_readback,
+        label="in-board readback",
+        expected_schema=IN_BOARD_READBACK_SCHEMA,
+        required_checks=IN_BOARD_REQUIRED_CHECKS,
+        now=effective_now,
+    )
+    app_config, app_config_sha256 = _load_gate_evidence(
+        path=app_config_readback,
+        label="app-config readback",
+        expected_schema=APP_CONFIG_READBACK_SCHEMA,
+        required_checks=APP_CONFIG_REQUIRED_CHECKS,
+        now=effective_now,
+    )
+
+    binding = in_board.get("binding")
+    if not isinstance(binding, Mapping):
+        raise CompanionReleaseError("in-board readback binding is missing")
+    expected_binding = {
+        "app_url": manifest["app_url"],
+        "build_digest": manifest["build_digest"],
+        "developer_app_label": manifest["developer_app_label"],
+        "release_digest": manifest["release_digest"],
+        "required_scopes": manifest["required_scopes"],
+    }
+    for key, expected in expected_binding.items():
+        if binding.get(key) != expected:
+            raise CompanionReleaseError(f"in-board readback {key} does not match release")
+    expected_panel_url = urljoin(manifest["app_url"], "panel.html")
+    if in_board.get("location") != expected_panel_url:
+        raise CompanionReleaseError("in-board panel origin does not match release")
+
+    if app_config.get("app_url") != manifest["app_url"]:
+        raise CompanionReleaseError("Developer App URL does not match release")
+    if app_config.get("developer_app_label") != manifest["developer_app_label"]:
+        raise CompanionReleaseError("Developer App label does not match release")
+    if app_config.get("required_scopes") != manifest["required_scopes"]:
+        raise CompanionReleaseError("Developer App required scopes do not match release")
+    if app_config.get("checked_scopes") != manifest["required_scopes"]:
+        raise CompanionReleaseError("Developer App checked scopes do not match release")
+    if app_config.get("disabled_scopes") != []:
+        raise CompanionReleaseError("Developer App reports disabled scopes")
+    if app_config.get("developer_app_id_sha256") != binding.get(
+        "developer_app_id_sha256"
+    ):
+        raise CompanionReleaseError("Developer App identity differs between readbacks")
+    if app_config.get("team_label") != binding.get("team_label"):
+        raise CompanionReleaseError("Miro team differs between readbacks")
+    gates = app_config.get("gates")
+    if gates != {
+        "developer_app_registered": "verified",
+        "oauth_authorized": "verified",
+        "team_installation": "verified",
+    }:
+        raise CompanionReleaseError("Developer App gate claims are incomplete")
+    board_binding = app_config.get("in_board_binding")
+    if not isinstance(board_binding, Mapping):
+        raise CompanionReleaseError("app-config readback lacks its in-board binding")
+    if board_binding.get("artifact_sha256") != in_board_sha256:
+        raise CompanionReleaseError("app-config readback is not bound to this in-board artifact")
+    if board_binding.get("receipt_digest") != in_board.get("receipt_digest"):
+        raise CompanionReleaseError("app-config readback is not bound to this in-board receipt")
+    for key in ("build_digest", "release_digest"):
+        if board_binding.get(key) != expected_binding[key]:
+            raise CompanionReleaseError(f"app-config in-board {key} does not match release")
+
+    doctor = doctor_release(
+        manifest_path=manifest_path,
+        timeout=timeout,
+        fetcher=fetcher,
+    )
+    public_ok = doctor.get("success") is True
+    failures = list(doctor.get("failures") or [])
+    value: dict[str, Any] = {
+        "schema_version": GATE_STATUS_SCHEMA,
+        "status": "closed" if public_ok else "blocked",
+        "gates": {
+            "public_https_hosting": {
+                "state": "verified" if public_ok else "blocked",
+                "required_evidence": (
+                    "successful live companion release doctor bound to the exact release digest"
+                ),
+            },
+            "developer_app_registered": {
+                "state": "verified",
+                "required_evidence": (
+                    "Miro Developer App readback bound to the exact HTTPS app URL and app label"
+                ),
+            },
+            "team_installation": {
+                "state": "verified",
+                "required_evidence": "Miro team installation readback for the registered app",
+            },
+            "oauth_authorized": {
+                "state": "verified",
+                "required_evidence": (
+                    "interactive Web SDK authorization and authenticated in-board readback"
+                ),
+            },
+        },
+        "release": {
+            "app_url": manifest["app_url"],
+            "build_digest": manifest["build_digest"],
+            "developer_app_label": manifest["developer_app_label"],
+            "release_digest": manifest["release_digest"],
+            "required_scopes": manifest["required_scopes"],
+        },
+        "evidence": {
+            "app_config_readback": {
+                "artifact_sha256": app_config_sha256,
+                "expires_at": app_config["expires_at"],
+                "observed_at": app_config["observed_at"],
+                "receipt_digest": app_config["receipt_digest"],
+            },
+            "in_board_readback": {
+                "artifact_sha256": in_board_sha256,
+                "expires_at": in_board["expires_at"],
+                "observed_at": in_board["observed_at"],
+                "receipt_digest": in_board["receipt_digest"],
+            },
+            "live_doctor": {
+                "checked_file_count": len(doctor.get("checked_files") or []),
+                "release_digest": doctor.get("release_digest"),
+                "success": public_ok,
+            },
+        },
+        "credential_boundaries": {
+            "mcp_oauth_is_web_sdk_authorization": False,
+            "rest_credential_is_web_sdk_authorization": False,
+            "web_sdk_app_identity_configured_by_repository": False,
+        },
+        "hosting_requirements": {
+            "https": True,
+            "exact_asset_digests": True,
+            "custom_security_headers": True,
+            "miro_frame_ancestors": True,
+            "github_pages_satisfies_header_contract": False,
+        },
+        "next_action": (
+            "refresh the explicit provider readbacks before expiry"
+            if public_ok
+            else "repair the public deployment and rerun the live release doctor"
+        ),
+        "failures": failures,
+        "does_not_establish": [
+            "future provider state after the evidence expiry",
+            "permission to reveal or reuse OAuth or REST tokens",
+            "permission for an unreviewed board mutation",
+            "subjective visual quality beyond the authenticated readback",
         ],
     }
     value["gate_digest"] = _digest(_canonical(value))

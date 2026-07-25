@@ -161,6 +161,11 @@ Siehe `docs/operators/visual-preview-regression-v1.md`.
 
 ```bash
 schauwerk miro companion gate-status --json
+schauwerk miro companion gate-status \
+  --manifest release.json \
+  --app-config-readback app-config-readback.json \
+  --in-board-readback in-board-readback.json \
+  --json
 schauwerk miro companion build \
   docs/operators/fixtures/miro-web-sdk-companion-v1.json \
   --output-dir /tmp/schauwerk-companion
@@ -177,7 +182,7 @@ schauwerk miro visual-truth create \
   --json
 ```
 
-Der Companion-Releasevertrag bindet das lokale Bundle an eine HTTPS-App-URL und prüft remote exakte Digests, Content-Types und Sicherheitsheader. Miro-App-Registrierung, Teaminstallation und OAuth bleiben eigenständige Gates; MCP-OAuth und REST-Credentials begründen keine Web-SDK-Autorität. `visual-truth` bindet eine authentifiziert attestierte Aufnahme an einen exakten, wiederholbaren Snapshot, ohne die Attestation als kryptografischen Beweis oder ästhetisches Urteil auszugeben. Drei Golden Compositions prüfen Systemlandschaft, Entscheidungsfluss und narrative Reise als unterschiedliche Leitformen mit null Preview-Blockern.
+Der Companion-Releasevertrag bindet das lokale Bundle an eine HTTPS-App-URL und prüft remote exakte Digests, Content-Types und Sicherheitsheader. Ohne Evidence bleibt `gate-status` bewusst `open`; mit Release-Manifest, frischem Developer-App-Readback und authentifiziertem In-Board-Readback prüft der Befehl alle Bindungen erneut, führt den HTTPS-Doctor live aus und meldet nur dann `closed`. Miro-App-Registrierung, Teaminstallation und OAuth bleiben eigenständige Gates; MCP-OAuth und REST-Credentials begründen keine Web-SDK-Autorität. `visual-truth` bindet eine authentifiziert attestierte Aufnahme an einen exakten, wiederholbaren Snapshot, ohne die Attestation als kryptografischen Beweis oder ästhetisches Urteil auszugeben. Drei Golden Compositions prüfen Systemlandschaft, Entscheidungsfluss und narrative Reise als unterschiedliche Leitformen mit null Preview-Blockern.
 
 Siehe `docs/operators/miro-web-sdk-companion-v1.md`, `docs/operators/miro-visual-truth-v1.md` und `docs/visual/golden-compositions-v1.md`.
 

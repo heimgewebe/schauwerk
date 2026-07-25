@@ -138,6 +138,12 @@ Die konkrete Installation muss den ausführbaren Pfad und die Bundle-Wurzel an e
 
 ```text
 schauwerk miro companion gate-status --json
+
+schauwerk miro companion gate-status \
+  --manifest release.json \
+  --app-config-readback app-config-readback.json \
+  --in-board-readback in-board-readback.json \
+  --json
 ```
 
 Die Statusoberfläche trennt vier Gates:
@@ -147,7 +153,7 @@ Die Statusoberfläche trennt vier Gates:
 3. Installation in das Zielteam;
 4. interaktive Autorisierung und In-Board-Readback.
 
-Ohne gebundene Evidenz bleiben diese Gates `not_evidenced`. Ein erfolgreicher lokaler Build, MCP-OAuth oder ein separates REST-Credential dürfen nicht als Web-SDK-Autorisierung ausgelegt werden.
+Ohne gebundene Evidenz bleiben diese Gates `not_evidenced`. Werden alle drei Evidence-Artefakte gemeinsam angegeben, prüft Schauwerk deren Receipt-Digests, Gültigkeitsfenster, App-URL, App-Identität, Team, Scopes, Build- und Release-Digest sowie die Bindung des App-Readbacks an den exakten In-Board-Readback. Anschließend wird der öffentliche Release-Doctor erneut live ausgeführt. Nur vollständig passende, nicht abgelaufene Evidence plus erfolgreicher Doctor ergeben `status=closed`; Providerdrift ergibt `blocked`. Ein erfolgreicher lokaler Build, MCP-OAuth oder ein separates REST-Credential dürfen nicht als Web-SDK-Autorisierung ausgelegt werden.
 
 ## Miro-Vertrag
 
