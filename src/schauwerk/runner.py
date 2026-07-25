@@ -378,7 +378,12 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "companion" and args.companion_command == "check":
             result = handle_companion_check(output_dir=args.output_dir)
         elif args.command == "companion" and args.companion_command == "gate-status":
-            result = handle_companion_gate_status()
+            result = handle_companion_gate_status(
+                manifest=args.manifest,
+                app_config_readback=args.app_config_readback,
+                in_board_readback=args.in_board_readback,
+                timeout=args.timeout,
+            )
         elif args.command == "companion" and args.companion_command == "release-create":
             result = handle_companion_release_create(
                 bundle_dir=args.bundle_dir,
