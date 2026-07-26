@@ -66,3 +66,10 @@ The automatic score is never an aesthetic verdict. `schauwerk visual review-v2` 
 ## Geometry contract
 
 The board specification carries declared design boxes for overlap, whitespace and density review. Miro `TEXT`, `SHAPE` and `STICKY` primitives receive requested dimensions. Miro `TABLE` and `DOC` primitives are provider-auto-sized by the current layout DSL; their declared boxes are design intent, while live conformance verifies their exact type, count and anchor rather than claiming unavailable provider width or height. This limitation is explicit and cannot be converted into an automatic aesthetic claim.
+
+
+### Rich-item geometry and release truth
+
+Tables and documents are treated as unbounded provider-rendered objects, not as ordinary fixed boxes. The deterministic design gate enforces an 80-unit isolation zone, a maximum of four rich items per board, and a score cap of 92 until authenticated provider geometry is available. The remote snapshot gate counts all visual items in its geometry denominator, distinguishes observed, estimated and unknown geometry, and fails closed when DOC/TABLE bounds are absent or estimated children escape a uniform frame.
+
+Automatic conformance is never visual release. The only positive visual release state requires both an authenticated Miro capture and a digest-bound seven-axis human review with no failed axis.

@@ -100,7 +100,7 @@ def test_visual_v2_live_test_binds_local_quality_and_remote_conformance(tmp_path
     )
 
     assert result["schema_version"] == "schauwerk-visual-system-live-test.v2"
-    assert result["local_quality"]["score"] == 100
+    assert result["local_quality"]["score"] == 92
     assert result["local_quality"]["blockers"] == []
     assert result["remote_conformance"]["ok"] is True
     assert result["remote_conformance"]["geometry_used_for_aesthetic_score"] is False

@@ -126,6 +126,9 @@ def test_rich_objects_declare_provider_auto_sizing() -> None:
     assert {item["provider_geometry"] for item in rich} == {"auto_sized"}
     quality = validate_board_spec(spec)
     assert quality["provider_auto_sized_count"] == 4
+    assert quality["score"] == 92
+    assert quality["score_cap_reason"] == "provider_geometry_pending_authenticated_capture"
+    assert any(item["code"] == "provider_geometry_pending" for item in quality["warnings"])
     assert (
         quality["geometry_contract"]["table_doc"]
         == "provider_auto_sized_unbounded_requires_provider_capture"
@@ -194,3 +197,25 @@ def test_long_provider_connector_label_with_insufficient_gap_is_reported_as_visu
     assert any(item["code"] == "connector_label_collision" for item in quality["blockers"])
     assert quality["score"] < 100
     assert quality["visual_acceptance"]["authenticated_provider_capture_required"] is True
+
+
+def test_provider_auto_sized_object_requires_conservative_spacing() -> None:
+    spec = reference_board_spec()
+    table = next(item for item in spec["frames"][2]["objects"] if item["kind"] == "table")
+    table["w"] = 680
+    quality = audit_board_spec(spec)
+
+    assert quality["ok"] is False
+    assert any(item["code"] == "provider_geometry_collision_risk" for item in quality["blockers"])
+
+
+def test_provider_auto_sized_rhythm_is_bounded() -> None:
+    spec = reference_board_spec()
+    extra = copy.deepcopy(
+        next(item for item in spec["frames"][-1]["objects"] if item["kind"] == "table")
+    )
+    extra.update({"id": "extra_rich_item", "x": 400, "y": 440, "w": 280, "h": 80})
+    spec["frames"][0]["objects"].append(extra)
+    quality = audit_board_spec(spec)
+
+    assert any(item["code"] == "rich_item_rhythm" for item in quality["blockers"])
