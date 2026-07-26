@@ -59,3 +59,10 @@ schauwerk visual review-v2 \
 ```
 
 An automatic score is a contract check only. A technically conforming board may still fail the human review, as the retained table-heavy SW-019 prototype demonstrates. When an authenticated provider screenshot is unavailable, that limitation must be explicit; no private-access or unauthenticated capture may be substituted.
+
+
+## Provider geometry release gate
+
+Miro DOC and TABLE objects are provider-auto-sized. Their declared design boxes are not proof of rendered dimensions. A specification therefore keeps at least 80 canvas units between a rich item and neighbouring body objects, limits a board to four provider-auto-sized items, and caps the automatic contract score at 92 while provider geometry is pending.
+
+Snapshot quality reports provider-observed geometry against every visual item. Missing DOC/TABLE dimensions fail closed, conservative estimates participate in overlap checks, and child items are checked against uniform parent-frame bounds. A board with unresolved provider geometry remains `pending_provider_capture`; it cannot be described as visually released until an authenticated screenshot and the seven-axis visual review both pass.

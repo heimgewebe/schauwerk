@@ -169,7 +169,10 @@ def visual_system_manifest() -> dict[str, Any]:
             "reading path is explicit and finite",
             "evidence is accessible but visually subordinate",
             "declared design boxes are authoritative for overlap and density review",
-            "Miro tables and documents are provider-auto-sized and verified by type and anchor",
+            (
+                "Miro tables and documents are provider-auto-sized, spatially "
+                "isolated and verified by capture"
+            ),
             "remote readback proves conformance, not aesthetics",
             "Miro-native shape and connector grammar must carry meaning before labels are read",
             "every board declares a controlled entry frame and finite presentation path",
@@ -199,6 +202,8 @@ def visual_system_manifest() -> dict[str, Any]:
             "frame_margin": 60,
             "min_shape_types_when_applicable": 2,
             "min_relation_types_when_applicable": 2,
+            "max_provider_auto_sized_items": 4,
+            "provider_auto_sized_safety_gap": 80,
         },
         "official_miro_references": [
             "https://miro.com/de/",
@@ -464,7 +469,7 @@ def reference_board_spec() -> dict[str, Any]:
                 "comparison",
                 80,
                 300,
-                680,
+                640,
                 220,
                 "Inhalt → Miro-Objekt",
                 ("Inhalt", "Objekt", "Warum"),
@@ -545,7 +550,7 @@ def reference_board_spec() -> dict[str, Any]:
                 "comparison",
                 80,
                 300,
-                680,
+                640,
                 220,
                 "Freigabekriterien",
                 ("Dimension", "Muss gelten"),
@@ -778,6 +783,8 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         local_ids: set[str] = set()
         connectors: list[Mapping[str, Any]] = []
         design_boxes: list[tuple[str, int, int, int, int]] = []
+        body_boxes: list[tuple[str, str, str, int, int, int, int]] = []
+        provider_boxes: list[tuple[str, int, int, int, int]] = []
         object_boxes: dict[str, tuple[int, int, int, int]] = {}
         for raw_object in objects:
             if not isinstance(raw_object, Mapping):
@@ -909,6 +916,9 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                     object=object_id,
                 )
             design_boxes.append((object_id, x, y, w, h))
+            body_boxes.append((object_id, str(kind), str(object_role), x, y, w, h))
+            if kind in {"table", "doc"}:
+                provider_boxes.append((object_id, x, y, w, h))
             object_boxes[object_id] = (x, y, w, h)
             coverage += (w * h) / (width * height)
             length = _text_length(raw_object.get("content", ""))
@@ -938,6 +948,67 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                         objects=sorted((left_id, right_id)),
                         overlap_area=overlap_w * overlap_h,
                     )
+        provider_safety_gap = limits["provider_auto_sized_safety_gap"]
+        for rich_id, rich_x, rich_y, rich_w, rich_h in provider_boxes:
+            edge_clearance = min(
+                rich_x, rich_y, width - (rich_x + rich_w), height - (rich_y + rich_h)
+            )
+            if edge_clearance < provider_safety_gap:
+                evidence = {
+                    "frame": frame_id,
+                    "object": rich_id,
+                    "edge_clearance": edge_clearance,
+                    "required_clearance": provider_safety_gap,
+                }
+                visual_risk(
+                    "provider_geometry_frame_risk",
+                    "provider-auto-sized item lacks conservative frame-edge clearance",
+                    **evidence,
+                )
+                block(
+                    "provider_geometry_frame_risk",
+                    "provider-auto-sized item lacks conservative frame-edge clearance",
+                    **evidence,
+                )
+            expanded = (
+                rich_x - provider_safety_gap,
+                rich_y - provider_safety_gap,
+                rich_w + provider_safety_gap * 2,
+                rich_h + provider_safety_gap * 2,
+            )
+            for other_id, _other_kind, other_role, other_x, other_y, other_w, other_h in body_boxes:
+                if other_id == rich_id or other_role in {"title", "thesis", "caption"}:
+                    continue
+                overlap_w = min(expanded[0] + expanded[2], other_x + other_w) - max(
+                    expanded[0], other_x
+                )
+                overlap_h = min(expanded[1] + expanded[3], other_y + other_h) - max(
+                    expanded[1], other_y
+                )
+                if overlap_w > 0 and overlap_h > 0:
+                    evidence = {
+                        "frame": frame_id,
+                        "object": rich_id,
+                        "other": other_id,
+                        "required_gap": provider_safety_gap,
+                    }
+                    visual_risk(
+                        "provider_geometry_collision_risk",
+                        (
+                            "provider-auto-sized item is not spatially isolated "
+                            "from another body object"
+                        ),
+                        **evidence,
+                    )
+                    block(
+                        "provider_geometry_collision_risk",
+                        (
+                            "provider-auto-sized item is not spatially isolated "
+                            "from another body object"
+                        ),
+                        **evidence,
+                    )
+
         for connector in connectors:
             source_id = connector.get("from")
             target_id = connector.get("to")
@@ -985,6 +1056,25 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             )
         elif coverage > 0.5:
             warn("density_high", "frame is close to the maximum visual density", frame=frame_id)
+
+    if provider_auto_sized_count > limits["max_provider_auto_sized_items"]:
+        block(
+            "rich_item_rhythm",
+            "too many provider-auto-sized DOC/TABLE items create a form-like board rhythm",
+            count=provider_auto_sized_count,
+            maximum=limits["max_provider_auto_sized_items"],
+        )
+    elif provider_auto_sized_count:
+        warn(
+            "provider_geometry_pending",
+            "provider-auto-sized items require authenticated capture before visual release",
+            count=provider_auto_sized_count,
+        )
+        visual_risk(
+            "provider_geometry_pending",
+            "declared rich-item boxes cannot prove Miro-rendered geometry",
+            count=provider_auto_sized_count,
+        )
 
     if sticky_count > limits["max_stickies_per_board"]:
         block(
@@ -1069,6 +1159,9 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             "connector_clutter",
             "connector_label_collision",
             "object_overlap",
+            "provider_geometry_frame_risk",
+            "provider_geometry_collision_risk",
+            "rich_item_rhythm",
         }:
             categories["density"] = max(0, categories["density"] - 8)
         else:
@@ -1080,6 +1173,10 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             categories["consistency"] = max(0, categories["consistency"] - 2)
 
     score = sum(categories.values())
+    score_cap_reason = None
+    if provider_auto_sized_count and not blockers:
+        score = min(score, 92)
+        score_cap_reason = "provider_geometry_pending_authenticated_capture"
     value: dict[str, Any] = {
         "schema_version": QUALITY_SCHEMA,
         "ok": not blockers and score >= 90,
@@ -1114,6 +1211,7 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         "board_digest": spec.get("board_digest"),
         "mutation_attempted": False,
         "remote_geometry_required": provider_auto_sized_count > 0,
+        "score_cap_reason": score_cap_reason,
     }
     value["quality_digest"] = _digest(value)
     return value

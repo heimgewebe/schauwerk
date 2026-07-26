@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
@@ -16,6 +17,7 @@ Severity = Literal["info", "warn", "fail"]
 ConnectorObservability = Literal[
     "snapshot", "layout_read", "snapshot_and_layout_read", "unavailable"
 ]
+GeometrySource = Literal["observed", "estimated", "unknown"]
 _CHECKED_DIMENSIONS = (
     "frame_structure",
     "overlap",
@@ -31,7 +33,6 @@ _FRAME_TYPES = {"frame"}
 _NATIVE_DIAGRAM_TYPES = {"diagram"}
 _STICKY_TYPES = {"sticky", "sticky_note"}
 _TEXTUAL_TYPES = _STICKY_TYPES | {"text", "shape"} | _DOC_TYPES | _TABLE_TYPES
-_GEOMETRY_OPTIONAL_TYPES = _DOC_TYPES | _TABLE_TYPES | {"text"}
 _TEXT_TAG = re.compile(r"<[^>]+>")
 
 
@@ -60,6 +61,9 @@ class BoardQualityReceipt:
     visual_item_count: int
     geometry_eligible_item_count: int
     geometry_coverage_percent: int
+    geometry_observed_item_count: int
+    geometry_estimated_item_count: int
+    geometry_unknown_item_count: int
     frame_count: int
     connector_count: int | None
     connector_observability: ConnectorObservability
@@ -69,6 +73,8 @@ class BoardQualityReceipt:
     table_count: int
     overlap_pair_count: int
     max_overlap_ratio: float
+    estimated_overlap_pair_count: int
+    frame_containment_violation_count: int
     readability_warning_count: int
     findings: tuple[QualityFinding, ...]
     output_path: str | None = None
@@ -104,6 +110,7 @@ def _nested_number(item: Mapping[str, Any], *paths: tuple[str, str]) -> float | 
 
 
 def _box(item: Mapping[str, Any]) -> tuple[float, float, float, float] | None:
+    """Return provider-observed geometry only."""
     x = _nested_number(item, ("position", "x"), ("geometry", "x"))
     y = _nested_number(item, ("position", "y"), ("geometry", "y"))
     width = _nested_number(item, ("geometry", "width"), ("geometry", "w"))
@@ -112,6 +119,65 @@ def _box(item: Mapping[str, Any]) -> tuple[float, float, float, float] | None:
         return None
     assert x is not None and y is not None and width is not None and height is not None
     return (x - width / 2, y - height / 2, x + width / 2, y + height / 2)
+
+
+def _estimated_box(item: Mapping[str, Any]) -> tuple[float, float, float, float] | None:
+    """Build a conservative provider-safe box when Miro omits dimensions."""
+    x = _nested_number(item, ("position", "x"), ("geometry", "x"))
+    y = _nested_number(item, ("position", "y"), ("geometry", "y"))
+    if x is None or y is None:
+        return None
+    item_type = _item_type(item)
+    width = _nested_number(item, ("geometry", "width"), ("geometry", "w"))
+    height = _nested_number(item, ("geometry", "height"), ("geometry", "h"))
+    text_length = max(1, _text_length(item.get("data")))
+    if item_type in _TABLE_TYPES:
+        width = width or 900.0
+        height = height or 360.0
+    elif item_type in _DOC_TYPES:
+        width = width or 720.0
+        estimated_lines = max(10, math.ceil(text_length / 48))
+        height = height or min(900.0, max(420.0, 120.0 + estimated_lines * 28.0))
+    elif item_type == "text":
+        width = width or 480.0
+        font_size_value = _mapping(item.get("style")).get("fontSize", 18)
+        try:
+            font_size = float(font_size_value)
+        except (TypeError, ValueError):
+            font_size = 18.0
+        chars_per_line = max(10, int(width / max(8.0, font_size * 0.58)))
+        lines = max(1, math.ceil(text_length / chars_per_line))
+        height = height or max(48.0, 16.0 + lines * font_size * 1.45)
+    else:
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    return (x - width / 2, y - height / 2, x + width / 2, y + height / 2)
+
+
+def _box_evidence(
+    item: Mapping[str, Any],
+) -> tuple[tuple[float, float, float, float] | None, GeometrySource]:
+    observed = _box(item)
+    if observed is not None:
+        return observed, "observed"
+    estimated = _estimated_box(item)
+    if estimated is not None:
+        return estimated, "estimated"
+    return None, "unknown"
+
+
+def _uniform_frame_size(items: Sequence[Mapping[str, Any]]) -> tuple[float, float] | None:
+    dimensions: set[tuple[float, float]] = set()
+    for item in items:
+        if _item_type(item) not in _FRAME_TYPES:
+            continue
+        width = _nested_number(item, ("geometry", "width"), ("geometry", "w"))
+        height = _nested_number(item, ("geometry", "height"), ("geometry", "h"))
+        if width is None or height is None or width <= 0 or height <= 0:
+            return None
+        dimensions.add((width, height))
+    return next(iter(dimensions)) if len(dimensions) == 1 else None
 
 
 def _area(box: tuple[float, float, float, float]) -> float:
@@ -241,47 +307,70 @@ def inspect_snapshot_quality(
 
     visual_items = [item for item in items if _item_type(item) not in _CONNECTOR_TYPES]
     visual_item_count = len(visual_items)
-    boxes = [(item, _box(item)) for item in visual_items]
-    boxed_items = [(item, box) for item, box in boxes if box is not None]
-    geometry_eligible_items = [
-        item for item in visual_items if _item_type(item) not in _GEOMETRY_OPTIONAL_TYPES
-    ]
-    geometry_eligible_item_count = len(geometry_eligible_items)
-    geometry_eligible_boxes = [item for item in geometry_eligible_items if _box(item) is not None]
+    box_evidence = [(item, *_box_evidence(item)) for item in visual_items]
+    boxed_items = [(item, box, source) for item, box, source in box_evidence if box is not None]
+    geometry_eligible_item_count = visual_item_count
+    geometry_observed_item_count = sum(source == "observed" for _, _, source in box_evidence)
+    geometry_estimated_item_count = sum(source == "estimated" for _, _, source in box_evidence)
+    geometry_unknown_item_count = sum(source == "unknown" for _, _, source in box_evidence)
     geometry_coverage = (
-        100
-        if not geometry_eligible_items
-        else round(100 * len(geometry_eligible_boxes) / len(geometry_eligible_items))
+        100 if not visual_items else round(100 * geometry_observed_item_count / len(visual_items))
     )
 
-    if geometry_eligible_items and geometry_coverage < 80:
+    if visual_items and geometry_coverage < 80:
         findings.append(
             QualityFinding(
                 severity="warn",
                 code="geometry_coverage_low",
-                message="Too few visual items expose geometry for reliable overlap checks.",
+                message=(
+                    "Provider-observed geometry is incomplete; estimates do not "
+                    "prove collision freedom."
+                ),
                 evidence={
                     "visual_item_count": visual_item_count,
                     "geometry_eligible_item_count": geometry_eligible_item_count,
-                    "boxed_eligible_item_count": len(geometry_eligible_boxes),
+                    "geometry_observed_item_count": geometry_observed_item_count,
+                    "geometry_estimated_item_count": geometry_estimated_item_count,
+                    "geometry_unknown_item_count": geometry_unknown_item_count,
                     "geometry_coverage_percent": geometry_coverage,
                 },
             )
         )
 
+    unverified_rich_count = sum(
+        _item_type(item) in (_DOC_TYPES | _TABLE_TYPES) and source != "observed"
+        for item, _, source in box_evidence
+    )
+    if unverified_rich_count:
+        findings.append(
+            QualityFinding(
+                severity="fail",
+                code="provider_geometry_unverified",
+                message=(
+                    "Miro DOC/TABLE dimensions are not provider-observed; visual "
+                    "release must fail closed."
+                ),
+                evidence={"unverified_rich_item_count": unverified_rich_count},
+            )
+        )
+
     overlap_pair_count = 0
+    estimated_overlap_pair_count = 0
     max_overlap_ratio = 0.0
-    for index, (first, first_box) in enumerate(boxed_items):
+    for index, (first, first_box, first_source) in enumerate(boxed_items):
         first_type = _item_type(first)
-        for second, second_box in boxed_items[index + 1 :]:
+        for second, second_box, second_source in boxed_items[index + 1 :]:
             second_type = _item_type(second)
             if _parent_key(first) != _parent_key(second):
                 continue
             if first_type in _FRAME_TYPES or second_type in _FRAME_TYPES:
                 continue
             ratio = _overlap_ratio(first_box, second_box)
-            if ratio >= 0.2:
+            uses_estimate = "estimated" in {first_source, second_source}
+            threshold = 0.05 if uses_estimate else 0.2
+            if ratio >= threshold:
                 overlap_pair_count += 1
+                estimated_overlap_pair_count += int(uses_estimate)
                 max_overlap_ratio = max(max_overlap_ratio, ratio)
 
     if overlap_pair_count:
@@ -293,12 +382,41 @@ def inspect_snapshot_quality(
                 evidence={
                     "overlap_pair_count": overlap_pair_count,
                     "max_overlap_ratio_percent": round(max_overlap_ratio * 100),
+                    "estimated_overlap_pair_count": estimated_overlap_pair_count,
                 },
             )
         )
 
+    frame_containment_violation_count = 0
+    uniform_frame_size = _uniform_frame_size(visual_items)
+    if uniform_frame_size is not None:
+        frame_width, frame_height = uniform_frame_size
+        safety_margin = 12.0
+        for item, box, _source in boxed_items:
+            if _item_type(item) in _FRAME_TYPES or not item.get("parent"):
+                continue
+            position = _mapping(item.get("position"))
+            if position.get("relativeTo") != "parent_top_left":
+                continue
+            if (
+                box[0] < safety_margin
+                or box[1] < safety_margin
+                or box[2] > frame_width - safety_margin
+                or box[3] > frame_height - safety_margin
+            ):
+                frame_containment_violation_count += 1
+    if frame_containment_violation_count:
+        findings.append(
+            QualityFinding(
+                severity="fail",
+                code="frame_containment_violation",
+                message="One or more child items exceed the uniform parent-frame safety bounds.",
+                evidence={"frame_containment_violation_count": frame_containment_violation_count},
+            )
+        )
+
     readability_warning_count = 0
-    for item, box in boxed_items:
+    for item, box, _source in boxed_items:
         if _item_type(item) not in _TEXTUAL_TYPES:
             continue
         text_length = _text_length(item.get("data"))
@@ -420,6 +538,9 @@ def inspect_snapshot_quality(
         visual_item_count=visual_item_count,
         geometry_eligible_item_count=geometry_eligible_item_count,
         geometry_coverage_percent=geometry_coverage,
+        geometry_observed_item_count=geometry_observed_item_count,
+        geometry_estimated_item_count=geometry_estimated_item_count,
+        geometry_unknown_item_count=geometry_unknown_item_count,
         frame_count=frame_count,
         connector_count=connector_count,
         connector_observability=connector_observability,
@@ -429,6 +550,8 @@ def inspect_snapshot_quality(
         table_count=table_count,
         overlap_pair_count=overlap_pair_count,
         max_overlap_ratio=round(max_overlap_ratio, 4),
+        estimated_overlap_pair_count=estimated_overlap_pair_count,
+        frame_containment_violation_count=frame_containment_violation_count,
         readability_warning_count=readability_warning_count,
         findings=tuple(findings),
         output_path=str(output_path) if output_path else None,

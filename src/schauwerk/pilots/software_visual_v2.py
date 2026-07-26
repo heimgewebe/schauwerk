@@ -232,7 +232,7 @@ def compose_software_visual_board(snapshot: Mapping[str, Any]) -> dict[str, Any]
                 "comparison",
                 80,
                 300,
-                620,
+                600,
                 220,
                 "Entscheidungsstand",
                 ("Entscheidung", "Status", "Wirkung"),

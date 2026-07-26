@@ -240,10 +240,83 @@ def test_quality_understands_native_diagrams_and_provider_opaque_geometry() -> N
         expected_min_tables=1,
     )
 
-    assert receipt.ok is True
-    assert receipt.score == 100
+    assert receipt.ok is False
     assert receipt.native_diagram_count == 1
-    assert receipt.geometry_eligible_item_count == 3
-    assert receipt.geometry_coverage_percent == 100
-    assert "geometry_coverage_low" not in finding_codes(receipt)
+    assert receipt.geometry_eligible_item_count == len(items)
+    assert receipt.geometry_coverage_percent < 80
+    assert receipt.geometry_observed_item_count == 3
+    assert receipt.geometry_estimated_item_count == 6
+    assert receipt.geometry_unknown_item_count == 0
+    assert "geometry_coverage_low" in finding_codes(receipt)
+    assert "provider_geometry_unverified" in finding_codes(receipt)
     assert "no_connectors_on_dense_board" not in finding_codes(receipt)
+
+
+def test_quality_detects_estimated_rich_overlap_and_frame_escape() -> None:
+    receipt = inspect_snapshot_quality(
+        snapshot(
+            [
+                item("frame", ref="root", x=0, y=0, w=1120, h=630),
+                {
+                    "ref": "title",
+                    "type": "text",
+                    "position": {
+                        "x": 560,
+                        "y": 100,
+                        "relativeTo": "parent_top_left",
+                    },
+                    "geometry": {"width": 960},
+                    "parent": {"id": "root"},
+                    "style": {"fontSize": "38"},
+                    "data": {"content": "Evidence"},
+                },
+                {
+                    "ref": "doc",
+                    "type": "doc_format",
+                    "position": {
+                        "x": 380,
+                        "y": 380,
+                        "relativeTo": "parent_top_left",
+                    },
+                    "parent": {"id": "root"},
+                    "data": {"content": "# Sources\n\n- one\n- two\n- three\n- four"},
+                },
+                {
+                    "ref": "table",
+                    "type": "data_table_format",
+                    "position": {
+                        "x": 880,
+                        "y": 360,
+                        "relativeTo": "parent_top_left",
+                    },
+                    "parent": {"id": "root"},
+                    "data": {},
+                },
+                {
+                    "ref": "risk",
+                    "type": "shape",
+                    "position": {
+                        "x": 880,
+                        "y": 520,
+                        "relativeTo": "parent_top_left",
+                    },
+                    "geometry": {"width": 320, "height": 80},
+                    "parent": {"id": "root"},
+                    "data": {"content": "open gap"},
+                },
+            ]
+        ),
+        expected_min_docs=1,
+        expected_min_tables=1,
+    )
+
+    codes = finding_codes(receipt)
+    assert receipt.ok is False
+    assert receipt.geometry_coverage_percent < 100
+    assert receipt.estimated_overlap_pair_count > 0
+    assert receipt.frame_containment_violation_count > 0
+    assert {
+        "provider_geometry_unverified",
+        "visual_overlap",
+        "frame_containment_violation",
+    }.issubset(codes)
