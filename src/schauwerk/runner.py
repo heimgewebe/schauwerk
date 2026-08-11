@@ -143,6 +143,8 @@ def main(argv: list[str] | None = None) -> int:
                 manifest=args.manifest,
                 output=args.output,
                 source_root=args.source_root,
+                operational_overlay=args.operational_overlay,
+                evaluated_at=args.evaluated_at,
             )
         elif args.provider == "registry" and args.command == "status":
             result = handle_registry_status()

@@ -846,12 +846,21 @@ def handle_education_offline(*, input_path: str, output_dir: str, variant: str) 
 
 
 def handle_ecosystem_render(
-    *, manifest: str, output: str, source_root: str | None
+    *,
+    manifest: str,
+    output: str,
+    source_root: str | None,
+    operational_overlay: str | None,
+    evaluated_at: str | None,
 ) -> dict[str, Any]:
     return render_ecosystem_map_html(
         manifest_path=Path(manifest),
         output_path=Path(output),
         source_root=source_root,
+        operational_overlay_path=(
+            Path(operational_overlay) if operational_overlay is not None else None
+        ),
+        evaluated_at=evaluated_at,
     )
 
 
