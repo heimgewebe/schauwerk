@@ -26,6 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
     ecosystem_render.add_argument("manifest")
     ecosystem_render.add_argument("--output", required=True)
     ecosystem_render.add_argument("--source-root")
+    ecosystem_render.add_argument("--operational-overlay")
+    ecosystem_render.add_argument("--evaluated-at")
     ecosystem_render.add_argument("--json", action="store_true")
 
     registry = providers.add_parser("registry", help="inspect the declared Schauwerk registry")
