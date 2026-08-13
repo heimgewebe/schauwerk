@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .errors import FundusError
 from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
     ACCEPTANCE_SCHEMA,
@@ -29,6 +30,14 @@ from .model import (
     validate_family,
     validate_recipe,
 )
+from .pathio import (
+    normalized_absolute,
+    open_directory_chain,
+    read_regular_bytes,
+)
+from .pathio import (
+    write_create_or_verify as write_immutable_file,
+)
 from .svg import sanitize_svg
 
 TOOLCHAIN_VERSION = "schauwerk-fundus-core.v1"
@@ -36,22 +45,6 @@ FORBIDDEN_IMPORT_PREFIXES = (
     "schauwerk.surfaces.miro",
     "schauwerk.operator",
 )
-
-
-class FundusError(ValueError):
-    """A fail-closed Fundus contract or lifecycle violation."""
-
-
-def _reject_symlink_chain(path: Path, *, include_leaf: bool = True) -> None:
-    candidate = path.expanduser().absolute()
-    checks = [candidate, *candidate.parents] if include_leaf else list(candidate.parents)
-    for current in checks:
-        try:
-            metadata = os.lstat(current)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(metadata.st_mode):
-            raise FundusError(f"unsafe symlink path: {path}")
 
 
 @dataclass(frozen=True)
@@ -92,8 +85,8 @@ class FundusPaths:
         else:
             registry = Path(registry_root)
         return cls(
-            data.expanduser().absolute(),
-            registry.expanduser().absolute(),
+            normalized_absolute(data, label="Fundus data root"),
+            normalized_absolute(registry, label="Fundus registry root"),
         )
 
 
@@ -106,34 +99,16 @@ class Fundus:
         return self.paths.data_root
 
     def _ensure_private_dir(self, path: Path) -> None:
-        target = path.expanduser().absolute()
-        root = self.root.expanduser().absolute()
+        target = normalized_absolute(path, label="Fundus state directory")
+        root = normalized_absolute(self.root, label="Fundus data root")
         if target != root and root not in target.parents:
             raise FundusError("Fundus state directory escaped the configured root")
-        _reject_symlink_chain(target)
-        target.mkdir(parents=True, exist_ok=True, mode=0o700)
-        _reject_symlink_chain(target)
-        path = target
-        linked = path.lstat()
-        if not stat.S_ISDIR(linked.st_mode):
-            raise FundusError(
-                f"Fundus state path is not a directory: {path}"
-            )
-        if stat.S_ISLNK(linked.st_mode):
-            raise FundusError(
-                f"Fundus state path must not be a symlink: {path}"
-            )
-        if linked.st_uid != os.geteuid() or linked.st_nlink < 1:
-            raise FundusError(
-                f"Fundus state ownership is unsafe: {path}"
-            )
-        if stat.S_IMODE(linked.st_mode) & 0o077:
-            os.chmod(path, 0o700)
-            linked = path.lstat()
-        if stat.S_IMODE(linked.st_mode) != 0o700:
-            raise FundusError(
-                f"Fundus state directory must be owner-only: {path}"
-            )
+        descriptor = open_directory_chain(
+            target,
+            create=True,
+            private_root=root,
+        )
+        os.close(descriptor)
 
     def _ensure_state(self) -> None:
         for path in (
@@ -152,33 +127,11 @@ class Fundus:
         path: Path,
         payload: bytes,
     ) -> None:
-        self._ensure_private_dir(path.parent)
-        _reject_symlink_chain(path)
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        try:
-            descriptor = os.open(path, flags, 0o600)
-        except FileExistsError:
-            existing = self._read_private(
-                path,
-                maximum_bytes=max(len(payload), 1) + 1,
-            )
-            if existing != payload:
-                raise FundusError(
-                    f"create-only Fundus artifact drifted: {path}"
-                )
-            return
-        try:
-            view = memoryview(payload)
-            while view:
-                written = os.write(descriptor, view)
-                if written <= 0:
-                    raise OSError("short Fundus artifact write")
-                view = view[written:]
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
+        write_immutable_file(
+            path,
+            payload,
+            private_root=self.root,
+        )
 
     def _write_json_create_or_verify(
         self,
@@ -196,150 +149,26 @@ class Fundus:
         *,
         maximum_bytes: int = MAX_SOURCE_BYTES + 1,
     ) -> bytes:
-        _reject_symlink_chain(path)
-        linked = path.lstat()
-        if not stat.S_ISREG(linked.st_mode):
-            raise FundusError(
-                f"Fundus artifact is not a regular file: {path}"
-            )
-        if stat.S_ISLNK(linked.st_mode) or linked.st_nlink != 1:
-            raise FundusError(
-                f"Fundus artifact is linked: {path}"
-            )
-        if linked.st_uid != os.geteuid():
-            raise FundusError(
-                f"Fundus artifact owner is unsafe: {path}"
-            )
-        if stat.S_IMODE(linked.st_mode) & 0o077:
-            raise FundusError(
-                f"Fundus artifact permissions are unsafe: {path}"
-            )
-        if linked.st_size > maximum_bytes:
-            raise FundusError(
-                f"Fundus artifact exceeds read limit: {path}"
-            )
-        flags = os.O_RDONLY | os.O_CLOEXEC
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        descriptor = os.open(path, flags)
-        try:
-            opened = os.fstat(descriptor)
-            opened_identity = (
-                opened.st_dev,
-                opened.st_ino,
-                opened.st_size,
-            )
-            linked_identity = (
-                linked.st_dev,
-                linked.st_ino,
-                linked.st_size,
-            )
-            if opened_identity != linked_identity:
-                raise FundusError(
-                    "Fundus artifact identity changed while opening"
-                )
-            chunks: list[bytes] = []
-            total = 0
-            while True:
-                remaining = maximum_bytes + 1 - total
-                chunk = os.read(
-                    descriptor,
-                    min(65536, remaining),
-                )
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > maximum_bytes:
-                    raise FundusError(
-                        "Fundus artifact exceeds read limit"
-                    )
-                chunks.append(chunk)
-            after = os.fstat(descriptor)
-            after_identity = (
-                after.st_dev,
-                after.st_ino,
-                after.st_size,
-            )
-            if after_identity != opened_identity:
-                raise FundusError(
-                    "Fundus artifact changed while reading"
-                )
-            return b"".join(chunks)
-        finally:
-            os.close(descriptor)
+        return read_regular_bytes(
+            path,
+            maximum_bytes=maximum_bytes,
+            label="Fundus artifact",
+            require_owner=True,
+            forbidden_mode_bits=0o077,
+            private_root=self.root,
+        )
 
     def _read_source(self, path: Path) -> bytes:
-        _reject_symlink_chain(path)
-        linked = path.lstat()
-        if not stat.S_ISREG(linked.st_mode):
-            raise FundusError(
-                "source must be one regular non-linked file"
-            )
-        if stat.S_ISLNK(linked.st_mode) or linked.st_nlink != 1:
-            raise FundusError(
-                "source must be one regular non-linked file"
-            )
-        if linked.st_uid != os.geteuid():
-            raise FundusError(
-                "source owner must be the current user"
-            )
-        if stat.S_IMODE(linked.st_mode) & 0o022:
-            raise FundusError(
-                "source must not be group- or world-writable"
-            )
-        if not 0 < linked.st_size <= MAX_SOURCE_BYTES:
-            raise FundusError(
-                "source size is outside the Fundus limit"
-            )
-        flags = os.O_RDONLY | os.O_CLOEXEC
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        descriptor = os.open(path, flags)
-        try:
-            opened = os.fstat(descriptor)
-            opened_identity = (
-                opened.st_dev,
-                opened.st_ino,
-                opened.st_size,
-            )
-            linked_identity = (
-                linked.st_dev,
-                linked.st_ino,
-                linked.st_size,
-            )
-            if opened_identity != linked_identity:
-                raise FundusError(
-                    "source identity changed while opening"
-                )
-            chunks: list[bytes] = []
-            total = 0
-            while True:
-                remaining = MAX_SOURCE_BYTES + 1 - total
-                chunk = os.read(
-                    descriptor,
-                    min(65536, remaining),
-                )
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > MAX_SOURCE_BYTES:
-                    raise FundusError(
-                        "source exceeds the Fundus size limit"
-                    )
-                chunks.append(chunk)
-            after = os.fstat(descriptor)
-            after_identity = (
-                after.st_dev,
-                after.st_ino,
-                after.st_size,
-            )
-            if after_identity != opened_identity:
-                raise FundusError(
-                    "source changed while reading"
-                )
-            return b"".join(chunks)
-        finally:
-            os.close(descriptor)
+        payload = read_regular_bytes(
+            path,
+            maximum_bytes=MAX_SOURCE_BYTES,
+            label="source",
+            require_owner=True,
+            forbidden_mode_bits=0o022,
+        )
+        if not payload:
+            raise FundusError("source media is empty")
+        return payload
 
     def _object_path(self, sha256: str) -> Path:
         checked_sha256(sha256)
@@ -358,7 +187,7 @@ class Fundus:
         origin: str = "unknown",
         rights_status: str = "unknown",
     ) -> dict[str, Any]:
-        path = Path(source_path).expanduser().absolute()
+        path = normalized_absolute(source_path, label="source path")
         payload = self._read_source(path)
         media = inspect_media(payload)
         sha256 = digest_bytes(payload)

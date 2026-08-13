@@ -29,7 +29,7 @@ Standardpfad:
 
 `~/.local/share/schauwerk/fundus/objects/sha256/`
 
-Ingest ist create-only, hashgebunden und lehnt Symlinks, Hardlinks, fremde Eigentümer sowie gruppen- oder weltbeschreibbare Quellen ab. Unterstützte V1-Quellformate sind SVG, PNG, JPEG und WebP. Originaldateien außerhalb des Stores werden nicht automatisch gelöscht. Der Store gilt bis zu einem gesondert bewiesenen Backup-/Restore-Vertrag ausdrücklich nicht als alleinige Masterautorität.
+Ingest ist create-only und hashgebunden. Dateizugriffe über die Fundus-Vertrauensgrenze öffnen die vollständige Verzeichniskette descriptor-relativ mit No-Follow-Semantik, begrenzen Reads am geöffneten Descriptor und lehnen Symlinks, Hardlinks, fremde Eigentümer sowie gruppen- oder weltbeschreibbare Quellen ab. Unterstützte V1-Quellformate sind SVG, PNG, JPEG und WebP. Originaldateien außerhalb des Stores werden nicht automatisch gelöscht. Der Store gilt bis zu einem gesondert bewiesenen Backup-/Restore-Vertrag ausdrücklich nicht als alleinige Masterautorität.
 
 ## Assetmodell
 
@@ -55,7 +55,7 @@ Semantische IDs bleiben menschenlesbar, zum Beispiel `botanical.laurel.corner`; 
 
 ## SVG-Profile
 
-`svg.mask.v1` erlaubt nur passive geometrische SVG-Primitiven. `svg.decorative.v1` ergänzt lokale Gradienten, Clips und Masks. Beide Profile verbieten Scripts, Eventhandler, Stylesheets, `foreignObject`, externe URLs, Daten-URLs, Fonts und fremde Namespaces. Sanitizing geschieht vor einer möglichen späteren Optimierung. Zusätzlich gelten Größen-, Tiefen-, Element- und Pfadbudgets.
+`svg.mask.v1` erlaubt nur passive geometrische SVG-Primitiven. `svg.decorative.v1` ergänzt lokale Gradienten, Clips und Masks. Beide Profile verbieten Scripts, Eventhandler, Stylesheets, `foreignObject`, externe URLs, Daten-URLs, Fonts, fremde Namespaces sowie DOCTYPE-/ENTITY-Deklarationen. Sanitizing konkretisiert damit die Active-Resource-Grenze aus der kanonischen Publication-Regel und geschieht vor einer möglichen späteren Optimierung. Zusätzlich gelten Größen-, Tiefen-, Element- und Pfadbudgets.
 
 ## Lifecycle
 
@@ -93,4 +93,4 @@ Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, k
 
 ## Abnahme
 
-V1 ist belastbar, wenn ein neutrales SVG-Fixture zweimal denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und das Package ohne Schauwerk-Runtime konsumierbar ist. Der spätere Hall-of-Memory-Pilot ist ein getrenntes Zielrepo-Slice.
+V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie den kompletten Lifecycle ausführen kann. Das erzeugte Consumer-Package bleibt ohne Schauwerk-Runtime nutzbar. Der spätere Hall-of-Memory-Pilot ist ein getrenntes Zielrepo-Slice.

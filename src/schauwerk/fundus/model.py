@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
-import stat
 from pathlib import Path
 from typing import Any
+
+from .pathio import read_regular_bytes
 
 ASSET_SCHEMA = "schauwerk-fundus-asset.v1"
 FAMILY_SCHEMA = "schauwerk-fundus-family.v1"
@@ -28,12 +28,17 @@ RIGHTS_STATUSES = {"owned", "licensed", "unknown", "restricted"}
 
 
 def canonical_json(value: Any) -> bytes:
-    return json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
+    try:
+        rendered = json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError("value is not canonical JSON") from exc
+    return rendered.encode("utf-8")
 
 
 def digest_bytes(value: bytes) -> str:
@@ -105,23 +110,34 @@ def _bounded_text(
 
 
 def load_json(path: Path, *, maximum_bytes: int = 1_048_576) -> dict[str, Any]:
-    candidate = path.expanduser().absolute()
-    for current in [candidate, *candidate.parents]:
-        try:
-            metadata = os.lstat(current)
-        except FileNotFoundError:
-            continue
-        if stat.S_ISLNK(metadata.st_mode):
-            raise ValueError(f"manifest path contains a symlink: {path}")
-    path = candidate
-    linked = path.lstat()
-    if not path.is_file() or path.is_symlink() or linked.st_nlink != 1:
-        raise ValueError(f"manifest must be one regular non-linked file: {path}")
-    if linked.st_size > maximum_bytes:
-        raise ValueError(f"manifest exceeds {maximum_bytes} bytes: {path}")
+    payload = read_regular_bytes(
+        path,
+        maximum_bytes=maximum_bytes,
+        label="manifest",
+    )
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"invalid UTF-8 JSON manifest: {path}") from exc
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"invalid JSON constant: {value}")
+
+    def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(
+            text,
+            object_pairs_hook=unique_pairs,
+            parse_constant=reject_constant,
+        )
+    except (json.JSONDecodeError, RecursionError, ValueError) as exc:
         raise ValueError(f"invalid JSON manifest: {path}") from exc
     return _mapping(value, label="manifest")
 

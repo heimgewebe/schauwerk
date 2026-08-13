@@ -9,6 +9,7 @@ from jsonschema import Draft202012Validator
 
 from schauwerk import runner
 from schauwerk.fundus.core import Fundus, FundusError, FundusPaths
+from schauwerk.fundus.model import canonical_json, load_json
 from schauwerk.fundus.svg import sanitize_svg
 
 SIMPLE_SVG = (
@@ -260,7 +261,7 @@ def test_fundus_rejects_symlink_source_and_tampered_object(tmp_path: Path) -> No
     fundus, registry, source = _setup(tmp_path)
     symlink = tmp_path / "source-link.svg"
     symlink.symlink_to(source)
-    with pytest.raises(FundusError, match="symlink"):
+    with pytest.raises(FundusError, match="regular non-linked"):
         fundus.ingest(symlink)
 
     ingest = fundus.ingest(source)
@@ -305,6 +306,104 @@ def test_fundus_packaged_schemas_are_valid_json_schemas() -> None:
     ):
         schema = json.loads(schema_root.joinpath(name).read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
+
+
+def test_fundus_rejects_traversal_dangling_links_and_state_symlink_ancestors(
+    tmp_path: Path,
+) -> None:
+    fundus, _, source = _setup(tmp_path)
+
+    traversed = source.parent / "nested" / ".." / source.name
+    with pytest.raises(FundusError, match="traversal"):
+        fundus.ingest(traversed)
+
+    dangling = tmp_path / "dangling.svg"
+    dangling.symlink_to(tmp_path / "missing.svg")
+    with pytest.raises(FundusError, match="regular non-linked"):
+        fundus.ingest(dangling)
+
+    real_state_parent = tmp_path / "real-state-parent"
+    real_state_parent.mkdir()
+    linked_state_parent = tmp_path / "linked-state-parent"
+    linked_state_parent.symlink_to(real_state_parent, target_is_directory=True)
+    linked_fundus = Fundus(
+        FundusPaths(
+            data_root=linked_state_parent / "fundus",
+            registry_root=tmp_path / "registry",
+        )
+    )
+    with pytest.raises(FundusError, match="symlink"):
+        linked_fundus.ingest(source)
+
+
+def test_fundus_registry_json_is_strict_and_canonical_json_rejects_nan(
+    tmp_path: Path,
+) -> None:
+    duplicate = tmp_path / "duplicate.json"
+    duplicate.write_text('{"id":"first","id":"second"}', encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid JSON"):
+        load_json(duplicate)
+
+    nonfinite = tmp_path / "nonfinite.json"
+    nonfinite.write_text('{"value":NaN}', encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid JSON"):
+        load_json(nonfinite)
+
+    with pytest.raises(ValueError, match="canonical JSON"):
+        canonical_json({"value": float("nan")})
+
+
+def test_fundus_svg_entity_rejection_and_sanitizer_fixed_point() -> None:
+    entity_svg = (
+        b'<!DOCTYPE svg [<!ENTITY x "boom">]>'
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        b'<path d="M0 0L1 1"/></svg>'
+    )
+    with pytest.raises(ValueError, match="doctype|entities"):
+        sanitize_svg(entity_svg, profile="svg.mask.v1")
+
+    first = sanitize_svg(SIMPLE_SVG, profile="svg.mask.v1")
+    second = sanitize_svg(first, profile="svg.mask.v1")
+    assert second == first
+
+
+def test_fundus_build_and_package_are_deterministic_across_roots(
+    tmp_path: Path,
+) -> None:
+    outcomes: list[tuple[str, str, bytes]] = []
+    for name in ("one", "two"):
+        root = tmp_path / name
+        root.mkdir()
+        fundus, registry, source = _setup(root)
+        ingest = fundus.ingest(source, origin="determinism", rights_status="owned")
+        _declare_asset(registry, ingest["sha256"])
+        build = fundus.build("fixture.simple-ornament")
+        acceptance = fundus.accept(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            reviewer="test:determinism",
+            decision="accepted",
+            reviewed_at="2026-08-13T12:00:00+00:00",
+        )
+        package = fundus.package(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            acceptance_digest=acceptance["acceptance_digest"],
+        )
+        package_file = (
+            Path(package["package_dir"])
+            / "assets"
+            / "fixture-simple-ornament-mask.svg"
+        )
+        outcomes.append(
+            (
+                build["build_digest"],
+                package["package_digest"],
+                package_file.read_bytes(),
+            )
+        )
+
+    assert outcomes[0] == outcomes[1]
 
 
 def test_runner_dispatches_fundus_doctor(tmp_path: Path, capsys) -> None:
