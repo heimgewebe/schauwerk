@@ -946,7 +946,13 @@ class Fundus:
                 self._recipe(value["recipe"])
                 assets.append(value["id"])
 
-        ok = seam["ok"] and state["safe"] is not False
+        raster_status = raster_adapter_status()
+        trace_status = trace_adapter_status()
+        ok = (
+            seam["ok"]
+            and state["safe"] is not False
+            and raster_status["available"] is True
+        )
         return {
             "schema_version": "schauwerk-fundus-doctor.v1",
             "ok": ok,
@@ -965,8 +971,8 @@ class Fundus:
             "raster_profiles": [RASTER_PROFILE],
             "trace_profiles": [TRACE_PROFILE],
             "adapters": {
-                "raster": raster_adapter_status(),
-                "trace": trace_adapter_status(),
+                "raster": raster_status,
+                "trace": trace_status,
             },
             "cross_repo_mutation_authority": False,
             "object_store_authoritative": False,

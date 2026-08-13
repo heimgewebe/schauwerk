@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from schauwerk.fundus import raster as raster_module
 from schauwerk.fundus.core import Fundus, FundusPaths
+from schauwerk.fundus.errors import FundusError
 from schauwerk.fundus.model import validate_recipe
 
 
@@ -65,4 +67,25 @@ def test_doctor_reports_selected_adapter_profiles(tmp_path: Path) -> None:
     assert result["raster_profiles"] == ["raster.png.rgba.v1"]
     assert result["trace_profiles"] == ["trace.vtracer.color.v1"]
     assert result["adapters"]["raster"]["implementation"] == "pillow"
+    assert result["adapters"]["raster"]["required_version"] == "12.2.0"
     assert result["adapters"]["trace"]["required_version"] == "0.6.15"
+
+
+def test_pillow_version_mismatch_fails_closed(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(raster_module, "PILLOW_RUNTIME_VERSION", "12.3.0")
+
+    status = raster_module.raster_adapter_status()
+    assert status["available"] is False
+    assert status["required_version"] == "12.2.0"
+    with pytest.raises(FundusError, match="requires version 12.2.0"):
+        raster_module.normalize_raster(b"not-decoded", profile="raster.png.rgba.v1")
+
+    fundus = Fundus(
+        FundusPaths(
+            data_root=tmp_path / "data",
+            registry_root=tmp_path / "registry",
+        )
+    )
+    result = fundus.doctor()
+    assert result["ok"] is False
+    assert result["adapters"]["raster"]["available"] is False
