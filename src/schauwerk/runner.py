@@ -117,6 +117,7 @@ from .cli_handlers import (
     handle_visual_v2_live_test,
 )
 from .cli_parser import build_parser
+from .fundus.cli import handle_fundus_command
 from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
 
 
@@ -131,7 +132,9 @@ def emit(value: Any, *, as_json: bool) -> None:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.provider == "runtime" and args.command == "python-thread-stack":
+        if args.provider == "fundus":
+            result = handle_fundus_command(args)
+        elif args.provider == "runtime" and args.command == "python-thread-stack":
             if args.runtime_action == "inspect":
                 result = handle_python_thread_stack_inspect(executable=args.executable)
             elif args.runtime_action == "repair":

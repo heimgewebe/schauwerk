@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from .fundus.cli import add_fundus_parser
+
 
 def _bounded_integer(minimum: int, maximum: int):
     def parse(value: str) -> int:
@@ -18,6 +20,7 @@ def _bounded_integer(minimum: int, maximum: int):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="schauwerk")
     providers = parser.add_subparsers(dest="provider", required=True)
+    add_fundus_parser(providers)
     ecosystem = providers.add_parser("ecosystem", help="ecosystem visualizations")
     ecosystem_commands = ecosystem.add_subparsers(dest="command", required=True)
     ecosystem_render = ecosystem_commands.add_parser(

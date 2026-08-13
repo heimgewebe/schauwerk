@@ -1,0 +1,78 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-recipe.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+          "type": "string"
+        },
+        "media_type": {
+          "const": "image/svg+xml"
+        },
+        "role": {
+          "enum": [
+            "vector",
+            "mask",
+            "outline",
+            "raster",
+            "texture",
+            "preview"
+          ]
+        }
+      },
+      "required": [
+        "role",
+        "filename",
+        "media_type"
+      ],
+      "type": "object"
+    },
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "enum": [
+            "svg.mask.v1",
+            "svg.decorative.v1"
+          ]
+        }
+      },
+      "required": [
+        "profile"
+      ],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-recipe.v1"
+    },
+    "source_role": {
+      "enum": [
+        "original",
+        "trace_source",
+        "texture_source",
+        "reference"
+      ]
+    },
+    "transform": {
+      "const": "sanitize_svg"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "transform",
+    "source_role",
+    "output",
+    "parameters"
+  ],
+  "title": "Schauwerk Fundus Recipe v1",
+  "type": "object"
+}

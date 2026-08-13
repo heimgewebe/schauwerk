@@ -1,0 +1,41 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-preview.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "aesthetic_quality_established": {
+      "const": false
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "build_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "network_dependencies": {
+      "const": false
+    },
+    "preview_file": {
+      "const": "index.html"
+    },
+    "preview_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-preview.v1"
+    }
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "preview_sha256",
+    "preview_file",
+    "network_dependencies",
+    "aesthetic_quality_established"
+  ],
+  "title": "Schauwerk Fundus Preview v1",
+  "type": "object"
+}

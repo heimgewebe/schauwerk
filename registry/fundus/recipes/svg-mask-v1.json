@@ -1,0 +1,14 @@
+{
+  "id": "svg-mask-v1",
+  "output": {
+    "filename": "mask.svg",
+    "media_type": "image/svg+xml",
+    "role": "mask"
+  },
+  "parameters": {
+    "profile": "svg.mask.v1"
+  },
+  "schema_version": "schauwerk-fundus-recipe.v1",
+  "source_role": "trace_source",
+  "transform": "sanitize_svg"
+}

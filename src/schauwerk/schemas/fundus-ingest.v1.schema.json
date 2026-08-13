@@ -1,0 +1,82 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-ingest.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bytes": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "has_alpha": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "height": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "ingested_at": {
+      "type": "string"
+    },
+    "media_type": {
+      "type": "string"
+    },
+    "object_relpath": {
+      "type": "string"
+    },
+    "origin": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "provenance_claim_is_declarative": {
+      "const": true
+    },
+    "rights_status": {
+      "enum": [
+        "owned",
+        "licensed",
+        "unknown",
+        "restricted"
+      ]
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-ingest.v1"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "source_path_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "width": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "sha256",
+    "bytes",
+    "media_type",
+    "width",
+    "height",
+    "has_alpha",
+    "origin",
+    "rights_status",
+    "source_path_sha256",
+    "ingested_at",
+    "object_relpath",
+    "provenance_claim_is_declarative"
+  ],
+  "title": "Schauwerk Fundus Ingest v1",
+  "type": "object"
+}
