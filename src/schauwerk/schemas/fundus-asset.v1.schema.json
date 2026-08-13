@@ -1,0 +1,97 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-asset.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "family": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "properties": {
+      "additionalProperties": false,
+      "properties": {
+        "mask_safe": {
+          "type": "boolean"
+        },
+        "mirror_safe": {
+          "type": "boolean"
+        },
+        "recolor_safe": {
+          "type": "boolean"
+        },
+        "rotate_safe": {
+          "type": "boolean"
+        },
+        "tile_safe": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "recipe": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-asset.v1"
+    },
+    "sources": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "media_type": {
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          },
+          "origin": {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          "rights_status": {
+            "enum": [
+              "owned",
+              "licensed",
+              "unknown",
+              "restricted"
+            ]
+          },
+          "role": {
+            "enum": [
+              "original",
+              "trace_source",
+              "texture_source",
+              "reference"
+            ]
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "sha256",
+          "media_type"
+        ],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "recipe",
+    "sources"
+  ],
+  "title": "Schauwerk Fundus Asset v1",
+  "type": "object"
+}

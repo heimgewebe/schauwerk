@@ -59,6 +59,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 46. [Golden Compositions v1](visual/golden-compositions-v1.md)
 47. [Operator-Ökosystem auf heim-pc](operators/operator-ecosystem-heim-pc-v1.md)
 48. [Miro companion evidence refresh](operations/miro-companion-evidence-refresh.md)
+49. [Fundus Asset Core v1](fundus/asset-core-v1.md)
 
 ## Contracts
 
@@ -95,6 +96,14 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `schemas/miro-web-sdk-companion-release.v1.schema.json`
 - `schemas/miro-visual-truth-context.v1.schema.json`
 - `schemas/miro-visual-truth-receipt.v1.schema.json`
+- `schemas/fundus-family.v1.schema.json`
+- `schemas/fundus-asset.v1.schema.json`
+- `schemas/fundus-recipe.v1.schema.json`
+- `schemas/fundus-build.v1.schema.json`
+- `schemas/fundus-acceptance.v1.schema.json`
+- `schemas/fundus-package.v1.schema.json`
+- `schemas/fundus-ingest.v1.schema.json`
+- `schemas/fundus-preview.v1.schema.json`
 - `registry/`
 
 ## Current status

@@ -1,0 +1,73 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-package.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "build_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "consumer_runtime_dependency": {
+      "const": false
+    },
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "role",
+          "media_type",
+          "sha256",
+          "bytes"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "package_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-package.v1"
+    }
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "acceptance_digest",
+    "files",
+    "consumer_runtime_dependency",
+    "package_digest"
+  ],
+  "title": "Schauwerk Fundus Package v1",
+  "type": "object"
+}

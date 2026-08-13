@@ -33,6 +33,7 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 - **archive:** snapshots, exports, previews, retention, and restore points.
 - **observability:** health, OAuth state, provider reachability, freshness, jobs, and failures.
 - **durable contracts:** normalized source observations, proposal-only maintenance, visibility-aware search, backup manifests and staged recovery verification.
+- **fundus:** Miro-independent reusable visual asset core for digest-bound sources, recipes, builds, visual acceptances, and immutable consumer packages; it has no cross-repository mutation authority.
 
 ## Region modes
 
@@ -80,13 +81,14 @@ A view binds a purpose and audience to sources, a renderer, a visibility class, 
 
 - Domain content remains authoritative in source systems.
 - Schauwerk owns view identity, source bindings, management policy, freshness, proposals, normalized snapshots, publications, and receipts.
+- Fundus owns reusable visual asset semantics and digest-bound derived artifacts; its private content-addressed object store is not the sole master authority until backup and restore are proven.
 - Miro owns its native collaborative layout and interaction state.
 - Grabowski owns execution planning, bounded mutation, verification, and recovery orchestration.
 - Leitstand may display operational state but does not mutate Schauwerk.
 
 ## Security and privacy
 
-Visibility classes are `private`, `shared`, `classroom`, `public`, and `archived`. Private work surfaces are never exposed by filtering a public embed. Public output is a distinct sanitized artifact. OAuth material and private snapshots remain outside Git. Student and other personal data are excluded from public fixtures and outputs by default.
+Visibility classes are `private`, `shared`, `classroom`, `public`, and `archived`. Private work surfaces are never exposed by filtering a public embed. Public output is a distinct sanitized artifact. OAuth material, private snapshots, and Fundus source blobs remain outside Git. Fundus filesystem trust boundaries use descriptor-relative, no-follow access and create-only immutable writes; Fundus SVG sanitization applies the active-resource rejection from Publication step 4. Student and other personal data are excluded from public fixtures and outputs by default.
 
 ## Provider strategy
 
@@ -109,3 +111,6 @@ Schauwerk does not initially implement a whiteboard engine, CRDT collaboration, 
 5. Public artifacts contain no undeclared private source material.
 6. Provider failure does not erase the registry, source bindings, or archive.
 7. Optional semantic enrichment cannot block the core workflow.
+8. Fundus content objects are create-only and content-addressed; rejected or invalid lifecycle calls do not create partial authoritative state.
+9. Fundus SVG package outputs contain no active or externally referenced resources.
+10. Every Fundus package is bound to an explicitly accepted exact build digest and has no runtime dependency on Schauwerk.

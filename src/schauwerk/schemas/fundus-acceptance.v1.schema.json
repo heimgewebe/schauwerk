@@ -1,0 +1,64 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-acceptance.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "asset_id": {
+      "type": "string"
+    },
+    "build_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "accepted",
+        "rejected"
+      ]
+    },
+    "note": {
+      "maxLength": 2000,
+      "type": "string"
+    },
+    "output_sha256s": {
+      "items": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "reviewed_at": {
+      "type": "string"
+    },
+    "reviewer": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+    },
+    "reviewer_identity_authenticated": {
+      "const": false
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-acceptance.v1"
+    }
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "output_sha256s",
+    "decision",
+    "reviewer",
+    "reviewed_at",
+    "note",
+    "reviewer_identity_authenticated",
+    "acceptance_digest"
+  ],
+  "title": "Schauwerk Fundus Acceptance v1",
+  "type": "object"
+}

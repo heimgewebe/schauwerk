@@ -1,0 +1,167 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCHEMAS = (
+    "fundus-family.v1.schema.json",
+    "fundus-asset.v1.schema.json",
+    "fundus-recipe.v1.schema.json",
+    "fundus-build.v1.schema.json",
+    "fundus-acceptance.v1.schema.json",
+    "fundus-package.v1.schema.json",
+    "fundus-ingest.v1.schema.json",
+    "fundus-preview.v1.schema.json",
+)
+
+
+def _build_frontend_python() -> str:
+    candidates = [sys.executable, "/usr/bin/python3", shutil.which("python3")]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        probe = subprocess.run(
+            [candidate, "-m", "pip", "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if probe.returncode == 0:
+            return candidate
+    raise AssertionError("no local Python with pip is available for the wheel build")
+
+
+def test_fundus_wheel_contains_runtime_and_runs_without_source_tree(tmp_path: Path) -> None:
+    wheel_dir = tmp_path / "wheel"
+    wheel_dir.mkdir()
+    environment = dict(os.environ)
+    environment.pop("PYTHONPATH", None)
+
+    builder = _build_frontend_python()
+    build = subprocess.run(
+        [
+            builder,
+            "-m",
+            "pip",
+            "wheel",
+            "--no-deps",
+            "--no-build-isolation",
+            "--ignore-requires-python",
+            "--wheel-dir",
+            str(wheel_dir),
+            ".",
+        ],
+        cwd=REPO_ROOT,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert build.returncode == 0, build.stdout + build.stderr
+    wheels = sorted(wheel_dir.glob("schauwerk-*.whl"))
+    assert len(wheels) == 1
+
+    runtime_root = tmp_path / "runtime"
+    smoke = r"""
+import json
+import sys
+from importlib.resources import files
+from pathlib import Path
+
+wheel = Path(sys.argv[1])
+runtime_root = Path(sys.argv[2])
+sys.path.insert(0, str(wheel))
+
+from schauwerk import fundus as fundus_package
+from schauwerk.fundus import Fundus, FundusPaths
+
+schemas = (
+    "fundus-family.v1.schema.json",
+    "fundus-asset.v1.schema.json",
+    "fundus-recipe.v1.schema.json",
+    "fundus-build.v1.schema.json",
+    "fundus-acceptance.v1.schema.json",
+    "fundus-package.v1.schema.json",
+    "fundus-ingest.v1.schema.json",
+    "fundus-preview.v1.schema.json",
+)
+assert ".whl/" in fundus_package.__file__
+for name in schemas:
+    json.loads(files("schauwerk.schemas").joinpath(name).read_text(encoding="utf-8"))
+
+data = runtime_root / "data"
+registry = runtime_root / "registry"
+(registry / "recipes").mkdir(parents=True)
+(registry / "assets").mkdir()
+source = runtime_root / "source.svg"
+source.write_bytes(
+    b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+    b'<path fill="#000" d="M0 0L10 0L10 10Z"/></svg>'
+)
+core = Fundus(FundusPaths(data_root=data, registry_root=registry))
+ingest = core.ingest(source, origin="wheel-smoke", rights_status="owned")
+recipe = {
+    "schema_version": "schauwerk-fundus-recipe.v1",
+    "id": "svg-mask-v1",
+    "transform": "sanitize_svg",
+    "source_role": "trace_source",
+    "output": {
+        "role": "mask",
+        "filename": "mask.svg",
+        "media_type": "image/svg+xml",
+    },
+    "parameters": {"profile": "svg.mask.v1"},
+}
+(registry / "recipes" / "svg-mask-v1.json").write_text(
+    json.dumps(recipe), encoding="utf-8"
+)
+asset = {
+    "schema_version": "schauwerk-fundus-asset.v1",
+    "id": "fixture.wheel-smoke",
+    "recipe": "svg-mask-v1",
+    "sources": [
+        {
+            "role": "trace_source",
+            "sha256": ingest["sha256"],
+            "media_type": "image/svg+xml",
+        }
+    ],
+}
+(registry / "assets" / "fixture.wheel-smoke.json").write_text(
+    json.dumps(asset), encoding="utf-8"
+)
+build = core.build("fixture.wheel-smoke")
+preview = core.preview("fixture.wheel-smoke", build_digest=build["build_digest"])
+acceptance = core.accept(
+    "fixture.wheel-smoke",
+    build_digest=build["build_digest"],
+    reviewer="smoke:wheel",
+    decision="accepted",
+    reviewed_at="2026-08-13T12:00:00+00:00",
+)
+package = core.package(
+    "fixture.wheel-smoke",
+    build_digest=build["build_digest"],
+    acceptance_digest=acceptance["acceptance_digest"],
+)
+assert preview["network_dependencies"] is False
+assert package["consumer_runtime_dependency"] is False
+print(json.dumps({"schemas": len(schemas), "package": package["package_digest"]}))
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", smoke, str(wheels[0]), str(runtime_root)],
+        cwd=tmp_path,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    receipt = json.loads(result.stdout)
+    assert receipt["schemas"] == len(SCHEMAS)
+    assert len(receipt["package"]) == 64

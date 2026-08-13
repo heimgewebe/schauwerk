@@ -71,6 +71,17 @@ pip install -e '.[dev]'
 make validate
 ```
 
+## Asset-Fundus
+
+Der `schauwerk fundus`-Pfad macht aus unveränderten Quellbytes reproduzierbare, visuell abnehmbare und immutable Grafikpakete. Der Core ist absichtlich Miro-unabhängig: keine Board-, OAuth- oder Provider-Abhängigkeit und keine Cross-Repo-Schreibautorität. Große Originalbytes liegen content-addressed außerhalb von Git; Git hält nur Semantik und Rezepte.
+
+```bash
+schauwerk fundus doctor --json
+schauwerk fundus ingest artwork.svg --origin chatgpt --rights-status owned --json
+```
+
+Siehe `docs/fundus/asset-core-v1.md`.
+
 ## Miro Live-Status
 
 ```bash
