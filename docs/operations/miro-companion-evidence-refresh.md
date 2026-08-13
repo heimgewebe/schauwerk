@@ -125,9 +125,11 @@ schauwerk miro companion evidence-install-timer CONFIG --cli-executable /absolut
 
 The generated oneshot service uses an owner-only umask, a read-only home boundary with narrow
 write exceptions for the evidence state and dedicated browser profile, `NoNewPrivileges`, and a
-private temporary directory. The timer is persistent and adds a randomized delay. A normal run
-returns `refresh=not_due` without opening a browser while the current generation remains outside
-the refresh window.
+private temporary directory. Browser CDP commands have a fixed response deadline; the oneshot
+service additionally has a five-minute start bound, a ten-second stop bound, and control-group
+termination so a stalled browser cannot keep the refresh active indefinitely. The timer is
+persistent and adds a randomized delay. A normal run returns `refresh=not_due` without opening a
+browser while the current generation remains outside the refresh window.
 
 ## Recovery and boundaries
 
