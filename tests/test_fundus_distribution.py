@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -65,6 +66,14 @@ def test_fundus_wheel_contains_runtime_and_runs_without_source_tree(tmp_path: Pa
     assert build.returncode == 0, build.stdout + build.stderr
     wheels = sorted(wheel_dir.glob("schauwerk-*.whl"))
     assert len(wheels) == 1
+    with zipfile.ZipFile(wheels[0]) as archive:
+        metadata_name = next(
+            name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
+        )
+        metadata = archive.read(metadata_name).decode("utf-8")
+    assert "Pillow==12.2.0" in metadata
+    assert "Provides-Extra: trace" in metadata
+    assert "vtracer==0.6.15" in metadata
 
     runtime_root = tmp_path / "runtime"
     smoke = r"""

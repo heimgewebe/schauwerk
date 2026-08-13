@@ -2,6 +2,106 @@
   "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-recipe.v1.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "transform": {
+            "const": "sanitize_svg"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "output": {
+            "properties": {
+              "media_type": {
+                "const": "image/svg+xml"
+              }
+            }
+          },
+          "parameters": {
+            "properties": {
+              "profile": {
+                "enum": [
+                  "svg.mask.v1",
+                  "svg.decorative.v1"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transform": {
+            "const": "raster_normalize"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "output": {
+            "properties": {
+              "media_type": {
+                "const": "image/png"
+              },
+              "role": {
+                "enum": [
+                  "raster",
+                  "texture",
+                  "preview"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "properties": {
+              "profile": {
+                "const": "raster.png.rgba.v1"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "transform": {
+            "const": "trace_vtracer"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "output": {
+            "properties": {
+              "media_type": {
+                "const": "image/svg+xml"
+              },
+              "role": {
+                "enum": [
+                  "vector",
+                  "outline",
+                  "mask"
+                ]
+              }
+            }
+          },
+          "parameters": {
+            "properties": {
+              "profile": {
+                "const": "trace.vtracer.color.v1"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "properties": {
     "id": {
       "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
@@ -15,7 +115,10 @@
           "type": "string"
         },
         "media_type": {
-          "const": "image/svg+xml"
+          "enum": [
+            "image/svg+xml",
+            "image/png"
+          ]
         },
         "role": {
           "enum": [
@@ -41,7 +144,9 @@
         "profile": {
           "enum": [
             "svg.mask.v1",
-            "svg.decorative.v1"
+            "svg.decorative.v1",
+            "raster.png.rgba.v1",
+            "trace.vtracer.color.v1"
           ]
         }
       },
@@ -62,7 +167,11 @@
       ]
     },
     "transform": {
-      "const": "sanitize_svg"
+      "enum": [
+        "sanitize_svg",
+        "raster_normalize",
+        "trace_vtracer"
+      ]
     }
   },
   "required": [

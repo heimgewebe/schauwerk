@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-fundus-recipe.v1",
+  "id": "vtracer-color-v1",
+  "transform": "trace_vtracer",
+  "source_role": "trace_source",
+  "output": {
+    "role": "vector",
+    "filename": "vector.svg",
+    "media_type": "image/svg+xml"
+  },
+  "parameters": {
+    "profile": "trace.vtracer.color.v1"
+  }
+}

@@ -272,10 +272,12 @@ def validate_recipe(value: Any) -> dict[str, Any]:
     if doc.get("schema_version") != RECIPE_SCHEMA:
         raise ValueError(f"recipe schema_version must be {RECIPE_SCHEMA}")
     checked_id(doc.get("id"), label="recipe id")
-    if doc.get("transform") != "sanitize_svg":
-        raise ValueError("V1 supports only the sanitize_svg transform")
+    transform = doc.get("transform")
+    if transform not in {"sanitize_svg", "raster_normalize", "trace_vtracer"}:
+        raise ValueError("recipe transform is unsupported")
     if doc.get("source_role") not in SOURCE_ROLES:
         raise ValueError("recipe source_role is invalid")
+
     output = _mapping(doc.get("output"), label="recipe output")
     _exact_keys(
         output,
@@ -285,25 +287,34 @@ def validate_recipe(value: Any) -> dict[str, Any]:
     )
     if output.get("role") not in OUTPUT_ROLES:
         raise ValueError("recipe output role is invalid")
-    checked_filename(
-        output.get("filename"),
-        label="recipe output filename",
-    )
-    if output.get("media_type") != "image/svg+xml":
-        raise ValueError("sanitize_svg output must use image/svg+xml")
-    parameters = _mapping(
-        doc.get("parameters"),
-        label="recipe parameters",
-    )
+    checked_filename(output.get("filename"), label="recipe output filename")
+
+    parameters = _mapping(doc.get("parameters"), label="recipe parameters")
     _exact_keys(
         parameters,
         allowed={"profile"},
         required={"profile"},
         label="recipe parameters",
     )
-    if parameters.get("profile") not in {
-        "svg.mask.v1",
-        "svg.decorative.v1",
-    }:
-        raise ValueError("unknown SVG profile")
+    profile = parameters.get("profile")
+
+    if transform == "sanitize_svg":
+        if output.get("media_type") != "image/svg+xml":
+            raise ValueError("sanitize_svg output must use image/svg+xml")
+        if profile not in {"svg.mask.v1", "svg.decorative.v1"}:
+            raise ValueError("unknown SVG profile")
+    elif transform == "raster_normalize":
+        if output.get("media_type") != "image/png":
+            raise ValueError("raster_normalize output must use image/png")
+        if output.get("role") not in {"raster", "texture", "preview"}:
+            raise ValueError("raster_normalize output role must remain raster-like")
+        if profile != "raster.png.rgba.v1":
+            raise ValueError("unknown raster profile")
+    else:
+        if output.get("media_type") != "image/svg+xml":
+            raise ValueError("trace_vtracer output must use image/svg+xml")
+        if output.get("role") not in {"vector", "outline", "mask"}:
+            raise ValueError("trace_vtracer output role must be vector-like")
+        if profile != "trace.vtracer.color.v1":
+            raise ValueError("unknown trace profile")
     return doc

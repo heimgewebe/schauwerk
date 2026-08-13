@@ -13,6 +13,7 @@ dependencies = [
   "jsonschema>=4.23,<5",
   "mcp>=1.28,<2",
   "platformdirs>=4.3,<5",
+  "Pillow==12.2.0",
   "python-pptx>=1.0,<2",
   "PyYAML>=6.0.2",
   "reportlab>=4.2,<5",
@@ -20,7 +21,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3", "ruff>=0.15", "setuptools>=69", "wheel"]
+dev = ["pytest>=8.3", "ruff>=0.15", "setuptools>=69", "vtracer==0.6.15", "wheel"]
+trace = ["vtracer==0.6.15"]
 
 [project.scripts]
 schauwerk = "schauwerk.runner:main"

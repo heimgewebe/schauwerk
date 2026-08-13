@@ -60,6 +60,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 47. [Operator-Ökosystem auf heim-pc](operators/operator-ecosystem-heim-pc-v1.md)
 48. [Miro companion evidence refresh](operations/miro-companion-evidence-refresh.md)
 49. [Fundus Asset Core v1](fundus/asset-core-v1.md)
+50. [Fundus Adapter Benchmark v1](fundus/adapter-benchmark-v1.md)
 
 ## Contracts
 
