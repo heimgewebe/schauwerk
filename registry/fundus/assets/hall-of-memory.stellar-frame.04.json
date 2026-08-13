@@ -1,0 +1,22 @@
+{
+  "schema_version": "schauwerk-fundus-asset.v1",
+  "id": "hall-of-memory.stellar-frame.04",
+  "family": "hall-of-memory.stellar-frame",
+  "recipe": "raster-png-v1",
+  "sources": [
+    {
+      "role": "original",
+      "sha256": "1f80f65c0bb1d636c494be72819d91aebcebcf51a293408f919dc00dee7bd864",
+      "media_type": "image/png",
+      "origin": "chatgpt-images:hall-of-memory-frame-variant-batch-20260813:stellar-medallion",
+      "rights_status": "owned"
+    }
+  ],
+  "properties": {
+    "mask_safe": true,
+    "mirror_safe": false,
+    "recolor_safe": true,
+    "rotate_safe": false,
+    "tile_safe": false
+  }
+}
