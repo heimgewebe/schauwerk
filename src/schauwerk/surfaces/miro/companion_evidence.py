@@ -408,17 +408,28 @@ class _CaptureLock:
         self.handle = None
 
 
+CDP_COMMAND_TIMEOUT_SECONDS = 15.0
+
+
 async def _cdp_command(
     websocket: Any, identifier: int, method: str, params: dict[str, Any] | None = None
 ) -> dict[str, Any]:
-    await websocket.send(json.dumps({"id": identifier, "method": method, "params": params or {}}))
-    while True:
-        message = json.loads(await websocket.recv())
-        if message.get("id") != identifier:
-            continue
-        if message.get("error"):
-            raise CompanionEvidenceError(f"browser command failed: {method}")
-        return message
+    async def exchange() -> dict[str, Any]:
+        await websocket.send(
+            json.dumps({"id": identifier, "method": method, "params": params or {}})
+        )
+        while True:
+            message = json.loads(await websocket.recv())
+            if message.get("id") != identifier:
+                continue
+            if message.get("error"):
+                raise CompanionEvidenceError(f"browser command failed: {method}")
+            return message
+
+    try:
+        return await asyncio.wait_for(exchange(), timeout=CDP_COMMAND_TIMEOUT_SECONDS)
+    except TimeoutError as exc:
+        raise CompanionEvidenceError(f"browser command timed out: {method}") from exc
 
 
 class CdpBrowserReader:
@@ -1408,7 +1419,7 @@ def install_evidence_timer(
     unit_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     service_path = unit_root / "schauwerk-companion-evidence-refresh.service"
     timer_path = unit_root / "schauwerk-companion-evidence-refresh.timer"
-    service = f"""[Unit]\nDescription=Refresh bounded Schauwerk Miro companion evidence\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nUMask=0077\nExecStart={_systemd_quote(str(executable))} miro companion evidence-capture {_systemd_quote(str(config.path))} --json\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=read-only\nReadWritePaths={_systemd_quote(str(config.state_root))} {_systemd_quote(str(config.browser_profile))}\n\n"""
+    service = f"""[Unit]\nDescription=Refresh bounded Schauwerk Miro companion evidence\nAfter=network-online.target\nWants=network-online.target\n\n[Service]\nType=oneshot\nUMask=0077\nTimeoutStartSec=5min\nTimeoutStopSec=10s\nKillMode=control-group\nExecStart={_systemd_quote(str(executable))} miro companion evidence-capture {_systemd_quote(str(config.path))} --json\nNoNewPrivileges=true\nPrivateTmp=true\nProtectSystem=strict\nProtectHome=read-only\nReadWritePaths={_systemd_quote(str(config.state_root))} {_systemd_quote(str(config.browser_profile))}\n\n"""
     timer = f"""[Unit]\nDescription=Schedule bounded Schauwerk Miro companion evidence refresh\n\n[Timer]\nOnBootSec=5min\nOnUnitActiveSec={interval:g}h\nRandomizedDelaySec={randomized_delay_minutes}min\nPersistent=true\nUnit=schauwerk-companion-evidence-refresh.service\n\n[Install]\nWantedBy=timers.target\n"""
     changed: list[str] = []
     for target, content in ((service_path, service), (timer_path, timer)):

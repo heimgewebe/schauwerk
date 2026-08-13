@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from datetime import UTC, datetime, timedelta
@@ -545,6 +546,20 @@ def test_current_pointer_tamper_is_fail_closed(tmp_path: Path) -> None:
         evidence_status(config, fetcher=_fetcher(bundle))
 
 
+def test_cdp_command_timeout_is_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    class SilentWebsocket:
+        async def send(self, _payload: str) -> None:
+            return None
+
+        async def recv(self) -> str:
+            await asyncio.sleep(60)
+            raise AssertionError("unreachable")
+
+    monkeypatch.setattr(evidence, "CDP_COMMAND_TIMEOUT_SECONDS", 0.01)
+    with pytest.raises(CompanionEvidenceError, match="browser command timed out"):
+        asyncio.run(evidence._cdp_command(SilentWebsocket(), 1, "Runtime.enable"))
+
+
 def test_timer_install_is_idempotent_and_contains_no_provider_targets(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -567,4 +582,7 @@ def test_timer_install_is_idempotent_and_contains_no_provider_targets(
     assert APP_ID not in service
     assert "NoNewPrivileges=true" in service
     assert "ProtectSystem=strict" in service
+    assert "TimeoutStartSec=5min" in service
+    assert "TimeoutStopSec=10s" in service
+    assert "KillMode=control-group" in service
     assert "evidence-capture" in service
