@@ -10,7 +10,7 @@ title: Schauwerk Fundus Adapter Benchmark v1
 
 ## Entscheidung
 
-Fundus verwendet **Pillow 12.2.0** für `raster.png.rgba.v1`. Optionales Raster-zu-Vektor-Tracing verwendet **VTracer 0.6.15** mit `trace.vtracer.color.v1` und explizitem `path_precision=3`. VTracer bleibt im Extra `schauwerk[trace]`; der Core bleibt ohne VTracer importierbar.
+Fundus verwendet **Pillow 12.2.0** für `raster.png.rgba.v1`. Optionales Raster-zu-Vektor-Tracing verwendet **VTracer 0.6.15** mit `trace.vtracer.color.v1` und explizitem `path_precision=3`. VTracer bleibt im Extra `schauwerk[trace]`; der Core bleibt ohne VTracer importierbar. Transparente Construction-Master mit primär alpha-getriebener Linieninformation verwenden zusätzlich `trace.vtracer.alpha-mask.v1`; der reale Hall-of-Memory-Proof etablierte Alpha≥8 als kleinste robuste Schwelle, bevor Farbtracing wegen übergroßer Roh-SVGs fail-closed abgewiesen wurde.
 
 VTracer-Ausgabe wird nicht direkt vertraut. Fundus leitet `viewBox` aus den bereits geprüften Quellmaßen ab, entfernt das unnötige Root-Attribut `version` und führt danach unverändert `svg.decorative.v1` aus.
 

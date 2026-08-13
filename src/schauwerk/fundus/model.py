@@ -315,6 +315,9 @@ def validate_recipe(value: Any) -> dict[str, Any]:
             raise ValueError("trace_vtracer output must use image/svg+xml")
         if output.get("role") not in {"vector", "outline", "mask"}:
             raise ValueError("trace_vtracer output role must be vector-like")
-        if profile != "trace.vtracer.color.v1":
+        if profile not in {
+            "trace.vtracer.color.v1",
+            "trace.vtracer.alpha-mask.v1",
+        }:
             raise ValueError("unknown trace profile")
     return doc

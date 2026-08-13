@@ -46,7 +46,7 @@ from .raster import (
     raster_adapter_status,
 )
 from .svg import sanitize_svg
-from .trace import TRACE_PROFILE, trace_adapter_status, trace_raster
+from .trace import TRACE_PROFILES, trace_adapter_status, trace_raster
 
 TOOLCHAIN_VERSION = "schauwerk-fundus-core.v1"
 MAX_BUILD_OUTPUT_BYTES = MAX_RASTER_OUTPUT_BYTES
@@ -969,7 +969,7 @@ class Fundus:
                 "svg.decorative.v1",
             ],
             "raster_profiles": [RASTER_PROFILE],
-            "trace_profiles": [TRACE_PROFILE],
+            "trace_profiles": list(TRACE_PROFILES),
             "adapters": {
                 "raster": raster_status,
                 "trace": trace_status,

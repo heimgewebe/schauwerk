@@ -98,3 +98,68 @@ def test_vtracer_adapter_is_deterministic_sanitized_and_digest_bound(tmp_path: P
     )
     packaged = Path(package["package_dir"]) / "assets" / "fixture-trace-vector.svg"
     assert packaged.read_bytes() == svg
+
+
+def _alpha_source_png() -> bytes:
+    image = Image.new("RGBA", (96, 72), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rounded_rectangle((6, 6, 89, 65), radius=10, outline=(80, 50, 20, 220), width=3)
+    draw.line((18, 36, 78, 36), fill=(120, 80, 30, 32), width=2)
+    output = BytesIO()
+    image.save(output, "PNG")
+    return output.getvalue()
+
+
+def test_vtracer_alpha_mask_profile_is_small_sanitized_and_digest_bound(tmp_path: Path) -> None:
+    pytest.importorskip("vtracer")
+    registry = tmp_path / "registry"
+    (registry / "recipes").mkdir(parents=True)
+    (registry / "assets").mkdir()
+    recipe = {
+        "schema_version": "schauwerk-fundus-recipe.v1",
+        "id": "vtracer-alpha-mask-v1",
+        "transform": "trace_vtracer",
+        "source_role": "trace_source",
+        "output": {
+            "role": "mask",
+            "filename": "mask.svg",
+            "media_type": "image/svg+xml",
+        },
+        "parameters": {"profile": "trace.vtracer.alpha-mask.v1"},
+    }
+    (registry / "recipes" / "vtracer-alpha-mask-v1.json").write_text(
+        json.dumps(recipe), encoding="utf-8"
+    )
+    fundus = Fundus(FundusPaths(data_root=tmp_path / "data", registry_root=registry))
+    source = tmp_path / "trace-source.png"
+    source.write_bytes(_alpha_source_png())
+    ingest = fundus.ingest(source, origin="adapter-test", rights_status="owned")
+    asset = {
+        "schema_version": "schauwerk-fundus-asset.v1",
+        "id": "fixture.mask",
+        "recipe": "vtracer-alpha-mask-v1",
+        "sources": [{
+            "role": "trace_source",
+            "sha256": ingest["sha256"],
+            "media_type": "image/png",
+            "origin": "adapter-test",
+            "rights_status": "owned",
+        }],
+    }
+    (registry / "assets" / "fixture.mask.json").write_text(
+        json.dumps(asset), encoding="utf-8"
+    )
+
+    first = fundus.build("fixture.mask")
+    second = fundus.build("fixture.mask")
+    assert first["build_digest"] == second["build_digest"]
+    assert first["toolchain"]["trace_profile"] == "trace.vtracer.alpha-mask.v1"
+    assert first["toolchain"]["sanitizer_profile"] == "svg.mask.v1"
+    assert first["toolchain"]["trace_source_channel"] == "alpha"
+    assert first["toolchain"]["alpha_threshold"] == 8
+    output = Path(first["build_dir"]) / "mask.svg"
+    svg = output.read_bytes()
+    assert len(svg) < 100_000
+    assert sanitize_svg(svg, profile="svg.mask.v1") == svg
+    assert b'<path' in svg
+    assert b'#000000' in svg

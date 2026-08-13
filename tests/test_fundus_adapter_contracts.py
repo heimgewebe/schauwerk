@@ -65,7 +65,10 @@ def test_doctor_reports_selected_adapter_profiles(tmp_path: Path) -> None:
     result = fundus.doctor()
     assert result["ok"] is True
     assert result["raster_profiles"] == ["raster.png.rgba.v1"]
-    assert result["trace_profiles"] == ["trace.vtracer.color.v1"]
+    assert result["trace_profiles"] == [
+        "trace.vtracer.color.v1",
+        "trace.vtracer.alpha-mask.v1",
+    ]
     assert result["adapters"]["raster"]["implementation"] == "pillow"
     assert result["adapters"]["raster"]["required_version"] == "12.2.0"
     assert result["adapters"]["trace"]["required_version"] == "0.6.15"

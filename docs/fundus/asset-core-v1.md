@@ -59,7 +59,7 @@ Semantische IDs bleiben menschenlesbar, zum Beispiel `botanical.laurel.corner`; 
 
 ## Raster- und Trace-Profile
 
-`raster.png.rgba.v1` normalisiert PNG, JPEG und WebP mit Pillow 12.2.0 zu metadatafreiem RGBA-PNG unter festen Pixel- und Outputbudgets. `trace.vtracer.color.v1` nutzt VTracer 0.6.15 mit vollständig expliziten Parametern und `path_precision=3`; seine Ausgabe wird erst nach Dimensionsbindung und anschließendem `svg.decorative.v1`-Sanitizing zu einem Fundus-Build. Der Traceadapter ist optional und darf die Core-Gesundheit nicht bestimmen.
+`raster.png.rgba.v1` normalisiert PNG, JPEG und WebP mit Pillow 12.2.0 zu metadatafreiem RGBA-PNG unter festen Pixel- und Outputbudgets. `trace.vtracer.color.v1` nutzt VTracer 0.6.15 mit vollständig expliziten Parametern und `path_precision=3`; seine Ausgabe wird erst nach Dimensionsbindung und anschließendem `svg.decorative.v1`-Sanitizing zu einem Fundus-Build. Für transparente Line-Art extrahiert `trace.vtracer.alpha-mask.v1` deterministisch den Alpha-Kanal, binarisiert bei Alpha 8, traced im Binary-Modus und muss anschließend `svg.mask.v1` erfüllen. Damit werden feine Construction-Master nicht als tausende Farb-/Transparenzstufen vektorisiert. Der Traceadapter ist optional und darf die Core-Gesundheit nicht bestimmen.
 
 ## Lifecycle
 

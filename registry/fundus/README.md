@@ -7,4 +7,4 @@ Diese Registry enthält kleine, Git-versionierte Semantik für wiederverwendbare
 
 Ein Asset-Manifest erklärt Herkunft deklarativ; ein `origin`-Feld ist kein kryptografischer Herkunftsbeweis. Schauwerk baut immutable Pakete, besitzt aber keine Cross-Repo-Mutationsautorität. Die Integration in ein Zielrepository bleibt Aufgabe von Grabowski unter einer eigenen Zielrepo-Lane.
 
-V1-Adapterrezepte: `svg-mask-v1`, `raster-png-v1` und das optionale `vtracer-color-v1`. Vendorentscheidungen sind in `docs/fundus/adapter-benchmark-v1.md` evidenzgebunden.
+V1-Adapterrezepte: `svg-mask-v1`, `raster-png-v1`, das optionale `vtracer-color-v1` und `vtracer-alpha-mask-v1` für transparente Linien-/Ornamentquellen. Vendorentscheidungen sind in `docs/fundus/adapter-benchmark-v1.md` evidenzgebunden.

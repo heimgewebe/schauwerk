@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-fundus-recipe.v1",
+  "id": "vtracer-alpha-mask-v1",
+  "transform": "trace_vtracer",
+  "source_role": "trace_source",
+  "output": {
+    "role": "mask",
+    "filename": "mask.svg",
+    "media_type": "image/svg+xml"
+  },
+  "parameters": {
+    "profile": "trace.vtracer.alpha-mask.v1"
+  }
+}
