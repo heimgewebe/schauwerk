@@ -1,0 +1,29 @@
+{
+  "schema_version": "schauwerk-fundus-asset.v1",
+  "id": "hall-of-memory.stellar-frame.01",
+  "family": "hall-of-memory.stellar-frame",
+  "recipe": "vtracer-alpha-mask-v1",
+  "sources": [
+    {
+      "role": "trace_source",
+      "sha256": "c69b4d478ba626309b35f7b2838e16cd294eb1d1244f30ada514e77f6ab30353",
+      "media_type": "image/png",
+      "origin": "chatgpt-images:hall-of-memory-frame-construction-master",
+      "rights_status": "owned"
+    },
+    {
+      "role": "reference",
+      "sha256": "f45aa92aa1c4e53e2efbca17fcbca79b606e3b5c67bf9bf4c97def70b5b7f99d",
+      "media_type": "image/png",
+      "origin": "chatgpt-images:rejected-too-floral-reference",
+      "rights_status": "owned"
+    }
+  ],
+  "properties": {
+    "mask_safe": true,
+    "mirror_safe": false,
+    "recolor_safe": true,
+    "rotate_safe": false,
+    "tile_safe": false
+  }
+}

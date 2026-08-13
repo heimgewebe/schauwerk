@@ -5,6 +5,9 @@ from __future__ import annotations
 import importlib.metadata
 import math
 import xml.etree.ElementTree as ET
+from io import BytesIO
+
+from PIL import Image
 
 from .errors import FundusError
 from .media import inspect_media
@@ -12,13 +15,16 @@ from .raster import RASTER_PROFILE, normalize_raster
 from .svg import MAX_SVG_BYTES, sanitize_svg
 
 TRACE_PROFILE = "trace.vtracer.color.v1"
+TRACE_MASK_PROFILE = "trace.vtracer.alpha-mask.v1"
+TRACE_PROFILES = (TRACE_PROFILE, TRACE_MASK_PROFILE)
+ALPHA_MASK_THRESHOLD = 8
 VTRACER_VERSION = "0.6.15"
 MAX_TRACE_DIMENSION = 4096
 MAX_TRACE_PIXELS = 8_000_000
 MAX_RAW_TRACE_BYTES = MAX_SVG_BYTES
 SUPPORTED_TRACE_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
-_VTRACER_SETTINGS = {
+_VTRACER_COLOR_SETTINGS = {
     "colormode": "color",
     "hierarchical": "stacked",
     "mode": "spline",
@@ -32,6 +38,11 @@ _VTRACER_SETTINGS = {
     "path_precision": 3,
 }
 
+_VTRACER_MASK_SETTINGS = {
+    **_VTRACER_COLOR_SETTINGS,
+    "colormode": "binary",
+}
+
 
 def trace_adapter_status() -> dict[str, object]:
     try:
@@ -42,6 +53,7 @@ def trace_adapter_status() -> dict[str, object]:
             "implementation": "vtracer",
             "required_version": VTRACER_VERSION,
             "profile": TRACE_PROFILE,
+            "profiles": list(TRACE_PROFILES),
         }
     return {
         "available": version == VTRACER_VERSION,
@@ -49,6 +61,7 @@ def trace_adapter_status() -> dict[str, object]:
         "version": version,
         "required_version": VTRACER_VERSION,
         "profile": TRACE_PROFILE,
+        "profiles": list(TRACE_PROFILES),
     }
 
 
@@ -95,7 +108,7 @@ def _normalize_vtracer_svg(
 
 def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, object]]:
     """Trace normalized raster bytes with VTracer, then sanitize the SVG."""
-    if profile != TRACE_PROFILE:
+    if profile not in TRACE_PROFILES:
         raise FundusError(f"unknown trace profile: {profile}")
 
     media = inspect_media(payload)
@@ -134,11 +147,40 @@ def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, obje
     if normalized_media.width != media.width or normalized_media.height != media.height:
         raise FundusError("trace raster normalization changed source dimensions")
 
+    trace_input = normalized_raster
+    settings = _VTRACER_COLOR_SETTINGS
+    sanitizer_profile = "svg.decorative.v1"
+    profile_toolchain: dict[str, object] = {}
+    if profile == TRACE_MASK_PROFILE:
+        if media.has_alpha is not True:
+            raise FundusError("alpha-mask tracing requires an alpha channel")
+        with Image.open(BytesIO(normalized_raster)) as image:
+            rgba = image.convert("RGBA")
+            alpha = rgba.getchannel("A")
+            minimum, maximum = alpha.getextrema()
+            if maximum < ALPHA_MASK_THRESHOLD or minimum >= ALPHA_MASK_THRESHOLD:
+                raise FundusError(
+                    "alpha-mask trace source has no usable foreground/background split"
+                )
+            binary = alpha.point(
+                lambda value: 0 if value >= ALPHA_MASK_THRESHOLD else 255
+            )
+            rgb = Image.merge("RGB", (binary, binary, binary))
+            output = BytesIO()
+            rgb.save(output, format="PNG", optimize=False, compress_level=9)
+            trace_input = output.getvalue()
+        settings = _VTRACER_MASK_SETTINGS
+        sanitizer_profile = "svg.mask.v1"
+        profile_toolchain = {
+            "trace_source_channel": "alpha",
+            "alpha_threshold": ALPHA_MASK_THRESHOLD,
+        }
+
     try:
         raw_svg = vtracer.convert_raw_image_to_svg(
-            normalized_raster,
+            trace_input,
             img_format="png",
-            **_VTRACER_SETTINGS,
+            **settings,
         )
     except Exception as exc:  # native extension failures are normalized at this seam
         raise FundusError("VTracer failed to trace the raster source") from exc
@@ -153,13 +195,14 @@ def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, obje
         expected_width=media.width,
         expected_height=media.height,
     )
-    sanitized = sanitize_svg(normalized, profile="svg.decorative.v1")
+    sanitized = sanitize_svg(normalized, profile=sanitizer_profile)
     return sanitized, {
         "adapter": "vtracer",
         "vtracer": version,
         "trace_input_adapter": raster_toolchain["adapter"],
         "pillow": raster_toolchain["pillow"],
         "trace_profile": profile,
-        "sanitizer_profile": "svg.decorative.v1",
-        "path_precision": _VTRACER_SETTINGS["path_precision"],
+        "sanitizer_profile": sanitizer_profile,
+        "path_precision": settings["path_precision"],
+        **profile_toolchain,
     }
