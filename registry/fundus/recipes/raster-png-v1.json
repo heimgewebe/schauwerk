@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-fundus-recipe.v1",
+  "id": "raster-png-v1",
+  "transform": "raster_normalize",
+  "source_role": "original",
+  "output": {
+    "role": "raster",
+    "filename": "raster.png",
+    "media_type": "image/png"
+  },
+  "parameters": {
+    "profile": "raster.png.rgba.v1"
+  }
+}

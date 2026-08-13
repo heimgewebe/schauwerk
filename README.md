@@ -80,7 +80,7 @@ schauwerk fundus doctor --json
 schauwerk fundus ingest artwork.svg --origin chatgpt --rights-status owned --json
 ```
 
-Siehe `docs/fundus/asset-core-v1.md`.
+Raster-Normalisierung verwendet den benchmarkselektierten Pillow-Pfad; optionales Tracing liegt im Extra `schauwerk[trace]` und wird weiterhin durch den Fundus-SVG-Sanitizer geführt. Siehe `docs/fundus/asset-core-v1.md` und `docs/fundus/adapter-benchmark-v1.md`.
 
 ## Miro Live-Status
 

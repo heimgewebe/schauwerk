@@ -57,6 +57,10 @@ Semantische IDs bleiben menschenlesbar, zum Beispiel `botanical.laurel.corner`; 
 
 `svg.mask.v1` erlaubt nur passive geometrische SVG-Primitiven. `svg.decorative.v1` ergänzt lokale Gradienten, Clips und Masks. Beide Profile verbieten Scripts, Eventhandler, Stylesheets, `foreignObject`, externe URLs, Daten-URLs, Fonts, fremde Namespaces sowie DOCTYPE-/ENTITY-Deklarationen. Sanitizing konkretisiert damit die Active-Resource-Grenze aus der kanonischen Publication-Regel und geschieht vor einer möglichen späteren Optimierung. Zusätzlich gelten Größen-, Tiefen-, Element- und Pfadbudgets.
 
+## Raster- und Trace-Profile
+
+`raster.png.rgba.v1` normalisiert PNG, JPEG und WebP mit Pillow 12.2.0 zu metadatafreiem RGBA-PNG unter festen Pixel- und Outputbudgets. `trace.vtracer.color.v1` nutzt VTracer 0.6.15 mit vollständig expliziten Parametern und `path_precision=3`; seine Ausgabe wird erst nach Dimensionsbindung und anschließendem `svg.decorative.v1`-Sanitizing zu einem Fundus-Build. Der Traceadapter ist optional und darf die Core-Gesundheit nicht bestimmen.
+
 ## Lifecycle
 
 ```text
@@ -89,7 +93,7 @@ schauwerk fundus package botanical.laurel.corner --build DIGEST --acceptance DIG
 
 ## Nicht-Ziele V1
 
-Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, kein Git LFS, keine Embeddings, keine semantische Suche, kein verpflichtender Desktopeditor und kein fest verdrahteter Raster- oder Trace-Vendor. Raster- und Traceadapter werden erst nach reproduzierbaren lokalen Benchmarks ausgewählt.
+Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, kein Git LFS, keine Embeddings, keine semantische Suche und kein verpflichtender Desktopeditor. Nach dem reproduzierbaren Adapterbenchmark ist Pillow der deterministische Raster-Core; VTracer 0.6.15 ist der optionale, nachgelagert sanitisierte Traceadapter. Potrace, rembg, Inkscape und weitere Vendorpfade bleiben außerhalb des Core, bis eigene Evidenz ihren Nutzen belegt. Siehe `adapter-benchmark-v1.md`.
 
 ## Abnahme
 

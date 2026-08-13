@@ -1,0 +1,165 @@
+"""Optional evidence-selected raster-to-vector tracing for Fundus."""
+
+from __future__ import annotations
+
+import importlib.metadata
+import math
+import xml.etree.ElementTree as ET
+
+from .errors import FundusError
+from .media import inspect_media
+from .raster import RASTER_PROFILE, normalize_raster
+from .svg import MAX_SVG_BYTES, sanitize_svg
+
+TRACE_PROFILE = "trace.vtracer.color.v1"
+VTRACER_VERSION = "0.6.15"
+MAX_TRACE_DIMENSION = 4096
+MAX_TRACE_PIXELS = 8_000_000
+MAX_RAW_TRACE_BYTES = MAX_SVG_BYTES
+SUPPORTED_TRACE_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp"}
+
+_VTRACER_SETTINGS = {
+    "colormode": "color",
+    "hierarchical": "stacked",
+    "mode": "spline",
+    "filter_speckle": 4,
+    "color_precision": 6,
+    "layer_difference": 16,
+    "corner_threshold": 60,
+    "length_threshold": 4.0,
+    "max_iterations": 10,
+    "splice_threshold": 45,
+    "path_precision": 3,
+}
+
+
+def trace_adapter_status() -> dict[str, object]:
+    try:
+        version = importlib.metadata.version("vtracer")
+    except importlib.metadata.PackageNotFoundError:
+        return {
+            "available": False,
+            "implementation": "vtracer",
+            "required_version": VTRACER_VERSION,
+            "profile": TRACE_PROFILE,
+        }
+    return {
+        "available": version == VTRACER_VERSION,
+        "implementation": "vtracer",
+        "version": version,
+        "required_version": VTRACER_VERSION,
+        "profile": TRACE_PROFILE,
+    }
+
+
+def _positive_dimension(value: str, *, label: str) -> float:
+    try:
+        number = float(value)
+    except ValueError as exc:
+        raise FundusError(f"VTracer {label} is not numeric") from exc
+    if not math.isfinite(number) or number <= 0 or number > MAX_TRACE_DIMENSION:
+        raise FundusError(f"VTracer {label} is outside the Fundus trace limit")
+    return number
+
+
+def _normalize_vtracer_svg(
+    payload: bytes,
+    *,
+    expected_width: int,
+    expected_height: int,
+) -> bytes:
+    upper = payload.upper()
+    if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
+        raise FundusError("VTracer output contained forbidden XML declarations")
+    try:
+        root = ET.fromstring(payload)
+    except ET.ParseError as exc:
+        raise FundusError("VTracer output is not well-formed SVG") from exc
+    local = root.tag.rsplit("}", 1)[-1] if isinstance(root.tag, str) else ""
+    if local != "svg":
+        raise FundusError("VTracer output root is not SVG")
+
+    width_text = root.attrib.get("width")
+    height_text = root.attrib.get("height")
+    if width_text is None or height_text is None:
+        raise FundusError("VTracer output is missing dimensions")
+    width = _positive_dimension(width_text, label="width")
+    height = _positive_dimension(height_text, label="height")
+    if int(round(width)) != expected_width or int(round(height)) != expected_height:
+        raise FundusError("VTracer output dimensions do not match the source")
+
+    root.attrib.pop("version", None)
+    root.attrib["viewBox"] = f"0 0 {width:g} {height:g}"
+    return ET.tostring(root, encoding="utf-8")
+
+
+def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, object]]:
+    """Trace normalized raster bytes with VTracer, then sanitize the SVG."""
+    if profile != TRACE_PROFILE:
+        raise FundusError(f"unknown trace profile: {profile}")
+
+    media = inspect_media(payload)
+    if media.media_type not in SUPPORTED_TRACE_MEDIA_TYPES:
+        raise FundusError("VTracer requires PNG, JPEG or WebP input")
+    if media.width is None or media.height is None:
+        raise FundusError("trace source dimensions are required")
+    if media.width > MAX_TRACE_DIMENSION or media.height > MAX_TRACE_DIMENSION:
+        raise FundusError("trace source dimensions exceed the Fundus trace limit")
+    if media.width * media.height > MAX_TRACE_PIXELS:
+        raise FundusError("trace source pixel count exceeds the Fundus trace limit")
+
+    try:
+        version = importlib.metadata.version("vtracer")
+    except importlib.metadata.PackageNotFoundError as exc:
+        raise FundusError(
+            "VTracer adapter is unavailable; install the optional 'schauwerk[trace]' extra"
+        ) from exc
+    if version != VTRACER_VERSION:
+        raise FundusError(
+            f"VTracer adapter requires version {VTRACER_VERSION}, found {version}"
+        )
+
+    try:
+        import vtracer
+    except ImportError as exc:
+        raise FundusError(
+            "VTracer package metadata exists but the module cannot be imported"
+        ) from exc
+
+    normalized_raster, raster_toolchain = normalize_raster(
+        payload,
+        profile=RASTER_PROFILE,
+    )
+    normalized_media = inspect_media(normalized_raster)
+    if normalized_media.width != media.width or normalized_media.height != media.height:
+        raise FundusError("trace raster normalization changed source dimensions")
+
+    try:
+        raw_svg = vtracer.convert_raw_image_to_svg(
+            normalized_raster,
+            img_format="png",
+            **_VTRACER_SETTINGS,
+        )
+    except Exception as exc:  # native extension failures are normalized at this seam
+        raise FundusError("VTracer failed to trace the raster source") from exc
+    if not isinstance(raw_svg, str):
+        raise FundusError("VTracer returned a non-text SVG result")
+    raw_bytes = raw_svg.encode("utf-8")
+    if len(raw_bytes) > MAX_RAW_TRACE_BYTES:
+        raise FundusError("VTracer output exceeds the Fundus raw trace limit")
+
+    normalized = _normalize_vtracer_svg(
+        raw_bytes,
+        expected_width=media.width,
+        expected_height=media.height,
+    )
+    sanitized = sanitize_svg(normalized, profile="svg.decorative.v1")
+    return sanitized, {
+        "adapter": "vtracer",
+        "vtracer": version,
+        "trace_input_adapter": raster_toolchain["adapter"],
+        "pillow": raster_toolchain["pillow"],
+        "trace_profile": profile,
+        "sanitizer_profile": "svg.decorative.v1",
+        "path_precision": _VTRACER_SETTINGS["path_precision"],
+    }

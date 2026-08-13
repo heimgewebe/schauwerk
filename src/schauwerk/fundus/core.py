@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import base64
 import html
 import json
 import os
@@ -38,9 +39,18 @@ from .pathio import (
 from .pathio import (
     write_create_or_verify as write_immutable_file,
 )
+from .raster import (
+    MAX_RASTER_OUTPUT_BYTES,
+    RASTER_PROFILE,
+    normalize_raster,
+    raster_adapter_status,
+)
 from .svg import sanitize_svg
+from .trace import TRACE_PROFILE, trace_adapter_status, trace_raster
 
 TOOLCHAIN_VERSION = "schauwerk-fundus-core.v1"
+MAX_BUILD_OUTPUT_BYTES = MAX_RASTER_OUTPUT_BYTES
+MAX_PREVIEW_RASTER_BYTES = MAX_RASTER_OUTPUT_BYTES
 FORBIDDEN_IMPORT_PREFIXES = (
     "schauwerk.surfaces.miro",
     "schauwerk.operator",
@@ -408,19 +418,24 @@ class Fundus:
             raise FundusError(
                 "declared source media_type does not match bytes"
             )
-        if recipe["transform"] != "sanitize_svg":
-            raise FundusError(
-                "unsupported Fundus transform"
-            )
-        if detected.media_type != "image/svg+xml":
-            raise FundusError(
-                "sanitize_svg requires an SVG source"
-            )
-        output_bytes = sanitize_svg(
-            payload,
-            profile=recipe["parameters"]["profile"],
-        )
+        transform = recipe["transform"]
+        profile = recipe["parameters"]["profile"]
+        if transform == "sanitize_svg":
+            if detected.media_type != "image/svg+xml":
+                raise FundusError("sanitize_svg requires an SVG source")
+            output_bytes = sanitize_svg(payload, profile=profile)
+            adapter_toolchain: dict[str, object] = {"svg_profile": profile}
+        elif transform == "raster_normalize":
+            output_bytes, adapter_toolchain = normalize_raster(payload, profile=profile)
+        elif transform == "trace_vtracer":
+            output_bytes, adapter_toolchain = trace_raster(payload, profile=profile)
+        else:
+            raise FundusError("unsupported Fundus transform")
+
         output = recipe["output"]
+        output_media = inspect_media(output_bytes)
+        if output_media.media_type != output["media_type"]:
+            raise FundusError("transform output media_type does not match its recipe")
         output_sha = digest_bytes(output_bytes)
         body = {
             "schema_version": BUILD_SCHEMA,
@@ -435,7 +450,7 @@ class Fundus:
             },
             "toolchain": {
                 "fundus_core": TOOLCHAIN_VERSION,
-                "svg_profile": recipe["parameters"]["profile"],
+                **adapter_toolchain,
             },
             "outputs": [
                 {
@@ -512,7 +527,7 @@ class Fundus:
         for output in manifest.get("outputs", []):
             payload = self._read_private(
                 build_dir / output["filename"],
-                maximum_bytes=2 * 1024 * 1024,
+                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
             )
             if digest_bytes(payload) != output["sha256"]:
                 raise FundusError(
@@ -539,14 +554,32 @@ class Fundus:
                 "V1 preview supports one output"
             )
         output = build["outputs"][0]
-        if output["media_type"] != "image/svg+xml":
-            raise FundusError(
-                "V1 preview supports one SVG output"
+        media_type = output["media_type"]
+        artifact_path = build_dir / output["filename"]
+        if media_type == "image/svg+xml":
+            stage_content = self._read_private(
+                artifact_path,
+                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
+            ).decode("utf-8")
+            content_security_policy = (
+                "default-src 'none'; style-src 'unsafe-inline'"
             )
-        svg = self._read_private(
-            build_dir / output["filename"],
-            maximum_bytes=2 * 1024 * 1024,
-        ).decode("utf-8")
+        elif media_type == "image/png":
+            artifact_bytes = self._read_private(
+                artifact_path,
+                maximum_bytes=MAX_PREVIEW_RASTER_BYTES,
+            )
+            encoded = base64.b64encode(artifact_bytes).decode("ascii")
+            stage_content = (
+                '<img alt="Fundus raster preview" '
+                f'src="data:image/png;base64,{encoded}">'
+            )
+            content_security_policy = (
+                "default-src 'none'; img-src data:; style-src 'unsafe-inline'"
+            )
+        else:
+            raise FundusError("V1 preview supports SVG and PNG outputs")
+
         asset_label = html.escape(asset_id)
         build_label = html.escape(build_digest)
         document = (
@@ -555,8 +588,7 @@ class Fundus:
             '<meta name="viewport" '
             'content="width=device-width,initial-scale=1">'
             '<meta http-equiv="Content-Security-Policy" '
-            'content="default-src \'none\'; '
-            'style-src \'unsafe-inline\'">'
+            f'content="{content_security_policy}">'
             '<title>Schauwerk Fundus Preview</title>'
             '<style>'
             'body{margin:0;background:#eee;color:#111;'
@@ -565,14 +597,14 @@ class Fundus:
             '.stage{display:grid;place-items:center;'
             'min-height:55vh;background:white;'
             'border:1px solid #bbb}'
-            '.stage svg{max-width:80%;max-height:55vh}'
+            '.stage svg,.stage img{max-width:80%;max-height:55vh}'
             'code{overflow-wrap:anywhere}'
             '</style></head><body><main>'
             '<h1>Fundus preview</h1>'
             f'<p><strong>Asset:</strong> {asset_label}</p>'
             '<p><strong>Build:</strong> '
             f'<code>{build_label}</code></p>'
-            f'<div class="stage">{svg}</div>'
+            f'<div class="stage">{stage_content}</div>'
             '</main></body></html>\n'
         ).encode()
         preview_digest = digest_bytes(document)
@@ -746,7 +778,7 @@ class Fundus:
         for output in build["outputs"]:
             payload = self._read_private(
                 build_dir / output["filename"],
-                maximum_bytes=2 * 1024 * 1024,
+                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
             )
             suffix = Path(output["filename"]).suffix
             packaged_name = (
@@ -930,6 +962,12 @@ class Fundus:
                 "svg.mask.v1",
                 "svg.decorative.v1",
             ],
+            "raster_profiles": [RASTER_PROFILE],
+            "trace_profiles": [TRACE_PROFILE],
+            "adapters": {
+                "raster": raster_adapter_status(),
+                "trace": trace_adapter_status(),
+            },
             "cross_repo_mutation_authority": False,
             "object_store_authoritative": False,
             "recommended_next_action": (
