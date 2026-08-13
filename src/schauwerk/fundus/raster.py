@@ -5,12 +5,13 @@ from __future__ import annotations
 from io import BytesIO
 
 from PIL import Image, UnidentifiedImageError
-from PIL import __version__ as PILLOW_VERSION
+from PIL import __version__ as PILLOW_RUNTIME_VERSION
 
 from .errors import FundusError
 from .media import inspect_media
 
 RASTER_PROFILE = "raster.png.rgba.v1"
+PILLOW_REQUIRED_VERSION = "12.2.0"
 MAX_RASTER_PIXELS = 16_000_000
 MAX_RASTER_OUTPUT_BYTES = 16 * 1024 * 1024
 SUPPORTED_RASTER_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp"}
@@ -18,17 +19,27 @@ SUPPORTED_RASTER_MEDIA_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
 def raster_adapter_status() -> dict[str, object]:
     return {
-        "available": True,
+        "available": PILLOW_RUNTIME_VERSION == PILLOW_REQUIRED_VERSION,
         "implementation": "pillow",
-        "version": PILLOW_VERSION,
+        "version": PILLOW_RUNTIME_VERSION,
+        "required_version": PILLOW_REQUIRED_VERSION,
         "profile": RASTER_PROFILE,
     }
+
+
+def _require_pillow_version() -> None:
+    if PILLOW_RUNTIME_VERSION != PILLOW_REQUIRED_VERSION:
+        raise FundusError(
+            "Pillow adapter requires version "
+            f"{PILLOW_REQUIRED_VERSION}, found {PILLOW_RUNTIME_VERSION}"
+        )
 
 
 def normalize_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, object]]:
     """Normalize one raster source to deterministic metadata-free RGBA PNG."""
     if profile != RASTER_PROFILE:
         raise FundusError(f"unknown raster profile: {profile}")
+    _require_pillow_version()
 
     media = inspect_media(payload)
     if media.media_type not in SUPPORTED_RASTER_MEDIA_TYPES:
@@ -76,6 +87,6 @@ def normalize_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, 
 
     return output_bytes, {
         "adapter": "pillow",
-        "pillow": PILLOW_VERSION,
+        "pillow": PILLOW_RUNTIME_VERSION,
         "raster_profile": profile,
     }
