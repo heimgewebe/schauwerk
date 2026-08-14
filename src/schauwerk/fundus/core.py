@@ -36,6 +36,11 @@ from .model import (
     validate_image_brief,
     validate_recipe,
 )
+from .package_contract import (
+    canonical_consumer_lock_bytes,
+    consumer_lock_manifest,
+    verify_package_directory,
+)
 from .pathio import (
     normalized_absolute,
     open_directory_chain,
@@ -1315,6 +1320,22 @@ class Fundus:
             **manifest,
             "package_dir": str(package_dir),
         }
+
+    def consumer_lock(self, package_dir: str | Path) -> dict[str, Any]:
+        verified = verify_package_directory(package_dir)
+        lock = consumer_lock_manifest(verified)
+        lock_path = (
+            self.root
+            / "consumer-locks"
+            / lock["asset_id"]
+            / lock["package_digest"]
+            / f"{lock['lock_digest']}.json"
+        )
+        self._write_create_or_verify(
+            lock_path,
+            canonical_consumer_lock_bytes(lock),
+        )
+        return {**lock, "lock_path": str(lock_path)}
 
     def _import_seam(self) -> dict[str, Any]:
         package_dir = Path(__file__).resolve().parent

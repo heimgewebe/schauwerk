@@ -1,0 +1,48 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-consumer-lock.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "consumer_runtime_dependency": {"const": false},
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {"minimum": 1, "type": "integer"},
+          "media_type": {"enum": ["image/svg+xml", "image/png"]},
+          "path": {"minLength": 1, "type": "string"},
+          "role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "source_role": {"enum": ["original", "trace_source", "texture_source", "reference"]}
+        },
+        "required": ["path", "role", "media_type", "sha256", "bytes"],
+        "type": "object"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "type": "array"
+    },
+    "lock_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "package_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "package_manifest_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "package_schema_version": {"enum": ["schauwerk-fundus-package.v1", "schauwerk-fundus-package.v2"]},
+    "schema_version": {"const": "schauwerk-fundus-consumer-lock.v1"}
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "package_schema_version",
+    "package_digest",
+    "build_digest",
+    "acceptance_digest",
+    "package_manifest_sha256",
+    "files",
+    "consumer_runtime_dependency",
+    "lock_digest"
+  ],
+  "title": "Schauwerk Fundus Consumer Lock v1",
+  "type": "object"
+}

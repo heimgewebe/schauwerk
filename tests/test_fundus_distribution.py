@@ -19,6 +19,7 @@ SCHEMAS = (
     "fundus-acceptance.v1.schema.json",
     "fundus-package.v1.schema.json",
     "fundus-package.v2.schema.json",
+    "fundus-consumer-lock.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
     "fundus-review-plan.v1.schema.json",
@@ -94,6 +95,7 @@ sys.path.insert(0, str(wheel))
 
 from schauwerk import fundus as fundus_package
 from schauwerk.fundus import Fundus, FundusPaths
+from schauwerk.fundus.package_contract import verify_consumer_lock, verify_package_directory
 from schauwerk.fundus.review import build_review_bundle, check_review_bundle
 
 schemas = (
@@ -106,6 +108,7 @@ schemas = (
     "fundus-acceptance.v1.schema.json",
     "fundus-package.v1.schema.json",
     "fundus-package.v2.schema.json",
+    "fundus-consumer-lock.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
     "fundus-review-plan.v1.schema.json",
@@ -188,17 +191,24 @@ package = core.package(
     build_digest=build["build_digest"],
     acceptance_digest=acceptance["acceptance_digest"],
 )
+package_check = verify_package_directory(package["package_dir"])
+consumer_lock = core.consumer_lock(package["package_dir"])
+consumer_check = verify_consumer_lock(consumer_lock["lock_path"], package["package_dir"])
 assert preview["network_dependencies"] is False
 assert review["network_dependencies"] is False
 assert review["portable"] is True
 assert review_check["review_digest"] == review["review_digest"]
 assert package["consumer_runtime_dependency"] is False
+assert package_check["package_digest"] == package["package_digest"]
+assert consumer_check["package_digest"] == package["package_digest"]
+assert consumer_check["lock_digest"] == consumer_lock["lock_digest"]
 print(
     json.dumps(
         {
             "schemas": len(schemas),
             "review": review["review_digest"],
             "package": package["package_digest"],
+            "consumer_lock": consumer_lock["lock_digest"],
         }
     )
 )
@@ -216,3 +226,4 @@ print(
     assert receipt["schemas"] == len(SCHEMAS)
     assert len(receipt["review"]) == 64
     assert len(receipt["package"]) == 64
+    assert len(receipt["consumer_lock"]) == 64
