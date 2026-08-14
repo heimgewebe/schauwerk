@@ -145,6 +145,12 @@ from .surfaces.miro.companion_release import (
     create_release_manifest,
     doctor_release,
 )
+from .surfaces.miro.errors import MiroCredentialError
+from .surfaces.miro.fundus_atelier import (
+    build_atelier_plan_from_paths,
+    check_atelier_receipt,
+    publish_atelier_from_paths,
+)
 from .surfaces.miro.live_test_index import create_live_test_record, prune_live_tests
 from .surfaces.miro.managed_image_service import check_managed_image
 from .surfaces.miro.managed_region_runtime import MiroManagedRegionProvider
@@ -1177,6 +1183,81 @@ def handle_managed_image_delete(
             max_pages=max_pages,
         )
     )
+
+
+def handle_fundus_atelier_plan(
+    *,
+    family: str,
+    data_root: str | None,
+    registry_root: str | None,
+) -> dict[str, Any]:
+    return build_atelier_plan_from_paths(
+        family_id=family,
+        data_root=data_root,
+        registry_root=registry_root,
+    ).to_dict()
+
+
+def handle_fundus_atelier_publish(
+    *,
+    family: str,
+    alias: str,
+    data_root: str | None,
+    registry_root: str | None,
+    receipt_output: str,
+    create_board: bool,
+    board_name: str | None,
+    max_pages: int,
+    client: MiroMCPClient | None = None,
+) -> dict[str, Any]:
+    active = client or MiroMCPClient()
+    if create_board:
+        receipt_path = Path(receipt_output)
+        if receipt_path.exists() or receipt_path.is_symlink():
+            raise MiroCredentialError(
+                "Fundus Atelier receipt output already exists"
+            )
+        build_atelier_plan_from_paths(
+            family_id=family,
+            data_root=data_root,
+            registry_root=registry_root,
+        )
+        allowlist = BoardAllowlist(active.settings.board_allowlist_path)
+        existing = {item.alias for item in allowlist.list()}
+        if alias.strip().lower() in existing:
+            raise MiroCredentialError(
+                "Fundus Atelier create-board requires a new allowlist alias"
+            )
+        name = (board_name or f"Fundus Atelier · {family}").strip()
+        if not name or len(name) > 60:
+            raise ValueError("Fundus Atelier board name must contain 1-60 characters")
+        asyncio.run(
+            active.board_create(
+                alias=alias,
+                name=name,
+                description=(
+                    "Digest-bound Fundus review surface. Fundus remains authoritative; "
+                    "Miro comments and layout do not establish visual acceptance."
+                ),
+                invocation_source="schauwerk-fundus-atelier",
+            )
+        )
+    return asyncio.run(
+        publish_atelier_from_paths(
+            active.settings,
+            active.storage,
+            family_id=family,
+            alias=alias,
+            receipt_path=Path(receipt_output),
+            data_root=data_root,
+            registry_root=registry_root,
+            max_pages=max_pages,
+        )
+    )
+
+
+def handle_fundus_atelier_check(*, receipt: str) -> dict[str, Any]:
+    return check_atelier_receipt(Path(receipt))
 
 
 def handle_doctor(*, live: bool = True, client: MiroMCPClient | None = None) -> dict[str, Any]:

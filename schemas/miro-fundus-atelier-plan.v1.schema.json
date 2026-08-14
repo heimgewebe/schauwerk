@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schauwerk.local/schemas/miro-fundus-atelier-plan.v1.schema.json",
+  "title": "Schauwerk Miro Fundus Atelier plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "family_id",
+    "family_title",
+    "variants",
+    "variant_count",
+    "plan_digest",
+    "fundus_authoritative",
+    "miro_source_of_truth",
+    "visual_acceptance_inferred",
+    "package_created"
+  ],
+  "properties": {
+    "schema_version": {"const": "schauwerk-miro-fundus-atelier-plan.v1"},
+    "family_id": {"type": "string", "minLength": 1, "maxLength": 160},
+    "family_title": {"type": "string", "minLength": 1, "maxLength": 240},
+    "variants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/variant"}
+    },
+    "variant_count": {"type": "integer", "minimum": 1},
+    "plan_digest": {"$ref": "#/$defs/sha256"},
+    "fundus_authoritative": {"const": true},
+    "miro_source_of_truth": {"const": false},
+    "visual_acceptance_inferred": {"const": false},
+    "package_created": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "build_digest",
+        "output_role",
+        "output_sha256",
+        "output_media_type",
+        "output_filename",
+        "fundus_acceptance_state",
+        "miro_visual_acceptance_inferred"
+      ],
+      "properties": {
+        "asset_id": {"type": "string", "minLength": 1, "maxLength": 160},
+        "build_digest": {"$ref": "#/$defs/sha256"},
+        "output_role": {"type": "string", "minLength": 1, "maxLength": 64},
+        "output_sha256": {"$ref": "#/$defs/sha256"},
+        "output_media_type": {
+          "enum": ["image/svg+xml", "image/png", "image/jpeg", "image/webp"]
+        },
+        "output_filename": {"type": "string", "minLength": 1, "maxLength": 160},
+        "fundus_acceptance_state": {
+          "enum": ["unreviewed", "accepted", "rejected", "mixed", "invalid"]
+        },
+        "miro_visual_acceptance_inferred": {"const": false}
+      }
+    }
+  }
+}

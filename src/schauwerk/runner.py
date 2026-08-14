@@ -38,6 +38,9 @@ from .cli_handlers import (
     handle_ecosystem_render,
     handle_education_offline,
     handle_education_render,
+    handle_fundus_atelier_check,
+    handle_fundus_atelier_plan,
+    handle_fundus_atelier_publish,
     handle_grabowski_operational_pilot,
     handle_grabowski_pilot,
     handle_inspect,
@@ -468,6 +471,25 @@ def main(argv: list[str] | None = None) -> int:
                 receipt_output=args.receipt_output,
                 max_pages=args.max_pages,
             )
+        elif args.command == "fundus-atelier" and args.fundus_atelier_command == "plan":
+            result = handle_fundus_atelier_plan(
+                family=args.family,
+                data_root=args.data_root,
+                registry_root=args.registry_root,
+            )
+        elif args.command == "fundus-atelier" and args.fundus_atelier_command == "publish":
+            result = handle_fundus_atelier_publish(
+                family=args.family,
+                alias=args.alias,
+                data_root=args.data_root,
+                registry_root=args.registry_root,
+                receipt_output=args.receipt_output,
+                create_board=args.create_board,
+                board_name=args.board_name,
+                max_pages=args.max_pages,
+            )
+        elif args.command == "fundus-atelier" and args.fundus_atelier_command == "check":
+            result = handle_fundus_atelier_check(receipt=args.receipt)
         elif args.command == "doctor":
             result = handle_doctor(live=not args.no_live)
         elif args.command == "inspect":
