@@ -57,6 +57,10 @@
     },
     "schema_version": {
       "const": "schauwerk-fundus-package.v1"
+    },
+    "source_image_brief_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
     }
   },
   "required": [

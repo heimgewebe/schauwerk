@@ -1,0 +1,175 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-image-brief.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "edit"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "required": [
+          "input_sha256"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "generate"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "input_sha256"
+          ]
+        }
+      }
+    }
+  ],
+  "properties": {
+    "acceptance": {
+      "additionalProperties": false,
+      "properties": {
+        "inheritance": {
+          "enum": [
+            "none",
+            "deterministic_recipe_only"
+          ]
+        },
+        "visual_review_required": {
+          "const": true
+        }
+      },
+      "required": [
+        "visual_review_required",
+        "inheritance"
+      ],
+      "type": "object"
+    },
+    "asset_id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "desired_output_roles": {
+      "items": {
+        "enum": [
+          "vector",
+          "mask",
+          "outline",
+          "raster",
+          "texture",
+          "preview"
+        ]
+      },
+      "maxItems": 6,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "family": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "forbidden": {
+      "items": {
+        "maxLength": 240,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 32,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$",
+      "type": "string"
+    },
+    "input_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "intent": {
+      "enum": [
+        "reusable_asset",
+        "production_asset"
+      ]
+    },
+    "operation": {
+      "enum": [
+        "generate",
+        "edit"
+      ]
+    },
+    "properties": {
+      "additionalProperties": false,
+      "properties": {
+        "mask_safe": {
+          "type": "boolean"
+        },
+        "mirror_safe": {
+          "type": "boolean"
+        },
+        "recolor_safe": {
+          "type": "boolean"
+        },
+        "rotate_safe": {
+          "type": "boolean"
+        },
+        "tile_safe": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "requirements": {
+      "items": {
+        "maxLength": 240,
+        "minLength": 1,
+        "type": "string"
+      },
+      "maxItems": 32,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema_version": {
+      "const": "schauwerk-fundus-image-brief.v1"
+    },
+    "source_role": {
+      "enum": [
+        "original",
+        "trace_source",
+        "texture_source",
+        "reference"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "intent",
+    "asset_id",
+    "operation",
+    "source_role",
+    "desired_output_roles",
+    "requirements",
+    "forbidden",
+    "properties",
+    "acceptance"
+  ],
+  "title": "Schauwerk Fundus Image Brief v1",
+  "type": "object"
+}

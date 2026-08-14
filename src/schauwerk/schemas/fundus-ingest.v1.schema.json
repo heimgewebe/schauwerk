@@ -19,6 +19,10 @@
         "null"
       ]
     },
+    "image_brief_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
     "ingested_at": {
       "type": "string"
     },
@@ -50,6 +54,14 @@
     "sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "type": "string"
+    },
+    "source_mode": {
+      "enum": [
+        "manual",
+        "generated",
+        "edited",
+        "unknown"
+      ]
     },
     "source_path_sha256": {
       "pattern": "^[0-9a-f]{64}$",

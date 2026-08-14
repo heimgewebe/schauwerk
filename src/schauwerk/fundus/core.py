@@ -18,6 +18,7 @@ from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
     ACCEPTANCE_SCHEMA,
     BUILD_SCHEMA,
+    IMAGE_BRIEF_SCHEMA,
     INGEST_SCHEMA,
     PACKAGE_SCHEMA,
     PREVIEW_SCHEMA,
@@ -29,6 +30,7 @@ from .model import (
     load_json,
     validate_asset,
     validate_family,
+    validate_image_brief,
     validate_recipe,
 )
 from .pathio import (
@@ -125,6 +127,7 @@ class Fundus:
             self.root,
             self.root / "objects" / "sha256",
             self.root / "receipts" / "ingest",
+            self.root / "receipts" / "image-briefs",
             self.root / "builds",
             self.root / "previews",
             self.root / "acceptances",
@@ -190,12 +193,67 @@ class Fundus:
             / sha256
         )
 
+    def image_brief(self, path: str | Path) -> dict[str, Any]:
+        brief_path = normalized_absolute(path, label="image brief path")
+        try:
+            value = load_json(brief_path, maximum_bytes=256_000)
+            validate_image_brief(value)
+        except (OSError, ValueError) as exc:
+            raise FundusError(str(exc)) from exc
+        if value["operation"] == "edit":
+            self._read_object(value["input_sha256"])
+        brief_sha256 = digest_json(value)
+        self._ensure_state()
+        self._write_json_create_or_verify(
+            self.root
+            / "receipts"
+            / "image-briefs"
+            / f"{brief_sha256}.json",
+            value,
+        )
+        return {
+            "schema_version": IMAGE_BRIEF_SCHEMA,
+            "id": value["id"],
+            "asset_id": value["asset_id"],
+            "operation": value["operation"],
+            "source_role": value["source_role"],
+            **(
+                {"input_sha256": value["input_sha256"]}
+                if "input_sha256" in value
+                else {}
+            ),
+            "image_brief_sha256": brief_sha256,
+            "prepared": True,
+        }
+
+    @staticmethod
+    def _origin_source_mode(origin: str) -> str | None:
+        lowered = origin.casefold()
+        generated_prefixes = (
+            "chatgpt-images:",
+            "openai-images:",
+            "image_gen:",
+            "ai-generated:",
+        )
+        edited_prefixes = (
+            "chatgpt-image-edit:",
+            "openai-image-edit:",
+            "ai-edited:",
+        )
+        if lowered.startswith(generated_prefixes):
+            return "generated"
+        if lowered.startswith(edited_prefixes):
+            return "edited"
+        return None
+
     def ingest(
         self,
         source_path: str | Path,
         *,
         origin: str = "unknown",
         rights_status: str = "unknown",
+        source_mode: str | None = None,
+        image_brief_path: str | Path | None = None,
     ) -> dict[str, Any]:
         path = normalized_absolute(source_path, label="source path")
         payload = self._read_source(path)
@@ -215,7 +273,6 @@ class Fundus:
                 "origin must be bounded non-empty text"
             )
 
-        self._ensure_state()
         object_path = self._object_path(sha256)
         receipt_path = (
             self.root
@@ -225,10 +282,7 @@ class Fundus:
         )
         if receipt_path.exists():
             existing = json.loads(
-                self._read_private(
-                    receipt_path,
-                    maximum_bytes=64_000,
-                )
+                self._read_private(receipt_path, maximum_bytes=64_000)
             )
             if existing.get("sha256") != sha256:
                 raise FundusError(
@@ -236,19 +290,101 @@ class Fundus:
                 )
             if existing.get("origin") != origin:
                 raise FundusError(
-                    "identical bytes were ingested with "
-                    "conflicting origin"
+                    "identical bytes were ingested with conflicting origin"
                 )
             if existing.get("rights_status") != rights_status:
                 raise FundusError(
-                    "identical bytes were ingested with "
-                    "conflicting rights_status"
+                    "identical bytes were ingested with conflicting rights_status"
                 )
+            if (
+                source_mode is not None
+                and existing.get("source_mode", "unknown") != source_mode
+            ):
+                raise FundusError(
+                    "identical bytes were ingested with conflicting source_mode"
+                )
+            if image_brief_path is not None:
+                brief_path = normalized_absolute(
+                    image_brief_path, label="image brief path"
+                )
+                try:
+                    existing_brief = load_json(
+                        brief_path, maximum_bytes=256_000
+                    )
+                    validate_image_brief(existing_brief)
+                except (OSError, ValueError) as exc:
+                    raise FundusError(str(exc)) from exc
+                if existing.get("image_brief_sha256") != digest_json(
+                    existing_brief
+                ):
+                    raise FundusError(
+                        "identical bytes were ingested with conflicting image brief"
+                    )
             object_payload = self._read_object(sha256)
             if object_payload != payload:
                 raise FundusError("source object content drifted")
             return existing
 
+        brief: dict[str, Any] | None = None
+        brief_sha256: str | None = None
+        if image_brief_path is not None:
+            brief_path = normalized_absolute(
+                image_brief_path, label="image brief path"
+            )
+            try:
+                brief = load_json(brief_path, maximum_bytes=256_000)
+                validate_image_brief(brief)
+            except (OSError, ValueError) as exc:
+                raise FundusError(str(exc)) from exc
+            brief_sha256 = digest_json(brief)
+            prepared_path = (
+                self.root
+                / "receipts"
+                / "image-briefs"
+                / f"{brief_sha256}.json"
+            )
+            if not prepared_path.exists():
+                raise FundusError(
+                    "image brief must be prepared before generated or edited ingest"
+                )
+            prepared = json.loads(
+                self._read_private(prepared_path, maximum_bytes=256_000)
+            )
+            if digest_json(prepared) != brief_sha256 or prepared != brief:
+                raise FundusError("prepared image brief binding is invalid")
+
+        inferred_mode = self._origin_source_mode(origin)
+        if source_mode is None:
+            if brief is not None:
+                source_mode = (
+                    "generated" if brief["operation"] == "generate" else "edited"
+                )
+            else:
+                source_mode = inferred_mode or "unknown"
+        if source_mode not in {"manual", "generated", "edited", "unknown"}:
+            raise FundusError("source_mode is invalid")
+        if inferred_mode is not None and source_mode != inferred_mode:
+            raise FundusError(
+                "source_mode conflicts with the declared generative origin"
+            )
+        if source_mode in {"generated", "edited"} and brief is None:
+            raise FundusError(
+                "generated or edited sources require a Fundus image brief"
+            )
+        if brief is not None:
+            expected_operation = (
+                "generate" if source_mode == "generated" else "edit"
+            )
+            if source_mode not in {"generated", "edited"}:
+                raise FundusError(
+                    "an image brief requires generated or edited source_mode"
+                )
+            if brief["operation"] != expected_operation:
+                raise FundusError(
+                    "image brief operation conflicts with source_mode"
+                )
+
+        self._ensure_state()
         self._write_create_or_verify(object_path, payload)
         receipt = {
             "schema_version": INGEST_SCHEMA,
@@ -257,6 +393,12 @@ class Fundus:
             **media.to_dict(),
             "origin": origin,
             "rights_status": rights_status,
+            "source_mode": source_mode,
+            **(
+                {"image_brief_sha256": brief_sha256}
+                if brief_sha256 is not None
+                else {}
+            ),
             "source_path_sha256": digest_bytes(
                 str(path).encode("utf-8")
             ),
@@ -397,6 +539,100 @@ class Fundus:
             )
         return payload
 
+    def _validate_source_image_brief(
+        self,
+        asset_id: str,
+        source: dict[str, Any],
+        *,
+        output_roles: list[str] | None = None,
+        asset_properties: dict[str, bool] | None = None,
+    ) -> None:
+        asset_mode = source.get("source_mode", "unknown")
+        asset_brief_sha256 = source.get("image_brief_sha256")
+        ingest_path = (
+            self.root
+            / "receipts"
+            / "ingest"
+            / f"{source['sha256']}.json"
+        )
+        ingest: dict[str, Any] | None = None
+        if ingest_path.exists():
+            ingest = json.loads(
+                self._read_private(ingest_path, maximum_bytes=128_000)
+            )
+        ingest_mode = (
+            ingest.get("source_mode", "unknown")
+            if ingest is not None
+            else "unknown"
+        )
+        ingest_brief_sha256 = (
+            ingest.get("image_brief_sha256")
+            if ingest is not None
+            else None
+        )
+
+        if ingest_mode in {"generated", "edited"}:
+            if "source_mode" not in source or asset_mode != ingest_mode:
+                raise FundusError(
+                    "generated or edited asset source must preserve ingest source_mode"
+                )
+            if (
+                asset_brief_sha256 is None
+                or asset_brief_sha256 != ingest_brief_sha256
+            ):
+                raise FundusError(
+                    "generated or edited asset source must preserve ingest image brief"
+                )
+        elif asset_mode in {"generated", "edited"}:
+            if ingest is None:
+                raise FundusError("source ingest receipt is missing")
+            raise FundusError("asset source_mode does not match ingest receipt")
+        else:
+            if asset_brief_sha256 is not None:
+                raise FundusError(
+                    "image brief binding requires generated or edited source_mode"
+                )
+            return
+
+        assert asset_brief_sha256 is not None
+        checked_sha256(asset_brief_sha256, label="image brief sha256")
+        brief_path = (
+            self.root
+            / "receipts"
+            / "image-briefs"
+            / f"{asset_brief_sha256}.json"
+        )
+        if not brief_path.exists():
+            raise FundusError("bound image brief receipt is missing")
+        brief = json.loads(
+            self._read_private(brief_path, maximum_bytes=256_000)
+        )
+        try:
+            validate_image_brief(brief)
+        except ValueError as exc:
+            raise FundusError(str(exc)) from exc
+        if digest_json(brief) != asset_brief_sha256:
+            raise FundusError("bound image brief digest mismatch")
+        if brief["asset_id"] != asset_id:
+            raise FundusError("image brief targets another asset")
+        if brief["source_role"] != source["role"]:
+            raise FundusError("image brief source role mismatch")
+        expected_operation = (
+            "generate" if asset_mode == "generated" else "edit"
+        )
+        if brief["operation"] != expected_operation:
+            raise FundusError("image brief operation mismatch")
+        if output_roles is not None and not set(output_roles).issubset(
+            brief["desired_output_roles"]
+        ):
+            raise FundusError("image brief does not authorize the build output role")
+        if asset_properties is not None:
+            for key, value in asset_properties.items():
+                if key in brief["properties"] and brief["properties"][key] != value:
+                    raise FundusError(
+                        f"asset property conflicts with image brief: {key}"
+                    )
+
     def build(self, asset_id: str) -> dict[str, Any]:
         asset, asset_digest, _ = self._asset(asset_id)
         recipe, recipe_digest, _ = self._recipe(
@@ -412,6 +648,12 @@ class Fundus:
                 "recipe source role is absent or ambiguous"
             )
         source = matching[0]
+        self._validate_source_image_brief(
+            asset_id,
+            source,
+            output_roles=[recipe["output"]["role"]],
+            asset_properties=asset.get("properties", {}),
+        )
         payload = self._read_object(source["sha256"])
         detected = inspect_media(payload)
         if detected.media_type != source["media_type"]:
@@ -447,6 +689,16 @@ class Fundus:
                 "role": source["role"],
                 "sha256": source["sha256"],
                 "media_type": source["media_type"],
+                **(
+                    {"source_mode": source["source_mode"]}
+                    if "source_mode" in source
+                    else {}
+                ),
+                **(
+                    {"image_brief_sha256": source["image_brief_sha256"]}
+                    if "image_brief_sha256" in source
+                    else {}
+                ),
             },
             "toolchain": {
                 "fundus_core": TOOLCHAIN_VERSION,
@@ -768,6 +1020,11 @@ class Fundus:
             build_digest,
             acceptance_digest,
         )
+        self._validate_source_image_brief(
+            asset_id,
+            build["source"],
+            output_roles=[item["role"] for item in build["outputs"]],
+        )
         if acceptance.get("decision") != "accepted":
             raise FundusError(
                 "only an explicitly accepted build may be packaged"
@@ -801,6 +1058,14 @@ class Fundus:
             "build_digest": build_digest,
             "acceptance_digest": acceptance_digest,
             "files": files,
+            **(
+                {
+                    "source_image_brief_sha256":
+                        build["source"]["image_brief_sha256"]
+                }
+                if "image_brief_sha256" in build["source"]
+                else {}
+            ),
             "consumer_runtime_dependency": False,
         }
         package_digest = digest_json(body)
@@ -970,6 +1235,7 @@ class Fundus:
             ],
             "raster_profiles": [RASTER_PROFILE],
             "trace_profiles": list(TRACE_PROFILES),
+            "image_brief_schema": IMAGE_BRIEF_SCHEMA,
             "adapters": {
                 "raster": raster_status,
                 "trace": trace_status,

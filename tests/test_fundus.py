@@ -303,6 +303,7 @@ def test_fundus_packaged_schemas_are_valid_json_schemas() -> None:
         "fundus-package.v1.schema.json",
         "fundus-ingest.v1.schema.json",
         "fundus-preview.v1.schema.json",
+        "fundus-image-brief.v1.schema.json",
     ):
         schema = json.loads(schema_root.joinpath(name).read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
@@ -430,3 +431,244 @@ def test_runner_dispatches_fundus_doctor(tmp_path: Path, capsys) -> None:
     assert result["ok"] is True
     assert result["miro_independent"] is True
     assert result["registry"]["recipes"] == ["svg-mask-v1"]
+
+
+def _image_brief(asset_id: str = "fixture.simple-ornament") -> dict:
+    return {
+        "schema_version": "schauwerk-fundus-image-brief.v1",
+        "id": f"{asset_id}.generate.v1",
+        "intent": "reusable_asset",
+        "asset_id": asset_id,
+        "family": "fixture.simple",
+        "operation": "generate",
+        "source_role": "trace_source",
+        "desired_output_roles": ["mask"],
+        "requirements": ["clear silhouette", "transparent background"],
+        "forbidden": ["drop shadows", "material texture"],
+        "properties": {
+            "mirror_safe": False,
+            "rotate_safe": False,
+            "recolor_safe": True,
+            "mask_safe": True,
+            "tile_safe": False,
+        },
+        "acceptance": {
+            "visual_review_required": True,
+            "inheritance": "none",
+        },
+    }
+
+
+def test_generated_ingest_requires_digest_bound_image_brief(tmp_path: Path) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    with pytest.raises(FundusError, match="require a Fundus image brief"):
+        fundus.ingest(
+            source,
+            origin="chatgpt-images:fixture",
+            rights_status="owned",
+        )
+
+    brief_path = tmp_path / "image-brief.json"
+    brief_path.write_text(json.dumps(_image_brief()), encoding="utf-8")
+    validated = fundus.image_brief(brief_path)
+    _validate_instance("fundus-image-brief.v1.schema.json", _image_brief())
+
+    ingest = fundus.ingest(
+        source,
+        origin="chatgpt-images:fixture",
+        rights_status="owned",
+        source_mode="generated",
+        image_brief_path=brief_path,
+    )
+    assert ingest["source_mode"] == "generated"
+    assert ingest["image_brief_sha256"] == validated["image_brief_sha256"]
+
+    asset = {
+        "schema_version": "schauwerk-fundus-asset.v1",
+        "id": "fixture.simple-ornament",
+        "family": "fixture.simple",
+        "recipe": "svg-mask-v1",
+        "sources": [
+            {
+                "role": "trace_source",
+                "sha256": ingest["sha256"],
+                "media_type": "image/svg+xml",
+                "origin": "chatgpt-images:fixture",
+                "rights_status": "owned",
+                "source_mode": "generated",
+                "image_brief_sha256": ingest["image_brief_sha256"],
+            }
+        ],
+        "properties": {"mask_safe": True, "recolor_safe": True},
+    }
+    (registry / "assets" / "fixture.simple-ornament.json").write_text(
+        json.dumps(asset), encoding="utf-8"
+    )
+    _validate_instance("fundus-asset.v1.schema.json", asset)
+    build = fundus.build("fixture.simple-ornament")
+    assert build["source"]["image_brief_sha256"] == ingest["image_brief_sha256"]
+    acceptance = fundus.accept(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        reviewer="test:image-brief",
+        decision="accepted",
+        reviewed_at="2026-08-14T06:00:00+00:00",
+    )
+    package = fundus.package(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        acceptance_digest=acceptance["acceptance_digest"],
+    )
+    assert package["source_image_brief_sha256"] == ingest["image_brief_sha256"]
+
+
+def test_generated_asset_cannot_drop_or_swap_image_brief_binding(tmp_path: Path) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    brief_path = tmp_path / "image-brief.json"
+    brief_path.write_text(json.dumps(_image_brief()), encoding="utf-8")
+    fundus.image_brief(brief_path)
+    ingest = fundus.ingest(
+        source,
+        origin="chatgpt-images:fixture",
+        rights_status="owned",
+        image_brief_path=brief_path,
+    )
+
+    missing = {
+        "schema_version": "schauwerk-fundus-asset.v1",
+        "id": "fixture.simple-ornament",
+        "family": "fixture.simple",
+        "recipe": "svg-mask-v1",
+        "sources": [
+            {
+                "role": "trace_source",
+                "sha256": ingest["sha256"],
+                "media_type": "image/svg+xml",
+            }
+        ],
+    }
+    (registry / "assets" / "fixture.simple-ornament.json").write_text(
+        json.dumps(missing), encoding="utf-8"
+    )
+    with pytest.raises(FundusError, match="preserve ingest source_mode"):
+        fundus.build("fixture.simple-ornament")
+
+    missing["sources"][0]["source_mode"] = "generated"
+    missing["sources"][0]["image_brief_sha256"] = "0" * 64
+    (registry / "assets" / "fixture.simple-ornament.json").write_text(
+        json.dumps(missing), encoding="utf-8"
+    )
+    with pytest.raises(FundusError, match="preserve ingest image brief"):
+        fundus.build("fixture.simple-ornament")
+
+
+def test_agent_policy_routes_reusable_image_work_through_fundus() -> None:
+    import yaml
+
+    repo_root = Path(__file__).resolve().parents[1]
+    policy = yaml.safe_load((repo_root / "agent-policy.yaml").read_text(encoding="utf-8"))
+    fundus = policy["fundus"]
+    assert fundus["image_operations_contract"] == "docs/fundus/image-operations-v1.md"
+    assert fundus["reusable_or_production_visuals"][
+        "generated_or_edited_requires_image_brief"
+    ] is True
+    assert fundus["cross_repo_integration"] == {
+        "owner": "grabowski",
+        "schauwerk_direct_write": False,
+    }
+    agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    assert "docs/fundus/image-operations-v1.md" in agents
+
+
+def test_legacy_generated_ingest_remains_idempotent_without_reclassification(
+    tmp_path: Path,
+) -> None:
+    fundus, _, source = _setup(tmp_path)
+    payload = fundus._read_source(source)
+    sha256 = __import__("hashlib").sha256(payload).hexdigest()
+    fundus._ensure_state()
+    object_path = fundus._object_path(sha256)
+    fundus._write_create_or_verify(object_path, payload)
+    receipt = {
+        "schema_version": "schauwerk-fundus-ingest.v1",
+        "sha256": sha256,
+        "bytes": len(payload),
+        "media_type": "image/svg+xml",
+        "width": 100,
+        "height": 100,
+        "has_alpha": False,
+        "origin": "chatgpt-images:legacy",
+        "rights_status": "owned",
+        "source_path_sha256": "0" * 64,
+        "ingested_at": "2026-08-13T00:00:00+00:00",
+        "object_relpath": str(object_path.relative_to(fundus.root)),
+        "provenance_claim_is_declarative": True,
+    }
+    fundus._write_json_create_or_verify(
+        fundus.root / "receipts" / "ingest" / f"{sha256}.json", receipt
+    )
+    repeated = fundus.ingest(
+        source, origin="chatgpt-images:legacy", rights_status="owned"
+    )
+    assert repeated == receipt
+
+
+def test_image_brief_must_be_prepared_and_authorize_output_role(tmp_path: Path) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    brief = _image_brief()
+    brief["desired_output_roles"] = ["vector"]
+    brief_path = tmp_path / "image-brief.json"
+    brief_path.write_text(json.dumps(brief), encoding="utf-8")
+    with pytest.raises(FundusError, match="must be prepared"):
+        fundus.ingest(
+            source,
+            origin="chatgpt-images:fixture",
+            rights_status="owned",
+            image_brief_path=brief_path,
+        )
+    prepared = fundus.image_brief(brief_path)
+    ingest = fundus.ingest(
+        source,
+        origin="chatgpt-images:fixture",
+        rights_status="owned",
+        image_brief_path=brief_path,
+    )
+    asset = {
+        "schema_version": "schauwerk-fundus-asset.v1",
+        "id": "fixture.simple-ornament",
+        "family": "fixture.simple",
+        "recipe": "svg-mask-v1",
+        "sources": [
+            {
+                "role": "trace_source",
+                "sha256": ingest["sha256"],
+                "media_type": "image/svg+xml",
+                "source_mode": "generated",
+                "image_brief_sha256": prepared["image_brief_sha256"],
+            }
+        ],
+    }
+    (registry / "assets" / "fixture.simple-ornament.json").write_text(
+        json.dumps(asset), encoding="utf-8"
+    )
+    with pytest.raises(FundusError, match="authorize the build output role"):
+        fundus.build("fixture.simple-ornament")
+
+
+def test_edit_image_brief_requires_exact_ingested_input_revision(tmp_path: Path) -> None:
+    fundus, _, source = _setup(tmp_path)
+    brief = _image_brief()
+    brief["id"] = "fixture.simple-ornament.edit.v1"
+    brief["operation"] = "edit"
+    missing_path = tmp_path / "missing-edit-brief.json"
+    missing_path.write_text(json.dumps(brief), encoding="utf-8")
+    with pytest.raises(FundusError, match="input sha256"):
+        fundus.image_brief(missing_path)
+
+    base = fundus.ingest(source, origin="manual:edit-input", rights_status="owned")
+    brief["input_sha256"] = base["sha256"]
+    brief_path = tmp_path / "edit-brief.json"
+    brief_path.write_text(json.dumps(brief), encoding="utf-8")
+    prepared = fundus.image_brief(brief_path)
+    assert prepared["input_sha256"] == base["sha256"]
+    assert prepared["prepared"] is True

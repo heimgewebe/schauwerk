@@ -18,6 +18,7 @@ SCHEMAS = (
     "fundus-package.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
+    "fundus-image-brief.v1.schema.json",
 )
 
 
@@ -98,6 +99,7 @@ schemas = (
     "fundus-package.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
+    "fundus-image-brief.v1.schema.json",
 )
 assert ".whl/" in fundus_package.__file__
 for name in schemas:
