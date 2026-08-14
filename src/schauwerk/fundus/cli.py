@@ -41,12 +41,25 @@ def add_fundus_parser(providers) -> None:
     ingest.add_argument("source")
     ingest.add_argument("--origin", default="unknown")
     ingest.add_argument(
+        "--source-mode",
+        choices=("manual", "generated", "edited", "unknown"),
+    )
+    ingest.add_argument("--image-brief")
+    ingest.add_argument(
         "--rights-status",
         choices=("owned", "licensed", "unknown", "restricted"),
         default="unknown",
     )
     _state_option(ingest)
     ingest.add_argument("--json", action="store_true")
+
+    brief = commands.add_parser(
+        "brief",
+        help="validate and digest one Fundus image-operation brief",
+    )
+    brief.add_argument("brief")
+    _state_option(brief)
+    brief.add_argument("--json", action="store_true")
 
     inspect = commands.add_parser(
         "inspect",
@@ -123,7 +136,11 @@ def handle_fundus_command(args) -> dict:
             Path(args.source),
             origin=args.origin,
             rights_status=args.rights_status,
+            source_mode=args.source_mode,
+            image_brief_path=args.image_brief,
         )
+    if args.command == "brief":
+        return fundus.image_brief(Path(args.brief))
     if args.command == "inspect":
         return fundus.inspect(args.asset)
     if args.command == "build":

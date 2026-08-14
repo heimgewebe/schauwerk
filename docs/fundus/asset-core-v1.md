@@ -61,6 +61,10 @@ Semantische IDs bleiben menschenlesbar, zum Beispiel `botanical.laurel.corner`; 
 
 `raster.png.rgba.v1` normalisiert PNG, JPEG und WebP mit Pillow 12.2.0 zu metadatafreiem RGBA-PNG unter festen Pixel- und Outputbudgets. `trace.vtracer.color.v1` nutzt VTracer 0.6.15 mit vollständig expliziten Parametern und `path_precision=3`; seine Ausgabe wird erst nach Dimensionsbindung und anschließendem `svg.decorative.v1`-Sanitizing zu einem Fundus-Build. Für transparente Line-Art extrahiert `trace.vtracer.alpha-mask.v1` deterministisch den Alpha-Kanal, binarisiert bei Alpha 8, traced im Binary-Modus und muss anschließend `svg.mask.v1` erfüllen. Damit werden feine Construction-Master nicht als tausende Farb-/Transparenzstufen vektorisiert. Der Traceadapter ist optional und darf die Core-Gesundheit nicht bestimmen.
 
+## Bildoperationen
+
+Generierte oder generativ bearbeitete wiederverwendbare Quellen folgen zusätzlich dem normativen [Image Operations v1](image-operations-v1.md). Vor der Bildoperation wird ein digestierbarer Image Brief vorbereitet und immutable hinterlegt; `generated`- und `edited`-Quellen müssen dessen SHA-256 beim Ingest binden. Ein generatives Edit bindet zusätzlich seine exakte Eingangsrevision. Build und Package validieren diese Bindung erneut.
+
 ## Lifecycle
 
 ```text
@@ -83,7 +87,8 @@ CLI:
 
 ```bash
 schauwerk fundus doctor --json
-schauwerk fundus ingest artwork.svg --origin chatgpt --rights-status owned --json
+schauwerk fundus brief image-brief.json --json
+schauwerk fundus ingest artwork.svg --origin chatgpt-images:ornament --source-mode generated --image-brief image-brief.json --rights-status owned --json
 schauwerk fundus inspect botanical.laurel.corner --json
 schauwerk fundus build botanical.laurel.corner --json
 schauwerk fundus preview botanical.laurel.corner --json

@@ -13,3 +13,26 @@ automation:
   snapshot_before_apply: true
   verify_after_apply: true
   idempotency_required: true
+
+fundus:
+  canonical_contract: docs/fundus/asset-core-v1.md
+  image_operations_contract: docs/fundus/image-operations-v1.md
+  reusable_or_production_visuals:
+    source_master_before_production: true
+    generated_or_edited_requires_image_brief: true
+    image_brief_digest_binding_required: true
+    technical_acceptance_required: true
+    visual_acceptance_required: true
+    immutable_package_required: true
+  source_modes:
+    generated:
+      image_brief_required: true
+    edited:
+      image_brief_required: true
+    manual:
+      image_brief_required: false
+    unknown:
+      image_brief_required: false
+  cross_repo_integration:
+    owner: grabowski
+    schauwerk_direct_write: false

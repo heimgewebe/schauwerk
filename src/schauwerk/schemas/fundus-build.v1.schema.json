@@ -62,7 +62,53 @@
     },
     "source": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_mode": {
+                "enum": [
+                  "generated",
+                  "edited"
+                ]
+              }
+            },
+            "required": [
+              "source_mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "image_brief_sha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "image_brief_sha256"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source_mode": {
+                "enum": [
+                  "generated",
+                  "edited"
+                ]
+              }
+            },
+            "required": [
+              "source_mode"
+            ]
+          }
+        }
+      ],
       "properties": {
+        "image_brief_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
         "media_type": {
           "type": "string"
         },
@@ -72,6 +118,14 @@
         "sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
+        },
+        "source_mode": {
+          "enum": [
+            "manual",
+            "generated",
+            "edited",
+            "unknown"
+          ]
         }
       },
       "required": [

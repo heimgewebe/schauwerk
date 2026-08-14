@@ -18,6 +18,7 @@ ACCEPTANCE_SCHEMA = "schauwerk-fundus-acceptance.v1"
 PACKAGE_SCHEMA = "schauwerk-fundus-package.v1"
 INGEST_SCHEMA = "schauwerk-fundus-ingest.v1"
 PREVIEW_SCHEMA = "schauwerk-fundus-preview.v1"
+IMAGE_BRIEF_SCHEMA = "schauwerk-fundus-image-brief.v1"
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -25,6 +26,8 @@ _FILENAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 SOURCE_ROLES = {"original", "trace_source", "texture_source", "reference"}
 OUTPUT_ROLES = {"vector", "mask", "outline", "raster", "texture", "preview"}
 RIGHTS_STATUSES = {"owned", "licensed", "unknown", "restricted"}
+SOURCE_MODES = {"manual", "generated", "edited", "unknown"}
+IMAGE_OPERATIONS = {"generate", "edit"}
 
 
 def canonical_json(value: Any) -> bytes:
@@ -203,6 +206,8 @@ def validate_asset(value: Any) -> dict[str, Any]:
                 "media_type",
                 "origin",
                 "rights_status",
+                "source_mode",
+                "image_brief_sha256",
             },
             required={"role", "sha256", "media_type"},
             label=f"asset source {index}",
@@ -230,6 +235,19 @@ def validate_asset(value: Any) -> dict[str, Any]:
             )
         if source.get("rights_status", "unknown") not in RIGHTS_STATUSES:
             raise ValueError("rights_status is invalid")
+        source_mode = source.get("source_mode", "unknown")
+        if source_mode not in SOURCE_MODES:
+            raise ValueError("source_mode is invalid")
+        image_brief_sha256 = source.get("image_brief_sha256")
+        if source_mode in {"generated", "edited"}:
+            checked_sha256(
+                image_brief_sha256,
+                label=f"asset source {index} image brief sha256",
+            )
+        elif image_brief_sha256 is not None:
+            raise ValueError(
+                "image_brief_sha256 requires generated or edited source_mode"
+            )
     properties = doc.get("properties", {})
     if not isinstance(properties, dict):
         raise ValueError("asset properties must be an object")
@@ -244,6 +262,122 @@ def validate_asset(value: Any) -> dict[str, Any]:
         raise ValueError("asset properties contain unknown fields")
     if any(not isinstance(item, bool) for item in properties.values()):
         raise ValueError("asset properties must be booleans")
+    return doc
+
+
+def validate_image_brief(value: Any) -> dict[str, Any]:
+    doc = _mapping(value, label="image brief")
+    _exact_keys(
+        doc,
+        allowed={
+            "schema_version",
+            "id",
+            "intent",
+            "asset_id",
+            "family",
+            "operation",
+            "input_sha256",
+            "source_role",
+            "desired_output_roles",
+            "requirements",
+            "forbidden",
+            "properties",
+            "acceptance",
+        },
+        required={
+            "schema_version",
+            "id",
+            "intent",
+            "asset_id",
+            "operation",
+            "source_role",
+            "desired_output_roles",
+            "requirements",
+            "forbidden",
+            "properties",
+            "acceptance",
+        },
+        label="image brief",
+    )
+    if doc.get("schema_version") != IMAGE_BRIEF_SCHEMA:
+        raise ValueError(
+            f"image brief schema_version must be {IMAGE_BRIEF_SCHEMA}"
+        )
+    checked_id(doc.get("id"), label="image brief id")
+    checked_id(doc.get("asset_id"), label="image brief asset id")
+    family = doc.get("family")
+    if family is not None:
+        checked_id(family, label="image brief family")
+    if doc.get("intent") not in {"reusable_asset", "production_asset"}:
+        raise ValueError("image brief intent is invalid")
+    operation = doc.get("operation")
+    if operation not in IMAGE_OPERATIONS:
+        raise ValueError("image brief operation is invalid")
+    input_sha256 = doc.get("input_sha256")
+    if operation == "edit":
+        checked_sha256(input_sha256, label="image brief input sha256")
+    elif input_sha256 is not None:
+        raise ValueError("generate image brief must not declare input_sha256")
+    if doc.get("source_role") not in SOURCE_ROLES:
+        raise ValueError("image brief source_role is invalid")
+
+    output_roles = doc.get("desired_output_roles")
+    if not isinstance(output_roles, list) or not 1 <= len(output_roles) <= 6:
+        raise ValueError(
+            "image brief desired_output_roles must contain 1 to 6 entries"
+        )
+    if any(item not in OUTPUT_ROLES for item in output_roles):
+        raise ValueError("image brief desired_output_roles are invalid")
+    if len(set(output_roles)) != len(output_roles):
+        raise ValueError("image brief desired_output_roles must be unique")
+
+    for field in ("requirements", "forbidden"):
+        values = doc.get(field)
+        if not isinstance(values, list) or len(values) > 32:
+            raise ValueError(f"image brief {field} must contain at most 32 entries")
+        checked: list[str] = []
+        for index, item in enumerate(values):
+            text = _bounded_text(
+                item,
+                label=f"image brief {field} {index}",
+                maximum=240,
+            )
+            assert text is not None
+            checked.append(text)
+        if len(set(checked)) != len(checked):
+            raise ValueError(f"image brief {field} must be unique")
+
+    properties = _mapping(doc.get("properties"), label="image brief properties")
+    allowed_properties = {
+        "mirror_safe",
+        "rotate_safe",
+        "recolor_safe",
+        "mask_safe",
+        "tile_safe",
+    }
+    _exact_keys(
+        properties,
+        allowed=allowed_properties,
+        required=set(),
+        label="image brief properties",
+    )
+    if any(not isinstance(item, bool) for item in properties.values()):
+        raise ValueError("image brief properties must be booleans")
+
+    acceptance = _mapping(doc.get("acceptance"), label="image brief acceptance")
+    _exact_keys(
+        acceptance,
+        allowed={"visual_review_required", "inheritance"},
+        required={"visual_review_required", "inheritance"},
+        label="image brief acceptance",
+    )
+    if acceptance.get("visual_review_required") is not True:
+        raise ValueError("generative image briefs require visual review")
+    if acceptance.get("inheritance") not in {
+        "none",
+        "deterministic_recipe_only",
+    }:
+        raise ValueError("image brief acceptance inheritance is invalid")
     return doc
 
 

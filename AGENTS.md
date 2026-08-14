@@ -9,6 +9,7 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 3. `docs/architecture/schauwerk.md`
 4. `docs/roadmap.md`
 5. `agent-policy.yaml`
+6. For reusable image, ornament, texture, illustration, mask, vector or generative image work: `docs/fundus/image-operations-v1.md` and `docs/fundus/asset-core-v1.md`
 
 ## Canonical Sources
 - `repo.meta.yaml`: repository identity and discovery contract
@@ -25,6 +26,8 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - Public outputs are independent sanitized artifacts, not filtered live access to private surfaces.
 - Human, cooperative, and managed regions must remain distinguishable.
 - Semantic services are optional enrichments and must not block the core workflow.
+- Reusable or production-bound generated/edited visual assets must use the Fundus image-operation contract; a Source Master is not a production asset.
+- `schauwerk.fundus` packages accepted assets; Grabowski owns cross-repository integration.
 
 ## Current Scope
 The local product surface through SW-013, the repository-level integrated/durable v1 contracts through SW-017 and Visual System v2 in SW-018 are implemented. Reviewed live apply and Regie exist and remain operation-specific. Source collectors, scheduled maintenance, installed services, public hosting, live OAuth rotation and live recovery drills require separate target-bound authorization and evidence.
@@ -42,6 +45,7 @@ Run `make validate`.
 - pilot source compilers under `src/schauwerk/pilots/`
 - durable integration and recovery contracts under `src/schauwerk/durable/`
 - Visual System v2 contracts and renderer under `src/schauwerk/visual/system_v2.py`
+- Fundus contracts and implementation under `src/schauwerk/fundus/`, `src/schauwerk/schemas/fundus-*.json`, `registry/fundus/`, and `docs/fundus/`
 
 ## Forbidden Content
 - OAuth credentials and refresh tokens
