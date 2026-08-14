@@ -128,6 +128,72 @@ def test_inventory_rejects_symlink_entries(tmp_path: Path) -> None:
         fundus_inventory(root)
 
 
+def test_custom_fundus_root_ignores_implicit_default_durability_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    foreign_root = _private_dir(tmp_path / "foreign-fundus")
+    (foreign_root / "foreign.bin").write_bytes(b"foreign")
+    state_home = tmp_path / "state-home"
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+    implicit_evidence = (
+        state_home / "schauwerk" / "fundus" / "durability" / "current.json"
+    )
+    _write_evidence(implicit_evidence, _evidence_for(foreign_root, ref="snapshot:foreign"))
+    monkeypatch.setenv(
+        "SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE",
+        str(implicit_evidence),
+    )
+
+    registry = _private_dir(tmp_path / "registry")
+    _private_dir(registry / "families")
+    _private_dir(registry / "recipes")
+    _private_dir(registry / "assets")
+    fundus = Fundus(
+        FundusPaths(data_root=tmp_path / "custom-data", registry_root=registry)
+    )
+    fundus._ensure_state()
+
+    doctor = fundus.doctor()
+    assert doctor["ok"] is True
+    assert doctor["durability"]["evidence_path"] is None
+    assert doctor["durability"]["evidence_present"] is False
+    assert doctor["durability"]["evidence_valid"] is None
+    assert doctor["object_store_authoritative"] is False
+
+
+def test_default_fundus_root_uses_implicit_default_durability_evidence(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    data_home = tmp_path / "data-home"
+    state_home = tmp_path / "state-home"
+    monkeypatch.setenv("XDG_DATA_HOME", str(data_home))
+    monkeypatch.setenv("XDG_STATE_HOME", str(state_home))
+    monkeypatch.delenv("SCHAUWERK_FUNDUS_ROOT", raising=False)
+    monkeypatch.delenv("SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE", raising=False)
+
+    registry = _private_dir(tmp_path / "registry-default")
+    _private_dir(registry / "families")
+    _private_dir(registry / "recipes")
+    _private_dir(registry / "assets")
+    fundus = Fundus(FundusPaths.from_overrides(registry_root=registry))
+    fundus._ensure_state()
+    evidence_path = (
+        state_home / "schauwerk" / "fundus" / "durability" / "current.json"
+    )
+    _write_evidence(
+        evidence_path,
+        _evidence_for(fundus.root, ref="snapshot:default-root"),
+    )
+
+    doctor = fundus.doctor()
+    assert doctor["ok"] is True
+    assert doctor["durability"]["evidence_path"] == str(evidence_path)
+    assert doctor["durability"]["restore_verified_current"] is True
+    assert doctor["object_store_authoritative"] is True
+
+
 def test_doctor_only_marks_current_restore_verified_inventory_authoritative(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -138,10 +204,15 @@ def test_doctor_only_marks_current_restore_verified_inventory_authoritative(
     _private_dir(registry / "families")
     _private_dir(registry / "recipes")
     _private_dir(registry / "assets")
-    fundus = Fundus(FundusPaths(data_root=data, registry_root=registry))
-    fundus._ensure_state()
     evidence_path = tmp_path / "external-state" / "current.json"
-    monkeypatch.setenv("SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE", str(evidence_path))
+    fundus = Fundus(
+        FundusPaths(
+            data_root=data,
+            registry_root=registry,
+            durability_evidence_path=evidence_path,
+        )
+    )
+    fundus._ensure_state()
     _write_evidence(evidence_path, _evidence_for(fundus.root, ref="snapshot:doctor"))
 
     doctor = fundus.doctor()
@@ -170,10 +241,15 @@ def test_doctor_fails_core_health_when_present_evidence_is_invalid(
     _private_dir(registry / "families")
     _private_dir(registry / "recipes")
     _private_dir(registry / "assets")
-    fundus = Fundus(FundusPaths(data_root=data, registry_root=registry))
-    fundus._ensure_state()
     evidence_path = tmp_path / "external-state" / "current.json"
-    monkeypatch.setenv("SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE", str(evidence_path))
+    fundus = Fundus(
+        FundusPaths(
+            data_root=data,
+            registry_root=registry,
+            durability_evidence_path=evidence_path,
+        )
+    )
+    fundus._ensure_state()
     evidence = _evidence_for(fundus.root)
     evidence["receipt_digest"] = "0" * 64
     _write_evidence(evidence_path, evidence)

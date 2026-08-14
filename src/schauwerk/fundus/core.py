@@ -74,6 +74,8 @@ FORBIDDEN_IMPORT_PREFIXES = (
 class FundusPaths:
     data_root: Path
     registry_root: Path
+    durability_evidence_path: Path | None = None
+    use_default_durability_evidence: bool = False
 
     @classmethod
     def from_overrides(
@@ -81,6 +83,7 @@ class FundusPaths:
         *,
         data_root: str | Path | None = None,
         registry_root: str | Path | None = None,
+        durability_evidence_path: str | Path | None = None,
     ) -> FundusPaths:
         if data_root is None:
             explicit = os.environ.get("SCHAUWERK_FUNDUS_ROOT")
@@ -107,9 +110,19 @@ class FundusPaths:
             )
         else:
             registry = Path(registry_root)
+        durability_evidence = (
+            normalized_absolute(
+                durability_evidence_path,
+                label="Fundus durability evidence path",
+            )
+            if durability_evidence_path is not None
+            else None
+        )
         return cls(
             normalized_absolute(data, label="Fundus data root"),
             normalized_absolute(registry, label="Fundus registry root"),
+            durability_evidence_path=durability_evidence,
+            use_default_durability_evidence=data_root is None,
         )
 
 
@@ -1679,7 +1692,11 @@ class Fundus:
 
         raster_status = raster_adapter_status()
         trace_status = trace_adapter_status()
-        durability = durability_status(self.root)
+        durability = durability_status(
+            self.root,
+            evidence_path=self.paths.durability_evidence_path,
+            use_default_evidence=self.paths.use_default_durability_evidence,
+        )
         ok = (
             seam["ok"]
             and state["safe"] is not False

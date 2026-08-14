@@ -47,6 +47,7 @@ def add_fundus_parser(providers) -> None:
     )
     _state_option(doctor)
     _registry_option(doctor)
+    doctor.add_argument("--durability-evidence")
     doctor.add_argument("--json", action="store_true")
 
     ingest = commands.add_parser(
@@ -239,6 +240,9 @@ def _fundus(args) -> Fundus:
         FundusPaths.from_overrides(
             data_root=getattr(args, "data_root", None),
             registry_root=getattr(args, "registry_root", None),
+            durability_evidence_path=getattr(
+                args, "durability_evidence", None
+            ),
         )
     )
 

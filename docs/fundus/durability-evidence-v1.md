@@ -78,7 +78,9 @@ mit Fallback auf:
 ~/.local/state/schauwerk/fundus/durability/current.json
 ```
 
-Für kontrollierte Umgebungen kann `SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE` einen anderen exakten Receipt-Pfad setzen.
+Für den standardmäßig beziehungsweise über `SCHAUWERK_FUNDUS_ROOT` konfigurierten Fundus kann `SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE` einen anderen exakten Receipt-Pfad setzen.
+
+Ein expliziter `--data-root` oder ein programmatisch separat konstruierter Fundus-State übernimmt weder den Standard-Receipt noch diese globale Umgebungsbindung stillschweigend. Für einen solchen isolierten Root muss die Evidence mit `fundus doctor --durability-evidence PATH` oder programmatisch über `durability_evidence_path` ausdrücklich gebunden werden.
 
 Evidence innerhalb des Fundus-Data-Roots wird fail-closed verworfen, weil sich ein Beleg nicht selbst als Bestandteil des attestierten Inventars legitimieren darf.
 
