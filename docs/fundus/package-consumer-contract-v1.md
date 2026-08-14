@@ -26,6 +26,8 @@ Schauwerk verändert dabei weder das Package nachträglich noch ein fremdes Cons
 Geprüft werden:
 
 - Package-Schema v1 oder v2;
+- UTF-8-JSON ohne doppelte Schlüssel, `NaN` oder Infinity;
+- exakt die kanonische Fundus-JSON-Serialisierung von `fundus-package.json`;
 - `package_digest` gegen den kanonischen Manifestinhalt;
 - `consumer_runtime_dependency=false`;
 - kanonische und eindeutige relative Assetpfade;
@@ -55,7 +57,7 @@ Der Lock enthält ausschließlich Consumer-relevante Bindungen:
 - `consumer_runtime_dependency=false`;
 - eigenen `lock_digest`.
 
-Der Lock ist keine neue visuelle Acceptance und keine neue Package-Revision. Er bindet nur die bereits akzeptierten Produktionsbytes für einen späteren Consumer.
+Der Lock ist keine neue visuelle Acceptance und keine neue Package-Revision. Er bindet nur die bereits akzeptierten Produktionsbytes für einen späteren Consumer. Auch beim späteren Einlesen muss seine JSON-Darstellung kanonisch sein und doppelte Schlüssel werden fail-closed abgewiesen.
 
 ## Portable Consumer-Prüfung
 
@@ -71,7 +73,7 @@ Ein Consumer kann dieselbe Semantik auch außerhalb einer laufenden Schauwerk-In
 
 ## Architekturgrenze
 
-Der Lock ist bewusst **nicht** Bestandteil des zuvor erzeugten immutable Packages. Ein nachträgliches Hineinschreiben würde dessen Package-Digest verändern und die bestehende Acceptance-Bindung entwerten.
+Der Lock ist bewusst **nicht** Bestandteil des zuvor erzeugten immutable Packages. Ein nachträgliches Hineinschreiben würde dessen Package-Digest verändern und die bestehende Acceptance-Bindung entwerten. Deshalb wird die Materialisierung auch dann fail-closed abgewiesen, wenn ein fehlkonfigurierter `data-root` den berechneten Lock-Pfad innerhalb des Package-Verzeichnisses platzieren würde.
 
 Ebenso schreibt Schauwerk den Lock nicht direkt in Websites, Präsentationen, Miro-Boards oder andere Repositories. Grabowski übernimmt später unter Zielrepo-Autorität beispielsweise:
 
@@ -89,4 +91,4 @@ accepted Fundus package + consumer lock
 
 ## Nicht-Ziele
 
-Der Consumer Lock ist kein Dependency-Manager, kein CDN-Manifest, kein Updatekanal und keine automatische Freigabe. Er entscheidet nicht, ob ein neueres Asset gestalterisch besser ist, und er autorisiert keine Cross-Repo-Mutation.
+Der Consumer Lock ist kein Dependency-Manager, kein CDN-Manifest, kein Updatekanal und keine automatische Freigabe. Er ist außerdem keine kryptographische Signatur, keine Generator- oder Provider-Attestierung, keine Reviewer-Authentifizierung und kein selbständiger Provenienznachweis. Er beweist die interne Integrität und exakte Bindung der ihm zugrunde gelegten Bytes; die Herkunfts- und Acceptance-Autorität bleibt in der Fundus-Lifecycle-Kette. Er entscheidet nicht, ob ein neueres Asset gestalterisch besser ist, und er autorisiert keine Cross-Repo-Mutation.

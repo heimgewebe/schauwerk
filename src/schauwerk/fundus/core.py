@@ -1331,6 +1331,14 @@ class Fundus:
             / lock["package_digest"]
             / f"{lock['lock_digest']}.json"
         )
+        package_root = Path(verified["package_path"])
+        lock_target = normalized_absolute(
+            lock_path, label="Fundus consumer lock path"
+        )
+        if lock_target == package_root or package_root in lock_target.parents:
+            raise FundusError(
+                "Fundus consumer lock must not be materialized inside the package"
+            )
         self._write_create_or_verify(
             lock_path,
             canonical_consumer_lock_bytes(lock),

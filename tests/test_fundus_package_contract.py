@@ -244,3 +244,66 @@ def test_package_inventory_depth_is_bounded(tmp_path: Path) -> None:
         current.mkdir()
     with pytest.raises(FundusError, match="directory depth exceeds"):
         verify_package_directory(root)
+
+
+def test_package_manifest_requires_canonical_unique_json(tmp_path: Path) -> None:
+    root, manifest = _package(tmp_path, version=1)
+    manifest_path = root / "fundus-package.json"
+
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    with pytest.raises(FundusError, match="serialization is not canonical"):
+        verify_package_directory(root)
+
+    duplicate = canonical_json(manifest).decode("utf-8").replace(
+        '"asset_id":"fixture.mask",',
+        '"asset_id":"fixture.mask","asset_id":"fixture.mask",',
+        1,
+    )
+    manifest_path.write_text(duplicate + "\n", encoding="utf-8")
+    with pytest.raises(FundusError, match="manifest is invalid JSON"):
+        verify_package_directory(root)
+
+
+def test_consumer_lock_requires_canonical_unique_json(tmp_path: Path) -> None:
+    root, _ = _package(tmp_path, version=2)
+    package = verify_package_directory(root)
+    lock = consumer_lock_manifest(package)
+    lock_path = tmp_path / "fundus-consumer-lock.json"
+
+    lock_path.write_text(json.dumps(lock, indent=2), encoding="utf-8")
+    with pytest.raises(FundusError, match="serialization is not canonical"):
+        load_consumer_lock(lock_path)
+
+    duplicate = canonical_json(lock).decode("utf-8").replace(
+        '"asset_id":"fixture.mask",',
+        '"asset_id":"fixture.mask","asset_id":"fixture.mask",',
+        1,
+    )
+    lock_path.write_text(duplicate + "\n", encoding="utf-8")
+    with pytest.raises(FundusError, match="lock is invalid JSON"):
+        load_consumer_lock(lock_path)
+
+
+def test_consumer_lock_refuses_data_root_inside_package(tmp_path: Path) -> None:
+    package_root, _ = _package(tmp_path, version=2)
+    before = sorted(
+        path.relative_to(package_root).as_posix()
+        for path in package_root.rglob("*")
+    )
+    fundus = Fundus(
+        FundusPaths(
+            data_root=package_root,
+            registry_root=tmp_path / "unused-registry",
+        )
+    )
+
+    with pytest.raises(
+        FundusError, match="must not be materialized inside the package"
+    ):
+        fundus.consumer_lock(package_root)
+
+    after = sorted(
+        path.relative_to(package_root).as_posix()
+        for path in package_root.rglob("*")
+    )
+    assert after == before
