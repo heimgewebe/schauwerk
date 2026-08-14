@@ -18,10 +18,13 @@ from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
     ACCEPTANCE_SCHEMA,
     BUILD_SCHEMA,
+    BUILD_SCHEMA_V2,
     IMAGE_BRIEF_SCHEMA,
     INGEST_SCHEMA,
     PACKAGE_SCHEMA,
+    PACKAGE_SCHEMA_V2,
     PREVIEW_SCHEMA,
+    RECIPE_SCHEMA_V2,
     canonical_json,
     checked_id,
     checked_sha256,
@@ -657,11 +660,145 @@ class Fundus:
                         f"asset property conflicts with image brief: {key}"
                     )
 
+    def _apply_recipe_operation(
+        self,
+        payload: bytes,
+        detected_media_type: str,
+        operation: dict[str, Any],
+    ) -> tuple[bytes, dict[str, object]]:
+        transform = operation["transform"]
+        profile = operation["parameters"]["profile"]
+        if transform == "sanitize_svg":
+            if detected_media_type != "image/svg+xml":
+                raise FundusError("sanitize_svg requires an SVG source")
+            return sanitize_svg(payload, profile=profile), {"svg_profile": profile}
+        if transform == "raster_normalize":
+            return normalize_raster(payload, profile=profile)
+        if transform == "trace_vtracer":
+            return trace_raster(payload, profile=profile)
+        raise FundusError("unsupported Fundus transform")
+
+    def _build_composition_v2(
+        self,
+        asset_id: str,
+        asset: dict[str, Any],
+        asset_digest: str,
+        recipe: dict[str, Any],
+        recipe_digest: str,
+    ) -> dict[str, Any]:
+        operations = recipe["operations"]
+        source_by_role = {source["role"]: source for source in asset["sources"]}
+        required_roles: list[str] = []
+        for operation in operations:
+            role = operation["source_role"]
+            if role not in required_roles:
+                required_roles.append(role)
+        missing = [role for role in required_roles if role not in source_by_role]
+        if missing:
+            raise FundusError("recipe source role is absent: " + ", ".join(missing))
+
+        prepared: dict[str, tuple[dict[str, Any], bytes, str]] = {}
+        source_records: list[dict[str, Any]] = []
+        for role in required_roles:
+            source = source_by_role[role]
+            output_roles = [
+                operation["output"]["role"]
+                for operation in operations
+                if operation["source_role"] == role
+            ]
+            self._validate_source_image_brief(
+                asset_id,
+                source,
+                output_roles=output_roles,
+                asset_properties=asset.get("properties", {}),
+            )
+            payload = self._read_object(source["sha256"])
+            detected = inspect_media(payload)
+            if detected.media_type != source["media_type"]:
+                raise FundusError("declared source media_type does not match bytes")
+            prepared[role] = (source, payload, detected.media_type)
+            source_records.append(
+                {
+                    "role": source["role"],
+                    "sha256": source["sha256"],
+                    "media_type": source["media_type"],
+                    **(
+                        {"source_mode": source["source_mode"]}
+                        if "source_mode" in source
+                        else {}
+                    ),
+                    **(
+                        {"image_brief_sha256": source["image_brief_sha256"]}
+                        if "image_brief_sha256" in source
+                        else {}
+                    ),
+                }
+            )
+
+        output_records: list[dict[str, Any]] = []
+        staged_outputs: list[tuple[str, bytes]] = []
+        toolchain_operations: list[dict[str, object]] = []
+        for operation in operations:
+            role = operation["source_role"]
+            _, payload, media_type = prepared[role]
+            output_bytes, adapter_toolchain = self._apply_recipe_operation(
+                payload, media_type, operation
+            )
+            output = operation["output"]
+            if inspect_media(output_bytes).media_type != output["media_type"]:
+                raise FundusError("transform output media_type does not match its recipe")
+            output_records.append(
+                {
+                    "role": output["role"],
+                    "source_role": role,
+                    "filename": output["filename"],
+                    "media_type": output["media_type"],
+                    "sha256": digest_bytes(output_bytes),
+                    "bytes": len(output_bytes),
+                }
+            )
+            staged_outputs.append((output["filename"], output_bytes))
+            toolchain_operations.append(
+                {
+                    "source_role": role,
+                    "output_role": output["role"],
+                    "output_filename": output["filename"],
+                    "transform": operation["transform"],
+                    **adapter_toolchain,
+                }
+            )
+
+        body = {
+            "schema_version": BUILD_SCHEMA_V2,
+            "asset_id": asset_id,
+            "asset_manifest_sha256": asset_digest,
+            "recipe_id": recipe["id"],
+            "recipe_sha256": recipe_digest,
+            "sources": source_records,
+            "toolchain": {
+                "fundus_core": TOOLCHAIN_VERSION,
+                "operations": toolchain_operations,
+            },
+            "outputs": output_records,
+        }
+        build_digest = digest_json(body)
+        build = {**body, "build_digest": build_digest}
+        build_dir = self.root / "builds" / asset_id / build_digest
+        self._ensure_private_dir(build_dir)
+        for filename, output_bytes in staged_outputs:
+            self._write_create_or_verify(build_dir / filename, output_bytes)
+        self._write_json_create_or_verify(build_dir / "build.json", build)
+        return {**build, "build_dir": str(build_dir)}
+
     def build(self, asset_id: str) -> dict[str, Any]:
         asset, asset_digest, _ = self._asset(asset_id)
         recipe, recipe_digest, _ = self._recipe(
             asset["recipe"]
         )
+        if recipe.get("schema_version") == RECIPE_SCHEMA_V2:
+            return self._build_composition_v2(
+                asset_id, asset, asset_digest, recipe, recipe_digest
+            )
         matching = [
             source
             for source in asset["sources"]
@@ -825,36 +962,42 @@ class Fundus:
             asset_id,
             build_digest,
         )
-        if len(build["outputs"]) != 1:
-            raise FundusError(
-                "V1 preview supports one output"
+        stage_items: list[str] = []
+        uses_data_images = False
+        for output in build["outputs"]:
+            media_type = output["media_type"]
+            artifact_path = build_dir / output["filename"]
+            if media_type == "image/svg+xml":
+                rendered = self._read_private(
+                    artifact_path,
+                    maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
+                ).decode("utf-8")
+            elif media_type == "image/png":
+                artifact_bytes = self._read_private(
+                    artifact_path,
+                    maximum_bytes=MAX_PREVIEW_RASTER_BYTES,
+                )
+                encoded = base64.b64encode(artifact_bytes).decode("ascii")
+                rendered = (
+                    '<img alt="Fundus raster preview" '
+                    f'src="data:image/png;base64,{encoded}">'
+                )
+                uses_data_images = True
+            else:
+                raise FundusError("Fundus preview supports SVG and PNG outputs")
+            stage_items.append(
+                '<figure class="preview-item">'
+                f'<div class="artifact">{rendered}</div>'
+                f'<figcaption>{html.escape(output["role"])} · '
+                f'<code>{html.escape(output["filename"])}</code></figcaption>'
+                '</figure>'
             )
-        output = build["outputs"][0]
-        media_type = output["media_type"]
-        artifact_path = build_dir / output["filename"]
-        if media_type == "image/svg+xml":
-            stage_content = self._read_private(
-                artifact_path,
-                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
-            ).decode("utf-8")
-            content_security_policy = (
-                "default-src 'none'; style-src 'unsafe-inline'"
-            )
-        elif media_type == "image/png":
-            artifact_bytes = self._read_private(
-                artifact_path,
-                maximum_bytes=MAX_PREVIEW_RASTER_BYTES,
-            )
-            encoded = base64.b64encode(artifact_bytes).decode("ascii")
-            stage_content = (
-                '<img alt="Fundus raster preview" '
-                f'src="data:image/png;base64,{encoded}">'
-            )
-            content_security_policy = (
-                "default-src 'none'; img-src data:; style-src 'unsafe-inline'"
-            )
-        else:
-            raise FundusError("V1 preview supports SVG and PNG outputs")
+        stage_content = "".join(stage_items)
+        content_security_policy = (
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'"
+            if uses_data_images
+            else "default-src 'none'; style-src 'unsafe-inline'"
+        )
 
         asset_label = html.escape(asset_id)
         build_label = html.escape(build_digest)
@@ -874,6 +1017,9 @@ class Fundus:
             'min-height:55vh;background:white;'
             'border:1px solid #bbb}'
             '.stage svg,.stage img{max-width:80%;max-height:55vh}'
+            '.preview-item{margin:0;display:grid;place-items:center;gap:8px}'
+            '.artifact{display:grid;place-items:center}'
+            'figcaption{text-align:center}'
             'code{overflow-wrap:anywhere}'
             '</style></head><body><main>'
             '<h1>Fundus preview</h1>'
@@ -1044,11 +1190,31 @@ class Fundus:
             build_digest,
             acceptance_digest,
         )
-        self._validate_source_image_brief(
-            asset_id,
-            build["source"],
-            output_roles=[item["role"] for item in build["outputs"]],
-        )
+        build_schema = build.get("schema_version")
+        source_image_briefs: list[dict[str, str]] = []
+        if build_schema == BUILD_SCHEMA_V2:
+            for source in build["sources"]:
+                output_roles = [
+                    item["role"]
+                    for item in build["outputs"]
+                    if item["source_role"] == source["role"]
+                ]
+                self._validate_source_image_brief(
+                    asset_id, source, output_roles=output_roles
+                )
+                if "image_brief_sha256" in source:
+                    source_image_briefs.append(
+                        {
+                            "role": source["role"],
+                            "sha256": source["image_brief_sha256"],
+                        }
+                    )
+        else:
+            self._validate_source_image_brief(
+                asset_id,
+                build["source"],
+                output_roles=[item["role"] for item in build["outputs"]],
+            )
         if acceptance.get("decision") != "accepted":
             raise FundusError(
                 "only an explicitly accepted build may be packaged"
@@ -1070,6 +1236,11 @@ class Fundus:
                 {
                     "path": relpath,
                     "role": output["role"],
+                    **(
+                        {"source_role": output["source_role"]}
+                        if build_schema == BUILD_SCHEMA_V2
+                        else {}
+                    ),
                     "media_type": output["media_type"],
                     "sha256": digest_bytes(payload),
                     "bytes": len(payload),
@@ -1077,17 +1248,27 @@ class Fundus:
             )
             staged.append((relpath, payload))
         body = {
-            "schema_version": PACKAGE_SCHEMA,
+            "schema_version": (
+                PACKAGE_SCHEMA_V2
+                if build_schema == BUILD_SCHEMA_V2
+                else PACKAGE_SCHEMA
+            ),
             "asset_id": asset_id,
             "build_digest": build_digest,
             "acceptance_digest": acceptance_digest,
             "files": files,
             **(
+                {"source_image_briefs": source_image_briefs}
+                if build_schema == BUILD_SCHEMA_V2 and source_image_briefs
+                else {}
+            ),
+            **(
                 {
                     "source_image_brief_sha256":
                         build["source"]["image_brief_sha256"]
                 }
-                if "image_brief_sha256" in build["source"]
+                if build_schema != BUILD_SCHEMA_V2
+                and "image_brief_sha256" in build["source"]
                 else {}
             ),
             "consumer_runtime_dependency": False,

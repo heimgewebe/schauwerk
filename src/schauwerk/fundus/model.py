@@ -13,9 +13,12 @@ from .pathio import read_regular_bytes
 ASSET_SCHEMA = "schauwerk-fundus-asset.v1"
 FAMILY_SCHEMA = "schauwerk-fundus-family.v1"
 RECIPE_SCHEMA = "schauwerk-fundus-recipe.v1"
+RECIPE_SCHEMA_V2 = "schauwerk-fundus-recipe.v2"
 BUILD_SCHEMA = "schauwerk-fundus-build.v1"
+BUILD_SCHEMA_V2 = "schauwerk-fundus-build.v2"
 ACCEPTANCE_SCHEMA = "schauwerk-fundus-acceptance.v1"
 PACKAGE_SCHEMA = "schauwerk-fundus-package.v1"
+PACKAGE_SCHEMA_V2 = "schauwerk-fundus-package.v2"
 INGEST_SCHEMA = "schauwerk-fundus-ingest.v1"
 PREVIEW_SCHEMA = "schauwerk-fundus-preview.v1"
 IMAGE_BRIEF_SCHEMA = "schauwerk-fundus-image-brief.v1"
@@ -381,54 +384,37 @@ def validate_image_brief(value: Any) -> dict[str, Any]:
     return doc
 
 
-def validate_recipe(value: Any) -> dict[str, Any]:
-    doc = _mapping(value, label="recipe")
+def _validate_recipe_operation(value: Any, *, label: str) -> dict[str, Any]:
+    operation = _mapping(value, label=label)
     _exact_keys(
-        doc,
-        allowed={
-            "schema_version",
-            "id",
-            "transform",
-            "source_role",
-            "output",
-            "parameters",
-        },
-        required={
-            "schema_version",
-            "id",
-            "transform",
-            "source_role",
-            "output",
-            "parameters",
-        },
-        label="recipe",
+        operation,
+        allowed={"transform", "source_role", "output", "parameters"},
+        required={"transform", "source_role", "output", "parameters"},
+        label=label,
     )
-    if doc.get("schema_version") != RECIPE_SCHEMA:
-        raise ValueError(f"recipe schema_version must be {RECIPE_SCHEMA}")
-    checked_id(doc.get("id"), label="recipe id")
-    transform = doc.get("transform")
+    transform = operation.get("transform")
     if transform not in {"sanitize_svg", "raster_normalize", "trace_vtracer"}:
         raise ValueError("recipe transform is unsupported")
-    if doc.get("source_role") not in SOURCE_ROLES:
+    if operation.get("source_role") not in SOURCE_ROLES:
         raise ValueError("recipe source_role is invalid")
 
-    output = _mapping(doc.get("output"), label="recipe output")
+    output = _mapping(operation.get("output"), label=f"{label} output")
     _exact_keys(
         output,
         allowed={"role", "filename", "media_type"},
         required={"role", "filename", "media_type"},
-        label="recipe output",
+        label=f"{label} output",
     )
     if output.get("role") not in OUTPUT_ROLES:
         raise ValueError("recipe output role is invalid")
     checked_filename(output.get("filename"), label="recipe output filename")
 
-    parameters = _mapping(doc.get("parameters"), label="recipe parameters")
+    parameters = _mapping(operation.get("parameters"), label=f"{label} parameters")
     _exact_keys(
         parameters,
         allowed={"profile"},
         required={"profile"},
-        label="recipe parameters",
+        label=f"{label} parameters",
     )
     profile = parameters.get("profile")
 
@@ -454,4 +440,71 @@ def validate_recipe(value: Any) -> dict[str, Any]:
             "trace.vtracer.alpha-mask.v1",
         }:
             raise ValueError("unknown trace profile")
-    return doc
+    return operation
+
+
+def validate_recipe(value: Any) -> dict[str, Any]:
+    doc = _mapping(value, label="recipe")
+    schema = doc.get("schema_version")
+    if schema == RECIPE_SCHEMA:
+        _exact_keys(
+            doc,
+            allowed={
+                "schema_version",
+                "id",
+                "transform",
+                "source_role",
+                "output",
+                "parameters",
+            },
+            required={
+                "schema_version",
+                "id",
+                "transform",
+                "source_role",
+                "output",
+                "parameters",
+            },
+            label="recipe",
+        )
+        checked_id(doc.get("id"), label="recipe id")
+        _validate_recipe_operation(
+            {
+                "transform": doc["transform"],
+                "source_role": doc["source_role"],
+                "output": doc["output"],
+                "parameters": doc["parameters"],
+            },
+            label="recipe",
+        )
+        return doc
+
+    if schema == RECIPE_SCHEMA_V2:
+        _exact_keys(
+            doc,
+            allowed={"schema_version", "id", "operations"},
+            required={"schema_version", "id", "operations"},
+            label="recipe",
+        )
+        checked_id(doc.get("id"), label="recipe id")
+        operations = doc.get("operations")
+        if not isinstance(operations, list) or not 1 <= len(operations) <= 8:
+            raise ValueError("recipe v2 operations must contain between 1 and 8 entries")
+        seen_roles: set[str] = set()
+        seen_filenames: set[str] = set()
+        for index, raw in enumerate(operations):
+            operation = _validate_recipe_operation(raw, label=f"recipe operation {index}")
+            output = operation["output"]
+            role = output["role"]
+            filename = output["filename"]
+            if role in seen_roles:
+                raise ValueError(f"recipe v2 output role is duplicated: {role}")
+            if filename in seen_filenames:
+                raise ValueError(f"recipe v2 output filename is duplicated: {filename}")
+            seen_roles.add(role)
+            seen_filenames.add(filename)
+        return doc
+
+    raise ValueError(
+        f"recipe schema_version must be {RECIPE_SCHEMA} or {RECIPE_SCHEMA_V2}"
+    )

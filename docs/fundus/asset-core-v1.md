@@ -18,7 +18,7 @@ Der Fundus ist ein Miro-unabhängiger Modulith innerhalb von Schauwerk. Er verwa
 - Git besitzt Asset-, Family- und Recipe-Semantik.
 - Der private content-addressed Store hält digestgeprüfte unveränderte importierte Bytes, bleibt aber bis zum bewiesenen Backup-/Restore-Vertrag nicht alleinige Masterautorität.
 - Ein Import-Receipt dokumentiert deklarative Provenienz; es authentifiziert keinen Generator oder Urheber.
-- Ein Build bindet Assetmanifest, Recipe, Quellhash, Toolchain und exakte Outputhashes.
+- Ein Build bindet Assetmanifest, Recipe, alle verwendeten Quellhashes, Toolchain und exakte Outputhashes.
 - Eine visuelle Acceptance bindet eine deklarierte Entscheidung an genau einen Build. `reviewer_identity_authenticated=false` verhindert eine überzogene Identitätsbehauptung.
 - Ein Package enthält nur akzeptierte Outputs und hat keine Laufzeitabhängigkeit von Schauwerk.
 - Grabowski, nicht Schauwerk, integriert ein Package in fremde Repositories.
@@ -53,6 +53,23 @@ Outputrollen:
 
 Semantische IDs bleiben menschenlesbar, zum Beispiel `botanical.laurel.corner`; konkrete Revisionen sind immer digestgebunden.
 
+## Composition v2
+
+`schauwerk-fundus-recipe.v1` bleibt vollständig unterstützt und beschreibt weiterhin genau eine Quelle, eine Transformation und einen Output. `schauwerk-fundus-recipe.v2` ergänzt eine geordnete Liste aus ein bis acht Operationen. Jede Operation bindet weiterhin **genau eine** Asset-Quellrolle, **genau eine** bestehende Fundus-Transformation und **genau einen** Output. Quellrollen dürfen für Fan-out mehrfach verwendet werden; Outputrollen und Outputdateinamen müssen innerhalb des Recipe eindeutig sein.
+
+Damit kann ein Asset beispielsweise gleichzeitig
+
+```text
+trace_source   → sanitize_svg      → mask.svg
+texture_source → raster_normalize  → texture.png
+```
+
+bauen. Form und Material bleiben getrennte Produktionsbytes und können unabhängig konsumiert werden. Composition v2 führt bewusst **kein** implizites Blending, Mask-Compositing oder sonstiges Multi-Input-Pixelverfahren ein. Eine spätere echte Kompositionsoperation braucht einen eigenen expliziten Transformvertrag, eigene Parameter und eigene technische Acceptance-Regeln.
+
+Ein v2-Build verwendet `schauwerk-fundus-build.v2`, bindet die tatsächlich benötigten Quellen in der Reihenfolge ihrer ersten Verwendung und bindet jeden Output zusätzlich an seine `source_role`. Generative Image-Brief-Digests bleiben an der jeweiligen Quelle erhalten. Die technische Toolchain-Evidenz wird pro Operation aufgezeichnet. Preview kann alle SVG-/PNG-Outputs eines Builds gemeinsam und ohne Netzabhängigkeit darstellen.
+
+Nach visueller Acceptance erzeugt ein v2-Build `schauwerk-fundus-package.v2`. Jedes Package-File trägt seine `source_role`; vorhandene generative Briefbindungen werden als rollenbezogene `source_image_briefs` weitergetragen und vor Packaging erneut gegen die exakten Source-/Outputrollen geprüft. Die bestehende Acceptance v1 muss dafür nicht versioniert werden: sie bindet bereits Build-Digest und die vollständige Liste der Output-Digests.
+
 ## SVG-Profile
 
 `svg.mask.v1` erlaubt nur passive geometrische SVG-Primitiven. `svg.decorative.v1` ergänzt lokale Gradienten, Clips und Masks. Beide Profile verbieten Scripts, Eventhandler, Stylesheets, `foreignObject`, externe URLs, Daten-URLs, Fonts, fremde Namespaces sowie DOCTYPE-/ENTITY-Deklarationen. Sanitizing konkretisiert damit die Active-Resource-Grenze aus der kanonischen Publication-Regel und geschieht vor einer möglichen späteren Optimierung. Zusätzlich gelten Größen-, Tiefen-, Element- und Pfadbudgets.
@@ -68,9 +85,9 @@ Generierte oder generativ bearbeitete wiederverwendbare Quellen folgen zusätzli
 ## Lifecycle
 
 ```text
-source file
+source file(s)
    ↓ ingest
-content object
+content object(s)
    ↓ asset + recipe
 build
    ↓
@@ -109,4 +126,4 @@ Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, k
 
 ## Abnahme
 
-V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie Build, Review und Packaging ausführen kann. Das erzeugte Review-Bundle und das Consumer-Package bleiben ohne laufende Schauwerk-Runtime nutzbar. Reale Projektpiloten bleiben getrennte Consumer-Slices und begründen keine projektspezifische Core-Semantik.
+V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie Build, Review und Packaging ausführen kann. Composition v2 ergänzt dazu den Nachweis, dass ein Asset mehrere getrennte Quellen deterministisch in mehrere getrennte Outputs überführen kann, ohne v1-Digests oder v1-Packages zu verändern. Das erzeugte Review-Bundle und das Consumer-Package bleiben ohne laufende Schauwerk-Runtime nutzbar. Reale Projektpiloten bleiben getrennte Consumer-Slices und begründen keine projektspezifische Core-Semantik.

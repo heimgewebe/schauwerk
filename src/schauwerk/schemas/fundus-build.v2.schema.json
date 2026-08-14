@@ -1,0 +1,75 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-build.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "asset_manifest_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "outputs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {"minimum": 1, "type": "integer"},
+          "filename": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+          "media_type": {"enum": ["image/svg+xml", "image/png"]},
+          "role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "source_role": {"enum": ["original", "trace_source", "texture_source", "reference"]}
+        },
+        "required": ["role", "source_role", "filename", "media_type", "sha256", "bytes"],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "recipe_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "recipe_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "schema_version": {"const": "schauwerk-fundus-build.v2"},
+    "sources": {
+      "items": {
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {"properties": {"source_mode": {"enum": ["generated", "edited"]}}, "required": ["source_mode"]},
+            "then": {"required": ["image_brief_sha256"]}
+          },
+          {
+            "if": {"required": ["image_brief_sha256"]},
+            "then": {
+              "properties": {"source_mode": {"enum": ["generated", "edited"]}},
+              "required": ["source_mode"]
+            }
+          }
+        ],
+        "properties": {
+          "image_brief_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "media_type": {"type": "string"},
+          "role": {"enum": ["original", "trace_source", "texture_source", "reference"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "source_mode": {"enum": ["manual", "generated", "edited", "unknown"]}
+        },
+        "required": ["role", "sha256", "media_type"],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "toolchain": {"type": "object"}
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "asset_manifest_sha256",
+    "recipe_id",
+    "recipe_sha256",
+    "sources",
+    "toolchain",
+    "outputs",
+    "build_digest"
+  ],
+  "title": "Schauwerk Fundus Build v2",
+  "type": "object"
+}
