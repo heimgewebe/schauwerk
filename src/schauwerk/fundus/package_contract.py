@@ -46,6 +46,36 @@ def _validate(value: dict[str, Any], schema_file: str, *, label: str) -> None:
         raise FundusError(f"{label} schema validation failed: {exc.message}") from exc
 
 
+def _parse_json_object(payload: bytes, *, label: str) -> dict[str, Any]:
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise FundusError(f"{label} is invalid JSON") from exc
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"invalid JSON constant: {value}")
+
+    def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    try:
+        value = json.loads(
+            text,
+            object_pairs_hook=unique_pairs,
+            parse_constant=reject_constant,
+        )
+    except (json.JSONDecodeError, RecursionError, ValueError) as exc:
+        raise FundusError(f"{label} is invalid JSON") from exc
+    if not isinstance(value, dict):
+        raise FundusError(f"{label} must be an object")
+    return value
+
+
 def _checked_relative_path(value: object, *, label: str) -> str:
     if not isinstance(value, str) or not value or "\\" in value or "\x00" in value:
         raise FundusError(f"{label} is invalid")
@@ -140,12 +170,13 @@ def verify_package_directory(directory: str | Path) -> dict[str, Any]:
         maximum_bytes=MAX_PACKAGE_MANIFEST_BYTES,
         label="Fundus package manifest",
     )
-    try:
-        manifest = json.loads(manifest_bytes)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise FundusError("Fundus package manifest is invalid JSON") from exc
-    if not isinstance(manifest, dict):
-        raise FundusError("Fundus package manifest must be an object")
+    manifest = _parse_json_object(
+        manifest_bytes, label="Fundus package manifest"
+    )
+    if manifest_bytes != canonical_json(manifest) + b"\n":
+        raise FundusError(
+            "Fundus package manifest serialization is not canonical"
+        )
     schema_version = manifest.get("schema_version")
     schema_file = PACKAGE_SCHEMA_FILES.get(schema_version)
     if schema_file is None:
@@ -250,12 +281,11 @@ def load_consumer_lock(path: str | Path) -> dict[str, Any]:
         require_owner=True,
         forbidden_mode_bits=0o022,
     )
-    try:
-        lock = json.loads(payload)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise FundusError("Fundus consumer lock is invalid JSON") from exc
-    if not isinstance(lock, dict):
-        raise FundusError("Fundus consumer lock must be an object")
+    lock = _parse_json_object(payload, label="Fundus consumer lock")
+    if payload != canonical_consumer_lock_bytes(lock):
+        raise FundusError(
+            "Fundus consumer lock serialization is not canonical"
+        )
     _validate(lock, CONSUMER_LOCK_SCHEMA_FILE, label="Fundus consumer lock")
     paths = [
         _checked_relative_path(item["path"], label="Fundus consumer lock file path")
