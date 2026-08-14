@@ -14,9 +14,11 @@ ASSET_SCHEMA = "schauwerk-fundus-asset.v1"
 FAMILY_SCHEMA = "schauwerk-fundus-family.v1"
 RECIPE_SCHEMA = "schauwerk-fundus-recipe.v1"
 RECIPE_SCHEMA_V2 = "schauwerk-fundus-recipe.v2"
+RECIPE_SCHEMA_V3 = "schauwerk-fundus-recipe.v3"
 BUILD_SCHEMA = "schauwerk-fundus-build.v1"
 BUILD_SCHEMA_V2 = "schauwerk-fundus-build.v2"
 ACCEPTANCE_SCHEMA = "schauwerk-fundus-acceptance.v1"
+ACCEPTANCE_SCHEMA_V2 = "schauwerk-fundus-acceptance.v2"
 PACKAGE_SCHEMA = "schauwerk-fundus-package.v1"
 PACKAGE_SCHEMA_V2 = "schauwerk-fundus-package.v2"
 INGEST_SCHEMA = "schauwerk-fundus-ingest.v1"
@@ -479,17 +481,25 @@ def validate_recipe(value: Any) -> dict[str, Any]:
         )
         return doc
 
-    if schema == RECIPE_SCHEMA_V2:
+    if schema in {RECIPE_SCHEMA_V2, RECIPE_SCHEMA_V3}:
+        version = "v2" if schema == RECIPE_SCHEMA_V2 else "v3"
+        required = {"schema_version", "id", "operations"}
+        allowed = set(required)
+        if schema == RECIPE_SCHEMA_V3:
+            required.add("acceptance")
+            allowed.add("acceptance")
         _exact_keys(
             doc,
-            allowed={"schema_version", "id", "operations"},
-            required={"schema_version", "id", "operations"},
+            allowed=allowed,
+            required=required,
             label="recipe",
         )
         checked_id(doc.get("id"), label="recipe id")
         operations = doc.get("operations")
         if not isinstance(operations, list) or not 1 <= len(operations) <= 8:
-            raise ValueError("recipe v2 operations must contain between 1 and 8 entries")
+            raise ValueError(
+                f"recipe {version} operations must contain between 1 and 8 entries"
+            )
         seen_roles: set[str] = set()
         seen_filenames: set[str] = set()
         for index, raw in enumerate(operations):
@@ -498,13 +508,32 @@ def validate_recipe(value: Any) -> dict[str, Any]:
             role = output["role"]
             filename = output["filename"]
             if role in seen_roles:
-                raise ValueError(f"recipe v2 output role is duplicated: {role}")
+                raise ValueError(
+                    f"recipe {version} output role is duplicated: {role}"
+                )
             if filename in seen_filenames:
-                raise ValueError(f"recipe v2 output filename is duplicated: {filename}")
+                raise ValueError(
+                    f"recipe {version} output filename is duplicated: {filename}"
+                )
             seen_roles.add(role)
             seen_filenames.add(filename)
+        if schema == RECIPE_SCHEMA_V3:
+            acceptance = _mapping(
+                doc.get("acceptance"), label="recipe acceptance"
+            )
+            _exact_keys(
+                acceptance,
+                allowed={"inheritance"},
+                required={"inheritance"},
+                label="recipe acceptance",
+            )
+            if acceptance.get("inheritance") != (
+                "identical_sources_and_outputs_only"
+            ):
+                raise ValueError("recipe acceptance inheritance is invalid")
         return doc
 
     raise ValueError(
-        f"recipe schema_version must be {RECIPE_SCHEMA} or {RECIPE_SCHEMA_V2}"
+        "recipe schema_version must be "
+        f"{RECIPE_SCHEMA}, {RECIPE_SCHEMA_V2} or {RECIPE_SCHEMA_V3}"
     )

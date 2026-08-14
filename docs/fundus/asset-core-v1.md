@@ -70,6 +70,10 @@ Ein v2-Build verwendet `schauwerk-fundus-build.v2`, bindet die tatsächlich ben�
 
 Nach visueller Acceptance erzeugt ein v2-Build `schauwerk-fundus-package.v2`. Jedes Package-File trägt seine `source_role`; vorhandene generative Briefbindungen werden als rollenbezogene `source_image_briefs` weitergetragen und vor Packaging erneut gegen die exakten Source-/Outputrollen geprüft. Die bestehende Acceptance v1 muss dafür nicht versioniert werden: sie bindet bereits Build-Digest und die vollständige Liste der Output-Digests.
 
+## Acceptance-Vererbung
+
+Der normative [Acceptance Inheritance v1](acceptance-inheritance-v1.md) erlaubt eine eng begrenzte Vererbung nur über `schauwerk-fundus-recipe.v3`. Parent und Kandidat müssen exakt dieselben digestgebundenen Source-Bindungen und dieselben geordneten Output-Bindungen besitzen; Parent ist immer eine direkte Acceptance v1. Für `generated` und `edited` gilt zusätzlich das exakt gebundene Image-Brief-Gate: nur `acceptance.inheritance=deterministic_recipe_only` erlaubt die Recipe-v3-Vererbung, `none` blockiert. Die geerbte Acceptance v2 ist ein technischer Beleg und behauptet ausdrücklich **keine neue visuelle Prüfung**. Vererbungsketten und neue Source-Revisionen sind ausgeschlossen.
+
 ## SVG-Profile
 
 `svg.mask.v1` erlaubt nur passive geometrische SVG-Primitiven. `svg.decorative.v1` ergänzt lokale Gradienten, Clips und Masks. Beide Profile verbieten Scripts, Eventhandler, Stylesheets, `foreignObject`, externe URLs, Daten-URLs, Fonts, fremde Namespaces sowie DOCTYPE-/ENTITY-Deklarationen. Sanitizing konkretisiert damit die Active-Resource-Grenze aus der kanonischen Publication-Regel und geschieht vor einer möglichen späteren Optimierung. Zusätzlich gelten Größen-, Tiefen-, Element- und Pfadbudgets.
@@ -111,6 +115,7 @@ schauwerk fundus build botanical.laurel.corner --json
 schauwerk fundus preview botanical.laurel.corner --json
 schauwerk fundus review build botanical.laurel --output-dir /tmp/laurel-review --json
 schauwerk fundus accept botanical.laurel.corner --build DIGEST --reviewer human:alexander --decision accepted --json
+schauwerk fundus accept-inherit botanical.laurel.corner --build NEW_DIGEST --parent-build OLD_DIGEST --parent-acceptance ACCEPTANCE_DIGEST --inherited-by operator:grabowski --json
 schauwerk fundus package botanical.laurel.corner --build DIGEST --acceptance DIGEST --json
 schauwerk fundus package-verify path/to/package --json
 schauwerk fundus consumer-lock path/to/package --json
@@ -133,4 +138,4 @@ Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, k
 
 ## Abnahme
 
-V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie Build, Review und Packaging ausführen kann. Composition v2 ergänzt dazu den Nachweis, dass ein Asset mehrere getrennte Quellen deterministisch in mehrere getrennte Outputs überführen kann, ohne v1-Digests oder v1-Packages zu verändern. Das erzeugte Review-Bundle und das Consumer-Package bleiben ohne laufende Schauwerk-Runtime nutzbar. Reale Projektpiloten bleiben getrennte Consumer-Slices und begründen keine projektspezifische Core-Semantik.
+V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie Build, Review und Packaging ausführen kann. Composition v2 ergänzt dazu den Nachweis, dass ein Asset mehrere getrennte Quellen deterministisch in mehrere getrennte Outputs überführen kann, ohne v1-Digests oder v1-Packages zu verändern. Acceptance Inheritance v1 ergänzt den Nachweis, dass nur source- und outputidentische deterministische Builds mit explizitem Recipe-v3-Opt-in direkt von einer Acceptance v1 erben können, während neue Source-Revisionen, geänderte Output-Bindungen und Vererbungsketten fail-closed blockieren. Das erzeugte Review-Bundle und das Consumer-Package bleiben ohne laufende Schauwerk-Runtime nutzbar. Reale Projektpiloten bleiben getrennte Consumer-Slices und begründen keine projektspezifische Core-Semantik.

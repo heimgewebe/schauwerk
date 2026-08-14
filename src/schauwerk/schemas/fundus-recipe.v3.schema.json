@@ -1,0 +1,106 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-recipe.v3.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "operation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"transform": {"const": "sanitize_svg"}}},
+          "then": {
+            "properties": {
+              "output": {"properties": {"media_type": {"const": "image/svg+xml"}}},
+              "parameters": {"properties": {"profile": {"enum": ["svg.mask.v1", "svg.decorative.v1"]}}}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"transform": {"const": "raster_normalize"}}},
+          "then": {
+            "properties": {
+              "output": {
+                "properties": {
+                  "media_type": {"const": "image/png"},
+                  "role": {"enum": ["raster", "texture", "preview"]}
+                }
+              },
+              "parameters": {"properties": {"profile": {"const": "raster.png.rgba.v1"}}}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"transform": {"const": "trace_vtracer"}}},
+          "then": {
+            "properties": {
+              "output": {
+                "properties": {
+                  "media_type": {"const": "image/svg+xml"},
+                  "role": {"enum": ["vector", "outline", "mask"]}
+                }
+              },
+              "parameters": {
+                "properties": {
+                  "profile": {"enum": ["trace.vtracer.color.v1", "trace.vtracer.alpha-mask.v1"]}
+                }
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "output": {
+          "additionalProperties": false,
+          "properties": {
+            "filename": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+            "media_type": {"enum": ["image/svg+xml", "image/png"]},
+            "role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]}
+          },
+          "required": ["role", "filename", "media_type"],
+          "type": "object"
+        },
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "profile": {
+              "enum": [
+                "svg.mask.v1",
+                "svg.decorative.v1",
+                "raster.png.rgba.v1",
+                "trace.vtracer.color.v1",
+                "trace.vtracer.alpha-mask.v1"
+              ]
+            }
+          },
+          "required": ["profile"],
+          "type": "object"
+        },
+        "source_role": {"enum": ["original", "trace_source", "texture_source", "reference"]},
+        "transform": {"enum": ["sanitize_svg", "raster_normalize", "trace_vtracer"]}
+      },
+      "required": ["transform", "source_role", "output", "parameters"],
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "acceptance": {
+      "additionalProperties": false,
+      "properties": {
+        "inheritance": {"const": "identical_sources_and_outputs_only"}
+      },
+      "required": ["inheritance"],
+      "type": "object"
+    },
+    "id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "operations": {
+      "items": {"$ref": "#/$defs/operation"},
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "schema_version": {"const": "schauwerk-fundus-recipe.v3"}
+  },
+  "required": ["schema_version", "id", "operations", "acceptance"],
+  "title": "Schauwerk Fundus Recipe v3",
+  "type": "object"
+}

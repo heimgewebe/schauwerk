@@ -14,9 +14,11 @@ SCHEMAS = (
     "fundus-asset.v1.schema.json",
     "fundus-recipe.v1.schema.json",
     "fundus-recipe.v2.schema.json",
+    "fundus-recipe.v3.schema.json",
     "fundus-build.v1.schema.json",
     "fundus-build.v2.schema.json",
     "fundus-acceptance.v1.schema.json",
+    "fundus-acceptance.v2.schema.json",
     "fundus-package.v1.schema.json",
     "fundus-package.v2.schema.json",
     "fundus-consumer-lock.v1.schema.json",
@@ -103,9 +105,11 @@ schemas = (
     "fundus-asset.v1.schema.json",
     "fundus-recipe.v1.schema.json",
     "fundus-recipe.v2.schema.json",
+    "fundus-recipe.v3.schema.json",
     "fundus-build.v1.schema.json",
     "fundus-build.v2.schema.json",
     "fundus-acceptance.v1.schema.json",
+    "fundus-acceptance.v2.schema.json",
     "fundus-package.v1.schema.json",
     "fundus-package.v2.schema.json",
     "fundus-consumer-lock.v1.schema.json",
@@ -191,6 +195,46 @@ package = core.package(
     build_digest=build["build_digest"],
     acceptance_digest=acceptance["acceptance_digest"],
 )
+recipe_v3 = {
+    "schema_version": "schauwerk-fundus-recipe.v3",
+    "id": "svg-mask-v3",
+    "operations": [
+        {
+            "transform": "sanitize_svg",
+            "source_role": "trace_source",
+            "output": {
+                "role": "mask",
+                "filename": "mask.svg",
+                "media_type": "image/svg+xml",
+            },
+            "parameters": {"profile": "svg.mask.v1"},
+        }
+    ],
+    "acceptance": {
+        "inheritance": "identical_sources_and_outputs_only",
+    },
+}
+(registry / "recipes" / "svg-mask-v3.json").write_text(
+    json.dumps(recipe_v3), encoding="utf-8"
+)
+asset["recipe"] = "svg-mask-v3"
+(registry / "assets" / "fixture.wheel-smoke.json").write_text(
+    json.dumps(asset), encoding="utf-8"
+)
+candidate = core.build("fixture.wheel-smoke")
+inherited = core.inherit_acceptance(
+    "fixture.wheel-smoke",
+    build_digest=candidate["build_digest"],
+    parent_build_digest=build["build_digest"],
+    parent_acceptance_digest=acceptance["acceptance_digest"],
+    inherited_by="smoke:wheel-operator",
+    inherited_at="2026-08-14T14:00:00+00:00",
+)
+inherited_package = core.package(
+    "fixture.wheel-smoke",
+    build_digest=candidate["build_digest"],
+    acceptance_digest=inherited["acceptance_digest"],
+)
 package_check = verify_package_directory(package["package_dir"])
 consumer_lock = core.consumer_lock(package["package_dir"])
 consumer_check = verify_consumer_lock(consumer_lock["lock_path"], package["package_dir"])
@@ -200,6 +244,8 @@ assert review["portable"] is True
 assert review_check["review_digest"] == review["review_digest"]
 assert package["consumer_runtime_dependency"] is False
 assert package_check["package_digest"] == package["package_digest"]
+assert inherited["schema_version"] == "schauwerk-fundus-acceptance.v2"
+assert inherited_package["acceptance_digest"] == inherited["acceptance_digest"]
 assert consumer_check["package_digest"] == package["package_digest"]
 assert consumer_check["lock_digest"] == consumer_lock["lock_digest"]
 print(
@@ -208,6 +254,7 @@ print(
             "schemas": len(schemas),
             "review": review["review_digest"],
             "package": package["package_digest"],
+            "inherited_package": inherited_package["package_digest"],
             "consumer_lock": consumer_lock["lock_digest"],
         }
     )
@@ -226,4 +273,5 @@ print(
     assert receipt["schemas"] == len(SCHEMAS)
     assert len(receipt["review"]) == 64
     assert len(receipt["package"]) == 64
+    assert len(receipt["inherited_package"]) == 64
     assert len(receipt["consumer_lock"]) == 64
