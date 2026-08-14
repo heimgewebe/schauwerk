@@ -1,0 +1,48 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-acceptance.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "acceptance_mode": {"const": "inherited"},
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "candidate_recipe_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "decision": {"const": "accepted"},
+    "inheritance_basis": {"const": "identical_sources_and_outputs_only"},
+    "inherited_at": {"minLength": 1, "maxLength": 80, "type": "string"},
+    "inherited_by": {"minLength": 1, "maxLength": 200, "type": "string"},
+    "inherited_by_identity_authenticated": {"const": false},
+    "output_bindings_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "output_sha256s": {
+      "items": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "parent_acceptance_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "parent_build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "schema_version": {"const": "schauwerk-fundus-acceptance.v2"},
+    "source_bindings_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "output_sha256s",
+    "decision",
+    "acceptance_mode",
+    "inheritance_basis",
+    "parent_build_digest",
+    "parent_acceptance_digest",
+    "source_bindings_sha256",
+    "output_bindings_sha256",
+    "candidate_recipe_sha256",
+    "inherited_by",
+    "inherited_at",
+    "inherited_by_identity_authenticated",
+    "acceptance_digest"
+  ],
+  "title": "Schauwerk Fundus Acceptance v2",
+  "type": "object"
+}

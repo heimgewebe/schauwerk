@@ -165,6 +165,19 @@ def add_fundus_parser(providers) -> None:
     _registry_option(accept)
     accept.add_argument("--json", action="store_true")
 
+    accept_inherit = commands.add_parser(
+        "accept-inherit",
+        help="inherit one direct visual acceptance under an explicit recipe policy",
+    )
+    accept_inherit.add_argument("asset")
+    accept_inherit.add_argument("--build", required=True)
+    accept_inherit.add_argument("--parent-build", required=True)
+    accept_inherit.add_argument("--parent-acceptance", required=True)
+    accept_inherit.add_argument("--inherited-by", required=True)
+    _state_option(accept_inherit)
+    _registry_option(accept_inherit)
+    accept_inherit.add_argument("--json", action="store_true")
+
     package = commands.add_parser(
         "package",
         help="create an immutable package from an accepted build",
@@ -265,6 +278,14 @@ def handle_fundus_command(args) -> dict:
             reviewer=args.reviewer,
             decision=args.decision,
             note=args.note,
+        )
+    if args.command == "accept-inherit":
+        return fundus.inherit_acceptance(
+            args.asset,
+            build_digest=args.build,
+            parent_build_digest=args.parent_build,
+            parent_acceptance_digest=args.parent_acceptance,
+            inherited_by=args.inherited_by,
         )
     if args.command == "package":
         return fundus.package(

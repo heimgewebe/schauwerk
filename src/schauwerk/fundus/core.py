@@ -17,6 +17,7 @@ from .errors import FundusError
 from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
     ACCEPTANCE_SCHEMA,
+    ACCEPTANCE_SCHEMA_V2,
     BUILD_SCHEMA,
     BUILD_SCHEMA_V2,
     IMAGE_BRIEF_SCHEMA,
@@ -25,6 +26,7 @@ from .model import (
     PACKAGE_SCHEMA_V2,
     PREVIEW_SCHEMA,
     RECIPE_SCHEMA_V2,
+    RECIPE_SCHEMA_V3,
     canonical_json,
     checked_id,
     checked_sha256,
@@ -578,7 +580,7 @@ class Fundus:
         *,
         output_roles: list[str] | None = None,
         asset_properties: dict[str, bool] | None = None,
-    ) -> None:
+    ) -> dict[str, Any] | None:
         asset_mode = source.get("source_mode", "unknown")
         asset_brief_sha256 = source.get("image_brief_sha256")
         ingest_path = (
@@ -624,7 +626,7 @@ class Fundus:
                 raise FundusError(
                     "image brief binding requires generated or edited source_mode"
                 )
-            return
+            return None
 
         assert asset_brief_sha256 is not None
         checked_sha256(asset_brief_sha256, label="image brief sha256")
@@ -664,6 +666,7 @@ class Fundus:
                     raise FundusError(
                         f"asset property conflicts with image brief: {key}"
                     )
+        return brief
 
     def _apply_recipe_operation(
         self,
@@ -800,7 +803,7 @@ class Fundus:
         recipe, recipe_digest, _ = self._recipe(
             asset["recipe"]
         )
-        if recipe.get("schema_version") == RECIPE_SCHEMA_V2:
+        if recipe.get("schema_version") in {RECIPE_SCHEMA_V2, RECIPE_SCHEMA_V3}:
             return self._build_composition_v2(
                 asset_id, asset, asset_digest, recipe, recipe_digest
             )
@@ -1066,6 +1069,168 @@ class Fundus:
             ),
         }
 
+    @staticmethod
+    def _build_source_bindings(build: dict[str, Any]) -> list[dict[str, Any]]:
+        raw_sources = (
+            build["sources"]
+            if build.get("schema_version") == BUILD_SCHEMA_V2
+            else [build["source"]]
+        )
+        bindings: list[dict[str, Any]] = []
+        for source in raw_sources:
+            bindings.append(
+                {
+                    "role": source["role"],
+                    "sha256": source["sha256"],
+                    "media_type": source["media_type"],
+                    **(
+                        {"source_mode": source["source_mode"]}
+                        if "source_mode" in source
+                        else {}
+                    ),
+                    **(
+                        {"image_brief_sha256": source["image_brief_sha256"]}
+                        if "image_brief_sha256" in source
+                        else {}
+                    ),
+                }
+            )
+        return sorted(bindings, key=lambda item: item["role"])
+
+    @staticmethod
+    def _build_output_bindings(build: dict[str, Any]) -> list[dict[str, Any]]:
+        default_source_role = (
+            None
+            if build.get("schema_version") == BUILD_SCHEMA_V2
+            else build["source"]["role"]
+        )
+        bindings: list[dict[str, Any]] = []
+        for output in build["outputs"]:
+            source_role = output.get("source_role", default_source_role)
+            if source_role is None:
+                raise FundusError("build output source role is missing")
+            bindings.append(
+                {
+                    "role": output["role"],
+                    "source_role": source_role,
+                    "filename": output["filename"],
+                    "media_type": output["media_type"],
+                    "sha256": output["sha256"],
+                    "bytes": output["bytes"],
+                }
+            )
+        return bindings
+
+    @staticmethod
+    def _checked_inheritance_timestamp(value: str | None) -> str:
+        rendered = value or datetime.now(UTC).isoformat()
+        if not isinstance(rendered, str) or not rendered or len(rendered) > 80:
+            raise FundusError("inheritance timestamp is invalid")
+        try:
+            parsed = datetime.fromisoformat(rendered)
+        except ValueError as exc:
+            raise FundusError("inheritance timestamp is invalid") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise FundusError("inheritance timestamp must include a timezone")
+        return rendered
+
+    def inherit_acceptance(
+        self,
+        asset_id: str,
+        *,
+        build_digest: str,
+        parent_build_digest: str,
+        parent_acceptance_digest: str,
+        inherited_by: str,
+        inherited_at: str | None = None,
+    ) -> dict[str, Any]:
+        if build_digest == parent_build_digest:
+            raise FundusError("acceptance inheritance requires a different build")
+        build, _ = self._load_build(asset_id, build_digest)
+        parent_build, _ = self._load_build(asset_id, parent_build_digest)
+        recipe, recipe_digest, _ = self._recipe(build["recipe_id"])
+        if recipe_digest != build["recipe_sha256"]:
+            raise FundusError("candidate recipe binding drifted")
+        if (
+            recipe.get("schema_version") != RECIPE_SCHEMA_V3
+            or recipe.get("acceptance", {}).get("inheritance")
+            != "identical_sources_and_outputs_only"
+        ):
+            raise FundusError("candidate recipe does not permit acceptance inheritance")
+
+        for source in build["sources"]:
+            output_roles = [
+                output["role"]
+                for output in build["outputs"]
+                if output["source_role"] == source["role"]
+            ]
+            brief = self._validate_source_image_brief(
+                asset_id, source, output_roles=output_roles
+            )
+            if (
+                brief is not None
+                and brief["acceptance"]["inheritance"]
+                != "deterministic_recipe_only"
+            ):
+                raise FundusError(
+                    "bound image brief does not permit acceptance inheritance"
+                )
+
+        parent_acceptance = self._load_acceptance(
+            asset_id,
+            parent_build_digest,
+            parent_acceptance_digest,
+            _allow_inherited=False,
+        )
+        if (
+            parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA
+            or parent_acceptance.get("decision") != "accepted"
+        ):
+            raise FundusError(
+                "acceptance inheritance requires a directly reviewed accepted parent"
+            )
+
+        source_bindings = self._build_source_bindings(build)
+        parent_source_bindings = self._build_source_bindings(parent_build)
+        if source_bindings != parent_source_bindings:
+            raise FundusError("acceptance inheritance source bindings differ")
+        output_bindings = self._build_output_bindings(build)
+        parent_output_bindings = self._build_output_bindings(parent_build)
+        if output_bindings != parent_output_bindings:
+            raise FundusError("acceptance inheritance output bindings differ")
+
+        inherited_by = inherited_by.strip()
+        if not inherited_by or len(inherited_by) > 200:
+            raise FundusError("inheritance actor is invalid")
+        body = {
+            "schema_version": ACCEPTANCE_SCHEMA_V2,
+            "asset_id": asset_id,
+            "build_digest": build_digest,
+            "output_sha256s": [item["sha256"] for item in build["outputs"]],
+            "decision": "accepted",
+            "acceptance_mode": "inherited",
+            "inheritance_basis": "identical_sources_and_outputs_only",
+            "parent_build_digest": parent_build_digest,
+            "parent_acceptance_digest": parent_acceptance_digest,
+            "source_bindings_sha256": digest_json(source_bindings),
+            "output_bindings_sha256": digest_json(output_bindings),
+            "candidate_recipe_sha256": build["recipe_sha256"],
+            "inherited_by": inherited_by,
+            "inherited_at": self._checked_inheritance_timestamp(inherited_at),
+            "inherited_by_identity_authenticated": False,
+        }
+        acceptance_digest = digest_json(body)
+        record = {**body, "acceptance_digest": acceptance_digest}
+        path = (
+            self.root
+            / "acceptances"
+            / asset_id
+            / build_digest
+            / f"{acceptance_digest}.json"
+        )
+        self._write_json_create_or_verify(path, record)
+        return {**record, "acceptance_path": str(path)}
+
     def accept(
         self,
         asset_id: str,
@@ -1137,6 +1302,8 @@ class Fundus:
         asset_id: str,
         build_digest: str,
         acceptance_digest: str,
+        *,
+        _allow_inherited: bool = True,
     ) -> dict[str, Any]:
         checked_sha256(
             acceptance_digest,
@@ -1177,6 +1344,70 @@ class Fundus:
             raise FundusError(
                 "acceptance targets another build"
             )
+
+        schema = record.get("schema_version")
+        if schema not in {ACCEPTANCE_SCHEMA, ACCEPTANCE_SCHEMA_V2}:
+            raise FundusError("acceptance schema_version is unsupported")
+        build, _ = self._load_build(asset_id, build_digest)
+        expected_output_sha256s = [item["sha256"] for item in build["outputs"]]
+        if record.get("output_sha256s") != expected_output_sha256s:
+            raise FundusError("acceptance output binding mismatch")
+        if schema == ACCEPTANCE_SCHEMA:
+            return record
+        if not _allow_inherited:
+            raise FundusError("inherited acceptance cannot be an inheritance parent")
+        if (
+            record.get("decision") != "accepted"
+            or record.get("acceptance_mode") != "inherited"
+            or record.get("inheritance_basis")
+            != "identical_sources_and_outputs_only"
+            or record.get("inherited_by_identity_authenticated") is not False
+        ):
+            raise FundusError("inherited acceptance contract is invalid")
+        inherited_by = record.get("inherited_by")
+        if not isinstance(inherited_by, str) or not inherited_by.strip() or len(inherited_by) > 200:
+            raise FundusError("inherited acceptance actor is invalid")
+        self._checked_inheritance_timestamp(record.get("inherited_at"))
+        for field in (
+            "parent_build_digest",
+            "parent_acceptance_digest",
+            "source_bindings_sha256",
+            "output_bindings_sha256",
+            "candidate_recipe_sha256",
+        ):
+            try:
+                checked_sha256(record.get(field), label=field)
+            except ValueError as exc:
+                raise FundusError(str(exc)) from exc
+        parent_build_digest = record["parent_build_digest"]
+        if parent_build_digest == build_digest:
+            raise FundusError("inherited acceptance parent build is invalid")
+        parent_build, _ = self._load_build(asset_id, parent_build_digest)
+        parent_acceptance = self._load_acceptance(
+            asset_id,
+            parent_build_digest,
+            record["parent_acceptance_digest"],
+            _allow_inherited=False,
+        )
+        if (
+            parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA
+            or parent_acceptance.get("decision") != "accepted"
+        ):
+            raise FundusError(
+                "inherited acceptance parent was not directly reviewed and accepted"
+            )
+        source_bindings = self._build_source_bindings(build)
+        if source_bindings != self._build_source_bindings(parent_build):
+            raise FundusError("inherited acceptance source bindings drifted")
+        output_bindings = self._build_output_bindings(build)
+        if output_bindings != self._build_output_bindings(parent_build):
+            raise FundusError("inherited acceptance output bindings drifted")
+        if digest_json(source_bindings) != record["source_bindings_sha256"]:
+            raise FundusError("inherited acceptance source evidence drifted")
+        if digest_json(output_bindings) != record["output_bindings_sha256"]:
+            raise FundusError("inherited acceptance output evidence drifted")
+        if build.get("recipe_sha256") != record["candidate_recipe_sha256"]:
+            raise FundusError("inherited acceptance recipe binding drifted")
         return record
 
     def package(
