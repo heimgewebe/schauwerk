@@ -1,0 +1,84 @@
+{
+  "schema_version": "schauwerk-miro-fundus-atelier-live-evidence.v1",
+  "date": "2026-08-14",
+  "board_alias": "hall-of-memory-fundus-atelier-20260814",
+  "board_reference_digest": "3a0302a994cd7d94",
+  "family_id": "hall-of-memory.stellar-frame",
+  "plan_digest": "0df42c2a8e5147797d7b3f77301be13b40a2bfa8bb22ad067055724a8748e35e",
+  "publication": {
+    "receipt_digest": "ee184e5642fb005be8eaccd7da556866f82613d205cf58df08a720683c1fe8e8",
+    "before_image_count": 0,
+    "after_image_count": 5,
+    "all_created_images_present": true,
+    "all_created_images_parent_verified": true
+  },
+  "visual_repair": {
+    "reason": "Provider readback showed that Miro normalizes frame backgrounds to white and stores textArea HTML-like markup literally.",
+    "created_count": 0,
+    "updated_count": 7,
+    "deleted_count": 0,
+    "failed_item_count": 0
+  },
+  "provider_svg_readback": {
+    "mode": "authenticated_canvas_read_as_svg",
+    "item_count": 35,
+    "skipped_count": 0,
+    "frame_count": 6,
+    "image_count": 5,
+    "sha256": "3c0eeac9953c192287d8ca9b25cf1b2d1cdbc4463701004328c327299ee7d871",
+    "escaped_html_markup_present": false,
+    "overview_text_contrast_repaired": true,
+    "all_variant_parents_verified": true,
+    "all_variant_geometry_verified": true,
+    "variant_geometry": {
+      "x": 100,
+      "y": 190,
+      "width": 800,
+      "height": 1200
+    }
+  },
+  "browser_capture": {
+    "attempted": true,
+    "status": "dedicated_profiles_not_authorized_for_private_board",
+    "used_as_evidence": false,
+    "note": "No unrelated browser profile or cookie state was repurposed. Provider-side SVG readback is structural visual evidence, not a human aesthetic acceptance."
+  },
+  "authority": {
+    "fundus_authoritative": true,
+    "miro_source_of_truth": false,
+    "visual_acceptance_inferred": false,
+    "package_created": false
+  },
+  "variants": [
+    {
+      "asset_id": "hall-of-memory.stellar-frame.01",
+      "build_digest": "be78575455211702661d868fed9c2eed5bbe8634e94cda199073bdfb43f7adb6",
+      "output_sha256": "3a2b72bc17953f0e4efaaa315c78f6ca4f3489dc66de75d661467b5aff165b00",
+      "fundus_acceptance_state": "unreviewed"
+    },
+    {
+      "asset_id": "hall-of-memory.stellar-frame.02",
+      "build_digest": "18e05a8e583f0cf023d9b6f12e1c3fdff3bfa5602b3533d30494122f6246b5b0",
+      "output_sha256": "41bd9d1455e4bb540a42ff7dd1eef41b36de89f1f80ae1fd5702bfd100cf447e",
+      "fundus_acceptance_state": "unreviewed"
+    },
+    {
+      "asset_id": "hall-of-memory.stellar-frame.03",
+      "build_digest": "9f1ae5ed2349365adc6cf5ff3e666edc31cf4826202e5e86cbcf64baab7ea72d",
+      "output_sha256": "238b00b0cdc12b0189c9edcd10fca1843b5905355542ef7748f670edcb065217",
+      "fundus_acceptance_state": "unreviewed"
+    },
+    {
+      "asset_id": "hall-of-memory.stellar-frame.04",
+      "build_digest": "af5f16e5df0dc264b4ac5754aebd5cccecee301fbd917ea4e5cd4296862bcd2f",
+      "output_sha256": "8083c3bc7cc192174485aafef88fc337c4e961260c2e6e4f166cdc987b457d31",
+      "fundus_acceptance_state": "unreviewed"
+    },
+    {
+      "asset_id": "hall-of-memory.stellar-frame.05",
+      "build_digest": "fc3d7ce3b4e19772240e14d025232488d39a3a6c90915b622d0541ca2fa039aa",
+      "output_sha256": "3f2c7b5ab95ac14dcf037ccf236a01e319372b8e711ea66e1e5378917e32ca3d",
+      "fundus_acceptance_state": "unreviewed"
+    }
+  ]
+}

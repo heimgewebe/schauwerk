@@ -96,6 +96,10 @@ schauwerk fundus accept botanical.laurel.corner --build DIGEST --reviewer human:
 schauwerk fundus package botanical.laurel.corner --build DIGEST --acceptance DIGEST --json
 ```
 
+## Reviewflächen
+
+Fundus bleibt auch dann Miro-unabhängig, wenn Builds auf eine kollaborative Oberfläche projiziert werden. Der optionale [Miro Fundus Atelier v1](../operators/miro-fundus-atelier-v1.md)-Pfad liegt vollständig auf der Miro-Seite der Architektur: Er liest exakte Buildoutputs, zeigt sie als Reviewvarianten und verifiziert den Provider-Readback, erzeugt aber weder Acceptance noch Package.
+
 ## Nicht-Ziele V1
 
 Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, kein Git LFS, keine Embeddings, keine semantische Suche und kein verpflichtender Desktopeditor. Nach dem reproduzierbaren Adapterbenchmark ist Pillow der deterministische Raster-Core; VTracer 0.6.15 ist der optionale, nachgelagert sanitisierte Traceadapter. Potrace, rembg, Inkscape und weitere Vendorpfade bleiben außerhalb des Core, bis eigene Evidenz ihren Nutzen belegt. Siehe `adapter-benchmark-v1.md`.

@@ -601,6 +601,44 @@ def build_parser() -> argparse.ArgumentParser:
     managed_delete.add_argument("--max-pages", type=_bounded_integer(1, 100), default=100)
     managed_delete.add_argument("--json", action="store_true")
 
+    fundus_atelier = commands.add_parser(
+        "fundus-atelier",
+        help="project exact Fundus builds into Miro for review without changing Fundus authority",
+    )
+    fundus_atelier_commands = fundus_atelier.add_subparsers(
+        dest="fundus_atelier_command", required=True
+    )
+    fundus_atelier_plan = fundus_atelier_commands.add_parser(
+        "plan", help="build a digest-bound Miro review plan without contacting Miro"
+    )
+    fundus_atelier_plan.add_argument("family")
+    fundus_atelier_plan.add_argument("--data-root")
+    fundus_atelier_plan.add_argument("--registry-root")
+    fundus_atelier_plan.add_argument("--json", action="store_true")
+    fundus_atelier_publish = fundus_atelier_commands.add_parser(
+        "publish",
+        help=(
+            "append a digest-bound Fundus review projection to an allowlisted "
+            "Miro board"
+        ),
+    )
+    fundus_atelier_publish.add_argument("family")
+    fundus_atelier_publish.add_argument("alias")
+    fundus_atelier_publish.add_argument("--data-root")
+    fundus_atelier_publish.add_argument("--registry-root")
+    fundus_atelier_publish.add_argument("--receipt-output", required=True)
+    fundus_atelier_publish.add_argument("--create-board", action="store_true")
+    fundus_atelier_publish.add_argument("--board-name")
+    fundus_atelier_publish.add_argument(
+        "--max-pages", type=_bounded_integer(1, 100), default=100
+    )
+    fundus_atelier_publish.add_argument("--json", action="store_true")
+    fundus_atelier_check = fundus_atelier_commands.add_parser(
+        "check", help="verify one local Fundus Atelier publication receipt"
+    )
+    fundus_atelier_check.add_argument("receipt")
+    fundus_atelier_check.add_argument("--json", action="store_true")
+
     doctor = commands.add_parser("doctor", help="diagnose local and live Miro auth state")
     doctor.add_argument("--no-live", action="store_true", help="skip the live MCP check")
     doctor.add_argument("--json", action="store_true")
