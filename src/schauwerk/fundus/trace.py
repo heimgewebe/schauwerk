@@ -44,6 +44,31 @@ _VTRACER_MASK_SETTINGS = {
 }
 
 
+def trace_profile_contract(profile: str) -> dict[str, object]:
+    """Return a copy of the deterministic adapter contract for evidence tooling."""
+    if profile == TRACE_PROFILE:
+        settings = _VTRACER_COLOR_SETTINGS
+        sanitizer_profile = "svg.decorative.v1"
+        source_channel = "color"
+    elif profile == TRACE_MASK_PROFILE:
+        settings = _VTRACER_MASK_SETTINGS
+        sanitizer_profile = "svg.mask.v1"
+        source_channel = "alpha"
+    else:
+        raise FundusError(f"unknown trace profile: {profile}")
+    contract: dict[str, object] = {
+        "profile": profile,
+        "adapter": "vtracer",
+        "required_version": VTRACER_VERSION,
+        "settings": dict(settings),
+        "sanitizer_profile": sanitizer_profile,
+        "trace_source_channel": source_channel,
+    }
+    if profile == TRACE_MASK_PROFILE:
+        contract["alpha_threshold"] = ALPHA_MASK_THRESHOLD
+    return contract
+
+
 def trace_adapter_status() -> dict[str, object]:
     try:
         version = importlib.metadata.version("vtracer")
@@ -75,12 +100,13 @@ def _positive_dimension(value: str, *, label: str) -> float:
     return number
 
 
-def _normalize_vtracer_svg(
+def normalize_vtracer_svg(
     payload: bytes,
     *,
     expected_width: int,
     expected_height: int,
 ) -> bytes:
+    """Normalize VTracer SVG dimensions before the Fundus sanitizer boundary."""
     upper = payload.upper()
     if b"<!DOCTYPE" in upper or b"<!ENTITY" in upper:
         raise FundusError("VTracer output contained forbidden XML declarations")
@@ -108,8 +134,7 @@ def _normalize_vtracer_svg(
 
 def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, object]]:
     """Trace normalized raster bytes with VTracer, then sanitize the SVG."""
-    if profile not in TRACE_PROFILES:
-        raise FundusError(f"unknown trace profile: {profile}")
+    contract = trace_profile_contract(profile)
 
     media = inspect_media(payload)
     if media.media_type not in SUPPORTED_TRACE_MEDIA_TYPES:
@@ -148,8 +173,8 @@ def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, obje
         raise FundusError("trace raster normalization changed source dimensions")
 
     trace_input = normalized_raster
-    settings = _VTRACER_COLOR_SETTINGS
-    sanitizer_profile = "svg.decorative.v1"
+    settings = dict(contract["settings"])
+    sanitizer_profile = str(contract["sanitizer_profile"])
     profile_toolchain: dict[str, object] = {}
     if profile == TRACE_MASK_PROFILE:
         if media.has_alpha is not True:
@@ -169,8 +194,6 @@ def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, obje
             output = BytesIO()
             rgb.save(output, format="PNG", optimize=False, compress_level=9)
             trace_input = output.getvalue()
-        settings = _VTRACER_MASK_SETTINGS
-        sanitizer_profile = "svg.mask.v1"
         profile_toolchain = {
             "trace_source_channel": "alpha",
             "alpha_threshold": ALPHA_MASK_THRESHOLD,
@@ -190,7 +213,7 @@ def trace_raster(payload: bytes, *, profile: str) -> tuple[bytes, dict[str, obje
     if len(raw_bytes) > MAX_RAW_TRACE_BYTES:
         raise FundusError("VTracer output exceeds the Fundus raw trace limit")
 
-    normalized = _normalize_vtracer_svg(
+    normalized = normalize_vtracer_svg(
         raw_bytes,
         expected_width=media.width,
         expected_height=media.height,
