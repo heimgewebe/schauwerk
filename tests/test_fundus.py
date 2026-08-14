@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from importlib.resources import files
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 from schauwerk import runner
 from schauwerk.fundus.core import Fundus, FundusError, FundusPaths
@@ -560,6 +561,95 @@ def test_generated_asset_cannot_drop_or_swap_image_brief_binding(tmp_path: Path)
     )
     with pytest.raises(FundusError, match="preserve ingest image brief"):
         fundus.build("fixture.simple-ornament")
+
+
+def test_ingest_and_build_schemas_enforce_generative_brief_binding() -> None:
+    generated_ingest = {
+        "schema_version": "schauwerk-fundus-ingest.v1",
+        "sha256": "1" * 64,
+        "bytes": 1,
+        "media_type": "image/png",
+        "width": 1,
+        "height": 1,
+        "has_alpha": True,
+        "origin": "chatgpt-images:test",
+        "rights_status": "owned",
+        "source_path_sha256": "2" * 64,
+        "ingested_at": "2026-08-14T06:00:00+00:00",
+        "object_relpath": "objects/sha256/11/" + "1" * 64,
+        "provenance_claim_is_declarative": True,
+        "source_mode": "generated",
+    }
+    with pytest.raises(ValidationError):
+        _validate_instance("fundus-ingest.v1.schema.json", generated_ingest)
+    generated_ingest["image_brief_sha256"] = "3" * 64
+    _validate_instance("fundus-ingest.v1.schema.json", generated_ingest)
+
+    manual_with_brief = dict(generated_ingest)
+    manual_with_brief["source_mode"] = "manual"
+    with pytest.raises(ValidationError):
+        _validate_instance("fundus-ingest.v1.schema.json", manual_with_brief)
+
+    legacy_ingest = dict(generated_ingest)
+    legacy_ingest.pop("source_mode")
+    legacy_ingest.pop("image_brief_sha256")
+    _validate_instance("fundus-ingest.v1.schema.json", legacy_ingest)
+
+    build_source = {
+        "role": "trace_source",
+        "sha256": "1" * 64,
+        "media_type": "image/png",
+        "source_mode": "edited",
+    }
+    build = {
+        "schema_version": "schauwerk-fundus-build.v1",
+        "asset_id": "fixture.asset",
+        "asset_manifest_sha256": "4" * 64,
+        "recipe_id": "fixture-recipe",
+        "recipe_sha256": "5" * 64,
+        "source": build_source,
+        "toolchain": {},
+        "outputs": [
+            {
+                "role": "raster",
+                "filename": "out.png",
+                "media_type": "image/png",
+                "sha256": "6" * 64,
+                "bytes": 1,
+            }
+        ],
+        "build_digest": "7" * 64,
+    }
+    with pytest.raises(ValidationError):
+        _validate_instance("fundus-build.v1.schema.json", build)
+    build_source["image_brief_sha256"] = "3" * 64
+    _validate_instance("fundus-build.v1.schema.json", build)
+
+
+def test_edit_image_brief_rejects_orphan_object_without_ingest_receipt(
+    tmp_path: Path,
+) -> None:
+    fundus, _, source = _setup(tmp_path)
+    payload = fundus._read_source(source)
+    sha256 = hashlib.sha256(payload).hexdigest()
+    fundus._ensure_state()
+    fundus._write_create_or_verify(fundus._object_path(sha256), payload)
+
+    brief = _image_brief()
+    brief["id"] = "fixture.simple-ornament.edit-orphan.v1"
+    brief["operation"] = "edit"
+    brief["input_sha256"] = sha256
+    path = tmp_path / "orphan-edit-brief.json"
+    path.write_text(json.dumps(brief), encoding="utf-8")
+    with pytest.raises(FundusError, match="completed Fundus ingest"):
+        fundus.image_brief(path)
+
+    completed = fundus.ingest(
+        source, origin="manual:completed-after-orphan", rights_status="owned"
+    )
+    assert completed["sha256"] == sha256
+    prepared = fundus.image_brief(path)
+    assert prepared["input_sha256"] == sha256
 
 
 def test_agent_policy_routes_reusable_image_work_through_fundus() -> None:

@@ -201,7 +201,31 @@ class Fundus:
         except (OSError, ValueError) as exc:
             raise FundusError(str(exc)) from exc
         if value["operation"] == "edit":
-            self._read_object(value["input_sha256"])
+            input_sha256 = value["input_sha256"]
+            self._read_object(input_sha256)
+            ingest_path = (
+                self.root
+                / "receipts"
+                / "ingest"
+                / f"{input_sha256}.json"
+            )
+            if not ingest_path.exists():
+                raise FundusError(
+                    "edit input is not a completed Fundus ingest: receipt is missing"
+                )
+            try:
+                ingest = json.loads(
+                    self._read_private(ingest_path, maximum_bytes=128_000)
+                )
+            except (OSError, json.JSONDecodeError) as exc:
+                raise FundusError("edit input ingest receipt is invalid") from exc
+            if (
+                ingest.get("schema_version") != INGEST_SCHEMA
+                or ingest.get("sha256") != input_sha256
+            ):
+                raise FundusError(
+                    "edit input ingest receipt does not bind the input sha256"
+                )
         brief_sha256 = digest_json(value)
         self._ensure_state()
         self._write_json_create_or_verify(
