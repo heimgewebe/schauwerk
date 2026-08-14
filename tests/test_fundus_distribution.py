@@ -27,6 +27,7 @@ SCHEMAS = (
     "fundus-review-plan.v1.schema.json",
     "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
+    "fundus-reproduction.v1.schema.json",
 )
 
 
@@ -99,6 +100,7 @@ from schauwerk import fundus as fundus_package
 from schauwerk.fundus import Fundus, FundusPaths
 from schauwerk.fundus.package_contract import verify_consumer_lock, verify_package_directory
 from schauwerk.fundus.review import build_review_bundle, check_review_bundle
+from schauwerk.fundus.reproducibility import drift_build, reproduce_build
 
 schemas = (
     "fundus-family.v1.schema.json",
@@ -118,6 +120,7 @@ schemas = (
     "fundus-review-plan.v1.schema.json",
     "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
+    "fundus-reproduction.v1.schema.json",
 )
 assert ".whl/" in fundus_package.__file__
 for name in schemas:
@@ -235,6 +238,18 @@ inherited_package = core.package(
     build_digest=candidate["build_digest"],
     acceptance_digest=inherited["acceptance_digest"],
 )
+canonical_builds_before = sorted(
+    item.name
+    for item in (data / "builds" / "fixture.wheel-smoke").iterdir()
+    if item.is_dir()
+)
+drift = drift_build(core, "fixture.wheel-smoke", candidate["build_digest"])
+reproduction = reproduce_build(core, "fixture.wheel-smoke", candidate["build_digest"])
+canonical_builds_after = sorted(
+    item.name
+    for item in (data / "builds" / "fixture.wheel-smoke").iterdir()
+    if item.is_dir()
+)
 package_check = verify_package_directory(package["package_dir"])
 consumer_lock = core.consumer_lock(package["package_dir"])
 consumer_check = verify_consumer_lock(consumer_lock["lock_path"], package["package_dir"])
@@ -246,6 +261,10 @@ assert package["consumer_runtime_dependency"] is False
 assert package_check["package_digest"] == package["package_digest"]
 assert inherited["schema_version"] == "schauwerk-fundus-acceptance.v2"
 assert inherited_package["acceptance_digest"] == inherited["acceptance_digest"]
+assert drift["status"] == "clean"
+assert reproduction["status"] == "reproduced"
+assert reproduction["reproduction"]["temporary_state_used"] is True
+assert canonical_builds_after == canonical_builds_before
 assert consumer_check["package_digest"] == package["package_digest"]
 assert consumer_check["lock_digest"] == consumer_lock["lock_digest"]
 print(
@@ -255,6 +274,7 @@ print(
             "review": review["review_digest"],
             "package": package["package_digest"],
             "inherited_package": inherited_package["package_digest"],
+            "reproduced_build": reproduction["reproduction"]["build_digest"],
             "consumer_lock": consumer_lock["lock_digest"],
         }
     )
@@ -274,4 +294,5 @@ print(
     assert len(receipt["review"]) == 64
     assert len(receipt["package"]) == 64
     assert len(receipt["inherited_package"]) == 64
+    assert len(receipt["reproduced_build"]) == 64
     assert len(receipt["consumer_lock"]) == 64

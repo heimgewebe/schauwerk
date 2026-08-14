@@ -1,0 +1,138 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-reproduction.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "if": {"properties": {"operation": {"const": "drift"}}, "required": ["operation"]},
+      "then": {
+        "properties": {
+          "reproduction": {"type": "null"},
+          "status": {"enum": ["clean", "drifted"]}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"operation": {"const": "reproduce"}}, "required": ["operation"]},
+      "then": {
+        "properties": {
+          "reproduction": {"type": "object"},
+          "status": {"enum": ["drifted", "reproduced", "reproduction_drift", "reproduction_failed"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"enum": ["clean", "reproduced"]}},
+        "required": ["status"]
+      },
+      "then": {"properties": {"ok": {"const": true}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {"enum": ["drifted", "reproduction_drift", "reproduction_failed"]}
+        },
+        "required": ["status"]
+      },
+      "then": {"properties": {"ok": {"const": false}}}
+    }
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "asset_manifest_expected_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "asset_manifest_match": {"type": "boolean"},
+    "asset_manifest_observed_sha256": {
+      "oneOf": [
+        {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        {"type": "null"}
+      ]
+    },
+    "build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "canonical_state_mutated": {"const": false},
+    "ok": {"type": "boolean"},
+    "operation": {"enum": ["drift", "reproduce"]},
+    "recipe_expected_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "recipe_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "recipe_match": {"type": "boolean"},
+    "recipe_observed_sha256": {
+      "oneOf": [
+        {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+        {"type": "null"}
+      ]
+    },
+    "reproduction": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "additionalProperties": false,
+          "properties": {
+            "attempted": {"type": "boolean"},
+            "build_digest": {
+              "oneOf": [
+                {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+                {"type": "null"}
+              ]
+            },
+            "build_digest_match": {"type": ["boolean", "null"]},
+            "error": {"type": ["string", "null"]},
+            "output_sha256s_match": {"type": ["boolean", "null"]},
+            "temporary_state_used": {"type": "boolean"},
+            "toolchain_match": {"type": ["boolean", "null"]}
+          },
+          "required": [
+            "attempted",
+            "build_digest",
+            "build_digest_match",
+            "output_sha256s_match",
+            "toolchain_match",
+            "temporary_state_used",
+            "error"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "schema_version": {"const": "schauwerk-fundus-reproduction.v1"},
+    "source_checks": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {"type": ["string", "null"]},
+          "object_ok": {"type": "boolean"},
+          "provenance_ok": {"type": "boolean"},
+          "role": {"enum": ["original", "trace_source", "texture_source", "reference"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+        },
+        "required": ["role", "sha256", "object_ok", "provenance_ok", "error"],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "status": {
+      "enum": ["clean", "drifted", "reproduced", "reproduction_drift", "reproduction_failed"]
+    }
+  },
+  "required": [
+    "schema_version",
+    "operation",
+    "asset_id",
+    "build_digest",
+    "status",
+    "ok",
+    "asset_manifest_expected_sha256",
+    "asset_manifest_observed_sha256",
+    "asset_manifest_match",
+    "recipe_id",
+    "recipe_expected_sha256",
+    "recipe_observed_sha256",
+    "recipe_match",
+    "source_checks",
+    "reproduction",
+    "canonical_state_mutated"
+  ],
+  "title": "Schauwerk Fundus Reproduction Report v1",
+  "type": "object"
+}
