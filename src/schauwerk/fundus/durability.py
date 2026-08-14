@@ -245,14 +245,19 @@ def durability_status(
     fundus_root: str | Path,
     *,
     evidence_path: str | Path | None = None,
+    use_default_evidence: bool = True,
 ) -> dict[str, Any]:
     root = normalized_absolute(fundus_root, label="Fundus data root")
-    path = (
-        normalized_absolute(evidence_path, label="Fundus durability evidence path")
-        if evidence_path is not None
-        else default_evidence_path()
-    )
-    if path == root or root in path.parents:
+    if evidence_path is not None:
+        path: Path | None = normalized_absolute(
+            evidence_path, label="Fundus durability evidence path"
+        )
+    elif use_default_evidence:
+        path = default_evidence_path()
+    else:
+        path = None
+
+    if path is not None and (path == root or root in path.parents):
         return {
             "schema_version": "schauwerk-fundus-durability-status.v1",
             "evidence_path": str(path),
@@ -271,11 +276,12 @@ def durability_status(
             "error": "durability evidence must live outside the Fundus data root",
         }
     if not root.exists():
+        evidence_present = path.exists() if path is not None else False
         return {
             "schema_version": "schauwerk-fundus-durability-status.v1",
-            "evidence_path": str(path),
-            "evidence_present": path.exists(),
-            "evidence_valid": None if not path.exists() else False,
+            "evidence_path": str(path) if path is not None else None,
+            "evidence_present": evidence_present,
+            "evidence_valid": None if not evidence_present else False,
             "current": False,
             "restore_verified_current": False,
             "inventory_algorithm": INVENTORY_SCHEMA,
@@ -286,18 +292,32 @@ def durability_status(
             "producer": None,
             "evidence_ref": None,
             "verified_at": None,
-            "error": None if not path.exists() else "Fundus data root is missing",
+            "error": None if not evidence_present else "Fundus data root is missing",
         }
 
     inventory = fundus_inventory(root)
     base = {
         "schema_version": "schauwerk-fundus-durability-status.v1",
-        "evidence_path": str(path),
+        "evidence_path": str(path) if path is not None else None,
         "inventory_algorithm": INVENTORY_SCHEMA,
         "inventory_sha256": inventory["inventory_sha256"],
         "file_count": inventory["file_count"],
         "total_bytes": inventory["total_bytes"],
     }
+    if path is None:
+        return {
+            **base,
+            "evidence_present": False,
+            "evidence_valid": None,
+            "current": False,
+            "restore_verified_current": False,
+            "evidence_inventory_sha256": None,
+            "producer": None,
+            "evidence_ref": None,
+            "verified_at": None,
+            "error": None,
+        }
+
     if not path.exists():
         return {
             **base,

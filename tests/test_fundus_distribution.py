@@ -145,7 +145,13 @@ source.write_bytes(
     b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
     b'<path fill="#000" d="M0 0L10 0L10 10Z"/></svg>'
 )
-core = Fundus(FundusPaths(data_root=data, registry_root=registry))
+core = Fundus(
+    FundusPaths(
+        data_root=data,
+        registry_root=registry,
+        durability_evidence_path=runtime_root / "durability-current.json",
+    )
+)
 ingest = core.ingest(source, origin="wheel-smoke", rights_status="owned")
 recipe = {
     "schema_version": "schauwerk-fundus-recipe.v1",
@@ -272,7 +278,6 @@ durability_evidence = build_durability_evidence(
 evidence_path = runtime_root / "durability-current.json"
 evidence_path.write_bytes(canonical_json(durability_evidence) + b"\n")
 evidence_path.chmod(0o600)
-os.environ["SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE"] = str(evidence_path)
 durability = durability_status(data, evidence_path=evidence_path)
 doctor = core.doctor()
 assert preview["network_dependencies"] is False
