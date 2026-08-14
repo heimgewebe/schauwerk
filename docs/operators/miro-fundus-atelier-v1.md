@@ -10,6 +10,8 @@ title: Miro Fundus Atelier v1
 
 Das Fundus Atelier projiziert exakt digestgebundene Schauwerk-Fundus-Builds auf ein Miro-Board, damit Varianten gemeinsam gesichtet, kommentiert, angeordnet und präsentiert werden können. Es ist ausdrücklich keine zweite Assetverwaltung.
 
+Seit Fundus Review Pages v1 ist das Atelier ein **optionaler Kollaborationsadapter**, nicht die bevorzugte Standard-Reviewfläche. Für normale visuelle Variantenprüfung soll zuerst das providerneutrale, consumer-nahe [Fundus Review Bundle](../fundus/review-pages-v1.md) verwendet werden. Miro ist sinnvoll, wenn freie Anordnung, Kommentare oder Workshoparbeit den zusätzlichen Providerlayer rechtfertigen.
+
 Die Autoritätsrichtung bleibt:
 
 ```text

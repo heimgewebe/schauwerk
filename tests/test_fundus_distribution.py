@@ -18,6 +18,8 @@ SCHEMAS = (
     "fundus-package.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
+    "fundus-review-plan.v1.schema.json",
+    "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
 )
 
@@ -89,6 +91,7 @@ sys.path.insert(0, str(wheel))
 
 from schauwerk import fundus as fundus_package
 from schauwerk.fundus import Fundus, FundusPaths
+from schauwerk.fundus.review import build_review_bundle, check_review_bundle
 
 schemas = (
     "fundus-family.v1.schema.json",
@@ -99,6 +102,8 @@ schemas = (
     "fundus-package.v1.schema.json",
     "fundus-ingest.v1.schema.json",
     "fundus-preview.v1.schema.json",
+    "fundus-review-plan.v1.schema.json",
+    "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
 )
 assert ".whl/" in fundus_package.__file__
@@ -109,6 +114,7 @@ data = runtime_root / "data"
 registry = runtime_root / "registry"
 (registry / "recipes").mkdir(parents=True)
 (registry / "assets").mkdir()
+(registry / "families").mkdir()
 source = runtime_root / "source.svg"
 source.write_bytes(
     b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
@@ -131,9 +137,19 @@ recipe = {
 (registry / "recipes" / "svg-mask-v1.json").write_text(
     json.dumps(recipe), encoding="utf-8"
 )
+family = {
+    "schema_version": "schauwerk-fundus-family.v1",
+    "id": "fixture.wheel-smoke-family",
+    "title": "Wheel Smoke Review",
+    "tags": ["wheel", "review"],
+}
+(registry / "families" / "fixture.wheel-smoke-family.json").write_text(
+    json.dumps(family), encoding="utf-8"
+)
 asset = {
     "schema_version": "schauwerk-fundus-asset.v1",
     "id": "fixture.wheel-smoke",
+    "family": "fixture.wheel-smoke-family",
     "recipe": "svg-mask-v1",
     "sources": [
         {
@@ -148,6 +164,12 @@ asset = {
 )
 build = core.build("fixture.wheel-smoke")
 preview = core.preview("fixture.wheel-smoke", build_digest=build["build_digest"])
+review = build_review_bundle(
+    core,
+    "fixture.wheel-smoke-family",
+    runtime_root / "review",
+)
+review_check = check_review_bundle(runtime_root / "review")
 acceptance = core.accept(
     "fixture.wheel-smoke",
     build_digest=build["build_digest"],
@@ -161,8 +183,19 @@ package = core.package(
     acceptance_digest=acceptance["acceptance_digest"],
 )
 assert preview["network_dependencies"] is False
+assert review["network_dependencies"] is False
+assert review["portable"] is True
+assert review_check["review_digest"] == review["review_digest"]
 assert package["consumer_runtime_dependency"] is False
-print(json.dumps({"schemas": len(schemas), "package": package["package_digest"]}))
+print(
+    json.dumps(
+        {
+            "schemas": len(schemas),
+            "review": review["review_digest"],
+            "package": package["package_digest"],
+        }
+    )
+)
 """
     result = subprocess.run(
         [sys.executable, "-I", "-c", smoke, str(wheels[0]), str(runtime_root)],
@@ -175,4 +208,5 @@ print(json.dumps({"schemas": len(schemas), "package": package["package_digest"]}
     assert result.returncode == 0, result.stdout + result.stderr
     receipt = json.loads(result.stdout)
     assert receipt["schemas"] == len(SCHEMAS)
+    assert len(receipt["review"]) == 64
     assert len(receipt["package"]) == 64

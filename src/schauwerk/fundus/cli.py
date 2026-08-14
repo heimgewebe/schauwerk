@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from .core import Fundus, FundusPaths
+from .review import build_review_bundle, build_review_plan, check_review_bundle
 
 
 def _state_option(parser: argparse.ArgumentParser) -> None:
@@ -14,6 +15,18 @@ def _state_option(parser: argparse.ArgumentParser) -> None:
 
 def _registry_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--registry-root")
+
+
+def _fixture_map(values: list[str]) -> dict[str, Path]:
+    fixtures: dict[str, Path] = {}
+    for raw in values:
+        fixture_id, separator, path = raw.partition("=")
+        if not separator or not fixture_id or not path:
+            raise ValueError("review fixture must use ID=PATH")
+        if fixture_id in fixtures:
+            raise ValueError(f"duplicate review fixture id: {fixture_id}")
+        fixtures[fixture_id] = Path(path)
+    return fixtures
 
 
 def add_fundus_parser(providers) -> None:
@@ -89,6 +102,51 @@ def add_fundus_parser(providers) -> None:
     _registry_option(preview)
     preview.add_argument("--json", action="store_true")
 
+    review = commands.add_parser(
+        "review",
+        help="build portable project-independent Fundus demo pages",
+    )
+    review_commands = review.add_subparsers(
+        dest="review_command",
+        required=True,
+    )
+    review_plan = review_commands.add_parser(
+        "plan",
+        help="materialize the exact current build set for one Fundus family",
+    )
+    review_plan.add_argument("family")
+    _state_option(review_plan)
+    _registry_option(review_plan)
+    review_plan.add_argument("--json", action="store_true")
+
+    review_build = review_commands.add_parser(
+        "build",
+        help="create one static digest-bound review bundle",
+    )
+    review_build.add_argument("family")
+    review_build.add_argument("--output-dir", required=True)
+    review_build.add_argument("--title")
+    review_build.add_argument("--description")
+    review_build.add_argument("--template")
+    review_build.add_argument("--css")
+    review_build.add_argument(
+        "--fixture",
+        action="append",
+        default=[],
+        metavar="ID=PATH",
+        help="bind one local raster review fixture; repeatable",
+    )
+    _state_option(review_build)
+    _registry_option(review_build)
+    review_build.add_argument("--json", action="store_true")
+
+    review_check = review_commands.add_parser(
+        "check",
+        help="verify one portable Fundus review bundle",
+    )
+    review_check.add_argument("bundle_dir")
+    review_check.add_argument("--json", action="store_true")
+
     accept = commands.add_parser(
         "accept",
         help="bind a visual decision to one exact build",
@@ -128,6 +186,9 @@ def _fundus(args) -> Fundus:
 
 
 def handle_fundus_command(args) -> dict:
+    if args.command == "review" and args.review_command == "check":
+        return check_review_bundle(Path(args.bundle_dir))
+
     fundus = _fundus(args)
     if args.command == "doctor":
         return fundus.doctor()
@@ -150,6 +211,25 @@ def handle_fundus_command(args) -> dict:
             args.asset,
             build_digest=args.build,
         )
+    if args.command == "review":
+        if args.review_command == "plan":
+            return build_review_plan(fundus, args.family).to_dict()
+        if args.review_command == "build":
+            kwargs = {
+                "title": args.title,
+                "consumer_template": Path(args.template) if args.template else None,
+                "consumer_css": Path(args.css) if args.css else None,
+                "fixtures": _fixture_map(args.fixture),
+            }
+            if args.description is not None:
+                kwargs["description"] = args.description
+            return build_review_bundle(
+                fundus,
+                args.family,
+                Path(args.output_dir),
+                **kwargs,
+            )
+        raise AssertionError(f"unhandled Fundus review command: {args.review_command}")
     if args.command == "accept":
         return fundus.accept(
             args.asset,
