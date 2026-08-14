@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .core import Fundus, FundusPaths
 from .package_contract import verify_consumer_lock, verify_package_directory
+from .reproducibility import drift_build, reproduce_build
 from .review import build_review_bundle, build_review_plan, check_review_bundle
 
 
@@ -178,6 +179,26 @@ def add_fundus_parser(providers) -> None:
     _registry_option(accept_inherit)
     accept_inherit.add_argument("--json", action="store_true")
 
+    drift = commands.add_parser(
+        "drift",
+        help="check one stored build against current registry and source bindings",
+    )
+    drift.add_argument("asset")
+    drift.add_argument("--build", required=True)
+    _state_option(drift)
+    _registry_option(drift)
+    drift.add_argument("--json", action="store_true")
+
+    reproduce = commands.add_parser(
+        "reproduce",
+        help="rebuild one stored build in temporary Fundus state and compare identity",
+    )
+    reproduce.add_argument("asset")
+    reproduce.add_argument("--build", required=True)
+    _state_option(reproduce)
+    _registry_option(reproduce)
+    reproduce.add_argument("--json", action="store_true")
+
     package = commands.add_parser(
         "package",
         help="create an immutable package from an accepted build",
@@ -287,6 +308,10 @@ def handle_fundus_command(args) -> dict:
             parent_acceptance_digest=args.parent_acceptance,
             inherited_by=args.inherited_by,
         )
+    if args.command == "drift":
+        return drift_build(fundus, args.asset, args.build)
+    if args.command == "reproduce":
+        return reproduce_build(fundus, args.asset, args.build)
     if args.command == "package":
         return fundus.package(
             args.asset,
