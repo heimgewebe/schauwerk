@@ -28,6 +28,7 @@ SCHEMAS = (
     "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
     "fundus-reproduction.v1.schema.json",
+    "fundus-durability-evidence.v1.schema.json",
 )
 
 
@@ -88,6 +89,7 @@ def test_fundus_wheel_contains_runtime_and_runs_without_source_tree(tmp_path: Pa
     runtime_root = tmp_path / "runtime"
     smoke = r"""
 import json
+import os
 import sys
 from importlib.resources import files
 from pathlib import Path
@@ -98,6 +100,12 @@ sys.path.insert(0, str(wheel))
 
 from schauwerk import fundus as fundus_package
 from schauwerk.fundus import Fundus, FundusPaths
+from schauwerk.fundus.durability import (
+    build_durability_evidence,
+    durability_status,
+    fundus_inventory,
+)
+from schauwerk.fundus.model import canonical_json
 from schauwerk.fundus.package_contract import verify_consumer_lock, verify_package_directory
 from schauwerk.fundus.review import build_review_bundle, check_review_bundle
 from schauwerk.fundus.reproducibility import drift_build, reproduce_build
@@ -121,6 +129,7 @@ schemas = (
     "fundus-review-bundle.v1.schema.json",
     "fundus-image-brief.v1.schema.json",
     "fundus-reproduction.v1.schema.json",
+    "fundus-durability-evidence.v1.schema.json",
 )
 assert ".whl/" in fundus_package.__file__
 for name in schemas:
@@ -253,6 +262,19 @@ canonical_builds_after = sorted(
 package_check = verify_package_directory(package["package_dir"])
 consumer_lock = core.consumer_lock(package["package_dir"])
 consumer_check = verify_consumer_lock(consumer_lock["lock_path"], package["package_dir"])
+inventory = fundus_inventory(data)
+durability_evidence = build_durability_evidence(
+    inventory,
+    producer="smoke:restore-verifier",
+    evidence_ref="snapshot:wheel-smoke",
+    verified_at="2026-08-14T16:13:34+02:00",
+)
+evidence_path = runtime_root / "durability-current.json"
+evidence_path.write_bytes(canonical_json(durability_evidence) + b"\n")
+evidence_path.chmod(0o600)
+os.environ["SCHAUWERK_FUNDUS_DURABILITY_EVIDENCE"] = str(evidence_path)
+durability = durability_status(data, evidence_path=evidence_path)
+doctor = core.doctor()
 assert preview["network_dependencies"] is False
 assert review["network_dependencies"] is False
 assert review["portable"] is True
@@ -267,6 +289,8 @@ assert reproduction["reproduction"]["temporary_state_used"] is True
 assert canonical_builds_after == canonical_builds_before
 assert consumer_check["package_digest"] == package["package_digest"]
 assert consumer_check["lock_digest"] == consumer_lock["lock_digest"]
+assert durability["restore_verified_current"] is True
+assert doctor["object_store_authoritative"] is True
 print(
     json.dumps(
         {
@@ -276,6 +300,7 @@ print(
             "inherited_package": inherited_package["package_digest"],
             "reproduced_build": reproduction["reproduction"]["build_digest"],
             "consumer_lock": consumer_lock["lock_digest"],
+            "durability_inventory": durability["inventory_sha256"],
         }
     )
 )
@@ -296,3 +321,4 @@ print(
     assert len(receipt["inherited_package"]) == 64
     assert len(receipt["reproduced_build"]) == 64
     assert len(receipt["consumer_lock"]) == 64
+    assert len(receipt["durability_inventory"]) == 64

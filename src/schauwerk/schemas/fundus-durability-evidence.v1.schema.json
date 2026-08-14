@@ -1,0 +1,31 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-durability-evidence.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "schauwerk-fundus-durability-evidence.v1"},
+    "inventory_algorithm": {"const": "schauwerk-fundus-inventory.v1"},
+    "inventory_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "file_count": {"minimum": 0, "type": "integer"},
+    "total_bytes": {"minimum": 0, "type": "integer"},
+    "verification": {"const": "staged_restore_exact_snapshot"},
+    "producer": {"minLength": 1, "maxLength": 200, "type": "string"},
+    "evidence_ref": {"minLength": 1, "maxLength": 500, "type": "string"},
+    "verified_at": {"minLength": 1, "maxLength": 80, "type": "string"},
+    "receipt_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+  },
+  "required": [
+    "schema_version",
+    "inventory_algorithm",
+    "inventory_sha256",
+    "file_count",
+    "total_bytes",
+    "verification",
+    "producer",
+    "evidence_ref",
+    "verified_at",
+    "receipt_digest"
+  ],
+  "title": "Schauwerk Fundus Durability Evidence v1",
+  "type": "object"
+}

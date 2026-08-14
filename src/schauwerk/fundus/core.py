@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .durability import durability_status
 from .errors import FundusError
 from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
@@ -1678,10 +1679,12 @@ class Fundus:
 
         raster_status = raster_adapter_status()
         trace_status = trace_adapter_status()
+        durability = durability_status(self.root)
         ok = (
             seam["ok"]
             and state["safe"] is not False
             and raster_status["available"] is True
+            and durability["evidence_valid"] is not False
         )
         return {
             "schema_version": "schauwerk-fundus-doctor.v1",
@@ -1706,9 +1709,18 @@ class Fundus:
                 "trace": trace_status,
             },
             "cross_repo_mutation_authority": False,
-            "object_store_authoritative": False,
+            "durability": durability,
+            "object_store_authoritative": durability["restore_verified_current"],
             "recommended_next_action": (
-                "retain original source files until "
-                "backup/restore coverage is proven"
+                "no durability action required for the current Fundus inventory"
+                if durability["restore_verified_current"]
+                else (
+                    "repair invalid durability evidence before relying on backup authority"
+                    if durability["evidence_valid"] is False
+                    else (
+                        "retain original source files until restore-verified "
+                        "durability evidence is current"
+                    )
+                )
             ),
         }
