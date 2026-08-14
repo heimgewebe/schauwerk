@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from .core import Fundus, FundusPaths
+from .package_contract import verify_consumer_lock, verify_package_directory
 from .review import build_review_bundle, build_review_plan, check_review_bundle
 
 
@@ -175,6 +176,29 @@ def add_fundus_parser(providers) -> None:
     _registry_option(package)
     package.add_argument("--json", action="store_true")
 
+    package_verify = commands.add_parser(
+        "package-verify",
+        help="verify one immutable Fundus package without live registry state",
+    )
+    package_verify.add_argument("package_dir")
+    package_verify.add_argument("--json", action="store_true")
+
+    consumer_lock = commands.add_parser(
+        "consumer-lock",
+        help="write immutable Fundus consumer-lock metadata for a verified package",
+    )
+    consumer_lock.add_argument("package_dir")
+    _state_option(consumer_lock)
+    consumer_lock.add_argument("--json", action="store_true")
+
+    consumer_check = commands.add_parser(
+        "consumer-check",
+        help="verify one vendored Fundus package against a portable consumer lock",
+    )
+    consumer_check.add_argument("lock")
+    consumer_check.add_argument("package_dir")
+    consumer_check.add_argument("--json", action="store_true")
+
 
 def _fundus(args) -> Fundus:
     return Fundus(
@@ -188,6 +212,10 @@ def _fundus(args) -> Fundus:
 def handle_fundus_command(args) -> dict:
     if args.command == "review" and args.review_command == "check":
         return check_review_bundle(Path(args.bundle_dir))
+    if args.command == "package-verify":
+        return verify_package_directory(Path(args.package_dir))
+    if args.command == "consumer-check":
+        return verify_consumer_lock(Path(args.lock), Path(args.package_dir))
 
     fundus = _fundus(args)
     if args.command == "doctor":
@@ -244,4 +272,6 @@ def handle_fundus_command(args) -> dict:
             build_digest=args.build,
             acceptance_digest=args.acceptance,
         )
+    if args.command == "consumer-lock":
+        return fundus.consumer_lock(Path(args.package_dir))
     raise AssertionError(f"unhandled Fundus command: {args.command}")

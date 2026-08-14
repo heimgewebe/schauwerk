@@ -112,7 +112,14 @@ schauwerk fundus preview botanical.laurel.corner --json
 schauwerk fundus review build botanical.laurel --output-dir /tmp/laurel-review --json
 schauwerk fundus accept botanical.laurel.corner --build DIGEST --reviewer human:alexander --decision accepted --json
 schauwerk fundus package botanical.laurel.corner --build DIGEST --acceptance DIGEST --json
+schauwerk fundus package-verify path/to/package --json
+schauwerk fundus consumer-lock path/to/package --json
+schauwerk fundus consumer-check path/to/fundus-consumer-lock.json path/to/package --json
 ```
+
+## Package- und Consumer-Vertrag
+
+Der [Package Consumer Contract v1](package-consumer-contract-v1.md) ergänzt eine runtime-unabhängige, read-only Package-Verifikation und ein separates digestgebundenes `schauwerk-fundus-consumer-lock.v1`-Metadatum. Das immutable Package wird dabei nicht nachträglich verändert. Schauwerk schreibt den Lock ausschließlich create-or-verify in den eigenen Fundus-State; Grabowski übernimmt Package und Lock später unter Zielrepo-Autorität.
 
 ## Reviewflächen
 
