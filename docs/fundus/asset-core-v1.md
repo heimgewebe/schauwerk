@@ -74,7 +74,7 @@ content object
    ↓ asset + recipe
 build
    ↓
-preview
+single-asset preview / family review bundle
    ↓ visual decision
 acceptance
    ↓
@@ -92,13 +92,16 @@ schauwerk fundus ingest artwork.svg --origin chatgpt-images:ornament --source-mo
 schauwerk fundus inspect botanical.laurel.corner --json
 schauwerk fundus build botanical.laurel.corner --json
 schauwerk fundus preview botanical.laurel.corner --json
+schauwerk fundus review build botanical.laurel --output-dir /tmp/laurel-review --json
 schauwerk fundus accept botanical.laurel.corner --build DIGEST --reviewer human:alexander --decision accepted --json
 schauwerk fundus package botanical.laurel.corner --build DIGEST --acceptance DIGEST --json
 ```
 
 ## Reviewflächen
 
-Fundus bleibt auch dann Miro-unabhängig, wenn Builds auf eine kollaborative Oberfläche projiziert werden. Der optionale [Miro Fundus Atelier v1](../operators/miro-fundus-atelier-v1.md)-Pfad liegt vollständig auf der Miro-Seite der Architektur: Er liest exakte Buildoutputs, zeigt sie als Reviewvarianten und verifiziert den Provider-Readback, erzeugt aber weder Acceptance noch Package.
+Der bevorzugte Standardpfad ist [Fundus Review Pages v1](review-pages-v1.md): ein providerneutrales, statisches und digestgebundenes Review-Bundle für ganze Assetfamilien. Der Default-Renderer erlaubt direkten Variantenvergleich; ein kleiner sicherer Consumer-Fragment-Vertrag kann lokale Fixtures und projektspezifische Komposition einbringen, ohne projektspezifische Semantik in den Fundus-Core zu ziehen. Review-Bundles erzeugen weder Acceptance noch Package.
+
+Fundus bleibt auch dann Miro-unabhängig, wenn Builds zusätzlich auf eine kollaborative Oberfläche projiziert werden. [Miro Fundus Atelier v1](../operators/miro-fundus-atelier-v1.md) ist ein optionaler Adapter für Workshops, freie Anordnung und Kommentare. Er liegt vollständig auf der Miro-Seite der Architektur und ist nicht der kanonische Standard-Reviewpfad.
 
 ## Nicht-Ziele V1
 
@@ -106,4 +109,4 @@ Keine Bildgenerierungs-API, kein Downloads-Watcher, keine Datenbank, kein CDN, k
 
 ## Abnahme
 
-V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie den kompletten Lifecycle ausführen kann. Das erzeugte Consumer-Package bleibt ohne Schauwerk-Runtime nutzbar. Der spätere Hall-of-Memory-Pilot ist ein getrenntes Zielrepo-Slice.
+V1 ist belastbar, wenn ein neutrales SVG-Fixture über getrennte State-Roots denselben Build und dasselbe Package erzeugt, aktive SVG-Inhalte fail-closed abgewiesen werden, die Fundus-Importgrenze Miro-frei bleibt und ein gebautes Wheel ohne Source-Tree alle Fundus-Schemas sowie Build, Review und Packaging ausführen kann. Das erzeugte Review-Bundle und das Consumer-Package bleiben ohne laufende Schauwerk-Runtime nutzbar. Reale Projektpiloten bleiben getrennte Consumer-Slices und begründen keine projektspezifische Core-Semantik.
