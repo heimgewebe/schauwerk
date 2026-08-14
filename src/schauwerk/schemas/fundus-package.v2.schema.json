@@ -1,0 +1,57 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-package.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "build_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "consumer_runtime_dependency": {"const": false},
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {"minimum": 1, "type": "integer"},
+          "media_type": {"enum": ["image/svg+xml", "image/png"]},
+          "path": {"type": "string"},
+          "role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "source_role": {"enum": ["original", "trace_source", "texture_source", "reference"]}
+        },
+        "required": ["path", "role", "source_role", "media_type", "sha256", "bytes"],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "package_digest": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "schema_version": {"const": "schauwerk-fundus-package.v2"},
+    "source_image_briefs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {"enum": ["original", "trace_source", "texture_source", "reference"]},
+          "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+        },
+        "required": ["role", "sha256"],
+        "type": "object"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "acceptance_digest",
+    "files",
+    "consumer_runtime_dependency",
+    "package_digest"
+  ],
+  "title": "Schauwerk Fundus Package v2",
+  "type": "object"
+}
