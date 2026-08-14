@@ -24,7 +24,6 @@ from schauwerk.fundus.core import MAX_BUILD_OUTPUT_BYTES, Fundus, FundusPaths
 from schauwerk.fundus.errors import FundusError
 from schauwerk.fundus.media import inspect_media
 from schauwerk.fundus.model import (
-    canonical_json,
     checked_id,
     digest_json,
     load_json,
@@ -417,6 +416,35 @@ def _validate_atelier_receipt_schema(document: dict[str, Any]) -> None:
         raise MiroCredentialError("Fundus Atelier receipt violates its schema")
 
 
+def _reject_provider_references(value: Any) -> None:
+    if isinstance(value, dict):
+        forbidden_keys = {"upload_url", "image_token"}.intersection(value)
+        if forbidden_keys:
+            raise MiroCredentialError(
+                "Fundus Atelier receipt contains an unsanitized provider reference"
+            )
+        for nested in value.values():
+            _reject_provider_references(nested)
+        return
+    if isinstance(value, list):
+        for nested in value:
+            _reject_provider_references(nested)
+        return
+    if not isinstance(value, str):
+        return
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return
+    hostname = parsed.hostname
+    if parsed.scheme in {"http", "https"} and isinstance(hostname, str):
+        normalized = hostname.rstrip(".").lower()
+        if normalized == "miro.com" or normalized.endswith(".miro.com"):
+            raise MiroCredentialError(
+                "Fundus Atelier receipt contains an unsanitized provider reference"
+            )
+
+
 def check_atelier_receipt(path: str | Path) -> dict[str, Any]:
     """Verify schema, self-digest and hard authority claims of one local receipt."""
 
@@ -439,15 +467,7 @@ def check_atelier_receipt(path: str | Path) -> dict[str, Any]:
         raise MiroCredentialError("Fundus Atelier receipt infers visual acceptance")
     if document.get("package_created") is not False:
         raise MiroCredentialError("Fundus Atelier receipt falsely claims packaging")
-    encoded = canonical_json(document)
-    if (
-        b"https://miro.com/" in encoded
-        or b"upload_url" in encoded
-        or b"image_token" in encoded
-    ):
-        raise MiroCredentialError(
-            "Fundus Atelier receipt contains an unsanitized provider reference"
-        )
+    _reject_provider_references(document)
     return {**document, "ok": True}
 
 

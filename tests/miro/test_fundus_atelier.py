@@ -12,8 +12,10 @@ from jsonschema import Draft202012Validator
 
 import schauwerk.surfaces.miro.fundus_atelier as atelier
 from schauwerk.fundus.core import Fundus, FundusPaths
+from schauwerk.fundus.model import digest_json
 from schauwerk.surfaces.miro.board_registry import BoardAllowlist
 from schauwerk.surfaces.miro.credentials import FileTokenStorage
+from schauwerk.surfaces.miro.errors import MiroCredentialError
 from schauwerk.surfaces.miro.models import MiroSettings
 
 BOARD_URL = "https://miro.com/app/board/uXjVFundusAtelier=/"
@@ -257,6 +259,54 @@ def test_publish_uploads_exact_build_into_bound_frame_and_writes_sanitized_recei
     assert checked["ok"] is True
     assert [name for name, _ in calls].count("canvas_create_from_svg") == 1
 
+
+
+def test_receipt_check_rejects_structured_miro_url_with_valid_digest(
+    tmp_path: Path,
+) -> None:
+    body = {
+        "schema_version": atelier.ATELIER_RECEIPT_SCHEMA,
+        "success": True,
+        "board_alias": BOARD_URL,
+        "board_reference_digest": "0" * 16,
+        "family_id": "fixture.atelier",
+        "plan_digest": "1" * 64,
+        "projection_mode": "append_create_only",
+        "variants": [
+            {
+                "asset_id": "fixture.atelier.01",
+                "build_digest": "2" * 64,
+                "output_sha256": "3" * 64,
+                "output_role": "mask",
+                "fundus_acceptance_state": "unreviewed",
+                "frame_item_id": "11",
+                "image_item_id": "12",
+                "render_width": 800.0,
+                "parent_verified": True,
+                "geometry_verified": True,
+                "position_verified": True,
+            }
+        ],
+        "variant_count": 1,
+        "readback": {
+            "before_image_count": 0,
+            "after_image_count": 1,
+            "inventory_pages": 2,
+            "all_created_images_present": True,
+            "all_created_images_parent_verified": True,
+        },
+        "fundus_authoritative": True,
+        "miro_source_of_truth": False,
+        "visual_acceptance_inferred": False,
+        "package_created": False,
+        "sanitized_references": True,
+    }
+    document = {**body, "receipt_digest": digest_json(body)}
+    receipt = tmp_path / "provider-url-receipt.json"
+    receipt.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(MiroCredentialError, match="unsanitized provider reference"):
+        atelier.check_atelier_receipt(receipt)
 
 def test_output_drift_fails_before_any_miro_session(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
