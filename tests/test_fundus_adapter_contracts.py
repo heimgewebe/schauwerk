@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 from schauwerk.fundus import raster as raster_module
 from schauwerk.fundus.core import Fundus, FundusPaths
@@ -41,6 +42,25 @@ def test_recipe_contract_rejects_crossed_adapter_profiles() -> None:
     }
     with pytest.raises(ValueError, match="trace profile"):
         validate_recipe(trace)
+
+
+def test_committed_alpha_mask_recipe_matches_v1_json_schema() -> None:
+    root = Path(__file__).resolve().parents[1]
+    schema = json.loads(
+        (root / "src/schauwerk/schemas/fundus-recipe.v1.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    recipe = json.loads(
+        (root / "registry/fundus/recipes/vtracer-alpha-mask-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    Draft202012Validator(schema).validate(recipe)
+    assert validate_recipe(recipe)["parameters"]["profile"] == (
+        "trace.vtracer.alpha-mask.v1"
+    )
+
 
 
 def test_doctor_reports_selected_adapter_profiles(tmp_path: Path) -> None:
