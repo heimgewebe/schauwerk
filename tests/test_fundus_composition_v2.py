@@ -204,6 +204,7 @@ def test_composition_v2_build_preview_accept_and_package_are_digest_bound(
         reviewer="test:composition-v2",
         decision="accepted",
         reviewed_at="2026-08-14T12:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     package = fundus.package(
         "fixture.composed",

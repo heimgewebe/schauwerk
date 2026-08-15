@@ -163,6 +163,15 @@ def add_fundus_parser(providers) -> None:
         required=True,
     )
     accept.add_argument("--note", default="")
+    review_evidence = accept.add_mutually_exclusive_group()
+    review_evidence.add_argument(
+        "--preview-receipt",
+        help="canonical preview.json for this exact build",
+    )
+    review_evidence.add_argument(
+        "--review-bundle",
+        help="checked family review bundle directory containing this exact build",
+    )
     _state_option(accept)
     _registry_option(accept)
     accept.add_argument("--json", action="store_true")
@@ -303,6 +312,8 @@ def handle_fundus_command(args) -> dict:
             reviewer=args.reviewer,
             decision=args.decision,
             note=args.note,
+            preview_receipt_path=args.preview_receipt,
+            review_bundle_path=args.review_bundle,
         )
     if args.command == "accept-inherit":
         return fundus.inherit_acceptance(

@@ -1,0 +1,75 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-acceptance.v3.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {"review_evidence": {"properties": {"kind": {"const": "single_asset_preview"}}}}
+      },
+      "then": {
+        "properties": {"review_evidence": {"properties": {"schema_version": {"const": "schauwerk-fundus-preview.v2"}}}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"review_evidence": {"properties": {"kind": {"const": "family_review_bundle"}}}}
+      },
+      "then": {
+        "properties": {"review_evidence": {"properties": {"schema_version": {"const": "schauwerk-fundus-review-bundle.v1"}}}}
+      }
+    }
+  ],
+  "properties": {
+    "acceptance_digest": {"$ref": "#/$defs/sha256"},
+    "acceptance_mode": {"const": "direct"},
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "build_digest": {"$ref": "#/$defs/sha256"},
+    "decision": {"const": "accepted"},
+    "note": {"maxLength": 2000, "type": "string"},
+    "output_bindings_sha256": {"$ref": "#/$defs/sha256"},
+    "output_sha256s": {
+      "items": {"$ref": "#/$defs/sha256"},
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "review_evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"enum": ["single_asset_preview", "family_review_bundle"]},
+        "output_bindings_sha256": {"$ref": "#/$defs/sha256"},
+        "review_digest": {"$ref": "#/$defs/sha256"},
+        "schema_version": {
+          "enum": ["schauwerk-fundus-preview.v2", "schauwerk-fundus-review-bundle.v1"]
+        }
+      },
+      "required": ["kind", "schema_version", "review_digest", "output_bindings_sha256"],
+      "type": "object"
+    },
+    "reviewed_at": {"minLength": 1, "maxLength": 80, "type": "string"},
+    "reviewer": {"maxLength": 200, "minLength": 1, "type": "string"},
+    "reviewer_identity_authenticated": {"const": false},
+    "schema_version": {"const": "schauwerk-fundus-acceptance.v3"}
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "output_sha256s",
+    "output_bindings_sha256",
+    "decision",
+    "acceptance_mode",
+    "review_evidence",
+    "reviewer",
+    "reviewed_at",
+    "note",
+    "reviewer_identity_authenticated",
+    "acceptance_digest"
+  ],
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"}
+  },
+  "title": "Schauwerk Fundus Acceptance v3",
+  "type": "object"
+}

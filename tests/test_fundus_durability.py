@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
+import schauwerk.fundus.durability as durability_module
 from schauwerk.fundus.core import Fundus, FundusPaths
 from schauwerk.fundus.durability import (
     build_durability_evidence,
@@ -126,6 +127,57 @@ def test_inventory_rejects_symlink_entries(tmp_path: Path) -> None:
 
     with pytest.raises(FundusError, match="symlink"):
         fundus_inventory(root)
+
+
+def test_inventory_rejects_root_replacement_during_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _private_dir(tmp_path / "fundus")
+    (root / "a.bin").write_bytes(b"a")
+    replacement = _private_dir(tmp_path / "replacement")
+    (replacement / "b.bin").write_bytes(b"b")
+    moved = tmp_path / "fundus-original"
+    original_scandir = durability_module.os.scandir
+    calls = 0
+
+    def replace_root(directory_fd: int):
+        nonlocal calls
+        handle = original_scandir(directory_fd)
+        calls += 1
+        if calls == 1:
+            root.rename(moved)
+            root.symlink_to(replacement, target_is_directory=True)
+        return handle
+
+    monkeypatch.setattr(durability_module.os, "scandir", replace_root)
+    with pytest.raises(FundusError, match="data root changed"):
+        fundus_inventory(root)
+
+
+def test_durability_status_rejects_mutation_before_currentness_return(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = _private_dir(tmp_path / "fundus")
+    (root / "a.bin").write_bytes(b"a")
+    evidence_path = tmp_path / "state" / "current.json"
+    _write_evidence(evidence_path, _evidence_for(root))
+    original_inventory = durability_module.fundus_inventory
+    calls = 0
+
+    def mutate_before_postflight(path: Path):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            (root / "raced.bin").write_bytes(b"race")
+        return original_inventory(path)
+
+    monkeypatch.setattr(
+        durability_module, "fundus_inventory", mutate_before_postflight
+    )
+    status = durability_status(root, evidence_path=evidence_path)
+    assert status["current"] is False
+    assert status["restore_verified_current"] is False
+    assert "changed before" in status["error"]
 
 
 def test_custom_fundus_root_ignores_implicit_default_durability_evidence(

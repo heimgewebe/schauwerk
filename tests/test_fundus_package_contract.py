@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import schauwerk.fundus.package_contract as package_contract
 from schauwerk.fundus.core import Fundus, FundusPaths
 from schauwerk.fundus.errors import FundusError
 from schauwerk.fundus.model import canonical_json, digest_bytes, digest_json
@@ -119,6 +120,58 @@ def test_package_tampering_and_extra_files_fail_closed(tmp_path: Path) -> None:
     root, _ = _package(tmp_path, version=2)
     (root / "assets" / "fixture-mask.svg").write_bytes(SVG + b"\n")
     with pytest.raises(FundusError, match="file drifted"):
+        verify_package_directory(root)
+
+
+def test_package_extra_file_added_during_verification_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, _ = _package(tmp_path, version=2)
+    original = package_contract._inventory
+    calls = 0
+
+    def add_after_inventory(root_fd: int):
+        nonlocal calls
+        result = original(root_fd)
+        calls += 1
+        if calls == 1:
+            (root / "raced-extra.txt").write_text("extra\n", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(package_contract, "_inventory", add_after_inventory)
+    with pytest.raises(FundusError, match="file set mismatch|changed during"):
+        verify_package_directory(root)
+
+
+@pytest.mark.parametrize(
+    "active_svg",
+    [
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        b'<script>alert(1)</script></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+        b'<image href="https://example.invalid/a.png"/></svg>',
+    ],
+)
+def test_package_verify_rejects_active_or_external_svg(
+    tmp_path: Path, active_svg: bytes
+) -> None:
+    root, manifest = _package(tmp_path, version=1)
+    asset_path = root / manifest["files"][0]["path"]
+    asset_path.write_bytes(active_svg)
+    body = dict(manifest)
+    body.pop("package_digest")
+    body["files"][0]["sha256"] = digest_bytes(active_svg)
+    body["files"][0]["bytes"] = len(active_svg)
+    manifest = {**body, "package_digest": digest_json(body)}
+    manifest_bytes = canonical_json(manifest) + b"\n"
+    (root / "fundus-package.json").write_bytes(manifest_bytes)
+    (root / "SHA256SUMS").write_text(
+        f"{body['files'][0]['sha256']}  {body['files'][0]['path']}\n"
+        f"{digest_bytes(manifest_bytes)}  fundus-package.json\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(FundusError, match="passive profile"):
         verify_package_directory(root)
 
     root, _ = _package(tmp_path / "extra", version=2)

@@ -26,7 +26,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from .core import MAX_BUILD_OUTPUT_BYTES, Fundus
+from .core import Fundus
 from .errors import FundusError
 from .media import inspect_media
 from .model import (
@@ -113,6 +113,7 @@ class ReviewVariant:
     build_digest: str
     output_role: str
     output_sha256: str
+    output_bytes: int
     output_media_type: str
     output_filename: str
     output_path: Path
@@ -124,6 +125,7 @@ class ReviewVariant:
             "build_digest": self.build_digest,
             "output_role": self.output_role,
             "output_sha256": self.output_sha256,
+            "output_bytes": self.output_bytes,
             "output_media_type": self.output_media_type,
             "output_filename": self.output_filename,
             "acceptance_state": self.acceptance_state,
@@ -208,15 +210,14 @@ def build_review_plan(fundus: Fundus, family_id: str) -> ReviewPlan:
             raise FundusError("Fundus Review v1 requires exactly one build output per asset")
         output = outputs[0]
         output_path = Path(build["build_dir"]) / output["filename"]
-        payload = fundus._read_private(output_path, maximum_bytes=MAX_BUILD_OUTPUT_BYTES)
-        if digest_bytes(payload) != output["sha256"]:
-            raise FundusError("Fundus build output drifted before review planning")
+        fundus._read_build_output(Path(build["build_dir"]), output)
         variants.append(
             ReviewVariant(
                 asset_id=asset_id,
                 build_digest=build["build_digest"],
                 output_role=output["role"],
                 output_sha256=output["sha256"],
+                output_bytes=output["bytes"],
                 output_media_type=output["media_type"],
                 output_filename=output["filename"],
                 output_path=output_path,
@@ -622,11 +623,23 @@ def build_review_bundle(
         asset_urls: dict[str, str] = {}
         variant_records: list[dict[str, Any]] = []
         for variant in plan.variants:
-            payload = fundus._read_private(
-                variant.output_path,
-                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
+            build, build_dir = fundus._load_build(
+                variant.asset_id, variant.build_digest
             )
-            if digest_bytes(payload) != variant.output_sha256:
+            matching_outputs = [
+                output
+                for output in build["outputs"]
+                if output["role"] == variant.output_role
+                and output["filename"] == variant.output_filename
+            ]
+            if len(matching_outputs) != 1:
+                raise FundusError("Fundus review variant output binding disappeared")
+            payload = fundus._read_build_output(build_dir, matching_outputs[0])
+            if (
+                len(payload) != variant.output_bytes
+                or digest_bytes(payload) != variant.output_sha256
+                or inspect_media(payload).media_type != variant.output_media_type
+            ):
                 raise FundusError(
                     "Fundus build output drifted before review bundle creation"
                 )
@@ -750,7 +763,14 @@ def check_review_bundle(directory: Path) -> dict[str, Any]:
         raise FundusError("review bundle variant bindings are not unique")
     for variant in variants:
         record = file_by_path.get(variant["file"])
-        if record is None or record["sha256"] != variant["output_sha256"]:
+        if (
+            record is None
+            or record["sha256"] != variant["output_sha256"]
+            or (
+                "output_bytes" in variant
+                and record["bytes"] != variant["output_bytes"]
+            )
+        ):
             raise FundusError("review bundle variant output binding mismatch")
 
     fixture_ids = [item["id"] for item in fixtures]
@@ -810,4 +830,18 @@ def check_review_bundle(directory: Path) -> dict[str, Any]:
         )
         if len(payload) != item["bytes"] or digest_bytes(payload) != item["sha256"]:
             raise FundusError(f"review bundle file drifted: {item['path']}")
+    for variant in variants:
+        payload = read_regular_bytes(
+            root / variant["file"],
+            maximum_bytes=MAX_BUNDLE_FILE_BYTES,
+            label=f"review variant {variant['asset_id']}",
+            require_owner=True,
+            forbidden_mode_bits=0o022,
+        )
+        try:
+            media_type = inspect_media(payload).media_type
+        except ValueError as exc:
+            raise FundusError("review bundle variant media is invalid") from exc
+        if media_type != variant["output_media_type"]:
+            raise FundusError("review bundle variant media_type drifted")
     return {**manifest, "ok": True}

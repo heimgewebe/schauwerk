@@ -11,6 +11,7 @@ from jsonschema import Draft202012Validator
 from schauwerk import runner
 from schauwerk.fundus.core import Fundus, FundusPaths
 from schauwerk.fundus.errors import FundusError
+from schauwerk.fundus.model import canonical_json
 from schauwerk.fundus.reproducibility import drift_build, reproduce_build
 
 SIMPLE_SVG = (
@@ -179,7 +180,7 @@ def test_corrupted_baseline_build_fails_closed_before_drift_report(tmp_path: Pat
     )
     output_path.write_bytes(output_path.read_bytes() + b"\n")
 
-    with pytest.raises(FundusError, match="build output digest mismatch"):
+    with pytest.raises(FundusError, match="build output (size|digest) mismatch"):
         drift_build(fundus, "fixture.reproduce", build["build_digest"])
 
 
@@ -249,3 +250,28 @@ def test_cli_drift_and_reproduce_return_versioned_reports(
     assert reproduced["schema_version"] == "schauwerk-fundus-reproduction.v1"
     assert reproduced["operation"] == "reproduce"
     assert reproduced["status"] == "reproduced"
+
+
+@pytest.mark.parametrize("defect", ["missing", "forged", "mismatched"])
+def test_drift_and_reproduce_require_valid_exact_ingest_receipt(
+    tmp_path: Path, defect: str
+) -> None:
+    fundus, _, build = _setup(tmp_path)
+    sha256 = build["source"]["sha256"]
+    receipt_path = fundus.root / "receipts" / "ingest" / f"{sha256}.json"
+    if defect == "missing":
+        receipt_path.unlink()
+    else:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        if defect == "forged":
+            receipt["forged"] = True
+        else:
+            receipt["origin"] = "fixture:mismatched"
+        receipt_path.write_bytes(canonical_json(receipt) + b"\n")
+
+    drift = drift_build(fundus, "fixture.reproduce", build["build_digest"])
+    assert drift["ok"] is False
+    assert drift["source_checks"][0]["provenance_ok"] is False
+    reproduction = reproduce_build(fundus, "fixture.reproduce", build["build_digest"])
+    assert reproduction["ok"] is False
+    assert reproduction["reproduction"]["attempted"] is False

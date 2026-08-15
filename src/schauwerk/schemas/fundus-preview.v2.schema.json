@@ -1,0 +1,54 @@
+{
+  "$id": "https://heimgewebe.github.io/schauwerk/schemas/fundus-preview.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "aesthetic_quality_established": {"const": false},
+    "asset_id": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+    "build_digest": {"$ref": "#/$defs/sha256"},
+    "network_dependencies": {"const": false},
+    "output_bindings_sha256": {"$ref": "#/$defs/sha256"},
+    "preview_bytes": {"minimum": 1, "maximum": 268435456, "type": "integer"},
+    "preview_file": {"const": "index.html"},
+    "preview_sha256": {"$ref": "#/$defs/sha256"},
+    "rendered_outputs": {
+      "items": {"$ref": "#/$defs/output"},
+      "maxItems": 8,
+      "minItems": 1,
+      "type": "array"
+    },
+    "review_digest": {"$ref": "#/$defs/sha256"},
+    "schema_version": {"const": "schauwerk-fundus-preview.v2"}
+  },
+  "required": [
+    "schema_version",
+    "asset_id",
+    "build_digest",
+    "preview_sha256",
+    "preview_bytes",
+    "preview_file",
+    "rendered_outputs",
+    "output_bindings_sha256",
+    "network_dependencies",
+    "aesthetic_quality_established",
+    "review_digest"
+  ],
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "output": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {"minimum": 1, "maximum": 33554432, "type": "integer"},
+        "filename": {"pattern": "^[a-z0-9][a-z0-9._-]{0,127}$", "type": "string"},
+        "media_type": {"enum": ["image/svg+xml", "image/png"]},
+        "role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "source_role": {"enum": ["original", "trace_source", "texture_source", "reference"]}
+      },
+      "required": ["role", "source_role", "filename", "media_type", "sha256", "bytes"],
+      "type": "object"
+    }
+  },
+  "title": "Schauwerk Fundus Preview v2",
+  "type": "object"
+}

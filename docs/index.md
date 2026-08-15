@@ -103,9 +103,12 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 - `src/schauwerk/schemas/fundus-recipe.v1.schema.json`
 - `src/schauwerk/schemas/fundus-build.v1.schema.json`
 - `src/schauwerk/schemas/fundus-acceptance.v1.schema.json`
+- `src/schauwerk/schemas/fundus-acceptance.v2.schema.json`
+- `src/schauwerk/schemas/fundus-acceptance.v3.schema.json`
 - `src/schauwerk/schemas/fundus-package.v1.schema.json`
 - `src/schauwerk/schemas/fundus-ingest.v1.schema.json`
 - `src/schauwerk/schemas/fundus-preview.v1.schema.json`
+- `src/schauwerk/schemas/fundus-preview.v2.schema.json`
 - `src/schauwerk/schemas/fundus-image-brief.v1.schema.json`
 - `registry/`
 

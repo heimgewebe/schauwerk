@@ -58,7 +58,7 @@ Der Core kennt keine Hall-of-Memory-, Website-, Kunden- oder Produktsemantik. Er
 
 - Fundus-Familie und Asset-IDs;
 - exakte Build-Digests;
-- Outputrolle, Medientyp und Output-SHA-256;
+- Outputrolle, Medientyp, Bytezahl und Output-SHA-256;
 - aktuellen Fundus-Acceptance-Zustand;
 - optionale lokale Review-Fixtures;
 - einen kleinen sicheren Consumer-Fragment-Vertrag.
@@ -133,7 +133,9 @@ Absolute Quellpfade des Consumer-Projekts gelangen nicht in das Bundle. SVG-Fixt
 
 ## Technische Wahrheit
 
-Vor Bundle-Erzeugung werden alle Family-Assets reproduzierbar gebaut beziehungsweise gegen einen identischen vorhandenen Build geprüft. Die Outputbytes werden unmittelbar vor dem Kopieren erneut gegen ihre Fundus-SHA-256 verifiziert.
+Vor Bundle-Erzeugung werden alle Family-Assets reproduzierbar gebaut beziehungsweise gegen einen identischen vorhandenen Build geprüft. Die Outputbytes werden bei Planung und unmittelbar vor dem Kopieren erneut gegen SHA-256, Bytezahl und Medientyp des behaupteten Builds verifiziert. Der finale Read, nicht ein früherer Check, liefert die tatsächlich gerenderten Bundle-Bytes.
+
+Neue v1-Review-Bundles tragen zusätzlich die Bytezahl pro Variante. Historische v1-Bundles ohne dieses später ergänzte Feld bleiben read-only prüfbar, können aber keine neue Acceptance v3 begründen.
 
 `review.json` bindet zusätzlich:
 
@@ -165,7 +167,7 @@ Das JavaScript steuert nur lokale Reviewdarstellung wie Hintergrund und Spaltenz
 
 ## Acceptance-Grenze
 
-Eine gute Darstellung auf der Review-Page ist **Reviewevidenz**, keine Acceptance.
+Eine gute Darstellung auf der Review-Page ist **Reviewevidenz**, keine Acceptance. Eine explizite `accepted`-Entscheidung darf sie jedoch nur verwenden, nachdem `review check` den exakten Bundlezustand bestätigt hat und die Variante sämtliche Outputs des Ziel-Builds bindet. Alternativ ist die kanonische Single-Asset-Preview v2 zulässig. Acceptance v3 speichert den Review-Digest und den Digest der vollständigen Output-Bindungen; Package prüft diese Relation erneut.
 
 Der kanonische Pfad bleibt:
 
@@ -226,6 +228,16 @@ Bundle später erneut prüfen:
 
 ```bash
 schauwerk fundus review check /tmp/laurel-review --json
+```
+
+Geprüftes Bundle für genau einen enthaltenen Build akzeptieren:
+
+```bash
+schauwerk fundus accept botanical.laurel.corner \
+  --build BUILD_DIGEST \
+  --review-bundle /tmp/laurel-review \
+  --reviewer human:alexander \
+  --decision accepted --json
 ```
 
 ## Nicht-Ziele v1

@@ -19,10 +19,12 @@ BUILD_SCHEMA = "schauwerk-fundus-build.v1"
 BUILD_SCHEMA_V2 = "schauwerk-fundus-build.v2"
 ACCEPTANCE_SCHEMA = "schauwerk-fundus-acceptance.v1"
 ACCEPTANCE_SCHEMA_V2 = "schauwerk-fundus-acceptance.v2"
+ACCEPTANCE_SCHEMA_V3 = "schauwerk-fundus-acceptance.v3"
 PACKAGE_SCHEMA = "schauwerk-fundus-package.v1"
 PACKAGE_SCHEMA_V2 = "schauwerk-fundus-package.v2"
 INGEST_SCHEMA = "schauwerk-fundus-ingest.v1"
 PREVIEW_SCHEMA = "schauwerk-fundus-preview.v1"
+PREVIEW_SCHEMA_V2 = "schauwerk-fundus-preview.v2"
 IMAGE_BRIEF_SCHEMA = "schauwerk-fundus-image-brief.v1"
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")

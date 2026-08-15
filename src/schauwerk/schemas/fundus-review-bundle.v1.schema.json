@@ -98,6 +98,7 @@
         "build_digest": {"$ref": "#/$defs/sha256"},
         "output_role": {"enum": ["vector", "mask", "outline", "raster", "texture", "preview"]},
         "output_sha256": {"$ref": "#/$defs/sha256"},
+        "output_bytes": {"type": "integer", "minimum": 1, "maximum": 33554432},
         "output_media_type": {"enum": ["image/svg+xml", "image/png", "image/jpeg", "image/webp"]},
         "output_filename": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
         "acceptance_state": {"enum": ["unreviewed", "accepted", "rejected", "mixed", "invalid"]},

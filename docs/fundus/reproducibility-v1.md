@@ -25,7 +25,9 @@ Beide Prüfungen verändern den kanonischen Fundus-State nicht.
 - gespeicherter `asset_manifest_sha256` gegen das aktuelle Asset-Manifest;
 - gespeicherter `recipe_sha256` gegen die aktuelle Recipe mit derselben ID;
 - Vorhandensein und SHA-256 jedes gebundenen Source-Objekts;
-- bei `generated` und `edited`: weiterhin gültige Ingest- und Image-Brief-Bindung.
+- ein vorhandenes, schema-valides Ingest-Receipt je Quelle;
+- exakte Receipt-Bindung von SHA-256, Bytezahl, Medientyp, Objektpfad, Origin, Rights-Status und Source-Mode an Objekt und aktuelles Assetmanifest;
+- bei `generated` und `edited`: weiterhin gültige Image-Brief-Bindung.
 
 Das Ergebnis ist ein `schauwerk-fundus-reproduction.v1`-Report mit `operation=drift`. Registry- oder Source-Abweichungen ergeben `status=drifted` und `ok=false`. Der allgemeine Schauwerk-Runner transportiert diesen semantischen Zustand im Report; `ok=false` ist daher nicht automatisch ein Prozessfehler.
 
@@ -38,7 +40,7 @@ Ein bereits intern beschädigter Baseline-Build — etwa ein Output mit falschem
 Bei sauberem Preflight:
 
 1. wird ein privater temporärer Fundus-State angelegt;
-2. nur die exakt gebundenen Source-Objekte sowie benötigte Ingest-/Image-Brief-Receipts werden in diesen temporären State kopiert;
+2. nur die exakt gebundenen Source-Objekte sowie die verpflichtenden Ingest- und benötigten Image-Brief-Receipts werden in diesen temporären State kopiert;
 3. die kanonische Registry wird nur gelesen;
 4. der Build wird dort mit der aktuellen Fundus-Toolchain erneut erzeugt;
 5. Build-Digest, geordnete Output-SHA-256 und Toolchain-Evidenz werden mit dem gespeicherten Build verglichen;

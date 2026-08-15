@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from schauwerk import runner
 from schauwerk.fundus.core import Fundus, FundusError, FundusPaths
-from schauwerk.fundus.model import canonical_json, load_json
+from schauwerk.fundus.model import canonical_json, digest_json, load_json
 from schauwerk.fundus.svg import sanitize_svg
 
 SIMPLE_SVG = (
@@ -131,7 +131,7 @@ def test_fundus_walking_skeleton_is_digest_bound_and_idempotent(tmp_path: Path) 
     preview_manifest = json.loads(
         preview_path.with_name("preview.json").read_text(encoding="utf-8")
     )
-    _validate_instance("fundus-preview.v1.schema.json", preview_manifest)
+    _validate_instance("fundus-preview.v2.schema.json", preview_manifest)
 
     acceptance = fundus.accept(
         "fixture.simple-ornament",
@@ -140,12 +140,13 @@ def test_fundus_walking_skeleton_is_digest_bound_and_idempotent(tmp_path: Path) 
         decision="accepted",
         note="deterministic test acceptance only",
         reviewed_at="2026-08-13T10:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     acceptance_manifest = json.loads(
         Path(acceptance["acceptance_path"]).read_text(encoding="utf-8")
     )
     _validate_instance(
-        "fundus-acceptance.v1.schema.json", acceptance_manifest
+        "fundus-acceptance.v3.schema.json", acceptance_manifest
     )
     package = fundus.package(
         "fixture.simple-ornament",
@@ -265,7 +266,7 @@ def test_fundus_rejects_symlink_source_and_tampered_object(tmp_path: Path) -> No
     with pytest.raises(FundusError, match="regular non-linked"):
         fundus.ingest(symlink)
 
-    ingest = fundus.ingest(source)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
     _declare_asset(registry, ingest["sha256"])
     object_path = fundus.root / ingest["object_relpath"]
     object_path.write_bytes(b"tampered")
@@ -275,7 +276,7 @@ def test_fundus_rejects_symlink_source_and_tampered_object(tmp_path: Path) -> No
 
 def test_fundus_rejects_rejected_acceptance_for_package(tmp_path: Path) -> None:
     fundus, registry, source = _setup(tmp_path)
-    ingest = fundus.ingest(source)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
     _declare_asset(registry, ingest["sha256"])
     build = fundus.build("fixture.simple-ornament")
     acceptance = fundus.accept(
@@ -293,6 +294,14 @@ def test_fundus_rejects_rejected_acceptance_for_package(tmp_path: Path) -> None:
         )
 
 
+def test_origin_mode_detection_is_image_specific() -> None:
+    assert Fundus._origin_source_mode("chatgpt:text-workflow") is None
+    assert Fundus._origin_source_mode("openai:api-output") is None
+    assert Fundus._origin_source_mode("chatgpt-images:fixture") == "generated"
+    assert Fundus._origin_source_mode("openai/image_gen:fixture") == "generated"
+    assert Fundus._origin_source_mode("openai-image-edit:fixture") == "edited"
+
+
 def test_fundus_packaged_schemas_are_valid_json_schemas() -> None:
     schema_root = files("schauwerk.schemas")
     for name in (
@@ -301,9 +310,12 @@ def test_fundus_packaged_schemas_are_valid_json_schemas() -> None:
         "fundus-recipe.v1.schema.json",
         "fundus-build.v1.schema.json",
         "fundus-acceptance.v1.schema.json",
+        "fundus-acceptance.v2.schema.json",
+        "fundus-acceptance.v3.schema.json",
         "fundus-package.v1.schema.json",
         "fundus-ingest.v1.schema.json",
         "fundus-preview.v1.schema.json",
+        "fundus-preview.v2.schema.json",
         "fundus-image-brief.v1.schema.json",
     ):
         schema = json.loads(schema_root.joinpath(name).read_text(encoding="utf-8"))
@@ -377,15 +389,19 @@ def test_fundus_build_and_package_are_deterministic_across_roots(
         root = tmp_path / name
         root.mkdir()
         fundus, registry, source = _setup(root)
-        ingest = fundus.ingest(source, origin="determinism", rights_status="owned")
+        ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
         _declare_asset(registry, ingest["sha256"])
         build = fundus.build("fixture.simple-ornament")
+        preview = fundus.preview(
+            "fixture.simple-ornament", build_digest=build["build_digest"]
+        )
         acceptance = fundus.accept(
             "fixture.simple-ornament",
             build_digest=build["build_digest"],
             reviewer="test:determinism",
             decision="accepted",
             reviewed_at="2026-08-13T12:00:00+00:00",
+            preview_receipt_path=preview["preview_receipt_path"],
         )
         package = fundus.package(
             "fixture.simple-ornament",
@@ -508,12 +524,16 @@ def test_generated_ingest_requires_digest_bound_image_brief(tmp_path: Path) -> N
     _validate_instance("fundus-asset.v1.schema.json", asset)
     build = fundus.build("fixture.simple-ornament")
     assert build["source"]["image_brief_sha256"] == ingest["image_brief_sha256"]
+    preview = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
     acceptance = fundus.accept(
         "fixture.simple-ornament",
         build_digest=build["build_digest"],
         reviewer="test:image-brief",
         decision="accepted",
         reviewed_at="2026-08-14T06:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     package = fundus.package(
         "fixture.simple-ornament",
@@ -762,3 +782,160 @@ def test_edit_image_brief_requires_exact_ingested_input_revision(tmp_path: Path)
     prepared = fundus.image_brief(brief_path)
     assert prepared["input_sha256"] == base["sha256"]
     assert prepared["prepared"] is True
+
+
+def test_accepted_decision_and_new_package_require_exact_review_evidence(
+    tmp_path: Path,
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+
+    with pytest.raises(FundusError, match="exactly one checked preview"):
+        fundus.accept(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            reviewer="test:no-review",
+            decision="accepted",
+        )
+
+    historical_body = {
+        "schema_version": "schauwerk-fundus-acceptance.v1",
+        "asset_id": "fixture.simple-ornament",
+        "build_digest": build["build_digest"],
+        "output_sha256s": [item["sha256"] for item in build["outputs"]],
+        "decision": "accepted",
+        "reviewer": "historical:test",
+        "reviewed_at": "2026-08-13T10:00:00+00:00",
+        "note": "historical readable receipt",
+        "reviewer_identity_authenticated": False,
+    }
+    acceptance_digest = digest_json(historical_body)
+    historical = {**historical_body, "acceptance_digest": acceptance_digest}
+    fundus._write_json_create_or_verify(
+        fundus.root
+        / "acceptances"
+        / "fixture.simple-ornament"
+        / build["build_digest"]
+        / f"{acceptance_digest}.json",
+        historical,
+    )
+    assert fundus._load_acceptance(
+        "fixture.simple-ornament", build["build_digest"], acceptance_digest
+    ) == historical
+    with pytest.raises(FundusError, match="lacks digest-bound review evidence"):
+        fundus.package(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            acceptance_digest=acceptance_digest,
+        )
+
+
+def test_preview_revalidates_final_output_read_after_build_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+    output_path = Path(build["build_dir"]) / build["outputs"][0]["filename"]
+    original = fundus._load_build
+
+    def substitute_after_check(asset_id: str, build_digest: str):
+        loaded = original(asset_id, build_digest)
+        output_path.write_bytes(SIMPLE_SVG)
+        return loaded
+
+    monkeypatch.setattr(fundus, "_load_build", substitute_after_check)
+    with pytest.raises(FundusError, match="build output (size|digest) mismatch"):
+        fundus.preview("fixture.simple-ornament", build_digest=build["build_digest"])
+
+
+def test_package_revalidates_final_output_read_after_acceptance_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+    preview = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    acceptance = fundus.accept(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        reviewer="test:race",
+        decision="accepted",
+        preview_receipt_path=preview["preview_receipt_path"],
+    )
+    output_path = Path(build["build_dir"]) / build["outputs"][0]["filename"]
+    original = fundus._load_acceptance
+
+    def substitute_after_acceptance(*args, **kwargs):
+        loaded = original(*args, **kwargs)
+        output_path.write_bytes(SIMPLE_SVG)
+        return loaded
+
+    monkeypatch.setattr(fundus, "_load_acceptance", substitute_after_acceptance)
+    with pytest.raises(FundusError, match="build output (size|digest) mismatch"):
+        fundus.package(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            acceptance_digest=acceptance["acceptance_digest"],
+        )
+
+
+@pytest.mark.parametrize("defect", ["missing", "forged", "origin"])
+def test_build_requires_exact_schema_valid_ingest_provenance(
+    tmp_path: Path, defect: str
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    receipt_path = fundus.root / "receipts" / "ingest" / f"{ingest['sha256']}.json"
+    if defect == "missing":
+        receipt_path.unlink()
+        expected = "missing or invalid"
+    else:
+        receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        if defect == "forged":
+            receipt["forged"] = True
+            expected = "schema validation failed"
+        else:
+            receipt["origin"] = "fixture:forged-origin"
+            expected = "origin does not match"
+        receipt_path.write_bytes(canonical_json(receipt) + b"\n")
+    with pytest.raises(FundusError, match=expected):
+        fundus.build("fixture.simple-ornament")
+
+
+def test_legacy_generative_source_remains_reviewable_but_not_producible(
+    tmp_path: Path,
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="legacy:unclassified", rights_status="owned")
+    receipt_path = fundus.root / "receipts" / "ingest" / f"{ingest['sha256']}.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt.pop("source_mode")
+    receipt["origin"] = "chatgpt-images:legacy-without-brief"
+    receipt_path.write_bytes(canonical_json(receipt) + b"\n")
+    _declare_asset(registry, ingest["sha256"])
+    asset_path = registry / "assets" / "fixture.simple-ornament.json"
+    asset = json.loads(asset_path.read_text(encoding="utf-8"))
+    asset["sources"][0]["origin"] = receipt["origin"]
+    asset_path.write_text(json.dumps(asset), encoding="utf-8")
+
+    build = fundus.build("fixture.simple-ornament")
+    preview = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    assert preview["review_digest"]
+    with pytest.raises(FundusError, match="legacy generative source"):
+        fundus.accept(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            reviewer="test:legacy",
+            decision="accepted",
+            preview_receipt_path=preview["preview_receipt_path"],
+        )

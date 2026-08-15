@@ -63,7 +63,7 @@ Beispiel:
 
 Generierte und generativ bearbeitete Source-Master werden mit `source_mode=generated` beziehungsweise `source_mode=edited` ingestiert und müssen `image_brief_sha256` binden. Der Brief muss bereits durch `fundus brief` vorbereitet worden sein. Bekannte Ursprünge wie `chatgpt-images:` und `openai-images:` werden als generativ erkannt; ein widersprüchlich als manuell deklarierter Modus wird fail-closed abgewiesen.
 
-Der Ingest speichert den Brief unveränderlich unter seinem Digest. Assetmanifest, Ingest-Receipt und Build müssen denselben Brief-Digest tragen. Build und Package prüfen die Bindung erneut. Alte, unklassifizierte V1-Quellen bleiben lesbar; neue generative Arbeit darf nicht als `unknown` verschleiert werden.
+Der Ingest speichert den Brief unveränderlich unter seinem Digest. Assetmanifest, Ingest-Receipt und Build müssen denselben Brief-Digest tragen. Build, Drift, Reproduce, Acceptance und Package prüfen die Bindung erneut. Alte, unklassifizierte V1-Quellen bleiben les- und reviewbar; deutet ihr Origin eindeutig auf `chatgpt-images`, OpenAI/ImageGen oder einen vergleichbaren generativen Pfad, dürfen sie ohne historisch tatsächlich vorbereiteten Brief weder neu akzeptiert noch packaged werden. Ein fehlender historischer Brief wird niemals nachträglich erfunden.
 
 ## Bearbeitung und Acceptance
 

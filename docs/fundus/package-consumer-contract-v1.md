@@ -35,7 +35,10 @@ Geprüft werden:
 - sichere Verzeichnis- und Dateimetadaten ohne Symlinks oder Hardlinks;
 - deklarierte Dateigröße und SHA-256 jeder Produktionsdatei;
 - deklarierter MIME-/Medientyp gegen die tatsächlichen Bytes;
+- für SVG je nach Outputrolle das passive `svg.mask.v1`- oder `svg.decorative.v1`-Profil, einschließlich Verbot aktiver und externer Ressourcen;
 - exakte `SHA256SUMS`-Bytes einschließlich des Digests von `fundus-package.json`.
+
+Der Package-Root bleibt während der Prüfung über einen No-Follow-Deskriptor gepinnt. Inventar und sämtliche Dateien werden descriptor-relativ geprüft; ein zweiter vollständiger Verifikationspass und ein Root-Identity-Postflight blockieren Additions-, Removal-, Replacement- und Root-Swap-Rennen. `ok=true` beschreibt damit den stabil bestätigten Package-Verzeichniszustand des Returns.
 
 Die Verifikation liest ausschließlich das übergebene Package-Verzeichnis. Sie repariert oder normalisiert keine Consumer-Dateien.
 

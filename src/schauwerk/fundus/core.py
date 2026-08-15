@@ -10,8 +10,11 @@ import os
 import stat
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from importlib import resources
 from pathlib import Path
 from typing import Any
+
+from jsonschema import Draft202012Validator, ValidationError
 
 from .durability import durability_status
 from .errors import FundusError
@@ -19,13 +22,14 @@ from .media import MAX_SOURCE_BYTES, inspect_media
 from .model import (
     ACCEPTANCE_SCHEMA,
     ACCEPTANCE_SCHEMA_V2,
+    ACCEPTANCE_SCHEMA_V3,
     BUILD_SCHEMA,
     BUILD_SCHEMA_V2,
     IMAGE_BRIEF_SCHEMA,
     INGEST_SCHEMA,
     PACKAGE_SCHEMA,
     PACKAGE_SCHEMA_V2,
-    PREVIEW_SCHEMA,
+    PREVIEW_SCHEMA_V2,
     RECIPE_SCHEMA_V2,
     RECIPE_SCHEMA_V3,
     canonical_json,
@@ -238,10 +242,16 @@ class Fundus:
                     "edit input is not a completed Fundus ingest: receipt is missing"
                 )
             try:
-                ingest = json.loads(
-                    self._read_private(ingest_path, maximum_bytes=128_000)
+                ingest = self._parse_json_object(
+                    self._read_private(ingest_path, maximum_bytes=128_000),
+                    label="edit input ingest receipt",
                 )
-            except (OSError, json.JSONDecodeError) as exc:
+                self._validate_schema_document(
+                    ingest,
+                    "fundus-ingest.v1.schema.json",
+                    label="edit input ingest receipt",
+                )
+            except (FundusError, OSError) as exc:
                 raise FundusError("edit input ingest receipt is invalid") from exc
             if (
                 ingest.get("schema_version") != INGEST_SCHEMA
@@ -277,21 +287,26 @@ class Fundus:
     @staticmethod
     def _origin_source_mode(origin: str) -> str | None:
         lowered = origin.casefold()
-        generated_prefixes = (
-            "chatgpt-images:",
-            "openai-images:",
-            "image_gen:",
-            "ai-generated:",
-        )
         edited_prefixes = (
             "chatgpt-image-edit:",
             "openai-image-edit:",
+            "openai/image-edit:",
+            "openai/image_gen/edit:",
+            "image_gen/edit:",
             "ai-edited:",
+        )
+        if lowered.startswith(edited_prefixes):
+            return "edited"
+        generated_prefixes = (
+            "chatgpt-images:",
+            "openai-images:",
+            "openai/image_gen:",
+            "image_gen:",
+            "image-gen:",
+            "ai-generated:",
         )
         if lowered.startswith(generated_prefixes):
             return "generated"
-        if lowered.startswith(edited_prefixes):
-            return "edited"
         return None
 
     def ingest(
@@ -329,8 +344,14 @@ class Fundus:
             / f"{sha256}.json"
         )
         if receipt_path.exists():
-            existing = json.loads(
-                self._read_private(receipt_path, maximum_bytes=64_000)
+            existing = self._parse_json_object(
+                self._read_private(receipt_path, maximum_bytes=64_000),
+                label="source ingest receipt",
+            )
+            self._validate_schema_document(
+                existing,
+                "fundus-ingest.v1.schema.json",
+                label="source ingest receipt",
             )
             if existing.get("sha256") != sha256:
                 raise FundusError(
@@ -395,8 +416,9 @@ class Fundus:
                 raise FundusError(
                     "image brief must be prepared before generated or edited ingest"
                 )
-            prepared = json.loads(
-                self._read_private(prepared_path, maximum_bytes=256_000)
+            prepared = self._parse_json_object(
+                self._read_private(prepared_path, maximum_bytes=256_000),
+                label="prepared image brief",
             )
             if digest_json(prepared) != brief_sha256 or prepared != brief:
                 raise FundusError("prepared image brief binding is invalid")
@@ -587,6 +609,108 @@ class Fundus:
             )
         return payload
 
+    @staticmethod
+    def _validate_schema_document(
+        value: dict[str, Any], schema_file: str, *, label: str
+    ) -> None:
+        try:
+            schema = json.loads(
+                resources.files("schauwerk.schemas")
+                .joinpath(schema_file)
+                .read_text(encoding="utf-8")
+            )
+            Draft202012Validator(schema).validate(value)
+        except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            detail = exc.message if isinstance(exc, ValidationError) else str(exc)
+            raise FundusError(f"{label} schema validation failed: {detail}") from exc
+
+    @staticmethod
+    def _parse_json_object(payload: bytes, *, label: str) -> dict[str, Any]:
+        def reject_constant(value: str) -> None:
+            raise ValueError(f"invalid JSON constant: {value}")
+
+        def unique_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError(f"duplicate JSON key: {key}")
+                result[key] = value
+            return result
+
+        try:
+            value = json.loads(
+                payload.decode("utf-8"),
+                object_pairs_hook=unique_pairs,
+                parse_constant=reject_constant,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            raise FundusError(f"{label} is invalid JSON") from exc
+        if not isinstance(value, dict):
+            raise FundusError(f"{label} must be an object")
+        return value
+
+    def _load_ingest_receipt(
+        self,
+        source: dict[str, Any],
+        *,
+        production: bool = False,
+    ) -> dict[str, Any]:
+        """Validate exact stored bytes and declarative provenance for one source."""
+        sha256 = source["sha256"]
+        ingest_path = self.root / "receipts" / "ingest" / f"{sha256}.json"
+        try:
+            payload = self._read_private(ingest_path, maximum_bytes=128_000)
+            ingest = self._parse_json_object(payload, label="source ingest receipt")
+        except (FundusError, OSError) as exc:
+            raise FundusError("source ingest receipt is missing or invalid") from exc
+        self._validate_schema_document(
+            ingest,
+            "fundus-ingest.v1.schema.json",
+            label="source ingest receipt",
+        )
+
+        object_payload = self._read_object(sha256)
+        media = inspect_media(object_payload)
+        expected_relpath = f"objects/sha256/{sha256[:2]}/{sha256}"
+        exact_bindings = {
+            "sha256": sha256,
+            "bytes": len(object_payload),
+            "media_type": media.media_type,
+            "width": media.width,
+            "height": media.height,
+            "has_alpha": media.has_alpha,
+            "object_relpath": expected_relpath,
+        }
+        for field, expected in exact_bindings.items():
+            if ingest.get(field) != expected:
+                raise FundusError(f"source ingest receipt {field} binding mismatch")
+        if source.get("media_type") != ingest["media_type"]:
+            raise FundusError("asset source media_type does not match ingest receipt")
+        for field in ("origin", "rights_status"):
+            if field in source and source[field] != ingest[field]:
+                raise FundusError(f"asset source {field} does not match ingest receipt")
+        asset_mode = source.get("source_mode", "unknown")
+        ingest_mode = ingest.get("source_mode", "unknown")
+        if asset_mode != ingest_mode:
+            if ingest_mode in {"generated", "edited"}:
+                raise FundusError(
+                    "generated or edited asset source must preserve ingest source_mode"
+                )
+            raise FundusError("asset source_mode does not match ingest receipt")
+
+        inferred_mode = self._origin_source_mode(ingest["origin"])
+        legacy_generative = inferred_mode is not None and (
+            "source_mode" not in ingest
+            or ingest_mode not in {"generated", "edited"}
+            or "image_brief_sha256" not in ingest
+        )
+        if production and legacy_generative:
+            raise FundusError(
+                "legacy generative source lacks source_mode and prepared image brief; "
+                "new production admission is forbidden"
+            )
+        return ingest
+
     def _validate_source_image_brief(
         self,
         asset_id: str,
@@ -594,30 +718,13 @@ class Fundus:
         *,
         output_roles: list[str] | None = None,
         asset_properties: dict[str, bool] | None = None,
+        production: bool = False,
     ) -> dict[str, Any] | None:
+        ingest = self._load_ingest_receipt(source, production=production)
         asset_mode = source.get("source_mode", "unknown")
         asset_brief_sha256 = source.get("image_brief_sha256")
-        ingest_path = (
-            self.root
-            / "receipts"
-            / "ingest"
-            / f"{source['sha256']}.json"
-        )
-        ingest: dict[str, Any] | None = None
-        if ingest_path.exists():
-            ingest = json.loads(
-                self._read_private(ingest_path, maximum_bytes=128_000)
-            )
-        ingest_mode = (
-            ingest.get("source_mode", "unknown")
-            if ingest is not None
-            else "unknown"
-        )
-        ingest_brief_sha256 = (
-            ingest.get("image_brief_sha256")
-            if ingest is not None
-            else None
-        )
+        ingest_mode = ingest.get("source_mode", "unknown")
+        ingest_brief_sha256 = ingest.get("image_brief_sha256")
 
         if ingest_mode in {"generated", "edited"}:
             if "source_mode" not in source or asset_mode != ingest_mode:
@@ -632,8 +739,6 @@ class Fundus:
                     "generated or edited asset source must preserve ingest image brief"
                 )
         elif asset_mode in {"generated", "edited"}:
-            if ingest is None:
-                raise FundusError("source ingest receipt is missing")
             raise FundusError("asset source_mode does not match ingest receipt")
         else:
             if asset_brief_sha256 is not None:
@@ -652,8 +757,9 @@ class Fundus:
         )
         if not brief_path.exists():
             raise FundusError("bound image brief receipt is missing")
-        brief = json.loads(
-            self._read_private(brief_path, maximum_bytes=256_000)
+        brief = self._parse_json_object(
+            self._read_private(brief_path, maximum_bytes=256_000),
+            label="bound image brief",
         )
         try:
             validate_image_brief(brief)
@@ -943,11 +1049,12 @@ class Fundus:
             raise FundusError(
                 "Fundus build does not exist"
             )
-        manifest = json.loads(
+        manifest = self._parse_json_object(
             self._read_private(
                 manifest_path,
                 maximum_bytes=256_000,
-            )
+            ),
+            label="build manifest",
         )
         if manifest.get("build_digest") != build_digest:
             raise FundusError(
@@ -959,16 +1066,40 @@ class Fundus:
             raise FundusError(
                 "build manifest content drifted"
             )
+        schema_file = {
+            BUILD_SCHEMA: "fundus-build.v1.schema.json",
+            BUILD_SCHEMA_V2: "fundus-build.v2.schema.json",
+        }.get(manifest.get("schema_version"))
+        if schema_file is None:
+            raise FundusError("build schema_version is unsupported")
+        self._validate_schema_document(manifest, schema_file, label="build manifest")
         for output in manifest.get("outputs", []):
-            payload = self._read_private(
-                build_dir / output["filename"],
-                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
-            )
-            if digest_bytes(payload) != output["sha256"]:
-                raise FundusError(
-                    "build output digest mismatch"
-                )
+            self._read_build_output(build_dir, output)
         return manifest, build_dir
+
+    def _read_build_output(
+        self,
+        build_dir: Path,
+        output: dict[str, Any],
+        *,
+        maximum_bytes: int = MAX_BUILD_OUTPUT_BYTES,
+    ) -> bytes:
+        """Read and revalidate the exact output bytes claimed by a build record."""
+        payload = self._read_private(
+            build_dir / output["filename"],
+            maximum_bytes=maximum_bytes,
+        )
+        if len(payload) != output["bytes"]:
+            raise FundusError("build output size mismatch")
+        if digest_bytes(payload) != output["sha256"]:
+            raise FundusError("build output digest mismatch")
+        try:
+            media_type = inspect_media(payload).media_type
+        except ValueError as exc:
+            raise FundusError("build output media is invalid") from exc
+        if media_type != output["media_type"]:
+            raise FundusError("build output media_type mismatch")
+        return payload
 
     def preview(
         self,
@@ -988,15 +1119,12 @@ class Fundus:
         uses_data_images = False
         for output in build["outputs"]:
             media_type = output["media_type"]
-            artifact_path = build_dir / output["filename"]
             if media_type == "image/svg+xml":
-                rendered = self._read_private(
-                    artifact_path,
-                    maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
-                ).decode("utf-8")
+                rendered = self._read_build_output(build_dir, output).decode("utf-8")
             elif media_type == "image/png":
-                artifact_bytes = self._read_private(
-                    artifact_path,
+                artifact_bytes = self._read_build_output(
+                    build_dir,
+                    output,
                     maximum_bytes=MAX_PREVIEW_RASTER_BYTES,
                 )
                 encoded = base64.b64encode(artifact_bytes).decode("ascii")
@@ -1063,15 +1191,25 @@ class Fundus:
             preview_dir / "index.html",
             document,
         )
-        receipt = {
-            "schema_version": PREVIEW_SCHEMA,
+        output_bindings = self._build_output_bindings(build)
+        receipt_body = {
+            "schema_version": PREVIEW_SCHEMA_V2,
             "asset_id": asset_id,
             "build_digest": build_digest,
             "preview_sha256": preview_digest,
+            "preview_bytes": len(document),
             "preview_file": "index.html",
+            "rendered_outputs": output_bindings,
+            "output_bindings_sha256": digest_json(output_bindings),
             "network_dependencies": False,
             "aesthetic_quality_established": False,
         }
+        receipt = {**receipt_body, "review_digest": digest_json(receipt_body)}
+        self._validate_schema_document(
+            receipt,
+            "fundus-preview.v2.schema.json",
+            label="Fundus preview receipt",
+        )
         self._write_json_create_or_verify(
             preview_dir / "preview.json",
             receipt,
@@ -1081,6 +1219,7 @@ class Fundus:
             "preview_path": str(
                 preview_dir / "index.html"
             ),
+            "preview_receipt_path": str(preview_dir / "preview.json"),
         }
 
     @staticmethod
@@ -1148,6 +1287,158 @@ class Fundus:
             raise FundusError("inheritance timestamp must include a timezone")
         return rendered
 
+    def _production_provenance_gate(
+        self, asset_id: str, build: dict[str, Any]
+    ) -> None:
+        asset, asset_digest, _ = self._asset(asset_id)
+        if asset_digest != build["asset_manifest_sha256"]:
+            raise FundusError("production provenance asset manifest binding drifted")
+        asset_sources = {source["role"]: source for source in asset["sources"]}
+        for build_source in self._build_source_bindings(build):
+            source = asset_sources.get(build_source["role"])
+            if source is None:
+                raise FundusError("production provenance source role is missing")
+            for field in ("sha256", "media_type", "source_mode", "image_brief_sha256"):
+                if build_source.get(field) != source.get(field):
+                    raise FundusError(
+                        f"production provenance build source {field} binding drifted"
+                    )
+            output_roles = [
+                output["role"]
+                for output in self._build_output_bindings(build)
+                if output["source_role"] == source["role"]
+            ]
+            self._validate_source_image_brief(
+                asset_id,
+                source,
+                output_roles=output_roles,
+                production=True,
+            )
+
+    def _preview_review_evidence(
+        self,
+        asset_id: str,
+        build: dict[str, Any],
+        preview_receipt_path: str | Path,
+    ) -> dict[str, Any]:
+        expected_path = (
+            self.root / "previews" / asset_id / build["build_digest"] / "preview.json"
+        )
+        supplied = normalized_absolute(
+            preview_receipt_path, label="Fundus preview receipt path"
+        )
+        if supplied != normalized_absolute(expected_path, label="Fundus preview receipt path"):
+            raise FundusError("direct acceptance requires the canonical preview receipt")
+        try:
+            receipt = self._parse_json_object(
+                self._read_private(supplied, maximum_bytes=256_000),
+                label="Fundus preview receipt",
+            )
+        except (FundusError, OSError) as exc:
+            raise FundusError("Fundus preview receipt is invalid") from exc
+        self._validate_schema_document(
+            receipt,
+            "fundus-preview.v2.schema.json",
+            label="Fundus preview receipt",
+        )
+        body = dict(receipt)
+        review_digest = body.pop("review_digest")
+        if digest_json(body) != review_digest:
+            raise FundusError("Fundus preview receipt digest mismatch")
+        if receipt["asset_id"] != asset_id or receipt["build_digest"] != build["build_digest"]:
+            raise FundusError("Fundus preview targets another asset or build")
+        output_bindings = self._build_output_bindings(build)
+        if (
+            receipt["rendered_outputs"] != output_bindings
+            or receipt["output_bindings_sha256"] != digest_json(output_bindings)
+        ):
+            raise FundusError("Fundus preview output binding mismatch")
+        preview_payload = self._read_private(
+            supplied.with_name(receipt["preview_file"]),
+            maximum_bytes=MAX_BUILD_OUTPUT_BYTES * 8,
+        )
+        if (
+            len(preview_payload) != receipt["preview_bytes"]
+            or digest_bytes(preview_payload) != receipt["preview_sha256"]
+        ):
+            raise FundusError("Fundus preview file drifted")
+        return {
+            "kind": "single_asset_preview",
+            "schema_version": PREVIEW_SCHEMA_V2,
+            "review_digest": review_digest,
+            "output_bindings_sha256": digest_json(output_bindings),
+        }
+
+    def _bundle_review_evidence(
+        self,
+        asset_id: str,
+        build: dict[str, Any],
+        review_bundle_path: str | Path,
+    ) -> dict[str, Any]:
+        from .review import REVIEW_BUNDLE_SCHEMA, check_review_bundle
+
+        checked = check_review_bundle(Path(review_bundle_path))
+        output_bindings = self._build_output_bindings(build)
+        variants = [
+            item
+            for item in checked["variants"]
+            if item["asset_id"] == asset_id
+            and item["build_digest"] == build["build_digest"]
+        ]
+        expected = [
+            {
+                "output_role": item["role"],
+                "output_sha256": item["sha256"],
+                "output_media_type": item["media_type"],
+                "output_filename": item["filename"],
+                "output_bytes": item["bytes"],
+            }
+            for item in output_bindings
+        ]
+        observed = [
+            {
+                key: item.get(key)
+                for key in (
+                    "output_role",
+                    "output_sha256",
+                    "output_media_type",
+                    "output_filename",
+                    "output_bytes",
+                )
+            }
+            for item in variants
+        ]
+        if observed != expected:
+            raise FundusError("Fundus review bundle does not bind every build output")
+        return {
+            "kind": "family_review_bundle",
+            "schema_version": REVIEW_BUNDLE_SCHEMA,
+            "review_digest": checked["review_digest"],
+            "output_bindings_sha256": digest_json(output_bindings),
+        }
+
+    def _validate_acceptance_review_binding(
+        self, acceptance: dict[str, Any], build: dict[str, Any]
+    ) -> None:
+        if acceptance.get("schema_version") != ACCEPTANCE_SCHEMA_V3:
+            raise FundusError(
+                "production admission requires a digest-bound direct review acceptance"
+            )
+        output_bindings_sha256 = digest_json(self._build_output_bindings(build))
+        evidence = acceptance.get("review_evidence", {})
+        expected_review_schema = {
+            "single_asset_preview": PREVIEW_SCHEMA_V2,
+            "family_review_bundle": "schauwerk-fundus-review-bundle.v1",
+        }.get(evidence.get("kind"))
+        if (
+            acceptance.get("acceptance_mode") != "direct"
+            or expected_review_schema is None
+            or evidence.get("schema_version") != expected_review_schema
+            or evidence.get("output_bindings_sha256") != output_bindings_sha256
+            or acceptance.get("output_bindings_sha256") != output_bindings_sha256
+        ):
+            raise FundusError("acceptance-to-review binding mismatch")
+
     def inherit_acceptance(
         self,
         asset_id: str,
@@ -1197,12 +1488,15 @@ class Fundus:
             _allow_inherited=False,
         )
         if (
-            parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA
+            parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA_V3
             or parent_acceptance.get("decision") != "accepted"
         ):
             raise FundusError(
-                "acceptance inheritance requires a directly reviewed accepted parent"
+                "acceptance inheritance requires a digest-bound directly reviewed "
+                "accepted parent"
             )
+        self._validate_acceptance_review_binding(parent_acceptance, parent_build)
+        self._production_provenance_gate(asset_id, build)
 
         source_bindings = self._build_source_bindings(build)
         parent_source_bindings = self._build_source_bindings(parent_build)
@@ -1254,6 +1548,8 @@ class Fundus:
         decision: str,
         note: str = "",
         reviewed_at: str | None = None,
+        preview_receipt_path: str | Path | None = None,
+        review_bundle_path: str | Path | None = None,
     ) -> dict[str, Any]:
         build, _ = self._load_build(
             asset_id,
@@ -1273,8 +1569,33 @@ class Fundus:
             raise FundusError(
                 "acceptance note is invalid"
             )
+        evidence_count = sum(
+            value is not None for value in (preview_receipt_path, review_bundle_path)
+        )
+        if decision == "accepted" and evidence_count != 1:
+            raise FundusError(
+                "accepted decisions require exactly one checked preview or review bundle"
+            )
+        if decision == "rejected" and evidence_count:
+            raise FundusError("rejected decisions do not admit production review evidence")
+
+        review_evidence: dict[str, Any] | None = None
+        if decision == "accepted":
+            self._production_provenance_gate(asset_id, build)
+            if preview_receipt_path is not None:
+                review_evidence = self._preview_review_evidence(
+                    asset_id, build, preview_receipt_path
+                )
+            else:
+                assert review_bundle_path is not None
+                review_evidence = self._bundle_review_evidence(
+                    asset_id, build, review_bundle_path
+                )
+
         body = {
-            "schema_version": ACCEPTANCE_SCHEMA,
+            "schema_version": (
+                ACCEPTANCE_SCHEMA_V3 if decision == "accepted" else ACCEPTANCE_SCHEMA
+            ),
             "asset_id": asset_id,
             "build_digest": build_digest,
             "output_sha256s": [
@@ -1282,6 +1603,17 @@ class Fundus:
                 for item in build["outputs"]
             ],
             "decision": decision,
+            **(
+                {
+                    "acceptance_mode": "direct",
+                    "output_bindings_sha256": digest_json(
+                        self._build_output_bindings(build)
+                    ),
+                    "review_evidence": review_evidence,
+                }
+                if review_evidence is not None
+                else {}
+            ),
             "reviewer": reviewer,
             "reviewed_at": (
                 reviewed_at
@@ -1295,6 +1627,15 @@ class Fundus:
             **body,
             "acceptance_digest": acceptance_digest,
         }
+        self._validate_schema_document(
+            record,
+            (
+                "fundus-acceptance.v3.schema.json"
+                if decision == "accepted"
+                else "fundus-acceptance.v1.schema.json"
+            ),
+            label="Fundus acceptance",
+        )
         path = (
             self.root
             / "acceptances"
@@ -1334,11 +1675,12 @@ class Fundus:
             raise FundusError(
                 "acceptance receipt does not exist"
             )
-        record = json.loads(
+        record = self._parse_json_object(
             self._read_private(
                 path,
                 maximum_bytes=128_000,
-            )
+            ),
+            label="Fundus acceptance",
         )
         if record.get("acceptance_digest") != acceptance_digest:
             raise FundusError(
@@ -1360,13 +1702,21 @@ class Fundus:
             )
 
         schema = record.get("schema_version")
-        if schema not in {ACCEPTANCE_SCHEMA, ACCEPTANCE_SCHEMA_V2}:
+        schema_file = {
+            ACCEPTANCE_SCHEMA: "fundus-acceptance.v1.schema.json",
+            ACCEPTANCE_SCHEMA_V2: "fundus-acceptance.v2.schema.json",
+            ACCEPTANCE_SCHEMA_V3: "fundus-acceptance.v3.schema.json",
+        }.get(schema)
+        if schema_file is None:
             raise FundusError("acceptance schema_version is unsupported")
+        self._validate_schema_document(record, schema_file, label="Fundus acceptance")
         build, _ = self._load_build(asset_id, build_digest)
         expected_output_sha256s = [item["sha256"] for item in build["outputs"]]
         if record.get("output_sha256s") != expected_output_sha256s:
             raise FundusError("acceptance output binding mismatch")
-        if schema == ACCEPTANCE_SCHEMA:
+        if schema in {ACCEPTANCE_SCHEMA, ACCEPTANCE_SCHEMA_V3}:
+            if schema == ACCEPTANCE_SCHEMA_V3:
+                self._validate_acceptance_review_binding(record, build)
             return record
         if not _allow_inherited:
             raise FundusError("inherited acceptance cannot be an inheritance parent")
@@ -1404,12 +1754,17 @@ class Fundus:
             _allow_inherited=False,
         )
         if (
-            parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA
+            parent_acceptance.get("schema_version")
+            not in {ACCEPTANCE_SCHEMA, ACCEPTANCE_SCHEMA_V3}
             or parent_acceptance.get("decision") != "accepted"
         ):
             raise FundusError(
-                "inherited acceptance parent was not directly reviewed and accepted"
+                "inherited acceptance parent is not a directly reviewed acceptance"
             )
+        # Historical v1 parents remain readable. New production admission and
+        # new inheritance creation require v3 review evidence separately.
+        if parent_acceptance.get("schema_version") == ACCEPTANCE_SCHEMA_V3:
+            self._validate_acceptance_review_binding(parent_acceptance, parent_build)
         source_bindings = self._build_source_bindings(build)
         if source_bindings != self._build_source_bindings(parent_build):
             raise FundusError("inherited acceptance source bindings drifted")
@@ -1440,6 +1795,33 @@ class Fundus:
             build_digest,
             acceptance_digest,
         )
+        if acceptance.get("decision") != "accepted":
+            raise FundusError("only an explicitly accepted build may be packaged")
+        if acceptance.get("schema_version") == ACCEPTANCE_SCHEMA_V3:
+            self._validate_acceptance_review_binding(acceptance, build)
+        elif acceptance.get("schema_version") == ACCEPTANCE_SCHEMA_V2:
+            parent_build, _ = self._load_build(
+                asset_id, acceptance["parent_build_digest"]
+            )
+            parent_acceptance = self._load_acceptance(
+                asset_id,
+                acceptance["parent_build_digest"],
+                acceptance["parent_acceptance_digest"],
+                _allow_inherited=False,
+            )
+            if (
+                parent_acceptance.get("schema_version") != ACCEPTANCE_SCHEMA_V3
+                or parent_acceptance.get("decision") != "accepted"
+            ):
+                raise FundusError(
+                    "historical inherited acceptance lacks digest-bound review evidence"
+                )
+            self._validate_acceptance_review_binding(parent_acceptance, parent_build)
+        else:
+            raise FundusError(
+                "historical direct acceptance lacks digest-bound review evidence"
+            )
+        self._production_provenance_gate(asset_id, build)
         build_schema = build.get("schema_version")
         source_image_briefs: list[dict[str, str]] = []
         if build_schema == BUILD_SCHEMA_V2:
@@ -1450,7 +1832,10 @@ class Fundus:
                     if item["source_role"] == source["role"]
                 ]
                 self._validate_source_image_brief(
-                    asset_id, source, output_roles=output_roles
+                    asset_id,
+                    source,
+                    output_roles=output_roles,
+                    production=True,
                 )
                 if "image_brief_sha256" in source:
                     source_image_briefs.append(
@@ -1464,19 +1849,13 @@ class Fundus:
                 asset_id,
                 build["source"],
                 output_roles=[item["role"] for item in build["outputs"]],
-            )
-        if acceptance.get("decision") != "accepted":
-            raise FundusError(
-                "only an explicitly accepted build may be packaged"
+                production=True,
             )
         files: list[dict[str, Any]] = []
         staged: list[tuple[str, bytes]] = []
         slug = asset_id.replace(".", "-").replace("_", "-")
         for output in build["outputs"]:
-            payload = self._read_private(
-                build_dir / output["filename"],
-                maximum_bytes=MAX_BUILD_OUTPUT_BYTES,
-            )
+            payload = self._read_build_output(build_dir, output)
             suffix = Path(output["filename"]).suffix
             packaged_name = (
                 f"{slug}-{output['role']}{suffix}"
@@ -1492,8 +1871,8 @@ class Fundus:
                         else {}
                     ),
                     "media_type": output["media_type"],
-                    "sha256": digest_bytes(payload),
-                    "bytes": len(payload),
+                    "sha256": output["sha256"],
+                    "bytes": output["bytes"],
                 }
             )
             staged.append((relpath, payload))
@@ -1561,8 +1940,9 @@ class Fundus:
             package_dir / "SHA256SUMS",
             sums_payload,
         )
+        verified = verify_package_directory(package_dir)
         return {
-            **manifest,
+            **verified,
             "package_dir": str(package_dir),
         }
 
