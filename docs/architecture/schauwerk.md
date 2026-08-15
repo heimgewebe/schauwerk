@@ -114,3 +114,5 @@ Schauwerk does not initially implement a whiteboard engine, CRDT collaboration, 
 8. Fundus content objects are create-only and content-addressed; rejected or invalid lifecycle calls do not create partial authoritative state.
 9. Fundus SVG package outputs contain no active or externally referenced resources.
 10. Every Fundus package is bound to an explicitly accepted exact build digest and has no runtime dependency on Schauwerk.
+11. A source observation from after its evaluation time cannot be current, fresh or canonically authoritative.
+12. Durable backup and staged-restore reads reject symlinks throughout the root-to-leaf path and bind hashing to a descriptor identity that remains stable through verification.

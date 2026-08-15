@@ -33,6 +33,20 @@ def _tokens(value: Any) -> list[str]:
     return sorted({match.group(0).casefold() for match in _TOKEN.finditer(str(value))})
 
 
+def _legacy_document_id(*, source_id: str, fact_key: str) -> str:
+    return safe_identifier(
+        f"doc.{stable_digest([source_id, fact_key])[:20]}",
+        label="document_id",
+    )
+
+
+def _document_id(*, adapter_id: str, source_id: str, fact_key: str) -> str:
+    return safe_identifier(
+        f"doc.{stable_digest([adapter_id, source_id, fact_key])[:20]}",
+        label="document_id",
+    )
+
+
 def compile_search_index(
     observation_set: Mapping[str, Any],
     *,
@@ -55,10 +69,12 @@ def compile_search_index(
             for fact in observation["facts"]:
                 citations = [citation_map[item] for item in fact["citation_ids"]]
                 document = {
-                    "document_id": safe_identifier(
-                        f"doc.{stable_digest([observation['source']['id'], fact['key']])[:20]}",
-                        label="document_id",
+                    "document_id": _document_id(
+                        adapter_id=observation["adapter_id"],
+                        source_id=observation["source"]["id"],
+                        fact_key=fact["key"],
                     ),
+                    "adapter_id": observation["adapter_id"],
                     "source_id": observation["source"]["id"],
                     "fact_key": fact["key"],
                     "value": fact["value"],
@@ -83,7 +99,7 @@ def compile_search_index(
         "errors": errors,
         "index_digest": "",
     }
-    return bind_digest(index, "index_digest")
+    return validate_search_index(bind_digest(index, "index_digest"))
 
 
 def validate_search_index(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -125,28 +141,44 @@ def validate_search_index(value: Mapping[str, Any]) -> dict[str, Any]:
     ):
         raise DurableError("search documents are not canonical")
     seen: set[str] = set()
+    common_document_fields = {
+        "document_id",
+        "source_id",
+        "fact_key",
+        "value",
+        "visibility",
+        "source_status",
+        "fresh",
+        "effective_authority",
+        "tokens",
+        "citations",
+        "fact_digest",
+        "document_digest",
+    }
+    allowed_document_fields = {
+        frozenset(common_document_fields),
+        frozenset({*common_document_fields, "adapter_id"}),
+    }
     for item in documents:
-        if not isinstance(item, Mapping) or set(item) != {
-            "document_id",
-            "source_id",
-            "fact_key",
-            "value",
-            "visibility",
-            "source_status",
-            "fresh",
-            "effective_authority",
-            "tokens",
-            "citations",
-            "fact_digest",
-            "document_digest",
-        }:
+        if not isinstance(item, Mapping) or frozenset(item) not in allowed_document_fields:
             raise DurableError("search document fields are invalid")
         identifier = safe_identifier(item.get("document_id"), label="document_id")
         if identifier in seen:
             raise DurableError("search document ids are duplicated")
         seen.add(identifier)
-        safe_identifier(item.get("source_id"), label="document source_id")
-        safe_identifier(item.get("fact_key"), label="document fact_key")
+        source_id = safe_identifier(item.get("source_id"), label="document source_id")
+        fact_key = safe_identifier(item.get("fact_key"), label="document fact_key")
+        if "adapter_id" in item:
+            adapter_id = safe_identifier(item.get("adapter_id"), label="document adapter_id")
+            expected_identifier = _document_id(
+                adapter_id=adapter_id, source_id=source_id, fact_key=fact_key
+            )
+        else:
+            expected_identifier = _legacy_document_id(
+                source_id=source_id, fact_key=fact_key
+            )
+        if identifier != expected_identifier:
+            raise DurableError("search document id is not canonical")
         safe_visibility(item.get("visibility"), label="document visibility")
         if item.get("source_status") not in {"healthy", "stale", "partial"}:
             raise DurableError("document source status is invalid")
@@ -192,6 +224,11 @@ def search_index(
             results.append(
                 {
                     "document_id": document["document_id"],
+                    **(
+                        {"adapter_id": document["adapter_id"]}
+                        if "adapter_id" in document
+                        else {}
+                    ),
                     "source_id": document["source_id"],
                     "fact_key": document["fact_key"],
                     "value": document["value"],

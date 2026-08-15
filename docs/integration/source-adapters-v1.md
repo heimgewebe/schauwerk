@@ -28,6 +28,8 @@ The built-in catalogue contains `git`, `github`, `systemkatalog`, `repoground` a
 
 Only a healthy observation is `current_usable`. Stale and partial facts are preserved for diagnosis but are downgraded to derived, non-fresh material. A failed observation cannot contain facts, citations or a freshness expiry. This prevents source failure from fabricating a fresh-looking state.
 
+`observed_at` must be less than or equal to `evaluated_at`. The durable v1 contract has no implicit clock-skew tolerance: a future observation is rejected by compilation and validation instead of being marked healthy, current, fresh or canonically authoritative.
+
 ## Commands
 
 ```text
