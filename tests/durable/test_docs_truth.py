@@ -49,3 +49,16 @@ def test_new_contract_docs_and_schemas_are_routed() -> None:
     ):
         assert name in index
         assert (ROOT / "schemas" / name).is_file()
+
+
+def test_durable_integrity_hardening_is_documented() -> None:
+    adapters = (ROOT / "docs/integration/source-adapters-v1.md").read_text(encoding="utf-8")
+    search = (ROOT / "docs/search/search-semantics-v1.md").read_text(encoding="utf-8")
+    operations = (ROOT / "docs/operations/durable-operations-v1.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "no implicit clock-skew tolerance" in adapters
+    assert "`adapter_id`, `source_id` and `fact_key`" in search
+    assert "descriptor-relative no-follow opens" in operations
+    assert "path/identity swap" in operations

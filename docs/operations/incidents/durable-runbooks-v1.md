@@ -16,6 +16,8 @@ summary: Bounded responses for source, provider, token and mutation incidents.
 3. Keep unaffected adapters and local views available.
 4. Repair the collector, then compile a new observation with a new evaluation time.
 
+An observation timestamped after its evaluation time is invalid rather than fresh. Correct the collector clock or evaluation input and compile a new observation; do not reuse or relabel the rejected artifact.
+
 ## Miro unavailable
 
 1. Enable or confirm the SW-009 kill switch when mutation risk exists.

@@ -249,7 +249,7 @@ Siehe `docs/publications/schaufenster-v1.md`.
 
 ## Integrierter und dauerhafter Betrieb
 
-Die Befehle unter `schauwerk durable` arbeiten ausschließlich mit deklarierten lokalen Eingaben. Sie erzeugen normalisierte Quellenbeobachtungen, Review-Vorschläge, lokale Suchindizes, Gesundheitsbelege, Backup-Manifeste sowie gestagte Restore- und Recovery-Belege. Kein Befehl installiert Dienste, liest OAuth-Token oder mutiert Miro.
+Die Befehle unter `schauwerk durable` arbeiten ausschließlich mit deklarierten lokalen Eingaben. Sie verwerfen zukünftige Quellenbeobachtungen, halten Suchdokumente pro Adapter/Quelle/Fakt eindeutig und lesen Backup- sowie Restore-Dateien komponentenweise symlink- und identitätssicher. Sie erzeugen normalisierte Quellenbeobachtungen, Review-Vorschläge, lokale Suchindizes, Gesundheitsbelege, Backup-Manifeste sowie gestagte Restore- und Recovery-Belege. Kein Befehl installiert Dienste, liest OAuth-Token oder mutiert Miro.
 
 ```bash
 schauwerk durable adapter-catalog --json

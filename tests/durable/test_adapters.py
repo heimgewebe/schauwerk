@@ -11,7 +11,7 @@ from schauwerk.durable.adapters import (
     validate_observation,
     validate_observation_set,
 )
-from schauwerk.durable.common import DurableError
+from schauwerk.durable.common import DurableError, bind_digest
 
 from .helpers import adapter_input, observation
 
@@ -77,6 +77,21 @@ def test_fact_visibility_cannot_exceed_registry_source() -> None:
     )
     with pytest.raises(DurableError, match="broader than its source"):
         compile_observation(value, evaluated_at="2026-07-12T09:00:00Z")
+
+
+def test_compile_rejects_observation_from_after_evaluation() -> None:
+    value = adapter_input(observed_at="2026-07-12T09:00:01Z")
+    with pytest.raises(DurableError, match="observed_at must not be after evaluated_at"):
+        compile_observation(value, evaluated_at="2026-07-12T09:00:00Z")
+
+
+def test_validation_rejects_future_observation_even_with_valid_digest() -> None:
+    value = observation(observed_at="2026-07-12T09:00:00Z")
+    value["evaluated_at"] = "2026-07-12T08:59:59Z"
+    bind_digest(value, "observation_digest")
+
+    with pytest.raises(DurableError, match="observed_at must not be after evaluated_at"):
+        validate_observation(value)
 
 
 def test_observation_and_set_digests_detect_tampering() -> None:

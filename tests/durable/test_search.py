@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from schauwerk.durable.common import bind_digest, safe_identifier, stable_digest
 from schauwerk.durable.search import (
     compile_search_index,
     search_index,
@@ -48,6 +49,40 @@ def test_disabled_search_never_blocks_core() -> None:
     assert hints["suggestions"] == []
     assert result["core_blocked"] is False
     assert hints["core_blocked"] is False
+
+
+def test_document_identity_includes_adapter_for_same_source_fact() -> None:
+    observations = observation_set(
+        observation(adapter_id="git", source_id="repo.schauwerk"),
+        observation(adapter_id="generic", source_id="repo.schauwerk"),
+    )
+
+    index = compile_search_index(observations, created_at="2026-07-12T09:10:00Z")
+
+    assert validate_search_index(index) == index
+    assert [item["adapter_id"] for item in index["documents"]] == ["generic", "git"]
+    assert len({item["document_id"] for item in index["documents"]}) == 2
+    results = search_index(index, query="revision", visibility="private")["results"]
+    assert {item["adapter_id"] for item in results} == {"generic", "git"}
+
+
+def test_legacy_v1_document_without_adapter_id_remains_readable() -> None:
+    index = compile_search_index(
+        observation_set(observation()), created_at="2026-07-12T09:10:00Z"
+    )
+    document = index["documents"][0]
+    document.pop("adapter_id")
+    document["document_id"] = safe_identifier(
+        f"doc.{stable_digest([document['source_id'], document['fact_key']])[:20]}",
+        label="document_id",
+    )
+    bind_digest(document, "document_digest")
+    bind_digest(index, "index_digest")
+
+    assert validate_search_index(index) == index
+    results = search_index(index, query="revision", visibility="private")["results"]
+    assert len(results) == 1
+    assert "adapter_id" not in results[0]
 
 
 def test_semantic_hints_have_confidence_and_evidence() -> None:
