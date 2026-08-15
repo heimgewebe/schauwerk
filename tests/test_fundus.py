@@ -869,6 +869,52 @@ def test_accepted_decision_and_new_package_require_exact_review_evidence(
         )
 
 
+
+def test_preview_v2_coexists_with_immutable_legacy_preview_v1(tmp_path: Path) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+
+    current = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    canonical = Path(current["preview_receipt_path"])
+    legacy = {
+        "schema_version": "schauwerk-fundus-preview.v1",
+        "asset_id": "fixture.simple-ornament",
+        "build_digest": build["build_digest"],
+        "preview_sha256": current["preview_sha256"],
+        "preview_file": "index.html",
+        "network_dependencies": False,
+        "aesthetic_quality_established": False,
+    }
+    canonical.unlink()
+    fundus._write_json_create_or_verify(canonical, legacy)
+    legacy_bytes = canonical.read_bytes()
+
+    migrated = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    migrated_path = Path(migrated["preview_receipt_path"])
+    assert migrated_path.name == "preview.v2.json"
+    assert canonical.read_bytes() == legacy_bytes
+    assert migrated["schema_version"] == "schauwerk-fundus-preview.v2"
+    _validate_instance(
+        "fundus-preview.v2.schema.json",
+        json.loads(migrated_path.read_text(encoding="utf-8")),
+    )
+
+    acceptance = fundus.accept(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        reviewer="test:legacy-preview-migration",
+        decision="accepted",
+        preview_receipt_path=migrated_path,
+    )
+    assert acceptance["schema_version"] == "schauwerk-fundus-acceptance.v3"
+
+
 def test_preview_revalidates_final_output_read_after_build_check(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
