@@ -1,21 +1,27 @@
 from __future__ import annotations
 
 import asyncio
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from schauwerk.surfaces.miro.errors import MiroToolError
+import schauwerk.surfaces.miro.managed_image_runtime as managed_image_runtime
+from schauwerk.surfaces.miro.errors import MiroCredentialError, MiroToolError
 from schauwerk.surfaces.miro.managed_image_runtime import (
     ManagedImageIdentity,
     ManagedImageReconciliationRequired,
     delete_managed_image,
     list_all_images,
+    read_managed_image_bytes,
     replace_managed_image,
     require_delete_capabilities,
     require_replace_capabilities,
     source_sha256,
 )
+
+_READ_CHUNK_BYTES = 1024 * 1024
 
 
 def result(payload: dict, *, error: bool = False) -> SimpleNamespace:
@@ -58,6 +64,56 @@ def capabilities(*, native_delete: bool = True) -> set[str]:
     if native_delete:
         values.add("image_delete")
     return values
+
+
+def test_read_managed_image_bytes_accepts_unchanged_multi_chunk_source(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "managed-image.bin"
+    payload = b"a" * _READ_CHUNK_BYTES + b"b" * 8192
+    source.write_bytes(payload)
+
+    assert read_managed_image_bytes(source) == payload
+
+
+def test_read_managed_image_bytes_rejects_same_size_in_place_torn_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "managed-image.bin"
+    original_tail = b"b" * _READ_CHUNK_BYTES
+    replacement_tail = b"c" * _READ_CHUNK_BYTES
+    source.write_bytes(b"a" * _READ_CHUNK_BYTES + original_tail)
+    before = source.stat()
+    mutated = False
+
+    class MutatingOs:
+        def __getattr__(self, name: str):
+            return getattr(os, name)
+
+        def read(self, descriptor: int, size: int) -> bytes:
+            nonlocal mutated
+            chunk = os.read(descriptor, size)
+            if not mutated:
+                mutated = True
+                with source.open("r+b", buffering=0) as writer:
+                    writer.seek(_READ_CHUNK_BYTES)
+                    assert writer.write(replacement_tail) == len(replacement_tail)
+                    os.fsync(writer.fileno())
+                os.utime(
+                    source,
+                    ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000),
+                )
+            return chunk
+
+    monkeypatch.setattr(managed_image_runtime, "os", MutatingOs())
+
+    with pytest.raises(MiroCredentialError, match="changed during read"):
+        read_managed_image_bytes(source)
+
+    assert mutated is True
+    assert source.stat().st_size == 2 * _READ_CHUNK_BYTES
+    assert source.read_bytes() == b"a" * _READ_CHUNK_BYTES + replacement_tail
 
 
 def test_replace_and_delete_accept_separate_delete_authority() -> None:

@@ -174,6 +174,20 @@ def validate_image_title(value: str) -> str:
     return title
 
 
+def _managed_image_file_revision(metadata: os.stat_result) -> tuple[int, ...]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        metadata.st_nlink,
+        metadata.st_uid,
+        metadata.st_gid,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
+
+
 def read_managed_image_bytes(path: Path) -> bytes:
     candidate = path.expanduser().absolute()
     if candidate.is_symlink() or any(parent.is_symlink() for parent in candidate.parents):
@@ -198,9 +212,12 @@ def read_managed_image_bytes(path: Path) -> bytes:
         raise MiroCredentialError("managed image source is unreadable") from exc
     try:
         opened = os.fstat(descriptor)
-        before = (metadata.st_dev, metadata.st_ino, metadata.st_size, metadata.st_mtime_ns)
-        observed = (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
-        if before != observed or opened.st_nlink != 1:
+        opened_revision = _managed_image_file_revision(opened)
+        if (
+            _managed_image_file_revision(metadata) != opened_revision
+            or not stat.S_ISREG(opened.st_mode)
+            or opened.st_nlink != 1
+        ):
             raise MiroCredentialError("managed image source changed during read")
         payload = bytearray()
         while len(payload) <= _MAX_IMAGE_BYTES:
@@ -210,6 +227,12 @@ def read_managed_image_bytes(path: Path) -> bytes:
             payload.extend(chunk)
         if len(payload) > _MAX_IMAGE_BYTES:
             raise MiroCredentialError("managed image source exceeds the byte bound")
+        after = os.fstat(descriptor)
+        if (
+            _managed_image_file_revision(after) != opened_revision
+            or len(payload) != opened.st_size
+        ):
+            raise MiroCredentialError("managed image source changed during read")
         return bytes(payload)
     finally:
         os.close(descriptor)
