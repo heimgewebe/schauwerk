@@ -13,6 +13,8 @@ SW-016 builds a local index from validated source observations. It has no model,
 
 Search results are returned only when the requested visibility scope may see the indexed fact. Each result retains source identity, freshness, effective authority, evidence citations and its digest. A public request cannot retrieve shared or private material.
 
+Canonical document identity includes `adapter_id`, `source_id` and `fact_key`. Consequently, two permitted adapters observing the same fact on the same Registry source remain distinct index documents; the adapter identity is also exposed to search consumers.
+
 The optional suggestion compiler emits:
 
 - relationships when visible sources share a fact key and value;

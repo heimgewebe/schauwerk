@@ -159,7 +159,7 @@ Implement publication preview, privacy checks, sanitized immutable bundles, stab
 
 ## SW-014 — Source adapters
 
-**Implementation status:** complete for the local provider-neutral v1 contract. Git, GitHub, Systemkatalog, Lenskit/RepoBrief and generic declared-local adapters compile Registry-bound observations with authority, visibility, observed/expiry/evaluation times, citations, errors and deterministic digests. Healthy, stale, partial and failed states are explicit; non-healthy facts cannot appear current or authoritative, and failed collection cannot emit facts.
+**Implementation status:** complete for the local provider-neutral v1 contract. Git, GitHub, Systemkatalog, Lenskit/RepoBrief and generic declared-local adapters compile Registry-bound observations with authority, visibility, observed/expiry/evaluation times, citations, errors and deterministic digests. Healthy, stale, partial and failed states are explicit; non-healthy facts cannot appear current or authoritative, failed collection cannot emit facts, and future observations are rejected without an implicit clock-skew allowance.
 
 Real transport collectors remain separate integrations. They require their own credentials, authority, error and freshness acceptance and may not silently make optional sources prerequisites.
 
@@ -175,7 +175,7 @@ Scheduling and accepted live effects remain external. Any accepted proposal must
 
 ## SW-016 — Search and semantics
 
-**Implementation status:** complete for the optional local v1 contract. A deterministic cited index enforces visibility at query time and exposes freshness and effective authority. Local relationship, contradiction and orphan hints carry confidence and evidence. Disabled or degraded search returns visible errors with `core_blocked=false` and has no model or network dependency.
+**Implementation status:** complete for the optional local v1 contract. A deterministic cited index enforces visibility at query time and exposes freshness and effective authority. Document identity binds adapter, source and fact key so every adapter/source pair admitted by the observation-set contract remains distinct. Local relationship, contradiction and orphan hints carry confidence and evidence. Disabled or degraded search returns visible errors with `core_blocked=false` and has no model or network dependency.
 
 External embeddings or semantic services are optional future adapters, not a core dependency.
 
@@ -183,7 +183,7 @@ External embeddings or semantic services are optional future adapters, not a cor
 
 ## SW-017 — Operations and recovery
 
-**Implementation status:** complete for the repository-level local v1 contracts. Deterministic role profiles, declared health aggregation, secret-excluding backup manifests, staged restore verification, no-token OAuth rotation plans, kill-switch drill receipts and incident runbooks are implemented. Symlinks, traversal and secret-like backup paths fail closed.
+**Implementation status:** complete for the repository-level local v1 contracts. Deterministic role profiles, declared health aggregation, secret-excluding backup manifests, staged restore verification, no-token OAuth rotation plans, kill-switch drill receipts and incident runbooks are implemented. Traversal, secret-like paths, symlinks in any root-to-leaf component and descriptor/path identity swaps fail closed.
 
 No service was installed and no live provider or host effect was performed. Scheduled services, executed backups, live restore, live OAuth rotation, public hosting and live kill-switch drills remain target-bound acceptance operations with their own receipts.
 

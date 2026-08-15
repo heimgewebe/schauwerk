@@ -227,6 +227,8 @@ def compile_observation(
         )
     observed_at = parse_timestamp(input_value.get("observed_at"), label="observed_at")
     evaluated = parse_timestamp(evaluated_at, label="evaluated_at")
+    if timestamp_value(observed_at) > timestamp_value(evaluated):
+        raise DurableError("observed_at must not be after evaluated_at")
     collection_state = input_value.get("collection_state")
     if collection_state not in {"complete", "partial", "failed"}:
         raise DurableError("collection_state is invalid")
@@ -348,6 +350,8 @@ def validate_observation(value: Mapping[str, Any]) -> dict[str, Any]:
     safe_digest(source.get("reference_digest"), label="reference_digest")
     observed_at = parse_timestamp(value.get("observed_at"), label="observed_at")
     evaluated_at = parse_timestamp(value.get("evaluated_at"), label="evaluated_at")
+    if timestamp_value(observed_at) > timestamp_value(evaluated_at):
+        raise DurableError("observation observed_at must not be after evaluated_at")
     status = value.get("status")
     if status not in {"healthy", "stale", "partial", "failed"}:
         raise DurableError("observation status is invalid")

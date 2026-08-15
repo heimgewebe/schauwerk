@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import schauwerk.durable.operations as durable_operations
 from schauwerk.durable.common import DurableError
 from schauwerk.durable.operations import (
     compile_backup_manifest,
@@ -111,6 +112,111 @@ def test_backup_rejects_secret_like_and_symlink_paths(tmp_path: Path) -> None:
             },
             root=root,
             created_at="2026-07-12T09:00:00Z",
+        )
+
+
+def test_backup_and_restore_reject_intermediate_directory_symlink(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backup"
+    (backup_root / "real").mkdir(parents=True)
+    (backup_root / "real" / "receipt.json").write_text("{}\n")
+    (backup_root / "alias").symlink_to("real", target_is_directory=True)
+    declaration = {
+        "schema_version": "schauwerk-backup-declaration.v1",
+        "entries": [{"path": "alias/receipt.json", "retention": "long", "class": "receipt"}],
+    }
+
+    with pytest.raises(DurableError, match="no symlinks"):
+        compile_backup_manifest(
+            declaration, root=backup_root, created_at="2026-07-12T09:00:00Z"
+        )
+
+    source = tmp_path / "source"
+    (source / "alias").mkdir(parents=True)
+    (source / "alias" / "receipt.json").write_text("{}\n")
+    manifest = compile_backup_manifest(
+        declaration, root=source, created_at="2026-07-12T09:00:00Z"
+    )
+    staged = tmp_path / "staged"
+    (staged / "real").mkdir(parents=True)
+    (staged / "real" / "receipt.json").write_text("{}\n")
+    (staged / "alias").symlink_to("real", target_is_directory=True)
+
+    with pytest.raises(DurableError, match="no symlinks"):
+        verify_staged_restore(
+            manifest, staged_root=staged, verified_at="2026-07-12T09:05:00Z"
+        )
+
+
+def test_backup_rejects_leaf_identity_swap_during_descriptor_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = tmp_path / "source"
+    root.mkdir()
+    target = root / "receipt.json"
+    target.write_text("original\n")
+    replacement = root / "replacement.json"
+    replacement.write_text("replacement\n")
+    original_read = durable_operations.os.read
+    swapped = False
+
+    def swapping_read(descriptor: int, count: int) -> bytes:
+        nonlocal swapped
+        payload = original_read(descriptor, count)
+        if not swapped:
+            swapped = True
+            replacement.replace(target)
+        return payload
+
+    monkeypatch.setattr(durable_operations.os, "read", swapping_read)
+    with pytest.raises(DurableError, match="changed while it was being read"):
+        compile_backup_manifest(
+            {
+                "schema_version": "schauwerk-backup-declaration.v1",
+                "entries": [
+                    {"path": "receipt.json", "retention": "standard", "class": "receipt"}
+                ],
+            },
+            root=root,
+            created_at="2026-07-12T09:00:00Z",
+        )
+
+
+def test_restore_rejects_leaf_identity_swap_during_descriptor_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source"
+    staged = tmp_path / "staged"
+    source.mkdir()
+    staged.mkdir()
+    for root in (source, staged):
+        (root / "receipt.json").write_text("original\n")
+    declaration = {
+        "schema_version": "schauwerk-backup-declaration.v1",
+        "entries": [
+            {"path": "receipt.json", "retention": "standard", "class": "receipt"}
+        ],
+    }
+    manifest = compile_backup_manifest(
+        declaration, root=source, created_at="2026-07-12T09:00:00Z"
+    )
+    replacement = staged / "replacement.json"
+    replacement.write_text("replacement\n")
+    target = staged / "receipt.json"
+    original_read = durable_operations.os.read
+    swapped = False
+
+    def swapping_read(descriptor: int, count: int) -> bytes:
+        nonlocal swapped
+        payload = original_read(descriptor, count)
+        if not swapped:
+            swapped = True
+            replacement.replace(target)
+        return payload
+
+    monkeypatch.setattr(durable_operations.os, "read", swapping_read)
+    with pytest.raises(DurableError, match="changed while it was being read"):
+        verify_staged_restore(
+            manifest, staged_root=staged, verified_at="2026-07-12T09:05:00Z"
         )
 
 

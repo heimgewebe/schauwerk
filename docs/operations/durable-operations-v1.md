@@ -17,9 +17,9 @@ A health receipt aggregates declared component evidence. A failed optional compo
 
 ## Backup and restore
 
-A backup declaration lists repository-relative regular files, retention classes and artifact classes. Manifest compilation checks sizes and SHA-256 values without copying files. It rejects traversal, symlinks and secret-like paths. OAuth tokens, credentials, private keys and `.env` files are outside the contract.
+A backup declaration lists repository-relative regular files, retention classes and artifact classes. Manifest compilation checks sizes and SHA-256 values without copying files. It rejects traversal, secret-like paths and symlinks in every root-to-leaf path component. OAuth tokens, credentials, private keys and `.env` files are outside the contract.
 
-Restore verification reads a separate staged tree and compares it with the manifest. It never overwrites live state. A verified receipt is evidence for a later operator-controlled restore, not the restore itself.
+Manifest and restore reads traverse from the filesystem root with descriptor-relative no-follow opens, hash only bounded regular-file descriptor bytes and recheck directory, leaf and open-file identities after reading. An intermediate alias or a path/identity swap therefore fails closed. Restore verification reads a separate staged tree and compares it with the manifest. It never overwrites live state. A verified receipt is evidence for a later operator-controlled restore, not the restore itself.
 
 ## OAuth and kill switch
 
