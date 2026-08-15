@@ -122,7 +122,7 @@ schauwerk fundus inspect botanical.laurel.corner --json
 schauwerk fundus build botanical.laurel.corner --json
 schauwerk fundus preview botanical.laurel.corner --json
 schauwerk fundus review build botanical.laurel --output-dir /tmp/laurel-review --json
-schauwerk fundus accept botanical.laurel.corner --build DIGEST --preview-receipt /path/to/preview.json --reviewer human:alexander --decision accepted --json
+schauwerk fundus accept botanical.laurel.corner --build DIGEST --preview-receipt /path/returned/by/fundus-preview --reviewer human:alexander --decision accepted --json
 schauwerk fundus accept-inherit botanical.laurel.corner --build NEW_DIGEST --parent-build OLD_DIGEST --parent-acceptance ACCEPTANCE_DIGEST --inherited-by operator:grabowski --json
 schauwerk fundus drift botanical.laurel.corner --build DIGEST --json
 schauwerk fundus reproduce botanical.laurel.corner --build DIGEST --json

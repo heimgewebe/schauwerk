@@ -1103,6 +1103,8 @@ class Fundus:
         return payload
 
     def _preview_v2_receipt_path(self, asset_id: str, build_digest: str) -> Path:
+        checked_id(asset_id, label="asset id")
+        checked_sha256(build_digest, label="build digest")
         preview_dir = self.root / "previews" / asset_id / build_digest
         canonical = preview_dir / "preview.json"
         if not canonical.exists():
@@ -1116,6 +1118,16 @@ class Fundus:
             raise FundusError("existing Fundus preview receipt is invalid") from exc
         schema = existing.get("schema_version")
         if schema == PREVIEW_SCHEMA_V2:
+            self._validate_schema_document(
+                existing,
+                "fundus-preview.v2.schema.json",
+                label="existing Fundus preview receipt",
+            )
+            if (
+                existing.get("asset_id") != asset_id
+                or existing.get("build_digest") != build_digest
+            ):
+                raise FundusError("existing Fundus preview receipt targets another build")
             return canonical
         if schema != PREVIEW_SCHEMA:
             raise FundusError("existing Fundus preview receipt schema is unsupported")

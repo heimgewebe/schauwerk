@@ -905,6 +905,15 @@ def test_preview_v2_coexists_with_immutable_legacy_preview_v1(tmp_path: Path) ->
         json.loads(migrated_path.read_text(encoding="utf-8")),
     )
 
+    with pytest.raises(FundusError, match="canonical preview receipt"):
+        fundus.accept(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            reviewer="test:stale-legacy-preview",
+            decision="accepted",
+            preview_receipt_path=canonical,
+        )
+
     acceptance = fundus.accept(
         "fixture.simple-ornament",
         build_digest=build["build_digest"],
@@ -913,6 +922,53 @@ def test_preview_v2_coexists_with_immutable_legacy_preview_v1(tmp_path: Path) ->
         preview_receipt_path=migrated_path,
     )
     assert acceptance["schema_version"] == "schauwerk-fundus-acceptance.v3"
+
+
+@pytest.mark.parametrize(
+    ("defect", "message"),
+    [
+        ("unknown_schema", "schema is unsupported"),
+        ("wrong_build", "targets another build"),
+        ("invalid_v1", "schema validation failed"),
+        ("invalid_v2", "schema validation failed"),
+    ],
+)
+def test_preview_migration_rejects_invalid_existing_receipt(
+    tmp_path: Path, defect: str, message: str
+) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+    current = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    canonical = Path(current["preview_receipt_path"])
+    existing = {
+        "schema_version": "schauwerk-fundus-preview.v1",
+        "asset_id": "fixture.simple-ornament",
+        "build_digest": build["build_digest"],
+        "preview_sha256": current["preview_sha256"],
+        "preview_file": "index.html",
+        "network_dependencies": False,
+        "aesthetic_quality_established": False,
+    }
+    if defect == "unknown_schema":
+        existing["schema_version"] = "schauwerk-fundus-preview.v99"
+    elif defect == "wrong_build":
+        existing["build_digest"] = "0" * 64
+    elif defect == "invalid_v1":
+        existing.pop("preview_sha256")
+    else:
+        existing = json.loads(canonical.read_text(encoding="utf-8"))
+        existing.pop("review_digest")
+
+    canonical.unlink()
+    fundus._write_json_create_or_verify(canonical, existing)
+    with pytest.raises(FundusError, match=message):
+        fundus.preview(
+            "fixture.simple-ornament", build_digest=build["build_digest"]
+        )
 
 
 def test_preview_revalidates_final_output_read_after_build_check(
