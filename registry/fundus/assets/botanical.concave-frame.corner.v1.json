@@ -1,0 +1,24 @@
+{
+  "schema_version": "schauwerk-fundus-asset.v1",
+  "id": "botanical.concave-frame.corner.v1",
+  "family": "botanical.concave-frame",
+  "recipe": "vtracer-alpha-mask-v1",
+  "sources": [
+    {
+      "role": "trace_source",
+      "sha256": "71db96cafaf98b9ec330401be6c3cac232d8bd3a2337140692c17e9ad6dc9fcd",
+      "media_type": "image/png",
+      "origin": "ai-generated:chatgpt-svg-imagemagick:botanical-concave-frame-corner-v1",
+      "rights_status": "owned",
+      "source_mode": "generated",
+      "image_brief_sha256": "ce3af1752484011247281f244c4f7121ca4612bd84694731fab3b515396a2762"
+    }
+  ],
+  "properties": {
+    "mask_safe": true,
+    "mirror_safe": false,
+    "recolor_safe": true,
+    "rotate_safe": false,
+    "tile_safe": false
+  }
+}

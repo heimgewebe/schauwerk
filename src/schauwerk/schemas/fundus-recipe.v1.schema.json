@@ -94,7 +94,10 @@
           "parameters": {
             "properties": {
               "profile": {
-                "const": "trace.vtracer.color.v1"
+                "enum": [
+                  "trace.vtracer.color.v1",
+                  "trace.vtracer.alpha-mask.v1"
+                ]
               }
             }
           }
@@ -146,7 +149,8 @@
             "svg.mask.v1",
             "svg.decorative.v1",
             "raster.png.rgba.v1",
-            "trace.vtracer.color.v1"
+            "trace.vtracer.color.v1",
+            "trace.vtracer.alpha-mask.v1"
           ]
         }
       },

@@ -204,7 +204,10 @@ def sanitize_svg(payload: bytes, *, profile: str) -> bytes:
                     f"SVG attribute is forbidden by {profile}: {name}"
                 )
             value = raw_value.strip()
-            if len(value) > MAX_ATTRIBUTE_CHARS:
+            # Path data has its own aggregate complexity budget below. Applying
+            # the generic per-attribute cap here makes that dedicated budget
+            # unreachable for legitimate compact traces with one long path.
+            if name != "d" and len(value) > MAX_ATTRIBUTE_CHARS:
                 raise ValueError(
                     "SVG attribute value is invalid or too large"
                 )

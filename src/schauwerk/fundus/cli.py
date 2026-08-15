@@ -166,7 +166,7 @@ def add_fundus_parser(providers) -> None:
     review_evidence = accept.add_mutually_exclusive_group()
     review_evidence.add_argument(
         "--preview-receipt",
-        help="canonical preview.json for this exact build",
+        help="canonical v2 preview receipt returned for this exact build",
     )
     review_evidence.add_argument(
         "--review-bundle",

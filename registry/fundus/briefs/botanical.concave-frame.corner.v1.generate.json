@@ -1,0 +1,41 @@
+{
+  "schema_version": "schauwerk-fundus-image-brief.v1",
+  "id": "botanical.concave-frame.corner.v1.generate",
+  "intent": "production_asset",
+  "asset_id": "botanical.concave-frame.corner.v1",
+  "family": "botanical.concave-frame",
+  "operation": "generate",
+  "source_role": "trace_source",
+  "desired_output_roles": [
+    "mask",
+    "preview"
+  ],
+  "requirements": [
+    "Organic concave botanical corner ornament suitable for framing an inner content edge",
+    "Transparent background with a clean isolated silhouette",
+    "Natural asymmetry and restrained botanical irregularity rather than rigid geometry",
+    "Clear contiguous forms that trace cleanly into a reusable SVG mask",
+    "Enough negative space to remain legible at mobile scale",
+    "No baked material appearance; shape and material must remain separable",
+    "High source resolution and clean anti-aliased edges"
+  ],
+  "forbidden": [
+    "No shadows, glow, bevel, embossing or three-dimensional lighting",
+    "No gold, metallic, paper or other material texture",
+    "No text, lettering, logos or watermark",
+    "No rectangular frame border or complete four-corner frame",
+    "No hard diamond-like or mechanically repeated geometry",
+    "No assumption that mirroring or rotation preserves the intended natural composition"
+  ],
+  "properties": {
+    "mask_safe": true,
+    "mirror_safe": false,
+    "recolor_safe": true,
+    "rotate_safe": false,
+    "tile_safe": false
+  },
+  "acceptance": {
+    "visual_review_required": true,
+    "inheritance": "none"
+  }
+}

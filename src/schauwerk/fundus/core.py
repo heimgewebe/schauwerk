@@ -29,6 +29,7 @@ from .model import (
     INGEST_SCHEMA,
     PACKAGE_SCHEMA,
     PACKAGE_SCHEMA_V2,
+    PREVIEW_SCHEMA,
     PREVIEW_SCHEMA_V2,
     RECIPE_SCHEMA_V2,
     RECIPE_SCHEMA_V3,
@@ -1101,6 +1102,47 @@ class Fundus:
             raise FundusError("build output media_type mismatch")
         return payload
 
+    def _preview_v2_receipt_path(self, asset_id: str, build_digest: str) -> Path:
+        checked_id(asset_id, label="asset id")
+        checked_sha256(build_digest, label="build digest")
+        preview_dir = self.root / "previews" / asset_id / build_digest
+        canonical = preview_dir / "preview.json"
+        if not canonical.exists():
+            return canonical
+        try:
+            existing = self._parse_json_object(
+                self._read_private(canonical, maximum_bytes=256_000),
+                label="Fundus preview receipt",
+            )
+        except (FundusError, OSError) as exc:
+            raise FundusError("existing Fundus preview receipt is invalid") from exc
+        schema = existing.get("schema_version")
+        if schema == PREVIEW_SCHEMA_V2:
+            self._validate_schema_document(
+                existing,
+                "fundus-preview.v2.schema.json",
+                label="existing Fundus preview receipt",
+            )
+            if (
+                existing.get("asset_id") != asset_id
+                or existing.get("build_digest") != build_digest
+            ):
+                raise FundusError("existing Fundus preview receipt targets another build")
+            return canonical
+        if schema != PREVIEW_SCHEMA:
+            raise FundusError("existing Fundus preview receipt schema is unsupported")
+        self._validate_schema_document(
+            existing,
+            "fundus-preview.v1.schema.json",
+            label="legacy Fundus preview receipt",
+        )
+        if (
+            existing.get("asset_id") != asset_id
+            or existing.get("build_digest") != build_digest
+        ):
+            raise FundusError("legacy Fundus preview receipt targets another build")
+        return preview_dir / "preview.v2.json"
+
     def preview(
         self,
         asset_id: str,
@@ -1210,8 +1252,9 @@ class Fundus:
             "fundus-preview.v2.schema.json",
             label="Fundus preview receipt",
         )
+        receipt_path = self._preview_v2_receipt_path(asset_id, build_digest)
         self._write_json_create_or_verify(
-            preview_dir / "preview.json",
+            receipt_path,
             receipt,
         )
         return {
@@ -1219,7 +1262,7 @@ class Fundus:
             "preview_path": str(
                 preview_dir / "index.html"
             ),
-            "preview_receipt_path": str(preview_dir / "preview.json"),
+            "preview_receipt_path": str(receipt_path),
         }
 
     @staticmethod
@@ -1321,8 +1364,8 @@ class Fundus:
         build: dict[str, Any],
         preview_receipt_path: str | Path,
     ) -> dict[str, Any]:
-        expected_path = (
-            self.root / "previews" / asset_id / build["build_digest"] / "preview.json"
+        expected_path = self._preview_v2_receipt_path(
+            asset_id, build["build_digest"]
         )
         supplied = normalized_absolute(
             preview_receipt_path, label="Fundus preview receipt path"
