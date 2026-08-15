@@ -43,6 +43,7 @@ def _source_check(
     fundus: Fundus,
     asset_id: str,
     source: dict[str, Any],
+    declared_source: dict[str, Any] | None,
 ) -> dict[str, Any]:
     errors: list[str] = []
     object_ok = True
@@ -53,7 +54,12 @@ def _source_check(
         object_ok = False
         errors.append(str(exc))
     try:
-        fundus._validate_source_image_brief(asset_id, source)
+        if declared_source is None:
+            raise FundusError("current asset source role is missing")
+        for field in ("sha256", "media_type", "source_mode", "image_brief_sha256"):
+            if source.get(field) != declared_source.get(field):
+                raise FundusError(f"build source {field} binding drifted")
+        fundus._validate_source_image_brief(asset_id, declared_source)
     except FundusError as exc:
         provenance_ok = False
         errors.append(str(exc))
@@ -78,8 +84,9 @@ def drift_build(
     expected_recipe_digest = build["recipe_sha256"]
 
     observed_asset_digest: str | None = None
+    observed_asset: dict[str, Any] | None = None
     try:
-        _, observed_asset_digest, _ = fundus._asset(asset_id)
+        observed_asset, observed_asset_digest, _ = fundus._asset(asset_id)
     except FundusError:
         observed_asset_digest = None
 
@@ -89,8 +96,17 @@ def drift_build(
     except FundusError:
         observed_recipe_digest = None
 
+    declared_sources = {
+        item["role"]: item for item in (observed_asset or {}).get("sources", [])
+    }
     source_checks = [
-        _source_check(fundus, asset_id, source) for source in _build_sources(build)
+        _source_check(
+            fundus,
+            asset_id,
+            source,
+            declared_sources.get(source["role"]),
+        )
+        for source in _build_sources(build)
     ]
     asset_match = observed_asset_digest == expected_asset_digest
     recipe_match = observed_recipe_digest == expected_recipe_digest
@@ -119,7 +135,7 @@ def drift_build(
     return _validate_report(report)
 
 
-def _copy_optional_receipt(
+def _copy_receipt(
     source: Fundus,
     target: Fundus,
     relative: Path,
@@ -127,8 +143,6 @@ def _copy_optional_receipt(
     maximum_bytes: int,
 ) -> None:
     source_path = source.root / relative
-    if not source_path.exists():
-        return
     payload = source._read_private(source_path, maximum_bytes=maximum_bytes)
     target._write_create_or_verify(target.root / relative, payload)
 
@@ -144,7 +158,7 @@ def _copy_reproduction_inputs(
             target._object_path(sha256),
             source._read_object(sha256),
         )
-        _copy_optional_receipt(
+        _copy_receipt(
             source,
             target,
             Path("receipts") / "ingest" / f"{sha256}.json",
@@ -152,7 +166,7 @@ def _copy_reproduction_inputs(
         )
         brief_sha = record.get("image_brief_sha256")
         if brief_sha is not None:
-            _copy_optional_receipt(
+            _copy_receipt(
                 source,
                 target,
                 Path("receipts") / "image-briefs" / f"{brief_sha}.json",

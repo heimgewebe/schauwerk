@@ -101,6 +101,7 @@ def test_raster_adapter_is_pixel_exact_deterministic_and_previewable(tmp_path: P
         reviewer="test:adapter",
         decision="accepted",
         reviewed_at="2026-08-13T13:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     package = fundus.package(
         "fixture.raster",

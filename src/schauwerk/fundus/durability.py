@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import stat
@@ -15,7 +14,13 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from .errors import FundusError
 from .model import canonical_json, digest_bytes, digest_json
-from .pathio import normalized_absolute, read_regular_bytes
+from .pathio import (
+    _open_child_directory,
+    _read_regular_at,
+    normalized_absolute,
+    open_directory_chain,
+    read_regular_bytes,
+)
 
 DURABILITY_EVIDENCE_SCHEMA = "schauwerk-fundus-durability-evidence.v1"
 DURABILITY_EVIDENCE_SCHEMA_FILE = "fundus-durability-evidence.v1.schema.json"
@@ -76,11 +81,16 @@ def _checked_timestamp(value: object) -> str:
     return value
 
 
-def _safe_root(root: str | Path) -> Path:
+def _safe_root(root: str | Path) -> tuple[Path, int, tuple[int, int]]:
     target = normalized_absolute(root, label="Fundus data root")
+    descriptor: int | None = None
     try:
-        linked = target.lstat()
-    except OSError as exc:
+        descriptor = open_directory_chain(target)
+        linked = os.stat(target, follow_symlinks=False)
+        opened = os.fstat(descriptor)
+    except (OSError, FundusError) as exc:
+        if descriptor is not None:
+            os.close(descriptor)
         raise FundusError(f"Fundus data root is unavailable: {exc}") from exc
     if (
         not stat.S_ISDIR(linked.st_mode)
@@ -88,92 +98,113 @@ def _safe_root(root: str | Path) -> Path:
         or linked.st_uid != os.geteuid()
         or linked.st_nlink < 1
         or stat.S_IMODE(linked.st_mode) & 0o077
+        or (linked.st_dev, linked.st_ino) != (opened.st_dev, opened.st_ino)
     ):
+        os.close(descriptor)
         raise FundusError("Fundus data root is unsafe")
-    return target
+    return target, descriptor, (opened.st_dev, opened.st_ino)
 
 
 def fundus_inventory(root: str | Path) -> dict[str, Any]:
     """Return a deterministic, race-aware inventory of every Fundus state file."""
-    target = _safe_root(root)
-    files: list[dict[str, Any]] = []
+    target, root_fd, root_identity = _safe_root(root)
 
-    def walk(directory: Path, prefix: Path) -> None:
+    def scan() -> tuple[list[dict[str, Any]], dict[str, tuple[int, ...]]]:
+        files: list[dict[str, Any]] = []
+        identities: dict[str, tuple[int, ...]] = {}
+
+        def walk(directory_fd: int, prefix: Path) -> None:
+            try:
+                with os.scandir(directory_fd) as handle:
+                    entries = sorted(handle, key=lambda item: item.name)
+            except OSError as exc:
+                raise FundusError(f"cannot enumerate Fundus inventory: {exc}") from exc
+            for entry in entries:
+                relative = prefix / entry.name
+                try:
+                    metadata = entry.stat(follow_symlinks=False)
+                except OSError as exc:
+                    raise FundusError(
+                        f"cannot stat Fundus inventory path: {relative.as_posix()}"
+                    ) from exc
+                if stat.S_ISLNK(metadata.st_mode):
+                    raise FundusError(
+                        f"Fundus inventory contains a symlink: {relative.as_posix()}"
+                    )
+                if stat.S_ISDIR(metadata.st_mode):
+                    child = _open_child_directory(
+                        directory_fd,
+                        entry.name,
+                        display=target / relative,
+                    )
+                    try:
+                        opened = os.fstat(child)
+                        identities[relative.as_posix() + "/"] = (
+                            opened.st_dev,
+                            opened.st_ino,
+                            opened.st_mode,
+                            opened.st_uid,
+                            opened.st_mtime_ns,
+                            opened.st_ctime_ns,
+                        )
+                        walk(child, relative)
+                    finally:
+                        os.close(child)
+                    continue
+                if not stat.S_ISREG(metadata.st_mode):
+                    raise FundusError(
+                        f"Fundus inventory contains a special file: {relative.as_posix()}"
+                    )
+                if len(files) >= MAX_INVENTORY_FILES:
+                    raise FundusError("Fundus inventory file budget exceeded")
+                payload = _read_regular_at(
+                    directory_fd,
+                    entry.name,
+                    maximum_bytes=max(metadata.st_size, 0),
+                    label=f"Fundus inventory path {relative.as_posix()}",
+                    require_owner=True,
+                    forbidden_mode_bits=0,
+                )
+                opened = os.stat(entry.name, dir_fd=directory_fd, follow_symlinks=False)
+                identities[relative.as_posix()] = (
+                    opened.st_dev,
+                    opened.st_ino,
+                    opened.st_mode,
+                    opened.st_nlink,
+                    opened.st_uid,
+                    opened.st_size,
+                    opened.st_mtime_ns,
+                    opened.st_ctime_ns,
+                )
+                files.append(
+                    {
+                        "path": relative.as_posix(),
+                        "bytes": len(payload),
+                        "sha256": digest_bytes(payload),
+                    }
+                )
+
+        walk(root_fd, Path())
+        return files, identities
+
+    try:
+        files, identities = scan()
+        postflight_files, postflight_identities = scan()
+        if files != postflight_files or identities != postflight_identities:
+            raise FundusError("Fundus inventory changed between verification passes")
         try:
-            with os.scandir(directory) as handle:
-                entries = sorted(handle, key=lambda item: item.name)
+            linked = os.stat(target, follow_symlinks=False)
         except OSError as exc:
-            raise FundusError(f"cannot enumerate Fundus inventory: {exc}") from exc
-        for entry in entries:
-            relative = prefix / entry.name
-            try:
-                metadata = entry.stat(follow_symlinks=False)
-            except OSError as exc:
-                raise FundusError(
-                    f"cannot stat Fundus inventory path: {relative.as_posix()}"
-                ) from exc
-            if stat.S_ISLNK(metadata.st_mode):
-                raise FundusError(
-                    f"Fundus inventory contains a symlink: {relative.as_posix()}"
-                )
-            if stat.S_ISDIR(metadata.st_mode):
-                walk(Path(entry.path), relative)
-                continue
-            if not stat.S_ISREG(metadata.st_mode):
-                raise FundusError(
-                    f"Fundus inventory contains a special file: {relative.as_posix()}"
-                )
-            if len(files) >= MAX_INVENTORY_FILES:
-                raise FundusError("Fundus inventory file budget exceeded")
-
-            flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
-            if hasattr(os, "O_NOFOLLOW"):
-                flags |= os.O_NOFOLLOW
-            try:
-                descriptor = os.open(entry.path, flags)
-            except OSError as exc:
-                raise FundusError(
-                    f"cannot open Fundus inventory path: {relative.as_posix()}"
-                ) from exc
-            try:
-                opened = os.fstat(descriptor)
-                if (
-                    not stat.S_ISREG(opened.st_mode)
-                    or (opened.st_dev, opened.st_ino)
-                    != (metadata.st_dev, metadata.st_ino)
-                    or opened.st_uid != os.geteuid()
-                ):
-                    raise FundusError(
-                        f"Fundus inventory path changed while opening: {relative.as_posix()}"
-                    )
-                digest = hashlib.sha256()
-                total = 0
-                while True:
-                    chunk = os.read(descriptor, 1024 * 1024)
-                    if not chunk:
-                        break
-                    digest.update(chunk)
-                    total += len(chunk)
-                after = os.fstat(descriptor)
-                if (
-                    after.st_size != opened.st_size
-                    or after.st_mtime_ns != opened.st_mtime_ns
-                    or total != after.st_size
-                ):
-                    raise FundusError(
-                        f"Fundus inventory file changed while hashing: {relative.as_posix()}"
-                    )
-            finally:
-                os.close(descriptor)
-            files.append(
-                {
-                    "path": relative.as_posix(),
-                    "bytes": total,
-                    "sha256": digest.hexdigest(),
-                }
-            )
-
-    walk(target, Path())
+            raise FundusError("Fundus data root changed during inventory") from exc
+        if (
+            stat.S_ISLNK(linked.st_mode)
+            or (linked.st_dev, linked.st_ino) != root_identity
+            or (os.fstat(root_fd).st_dev, os.fstat(root_fd).st_ino) != root_identity
+        ):
+            raise FundusError("Fundus data root changed during inventory")
+        files = postflight_files
+    finally:
+        os.close(root_fd)
     document = {"schema_version": INVENTORY_SCHEMA, "files": files}
     return {
         "schema_version": INVENTORY_SCHEMA,
@@ -364,6 +395,37 @@ def durability_status(
         and evidence["total_bytes"] == inventory["total_bytes"]
         and evidence["verification"] == VERIFICATION_MODE
     )
+    try:
+        postflight_inventory = fundus_inventory(root)
+    except FundusError as exc:
+        return {
+            **base,
+            "evidence_present": True,
+            "evidence_valid": True,
+            "current": False,
+            "restore_verified_current": False,
+            "evidence_inventory_sha256": evidence["inventory_sha256"],
+            "producer": evidence["producer"],
+            "evidence_ref": evidence["evidence_ref"],
+            "verified_at": evidence["verified_at"],
+            "error": str(exc)[:500],
+        }
+    if postflight_inventory != inventory:
+        return {
+            **base,
+            "inventory_sha256": postflight_inventory["inventory_sha256"],
+            "file_count": postflight_inventory["file_count"],
+            "total_bytes": postflight_inventory["total_bytes"],
+            "evidence_present": True,
+            "evidence_valid": True,
+            "current": False,
+            "restore_verified_current": False,
+            "evidence_inventory_sha256": evidence["inventory_sha256"],
+            "producer": evidence["producer"],
+            "evidence_ref": evidence["evidence_ref"],
+            "verified_at": evidence["verified_at"],
+            "error": "Fundus inventory changed before durability status return",
+        }
     return {
         **base,
         "evidence_present": True,

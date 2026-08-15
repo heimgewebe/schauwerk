@@ -14,7 +14,14 @@ from jsonschema import Draft202012Validator, ValidationError
 from .errors import FundusError
 from .media import inspect_media
 from .model import canonical_json, digest_bytes, digest_json
-from .pathio import normalized_absolute, read_regular_bytes
+from .pathio import (
+    _open_child_directory,
+    _read_regular_at,
+    normalized_absolute,
+    open_directory_chain,
+    read_regular_bytes,
+)
+from .svg import sanitize_svg
 
 PACKAGE_SCHEMA_FILES = {
     "schauwerk-fundus-package.v1": "fundus-package.v1.schema.json",
@@ -87,41 +94,67 @@ def _checked_relative_path(value: object, *, label: str) -> str:
     return value
 
 
-def _safe_root(directory: str | Path, *, label: str) -> Path:
+def _safe_root(directory: str | Path, *, label: str) -> tuple[Path, int, tuple[int, int]]:
     root = normalized_absolute(directory, label=label)
-    if root.is_symlink() or not root.is_dir():
-        raise FundusError(f"{label} is missing or unsafe")
-    metadata = root.lstat()
+    descriptor = open_directory_chain(root)
+    metadata = os.fstat(descriptor)
     if (
         metadata.st_uid != os.geteuid()
         or metadata.st_nlink < 1
         or not stat.S_ISDIR(metadata.st_mode)
         or stat.S_IMODE(metadata.st_mode) & 0o022
     ):
+        os.close(descriptor)
         raise FundusError(f"{label} ownership or permissions are unsafe")
-    return root
+    try:
+        linked = os.stat(root, follow_symlinks=False)
+    except OSError as exc:
+        os.close(descriptor)
+        raise FundusError(f"{label} is missing or unsafe") from exc
+    if (
+        stat.S_ISLNK(linked.st_mode)
+        or (linked.st_dev, linked.st_ino) != (metadata.st_dev, metadata.st_ino)
+    ):
+        os.close(descriptor)
+        raise FundusError(f"{label} identity changed while opening")
+    return root, descriptor, (metadata.st_dev, metadata.st_ino)
 
 
-def _read_package_file(root: Path, relative: str, *, maximum_bytes: int, label: str) -> bytes:
-    return read_regular_bytes(
-        root / relative,
-        maximum_bytes=maximum_bytes,
-        label=label,
-        require_owner=True,
-        forbidden_mode_bits=0o022,
-    )
+def _read_package_file(
+    root_fd: int, relative: str, *, maximum_bytes: int, label: str
+) -> bytes:
+    path = PurePosixPath(_checked_relative_path(relative, label=f"{label} path"))
+    descriptor = os.dup(root_fd)
+    try:
+        for part in path.parts[:-1]:
+            child = _open_child_directory(
+                descriptor, part, display=Path("/") / path.parent
+            )
+            os.close(descriptor)
+            descriptor = child
+        return _read_regular_at(
+            descriptor,
+            path.name,
+            maximum_bytes=maximum_bytes,
+            label=label,
+            require_owner=True,
+            forbidden_mode_bits=0o022,
+        )
+    finally:
+        os.close(descriptor)
 
 
-def _inventory(root: Path) -> set[str]:
+def _inventory(root_fd: int) -> tuple[set[str], dict[str, tuple[int, ...]]]:
     actual: set[str] = set()
+    identities: dict[str, tuple[int, ...]] = {}
     directory_count = 0
 
-    def walk(directory: Path, prefix: PurePosixPath, depth: int) -> None:
+    def walk(directory_fd: int, prefix: PurePosixPath, depth: int) -> None:
         nonlocal directory_count
         if depth > MAX_PACKAGE_DEPTH:
             raise FundusError("Fundus package directory depth exceeds the allowed limit")
         try:
-            entries = list(os.scandir(directory))
+            entries = list(os.scandir(directory_fd))
         except OSError as exc:
             raise FundusError("Fundus package directory cannot be enumerated") from exc
         entries.sort(key=lambda item: item.name)
@@ -143,7 +176,21 @@ def _inventory(root: Path) -> set[str]:
                     or stat.S_IMODE(linked.st_mode) & 0o022
                 ):
                     raise FundusError(f"package directory is unsafe: {relative}")
-                walk(Path(entry.path), prefix / entry.name, depth + 1)
+                identities[relative + "/"] = (
+                    linked.st_dev,
+                    linked.st_ino,
+                    linked.st_mode,
+                    linked.st_uid,
+                    linked.st_mtime_ns,
+                    linked.st_ctime_ns,
+                )
+                child = _open_child_directory(
+                    directory_fd, entry.name, display=Path("/") / relative
+                )
+                try:
+                    walk(child, prefix / entry.name, depth + 1)
+                finally:
+                    os.close(child)
                 continue
             if not stat.S_ISREG(linked.st_mode):
                 raise FundusError(f"package path is not a regular file: {relative}")
@@ -156,16 +203,27 @@ def _inventory(root: Path) -> set[str]:
                 or stat.S_IMODE(linked.st_mode) & 0o022
             ):
                 raise FundusError(f"package file is unsafe: {relative}")
+            identities[relative] = (
+                linked.st_dev,
+                linked.st_ino,
+                linked.st_mode,
+                linked.st_nlink,
+                linked.st_uid,
+                linked.st_size,
+                linked.st_mtime_ns,
+                linked.st_ctime_ns,
+            )
 
-    walk(root, PurePosixPath(), 0)
-    return actual
+    walk(root_fd, PurePosixPath(), 0)
+    return actual, identities
 
 
-def verify_package_directory(directory: str | Path) -> dict[str, Any]:
-    """Verify an immutable Fundus package without consulting live Fundus state."""
-    root = _safe_root(directory, label="Fundus package directory")
+def _verify_package_once(
+    root: Path, root_fd: int
+) -> tuple[dict[str, Any], dict[str, tuple[int, ...]]]:
+    inventory_files, inventory_before = _inventory(root_fd)
     manifest_bytes = _read_package_file(
-        root,
+        root_fd,
         "fundus-package.json",
         maximum_bytes=MAX_PACKAGE_MANIFEST_BYTES,
         label="Fundus package manifest",
@@ -203,13 +261,13 @@ def verify_package_directory(directory: str | Path) -> dict[str, Any]:
         raise FundusError("Fundus package exceeds the total byte limit")
 
     expected_files = {"fundus-package.json", "SHA256SUMS", *paths}
-    if _inventory(root) != expected_files:
+    if inventory_files != expected_files:
         raise FundusError("Fundus package file set mismatch")
 
     verified_files: list[dict[str, Any]] = []
     for item in file_records:
         payload = _read_package_file(
-            root,
+            root_fd,
             item["path"],
             maximum_bytes=MAX_PACKAGE_FILE_BYTES,
             label=f"Fundus package file {item['path']}",
@@ -218,12 +276,21 @@ def verify_package_directory(directory: str | Path) -> dict[str, Any]:
             raise FundusError(f"Fundus package file drifted: {item['path']}")
         if inspect_media(payload).media_type != item["media_type"]:
             raise FundusError(f"Fundus package media_type drifted: {item['path']}")
+        if item["media_type"] == "image/svg+xml":
+            # Portable verification establishes passive SVG safety, not the
+            # narrower recipe profile that produced the already-bound bytes.
+            try:
+                sanitize_svg(payload, profile="svg.decorative.v1")
+            except ValueError as exc:
+                raise FundusError(
+                    f"Fundus package SVG violates the passive profile: {item['path']}"
+                ) from exc
         verified_files.append(dict(item))
 
     expected_sums = [f"{item['sha256']}  {item['path']}" for item in file_records]
     expected_sums.append(f"{digest_bytes(manifest_bytes)}  fundus-package.json")
     sums_bytes = _read_package_file(
-        root,
+        root_fd,
         "SHA256SUMS",
         maximum_bytes=MAX_PACKAGE_SUMS_BYTES,
         label="Fundus package SHA256SUMS",
@@ -231,13 +298,42 @@ def verify_package_directory(directory: str | Path) -> dict[str, Any]:
     if sums_bytes != ("\n".join(expected_sums) + "\n").encode("utf-8"):
         raise FundusError("Fundus package SHA256SUMS mismatch")
 
-    return {
+    inventory_files_after, inventory_after = _inventory(root_fd)
+    if inventory_files_after != expected_files or inventory_after != inventory_before:
+        raise FundusError("Fundus package changed during verification")
+    result = {
         **manifest,
         "ok": True,
         "package_path": str(root),
         "package_manifest_sha256": digest_bytes(manifest_bytes),
         "verified_files": verified_files,
     }
+    return result, inventory_after
+
+
+def verify_package_directory(directory: str | Path) -> dict[str, Any]:
+    """Verify a package twice through one pinned root descriptor and stable file set."""
+    root, root_fd, root_identity = _safe_root(
+        directory, label="Fundus package directory"
+    )
+    try:
+        first, first_inventory = _verify_package_once(root, root_fd)
+        second, second_inventory = _verify_package_once(root, root_fd)
+        if first != second or first_inventory != second_inventory:
+            raise FundusError("Fundus package changed between verification passes")
+        try:
+            linked = os.stat(root, follow_symlinks=False)
+        except OSError as exc:
+            raise FundusError("Fundus package root changed during verification") from exc
+        if (
+            stat.S_ISLNK(linked.st_mode)
+            or (linked.st_dev, linked.st_ino) != root_identity
+            or (os.fstat(root_fd).st_dev, os.fstat(root_fd).st_ino) != root_identity
+        ):
+            raise FundusError("Fundus package root changed during verification")
+        return second
+    finally:
+        os.close(root_fd)
 
 
 def consumer_lock_manifest(package: dict[str, Any]) -> dict[str, Any]:

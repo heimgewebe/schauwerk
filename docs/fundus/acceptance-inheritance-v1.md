@@ -37,7 +37,7 @@ Eine `schauwerk-fundus-acceptance.v2` darf nur erzeugt werden, wenn alle Bedingu
 - Parent- und Kandidaten-Build sind verschiedene digestgebundene Builds;
 - die Kandidaten-Recipe ist exakt an den Build gebunden und optiert per Recipe v3 ein;
 - jede `generated`- oder `edited`-Kandidatenquelle besitzt weiterhin ihren exakt gebundenen Image Brief, und dieser erlaubt `acceptance.inheritance=deterministic_recipe_only`;
-- die Parent-Acceptance ist eine **direkte** `schauwerk-fundus-acceptance.v1` mit `decision=accepted`;
+- die Parent-Acceptance ist eine **direkte** `schauwerk-fundus-acceptance.v3` mit `decision=accepted` und exakter Preview-v2- oder Family-Review-Bundle-Bindung;
 - die normalisierten Source-Bindungen sind exakt identisch;
 - die normalisierten Output-Bindungen sind in Reihenfolge und Inhalt exakt identisch.
 
@@ -52,7 +52,7 @@ Acceptance v2 ist ein technischer Vererbungsbeleg, keine neue visuelle Review-Be
 - Kandidaten-Build-Digest;
 - Kandidaten-Recipe-Digest;
 - vollständige Output-SHA-256-Liste;
-- direkten Parent-Build und dessen Acceptance-v1-Digest;
+- direkten Parent-Build und dessen Acceptance-v3-Digest;
 - Digests der normalisierten Source- und Output-Bindungen;
 - `inheritance_basis=identical_sources_and_outputs_only`;
 - den Operator, der die Vererbung ausgelöst hat;
@@ -62,7 +62,7 @@ Die Felder `reviewer` und `reviewed_at` werden bewusst nicht auf den Kandidaten 
 
 ## Keine Vererbungsketten
 
-Eine Acceptance v2 darf niemals Parent einer weiteren Vererbung sein. Jeder geerbte Build muss direkt auf eine Acceptance v1 zurückverweisen. Dadurch bleibt die visuelle Ursprungsauthorität in einem Schritt prüfbar und es entsteht keine transitive Kette aus technischen Annahmen.
+Eine neu erzeugte Acceptance v2 darf niemals Parent einer weiteren Vererbung sein und muss direkt auf eine Acceptance v3 zurückverweisen. Historische Acceptance v1 und ältere Acceptance-v2-Receipts bleiben lesbar, sind aber kein zulässiger Ursprung für neue Vererbung oder neue Produktionspackages. Dadurch bleibt die aktuelle visuelle Ursprungsauthorität in einem Schritt prüfbar und es entsteht keine neue transitive Kette aus technischen Annahmen.
 
 ## Revalidierung und Packaging
 
@@ -70,7 +70,7 @@ Beim späteren Laden einer Acceptance v2 prüft Fundus erneut:
 
 - Acceptance- und Build-Digests;
 - Output-SHA-256-Bindung;
-- Parent-Acceptance als direkte Acceptance v1;
+- Parent-Acceptance als direkte historische v1 oder aktuelle v3; für neue Produktionszulassung ist ausschließlich v3 samt erneut geprüfter Acceptance-zu-Review-Bindung zulässig;
 - Source- und Output-Gleichheit beider Builds;
 - die gespeicherten Evidence-Digests;
 - den Kandidaten-Recipe-Digest.

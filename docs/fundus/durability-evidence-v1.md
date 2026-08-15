@@ -25,7 +25,7 @@ Für jede reguläre Datei unter dem Fundus-Data-Root wird rekursiv und lexikogra
 - Bytegröße;
 - SHA-256 der Datei.
 
-Symlinks und spezielle Dateien sind verboten. Beim Hashen werden Pfadidentität, Dateigröße und `mtime_ns` vor/nach dem Lesen geprüft. Der Inventar-Digest ist SHA-256 über die kanonische JSON-Repräsentation von:
+Symlinks und spezielle Dateien sind verboten. Der Root und die vollständige Verzeichniskette werden descriptor-relativ und ohne Symlink-Follow geöffnet. Dateien werden relativ zu diesen gepinnten Deskriptoren gelesen. Zwei vollständige Inventarpässe müssen Dateisatz, Bytes und stabile Datei-/Verzeichnisidentitäten bestätigen; anschließend muss der konfigurierte Rootpfad weiterhin auf den geöffneten Root zeigen. Der Inventar-Digest ist SHA-256 über die kanonische JSON-Repräsentation von:
 
 ```json
 {
@@ -92,7 +92,7 @@ Evidence innerhalb des Fundus-Data-Roots wird fail-closed verworfen, weil sich e
 - **gültig aber stale:** Receipt ist intern korrekt, bindet jedoch eine frühere Fundus-Revision;
 - **gültig und current:** Receipt, Dateizahl, Gesamtbytes und heutiger Inventar-Digest stimmen exakt überein.
 
-Nur im letzten Fall gilt:
+Vor einem positiven Currentness-Return wird das Inventar nach dem Evidence-Read erneut erhoben. Eine Root-Ersetzung oder Mutation zwischen Inventarprüfung und Return ergibt fail-closed `current=false`. Nur im stabilen letzten Fall gilt:
 
 ```text
 object_store_authoritative=true

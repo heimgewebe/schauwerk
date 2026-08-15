@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 
 from schauwerk import runner
 from schauwerk.fundus.core import Fundus, FundusError, FundusPaths
-from schauwerk.fundus.model import validate_recipe
+from schauwerk.fundus.model import digest_json, validate_recipe
 
 SIMPLE_SVG = (
     b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
@@ -195,6 +195,7 @@ def _direct_parent(
     fundus: Fundus,
 ) -> tuple[dict, dict]:
     build = fundus.build("fixture.inherited")
+    preview = fundus.preview("fixture.inherited", build_digest=build["build_digest"])
     acceptance = fundus.accept(
         "fixture.inherited",
         build_digest=build["build_digest"],
@@ -202,6 +203,7 @@ def _direct_parent(
         decision="accepted",
         note="direct visual acceptance fixture",
         reviewed_at="2026-08-14T13:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     return build, acceptance
 
@@ -384,6 +386,42 @@ def test_rejected_parent_cannot_be_inherited(tmp_path: Path) -> None:
         )
 
 
+def test_historical_direct_acceptance_cannot_bypass_new_review_requirement(
+    tmp_path: Path,
+) -> None:
+    fundus, registry, ingest = _setup(tmp_path)
+    parent_build = fundus.build("fixture.inherited")
+    body = {
+        "schema_version": "schauwerk-fundus-acceptance.v1",
+        "asset_id": "fixture.inherited",
+        "build_digest": parent_build["build_digest"],
+        "output_sha256s": [item["sha256"] for item in parent_build["outputs"]],
+        "decision": "accepted",
+        "reviewer": "historical:test",
+        "reviewed_at": "2026-08-14T13:00:00+00:00",
+        "note": "readable, not newly admissible",
+        "reviewer_identity_authenticated": False,
+    }
+    digest = digest_json(body)
+    fundus._write_json_create_or_verify(
+        fundus.root
+        / "acceptances"
+        / "fixture.inherited"
+        / parent_build["build_digest"]
+        / f"{digest}.json",
+        {**body, "acceptance_digest": digest},
+    )
+    candidate = _candidate(fundus, registry, ingest)
+    with pytest.raises(FundusError, match="digest-bound directly reviewed"):
+        fundus.inherit_acceptance(
+            "fixture.inherited",
+            build_digest=candidate["build_digest"],
+            parent_build_digest=parent_build["build_digest"],
+            parent_acceptance_digest=digest,
+            inherited_by="operator:test",
+        )
+
+
 def test_inherited_acceptance_cannot_be_parent_of_another_inheritance(
     tmp_path: Path,
 ) -> None:
@@ -445,3 +483,70 @@ def test_cli_accept_inherit_uses_operator_not_reviewer(tmp_path: Path, capsys) -
     assert result["schema_version"] == "schauwerk-fundus-acceptance.v2"
     assert result["inherited_by"] == "operator:cli"
     assert "reviewer" not in result
+
+
+def test_historical_inherited_v2_remains_readable_but_not_packageable(
+    tmp_path: Path,
+) -> None:
+    fundus, registry, ingest = _setup(tmp_path)
+    parent_build = fundus.build("fixture.inherited")
+    parent_body = {
+        "schema_version": "schauwerk-fundus-acceptance.v1",
+        "asset_id": "fixture.inherited",
+        "build_digest": parent_build["build_digest"],
+        "output_sha256s": [item["sha256"] for item in parent_build["outputs"]],
+        "decision": "accepted",
+        "reviewer": "historical:test",
+        "reviewed_at": "2026-08-14T13:00:00+00:00",
+        "note": "historical direct acceptance",
+        "reviewer_identity_authenticated": False,
+    }
+    parent_digest = digest_json(parent_body)
+    fundus._write_json_create_or_verify(
+        fundus.root
+        / "acceptances"
+        / "fixture.inherited"
+        / parent_build["build_digest"]
+        / f"{parent_digest}.json",
+        {**parent_body, "acceptance_digest": parent_digest},
+    )
+    candidate = _candidate(fundus, registry, ingest)
+    source_bindings = fundus._build_source_bindings(candidate)
+    output_bindings = fundus._build_output_bindings(candidate)
+    inherited_body = {
+        "schema_version": "schauwerk-fundus-acceptance.v2",
+        "asset_id": "fixture.inherited",
+        "build_digest": candidate["build_digest"],
+        "output_sha256s": [item["sha256"] for item in candidate["outputs"]],
+        "decision": "accepted",
+        "acceptance_mode": "inherited",
+        "inheritance_basis": "identical_sources_and_outputs_only",
+        "parent_build_digest": parent_build["build_digest"],
+        "parent_acceptance_digest": parent_digest,
+        "source_bindings_sha256": digest_json(source_bindings),
+        "output_bindings_sha256": digest_json(output_bindings),
+        "candidate_recipe_sha256": candidate["recipe_sha256"],
+        "inherited_by": "historical:test",
+        "inherited_at": "2026-08-14T14:00:00+00:00",
+        "inherited_by_identity_authenticated": False,
+    }
+    inherited_digest = digest_json(inherited_body)
+    fundus._write_json_create_or_verify(
+        fundus.root
+        / "acceptances"
+        / "fixture.inherited"
+        / candidate["build_digest"]
+        / f"{inherited_digest}.json",
+        {**inherited_body, "acceptance_digest": inherited_digest},
+    )
+
+    loaded = fundus._load_acceptance(
+        "fixture.inherited", candidate["build_digest"], inherited_digest
+    )
+    assert loaded["schema_version"] == "schauwerk-fundus-acceptance.v2"
+    with pytest.raises(FundusError, match="historical inherited acceptance"):
+        fundus.package(
+            "fixture.inherited",
+            build_digest=candidate["build_digest"],
+            acceptance_digest=inherited_digest,
+        )

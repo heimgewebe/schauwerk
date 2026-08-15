@@ -334,3 +334,86 @@ def test_review_check_rejects_semantically_resigned_variant_and_plan(
     plan_manifest_path.write_text(json.dumps(plan_manifest), encoding="utf-8")
     with pytest.raises(FundusError, match="plan binding mismatch"):
         check_review_bundle(plan_output)
+
+
+def test_checked_family_bundle_can_bind_direct_acceptance(tmp_path: Path) -> None:
+    fundus = _fundus(tmp_path)
+    output = tmp_path / "review-acceptance"
+    bundle = build_review_bundle(fundus, "fixture.review", output)
+    variant = bundle["variants"][0]
+    acceptance = fundus.accept(
+        variant["asset_id"],
+        build_digest=variant["build_digest"],
+        reviewer="test:family-review",
+        decision="accepted",
+        review_bundle_path=output,
+    )
+    assert acceptance["schema_version"] == "schauwerk-fundus-acceptance.v3"
+    assert acceptance["review_evidence"]["kind"] == "family_review_bundle"
+    assert acceptance["review_evidence"]["review_digest"] == bundle["review_digest"]
+
+
+def test_review_bundle_revalidates_output_after_build_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fundus = _fundus(tmp_path)
+    build = fundus.build("fixture.review.01")
+    output_path = Path(build["build_dir"]) / build["outputs"][0]["filename"]
+    original = fundus._load_build
+
+    def substitute_after_check(asset_id: str, build_digest: str):
+        loaded = original(asset_id, build_digest)
+        output_path.write_bytes(
+            b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2 2">'
+            b'<path d="M0 0L2 0L2 2Z"/></svg>'
+        )
+        return loaded
+
+    monkeypatch.setattr(fundus, "_load_build", substitute_after_check)
+    with pytest.raises(FundusError, match="build output (size|digest) mismatch"):
+        build_review_bundle(fundus, "fixture.review", tmp_path / "raced-review")
+
+
+def test_historical_review_bundle_without_output_bytes_remains_readable_only(
+    tmp_path: Path,
+) -> None:
+    fundus = _fundus(tmp_path)
+    output = tmp_path / "historical-review"
+    build_review_bundle(fundus, "fixture.review", output)
+    manifest_path = output / "review.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for variant in manifest["variants"]:
+        variant.pop("output_bytes")
+    plan_variants = [
+        {key: value for key, value in variant.items() if key != "file"}
+        for variant in manifest["variants"]
+    ]
+    plan_body = {
+        "schema_version": "schauwerk-fundus-review-plan.v1",
+        "family_id": manifest["family_id"],
+        "family_title": manifest["family_title"],
+        "variants": plan_variants,
+        "fundus_authoritative": True,
+        "visual_acceptance_inferred": False,
+        "package_created": False,
+    }
+    manifest["plan_digest"] = digest_json(plan_body)
+    body = dict(manifest)
+    body.pop("review_digest")
+    manifest["review_digest"] = digest_json(body)
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    checked = check_review_bundle(output)
+    assert checked["ok"] is True
+    variant = checked["variants"][0]
+    with pytest.raises(FundusError, match="does not bind every build output"):
+        fundus.accept(
+            variant["asset_id"],
+            build_digest=variant["build_digest"],
+            reviewer="test:historical-review",
+            decision="accepted",
+            review_bundle_path=output,
+        )

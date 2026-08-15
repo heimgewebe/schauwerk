@@ -90,6 +90,7 @@ def test_vtracer_adapter_is_deterministic_sanitized_and_digest_bound(tmp_path: P
         reviewer="test:adapter",
         decision="accepted",
         reviewed_at="2026-08-13T13:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
     )
     package = fundus.package(
         "fixture.trace",
