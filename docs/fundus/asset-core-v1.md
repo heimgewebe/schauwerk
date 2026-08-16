@@ -92,11 +92,17 @@ Der normative [Durability Evidence v1](durability-evidence-v1.md) bindet einen e
 
 ## Bildoperationen
 
-Generierte oder generativ bearbeitete wiederverwendbare Quellen folgen zusätzlich dem normativen [Image Operations v1](image-operations-v1.md). Vor der Bildoperation wird ein digestierbarer Image Brief vorbereitet und immutable hinterlegt; `generated`- und `edited`-Quellen müssen dessen SHA-256 beim Ingest binden. Ein generatives Edit bindet zusätzlich seine exakte Eingangsrevision. Build, Drift und Reproduce verlangen für jede Quelle ein vorhandenes schema-valides Ingest-Receipt und prüfen SHA-256, Bytezahl, Medientyp, Objektpfad sowie deklarierte Origin-/Rights-/Source-Mode-Bindungen. Acceptance und Package validieren die produktive Provenienz erneut. Historische generative Ursprünge ohne `source_mode` und vorbereiteten Brief bleiben reviewbar, können aber keine neue Acceptance oder neues Package erhalten.
+Generierte oder generativ bearbeitete wiederverwendbare Quellen folgen zusätzlich dem normativen [Image Operations v1](image-operations-v1.md). Solange die ästhetische Richtung ungeklärt ist, liegt visuelle Exploration ausdrücklich **vor und außerhalb** des Fundus: keine Registry, kein Ingest, kein Build und keine nachträgliche Promotion generierter Explorationsbytes. Erst nach visueller Auswahl wird der Image Brief vorbereitet; ein danach neu erzeugter finaler `generated`- oder `edited`-Source-Master muss dessen SHA-256 beim Ingest binden. Ein generatives Edit bindet zusätzlich seine exakte Eingangsrevision. Build, Drift und Reproduce verlangen für jede Quelle ein vorhandenes schema-valides Ingest-Receipt und prüfen SHA-256, Bytezahl, Medientyp, Objektpfad sowie deklarierte Origin-/Rights-/Source-Mode-Bindungen. Acceptance und Package validieren die produktive Provenienz erneut. Historische generative Ursprünge ohne `source_mode` und vorbereiteten Brief bleiben reviewbar, können aber keine neue Acceptance oder neues Package erhalten. Technische oder geometrische Kennzahlen bleiben Constraints und dürfen nicht als ästhetische Qualitätswerte verwendet werden.
 
 ## Lifecycle
 
 ```text
+[unresolved visual direction]
+   ↓ disposable exploration outside Fundus
+visual concept selection
+   ↓ promotion gate (not Acceptance)
+prepared Image Brief
+   ↓ final generate/edit
 source file(s)
    ↓ ingest
 content object(s)
@@ -111,6 +117,8 @@ immutable package
    ↓
 Grabowski target-repo integration
 ```
+
+Wenn die visuelle Richtung bereits hinreichend bestimmt ist, beginnt der Pfad direkt beim vorbereiteten Image Brief. Eine verworfene Richtung fällt zurück in die freie Exploration; Fundus dient nicht dazu, schlechte Gestaltung durch zusätzliche technische Iterationen oder Messwertoptimierung zu legitimieren.
 
 CLI:
 

@@ -26,6 +26,8 @@ Schauwerk is a Type B product/service repository for a visual work, projection, 
 - Public outputs are independent sanitized artifacts, not filtered live access to private surfaces.
 - Human, cooperative, and managed regions must remain distinguishable.
 - Semantic services are optional enrichments and must not block the core workflow.
+- If a visual direction is unresolved, explore outside Fundus first. Exploratory variants are disposable, must not be ingested or registered, and generated exploration bytes must not be retroactively relabeled as a production Source Master.
+- Promotion starts only after a visual concept is worth preserving. For generated or edited work, prepare the Image Brief first and then create a new final Source Master; geometric or technical metrics are constraints, never aesthetic quality scores.
 - Reusable or production-bound generated/edited visual assets must use the Fundus image-operation contract; a Source Master is not a production asset.
 - `schauwerk.fundus` packages accepted assets; Grabowski owns cross-repository integration.
 
