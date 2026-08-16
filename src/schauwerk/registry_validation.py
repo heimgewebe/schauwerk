@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
+
+from schauwerk.fundus.model import (
+    digest_json,
+    load_json,
+    validate_asset,
+    validate_family,
+    validate_image_brief,
+)
 
 
 @dataclass(frozen=True)
@@ -59,6 +68,128 @@ def _check_forbidden_keys(value: Any, location: str) -> None:
     elif isinstance(value, list):
         for index, child in enumerate(value):
             _check_forbidden_keys(child, f"{location}[{index}]")
+
+
+def _load_fundus_documents(
+    directory: Path,
+    *,
+    label: str,
+    validator: Callable[[Any], dict[str, Any]],
+) -> dict[str, tuple[dict[str, Any], str, Path]]:
+    if not directory.is_dir():
+        raise RegistryValidationError(f"{directory}: Fundus {label} registry is missing")
+
+    loaded: dict[str, tuple[dict[str, Any], str, Path]] = {}
+    for path in sorted(directory.glob("*.json")):
+        try:
+            value = load_json(path, maximum_bytes=256_000)
+            validator(value)
+            digest = digest_json(value)
+        except (OSError, ValueError) as exc:
+            raise RegistryValidationError(f"{path}: {exc}") from exc
+
+        identifier = value["id"]
+        if path.stem != identifier:
+            raise RegistryValidationError(
+                f"{path}: {label} id {identifier!r} does not match registry filename"
+            )
+        if identifier in loaded:
+            raise RegistryValidationError(f"{directory}: duplicate {label} id {identifier!r}")
+        loaded[identifier] = (value, digest, path)
+    return loaded
+
+
+def _validate_fundus_briefs(repo_root: Path) -> int:
+    fundus_root = repo_root / "registry" / "fundus"
+    assets = _load_fundus_documents(
+        fundus_root / "assets",
+        label="asset",
+        validator=validate_asset,
+    )
+    families = _load_fundus_documents(
+        fundus_root / "families",
+        label="family",
+        validator=validate_family,
+    )
+    briefs = _load_fundus_documents(
+        fundus_root / "briefs",
+        label="image brief",
+        validator=validate_image_brief,
+    )
+
+    briefs_by_digest: dict[str, tuple[dict[str, Any], Path]] = {}
+    for brief, brief_digest, path in briefs.values():
+        duplicate = briefs_by_digest.get(brief_digest)
+        if duplicate is not None:
+            raise RegistryValidationError(
+                f"{path}: duplicate canonical image brief digest {brief_digest}"
+            )
+        briefs_by_digest[brief_digest] = (brief, path)
+
+        family = brief.get("family")
+        if family is not None and family not in families:
+            raise RegistryValidationError(
+                f"{path}: unknown Fundus family {family!r}"
+            )
+        asset_entry = assets.get(brief["asset_id"])
+        if asset_entry is not None and family is not None:
+            asset = asset_entry[0]
+            if asset.get("family") != family:
+                raise RegistryValidationError(
+                    f"{path}: image brief family {family!r} conflicts with "
+                    f"asset family {asset.get('family')!r}"
+                )
+
+    for asset, _, asset_path in assets.values():
+        for source in asset["sources"]:
+            source_mode = source.get("source_mode", "unknown")
+            if source_mode not in {"generated", "edited"}:
+                continue
+
+            brief_digest = source["image_brief_sha256"]
+            binding = briefs_by_digest.get(brief_digest)
+            if binding is None:
+                raise RegistryValidationError(
+                    f"{asset_path}: {source_mode} source role {source['role']!r} "
+                    f"references missing committed image brief {brief_digest}"
+                )
+            brief, brief_path = binding
+
+            if brief["asset_id"] != asset["id"]:
+                raise RegistryValidationError(
+                    f"{asset_path}: image brief {brief_path.name!r} binds asset "
+                    f"{brief['asset_id']!r}, expected {asset['id']!r}"
+                )
+            if brief["source_role"] != source["role"]:
+                raise RegistryValidationError(
+                    f"{asset_path}: image brief {brief_path.name!r} source_role "
+                    f"{brief['source_role']!r} conflicts with bound source role "
+                    f"{source['role']!r}"
+                )
+
+            expected_operation = "generate" if source_mode == "generated" else "edit"
+            if brief["operation"] != expected_operation:
+                raise RegistryValidationError(
+                    f"{asset_path}: image brief {brief_path.name!r} operation "
+                    f"{brief['operation']!r} conflicts with source_mode {source_mode!r}"
+                )
+
+            brief_family = brief.get("family")
+            if brief_family is not None and brief_family != asset.get("family"):
+                raise RegistryValidationError(
+                    f"{asset_path}: image brief {brief_path.name!r} family "
+                    f"{brief_family!r} conflicts with asset family {asset.get('family')!r}"
+                )
+
+            asset_properties = asset.get("properties", {})
+            for key, expected in brief["properties"].items():
+                if asset_properties.get(key) is not expected:
+                    raise RegistryValidationError(
+                        f"{asset_path}: image brief {brief_path.name!r} property {key!r} "
+                        f"is {expected!r}, asset declares {asset_properties.get(key)!r}"
+                    )
+
+    return len(briefs)
 
 
 def validate_registry(repo_root: Path) -> dict[str, int]:
@@ -219,6 +350,7 @@ def validate_registry(repo_root: Path) -> dict[str, int]:
                 f"publications.yaml: unknown view_id {item['view_id']!r} for {item['id']!r}"
             )
 
+    _validate_fundus_briefs(repo_root)
     return {key: len(items) for key, items in loaded.items()}
 
 
