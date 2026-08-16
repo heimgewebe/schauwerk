@@ -749,6 +749,21 @@ def test_agent_policy_routes_reusable_image_work_through_fundus() -> None:
     policy = yaml.safe_load((repo_root / "agent-policy.yaml").read_text(encoding="utf-8"))
     fundus = policy["fundus"]
     assert fundus["image_operations_contract"] == "docs/fundus/image-operations-v1.md"
+    exploration = fundus["unresolved_aesthetic_direction"]
+    assert exploration == {
+        "explore_before_fundus": True,
+        "exploration_disposable_by_default": True,
+        "no_fundus_ingest_or_registry_during_exploration": True,
+        "visual_selection_required_for_promotion": True,
+        "generated_exploration_retroactive_promotion_forbidden": True,
+        "aesthetic_metrics_are_constraints_not_quality_scores": True,
+        "rejected_direction_returns_to_exploration": True,
+    }
+    assert fundus["promotion_gate"] == {
+        "promotion_is_not_acceptance": True,
+        "prepared_brief_before_final_generated_or_edited_source": True,
+        "final_source_master_must_be_new_after_brief_for_generated_exploration": True,
+    }
     assert fundus["reusable_or_production_visuals"][
         "generated_or_edited_requires_image_brief"
     ] is True
@@ -758,6 +773,15 @@ def test_agent_policy_routes_reusable_image_work_through_fundus() -> None:
     }
     agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert "docs/fundus/image-operations-v1.md" in agents
+    assert "explore outside Fundus first" in agents
+    assert "metrics are constraints, never aesthetic quality scores" in agents
+
+    image_operations = (repo_root / "docs/fundus/image-operations-v1.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Fundus ist eine Asset-Supply-Chain, keine Kreativwerkstatt" in image_operations
+    assert "dürfen später nicht durch Umbenennen" in image_operations
+    assert "Der nächste Schritt ist neue Exploration" in image_operations
 
 
 def test_legacy_generated_ingest_remains_idempotent_without_reclassification(

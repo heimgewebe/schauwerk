@@ -17,6 +17,18 @@ automation:
 fundus:
   canonical_contract: docs/fundus/asset-core-v1.md
   image_operations_contract: docs/fundus/image-operations-v1.md
+  unresolved_aesthetic_direction:
+    explore_before_fundus: true
+    exploration_disposable_by_default: true
+    no_fundus_ingest_or_registry_during_exploration: true
+    visual_selection_required_for_promotion: true
+    generated_exploration_retroactive_promotion_forbidden: true
+    aesthetic_metrics_are_constraints_not_quality_scores: true
+    rejected_direction_returns_to_exploration: true
+  promotion_gate:
+    promotion_is_not_acceptance: true
+    prepared_brief_before_final_generated_or_edited_source: true
+    final_source_master_must_be_new_after_brief_for_generated_exploration: true
   reusable_or_production_visuals:
     source_master_before_production: true
     generated_or_edited_requires_image_brief: true
