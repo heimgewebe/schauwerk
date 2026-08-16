@@ -331,6 +331,39 @@ def test_fundus_rejects_rejected_acceptance_for_package(tmp_path: Path) -> None:
         )
 
 
+def test_fundus_rejects_packaging_after_later_visual_rejection(tmp_path: Path) -> None:
+    fundus, registry, source = _setup(tmp_path)
+    ingest = fundus.ingest(source, origin="test-fixture", rights_status="owned")
+    _declare_asset(registry, ingest["sha256"])
+    build = fundus.build("fixture.simple-ornament")
+    preview = fundus.preview(
+        "fixture.simple-ornament", build_digest=build["build_digest"]
+    )
+    accepted = fundus.accept(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        reviewer="test:first-review",
+        decision="accepted",
+        reviewed_at="2026-08-13T10:00:00+00:00",
+        preview_receipt_path=preview["preview_receipt_path"],
+    )
+    rejected = fundus.accept(
+        "fixture.simple-ornament",
+        build_digest=build["build_digest"],
+        reviewer="test:later-review",
+        decision="rejected",
+        note="consumer-context review supersedes production use",
+        reviewed_at="2026-08-16T10:40:00+00:00",
+    )
+    assert rejected["decision"] == "rejected"
+    with pytest.raises(FundusError, match="rejected visual decision"):
+        fundus.package(
+            "fixture.simple-ornament",
+            build_digest=build["build_digest"],
+            acceptance_digest=accepted["acceptance_digest"],
+        )
+
+
 def test_origin_mode_detection_is_image_specific() -> None:
     assert Fundus._origin_source_mode("chatgpt:text-workflow") is None
     assert Fundus._origin_source_mode("openai:api-output") is None

@@ -1840,6 +1840,17 @@ class Fundus:
         )
         if acceptance.get("decision") != "accepted":
             raise FundusError("only an explicitly accepted build may be packaged")
+        acceptance_root = self.root / "acceptances" / asset_id / build_digest
+        for sibling_path in sorted(acceptance_root.glob("*.json")):
+            sibling = self._load_acceptance(
+                asset_id,
+                build_digest,
+                sibling_path.stem,
+            )
+            if sibling.get("decision") == "rejected":
+                raise FundusError(
+                    "build has a rejected visual decision and cannot be packaged"
+                )
         if acceptance.get("schema_version") == ACCEPTANCE_SCHEMA_V3:
             self._validate_acceptance_review_binding(acceptance, build)
         elif acceptance.get("schema_version") == ACCEPTANCE_SCHEMA_V2:
