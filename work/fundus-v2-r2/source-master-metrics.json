@@ -1,0 +1,185 @@
+{
+  "schema_version": "schauwerk-fundus-source-master-metrics.v1",
+  "asset_id": "botanical.concave-frame.corner.v2",
+  "revision_label": "r2",
+  "canvas": [
+    2048,
+    2048
+  ],
+  "brief_sha256": "1cefe982c8e2d952a994909e2b14f9f021c63ffdd8758ec8dcb424884da91809",
+  "generator": "chatgpt-local-organic-vector-raster-v2",
+  "seed": 202608161513,
+  "scale": 1.2,
+  "alpha_bbox": [
+    52,
+    27,
+    1884,
+    1854
+  ],
+  "alpha_coverage_gt8": 0.22266602516174316,
+  "alpha_coverage_gt127": 0.2182154655456543,
+  "central_core": [
+    820,
+    820,
+    1900,
+    1900
+  ],
+  "central_negative_space": 1.0,
+  "crop_safe": true,
+  "source_sha256": "0d821fc90f06c3f39033a633588875333a6153a7f35a9523efef6b2e7aab94b4",
+  "bytes": 218988,
+  "selection_candidates": [
+    {
+      "scale": 0.9,
+      "alpha_bbox": [
+        101,
+        78,
+        1848,
+        1826
+      ],
+      "alpha_coverage_gt8": 0.14623641967773438,
+      "alpha_coverage_gt127": 0.14141464233398438,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.0,
+      "alpha_bbox": [
+        85,
+        59,
+        1860,
+        1835
+      ],
+      "alpha_coverage_gt8": 0.17124056816101074,
+      "alpha_coverage_gt127": 0.16650891304016113,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.1,
+      "alpha_bbox": [
+        69,
+        41,
+        1872,
+        1844
+      ],
+      "alpha_coverage_gt8": 0.19678187370300293,
+      "alpha_coverage_gt127": 0.19216251373291016,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.2,
+      "alpha_bbox": [
+        52,
+        27,
+        1884,
+        1854
+      ],
+      "alpha_coverage_gt8": 0.22266602516174316,
+      "alpha_coverage_gt127": 0.2182154655456543,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.3,
+      "alpha_bbox": [
+        36,
+        27,
+        1896,
+        1863
+      ],
+      "alpha_coverage_gt8": 0.24849462509155273,
+      "alpha_coverage_gt127": 0.24420642852783203,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.4,
+      "alpha_bbox": [
+        27,
+        27,
+        1908,
+        1873
+      ],
+      "alpha_coverage_gt8": 0.2741682529449463,
+      "alpha_coverage_gt127": 0.2700972557067871,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.5,
+      "alpha_bbox": [
+        27,
+        27,
+        1920,
+        1882
+      ],
+      "alpha_coverage_gt8": 0.2993030548095703,
+      "alpha_coverage_gt127": 0.2954554557800293,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    },
+    {
+      "scale": 1.6,
+      "alpha_bbox": [
+        27,
+        27,
+        1932,
+        1892
+      ],
+      "alpha_coverage_gt8": 0.32303905487060547,
+      "alpha_coverage_gt127": 0.3193206787109375,
+      "central_core": [
+        820,
+        820,
+        1900,
+        1900
+      ],
+      "central_negative_space": 1.0,
+      "crop_safe": true
+    }
+  ]
+}

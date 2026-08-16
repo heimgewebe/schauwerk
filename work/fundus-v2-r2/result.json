@@ -1,0 +1,79 @@
+{
+  "schema_version": "schauwerk-fundus-v2-corner-slice-result.v1",
+  "status": "suitable_for_acceptance",
+  "acceptance_written": false,
+  "package_written": false,
+  "reason_acceptance_deferred": "Prior v1 ChatGPT visual acceptance was later overruled by higher-authority user live review; r2 is frozen for exact user-visible review before direct acceptance.",
+  "asset_id": "botanical.concave-frame.corner.v2",
+  "revision_label": "r2",
+  "lane_id": "de58abdfc101180f506b5541d497fb7b",
+  "base_head": "6f2d4eefebae251f5f891efd4847669b586c7c57",
+  "brief_digest": "1cefe982c8e2d952a994909e2b14f9f021c63ffdd8758ec8dcb424884da91809",
+  "source_master_path": "work/fundus-v2-r2/botanical.concave-frame.corner.v2.r2.source.png",
+  "source_master_sha256": "0d821fc90f06c3f39033a633588875333a6153a7f35a9523efef6b2e7aab94b4",
+  "source_metrics": {
+    "alpha_coverage_gt8": 0.22266602516174316,
+    "alpha_coverage_gt127": 0.2182154655456543,
+    "central_negative_space": 1.0,
+    "alpha_bbox": [
+      52,
+      27,
+      1884,
+      1854
+    ],
+    "crop_safe": true
+  },
+  "ingest": {
+    "sha256": "0d821fc90f06c3f39033a633588875333a6153a7f35a9523efef6b2e7aab94b4",
+    "source_path_sha256": "b0bc4ec69c0f5230a4bac6654d661353d95695c487a40fc427b9638510f0e1e8",
+    "object_relpath": "objects/sha256/0d/0d821fc90f06c3f39033a633588875333a6153a7f35a9523efef6b2e7aab94b4",
+    "source_mode": "generated",
+    "origin": "ai-generated:chatgpt-local-organic-vector-raster-v2:botanical-concave-frame-corner-v2-r2"
+  },
+  "asset_manifest_sha256": "62ded5f85b09acb002807a3ee92b22e289ed3bc5737fe8dc5e5131352a24b315",
+  "build_digest": "b79b726f9fcfad9934d9df91672951ed38797f42e9c6a78e465d8d46915ca71a",
+  "mask": {
+    "sha256": "f4db1e30e6e8b3eac29ca425a2dceb03dbdda4fb8fa66e76f377d0f0d4061f5e",
+    "bytes": 92555
+  },
+  "fundus_preview": {
+    "sha256": "cf83ca0a90ffd493091c0dd9e3d92c629a1ca818be9e1bfed0b1cf5b1d0c13d8",
+    "review_digest": "83df2f6c2178cae5ba9c7090279394f9e6de187583348ce03cb7cca824f87eae"
+  },
+  "review_artifacts_sha256": {
+    "work/fundus-v2-r2/generate_source.py": "892bbf362c7336a704d3c9b0f21299e2dd897653a1aee6550498f6240f370142",
+    "work/fundus-v2-r2/source-master-metrics.json": "e3c2eafc1ee41509cb3b324d9c2130d83e2e0a7a6e4ab06ec725970cbad76f60",
+    "work/fundus-v2-r2/preview.webp": "8334c3c0df5c63289654558cdeb94920b43c9ce301e49a6096435a0efe15ca69",
+    "work/fundus-v2-r2/context-review.webp": "666cb44d47bab462ec1d8007a6dbd55f163e402c92a1a7b6a6507d9fb2c6e368",
+    "work/fundus-v2-r2/thumbnail-160.webp": "a14e83912060e507e3e9a9c6c2dcee18ce7ec37f2d8de6406543e3a30563a87f",
+    "work/fundus-v2-r2/mask-build.png": "930b4057395a941c5ce6ecc01ea5392f4544b5692d82acadbe8f049dd784ef11"
+  },
+  "technical_checks": {
+    "fundus_doctor_ok": true,
+    "drift_status": "clean",
+    "reproduction_ok": true,
+    "reproduction_output_sha256s_match": true,
+    "focused_tests": "54 passed",
+    "svg_sanitizer_profile": "svg.mask.v1",
+    "network_dependencies": false,
+    "cross_repo_mutation_authority": false,
+    "durability_current": false,
+    "durability_file_count": 68
+  },
+  "visual_assessment": {
+    "verdict": "suitable_for_acceptance",
+    "positive": [
+      "true L-shaped framing topology with shared organic nexus",
+      "occupied area 22.27% within brief target 18-28%",
+      "defined central core remains fully negative space",
+      "non-uniform independent branch rhythms and differentiated leaf geometry reduce mechanical repetition",
+      "exact mask remains legible in 160px review probe",
+      "Hall-of-Memory review context shows ornament supporting rather than dominating typography",
+      "no broad arc, feather, laurel, full-frame, material, shadow, text or mirror/rotation assumption"
+    ],
+    "remaining_uncertainty": [
+      "terminal symbol readback is lower-fidelity than direct user visual inspection",
+      "prior v1 automated visual acceptance was later overruled by user live review"
+    ]
+  }
+}
