@@ -1,0 +1,56 @@
+{
+  "schema_version": "schauwerk-fundus-image-brief.v1",
+  "id": "botanical.concave-frame.corner.v2.generate",
+  "intent": "reusable_asset",
+  "asset_id": "botanical.concave-frame.corner.v2",
+  "family": "botanical.concave-frame",
+  "operation": "generate",
+  "source_role": "trace_source",
+  "desired_output_roles": [
+    "mask",
+    "preview"
+  ],
+  "requirements": [
+    "True corner composition: two slender botanical runs depart from one shared corner nexus at roughly a right angle",
+    "The inner contour must read as a concave framing corner, not as one sweeping crescent, feather or laurel arc",
+    "Keep the ornament visually restrained: target roughly 18–28% occupied area on a square source canvas",
+    "Preserve at least about 70% central negative space so content remains visually dominant",
+    "Use fine tapered stems with clear hierarchy from primary branch to secondary twigs and leaflets",
+    "Use smaller differentiated leaves with natural spacing, varied angles and restrained asymmetry",
+    "The silhouette must feel botanically grown from the corner instead of pasted onto the image area",
+    "Maintain an elegant visual weight compatible with refined serif typography and small medallion details",
+    "Avoid uniform thickness: stems and terminal elements should visibly taper toward their ends",
+    "Keep sufficient local negative space between leaves and branches to avoid one heavy contiguous blob",
+    "Transparent background with a clean isolated silhouette and no surrounding frame rectangle",
+    "Forms must remain contiguous and simple enough to trace cleanly into a reusable SVG mask",
+    "The silhouette must remain legible and graceful when reduced to approximately 160 px corner size",
+    "No baked material appearance; shape and material must remain separable for independent recoloring or texturing",
+    "High source resolution with clean anti-aliased edges and no accidental crop at the outer canvas edges",
+    "Visual review must compare against a strong existing Hall-of-Memory frame treatment, not a deliberately weak placeholder geometry"
+  ],
+  "forbidden": [
+    "No broad ribbon-like main arc spanning most of the image",
+    "No feather, fern-frond, clipart-laurel or stencil-like silhouette",
+    "No oversized repeated oval leaves or scalloped rhythm",
+    "No heavy solid mass that dominates the framed content area",
+    "No closed or near-closed semicircle around the content",
+    "No mechanically repeated leaf modules or regular spacing",
+    "No hard diamond-like, rectangular or mechanically rotated geometry",
+    "No shadows, glow, bevel, embossing or three-dimensional lighting",
+    "No gold, metallic, paper or other material texture in the source master",
+    "No text, lettering, logos or watermark",
+    "No complete four-corner frame in this source master",
+    "No assumption that mirroring or rotation preserves the intended natural composition"
+  ],
+  "properties": {
+    "mask_safe": true,
+    "mirror_safe": false,
+    "recolor_safe": true,
+    "rotate_safe": false,
+    "tile_safe": false
+  },
+  "acceptance": {
+    "visual_review_required": true,
+    "inheritance": "none"
+  }
+}
