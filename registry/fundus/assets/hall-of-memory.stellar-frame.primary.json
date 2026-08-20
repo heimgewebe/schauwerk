@@ -1,0 +1,24 @@
+{
+  "schema_version": "schauwerk-fundus-asset.v1",
+  "id": "hall-of-memory.stellar-frame.primary",
+  "family": "hall-of-memory.stellar-frame",
+  "recipe": "raster-png-v1",
+  "sources": [
+    {
+      "role": "original",
+      "sha256": "01975a17aedbf2f7b067ab4ed756d30ed5eb9ef9c59d876e151fb91bdc42ee3e",
+      "media_type": "image/png",
+      "origin": "chatgpt-images:hall-of-memory-stellar-frame-primary-20260820",
+      "rights_status": "owned",
+      "source_mode": "generated",
+      "image_brief_sha256": "db8702a797fff95c0380c2e8d320d9fd9dee139b57c2b653478eaf89b1bd7442"
+    }
+  ],
+  "properties": {
+    "mask_safe": false,
+    "mirror_safe": false,
+    "recolor_safe": false,
+    "rotate_safe": false,
+    "tile_safe": false
+  }
+}
