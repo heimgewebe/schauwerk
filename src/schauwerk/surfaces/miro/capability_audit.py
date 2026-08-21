@@ -11,7 +11,13 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .capability_fallbacks import CREATION_FALLBACKS, LAYOUT_TOOLS
+from .capability_fallbacks import (
+    CANVAS_DIAGRAM_READBACK_TOOL,
+    CANVAS_DIAGRAM_TOOLS,
+    CREATION_FALLBACKS,
+    LAYOUT_TOOLS,
+    LEGACY_DIAGRAM_TOOLS,
+)
 
 AUDIT_SCHEMA = "schauwerk-miro-capability-audit.v1"
 REFERENCE_SCHEMA = "schauwerk-miro-mcp-tool-reference.v1"
@@ -53,7 +59,20 @@ TOOL_FAMILIES: dict[str, frozenset[str]] = {
     "collaboration": frozenset({"comment_create", "comment_list_comments"}),
 }
 
-PLANNER_TOOLS = frozenset().union(*TOOL_FAMILIES.values()) - {"image_delete"}
+CURRENT_PROVIDER_TOOL_FAMILIES: dict[str, frozenset[str]] = {
+    "canvas": frozenset(
+        {
+            "canvas_get_canvas_composer_skill",
+            "canvas_load_format_skill",
+            "canvas_create_from_svg",
+            CANVAS_DIAGRAM_READBACK_TOOL,
+        }
+    )
+}
+
+PLANNER_TOOLS = frozenset().union(
+    *TOOL_FAMILIES.values(), *CURRENT_PROVIDER_TOOL_FAMILIES.values()
+) - {"image_delete"}
 
 # Tools already used by a production Schauwerk path before this audit. This is
 # intentionally explicit so integration drift becomes reviewable.
@@ -71,6 +90,10 @@ INTEGRATED_TOOLS = frozenset(
         "context_get",
         "diagram_get_dsl",
         "diagram_create",
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+        CANVAS_DIAGRAM_READBACK_TOOL,
         "doc_create",
         "doc_get",
         "doc_update",
@@ -96,8 +119,13 @@ INTEGRATED_TOOLS = frozenset(
 )
 
 SUPPLEMENTAL_INTEGRATED_TOOLS = frozenset({"preview_resource_poll"})
-INTENTIONALLY_UNINCORPORATED_TOOLS = frozenset({"record_ui_feedback"})
+INTENTIONALLY_UNINCORPORATED_TOOLS = frozenset({"diagram_create_mermaid", "record_ui_feedback"})
 PROVIDER_EXTENSION_ROLES: dict[str, dict[str, Any]] = {
+    "diagram_create_mermaid": {
+        "role": "deprecated_mermaid_creation",
+        "integration": "intentionally_not_integrated",
+        "authoritative": False,
+    },
     "preview_resource_poll": {
         "role": "supplemental_provider_preview",
         "integration": "native_executor_optional",
@@ -252,6 +280,41 @@ def _lane_status(observed: set[str], lane: str, tools: tuple[str, ...]) -> dict[
     }
 
 
+def _native_diagram_lane_status(observed: set[str]) -> dict[str, Any]:
+    legacy_available = LEGACY_DIAGRAM_TOOLS.issubset(observed)
+    canvas_available = CANVAS_DIAGRAM_TOOLS.issubset(observed)
+    effective_available = legacy_available or canvas_available
+    if legacy_available:
+        transport = "legacy_diagram"
+        selected_tools = LEGACY_DIAGRAM_TOOLS
+    else:
+        transport = "canvas_diagram" if canvas_available else None
+        selected_tools = min(
+            (LEGACY_DIAGRAM_TOOLS, CANVAS_DIAGRAM_TOOLS),
+            key=lambda tools: (len(tools - observed), tools != LEGACY_DIAGRAM_TOOLS),
+        )
+    relevant_tools = LEGACY_DIAGRAM_TOOLS | CANVAS_DIAGRAM_TOOLS | {CANVAS_DIAGRAM_READBACK_TOOL}
+    missing = sorted(selected_tools - observed) if not effective_available else []
+    return {
+        "available": effective_available,
+        "effective_available": effective_available,
+        "creation_fallback_available": False,
+        "mode": "native" if effective_available else "blocked",
+        "fallback": None,
+        "fallback_covered_missing_tools": [],
+        "uncovered_missing_tools": missing,
+        "available_tools": sorted(observed & relevant_tools),
+        "missing_tools": missing,
+        "coverage_percent": round(100 * len(selected_tools & observed) / len(selected_tools), 1),
+        "native_transport": transport,
+        "legacy_native_available": legacy_available,
+        "legacy_native_missing_tools": sorted(LEGACY_DIAGRAM_TOOLS - observed),
+        "canvas_native_available": canvas_available,
+        "canvas_native_missing_tools": sorted(CANVAS_DIAGRAM_TOOLS - observed),
+        "canvas_svg_readback_available": CANVAS_DIAGRAM_READBACK_TOOL in observed,
+    }
+
+
 def audit_tool_catalogue(
     catalogue: Mapping[str, Any],
     *,
@@ -267,16 +330,17 @@ def audit_tool_catalogue(
     referenced = set(reference_names)
     adapter_surface = INTEGRATED_TOOLS | PLANNER_TOOLS | SUPPLEMENTAL_INTEGRATED_TOOLS
     reference_integrated = sorted(referenced & adapter_surface)
-    known = set().union(*TOOL_FAMILIES.values())
-    family_by_tool = {tool: family for family, tools in TOOL_FAMILIES.items() for tool in tools}
+    known_families = {**TOOL_FAMILIES, **CURRENT_PROVIDER_TOOL_FAMILIES}
+    known = set().union(*known_families.values())
+    family_by_tool = {tool: family for family, tools in known_families.items() for tool in tools}
     family_tools: dict[str, list[str]] = defaultdict(list)
     for name in names:
         family_tools[family_by_tool.get(name, "provider_extension")].append(name)
 
     families: dict[str, Any] = {}
-    for family in [*TOOL_FAMILIES, "provider_extension"]:
+    for family in [*known_families, "provider_extension"]:
         available = sorted(family_tools.get(family, []))
-        expected = sorted(TOOL_FAMILIES.get(family, frozenset()))
+        expected = sorted(known_families.get(family, frozenset()))
         families[family] = {
             "observed_tools": available,
             "observed_count": len(available),
@@ -303,6 +367,7 @@ def audit_tool_catalogue(
         lane: _lane_status(observed, lane, tools)
         for lane, tools in sorted(HIGH_VALUE_LANES.items())
     }
+    lanes["native_diagram"] = _native_diagram_lane_status(observed)
     credential = rest_status.get("credential") if isinstance(rest_status, Mapping) else None
     credential_configured = (
         credential.get("exists") is True if isinstance(credential, Mapping) else False
@@ -465,6 +530,10 @@ def audit_tool_catalogue(
         },
         "provider_fallbacks": {
             "layout_tools_available": LAYOUT_TOOLS.issubset(observed),
+            "native_diagram_transport": lanes["native_diagram"]["native_transport"],
+            "legacy_native_diagram_available": lanes["native_diagram"]["legacy_native_available"],
+            "canvas_native_diagram_available": lanes["native_diagram"]["canvas_native_available"],
+            "canvas_native_is_provider_fallback": False,
             "creation_only": True,
             "mappings": {
                 lane: {

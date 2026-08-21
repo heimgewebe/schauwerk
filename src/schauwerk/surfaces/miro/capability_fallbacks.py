@@ -11,10 +11,20 @@ from typing import Any
 FALLBACK_SCHEMA = "schauwerk-miro-provider-resolution.v1"
 BASELINE_TOOLS = frozenset({"user_who_am_i", "context_explore", "board_list_items"})
 LAYOUT_TOOLS = frozenset({"layout_get_dsl", "layout_create", "layout_read"})
+LEGACY_DIAGRAM_TOOLS = frozenset({"diagram_get_dsl", "diagram_create", "context_get"})
+CANVAS_DIAGRAM_TOOLS = frozenset(
+    {
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+        "context_get",
+    }
+)
+CANVAS_DIAGRAM_READBACK_TOOL = "canvas_read_as_svg"
 
 NATIVE_OPERATION_TOOLS: dict[str, frozenset[str]] = {
     "layout": LAYOUT_TOOLS,
-    "diagram": frozenset({"diagram_get_dsl", "diagram_create", "context_get"}),
+    "diagram": LEGACY_DIAGRAM_TOOLS,
     "document": frozenset({"doc_create", "doc_get"}),
     "document_update": frozenset({"doc_get", "doc_update"}),
     "table": frozenset({"table_create", "table_list_rows"}),
@@ -136,7 +146,7 @@ def compile_creation_fallback(operation: Mapping[str, Any]) -> dict[str, Any]:
             [
                 f'{root} FRAME x={x:g} y={y:g} w=1100 h=720 "Code · Ersatzdarstellung"',
                 (
-                    f'{root}-title TEXT parent={root} x={x:g} y={y - 300:g} '
+                    f"{root}-title TEXT parent={root} x={x:g} y={y - 300:g} "
                     f'w=980 "{title} · {language}"'
                 ),
                 f'{root}-code TEXT parent={root} x={x:g} y={y:g} w=980 "{code}"',
@@ -160,7 +170,7 @@ def compile_creation_fallback(operation: Mapping[str, Any]) -> dict[str, Any]:
         [
             f'{root} FRAME x={x:g} y={y:g} w=1200 h=720 "Prototyp · geordnete Frames"',
             (
-                f'{root}-title TEXT parent={root} x={x:g} y={y - 300:g} '
+                f"{root}-title TEXT parent={root} x={x:g} y={y - 300:g} "
                 f'w=1080 "{device} · {orientation}"'
             ),
             f'{root}-screens TEXT parent={root} x={x:g} y={y:g} w=1080 "{summary}"',
@@ -192,28 +202,57 @@ def resolve_bundle_operations(
     blocked_tools: set[str] = set(baseline_missing)
 
     for operation in operations:
-        native_tools = operation_tools(operation)
-        missing_native = sorted(native_tools - observed)
         kind = str(operation.get("kind"))
-        if not missing_native:
+        native_transport: str | None = None
+        if kind == "diagram" and LEGACY_DIAGRAM_TOOLS.issubset(observed):
+            native_tools = LEGACY_DIAGRAM_TOOLS
+            missing_native: list[str] = []
+            native_transport = "legacy_diagram"
             mode = "native"
-            execution = dict(operation)
+            execution = {**operation, "native_transport": native_transport}
             fallback = None
-        elif kind in CREATION_FALLBACKS and not (LAYOUT_TOOLS - observed):
-            mode = "fallback"
-            fallback = CREATION_FALLBACKS[kind]
-            execution = compile_creation_fallback(operation)
+        elif (
+            kind == "diagram"
+            and operation.get("diagram_type") == "flowchart"
+            and CANVAS_DIAGRAM_TOOLS.issubset(observed)
+        ):
+            native_tools = CANVAS_DIAGRAM_TOOLS
+            missing_native = []
+            native_transport = "canvas_diagram"
+            mode = "native"
+            execution = {**operation, "native_transport": native_transport}
+            fallback = None
         else:
-            mode = "blocked"
-            fallback = None
-            execution = dict(operation)
-            blocked_tools.update(missing_native)
+            native_tools = operation_tools(operation)
+            if kind == "diagram" and operation.get("diagram_type") == "flowchart":
+                alternatives = (LEGACY_DIAGRAM_TOOLS, CANVAS_DIAGRAM_TOOLS)
+                native_tools = min(
+                    alternatives,
+                    key=lambda tools: (len(tools - observed), tools != LEGACY_DIAGRAM_TOOLS),
+                )
+            missing_native = sorted(native_tools - observed)
+
+        if native_transport is None:
+            if not missing_native:
+                mode = "native"
+                execution = dict(operation)
+                fallback = None
+            elif kind in CREATION_FALLBACKS and not (LAYOUT_TOOLS - observed):
+                mode = "fallback"
+                fallback = CREATION_FALLBACKS[kind]
+                execution = compile_creation_fallback(operation)
+            else:
+                mode = "blocked"
+                fallback = None
+                execution = dict(operation)
+                blocked_tools.update(missing_native)
         resolved.append(
             {
                 "operation_id": operation.get("operation_id"),
                 "original_kind": kind,
                 "mode": mode,
                 "fallback": fallback,
+                "native_transport": native_transport,
                 "native_tools": sorted(native_tools),
                 "missing_native_tools": missing_native,
                 "execution_kind": execution.get("kind"),
@@ -240,6 +279,7 @@ def resolve_bundle_operations(
             "maintenance_operations_remain_fail_closed": True,
             "fallbacks_preserve_native_item_type": False,
             "fallbacks_remain_editable_layout_items": True,
+            "canvas_diagram_is_alternative_native_transport": True,
         },
     }
     digest_input = {key: value for key, value in report.items() if key != "execution_operations"}

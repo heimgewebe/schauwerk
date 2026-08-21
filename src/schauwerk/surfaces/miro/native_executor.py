@@ -5,7 +5,9 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import html
 import json
+import math
 import os
 import re
 import stat
@@ -15,11 +17,17 @@ from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit, urlunsplit
+from xml.etree import ElementTree as ET
 
 from jsonschema import Draft202012Validator
 
-from .capability_fallbacks import resolve_bundle_operations
+from .capability_fallbacks import (
+    CANVAS_DIAGRAM_READBACK_TOOL,
+    CANVAS_DIAGRAM_TOOLS,
+    LEGACY_DIAGRAM_TOOLS,
+    resolve_bundle_operations,
+)
 from .errors import MiroToolError
 from .inspection import checked_payload, result_resource_links
 from .layout_dsl import LayoutDslParseError, summarize_layout_dsl
@@ -32,6 +40,20 @@ HtmlUploader = Callable[[str, bytes], Awaitable[None]]
 _MIRO_PREVIEW_RESOURCE_RE = re.compile(r"^miro-preview://create/[A-Za-z0-9_-]{16,128}$")
 _MAX_PROVIDER_PREVIEW_BYTES = 10 * 1024 * 1024
 _PROVIDER_PREVIEW_MIME_TYPES = frozenset({"image/png", "image/svg+xml"})
+_DIAGRAM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_DIAGRAM_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
+_DIAGRAM_NODE = re.compile(
+    r"^(?P<id>\S+)\s+(?P<label>.+)\s+"
+    r"(?P<shape>flowchart-(?:process|decision|terminator))\s+"
+    r"(?P<palette>\S+)$"
+)
+_DIAGRAM_CONNECTOR = re.compile(r"^c\s+(?P<src>\S+)\s+(?P<label>.+)\s+(?P<dst>\S+)$")
+_DIAGRAM_CLUSTER = re.compile(
+    r'^cluster\s+(?P<id>\S+)\s+(?P<title>"(?:\\.|[^"\\])*")\s+(?P<nodes>.+)$'
+)
+_CANVAS_ITEM_ID = re.compile(r"^[0-9]{1,32}$")
+_CANVAS_DIAGRAM_WIDTH = 1600
+_CANVAS_DIAGRAM_HEIGHT = 900
 
 
 class NativeBundleError(ValueError):
@@ -58,6 +80,284 @@ def _text_digest(value: str) -> str:
 
 def _normalized_text(value: str) -> str:
     return value.replace("\r\n", "\n").replace("\r", "\n").rstrip()
+
+
+def _diagram_reference(value: str, *, prefix: str) -> str:
+    return f"sw_{prefix}_{hashlib.sha256(value.encode('utf-8')).hexdigest()[:16]}"
+
+
+def _mermaid_text(value: str) -> str:
+    replacements = {
+        "&": "&amp;",
+        '"': "&quot;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "|": "&#124;",
+        "\\": "&#92;",
+    }
+    return "".join(replacements.get(character, character) for character in value)
+
+
+def _diagram_identifier(value: str, *, line_number: int, label: str) -> str:
+    if _DIAGRAM_ID.fullmatch(value) is None or value in {
+        "c",
+        "cluster",
+        "graphdir",
+        "palette",
+    }:
+        raise NativeBundleError(f"diagram DSL line {line_number} has an invalid {label}")
+    return value
+
+
+def _diagram_label(value: str, *, line_number: int, label: str) -> str:
+    if not value.strip() or any(
+        ord(character) < 32 or ord(character) == 127 for character in value
+    ):
+        raise NativeBundleError(f"diagram DSL line {line_number} has an invalid {label}")
+    return value
+
+
+def compile_diagram_dsl_to_mermaid(diagram_dsl: str) -> str:
+    """Compile Schauwerk's current native flowchart DSL to deterministic Mermaid 10.3."""
+
+    if not isinstance(diagram_dsl, str) or not diagram_dsl.strip():
+        raise NativeBundleError("diagram DSL must be a nonempty string")
+    direction: str | None = None
+    palette: list[str] | None = None
+    nodes: list[dict[str, Any]] = []
+    connectors: list[dict[str, str]] = []
+    clusters: list[dict[str, Any]] = []
+    declared_ids: set[str] = set()
+
+    for line_number, raw_line in enumerate(_normalized_text(diagram_dsl).split("\n"), 1):
+        if not raw_line.strip():
+            continue
+        if raw_line != raw_line.strip():
+            raise NativeBundleError(
+                f"diagram DSL line {line_number} has leading or trailing whitespace"
+            )
+        if raw_line.startswith("graphdir "):
+            parts = raw_line.split()
+            if len(parts) != 2 or parts[1] not in {"TD", "LR"}:
+                raise NativeBundleError(f"diagram DSL line {line_number} has invalid graphdir")
+            if direction is not None:
+                raise NativeBundleError("diagram DSL contains duplicate graphdir directives")
+            direction = parts[1]
+            continue
+        if raw_line.startswith("palette "):
+            colors = raw_line.split()[1:]
+            if not colors or any(_DIAGRAM_COLOR.fullmatch(color) is None for color in colors):
+                raise NativeBundleError(f"diagram DSL line {line_number} has an invalid palette")
+            if palette is not None:
+                raise NativeBundleError("diagram DSL contains duplicate palette directives")
+            palette = colors
+            continue
+        if raw_line.startswith("cluster "):
+            match = _DIAGRAM_CLUSTER.fullmatch(raw_line)
+            if match is None:
+                raise NativeBundleError(f"diagram DSL line {line_number} has an invalid cluster")
+            identifier = _diagram_identifier(
+                match.group("id"), line_number=line_number, label="cluster id"
+            )
+            if identifier in declared_ids:
+                raise NativeBundleError(f"diagram DSL contains duplicate id: {identifier}")
+            try:
+                title = json.loads(match.group("title"))
+            except json.JSONDecodeError as exc:
+                raise NativeBundleError(
+                    f"diagram DSL line {line_number} has an invalid cluster title"
+                ) from exc
+            if not isinstance(title, str):
+                raise NativeBundleError(
+                    f"diagram DSL line {line_number} has an invalid cluster title"
+                )
+            title = _diagram_label(title, line_number=line_number, label="cluster title")
+            members = match.group("nodes").split()
+            if not members or len(members) != len(set(members)):
+                raise NativeBundleError(
+                    f"diagram DSL line {line_number} has duplicate or empty cluster references"
+                )
+            members = [
+                _diagram_identifier(member, line_number=line_number, label="cluster reference")
+                for member in members
+            ]
+            declared_ids.add(identifier)
+            clusters.append(
+                {
+                    "id": identifier,
+                    "title": title,
+                    "members": members,
+                    "line_number": line_number,
+                }
+            )
+            continue
+        if raw_line.startswith("c "):
+            match = _DIAGRAM_CONNECTOR.fullmatch(raw_line)
+            if match is None:
+                raise NativeBundleError(f"diagram DSL line {line_number} has an invalid connector")
+            source = _diagram_identifier(
+                match.group("src"), line_number=line_number, label="connector source"
+            )
+            target = _diagram_identifier(
+                match.group("dst"), line_number=line_number, label="connector target"
+            )
+            label = _diagram_label(
+                match.group("label"), line_number=line_number, label="edge label"
+            )
+            connectors.append(
+                {
+                    "source": source,
+                    "target": target,
+                    "label": label,
+                    "line_number": str(line_number),
+                }
+            )
+            continue
+
+        match = _DIAGRAM_NODE.fullmatch(raw_line)
+        if match is None:
+            directive = raw_line.split(maxsplit=1)[0]
+            raise NativeBundleError(
+                f"diagram DSL line {line_number} has an unknown or invalid directive: {directive}"
+            )
+        identifier = _diagram_identifier(
+            match.group("id"), line_number=line_number, label="node id"
+        )
+        if identifier in declared_ids:
+            raise NativeBundleError(f"diagram DSL contains duplicate id: {identifier}")
+        palette_index_text = match.group("palette")
+        if not palette_index_text.isascii() or not palette_index_text.isdecimal():
+            raise NativeBundleError(f"diagram DSL line {line_number} has an invalid palette index")
+        palette_index = int(palette_index_text)
+        declared_ids.add(identifier)
+        nodes.append(
+            {
+                "id": identifier,
+                "label": _diagram_label(
+                    match.group("label"), line_number=line_number, label="node label"
+                ),
+                "shape": match.group("shape"),
+                "palette_index": palette_index,
+                "line_number": line_number,
+            }
+        )
+
+    if direction is None:
+        raise NativeBundleError("diagram DSL lacks a graphdir directive")
+    if palette is None:
+        raise NativeBundleError("diagram DSL lacks a palette directive")
+    if not nodes:
+        raise NativeBundleError("diagram DSL contains no nodes")
+
+    node_by_id = {str(node["id"]): node for node in nodes}
+    for node in nodes:
+        if node["palette_index"] >= len(palette):
+            raise NativeBundleError(
+                f"diagram DSL line {node['line_number']} has an out-of-range palette index"
+            )
+    for connector in connectors:
+        if connector["source"] not in node_by_id or connector["target"] not in node_by_id:
+            raise NativeBundleError(
+                f"diagram DSL line {connector['line_number']} references an unknown node"
+            )
+    clustered_nodes: set[str] = set()
+    for cluster in clusters:
+        for member in cluster["members"]:
+            if member not in node_by_id:
+                raise NativeBundleError(
+                    f"diagram DSL line {cluster['line_number']} references an unknown node"
+                )
+            if member in clustered_nodes:
+                raise NativeBundleError(f"diagram DSL node appears in multiple clusters: {member}")
+            clustered_nodes.add(member)
+
+    node_references = {
+        identifier: _diagram_reference(identifier, prefix="node") for identifier in node_by_id
+    }
+    cluster_references = {
+        str(cluster["id"]): _diagram_reference(str(cluster["id"]), prefix="cluster")
+        for cluster in clusters
+    }
+    if len(set(node_references.values()) | set(cluster_references.values())) != len(
+        node_references
+    ) + len(cluster_references):  # pragma: no cover - SHA-256 prefix collision guard
+        raise NativeBundleError("diagram DSL identifiers produced an unsafe reference collision")
+
+    shape_templates = {
+        "flowchart-process": ('["', '"]'),
+        "flowchart-decision": ('{"', '"}'),
+        "flowchart-terminator": ('(["', '"])'),
+    }
+
+    def node_line(identifier: str, *, indentation: str = "  ") -> str:
+        node = node_by_id[identifier]
+        opening, closing = shape_templates[str(node["shape"])]
+        return (
+            f"{indentation}{node_references[identifier]}{opening}"
+            f"{_mermaid_text(str(node['label']))}{closing}"
+        )
+
+    lines = [f"flowchart {direction}"]
+    for index, color in enumerate(palette):
+        lines.append(f"  classDef swPalette{index} fill:{color};")
+    for cluster in clusters:
+        cluster_id = str(cluster["id"])
+        lines.append(
+            f'  subgraph {cluster_references[cluster_id]}["{_mermaid_text(str(cluster["title"]))}"]'
+        )
+        lines.append(f"    direction {direction}")
+        lines.extend(node_line(member, indentation="    ") for member in cluster["members"])
+        lines.append("  end")
+    lines.extend(node_line(str(node["id"])) for node in nodes if node["id"] not in clustered_nodes)
+    for connector in connectors:
+        lines.append(
+            f'  {node_references[connector["source"]]} -->|"'
+            f'{_mermaid_text(connector["label"])}"| {node_references[connector["target"]]}'
+        )
+    for palette_index in range(len(palette)):
+        members = [
+            node_references[str(node["id"])]
+            for node in nodes
+            if node["palette_index"] == palette_index
+        ]
+        if members:
+            lines.append(f"  class {','.join(members)} swPalette{palette_index};")
+    return "\n".join(lines) + "\n"
+
+
+def _number_text(value: Any, *, label: str) -> str:
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        raise NativeBundleError(f"diagram {label} must be a finite number")
+    return f"{float(value):g}"
+
+
+def render_canvas_diagram_svg(operation: Mapping[str, Any], mermaid_source: str) -> str:
+    """Wrap Mermaid source in Miro Canvas's structured editable diagram element."""
+
+    title = operation.get("title")
+    if (
+        not isinstance(title, str)
+        or not title.strip()
+        or any(ord(character) < 32 or ord(character) == 127 for character in title)
+    ):
+        raise NativeBundleError("Canvas diagram title must be nonempty")
+    operation_id = operation.get("operation_id")
+    if not isinstance(operation_id, str):
+        raise NativeBundleError("Canvas diagram operation id is invalid")
+    local_id = _diagram_reference(operation_id, prefix="canvas")
+    x = _number_text(operation.get("x", 0), label="x")
+    y = _number_text(operation.get("y", 0), label="y")
+    escaped_title = html.escape(title, quote=True)
+    escaped_source = html.escape(mermaid_source, quote=False)
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{_CANVAS_DIAGRAM_WIDTH}" '
+        f'height="{_CANVAS_DIAGRAM_HEIGHT}" viewBox="{x} {y} '
+        f'{_CANVAS_DIAGRAM_WIDTH} {_CANVAS_DIAGRAM_HEIGHT}">\n'
+        f'  <foreignObject id="{local_id}" x="{x}" y="{y}" '
+        f'width="{_CANVAS_DIAGRAM_WIDTH}" height="{_CANVAS_DIAGRAM_HEIGHT}" '
+        f'data-type="diagram" data-title="{escaped_title}">{escaped_source}</foreignObject>\n'
+        "</svg>\n"
+    )
 
 
 def _load_bundle_schema() -> dict[str, Any]:
@@ -271,7 +571,10 @@ def required_tools(bundle: Mapping[str, Any]) -> tuple[str, ...]:
         if kind == "layout":
             tools.update({"layout_get_dsl", "layout_create", "layout_read"})
         elif kind == "diagram":
-            tools.update({"diagram_get_dsl", "diagram_create", "context_get"})
+            if operation.get("native_transport") == "canvas_diagram":
+                tools.update(CANVAS_DIAGRAM_TOOLS)
+            else:
+                tools.update(LEGACY_DIAGRAM_TOOLS)
         elif kind == "document":
             tools.update({"doc_create", "doc_get"})
         elif kind == "document_update":
@@ -451,6 +754,141 @@ def _item_url(payload: Mapping[str, Any], tool_name: str) -> str:
     if not isinstance(value, str) or not value:
         raise MiroToolError(f"Miro tool {tool_name} did not return an item reference")
     return value
+
+
+def _xml_local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _canvas_svg_evidence(
+    svg: str,
+    *,
+    expected_title: str,
+    expected_source: str,
+    local_id: str | None,
+    require_item_id: bool,
+) -> dict[str, Any]:
+    if not svg.strip() or re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", svg, re.IGNORECASE):
+        raise MiroToolError("Miro Canvas returned unsafe or empty diagram SVG")
+    try:
+        root = ET.fromstring(svg)
+    except ET.ParseError as exc:
+        raise MiroToolError("Miro Canvas returned invalid diagram SVG") from exc
+    if _xml_local_name(root.tag) != "svg":
+        raise MiroToolError("Miro Canvas diagram readback is not SVG")
+
+    scope = root
+    if local_id is not None:
+        local_matches = [element for element in root.iter() if element.get("id") == local_id]
+        if len(local_matches) != 1:
+            raise MiroToolError("Miro Canvas did not bind the submitted diagram id exactly once")
+        scope = local_matches[0]
+    diagrams = [
+        element
+        for element in scope.iter()
+        if _xml_local_name(element.tag) == "foreignObject" and element.get("data-type") == "diagram"
+    ]
+    if len(diagrams) != 1:
+        raise MiroToolError("Miro Canvas SVG lacks exactly one structured diagram")
+    diagram = diagrams[0]
+    title_matches = diagram.get("data-title") == expected_title
+    if not title_matches:
+        raise MiroToolError("Miro Canvas SVG diagram title does not match")
+    try:
+        width = float(diagram.get("width", ""))
+        height = float(diagram.get("height", ""))
+    except ValueError as exc:
+        raise MiroToolError("Miro Canvas SVG diagram geometry is invalid") from exc
+    geometry_matches = width == _CANVAS_DIAGRAM_WIDTH and height == _CANVAS_DIAGRAM_HEIGHT
+    if not geometry_matches:
+        raise MiroToolError("Miro Canvas SVG diagram geometry does not match")
+    source = "".join(diagram.itertext())
+    source_matches = _normalized_text(source) == _normalized_text(expected_source)
+    if not source_matches:
+        raise MiroToolError("Miro Canvas SVG diagram source does not match")
+
+    item_ids = {
+        value for element in scope.iter() if (value := element.get("data-miro-id")) is not None
+    }
+    if any(_CANVAS_ITEM_ID.fullmatch(item_id) is None for item_id in item_ids):
+        raise MiroToolError("Miro Canvas returned an invalid diagram item id")
+    if require_item_id and len(item_ids) != 1:
+        raise MiroToolError("Miro Canvas did not return one diagram item id")
+    return {
+        "svg_digest": _text_digest(svg),
+        "title_matches": title_matches,
+        "diagram_semantics": True,
+        "geometry_matches": geometry_matches,
+        "source_matches": source_matches,
+        "item_id": next(iter(item_ids)) if len(item_ids) == 1 else None,
+    }
+
+
+def _canvas_item_url(target_url: str, item_id: str) -> str:
+    if _CANVAS_ITEM_ID.fullmatch(item_id) is None:
+        raise MiroToolError("Miro Canvas diagram item id is invalid")
+    parsed = urlsplit(target_url)
+    value = urlunsplit(
+        (parsed.scheme, parsed.netloc, parsed.path, urlencode({"moveToWidget": item_id}), "")
+    )
+    if _board_key(value) != _board_key(target_url):
+        raise MiroToolError("Miro Canvas diagram item reference escaped the target board")
+    return value
+
+
+def _context_diagram_evidence(payload: Mapping[str, Any], *, expected_title: str) -> dict[str, Any]:
+    titles: list[str] = []
+    semantic_types: list[str] = []
+    contents: list[str] = []
+    scalar_count = 0
+
+    def walk(value: Any, *, key: str | None = None, depth: int = 0) -> None:
+        nonlocal scalar_count
+        if depth > 12 or scalar_count > 10_000:
+            raise MiroToolError("Miro diagram context readback exceeds the safety limit")
+        if isinstance(value, Mapping):
+            for nested_key, nested in value.items():
+                walk(nested, key=str(nested_key).casefold(), depth=depth + 1)
+            return
+        if isinstance(value, list):
+            for nested in value:
+                walk(nested, key=key, depth=depth + 1)
+            return
+        scalar_count += 1
+        if not isinstance(value, str) or not value.strip():
+            return
+        if key in {"title", "data-title", "name"}:
+            titles.append(value.strip())
+        elif key in {"type", "data-type", "kind", "diagram_type", "notation"}:
+            semantic_types.append(value.strip().casefold())
+        elif key in {"content", "text", "description", "markdown"}:
+            contents.append(value)
+
+    walk(payload)
+    title_matches = expected_title in titles or any(expected_title in text for text in contents)
+    diagram_semantics = any(
+        value in {"diagram", "flowchart", "mermaid"} for value in semantic_types
+    ) or any(
+        re.search(r"\b(?:diagram|flowchart|mermaid)\b", text, re.IGNORECASE) for text in contents
+    )
+    if not title_matches:
+        raise MiroToolError("Miro Canvas diagram context lacks the submitted title")
+    if not diagram_semantics:
+        raise MiroToolError("Miro Canvas diagram context lacks diagram semantics")
+    return {
+        "context_digest": _digest(dict(payload)),
+        "title_matches": title_matches,
+        "diagram_semantics": diagram_semantics,
+        "content_present": bool(contents or titles),
+    }
+
+
+def _canvas_skill_text(payload: Mapping[str, Any], *, keys: tuple[str, ...], label: str) -> str:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    raise MiroToolError(f"Miro Canvas {label} skill is empty")
 
 
 def _integer(payload: Mapping[str, Any], key: str) -> int:
@@ -954,7 +1392,25 @@ async def execute_native_bundle(
     if provider_resolution["blocked_count"]:
         missing = ", ".join(provider_resolution["blocked_tools"]) or "unknown tools"
         raise NativeBundleError(f"live Miro catalogue lacks required tools: {missing}")
-    execution_operations = provider_resolution["execution_operations"]
+    execution_operations: list[dict[str, Any]] = []
+    for unresolved in provider_resolution["execution_operations"]:
+        operation = dict(unresolved)
+        if operation.get("native_transport") == "canvas_diagram":
+            for skill_tool in (
+                "canvas_get_canvas_composer_skill",
+                "canvas_load_format_skill",
+            ):
+                if schemas[skill_tool]["output_schema"] is None:
+                    raise NativeBundleError(
+                        f"live Miro catalogue lacks an output schema for {skill_tool}"
+                    )
+            mermaid_source = compile_diagram_dsl_to_mermaid(operation["diagram_dsl"])
+            operation["canvas_mermaid_source"] = mermaid_source
+            operation["canvas_svg"] = render_canvas_diagram_svg(operation, mermaid_source)
+            operation["canvas_local_id"] = _diagram_reference(
+                operation["operation_id"], prefix="canvas"
+            )
+        execution_operations.append(operation)
     required = required_tools({"operations": execution_operations})
     missing = sorted(set(required) - set(schemas))
     if missing:
@@ -984,6 +1440,7 @@ async def execute_native_bundle(
     current_operation_id: str | None = None
     pending_operation_id: str | None = None
     pending_tool: str | None = None
+    canvas_skill_evidence: dict[str, Any] | None = None
 
     async def invoke(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         schema = schemas[tool_name]
@@ -991,7 +1448,7 @@ async def execute_native_bundle(
         result = await call_tool(tool_name, arguments)
         payload = checked_payload(result, tool_name)
         output_schema = schema.get("output_schema")
-        if output_schema:
+        if output_schema is not None:
             _validate_instance(payload, output_schema, label=f"{tool_name} output")
         call_index = len(calls) + 1
         preview_resources = tuple(
@@ -1016,6 +1473,41 @@ async def execute_native_bundle(
             }
         )
         return payload
+
+    async def load_canvas_skills_once() -> dict[str, Any]:
+        nonlocal canvas_skill_evidence
+        if canvas_skill_evidence is not None:
+            return canvas_skill_evidence
+        metadata = {
+            "invocation_source": "schauwerk-miro-native-executor",
+            "is_repository": True,
+        }
+        composer_payload = await invoke("canvas_get_canvas_composer_skill", metadata)
+        composer = _canvas_skill_text(
+            composer_payload,
+            keys=("skill", "canvas_composer_skill"),
+            label="composer",
+        )
+        flowchart_payload = await invoke(
+            "canvas_load_format_skill",
+            {
+                **metadata,
+                "format_name": "diagramming",
+                "notation": "flowchart",
+            },
+        )
+        flowchart = _canvas_skill_text(
+            flowchart_payload,
+            keys=("skill", "format_skill"),
+            label="flowchart format",
+        )
+        canvas_skill_evidence = {
+            "composer_skill_digest": _text_digest(composer),
+            "flowchart_skill_digest": _text_digest(flowchart),
+            "skills_loaded": True,
+            "skills_schema_validated": True,
+        }
+        return canvas_skill_evidence
 
     async def provider_preview_evidence(call_index: int) -> dict[str, Any]:
         resources = preview_resources_by_call_index.get(call_index, ())
@@ -1386,6 +1878,11 @@ async def execute_native_bundle(
                 )
 
         start_operation_index = len(completed)
+        if any(
+            operation.get("native_transport") == "canvas_diagram"
+            for operation in execution_operations[start_operation_index:]
+        ):
+            await load_canvas_skills_once()
         for original_operation, operation in zip(
             validated["operations"][start_operation_index:],
             execution_operations[start_operation_index:],
@@ -1485,44 +1982,117 @@ async def execute_native_bundle(
                 }
 
             elif kind == "diagram":
-                contract = await invoke(
-                    "diagram_get_dsl",
-                    _base_arguments(target_url, {"diagram_type": operation["diagram_type"]}),
-                )
-                data = contract.get("data")
-                if contract.get("diagram_type") != operation["diagram_type"] or not isinstance(
-                    data, Mapping
-                ):
-                    raise MiroToolError("Miro diagram contract readback is invalid")
-                pending_operation_id = operation["operation_id"]
-                pending_tool = "diagram_create"
-                if checkpoint is not None:
-                    checkpoint(build_receipt(success=False, error_code="in_progress"))
-                mutation_started = True
-                created = await invoke(
-                    "diagram_create",
-                    _base_arguments(
-                        target_url,
-                        {
-                            "diagram_dsl": operation["diagram_dsl"],
-                            "diagram_type": operation["diagram_type"],
-                            "title": operation["title"],
-                            **_operation_position(operation),
-                        },
-                    ),
-                )
-                preview_call_index = len(calls)
-                item_url = _item_url(created, "diagram_create")
-                context = await invoke("context_get", _base_arguments(item_url, {}))
-                content = context.get("content")
-                if not isinstance(content, str) or not content.strip():
-                    raise MiroToolError("Miro diagram context readback is empty")
-                readback = {
-                    "diagram_type": operation["diagram_type"],
-                    "contract_digest": _digest(data),
-                    "content_digest": _text_digest(content),
-                    "content_present": True,
-                }
+                if operation.get("native_transport") == "canvas_diagram":
+                    if canvas_skill_evidence is None:  # pragma: no cover - preflight invariant
+                        raise NativeBundleError("Miro Canvas skills were not preloaded")
+                    pending_operation_id = operation["operation_id"]
+                    pending_tool = "canvas_create_from_svg"
+                    if checkpoint is not None:
+                        checkpoint(build_receipt(success=False, error_code="in_progress"))
+                    mutation_started = True
+                    created = await invoke(
+                        "canvas_create_from_svg",
+                        _base_arguments(target_url, {"svg": operation["canvas_svg"]}),
+                    )
+                    preview_call_index = len(calls)
+                    if created.get("success") is not True:
+                        raise MiroToolError("Miro Canvas diagram creation did not succeed")
+                    created_count = _integer(created, "created_count")
+                    failed_items = created.get("failed_items", [])
+                    if not isinstance(failed_items, list) or failed_items or created_count != 1:
+                        raise MiroToolError("Miro Canvas diagram creation was not exact")
+                    result_svg = created.get("result_svg")
+                    if not isinstance(result_svg, str):
+                        raise MiroToolError("Miro Canvas diagram creation lacks result SVG")
+                    created_evidence = _canvas_svg_evidence(
+                        result_svg,
+                        expected_title=operation["title"],
+                        expected_source=operation["canvas_mermaid_source"],
+                        local_id=operation["canvas_local_id"],
+                        require_item_id=True,
+                    )
+                    item_id = created_evidence.pop("item_id")
+                    if not isinstance(item_id, str):  # pragma: no cover - evidence invariant
+                        raise MiroToolError("Miro Canvas diagram item id is absent")
+                    item_url = _canvas_item_url(target_url, item_id)
+                    context = await invoke("context_get", _base_arguments(item_url, {}))
+                    context_evidence = _context_diagram_evidence(
+                        context, expected_title=operation["title"]
+                    )
+                    svg_schema_available = (
+                        CANVAS_DIAGRAM_READBACK_TOOL in schemas
+                        and schemas[CANVAS_DIAGRAM_READBACK_TOOL]["output_schema"] is not None
+                    )
+                    svg_readback_evidence: dict[str, Any] | None = None
+                    if svg_schema_available:
+                        svg_payload = await invoke(
+                            CANVAS_DIAGRAM_READBACK_TOOL,
+                            _base_arguments(item_url, {}),
+                        )
+                        readback_svg = svg_payload.get("svg", svg_payload.get("result_svg"))
+                        if not isinstance(readback_svg, str):
+                            raise MiroToolError("Miro Canvas SVG readback lacks SVG")
+                        svg_readback_evidence = _canvas_svg_evidence(
+                            readback_svg,
+                            expected_title=operation["title"],
+                            expected_source=operation["canvas_mermaid_source"],
+                            local_id=None,
+                            require_item_id=False,
+                        )
+                        svg_readback_evidence.pop("item_id", None)
+                    readback = {
+                        "diagram_type": operation["diagram_type"],
+                        "native_transport": "canvas_diagram",
+                        "mermaid_source_digest": _text_digest(operation["canvas_mermaid_source"]),
+                        "submitted_svg_digest": _text_digest(operation["canvas_svg"]),
+                        "created_svg": created_evidence,
+                        "context": context_evidence,
+                        "canvas_svg_schema_available": svg_schema_available,
+                        "canvas_svg_verified": svg_readback_evidence is not None,
+                        "canvas_svg_readback": svg_readback_evidence,
+                        "item_reference_derived": True,
+                        **canvas_skill_evidence,
+                    }
+                else:
+                    contract = await invoke(
+                        "diagram_get_dsl",
+                        _base_arguments(target_url, {"diagram_type": operation["diagram_type"]}),
+                    )
+                    data = contract.get("data")
+                    if contract.get("diagram_type") != operation["diagram_type"] or not isinstance(
+                        data, Mapping
+                    ):
+                        raise MiroToolError("Miro diagram contract readback is invalid")
+                    pending_operation_id = operation["operation_id"]
+                    pending_tool = "diagram_create"
+                    if checkpoint is not None:
+                        checkpoint(build_receipt(success=False, error_code="in_progress"))
+                    mutation_started = True
+                    created = await invoke(
+                        "diagram_create",
+                        _base_arguments(
+                            target_url,
+                            {
+                                "diagram_dsl": operation["diagram_dsl"],
+                                "diagram_type": operation["diagram_type"],
+                                "title": operation["title"],
+                                **_operation_position(operation),
+                            },
+                        ),
+                    )
+                    preview_call_index = len(calls)
+                    item_url = _item_url(created, "diagram_create")
+                    context = await invoke("context_get", _base_arguments(item_url, {}))
+                    content = context.get("content")
+                    if not isinstance(content, str) or not content.strip():
+                        raise MiroToolError("Miro diagram context readback is empty")
+                    readback = {
+                        "diagram_type": operation["diagram_type"],
+                        "native_transport": "legacy_diagram",
+                        "contract_digest": _digest(data),
+                        "content_digest": _text_digest(content),
+                        "content_present": True,
+                    }
 
             elif kind == "document":
                 pending_operation_id = operation["operation_id"]

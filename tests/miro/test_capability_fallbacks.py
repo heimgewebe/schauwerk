@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from schauwerk.surfaces.miro.capability_fallbacks import (
     BASELINE_TOOLS,
+    CANVAS_DIAGRAM_TOOLS,
     LAYOUT_TOOLS,
+    LEGACY_DIAGRAM_TOOLS,
     compile_creation_fallback,
     resolve_bundle_operations,
 )
@@ -122,3 +124,46 @@ def test_missing_baseline_blocks_every_operation() -> None:
     report = resolve_bundle_operations([creation_operations()[0]], set(LAYOUT_TOOLS))
     assert report["blocked_count"] == 1
     assert report["baseline_missing_tools"]
+
+
+def diagram_operation() -> dict:
+    return {
+        "operation_id": "diagram",
+        "kind": "diagram",
+        "title": "Current provider diagram",
+        "diagram_type": "flowchart",
+        "diagram_dsl": (
+            "graphdir LR\n"
+            "palette #E8F0FE\n"
+            "a Start flowchart-process 0\n"
+            "b End flowchart-terminator 0\n"
+            "c a continues b\n"
+        ),
+    }
+
+
+def test_diagram_resolution_prefers_complete_legacy_native_transport() -> None:
+    operation = diagram_operation()
+    observed = set(BASELINE_TOOLS | LEGACY_DIAGRAM_TOOLS | CANVAS_DIAGRAM_TOOLS)
+
+    report = resolve_bundle_operations([operation], observed)
+
+    assert report["native_count"] == 1
+    assert report["fallback_count"] == 0
+    assert report["operation_resolutions"][0]["native_transport"] == "legacy_diagram"
+    assert report["execution_operations"][0]["native_transport"] == "legacy_diagram"
+
+
+def test_diagram_resolution_uses_canvas_as_alternative_native_transport() -> None:
+    operation = diagram_operation()
+    observed = set(BASELINE_TOOLS | CANVAS_DIAGRAM_TOOLS)
+
+    report = resolve_bundle_operations([operation], observed)
+
+    assert report["native_count"] == 1
+    assert report["fallback_count"] == 0
+    assert report["blocked_count"] == 0
+    assert report["operation_resolutions"][0]["mode"] == "native"
+    assert report["operation_resolutions"][0]["native_transport"] == "canvas_diagram"
+    assert report["execution_operations"][0]["native_transport"] == "canvas_diagram"
+    assert report["truth_boundary"]["canvas_diagram_is_alternative_native_transport"] is True

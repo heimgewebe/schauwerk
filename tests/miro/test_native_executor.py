@@ -18,9 +18,11 @@ from schauwerk.surfaces.miro.models import MiroSettings
 from schauwerk.surfaces.miro.native_executor import (
     NativeBundleError,
     NativeExecutionError,
+    compile_diagram_dsl_to_mermaid,
     execute_native_bundle,
     load_native_bundle,
     load_native_resume_receipt,
+    render_canvas_diagram_svg,
     required_tools,
     validate_native_bundle,
 )
@@ -263,6 +265,296 @@ class FakeMiro:
 
 def live_tools(bundle: dict) -> list[dict]:
     return catalogue(*required_tools(bundle))
+
+
+def current_diagram_bundle(*, diagram_dsl: str | None = None) -> dict:
+    return validate_native_bundle(
+        {
+            "schema_version": "schauwerk-miro-native-bundle.v1",
+            "bundle_id": "current-canvas-diagram",
+            "operations": [
+                {
+                    "operation_id": "current-diagram",
+                    "kind": "diagram",
+                    "title": "Aktueller & editierbarer Ablauf",
+                    "diagram_type": "flowchart",
+                    "diagram_dsl": diagram_dsl
+                    or (
+                        "graphdir LR\n"
+                        "palette #E8F0FE #E6F4EA #FCE8E6\n"
+                        "start Start & Auftrag flowchart-process 0\n"
+                        "choice Freigabe <jetzt>? flowchart-decision 1\n"
+                        "end Fertig flowchart-terminator 2\n"
+                        "c start prüft | sicher choice\n"
+                        "c choice bestätigt end\n"
+                        'cluster lane "Prüfung & Übergabe" start choice end\n'
+                    ),
+                    "x": 125,
+                    "y": -75,
+                }
+            ],
+        }
+    )
+
+
+def canvas_tools(*, include_svg_readback: bool = True) -> list[dict]:
+    names = [
+        "user_who_am_i",
+        "board_list_items",
+        "context_explore",
+        "context_get",
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+    ]
+    if include_svg_readback:
+        names.append("canvas_read_as_svg")
+    return catalogue(*names)
+
+
+class CurrentCanvasMiro(FakeMiro):
+    def __init__(self) -> None:
+        super().__init__()
+        self.canvas_svg: str | None = None
+        self.canvas_svgs: dict[str, str] = {}
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        if tool == "canvas_get_canvas_composer_skill":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            return {"skill": "Compose supported Canvas SVG elements."}
+        if tool == "canvas_load_format_skill":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            assert arguments["format_name"] == "diagramming"
+            assert arguments["notation"] == "flowchart"
+            return {"skill": "Use Mermaid 10.3 flowchart notation."}
+        if tool == "canvas_create_from_svg":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            item_id = str(42 + len(self.canvas_svgs))
+            self.canvas_svg = arguments["svg"].replace(
+                ' data-type="diagram"',
+                f' data-miro-id="{item_id}" data-type="diagram"',
+                1,
+            )
+            self.canvas_svgs[item_id] = self.canvas_svg
+            return {
+                "success": True,
+                "created_count": 1,
+                "failed_items": [],
+                "miro_url": BOARD_URL,
+                "result_svg": self.canvas_svg,
+            }
+        if tool == "context_get":
+            for item_id in self.canvas_svgs:
+                if f"moveToWidget={item_id}" in arguments["miro_url"]:
+                    self.calls.append((tool, copy.deepcopy(arguments)))
+                    return {
+                        "title": "Aktueller & editierbarer Ablauf",
+                        "type": "diagram",
+                        "content": "Editable Mermaid flowchart diagram",
+                    }
+        if tool == "canvas_read_as_svg":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            for item_id, svg in self.canvas_svgs.items():
+                if f"moveToWidget={item_id}" in arguments["miro_url"]:
+                    return {"success": True, "svg": svg}
+            raise AssertionError("unknown Canvas item reference")
+        return await super().__call__(tool, arguments)
+
+
+def test_current_dsl_conversion_is_deterministic_and_preserves_semantics() -> None:
+    operation = current_diagram_bundle()["operations"][0]
+
+    first = compile_diagram_dsl_to_mermaid(operation["diagram_dsl"])
+    second = compile_diagram_dsl_to_mermaid(operation["diagram_dsl"])
+    svg = render_canvas_diagram_svg(operation, first)
+
+    assert first == second
+    assert first.startswith("flowchart LR\n")
+    assert '(["Fertig"])' in first
+    assert '{"Freigabe &lt;jetzt&gt;?"}' in first
+    assert '["Start &amp; Auftrag"]' in first
+    assert '-->|"prüft &#124; sicher"|' in first
+    assert '["Prüfung &amp; Übergabe"]' in first
+    assert "classDef swPalette0 fill:#E8F0FE;" in first
+    assert "classDef swPalette1 fill:#E6F4EA;" in first
+    assert "classDef swPalette2 fill:#FCE8E6;" in first
+    assert "class " in first
+    assert 'width="1600" height="900"' in svg
+    assert 'x="125" y="-75"' in svg
+    assert 'data-type="diagram"' in svg
+    assert 'data-title="Aktueller &amp; editierbarer Ablauf"' in svg
+    assert "&amp;amp; Auftrag" in svg
+    assert "Start & Auftrag" not in svg
+
+
+@pytest.mark.parametrize(
+    "diagram_dsl,message",
+    [
+        (
+            "graphdir LR\npalette #E8F0FE\na A flowchart-process 0\nwat nope\n",
+            "unknown or invalid directive",
+        ),
+        (
+            "graphdir LR\npalette #E8F0FE\na A flowchart-process 0\na B flowchart-process 0\n",
+            "duplicate id",
+        ),
+        (
+            "graphdir LR\npalette #E8F0FE\na A flowchart-process 0\nc a goes missing\n",
+            "unknown node",
+        ),
+        (
+            "graphdir LR\npalette #E8F0FE\na A flowchart-process 1\n",
+            "out-of-range palette index",
+        ),
+        (
+            "graphdir LR\npalette #E8F0FE\na A flowchart-cloud 0\n",
+            "unknown or invalid directive",
+        ),
+        (
+            "graphdir LR\npalette blue\na A flowchart-process 0\n",
+            "invalid palette",
+        ),
+    ],
+)
+def test_current_dsl_conversion_rejects_invalid_input(diagram_dsl: str, message: str) -> None:
+    with pytest.raises(NativeBundleError, match=message):
+        compile_diagram_dsl_to_mermaid(diagram_dsl)
+
+
+def test_canvas_native_execution_preloads_skills_and_verifies_both_readbacks() -> None:
+    bundle = current_diagram_bundle()
+    fake = CurrentCanvasMiro()
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=canvas_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+
+    called = [name for name, _arguments in fake.calls]
+    create_index = called.index("canvas_create_from_svg")
+    assert called.index("canvas_get_canvas_composer_skill") < create_index
+    assert called.index("canvas_load_format_skill") < create_index
+    assert called.index("context_get") > create_index
+    assert called.index("canvas_read_as_svg") > called.index("context_get")
+    assert called.count("canvas_get_canvas_composer_skill") == 1
+    assert called.count("canvas_load_format_skill") == 1
+    assert "diagram_create" not in called
+    assert "diagram_create_mermaid" not in called
+    assert receipt["provider_fallback_count"] == 0
+    resolution = receipt["provider_resolution"][0]
+    assert resolution["mode"] == "native"
+    assert resolution["native_transport"] == "canvas_diagram"
+    readback = receipt["completed_operations"][0]["readback"]
+    assert readback["provider_mode"] == "native"
+    assert readback["native_transport"] == "canvas_diagram"
+    assert readback["skills_loaded"] is True
+    assert readback["skills_schema_validated"] is True
+    assert readback["created_svg"]["title_matches"] is True
+    assert readback["context"]["diagram_semantics"] is True
+    assert readback["canvas_svg_schema_available"] is True
+    assert readback["canvas_svg_verified"] is True
+    assert readback["item_reference_derived"] is True
+    encoded = json.dumps(receipt, ensure_ascii=False, sort_keys=True)
+    assert BOARD_URL not in encoded
+    assert "Aktueller & editierbarer Ablauf" not in encoded
+    assert "flowchart LR" not in encoded
+
+
+def test_invalid_canvas_dsl_fails_before_any_provider_call() -> None:
+    bundle = current_diagram_bundle(
+        diagram_dsl="graphdir LR\npalette #E8F0FE\na Bad flowchart-cloud 0\n"
+    )
+    fake = CurrentCanvasMiro()
+
+    with pytest.raises(NativeBundleError, match="unknown or invalid directive"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=canvas_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+            )
+        )
+
+    assert fake.calls == []
+
+
+def test_canvas_skills_are_cached_once_for_multiple_diagrams() -> None:
+    bundle = current_diagram_bundle()
+    second = copy.deepcopy(bundle["operations"][0])
+    second["operation_id"] = "current-diagram-2"
+    bundle = validate_native_bundle(
+        {
+            key: value
+            for key, value in {**bundle, "operations": [*bundle["operations"], second]}.items()
+            if key != "bundle_digest"
+        }
+    )
+    fake = CurrentCanvasMiro()
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=canvas_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+
+    called = [name for name, _arguments in fake.calls]
+    assert receipt["completed_operation_count"] == 2
+    assert called.count("canvas_create_from_svg") == 2
+    assert called.count("canvas_get_canvas_composer_skill") == 1
+    assert called.count("canvas_load_format_skill") == 1
+
+
+def test_canvas_svg_readback_requires_an_available_output_schema() -> None:
+    tools = canvas_tools()
+    next(item for item in tools if item["name"] == "canvas_read_as_svg")["output_schema"] = None
+    fake = CurrentCanvasMiro()
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=current_diagram_bundle(),
+        )
+    )
+
+    readback = receipt["completed_operations"][0]["readback"]
+    assert readback["canvas_svg_schema_available"] is False
+    assert readback["canvas_svg_verified"] is False
+    assert "canvas_read_as_svg" not in [name for name, _arguments in fake.calls]
+
+
+def test_canvas_skill_output_schema_is_required_before_provider_calls() -> None:
+    tools = canvas_tools()
+    next(item for item in tools if item["name"] == "canvas_get_canvas_composer_skill")[
+        "output_schema"
+    ] = None
+    fake = CurrentCanvasMiro()
+
+    with pytest.raises(NativeBundleError, match="lacks an output schema"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+
+    assert fake.calls == []
 
 
 def test_provider_preview_is_supplemental_digest_bound_evidence() -> None:
