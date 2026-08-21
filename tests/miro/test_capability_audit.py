@@ -210,3 +210,41 @@ def test_fallbacks_remain_blocked_without_layout_toolset() -> None:
     assert report["high_value_lanes"]["living_document"]["mode"] == "blocked"
     assert report["high_value_lanes"]["living_document"]["effective_available"] is False
     assert "living_document" in report["unavailable_lanes"]
+
+
+def test_current_canvas_catalogue_is_an_integrated_native_diagram_transport() -> None:
+    canvas_tools = {
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+        "canvas_read_as_svg",
+    }
+    report = audit_tool_catalogue(
+        catalogue(
+            "user_who_am_i",
+            "board_list_items",
+            "context_explore",
+            "context_get",
+            *sorted(canvas_tools),
+            "diagram_create_mermaid",
+        )
+    )
+
+    native_diagram = report["high_value_lanes"]["native_diagram"]
+    integration = report["adapter_integration"]
+    assert native_diagram["available"] is True
+    assert native_diagram["effective_available"] is True
+    assert native_diagram["mode"] == "native"
+    assert native_diagram["native_transport"] == "canvas_diagram"
+    assert native_diagram["legacy_native_available"] is False
+    assert native_diagram["canvas_native_available"] is True
+    assert native_diagram["canvas_svg_readback_available"] is True
+    assert canvas_tools <= set(integration["runtime_integrated_tools"])
+    assert canvas_tools <= set(integration["execution_planner_tools"])
+    assert "diagram_create_mermaid" not in integration["runtime_integrated_tools"]
+    assert "diagram_create_mermaid" not in integration["execution_planner_tools"]
+    assert integration["intentionally_unincorporated_observed_tools"] == ["diagram_create_mermaid"]
+    assert report["provider_extension_roles"]["diagram_create_mermaid"]["integration"] == (
+        "intentionally_not_integrated"
+    )
+    assert report["provider_fallbacks"]["canvas_native_is_provider_fallback"] is False
