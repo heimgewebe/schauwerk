@@ -35,6 +35,13 @@
       "summary": "Aktivitäten und Bemühungen zur Herstellung und Aufrechterhaltung personalen Kontakts; Voraussetzung und Begleiterscheinung anderer Aktivitäten, aber kein eigenständiger Arbeitsansatz."
     },
     {
+      "id": "inhalte_aktivitaeten",
+      "label": "Inhalte und Aktivitäten",
+      "kind": "concept",
+      "group": "grundlage",
+      "summary": "Arbeit an Personen und Beziehungen ist nicht von der Arbeit an Inhalten und Aktivitäten zu trennen."
+    },
+    {
       "id": "grenze",
       "label": "Grenze zum Anderen",
       "kind": "concept",
@@ -315,6 +322,13 @@
       "to": "qualitaet",
       "label": "stützt",
       "kind": "evidence"
+    },
+    {
+      "id": "e21",
+      "from": "beziehungsarbeit",
+      "to": "inhalte_aktivitaeten",
+      "label": "ist nicht trennbar von",
+      "kind": "association"
     }
   ],
   "requirements": {
