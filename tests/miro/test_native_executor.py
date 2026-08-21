@@ -9,11 +9,16 @@ import stat
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
+from xml.etree import ElementTree as ET
 
 import pytest
 
 from schauwerk.runner import main
-from schauwerk.surfaces.miro.errors import MiroConnectionError, MiroCredentialError
+from schauwerk.surfaces.miro.errors import (
+    MiroConnectionError,
+    MiroCredentialError,
+    MiroToolError,
+)
 from schauwerk.surfaces.miro.models import MiroSettings
 from schauwerk.surfaces.miro.native_executor import (
     NativeBundleError,
@@ -312,9 +317,72 @@ def canvas_tools(*, include_svg_readback: bool = True) -> list[dict]:
     return catalogue(*names)
 
 
+def canvas_resume_bundle() -> dict:
+    diagram = copy.deepcopy(current_diagram_bundle()["operations"][0])
+    diagram["operation_id"] = "beziehungsarbeit-wissenskarte"
+    diagram["title"] = "Wissenskarte"
+    return validate_native_bundle(
+        {
+            "schema_version": "schauwerk-miro-native-bundle.v1",
+            "bundle_id": "canvas-resume-reconciliation",
+            "operations": [
+                diagram,
+                {
+                    "operation_id": "resume-followup",
+                    "kind": "document",
+                    "content": "# Fortsetzung\n\nNach verifizierter Wissenskarte.",
+                    "x": 1900,
+                    "y": -75,
+                },
+            ],
+        }
+    )
+
+
+def canvas_inventory_item(bundle: dict, *, item_id: str = "42") -> dict:
+    operation = bundle["operations"][0]
+    return {
+        "data": {
+            "code": compile_diagram_dsl_to_mermaid(operation["diagram_dsl"]),
+            "title": operation["title"],
+        },
+        "geometry": {"width": 1600, "height": 900},
+        "id": item_id,
+        "miro_url": f"{BOARD_URL}?moveToWidget={item_id}",
+        "parent": None,
+        "position": {"x": operation["x"], "y": operation["y"]},
+        "style": {},
+        "type": "diagram",
+    }
+
+
+def pending_canvas_receipt(bundle: dict, *, baseline_count: int = 0) -> dict:
+    receipt = {
+        "schema_version": "schauwerk-miro-native-execution-receipt.v1",
+        "success": False,
+        "execution_state": "in_progress",
+        "bundle_digest": bundle["bundle_digest"],
+        "board_alias": "native-test",
+        "board_reference_digest": hashlib.sha256(BOARD_URL.encode("utf-8")).hexdigest()[:24],
+        "completed_operations": [],
+        "completed_operation_count": 0,
+        "preflight": {
+            "inventory": {"item_count": baseline_count},
+            "context": {"item_count": baseline_count},
+        },
+        "calls": [],
+        "pending_operation_id": "beziehungsarbeit-wissenskarte",
+        "pending_tool": "canvas_create_from_svg",
+        "mutation_attempted": True,
+    }
+    receipt["execution_digest"] = _receipt_digest(receipt)
+    return receipt
+
+
 class CurrentCanvasMiro(FakeMiro):
-    def __init__(self) -> None:
+    def __init__(self, *, context_title: str | None = None) -> None:
         super().__init__()
+        self.context_title = context_title
         self.canvas_svg: str | None = None
         self.canvas_svgs: dict[str, str] = {}
 
@@ -344,20 +412,105 @@ class CurrentCanvasMiro(FakeMiro):
                 "result_svg": self.canvas_svg,
             }
         if tool == "context_get":
-            for item_id in self.canvas_svgs:
+            for item_id, svg in self.canvas_svgs.items():
                 if f"moveToWidget={item_id}" in arguments["miro_url"]:
                     self.calls.append((tool, copy.deepcopy(arguments)))
-                    return {
-                        "title": "Aktueller & editierbarer Ablauf",
-                        "type": "diagram",
-                        "content": "Editable Mermaid flowchart diagram",
+                    diagram = next(
+                        element
+                        for element in ET.fromstring(svg).iter()
+                        if element.tag.rsplit("}", 1)[-1] == "foreignObject"
+                    )
+                    result = {
+                        "content": "".join(diagram.itertext()),
+                        "miro_url": arguments["miro_url"],
+                        "parent_miro_url": BOARD_URL,
+                        "x": 125,
+                        "y": -75,
                     }
+                    if self.context_title is not None:
+                        result["title"] = self.context_title
+                    return result
         if tool == "canvas_read_as_svg":
             self.calls.append((tool, copy.deepcopy(arguments)))
             for item_id, svg in self.canvas_svgs.items():
                 if f"moveToWidget={item_id}" in arguments["miro_url"]:
                     return {"success": True, "svg": svg}
             raise AssertionError("unknown Canvas item reference")
+        return await super().__call__(tool, arguments)
+
+
+class CanvasResumeMiro(CurrentCanvasMiro):
+    def __init__(
+        self,
+        bundle: dict,
+        *,
+        candidates: list[dict] | None = None,
+        interrupt_context_once: bool = False,
+        paginate_inventory: bool = False,
+    ) -> None:
+        super().__init__()
+        self.bundle = bundle
+        self.candidates = copy.deepcopy(candidates or [])
+        self.interrupt_context_once = interrupt_context_once
+        self.paginate_inventory = paginate_inventory
+        self.document_created = False
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        if tool == "board_list_items":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            items = copy.deepcopy(self.candidates)
+            if self.document_created:
+                items.append(
+                    {
+                        "id": "doc",
+                        "miro_url": f"{BOARD_URL}?moveToWidget=doc",
+                        "type": "doc_format",
+                    }
+                )
+            cursor = arguments.get("cursor")
+            if self.paginate_inventory and items and cursor is None:
+                return {
+                    "data": [],
+                    "total": len(items),
+                    "has_more": True,
+                    "nextCursor": "canvas-next",
+                }
+            if cursor is not None:
+                assert cursor == "canvas-next"
+            return {
+                "data": items,
+                "total": len(items),
+                "has_more": False,
+                "nextCursor": None,
+            }
+        if tool == "context_explore":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            return {"items": []}
+        if tool == "canvas_create_from_svg":
+            created = await super().__call__(tool, arguments)
+            self.candidates = [canvas_inventory_item(self.bundle)]
+            return created
+        if (
+            tool == "context_get"
+            and "moveToWidget=42" in arguments["miro_url"]
+            and self.interrupt_context_once
+        ):
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            self.interrupt_context_once = False
+            raise MiroToolError("interrupted Canvas context readback")
+        if tool == "doc_create":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            self.document_created = True
+            return {"miro_url": f"{BOARD_URL}?moveToWidget=doc"}
+        if tool == "doc_get":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            return {
+                "miro_url": arguments["miro_url"],
+                "content": self.bundle["operations"][1]["content"],
+                "content_version": 1,
+                "success": True,
+                "message": "ok",
+            }
         return await super().__call__(tool, arguments)
 
 
@@ -456,6 +609,9 @@ def test_canvas_native_execution_preloads_skills_and_verifies_both_readbacks() -
     assert readback["skills_schema_validated"] is True
     assert readback["created_svg"]["title_matches"] is True
     assert readback["context"]["diagram_semantics"] is True
+    assert readback["context"]["source_matches"] is True
+    assert readback["context"]["title_exposed"] is False
+    assert readback["context"]["title_matches"] is True
     assert readback["canvas_svg_schema_available"] is True
     assert readback["canvas_svg_verified"] is True
     assert readback["item_reference_derived"] is True
@@ -463,6 +619,154 @@ def test_canvas_native_execution_preloads_skills_and_verifies_both_readbacks() -
     assert BOARD_URL not in encoded
     assert "Aktueller & editierbarer Ablauf" not in encoded
     assert "flowchart LR" not in encoded
+
+
+def test_canvas_context_explicit_conflicting_title_fails() -> None:
+    fake = CurrentCanvasMiro(context_title="Falscher Titel")
+
+    with pytest.raises(NativeExecutionError, match="title conflicts"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=canvas_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+
+    called = [name for name, _arguments in fake.calls]
+    assert called.count("canvas_create_from_svg") == 1
+    assert "canvas_read_as_svg" not in called
+
+
+def test_pending_canvas_resume_adopts_exact_candidate_and_continues() -> None:
+    bundle = canvas_resume_bundle()
+    tools = [*canvas_tools(), *catalogue("doc_create", "doc_get")]
+    fake = CanvasResumeMiro(
+        bundle,
+        interrupt_context_once=True,
+        paginate_inventory=True,
+    )
+    checkpoints: list[dict] = []
+
+    with pytest.raises(NativeExecutionError, match="interrupted Canvas context"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+                checkpoint=checkpoints.append,
+            )
+        )
+
+    resume = checkpoints[-1]
+    assert resume["pending_operation_id"] == "beziehungsarbeit-wissenskarte"
+    assert resume["pending_tool"] == "canvas_create_from_svg"
+    assert resume["completed_operations"] == []
+    resume_call_count = len(fake.calls)
+
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+            resume_receipt=resume,
+            checkpoint=checkpoints.append,
+        )
+    )
+
+    resumed_tools = [tool for tool, _arguments in fake.calls[resume_call_count:]]
+    assert resumed_tools.count("board_list_items") == 4
+    assert "canvas_create_from_svg" not in resumed_tools
+    assert "doc_create" in resumed_tools
+    assert result["success"] is True
+    assert result["completed_operation_count"] == 2
+    assert result["pending_operation_id"] is None
+    assert result["pending_tool"] is None
+    diagram_readback = result["completed_operations"][0]["readback"]
+    assert diagram_readback["reconciled_existing"] is True
+    assert diagram_readback["inventory_reconciliation"] == {
+        "item_type_matches": True,
+        "title_matches": True,
+        "source_matches": True,
+        "geometry_matches": True,
+        "position_matches": True,
+        "item_reference_verified": True,
+    }
+    assert diagram_readback["context"]["title_exposed"] is False
+    assert diagram_readback["canvas_svg_verified"] is True
+    encoded = json.dumps(result, ensure_ascii=False, sort_keys=True)
+    assert BOARD_URL not in encoded
+    assert "Wissenskarte" not in encoded
+    assert "flowchart LR" not in encoded
+
+
+@pytest.mark.parametrize(
+    ("case", "baseline_count", "message"),
+    [
+        ("zero", 0, "unexpected inventory delta"),
+        ("multiple", 1, "multiple exact candidates"),
+        ("wrong_type", 0, "no exact candidate"),
+        ("wrong_title", 0, "no exact candidate"),
+        ("wrong_code", 0, "no exact candidate"),
+        ("wrong_geometry", 0, "no exact candidate"),
+        ("wrong_position", 0, "no exact candidate"),
+        ("wrong_url", 0, "no exact candidate"),
+        ("unexpected_delta", 0, "unexpected inventory delta"),
+    ],
+)
+def test_pending_canvas_resume_rejects_ambiguous_or_mismatched_inventory_before_mutation(
+    case: str, baseline_count: int, message: str
+) -> None:
+    bundle = canvas_resume_bundle()
+    exact = canvas_inventory_item(bundle)
+    candidates: list[dict]
+    if case == "zero":
+        candidates = []
+    elif case == "multiple":
+        candidates = [exact, canvas_inventory_item(bundle, item_id="43")]
+    elif case == "unexpected_delta":
+        candidates = [exact, {"id": "other", "type": "shape"}]
+    else:
+        candidate = copy.deepcopy(exact)
+        if case == "wrong_type":
+            candidate["type"] = "shape"
+        elif case == "wrong_title":
+            candidate["data"]["title"] = "Andere Wissenskarte"
+        elif case == "wrong_code":
+            candidate["data"]["code"] += "\nflowchart TD"
+        elif case == "wrong_geometry":
+            candidate["geometry"]["width"] = 1599
+        elif case == "wrong_position":
+            candidate["position"]["x"] += 1
+        elif case == "wrong_url":
+            candidate["miro_url"] = "https://miro.com/app/board/other/?moveToWidget=42"
+        candidates = [candidate]
+    fake = CanvasResumeMiro(bundle, candidates=candidates)
+
+    with pytest.raises(NativeExecutionError, match=message):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=[*canvas_tools(), *catalogue("doc_create", "doc_get")],
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+                resume_receipt=pending_canvas_receipt(
+                    bundle,
+                    baseline_count=baseline_count,
+                ),
+            )
+        )
+
+    called = [tool for tool, _arguments in fake.calls]
+    assert "canvas_create_from_svg" not in called
+    assert "doc_create" not in called
 
 
 def test_invalid_canvas_dsl_fails_before_any_provider_call() -> None:
