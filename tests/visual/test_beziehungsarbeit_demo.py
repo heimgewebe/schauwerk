@@ -51,3 +51,19 @@ def test_beziehungsarbeit_native_miro_bundle_contract() -> None:
         "Spannungsfelder professioneller Beziehungsarbeit"
     )
     assert "Wahrheitsgrenze des Schauwerks" in bundle["operations"][3]["content"]
+
+
+def test_beziehungsarbeit_central_axis_label_fidelity() -> None:
+    representation = validate_representation_input(_load(REPRESENTATION))
+    central_edges = [
+        edge
+        for edge in representation["edges"]
+        if edge["from"] == "beziehungsarbeit"
+        and edge["to"] == "inhalte_aktivitaeten"
+    ]
+    assert [edge["label"] for edge in central_edges] == ["ist nicht trennbar von"]
+
+    bundle = validate_native_bundle(_load(MIRO_BUNDLE))
+    knowledge_map_lines = bundle["operations"][0]["diagram_dsl"].splitlines()
+    assert knowledge_map_lines.count("c n1 ist nicht trennbar von n18") == 1
+    assert "c n1 untrennbar n18" not in knowledge_map_lines
