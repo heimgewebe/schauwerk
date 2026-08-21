@@ -1,0 +1,350 @@
+{
+  "schema_version": "schauwerk-representation-input.v1",
+  "id": "beziehungsarbeit_schroeder",
+  "title": "Beziehungsarbeit in der Offenen Kinder- und Jugendarbeit",
+  "purpose": "Quellennahe Wissenskarte zu Achim Schröders Beitrag: Beziehungsarbeit, Grenze zum Anderen, Offenheit und Halt, Containment, diffuse und spezifische Beziehungsanteile sowie Reflexion und Supervision.",
+  "intent": "knowledge_map",
+  "groups": [
+    {
+      "id": "grundlage",
+      "label": "Beziehung und Grenze"
+    },
+    {
+      "id": "offenheit_halt",
+      "label": "Offenheit und Halt"
+    },
+    {
+      "id": "containment",
+      "label": "Containment"
+    },
+    {
+      "id": "professionalitaet",
+      "label": "Professionelle Beziehung"
+    },
+    {
+      "id": "reflexion",
+      "label": "Reflexion und Supervision"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "beziehungsarbeit",
+      "label": "Beziehungsarbeit",
+      "kind": "concept",
+      "group": "grundlage",
+      "summary": "Aktivitäten und Bemühungen zur Herstellung und Aufrechterhaltung personalen Kontakts; Voraussetzung und Begleiterscheinung anderer Aktivitäten, aber kein eigenständiger Arbeitsansatz."
+    },
+    {
+      "id": "inhalte_aktivitaeten",
+      "label": "Inhalte und Aktivitäten",
+      "kind": "concept",
+      "group": "grundlage",
+      "summary": "Arbeit an Personen und Beziehungen ist nicht von der Arbeit an Inhalten und Aktivitäten zu trennen."
+    },
+    {
+      "id": "grenze",
+      "label": "Grenze zum Anderen",
+      "kind": "concept",
+      "group": "grundlage",
+      "summary": "Beziehungsfähigkeit hängt davon ab, wie getrennt sich eine Person vom Anderen fühlt."
+    },
+    {
+      "id": "identitaet",
+      "label": "Identität und Handlungsfähigkeit",
+      "kind": "concept",
+      "group": "grundlage",
+      "summary": "Ein eigener Standpunkt wird erschwert, wenn eigene und fremde Wünsche oder Gefühle nicht ausreichend unterschieden werden können."
+    },
+    {
+      "id": "offenheit",
+      "label": "Offenheit",
+      "kind": "concept",
+      "group": "offenheit_halt",
+      "summary": "Freiwilligkeit, Adressatenoffenheit und Ergebnisoffenheit; Jugendarbeit stellt Möglichkeitsräume zum Erproben und Bilden bereit."
+    },
+    {
+      "id": "halt",
+      "label": "Halt",
+      "kind": "concept",
+      "group": "offenheit_halt",
+      "summary": "Verlässliche Räume, Strukturen und Personen geben Schutz und Rückhalt; Offenheit ist nicht Beliebigkeit."
+    },
+    {
+      "id": "affekte",
+      "label": "Heftige Gefühle und Aggression",
+      "kind": "concept",
+      "group": "containment",
+      "summary": "Fachkräfte können selbst zum Objekt heftiger Gefühle und aggressiver Verhaltensweisen werden."
+    },
+    {
+      "id": "aufnehmen",
+      "label": "Aufnehmen",
+      "kind": "action",
+      "group": "containment",
+      "summary": "Gefühle annehmen, ohne von ihnen aus dem Gleis geworfen zu werden."
+    },
+    {
+      "id": "halten",
+      "label": "Halten und bewahren",
+      "kind": "action",
+      "group": "containment",
+      "summary": "Die Gefühle werden gehalten, statt bloß geschluckt oder unmittelbar zurückgegeben."
+    },
+    {
+      "id": "umwandeln",
+      "label": "Verknüpfen und umwandeln",
+      "kind": "action",
+      "group": "containment",
+      "summary": "Empfangene Gefühle werden mit den eigenen verknüpft und dadurch umgewandelt."
+    },
+    {
+      "id": "rueckgabe",
+      "label": "Gewandelt zurückgeben",
+      "kind": "action",
+      "group": "containment",
+      "summary": "Die Gefühle werden in angereicherter und gewandelter Form an den Sender zurückgegeben."
+    },
+    {
+      "id": "lernen",
+      "label": "Intersubjektives Lernen",
+      "kind": "concept",
+      "group": "containment",
+      "summary": "Die gewandelte Rückgabe eröffnet intersubjektives Lernen."
+    },
+    {
+      "id": "diffus",
+      "label": "Diffuse Beziehungsanteile",
+      "kind": "concept",
+      "group": "professionalitaet",
+      "summary": "Auf die Gesamtperson gerichtete, umfassende und besonders emotionale Beziehungsanteile."
+    },
+    {
+      "id": "spezifisch",
+      "label": "Spezifische Beziehungsanteile",
+      "kind": "concept",
+      "group": "professionalitaet",
+      "summary": "Interaktionen und Beziehungen, die sich über ein Thema, eine Aktivität, Rolle oder Expertise herstellen."
+    },
+    {
+      "id": "professionelle_beziehung",
+      "label": "Professionelle Beziehung",
+      "kind": "concept",
+      "group": "professionalitaet",
+      "summary": "In der Offenen Kinder- und Jugendarbeit stets ein Gemisch aus diffusen und spezifischen Anteilen sowie Fachlichkeit und Persönlichkeit."
+    },
+    {
+      "id": "arbeitsbuendnis",
+      "label": "Arbeitsbündnis klären",
+      "kind": "action",
+      "group": "professionalitaet",
+      "summary": "Ein Teil der Aufklärung des Beziehungsgeschehens besteht darin zu klären, was man miteinander will."
+    },
+    {
+      "id": "agieren",
+      "label": "Jugendliches Agieren und Übertragung",
+      "kind": "risk",
+      "group": "reflexion",
+      "summary": "Affekte und Handlungsdruck können Fachkräfte in Rollen, Erwartungen und Verstrickungen hineinziehen."
+    },
+    {
+      "id": "verstrickung",
+      "label": "Verstrickung",
+      "kind": "risk",
+      "group": "reflexion",
+      "summary": "Übertragungen und affektives Agieren können die Fachkraft in schwer durchschaubare Beziehungsmuster verwickeln."
+    },
+    {
+      "id": "praxisreflexion",
+      "label": "Praxisreflexion",
+      "kind": "action",
+      "group": "reflexion",
+      "summary": "Laufende Reflexion alltäglicher Erfahrungen macht Beziehungsmuster und eigene Beteiligung bearbeitbar."
+    },
+    {
+      "id": "supervision",
+      "label": "Supervision",
+      "kind": "action",
+      "group": "reflexion",
+      "summary": "Angeleitete Betrachtung von außen ist ein wichtiger alltäglicher Arbeitsanteil, nicht nur eine Hilfe in Notsituationen."
+    },
+    {
+      "id": "abstand",
+      "label": "Abstand und Überblick",
+      "kind": "action",
+      "group": "reflexion",
+      "summary": "Reflexion schafft spürbaren Abstand von Situation und beteiligten Personen und hilft, Möglichkeiten und Grenzen der eigenen Person auszuloten."
+    },
+    {
+      "id": "qualitaet",
+      "label": "Qualitätsentwicklung",
+      "kind": "evidence",
+      "group": "reflexion",
+      "summary": "Die Anerkennung angeleiteter Reflexion und Supervision fundiert die Jugendarbeit fachlich und unterstützt ihre Qualitätsentwicklung."
+    }
+  ],
+  "edges": [
+    {
+      "id": "e01",
+      "from": "beziehungsarbeit",
+      "to": "grenze",
+      "label": "setzt Beziehungsfähigkeit voraus",
+      "kind": "association"
+    },
+    {
+      "id": "e02",
+      "from": "grenze",
+      "to": "identitaet",
+      "label": "ermöglicht eigenen Standpunkt",
+      "kind": "association"
+    },
+    {
+      "id": "e03",
+      "from": "beziehungsarbeit",
+      "to": "offenheit",
+      "label": "vollzieht sich in",
+      "kind": "association"
+    },
+    {
+      "id": "e04",
+      "from": "beziehungsarbeit",
+      "to": "halt",
+      "label": "braucht zugleich",
+      "kind": "association"
+    },
+    {
+      "id": "e05",
+      "from": "halt",
+      "to": "affekte",
+      "label": "wird bei Affekten konkret",
+      "kind": "association"
+    },
+    {
+      "id": "e06",
+      "from": "affekte",
+      "to": "aufnehmen",
+      "label": "werden",
+      "kind": "flow"
+    },
+    {
+      "id": "e07",
+      "from": "aufnehmen",
+      "to": "halten",
+      "label": "führt zu",
+      "kind": "flow"
+    },
+    {
+      "id": "e08",
+      "from": "halten",
+      "to": "umwandeln",
+      "label": "ermöglicht",
+      "kind": "flow"
+    },
+    {
+      "id": "e09",
+      "from": "umwandeln",
+      "to": "rueckgabe",
+      "label": "mündet in",
+      "kind": "flow"
+    },
+    {
+      "id": "e10",
+      "from": "rueckgabe",
+      "to": "lernen",
+      "label": "ermöglicht",
+      "kind": "flow"
+    },
+    {
+      "id": "e11",
+      "from": "diffus",
+      "to": "professionelle_beziehung",
+      "label": "ist Anteil von",
+      "kind": "association"
+    },
+    {
+      "id": "e12",
+      "from": "spezifisch",
+      "to": "professionelle_beziehung",
+      "label": "ist Anteil von",
+      "kind": "association"
+    },
+    {
+      "id": "e13",
+      "from": "professionelle_beziehung",
+      "to": "arbeitsbuendnis",
+      "label": "verlangt Klärung von",
+      "kind": "association"
+    },
+    {
+      "id": "e14",
+      "from": "professionelle_beziehung",
+      "to": "agieren",
+      "label": "ist ausgesetzt",
+      "kind": "risk"
+    },
+    {
+      "id": "e15",
+      "from": "agieren",
+      "to": "verstrickung",
+      "label": "kann erzeugen",
+      "kind": "risk"
+    },
+    {
+      "id": "e16",
+      "from": "verstrickung",
+      "to": "praxisreflexion",
+      "label": "verlangt",
+      "kind": "feedback"
+    },
+    {
+      "id": "e17",
+      "from": "verstrickung",
+      "to": "supervision",
+      "label": "verlangt",
+      "kind": "feedback"
+    },
+    {
+      "id": "e18",
+      "from": "praxisreflexion",
+      "to": "abstand",
+      "label": "schafft",
+      "kind": "feedback"
+    },
+    {
+      "id": "e19",
+      "from": "supervision",
+      "to": "abstand",
+      "label": "schafft",
+      "kind": "feedback"
+    },
+    {
+      "id": "e20",
+      "from": "abstand",
+      "to": "qualitaet",
+      "label": "stützt",
+      "kind": "evidence"
+    },
+    {
+      "id": "e21",
+      "from": "beziehungsarbeit",
+      "to": "inhalte_aktivitaeten",
+      "label": "ist nicht trennbar von",
+      "kind": "association"
+    }
+  ],
+  "requirements": {
+    "formal_relations": true,
+    "free_spatial_layout": true,
+    "presentation": true,
+    "collaboration": true,
+    "rich_text": true,
+    "structured_comparison": true,
+    "portable_offline": true
+  },
+  "requested_formats": [
+    "miro_native",
+    "canvas",
+    "mermaid",
+    "table",
+    "document"
+  ]
+}
