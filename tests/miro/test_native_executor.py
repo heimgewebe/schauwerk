@@ -818,6 +818,42 @@ def test_pending_canvas_resume_preserves_markers_across_transient_reconciliation
     assert result["completed_operations"][0]["readback"]["reconciled_existing"] is True
 
 
+def test_pending_canvas_resume_accepts_provider_stripped_terminal_newline() -> None:
+    bundle = canvas_resume_bundle()
+    candidate = canvas_inventory_item(bundle)
+    source = candidate["data"]["code"]
+    assert source.endswith("\n")
+    candidate["data"]["code"] = source[:-1]
+    fake = CanvasResumeMiro(bundle, candidates=[candidate])
+    operation = bundle["operations"][0]
+    svg = render_canvas_diagram_svg(operation, source).replace(
+        ' data-type="diagram"',
+        ' data-miro-id="42" data-type="diagram"',
+        1,
+    )
+    fake.canvas_svg = svg
+    fake.canvas_svgs["42"] = svg
+
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=[*canvas_tools(), *catalogue("doc_create", "doc_get")],
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+            resume_receipt=pending_canvas_receipt(bundle),
+        )
+    )
+
+    called = [tool for tool, _arguments in fake.calls]
+    assert "canvas_create_from_svg" not in called
+    assert result["success"] is True
+    assert result["completed_operations"][0]["readback"]["reconciled_existing"] is True
+    assert result["completed_operations"][0]["readback"]["inventory_reconciliation"][
+        "source_matches"
+    ] is True
+
+
 @pytest.mark.parametrize(
     ("case", "baseline_count", "message"),
     [
