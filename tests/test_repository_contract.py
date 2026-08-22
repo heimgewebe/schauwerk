@@ -9,6 +9,16 @@ def test_version_is_initial_release() -> None:
     assert __version__ == "0.1.0"
 
 
+def test_canonical_lint_surface_includes_python_scripts() -> None:
+    root = Path(__file__).resolve().parents[1]
+    lint_commands = [
+        line.strip()
+        for line in (root / "Makefile").read_text(encoding="utf-8").splitlines()
+        if "$(RUFF) check " in line
+    ]
+    assert lint_commands == ["$(RUFF) check src scripts tests"]
+
+
 def test_seeded_registry_is_valid() -> None:
     root = Path(__file__).resolve().parents[1]
     assert validate_registry(root) == {

@@ -8,7 +8,7 @@ PYTEST ?= $(VENV_BIN)pytest
 export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
 lint:
-	$(RUFF) check src tests
+	$(RUFF) check src scripts tests
 
 compile-check:
 	$(PYTHON) -m compileall -q src
