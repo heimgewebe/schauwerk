@@ -23,6 +23,7 @@ from schauwerk.surfaces.miro.models import MiroSettings
 from schauwerk.surfaces.miro.native_executor import (
     NativeBundleError,
     NativeExecutionError,
+    _canvas_svg_evidence,
     compile_diagram_dsl_to_mermaid,
     execute_native_bundle,
     load_native_bundle,
@@ -632,6 +633,81 @@ def test_canvas_native_execution_preloads_skills_and_verifies_both_readbacks() -
     assert BOARD_URL not in encoded
     assert "Aktueller & editierbarer Ablauf" not in encoded
     assert "flowchart LR" not in encoded
+
+
+def test_canvas_svg_readback_selects_unique_expected_diagram_from_board_svg() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<foreignObject data-type="diagram" data-title="Anderes Diagramm" '
+        'width="1600" height="900">'
+        'flowchart LR\nX --> Y'
+        '</foreignObject>'
+        '<foreignObject data-type="diagram" data-title="Erwartetes Diagramm" '
+        'width="1600" height="900">'
+        '\nflowchart LR\nA --> B'
+        '</foreignObject>'
+        '</svg>'
+    )
+
+    evidence = _canvas_svg_evidence(
+        svg,
+        expected_title="Erwartetes Diagramm",
+        expected_source="flowchart LR\nA --> B",
+        local_id=None,
+        require_item_id=False,
+    )
+
+    assert evidence["title_matches"] is True
+    assert evidence["source_matches"] is True
+    assert evidence["geometry_matches"] is True
+
+
+def test_canvas_svg_readback_rejects_duplicate_expected_titles_in_board_svg() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<foreignObject data-type="diagram" data-title="Erwartetes Diagramm" '
+        'width="1600" height="900">'
+        'flowchart LR\nA --> B'
+        '</foreignObject>'
+        '<foreignObject data-type="diagram" data-title="Erwartetes Diagramm" '
+        'width="1600" height="900">'
+        'flowchart LR\nC --> D'
+        '</foreignObject>'
+        '</svg>'
+    )
+
+    with pytest.raises(MiroToolError, match="expected structured diagram exactly once"):
+        _canvas_svg_evidence(
+            svg,
+            expected_title="Erwartetes Diagramm",
+            expected_source="flowchart LR\nA --> B",
+            local_id=None,
+            require_item_id=False,
+        )
+
+
+def test_canvas_svg_readback_keeps_source_check_after_board_svg_selection() -> None:
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<foreignObject data-type="diagram" data-title="Anderes Diagramm" '
+        'width="1600" height="900">'
+        'flowchart LR\nX --> Y'
+        '</foreignObject>'
+        '<foreignObject data-type="diagram" data-title="Erwartetes Diagramm" '
+        'width="1600" height="900">'
+        'flowchart LR\nC --> D'
+        '</foreignObject>'
+        '</svg>'
+    )
+
+    with pytest.raises(MiroToolError, match="diagram source does not match"):
+        _canvas_svg_evidence(
+            svg,
+            expected_title="Erwartetes Diagramm",
+            expected_source="flowchart LR\nA --> B",
+            local_id=None,
+            require_item_id=False,
+        )
 
 
 def test_canvas_context_explicit_conflicting_title_fails() -> None:

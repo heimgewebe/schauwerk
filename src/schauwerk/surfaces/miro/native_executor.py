@@ -805,7 +805,15 @@ def _canvas_svg_evidence(
         if _xml_local_name(element.tag) == "foreignObject" and element.get("data-type") == "diagram"
     ]
     if len(diagrams) != 1:
-        raise MiroToolError("Miro Canvas SVG lacks exactly one structured diagram")
+        if local_id is not None:
+            raise MiroToolError("Miro Canvas SVG lacks exactly one structured diagram")
+        diagrams = [
+            element for element in diagrams if element.get("data-title") == expected_title
+        ]
+        if len(diagrams) != 1:
+            raise MiroToolError(
+                "Miro Canvas SVG does not expose the expected structured diagram exactly once"
+            )
     diagram = diagrams[0]
     title_matches = diagram.get("data-title") == expected_title
     if not title_matches:
