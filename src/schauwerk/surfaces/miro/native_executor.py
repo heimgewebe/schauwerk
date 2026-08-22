@@ -946,6 +946,12 @@ def _canvas_number_matches(value: Any, expected: Any) -> bool:
     )
 
 
+def _canvas_inventory_source_matches(value: Any, expected: str) -> bool:
+    if not isinstance(value, str):
+        return False
+    return value == expected or (expected.endswith("\n") and value == expected[:-1])
+
+
 def _canvas_inventory_candidate(
     items: Sequence[Any],
     *,
@@ -963,7 +969,9 @@ def _canvas_inventory_candidate(
         if (
             not isinstance(data, Mapping)
             or data.get("title") != operation["title"]
-            or data.get("code") != operation["canvas_mermaid_source"]
+            or not _canvas_inventory_source_matches(
+                data.get("code"), operation["canvas_mermaid_source"]
+            )
             or not isinstance(geometry, Mapping)
             or not _canvas_number_matches(geometry.get("width"), _CANVAS_DIAGRAM_WIDTH)
             or not _canvas_number_matches(geometry.get("height"), _CANVAS_DIAGRAM_HEIGHT)
