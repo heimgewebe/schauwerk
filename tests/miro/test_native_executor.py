@@ -967,6 +967,58 @@ def test_canvas_skills_are_cached_once_for_multiple_diagrams() -> None:
     assert called.count("canvas_load_format_skill") == 1
 
 
+class LeadingLfCanvasReadbackMiro(CurrentCanvasMiro):
+    def __init__(self, leading_lf_count: int) -> None:
+        super().__init__()
+        self.leading_lf_count = leading_lf_count
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        result = await super().__call__(tool, arguments)
+        if tool != "canvas_read_as_svg":
+            return result
+        svg = result["svg"]
+        marker = 'data-type="diagram"'
+        marker_index = svg.index(marker)
+        tag_end = svg.index(">", marker_index) + 1
+        return {
+            **result,
+            "svg": svg[:tag_end] + "\n" * self.leading_lf_count + svg[tag_end:],
+        }
+
+
+def test_canvas_svg_readback_accepts_one_provider_inserted_leading_lf() -> None:
+    fake = LeadingLfCanvasReadbackMiro(1)
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=canvas_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=current_diagram_bundle(),
+        )
+    )
+
+    readback = receipt["completed_operations"][0]["readback"]
+    assert receipt["success"] is True
+    assert readback["canvas_svg_verified"] is True
+
+
+def test_canvas_svg_readback_rejects_two_provider_inserted_leading_lfs() -> None:
+    fake = LeadingLfCanvasReadbackMiro(2)
+
+    with pytest.raises(NativeExecutionError, match="SVG diagram source does not match"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=canvas_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+
+
 def test_canvas_svg_readback_requires_an_available_output_schema() -> None:
     tools = canvas_tools()
     next(item for item in tools if item["name"] == "canvas_read_as_svg")["output_schema"] = None

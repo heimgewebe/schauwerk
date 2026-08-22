@@ -770,6 +770,12 @@ def _xml_local_name(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+def _canvas_svg_source_matches(value: str, expected: str) -> bool:
+    normalized_value = _normalized_text(value)
+    normalized_expected = _normalized_text(expected)
+    return normalized_value == normalized_expected or normalized_value == "\n" + normalized_expected
+
+
 def _canvas_svg_evidence(
     svg: str,
     *,
@@ -813,7 +819,7 @@ def _canvas_svg_evidence(
     if not geometry_matches:
         raise MiroToolError("Miro Canvas SVG diagram geometry does not match")
     source = "".join(diagram.itertext())
-    source_matches = _normalized_text(source) == _normalized_text(expected_source)
+    source_matches = _canvas_svg_source_matches(source, expected_source)
     if not source_matches:
         raise MiroToolError("Miro Canvas SVG diagram source does not match")
 
