@@ -17,7 +17,7 @@ from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from xml.etree import ElementTree as ET
 
 from jsonschema import Draft202012Validator
@@ -627,6 +627,7 @@ def _validate_resume_receipt(
     value: Mapping[str, Any],
     *,
     bundle: Mapping[str, Any],
+    execution_operations: Sequence[Mapping[str, Any]],
     board_alias: str,
     board_url: str,
     provider_resolution_digest: str,
@@ -695,9 +696,18 @@ def _validate_resume_receipt(
         if len(completed) >= len(operations):
             raise NativeBundleError("native resume receipt has pending work after completion")
         pending_operation = operations[len(completed)]
+        pending_execution_operation = execution_operations[len(completed)]
         if pending_operation_id != pending_operation["operation_id"]:
             raise NativeBundleError("native resume receipt pending operation is not next")
-        if pending_operation["kind"] != "comment" or pending_tool != "comment_create":
+        reconciliable_comment = (
+            pending_operation["kind"] == "comment" and pending_tool == "comment_create"
+        )
+        reconciliable_canvas_diagram = (
+            pending_operation["kind"] == "diagram"
+            and pending_execution_operation.get("native_transport") == "canvas_diagram"
+            and pending_tool == "canvas_create_from_svg"
+        )
+        if not reconciliable_comment and not reconciliable_canvas_diagram:
             raise NativeBundleError(
                 "native resume receipt requires manual reconciliation for an uncertain mutation"
             )
@@ -836,7 +846,9 @@ def _canvas_item_url(target_url: str, item_id: str) -> str:
     return value
 
 
-def _context_diagram_evidence(payload: Mapping[str, Any], *, expected_title: str) -> dict[str, Any]:
+def _context_diagram_evidence(
+    payload: Mapping[str, Any], *, expected_title: str, expected_source: str
+) -> dict[str, Any]:
     titles: list[str] = []
     semantic_types: list[str] = []
     contents: list[str] = []
@@ -847,6 +859,20 @@ def _context_diagram_evidence(payload: Mapping[str, Any], *, expected_title: str
         if depth > 12 or scalar_count > 10_000:
             raise MiroToolError("Miro diagram context readback exceeds the safety limit")
         if isinstance(value, Mapping):
+            direct_source_match = any(
+                str(nested_key).casefold() in {"content", "text", "description", "markdown"}
+                and isinstance(nested, str)
+                and _normalized_text(nested) == _normalized_text(expected_source)
+                for nested_key, nested in value.items()
+            )
+            if direct_source_match:
+                titles.extend(
+                    nested.strip()
+                    for nested_key, nested in value.items()
+                    if str(nested_key).casefold() in {"title", "data-title", "name"}
+                    and isinstance(nested, str)
+                    and nested.strip()
+                )
             for nested_key, nested in value.items():
                 walk(nested, key=str(nested_key).casefold(), depth=depth + 1)
             return
@@ -857,30 +883,119 @@ def _context_diagram_evidence(payload: Mapping[str, Any], *, expected_title: str
         scalar_count += 1
         if not isinstance(value, str) or not value.strip():
             return
-        if key in {"title", "data-title", "name"}:
-            titles.append(value.strip())
-        elif key in {"type", "data-type", "kind", "diagram_type", "notation"}:
+        if key in {"type", "data-type", "kind", "diagram_type", "notation"}:
             semantic_types.append(value.strip().casefold())
         elif key in {"content", "text", "description", "markdown"}:
             contents.append(value)
 
     walk(payload)
-    title_matches = expected_title in titles or any(expected_title in text for text in contents)
-    diagram_semantics = any(
-        value in {"diagram", "flowchart", "mermaid"} for value in semantic_types
-    ) or any(
-        re.search(r"\b(?:diagram|flowchart|mermaid)\b", text, re.IGNORECASE) for text in contents
-    )
+    title_matches = not titles or all(title == expected_title for title in titles)
     if not title_matches:
-        raise MiroToolError("Miro Canvas diagram context lacks the submitted title")
+        raise MiroToolError("Miro Canvas diagram context title conflicts with the submitted title")
+    source_matches = any(
+        _normalized_text(content) == _normalized_text(expected_source) for content in contents
+    )
+    diagram_semantics = source_matches and (
+        not semantic_types
+        or any(value in {"diagram", "flowchart", "mermaid"} for value in semantic_types)
+    )
+    if not source_matches:
+        raise MiroToolError("Miro Canvas diagram context does not match submitted Mermaid content")
     if not diagram_semantics:
         raise MiroToolError("Miro Canvas diagram context lacks diagram semantics")
     return {
         "context_digest": _digest(dict(payload)),
+        "title_exposed": bool(titles),
         "title_matches": title_matches,
         "diagram_semantics": diagram_semantics,
+        "source_matches": source_matches,
         "content_present": bool(contents or titles),
     }
+
+
+def _canvas_inventory_item_url(
+    item: Mapping[str, Any], *, target_url: str
+) -> tuple[str, str] | None:
+    item_id = item.get("id")
+    item_url = item.get("miro_url")
+    if not isinstance(item_id, str) or _CANVAS_ITEM_ID.fullmatch(item_id) is None:
+        return None
+    if not isinstance(item_url, str):
+        return None
+    try:
+        if _board_key(item_url) != _board_key(target_url):
+            return None
+    except NativeBundleError:
+        return None
+    parsed = urlsplit(item_url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if parsed.fragment or query.get("moveToWidget") != [item_id]:
+        return None
+    return item_id, _canvas_item_url(target_url, item_id)
+
+
+def _canvas_number_matches(value: Any, expected: Any) -> bool:
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, int | float)
+        and math.isfinite(value)
+        and not isinstance(expected, bool)
+        and isinstance(expected, int | float)
+        and math.isfinite(expected)
+        and value == expected
+    )
+
+
+def _canvas_inventory_candidate(
+    items: Sequence[Any],
+    *,
+    operation: Mapping[str, Any],
+    target_url: str,
+    verified_reference_digests: set[str],
+) -> tuple[str, dict[str, Any]]:
+    matches: list[tuple[str, dict[str, Any]]] = []
+    for item in items:
+        if not isinstance(item, Mapping) or item.get("type") != "diagram":
+            continue
+        data = item.get("data")
+        geometry = item.get("geometry")
+        position = item.get("position")
+        if (
+            not isinstance(data, Mapping)
+            or data.get("title") != operation["title"]
+            or data.get("code") != operation["canvas_mermaid_source"]
+            or not isinstance(geometry, Mapping)
+            or not _canvas_number_matches(geometry.get("width"), _CANVAS_DIAGRAM_WIDTH)
+            or not _canvas_number_matches(geometry.get("height"), _CANVAS_DIAGRAM_HEIGHT)
+            or not isinstance(position, Mapping)
+            or not _canvas_number_matches(position.get("x"), operation.get("x", 0))
+            or not _canvas_number_matches(position.get("y"), operation.get("y", 0))
+        ):
+            continue
+        reference = _canvas_inventory_item_url(item, target_url=target_url)
+        if reference is None:
+            continue
+        _item_id, item_url = reference
+        if _text_digest(item_url)[:24] in verified_reference_digests:
+            continue
+        matches.append(
+            (
+                item_url,
+                {
+                    "item_type_matches": True,
+                    "title_matches": True,
+                    "source_matches": True,
+                    "geometry_matches": True,
+                    "position_matches": True,
+                    "item_reference_verified": True,
+                },
+            )
+        )
+    if not matches:
+        raise MiroToolError("uncertain Miro Canvas diagram mutation has no exact candidate")
+    if len(matches) != 1:
+        raise MiroToolError("uncertain Miro Canvas diagram mutation has multiple exact candidates")
+    return matches[0]
 
 
 def _canvas_skill_text(payload: Mapping[str, Any], *, keys: tuple[str, ...], label: str) -> str:
@@ -1420,6 +1535,7 @@ async def execute_native_bundle(
         _validate_resume_receipt(
             resume_receipt,
             bundle=validated,
+            execution_operations=execution_operations,
             board_alias=board_alias,
             board_url=board_url,
             provider_resolution_digest=provider_resolution["resolution_digest"],
@@ -1438,8 +1554,8 @@ async def execute_native_bundle(
     after_context: dict[str, Any] | None = None
     mutation_started = bool(completed) or bool(resume and resume.get("mutation_attempted"))
     current_operation_id: str | None = None
-    pending_operation_id: str | None = None
-    pending_tool: str | None = None
+    pending_operation_id: str | None = resume.get("pending_operation_id") if resume else None
+    pending_tool: str | None = resume.get("pending_tool") if resume else None
     canvas_skill_evidence: dict[str, Any] | None = None
 
     async def invoke(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -1598,7 +1714,7 @@ async def execute_native_bundle(
             "skipped_count": skipped_count,
         }
 
-    async def read_complete_inventory() -> dict[str, Any]:
+    async def read_complete_inventory() -> tuple[dict[str, Any], list[Any]]:
         cursor: str | None = None
         seen_cursors: set[str] = set()
         items: list[Any] = []
@@ -1638,7 +1754,7 @@ async def execute_native_bundle(
             raise MiroToolError("Miro board inventory pagination is incomplete")
         summary = _inventory_summary({"items": items})
         summary["page_count"] = page_count
-        return summary
+        return summary, items
 
     async def read_all_table_rows(target_url: str, *, expected_count: int) -> tuple[list[Any], int]:
         rows: list[Any] = []
@@ -1864,7 +1980,7 @@ async def execute_native_bundle(
         identity_fields = ("org_id", "team_id", "user_id", "workspace_id")
         if any(not identity.get(field) for field in identity_fields):
             raise MiroToolError("Miro identity readback is incomplete")
-        before_inventory = await read_complete_inventory()
+        before_inventory, before_inventory_items = await read_complete_inventory()
         before_context = _context_summary(
             await invoke("context_explore", _base_arguments(board_url, {}))
         )
@@ -1875,6 +1991,12 @@ async def execute_native_bundle(
             if resume_item_delta < expected_resume_delta:
                 raise MiroToolError(
                     "Miro board inventory does not expose the verified resume prefix"
+                )
+            if resume.get("pending_tool") == "canvas_create_from_svg" and resume_item_delta != (
+                expected_resume_delta + 1
+            ):
+                raise MiroToolError(
+                    "uncertain Miro Canvas diagram mutation has an unexpected inventory delta"
                 )
 
         start_operation_index = len(completed)
@@ -1985,39 +2107,62 @@ async def execute_native_bundle(
                 if operation.get("native_transport") == "canvas_diagram":
                     if canvas_skill_evidence is None:  # pragma: no cover - preflight invariant
                         raise NativeBundleError("Miro Canvas skills were not preloaded")
-                    pending_operation_id = operation["operation_id"]
-                    pending_tool = "canvas_create_from_svg"
-                    if checkpoint is not None:
-                        checkpoint(build_receipt(success=False, error_code="in_progress"))
-                    mutation_started = True
-                    created = await invoke(
-                        "canvas_create_from_svg",
-                        _base_arguments(target_url, {"svg": operation["canvas_svg"]}),
+                    reconcile_pending = bool(
+                        resume is not None
+                        and resume.get("pending_operation_id") == operation["operation_id"]
+                        and resume.get("pending_tool") == "canvas_create_from_svg"
                     )
-                    preview_call_index = len(calls)
-                    if created.get("success") is not True:
-                        raise MiroToolError("Miro Canvas diagram creation did not succeed")
-                    created_count = _integer(created, "created_count")
-                    failed_items = created.get("failed_items", [])
-                    if not isinstance(failed_items, list) or failed_items or created_count != 1:
-                        raise MiroToolError("Miro Canvas diagram creation was not exact")
-                    result_svg = created.get("result_svg")
-                    if not isinstance(result_svg, str):
-                        raise MiroToolError("Miro Canvas diagram creation lacks result SVG")
-                    created_evidence = _canvas_svg_evidence(
-                        result_svg,
-                        expected_title=operation["title"],
-                        expected_source=operation["canvas_mermaid_source"],
-                        local_id=operation["canvas_local_id"],
-                        require_item_id=True,
-                    )
-                    item_id = created_evidence.pop("item_id")
-                    if not isinstance(item_id, str):  # pragma: no cover - evidence invariant
-                        raise MiroToolError("Miro Canvas diagram item id is absent")
-                    item_url = _canvas_item_url(target_url, item_id)
+                    inventory_evidence: dict[str, Any] | None = None
+                    created_evidence: dict[str, Any] | None = None
+                    if reconcile_pending:
+                        item_url, inventory_evidence = _canvas_inventory_candidate(
+                            before_inventory_items,
+                            operation=operation,
+                            target_url=target_url,
+                            verified_reference_digests={
+                                digest
+                                for completed_operation in completed
+                                if isinstance(
+                                    digest := completed_operation.get("item_reference_digest"), str
+                                )
+                            },
+                        )
+                    else:
+                        pending_operation_id = operation["operation_id"]
+                        pending_tool = "canvas_create_from_svg"
+                        if checkpoint is not None:
+                            checkpoint(build_receipt(success=False, error_code="in_progress"))
+                        mutation_started = True
+                        created = await invoke(
+                            "canvas_create_from_svg",
+                            _base_arguments(target_url, {"svg": operation["canvas_svg"]}),
+                        )
+                        preview_call_index = len(calls)
+                        if created.get("success") is not True:
+                            raise MiroToolError("Miro Canvas diagram creation did not succeed")
+                        created_count = _integer(created, "created_count")
+                        failed_items = created.get("failed_items", [])
+                        if not isinstance(failed_items, list) or failed_items or created_count != 1:
+                            raise MiroToolError("Miro Canvas diagram creation was not exact")
+                        result_svg = created.get("result_svg")
+                        if not isinstance(result_svg, str):
+                            raise MiroToolError("Miro Canvas diagram creation lacks result SVG")
+                        created_evidence = _canvas_svg_evidence(
+                            result_svg,
+                            expected_title=operation["title"],
+                            expected_source=operation["canvas_mermaid_source"],
+                            local_id=operation["canvas_local_id"],
+                            require_item_id=True,
+                        )
+                        item_id = created_evidence.pop("item_id")
+                        if not isinstance(item_id, str):  # pragma: no cover - evidence invariant
+                            raise MiroToolError("Miro Canvas diagram item id is absent")
+                        item_url = _canvas_item_url(target_url, item_id)
                     context = await invoke("context_get", _base_arguments(item_url, {}))
                     context_evidence = _context_diagram_evidence(
-                        context, expected_title=operation["title"]
+                        context,
+                        expected_title=operation["title"],
+                        expected_source=operation["canvas_mermaid_source"],
                     )
                     svg_schema_available = (
                         CANVAS_DIAGRAM_READBACK_TOOL in schemas
@@ -2040,6 +2185,18 @@ async def execute_native_bundle(
                             require_item_id=False,
                         )
                         svg_readback_evidence.pop("item_id", None)
+                    if created_evidence is None:
+                        created_evidence = (
+                            dict(svg_readback_evidence)
+                            if svg_readback_evidence is not None
+                            else {
+                                "svg_digest": None,
+                                "title_matches": True,
+                                "diagram_semantics": True,
+                                "geometry_matches": True,
+                                "source_matches": True,
+                            }
+                        )
                     readback = {
                         "diagram_type": operation["diagram_type"],
                         "native_transport": "canvas_diagram",
@@ -2051,6 +2208,8 @@ async def execute_native_bundle(
                         "canvas_svg_verified": svg_readback_evidence is not None,
                         "canvas_svg_readback": svg_readback_evidence,
                         "item_reference_derived": True,
+                        "inventory_reconciliation": inventory_evidence,
+                        "reconciled_existing": reconcile_pending,
                         **canvas_skill_evidence,
                     }
                 else:
@@ -2564,7 +2723,7 @@ async def execute_native_bundle(
             if checkpoint is not None:
                 checkpoint(build_receipt(success=False, error_code="in_progress"))
 
-        after_inventory = await read_complete_inventory()
+        after_inventory, _after_inventory_items = await read_complete_inventory()
         after_context = _context_summary(
             await invoke("context_explore", _base_arguments(board_url, {}))
         )
