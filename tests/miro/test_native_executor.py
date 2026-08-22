@@ -610,10 +610,44 @@ def test_document_readback_rejects_semantic_html_drift() -> None:
     ) is None
 
 
-def test_document_readback_rejects_unsupported_markdown_canonicalization() -> None:
+def test_document_readback_accepts_live_bullet_list_canonicalization() -> None:
+    expected = (
+        "# Titel\n\n## Elemente\n\n"
+        "- **Quelle** (repository)\n"
+        "- `a` — liest → `b`"
+    )
+    provider = (
+        "<h1>Titel</h1>"
+        "<h2>Elemente</h2>"
+        '<ol><li data-list="bullet"><strong>Quelle</strong> (repository)</li>'
+        '<li data-list="bullet">`a` — liest → `b`</li></ol>'
+    )
+    assert _document_content_match_mode(provider, expected) == "markdown_to_html"
+
+
+def test_document_readback_rejects_unproven_list_html_variants() -> None:
+    expected = "# Titel\n\n- Erster Punkt"
     assert _document_content_match_mode(
-        "<h1>Titel</h1><p>Erster Punkt</p>", "# Titel\n\n- Erster Punkt"
+        "<h1>Titel</h1><ol><li>Erster Punkt</li></ol>", expected
     ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="number">Erster Punkt</li></ol>', expected
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ul><li data-list="bullet">Erster Punkt</li></ul>', expected
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="bullet" class="provider">Erster Punkt</li></ol>',
+        expected,
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="bullet">Erster Punkt</li></ol>',
+        "# Titel\n\n* Erster Punkt",
+    ) is None
+
+
+def test_document_readback_keeps_unproven_inline_code_html_fail_closed() -> None:
+    assert _document_content_match_mode("<p><code>id</code></p>", "`id`") is None
 
 
 def test_current_dsl_conversion_is_deterministic_and_preserves_semantics() -> None:

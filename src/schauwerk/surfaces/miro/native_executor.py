@@ -85,6 +85,9 @@ def _normalized_text(value: str) -> str:
 
 _DOCUMENT_BLOCK_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "p"})
 _DOCUMENT_INLINE_TAGS = frozenset({"strong", "em"})
+_DOCUMENT_LIST_TAG = "ol"
+_DOCUMENT_LIST_ITEM_TAG = "li"
+_DOCUMENT_LIST_ITEM_TOKEN = "li:bullet"
 _DOCUMENT_UNSUPPORTED_BLOCK = re.compile(r"^(?:>|```|~~~|[-+*] |\d+[.)] )")
 _DOCUMENT_MARKDOWN_LINK = re.compile(r"!?\[[^]\n]+\]\([^\n)]+\)")
 _DOCUMENT_INLINE_HTML = re.compile(r"<[A-Za-z!/][^>]*>")
@@ -92,8 +95,7 @@ _DOCUMENT_INLINE_HTML = re.compile(r"<[A-Za-z!/][^>]*>")
 
 def _document_inline_tokens(value: str) -> list[tuple[str, str]] | None:
     if (
-        "`" in value
-        or "__" in value
+        "__" in value
         or _DOCUMENT_MARKDOWN_LINK.search(value) is not None
         or _DOCUMENT_INLINE_HTML.search(value) is not None
     ):
@@ -132,7 +134,21 @@ def _document_markdown_tokens(value: str) -> list[tuple[str, str]] | None:
         return None
     tokens: list[tuple[str, str]] = []
     for block in normalized.split("\n\n"):
-        if not block or "\n" in block or _DOCUMENT_UNSUPPORTED_BLOCK.match(block):
+        if not block:
+            return None
+        lines = block.split("\n")
+        if all(line.startswith("- ") and len(line) > 2 for line in lines):
+            tokens.append(("start", _DOCUMENT_LIST_TAG))
+            for line in lines:
+                inline = _document_inline_tokens(line[2:])
+                if inline is None:
+                    return None
+                tokens.append(("start", _DOCUMENT_LIST_ITEM_TOKEN))
+                tokens.extend(inline)
+                tokens.append(("end", _DOCUMENT_LIST_ITEM_TOKEN))
+            tokens.append(("end", _DOCUMENT_LIST_TAG))
+            continue
+        if "\n" in block or _DOCUMENT_UNSUPPORTED_BLOCK.match(block):
             return None
         heading = re.fullmatch(r"(#{1,6}) (.+)", block)
         tag = f"h{len(heading.group(1))}" if heading is not None else "p"
@@ -154,30 +170,51 @@ class _DocumentHtmlTokenParser(HTMLParser):
         self.valid = True
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if attrs or tag not in _DOCUMENT_BLOCK_TAGS | _DOCUMENT_INLINE_TAGS:
-            self.valid = False
-            return
+        token_tag = tag
         if tag in _DOCUMENT_BLOCK_TAGS:
-            if self.stack:
+            if attrs or self.stack:
                 self.valid = False
                 return
-        elif not self.stack or self.stack[0] not in _DOCUMENT_BLOCK_TAGS:
+        elif tag == _DOCUMENT_LIST_TAG:
+            if attrs or self.stack:
+                self.valid = False
+                return
+        elif tag == _DOCUMENT_LIST_ITEM_TAG:
+            if attrs != [("data-list", "bullet")] or self.stack != [_DOCUMENT_LIST_TAG]:
+                self.valid = False
+                return
+            token_tag = _DOCUMENT_LIST_ITEM_TOKEN
+        elif tag in _DOCUMENT_INLINE_TAGS:
+            if (
+                attrs
+                or not self.stack
+                or self.stack[-1] == _DOCUMENT_LIST_TAG
+                or self.stack[0] not in _DOCUMENT_BLOCK_TAGS | {_DOCUMENT_LIST_TAG}
+            ):
+                self.valid = False
+                return
+        else:
             self.valid = False
             return
         self.stack.append(tag)
-        self.tokens.append(("start", tag))
+        self.tokens.append(("start", token_tag))
 
     def handle_endtag(self, tag: str) -> None:
         if not self.stack or self.stack[-1] != tag:
             self.valid = False
             return
         self.stack.pop()
-        self.tokens.append(("end", tag))
+        token_tag = _DOCUMENT_LIST_ITEM_TOKEN if tag == _DOCUMENT_LIST_ITEM_TAG else tag
+        self.tokens.append(("end", token_tag))
 
     def handle_data(self, data: str) -> None:
         if not data:
             return
         if not self.stack:
+            if data.strip():
+                self.valid = False
+            return
+        if self.stack == [_DOCUMENT_LIST_TAG]:
             if data.strip():
                 self.valid = False
             return
