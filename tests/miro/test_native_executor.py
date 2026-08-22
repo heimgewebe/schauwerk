@@ -380,9 +380,15 @@ def pending_canvas_receipt(bundle: dict, *, baseline_count: int = 0) -> dict:
 
 
 class CurrentCanvasMiro(FakeMiro):
-    def __init__(self, *, context_title: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        context_title: str | None = None,
+        context_metadata: dict[str, object] | None = None,
+    ) -> None:
         super().__init__()
         self.context_title = context_title
+        self.context_metadata = copy.deepcopy(context_metadata or {})
         self.canvas_svg: str | None = None
         self.canvas_svgs: dict[str, str] = {}
 
@@ -429,6 +435,7 @@ class CurrentCanvasMiro(FakeMiro):
                     }
                     if self.context_title is not None:
                         result["title"] = self.context_title
+                    result.update(copy.deepcopy(self.context_metadata))
                     return result
         if tool == "canvas_read_as_svg":
             self.calls.append((tool, copy.deepcopy(arguments)))
@@ -446,16 +453,22 @@ class CanvasResumeMiro(CurrentCanvasMiro):
         *,
         candidates: list[dict] | None = None,
         interrupt_context_once: bool = False,
+        interrupt_tool_once: str | None = None,
         paginate_inventory: bool = False,
     ) -> None:
         super().__init__()
         self.bundle = bundle
         self.candidates = copy.deepcopy(candidates or [])
         self.interrupt_context_once = interrupt_context_once
+        self.interrupt_tool_once = interrupt_tool_once
         self.paginate_inventory = paginate_inventory
         self.document_created = False
 
     async def __call__(self, tool: str, arguments: dict) -> dict:
+        if tool == self.interrupt_tool_once:
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            self.interrupt_tool_once = None
+            raise MiroToolError(f"interrupted {tool}")
         if tool == "board_list_items":
             self.calls.append((tool, copy.deepcopy(arguments)))
             items = copy.deepcopy(self.candidates)
@@ -640,6 +653,32 @@ def test_canvas_context_explicit_conflicting_title_fails() -> None:
     assert "canvas_read_as_svg" not in called
 
 
+def test_canvas_context_ignores_foreign_nested_metadata_names() -> None:
+    bundle = current_diagram_bundle()
+    fake = CurrentCanvasMiro(
+        context_title=bundle["operations"][0]["title"],
+        context_metadata={
+            "creator": {"name": "Provider User"},
+            "container": {"name": "Provider Space"},
+        },
+    )
+
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=canvas_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+        )
+    )
+
+    context = receipt["completed_operations"][0]["readback"]["context"]
+    assert context["title_exposed"] is True
+    assert context["title_matches"] is True
+    assert context["source_matches"] is True
+
+
 def test_pending_canvas_resume_adopts_exact_candidate_and_continues() -> None:
     bundle = canvas_resume_bundle()
     tools = [*canvas_tools(), *catalogue("doc_create", "doc_get")]
@@ -704,6 +743,79 @@ def test_pending_canvas_resume_adopts_exact_candidate_and_continues() -> None:
     assert BOARD_URL not in encoded
     assert "Wissenskarte" not in encoded
     assert "flowchart LR" not in encoded
+
+
+@pytest.mark.parametrize(
+    "interrupt_tool",
+    [
+        "user_who_am_i",
+        "canvas_get_canvas_composer_skill",
+        "context_get",
+        "canvas_read_as_svg",
+    ],
+)
+def test_pending_canvas_resume_preserves_markers_across_transient_reconciliation_failures(
+    interrupt_tool: str,
+) -> None:
+    bundle = canvas_resume_bundle()
+    tools = [*canvas_tools(), *catalogue("doc_create", "doc_get")]
+    fake = CanvasResumeMiro(
+        bundle,
+        interrupt_context_once=True,
+    )
+    checkpoints: list[dict] = []
+
+    with pytest.raises(NativeExecutionError, match="interrupted Canvas context"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+                checkpoint=checkpoints.append,
+            )
+        )
+
+    initial_resume = checkpoints[-1]
+    fake.interrupt_tool_once = interrupt_tool
+    with pytest.raises(NativeExecutionError, match=f"interrupted {interrupt_tool}"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=bundle,
+                resume_receipt=initial_resume,
+                checkpoint=checkpoints.append,
+            )
+        )
+
+    failed_resume = checkpoints[-1]
+    assert failed_resume["pending_operation_id"] == "beziehungsarbeit-wissenskarte"
+    assert failed_resume["pending_tool"] == "canvas_create_from_svg"
+    assert failed_resume["completed_operations"] == []
+
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=tools,
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=bundle,
+            resume_receipt=failed_resume,
+            checkpoint=checkpoints.append,
+        )
+    )
+
+    called = [tool for tool, _arguments in fake.calls]
+    assert called.count("canvas_create_from_svg") == 1
+    assert result["success"] is True
+    assert result["completed_operation_count"] == 2
+    assert result["pending_operation_id"] is None
+    assert result["pending_tool"] is None
+    assert result["completed_operations"][0]["readback"]["reconciled_existing"] is True
 
 
 @pytest.mark.parametrize(

@@ -859,6 +859,20 @@ def _context_diagram_evidence(
         if depth > 12 or scalar_count > 10_000:
             raise MiroToolError("Miro diagram context readback exceeds the safety limit")
         if isinstance(value, Mapping):
+            direct_source_match = any(
+                str(nested_key).casefold() in {"content", "text", "description", "markdown"}
+                and isinstance(nested, str)
+                and _normalized_text(nested) == _normalized_text(expected_source)
+                for nested_key, nested in value.items()
+            )
+            if direct_source_match:
+                titles.extend(
+                    nested.strip()
+                    for nested_key, nested in value.items()
+                    if str(nested_key).casefold() in {"title", "data-title", "name"}
+                    and isinstance(nested, str)
+                    and nested.strip()
+                )
             for nested_key, nested in value.items():
                 walk(nested, key=str(nested_key).casefold(), depth=depth + 1)
             return
@@ -869,9 +883,7 @@ def _context_diagram_evidence(
         scalar_count += 1
         if not isinstance(value, str) or not value.strip():
             return
-        if key in {"title", "data-title", "name"}:
-            titles.append(value.strip())
-        elif key in {"type", "data-type", "kind", "diagram_type", "notation"}:
+        if key in {"type", "data-type", "kind", "diagram_type", "notation"}:
             semantic_types.append(value.strip().casefold())
         elif key in {"content", "text", "description", "markdown"}:
             contents.append(value)
@@ -1542,8 +1554,8 @@ async def execute_native_bundle(
     after_context: dict[str, Any] | None = None
     mutation_started = bool(completed) or bool(resume and resume.get("mutation_attempted"))
     current_operation_id: str | None = None
-    pending_operation_id: str | None = None
-    pending_tool: str | None = None
+    pending_operation_id: str | None = resume.get("pending_operation_id") if resume else None
+    pending_tool: str | None = resume.get("pending_tool") if resume else None
     canvas_skill_evidence: dict[str, Any] | None = None
 
     async def invoke(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
