@@ -14,6 +14,7 @@ import stat
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from html.parser import HTMLParser
 from importlib.resources import files
 from pathlib import Path
 from typing import Any
@@ -80,6 +81,183 @@ def _text_digest(value: str) -> str:
 
 def _normalized_text(value: str) -> str:
     return value.replace("\r\n", "\n").replace("\r", "\n").rstrip()
+
+
+_DOCUMENT_BLOCK_TAGS = frozenset({"h1", "h2", "h3", "h4", "h5", "h6", "p"})
+_DOCUMENT_INLINE_TAGS = frozenset({"strong", "em"})
+_DOCUMENT_LIST_TAG = "ol"
+_DOCUMENT_LIST_ITEM_TAG = "li"
+_DOCUMENT_LIST_ITEM_TOKEN = "li:bullet"
+_DOCUMENT_UNSUPPORTED_BLOCK = re.compile(r"^(?:>|```|~~~|[-+*] |\d+[.)] )")
+_DOCUMENT_MARKDOWN_LINK = re.compile(r"!?\[[^]\n]+\]\([^\n)]+\)")
+_DOCUMENT_INLINE_HTML = re.compile(r"<[A-Za-z!/][^>]*>")
+
+
+def _document_inline_tokens(value: str) -> list[tuple[str, str]] | None:
+    if (
+        "__" in value
+        or _DOCUMENT_MARKDOWN_LINK.search(value) is not None
+        or _DOCUMENT_INLINE_HTML.search(value) is not None
+    ):
+        return None
+    tokens: list[tuple[str, str]] = []
+    cursor = 0
+    while cursor < len(value):
+        if value.startswith("**", cursor):
+            end = value.find("**", cursor + 2)
+            if end < 0 or end == cursor + 2 or "*" in value[cursor + 2 : end]:
+                return None
+            tokens.extend(
+                [("start", "strong"), ("text", value[cursor + 2 : end]), ("end", "strong")]
+            )
+            cursor = end + 2
+            continue
+        if value[cursor] == "*":
+            end = value.find("*", cursor + 1)
+            if end < 0 or end == cursor + 1 or "*" in value[cursor + 1 : end]:
+                return None
+            tokens.extend(
+                [("start", "em"), ("text", value[cursor + 1 : end]), ("end", "em")]
+            )
+            cursor = end + 1
+            continue
+        next_star = value.find("*", cursor)
+        end = len(value) if next_star < 0 else next_star
+        tokens.append(("text", value[cursor:end]))
+        cursor = end
+    return tokens
+
+
+def _document_markdown_tokens(value: str) -> list[tuple[str, str]] | None:
+    normalized = _normalized_text(value)
+    if not normalized or "\t" in normalized:
+        return None
+    tokens: list[tuple[str, str]] = []
+    for block in normalized.split("\n\n"):
+        if not block:
+            return None
+        lines = block.split("\n")
+        if all(line.startswith("- ") and len(line) > 2 for line in lines):
+            tokens.append(("start", _DOCUMENT_LIST_TAG))
+            for line in lines:
+                inline = _document_inline_tokens(line[2:])
+                if inline is None:
+                    return None
+                tokens.append(("start", _DOCUMENT_LIST_ITEM_TOKEN))
+                tokens.extend(inline)
+                tokens.append(("end", _DOCUMENT_LIST_ITEM_TOKEN))
+            tokens.append(("end", _DOCUMENT_LIST_TAG))
+            continue
+        if "\n" in block or _DOCUMENT_UNSUPPORTED_BLOCK.match(block):
+            return None
+        heading = re.fullmatch(r"(#{1,6}) (.+)", block)
+        tag = f"h{len(heading.group(1))}" if heading is not None else "p"
+        content = heading.group(2) if heading is not None else block
+        inline = _document_inline_tokens(content)
+        if inline is None:
+            return None
+        tokens.append(("start", tag))
+        tokens.extend(inline)
+        tokens.append(("end", tag))
+    return tokens
+
+
+class _DocumentHtmlTokenParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.tokens: list[tuple[str, str]] = []
+        self.stack: list[str] = []
+        self.valid = True
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        token_tag = tag
+        if tag in _DOCUMENT_BLOCK_TAGS:
+            if attrs or self.stack:
+                self.valid = False
+                return
+        elif tag == _DOCUMENT_LIST_TAG:
+            if attrs or self.stack:
+                self.valid = False
+                return
+        elif tag == _DOCUMENT_LIST_ITEM_TAG:
+            if attrs != [("data-list", "bullet")] or self.stack != [_DOCUMENT_LIST_TAG]:
+                self.valid = False
+                return
+            token_tag = _DOCUMENT_LIST_ITEM_TOKEN
+        elif tag in _DOCUMENT_INLINE_TAGS:
+            if (
+                attrs
+                or not self.stack
+                or self.stack[-1] == _DOCUMENT_LIST_TAG
+                or self.stack[0] not in _DOCUMENT_BLOCK_TAGS | {_DOCUMENT_LIST_TAG}
+            ):
+                self.valid = False
+                return
+        else:
+            self.valid = False
+            return
+        self.stack.append(tag)
+        self.tokens.append(("start", token_tag))
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self.stack or self.stack[-1] != tag:
+            self.valid = False
+            return
+        self.stack.pop()
+        token_tag = _DOCUMENT_LIST_ITEM_TOKEN if tag == _DOCUMENT_LIST_ITEM_TAG else tag
+        self.tokens.append(("end", token_tag))
+
+    def handle_data(self, data: str) -> None:
+        if not data:
+            return
+        if not self.stack:
+            if data.strip():
+                self.valid = False
+            return
+        if self.stack == [_DOCUMENT_LIST_TAG]:
+            if data.strip():
+                self.valid = False
+            return
+        self.tokens.append(("text", data))
+
+    def handle_comment(self, data: str) -> None:
+        self.valid = False
+
+    def handle_decl(self, decl: str) -> None:
+        self.valid = False
+
+    def handle_pi(self, data: str) -> None:
+        self.valid = False
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.valid = False
+
+
+def _document_html_tokens(value: str) -> list[tuple[str, str]] | None:
+    parser = _DocumentHtmlTokenParser()
+    try:
+        parser.feed(value)
+        parser.close()
+    except ValueError:  # pragma: no cover - defensive
+        return None
+    if not parser.valid or parser.stack:
+        return None
+    return parser.tokens
+
+
+def _document_content_match_mode(value: str, expected: str) -> str | None:
+    if _normalized_text(value) == _normalized_text(expected):
+        return "exact"
+    expected_tokens = _document_markdown_tokens(expected)
+    if expected_tokens is None:
+        return None
+    if _document_html_tokens(value) != expected_tokens:
+        return None
+    return "markdown_to_html"
+
+
+def _document_content_matches(value: str, expected: str) -> bool:
+    return _document_content_match_mode(value, expected) is not None
 
 
 def _diagram_reference(value: str, *, prefix: str) -> str:
@@ -707,7 +885,14 @@ def _validate_resume_receipt(
             and pending_execution_operation.get("native_transport") == "canvas_diagram"
             and pending_tool == "canvas_create_from_svg"
         )
-        if not reconciliable_comment and not reconciliable_canvas_diagram:
+        reconciliable_document = (
+            pending_operation["kind"] == "document" and pending_tool == "doc_create"
+        )
+        if (
+            not reconciliable_comment
+            and not reconciliable_canvas_diagram
+            and not reconciliable_document
+        ):
             raise NativeBundleError(
                 "native resume receipt requires manual reconciliation for an uncertain mutation"
             )
@@ -1017,6 +1202,77 @@ def _canvas_inventory_candidate(
         raise MiroToolError("uncertain Miro Canvas diagram mutation has no exact candidate")
     if len(matches) != 1:
         raise MiroToolError("uncertain Miro Canvas diagram mutation has multiple exact candidates")
+    return matches[0]
+
+
+def _document_inventory_item_url(
+    item: Mapping[str, Any], *, target_url: str
+) -> str | None:
+    item_id = item.get("id")
+    item_url = item.get("miro_url")
+    if not isinstance(item_id, str) or not item_id or any(ord(ch) < 32 for ch in item_id):
+        return None
+    if not isinstance(item_url, str):
+        return None
+    try:
+        if _board_key(item_url) != _board_key(target_url):
+            return None
+    except NativeBundleError:
+        return None
+    parsed = urlsplit(item_url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if parsed.fragment or query.get("moveToWidget") != [item_id]:
+        return None
+    return item_url
+
+
+def _document_inventory_candidate(
+    items: Sequence[Any],
+    *,
+    operation: Mapping[str, Any],
+    target_url: str,
+    verified_reference_digests: set[str],
+) -> tuple[str, dict[str, Any]]:
+    matches: list[tuple[str, dict[str, Any]]] = []
+    for item in items:
+        if not isinstance(item, Mapping) or item.get("type") != "doc_format":
+            continue
+        data = item.get("data")
+        position = item.get("position")
+        if not isinstance(data, Mapping) or not isinstance(position, Mapping):
+            continue
+        content = data.get("content")
+        if not isinstance(content, str):
+            continue
+        match_mode = _document_content_match_mode(content, operation["content"])
+        if match_mode is None:
+            continue
+        if match_mode == "markdown_to_html" and data.get("contentType") != "html":
+            continue
+        if (
+            not _canvas_number_matches(position.get("x"), operation.get("x", 0))
+            or not _canvas_number_matches(position.get("y"), operation.get("y", 0))
+        ):
+            continue
+        item_url = _document_inventory_item_url(item, target_url=target_url)
+        if item_url is None or _text_digest(item_url)[:24] in verified_reference_digests:
+            continue
+        matches.append(
+            (
+                item_url,
+                {
+                    "item_type_matches": True,
+                    "content_matches": True,
+                    "content_match_mode": match_mode,
+                    "position_matches": True,
+                    "item_reference_verified": True,
+                },
+            )
+        )
+    if not matches:
+        raise MiroToolError("uncertain Miro document mutation has no exact candidate")
+    if len(matches) != 1:
+        raise MiroToolError("uncertain Miro document mutation has multiple exact candidates")
     return matches[0]
 
 
@@ -2276,33 +2532,59 @@ async def execute_native_bundle(
                     }
 
             elif kind == "document":
-                pending_operation_id = operation["operation_id"]
-                pending_tool = "doc_create"
-                if checkpoint is not None:
-                    checkpoint(build_receipt(success=False, error_code="in_progress"))
-                mutation_started = True
-                created = await invoke(
-                    "doc_create",
-                    _base_arguments(
-                        target_url,
-                        {
-                            "content": operation["content"],
-                            **_operation_position(operation),
-                        },
-                    ),
+                reconcile_pending = bool(
+                    resume is not None
+                    and resume.get("pending_operation_id") == operation["operation_id"]
+                    and resume.get("pending_tool") == "doc_create"
                 )
-                preview_call_index = len(calls)
-                item_url = _item_url(created, "doc_create")
+                inventory_evidence: dict[str, Any] | None = None
+                reconciled_existing = False
+                if reconcile_pending:
+                    item_url, inventory_evidence = _document_inventory_candidate(
+                        before_inventory_items,
+                        operation=operation,
+                        target_url=target_url,
+                        verified_reference_digests={
+                            digest
+                            for completed_operation in completed
+                            if isinstance(
+                                digest := completed_operation.get("item_reference_digest"), str
+                            )
+                        },
+                    )
+                    reconciled_existing = True
+                else:
+                    pending_operation_id = operation["operation_id"]
+                    pending_tool = "doc_create"
+                    if checkpoint is not None:
+                        checkpoint(build_receipt(success=False, error_code="in_progress"))
+                    mutation_started = True
+                    created = await invoke(
+                        "doc_create",
+                        _base_arguments(
+                            target_url,
+                            {
+                                "content": operation["content"],
+                                **_operation_position(operation),
+                            },
+                        ),
+                    )
+                    preview_call_index = len(calls)
+                    item_url = _item_url(created, "doc_create")
                 document = await invoke("doc_get", _base_arguments(item_url, {}))
                 content = document.get("content")
                 if not isinstance(content, str):
                     raise MiroToolError("Miro document readback lacks content")
-                if _normalized_text(content) != _normalized_text(operation["content"]):
+                match_mode = _document_content_match_mode(content, operation["content"])
+                if match_mode is None:
                     raise MiroToolError("Miro document readback does not match submitted content")
                 readback = {
                     "content_digest": _text_digest(content),
                     "content_matches": True,
+                    "content_match_mode": match_mode,
                     "content_version": _integer(document, "content_version"),
+                    "inventory_reconciliation": inventory_evidence,
+                    "reconciled_existing": reconciled_existing,
                 }
 
             elif kind == "table":

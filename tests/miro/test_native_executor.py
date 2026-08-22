@@ -24,6 +24,7 @@ from schauwerk.surfaces.miro.native_executor import (
     NativeBundleError,
     NativeExecutionError,
     _canvas_svg_evidence,
+    _document_content_match_mode,
     compile_diagram_dsl_to_mermaid,
     execute_native_bundle,
     load_native_bundle,
@@ -528,6 +529,127 @@ class CanvasResumeMiro(CurrentCanvasMiro):
         return await super().__call__(tool, arguments)
 
 
+class DocumentResumeMiro(CanvasResumeMiro):
+    def __init__(self, bundle: dict, *, duplicate_document: bool = False) -> None:
+        super().__init__(bundle)
+        self.interrupt_doc_get_once = True
+        self.duplicate_document = duplicate_document
+
+    def _document_html(self) -> str:
+        content = self.bundle["operations"][1]["content"]
+        assert content == "# Fortsetzung\n\nNach verifizierter Wissenskarte."
+        return "<h1>Fortsetzung</h1><p>Nach verifizierter Wissenskarte.</p>"
+
+    def _document_item(self, item_id: str) -> dict:
+        operation = self.bundle["operations"][1]
+        return {
+            "data": {
+                "content": self._document_html(),
+                "contentType": "html",
+                "contentVersion": 0,
+                "html": self._document_html(),
+            },
+            "id": item_id,
+            "miro_url": f"{BOARD_URL}?moveToWidget={item_id}",
+            "position": {"x": operation["x"], "y": operation["y"]},
+            "type": "doc_format",
+        }
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        if tool == "board_list_items" and self.document_created:
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            items = [*copy.deepcopy(self.candidates), self._document_item("doc")]
+            if self.duplicate_document:
+                items.append(self._document_item("doc-duplicate"))
+            return {
+                "data": items,
+                "total": len(items),
+                "has_more": False,
+                "nextCursor": None,
+            }
+        if tool == "doc_get":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            if self.interrupt_doc_get_once:
+                self.interrupt_doc_get_once = False
+                raise MiroToolError("interrupted document readback")
+            return {
+                "miro_url": arguments["miro_url"],
+                "content": self._document_html(),
+                "content_version": 0,
+                "success": True,
+                "message": "ok",
+            }
+        return await super().__call__(tool, arguments)
+
+
+def test_document_readback_accepts_live_markdown_to_html_canonicalization() -> None:
+    expected = "# Titel\n\n**Quelle:** Text mit *Betonung*.\n\n## Abschnitt\n\nInhalt."
+    provider = (
+        "<h1>Titel</h1>"
+        "<p><strong>Quelle:</strong> Text mit <em>Betonung</em>.</p>"
+        "<h2>Abschnitt</h2>"
+        "<p>Inhalt.</p>"
+    )
+    assert _document_content_match_mode(provider, expected) == "markdown_to_html"
+
+
+def test_document_readback_rejects_semantic_html_drift() -> None:
+    expected = "# Titel\n\n**Quelle:** Text mit *Betonung*."
+    assert _document_content_match_mode(
+        "<h2>Titel</h2><p><strong>Quelle:</strong> Text mit <em>Betonung</em>.</p>",
+        expected,
+    ) is None
+    assert _document_content_match_mode(
+        "<h1>Titel</h1><p>Quelle: Text mit <em>Betonung</em>.</p>",
+        expected,
+    ) is None
+    assert _document_content_match_mode(
+        '<h1 class="provider">Titel</h1><p><strong>Quelle:</strong> Text mit '
+        "<em>Betonung</em>.</p>",
+        expected,
+    ) is None
+
+
+def test_document_readback_accepts_live_bullet_list_canonicalization() -> None:
+    expected = (
+        "# Titel\n\n## Elemente\n\n"
+        "- **Quelle** (repository)\n"
+        "- `a` — liest → `b`"
+    )
+    provider = (
+        "<h1>Titel</h1>"
+        "<h2>Elemente</h2>"
+        '<ol><li data-list="bullet"><strong>Quelle</strong> (repository)</li>'
+        '<li data-list="bullet">`a` — liest → `b`</li></ol>'
+    )
+    assert _document_content_match_mode(provider, expected) == "markdown_to_html"
+
+
+def test_document_readback_rejects_unproven_list_html_variants() -> None:
+    expected = "# Titel\n\n- Erster Punkt"
+    assert _document_content_match_mode(
+        "<h1>Titel</h1><ol><li>Erster Punkt</li></ol>", expected
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="number">Erster Punkt</li></ol>', expected
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ul><li data-list="bullet">Erster Punkt</li></ul>', expected
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="bullet" class="provider">Erster Punkt</li></ol>',
+        expected,
+    ) is None
+    assert _document_content_match_mode(
+        '<h1>Titel</h1><ol><li data-list="bullet">Erster Punkt</li></ol>',
+        "# Titel\n\n* Erster Punkt",
+    ) is None
+
+
+def test_document_readback_keeps_unproven_inline_code_html_fail_closed() -> None:
+    assert _document_content_match_mode("<p><code>id</code></p>", "`id`") is None
+
+
 def test_current_dsl_conversion_is_deterministic_and_preserves_semantics() -> None:
     operation = current_diagram_bundle()["operations"][0]
 
@@ -819,6 +941,73 @@ def test_pending_canvas_resume_adopts_exact_candidate_and_continues() -> None:
     assert BOARD_URL not in encoded
     assert "Wissenskarte" not in encoded
     assert "flowchart LR" not in encoded
+
+
+def test_pending_document_resume_adopts_exact_html_candidate_without_second_create() -> None:
+    bundle = canvas_resume_bundle()
+    tools = [*canvas_tools(), *catalogue("doc_create", "doc_get")]
+    fake = DocumentResumeMiro(bundle)
+    checkpoints: list[dict] = []
+    with pytest.raises(NativeExecutionError, match="interrupted document readback"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake, tool_catalogue=tools, board_alias="native-test",
+                board_url=BOARD_URL, bundle=bundle, checkpoint=checkpoints.append,
+            )
+        )
+    resume = checkpoints[-1]
+    assert resume["pending_operation_id"] == "resume-followup"
+    assert resume["pending_tool"] == "doc_create"
+    assert [tool for tool, _ in fake.calls].count("doc_create") == 1
+    resume_call_count = len(fake.calls)
+    result = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake, tool_catalogue=tools, board_alias="native-test",
+            board_url=BOARD_URL, bundle=bundle, resume_receipt=resume,
+            checkpoint=checkpoints.append,
+        )
+    )
+    resumed_tools = [tool for tool, _arguments in fake.calls[resume_call_count:]]
+    assert "doc_create" not in resumed_tools
+    assert [tool for tool, _ in fake.calls].count("doc_create") == 1
+    assert result["success"] is True
+    document_readback = result["completed_operations"][1]["readback"]
+    assert document_readback["reconciled_existing"] is True
+    assert document_readback["content_match_mode"] == "markdown_to_html"
+    assert document_readback["inventory_reconciliation"] == {
+        "item_type_matches": True,
+        "content_matches": True,
+        "content_match_mode": "markdown_to_html",
+        "position_matches": True,
+        "item_reference_verified": True,
+    }
+
+
+def test_pending_document_resume_rejects_multiple_exact_candidates_without_create() -> None:
+    bundle = canvas_resume_bundle()
+    tools = [*canvas_tools(), *catalogue("doc_create", "doc_get")]
+    fake = DocumentResumeMiro(bundle, duplicate_document=True)
+    checkpoints: list[dict] = []
+    with pytest.raises(NativeExecutionError, match="interrupted document readback"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake, tool_catalogue=tools, board_alias="native-test",
+                board_url=BOARD_URL, bundle=bundle, checkpoint=checkpoints.append,
+            )
+        )
+    resume = checkpoints[-1]
+    create_count = [tool for tool, _ in fake.calls].count("doc_create")
+    with pytest.raises(NativeExecutionError, match="multiple exact candidates"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake, tool_catalogue=tools, board_alias="native-test",
+                board_url=BOARD_URL, bundle=bundle, resume_receipt=resume,
+                checkpoint=checkpoints.append,
+            )
+        )
+    assert [tool for tool, _ in fake.calls].count("doc_create") == create_count == 1
+    assert checkpoints[-1]["pending_operation_id"] == "resume-followup"
+    assert checkpoints[-1]["pending_tool"] == "doc_create"
 
 
 @pytest.mark.parametrize(
