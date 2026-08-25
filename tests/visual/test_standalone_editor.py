@@ -164,6 +164,16 @@ def test_build_canonicalizes_ascii_hostname_case(tmp_path: Path) -> None:
     assert _js_string_constant(app_js, "EDITOR_ORIGIN") == manifest["editor_origin"]
 
 
+def test_build_allows_numeric_prefix_when_dns_label_is_unambiguous(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="https://1.2.3.example:8443",
+    )
+
+    assert manifest["editor_origin"] == "https://1.2.3.example:8443"
+
+
 def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     manifest = build_standalone_editor(
@@ -202,6 +212,9 @@ def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
         "http://[::1%25eth0]:8878",
         "http://[127.0.0.1]:8878",
         "https://drawio.example.org.:8443",
+        "https://[v1.fe80]:8443",
+        "https://1.2.3.4.5:8443",
+        "https://example.1:8443",
     ],
 )
 def test_build_rejects_unsafe_editor_origins_before_writing(

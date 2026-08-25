@@ -79,11 +79,11 @@ def _normalize_editor_origin(value: str) -> str:
         ip = ipaddress.ip_address(host)
     except ValueError:
         ip = None
-        legacy_ipv4 = re.fullmatch(
-            r"(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+)){0,3}",
-            host,
-        )
-        if legacy_ipv4 is not None:
+        if parsed.netloc.startswith("["):
+            raise StandaloneEditorError("bracketed editor origin host must be IPv6")
+        last_label = host.rsplit(".", 1)[-1]
+        numeric_last_label = re.fullmatch(r"(?:[0-9]+|0x[0-9a-f]+)", last_label)
+        if numeric_last_label is not None:
             raise StandaloneEditorError("editor origin contains an ambiguous numeric hostname")
         if host != "localhost" and re.fullmatch(
             r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host
