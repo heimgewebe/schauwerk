@@ -25,7 +25,8 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - JSON Canvas wird clientseitig in ein minimales `mxGraphModel` übersetzt;
 - draw.io/XML wird direkt geladen;
 - Autosave-/Save-Ereignisse liefern XML an die Host-Anwendung zurück;
-- PNG, SVG und XML werden über das dokumentierte Export-Protokoll angefordert;
+- PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
+- `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
 - `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad.
 
 ## Sicherheits- und Datenschutzgrenze
@@ -40,6 +41,8 @@ Daraus folgt ausdrücklich nicht:
 - dass diagrams.net keine netzwerkseitigen Effekte auslöst;
 - dass Self-Hosting bereits validiert ist;
 - dass die aktuelle Engine dauerhaft gesetzt ist.
+
+Der Host behandelt Exportantworten auch vom erlaubten Editor-Origin weiterhin als untrusted: unerwartete Formate, URI-Typen, Kodierungen, XML-Wurzeln und übergroße Antworten werden verworfen. Der Spike bindet sich für Bildexporte bewusst an die aktuell dokumentierte base64-Daten-URI-Form und soll bei einem zukünftigen Providerformatwechsel fail-closed reagieren.
 
 Ein Produktionsentscheid muss Self-Hosting bzw. einen vollständig lokalen Editor-Bundle gesondert bewerten.
 

@@ -225,6 +225,39 @@ export function isJsonCanvas(value) {
   return Boolean(value && typeof value === "object" && Array.isArray(value.nodes) && Array.isArray(value.edges));
 }
 
+const MAX_EXPORT_DATA_URI_CHARS = 32 * 1024 * 1024;
+const MAX_PROJECT_XML_CHARS = 10 * 1024 * 1024;
+const EXPORT_PREFIXES = {
+  png: "data:image/png;base64,",
+  svg: "data:image/svg+xml;base64,",
+};
+
+export function validateExportDataUri(value, format) {
+  if (typeof value !== "string" || value.length > MAX_EXPORT_DATA_URI_CHARS) {
+    throw new Error("Exportdaten sind ungültig oder zu groß.");
+  }
+  const prefix = EXPORT_PREFIXES[format];
+  if (!prefix || !value.startsWith(prefix)) {
+    throw new Error("Exportformat stimmt nicht mit der angeforderten Datei überein.");
+  }
+  const payload = value.slice(prefix.length);
+  if (!payload || !/^[A-Za-z0-9+/]+={0,2}$/.test(payload) || payload.length % 4 !== 0) {
+    throw new Error("Exportdaten sind nicht gültig base64-kodiert.");
+  }
+  return value;
+}
+
+export function validateDiagramXml(value) {
+  if (typeof value !== "string" || !value || value.length > MAX_PROJECT_XML_CHARS) {
+    throw new Error("Projekt-XML ist ungültig oder zu groß.");
+  }
+  const normalized = value.trimStart();
+  if (!/^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)\b/.test(normalized)) {
+    throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
+  }
+  return value;
+}
+
 function xmlAttr(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -380,7 +413,7 @@ export function jsonCanvasToDrawioXml(source) {
 }
 """
 
-APP_JS = r"""import { detectInput, emptyDrawioXml, jsonCanvasToDrawioXml } from "./canvas-import.js";
+APP_JS = r"""import { detectInput, emptyDrawioXml, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "https://embed.diagrams.net";
 const EDITOR_URL = `${EDITOR_ORIGIN}/?embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&plugins=0&math=0&pwa=0&drafts=0&splash=0&suppressNewWindows=1`;
@@ -571,7 +604,9 @@ async function openFile(file) {
 function exportDiagram(format) {
   pendingExport = format;
   if (format === "drawio") {
-    postToEditor({ action: "export", format: "xml" });
+    // The embed protocol has no XML export format. A supported SVG export
+    // returns the current diagram XML alongside the image data.
+    postToEditor({ action: "export", format: "svg", embedImages: false, border: 0 });
     return;
   }
   if (format === "png") {
@@ -606,21 +641,38 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (message.event === "autosave" || message.event === "save") {
-    if (typeof message.xml === "string") saveDraft(message.xml);
-    setStatus("Lokal gesichert");
+    try {
+      saveDraft(validateDiagramXml(message.xml));
+      setStatus("Lokal gesichert");
+    } catch (_) {
+      setStatus("Ungültigen Autosave verworfen");
+    }
     return;
   }
   if (message.event === "export") {
-    if (typeof message.xml === "string") saveDraft(message.xml);
     const wanted = pendingExport;
     pendingExport = null;
-    if (wanted === "drawio") {
-      const xml = typeof message.xml === "string" ? message.xml : currentXml;
-      if (xml) downloadBlob(new Blob([xml], { type: "application/xml;charset=utf-8" }), `${safeFilename(currentTitle)}.drawio`);
-    } else if ((wanted === "png" || wanted === "svg") && typeof message.data === "string") {
-      downloadDataUri(message.data, `${safeFilename(currentTitle)}.${wanted}`);
+    try {
+      if (wanted === "drawio") {
+        if (message.format !== "svg") throw new Error("Unerwartete Exportantwort.");
+        const xml = validateDiagramXml(message.xml);
+        saveDraft(xml);
+        downloadBlob(
+          new Blob([xml], { type: "application/xml;charset=utf-8" }),
+          `${safeFilename(currentTitle)}.drawio`
+        );
+      } else if (wanted === "png" || wanted === "svg") {
+        if (message.format !== wanted) throw new Error("Unerwartete Exportantwort.");
+        const data = validateExportDataUri(message.data, wanted);
+        if (typeof message.xml === "string") saveDraft(validateDiagramXml(message.xml));
+        downloadDataUri(data, `${safeFilename(currentTitle)}.${wanted}`);
+      } else {
+        throw new Error("Exportantwort ohne passende Anforderung.");
+      }
+      setStatus("Export erstellt");
+    } catch (_) {
+      setStatus("Unsichere oder ungültige Exportantwort verworfen");
     }
-    setStatus("Export erstellt");
     return;
   }
   if (message.event === "openLink") {

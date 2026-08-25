@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -34,8 +35,21 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     }
     on_disk = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert on_disk == manifest
-    assert EDITOR_ORIGIN in (output / "app.js").read_text(encoding="utf-8")
-    assert "jsonCanvasToDrawioXml" in (output / "canvas-import.js").read_text(encoding="utf-8")
+    helper_js = (output / "canvas-import.js").read_text(encoding="utf-8")
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    editor_origin_match = re.search(
+        r'^const EDITOR_ORIGIN = (?P<value>"[^"\r\n]+")\s*;$',
+        app_js,
+        flags=re.MULTILINE,
+    )
+    assert editor_origin_match is not None
+    assert json.loads(editor_origin_match.group("value")) == EDITOR_ORIGIN
+    assert "jsonCanvasToDrawioXml" in helper_js
+    assert "event.origin !== EDITOR_ORIGIN" in app_js
+    assert "event.source !== elements.frame.contentWindow" in app_js
+    assert 'format: "xml"' not in app_js
+    assert "validateExportDataUri(message.data, wanted)" in app_js
+    assert "saveDraft(validateDiagramXml(message.xml))" in app_js
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
 
 
@@ -63,7 +77,7 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ detectInput, jsonCanvasToDrawioXml }} from {module_url!r};
+import {{ detectInput, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri }} from {module_url!r};
 const source = JSON.stringify({{
   nodes: [
     {{id: 'group', type: 'group', x: -200, y: -100, width: 500, height: 300, label: 'Thema'}},
@@ -79,6 +93,21 @@ if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
 if (!xml.includes('jsonCanvasId="a"')) throw new Error('missing source id');
 if (!xml.includes('ermöglicht')) throw new Error('missing edge label');
 if (!xml.includes('exitX=1')) throw new Error('missing source-side binding');
+const png = 'data:image/png;base64,AA==';
+const svg = 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=';
+if (validateExportDataUri(png, 'png') !== png) throw new Error('png export rejected');
+if (validateExportDataUri(svg, 'svg') !== svg) throw new Error('svg export rejected');
+if (validateDiagramXml('<mxfile><diagram/></mxfile>') !== '<mxfile><diagram/></mxfile>') throw new Error('project xml rejected');
+for (const invalid of [
+  () => validateExportDataUri('javascript:alert(1)', 'svg'),
+  () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
+  () => validateExportDataUri(png, 'svg'),
+  () => validateDiagramXml('<svg></svg>'),
+]) {{
+  let rejected = false;
+  try {{ invalid(); }} catch (_) {{ rejected = true; }}
+  if (!rejected) throw new Error('unsafe export payload accepted');
+}}
 console.log('ok');
 """
     completed = subprocess.run(
