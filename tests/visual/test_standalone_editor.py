@@ -99,6 +99,30 @@ def test_build_canonicalizes_default_origin_ports(
         assert "&offline=1" in editor_url
 
 
+@pytest.mark.parametrize(
+    ("editor_origin", "expected_origin"),
+    [
+        ("http://[0:0:0:0:0:0:0:1]:8878", "http://[::1]:8878"),
+        (
+            "https://[2001:0db8:0:0:0:0:0:1]:8443",
+            "https://[2001:db8::1]:8443",
+        ),
+    ],
+)
+def test_build_canonicalizes_ip_host_spelling(
+    tmp_path: Path,
+    editor_origin: str,
+    expected_origin: str,
+) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, editor_origin=editor_origin)
+
+    assert manifest["editor_origin"] == expected_origin
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == expected_origin
+    assert _js_string_constant(app_js, "EDITOR_URL") == manifest["editor_url"]
+
+
 def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     manifest = build_standalone_editor(
@@ -155,6 +179,12 @@ def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
         " https://example.org",
         "https://exa mple.org",
         "https://example.org:99999",
+        "https://127.1:8443",
+        "https://127.000.000.001:8443",
+        "https://0x7f000001:8443",
+        "https://2130706433:8443",
+        "https://0177.0000.0000.0001:8443",
+        "https://[0:0:0:0:0:ffff:7f00:1]:8443",
     ],
 )
 def test_build_rejects_unsafe_editor_origins_before_writing(

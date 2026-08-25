@@ -72,8 +72,19 @@ def _normalize_editor_origin(value: str) -> str:
         ip = ipaddress.ip_address(host)
     except ValueError:
         ip = None
-        if host != "localhost" and re.fullmatch(r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host) is None:
+        legacy_ipv4 = re.fullmatch(
+            r"(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+)){0,3}",
+            host,
+        )
+        if legacy_ipv4 is not None:
+            raise StandaloneEditorError("editor origin contains an ambiguous numeric hostname")
+        if host != "localhost" and re.fullmatch(
+            r"[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?", host
+        ) is None:
             raise StandaloneEditorError("editor origin contains an invalid hostname")
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        raise StandaloneEditorError("editor origin must not use IPv4-mapped IPv6")
+    canonical_host = ip.compressed if ip is not None else host
     is_loopback = host == "localhost" or bool(ip and ip.is_loopback)
     if parsed.scheme == "http" and not is_loopback:
         raise StandaloneEditorError("plain-http editor origins are allowed only on loopback")
@@ -81,7 +92,7 @@ def _normalize_editor_origin(value: str) -> str:
     if (parsed.scheme == "https" and port == 443) or (parsed.scheme == "http" and port == 80):
         port = None
 
-    display_host = f"[{host}]" if ip and ip.version == 6 else host
+    display_host = f"[{canonical_host}]" if ip and ip.version == 6 else canonical_host
     netloc = display_host if port is None else f"{display_host}:{port}"
     return f"{parsed.scheme}://{netloc}"
 
