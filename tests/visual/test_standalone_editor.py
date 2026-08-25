@@ -14,8 +14,19 @@ from schauwerk.visual.standalone_editor import (
     EDITOR_ORIGIN,
     MANIFEST_SCHEMA,
     StandaloneEditorError,
+    _content_security_policy,
     build_standalone_editor,
 )
+
+
+def _js_string_constant(source: str, name: str) -> str:
+    match = re.search(
+        rf'^const {re.escape(name)} = (?P<value>"[^"\r\n]+")\s*;$',
+        source,
+        flags=re.MULTILINE,
+    )
+    assert match is not None
+    return str(json.loads(match.group("value")))
 
 
 def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> None:
@@ -25,7 +36,15 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
 
     assert manifest["schema_version"] == MANIFEST_SCHEMA
     assert manifest["editor_origin"] == EDITOR_ORIGIN
-    assert manifest["network_boundary"]["offline_complete"] is False
+    assert manifest["engine_delivery"] == "remote-browser-iframe"
+    assert manifest["network_boundary"] == {
+        "shell": "local-static-files",
+        "editor_runtime": EDITOR_ORIGIN,
+        "public_embed_runtime": True,
+        "operator_configured_editor_runtime": False,
+        "offline_mode_requested": False,
+        "offline_complete": False,
+    }
     assert manifest["supported_inputs"] == ["mermaid", "json-canvas-1.0", "drawio-xml"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
@@ -37,13 +56,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert on_disk == manifest
     helper_js = (output / "canvas-import.js").read_text(encoding="utf-8")
     app_js = (output / "app.js").read_text(encoding="utf-8")
-    editor_origin_match = re.search(
-        r'^const EDITOR_ORIGIN = (?P<value>"[^"\r\n]+")\s*;$',
-        app_js,
-        flags=re.MULTILINE,
-    )
-    assert editor_origin_match is not None
-    assert json.loads(editor_origin_match.group("value")) == EDITOR_ORIGIN
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == EDITOR_ORIGIN
+    assert _js_string_constant(app_js, "EDITOR_URL") == manifest["editor_url"]
+    assert "offline=1" not in _js_string_constant(app_js, "EDITOR_URL")
     assert "jsonCanvasToDrawioXml" in helper_js
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
@@ -53,6 +68,167 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "if (pendingExport !== null)" in app_js
     assert 'setStatus("Export läuft bereits …")' in app_js
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("editor_origin", "expected_origin", "expected_public", "expected_https_zero"),
+    [
+        ("https://embed.diagrams.net:443", EDITOR_ORIGIN, True, False),
+        ("http://127.0.0.1:80", "http://127.0.0.1", False, True),
+        ("http://[::1]:80", "http://[::1]", False, True),
+    ],
+)
+def test_build_canonicalizes_default_origin_ports(
+    tmp_path: Path,
+    editor_origin: str,
+    expected_origin: str,
+    expected_public: bool,
+    expected_https_zero: bool,
+) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, editor_origin=editor_origin)
+
+    assert manifest["editor_origin"] == expected_origin
+    assert manifest["network_boundary"]["public_embed_runtime"] is expected_public
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == expected_origin
+    editor_url = _js_string_constant(app_js, "EDITOR_URL")
+    assert editor_url == manifest["editor_url"]
+    assert ("&https=0" in editor_url) is expected_https_zero
+    if expected_public:
+        assert "&offline=1" not in editor_url
+    else:
+        assert "&offline=1" in editor_url
+
+
+@pytest.mark.parametrize(
+    ("editor_origin", "expected_origin"),
+    [
+        ("http://[0:0:0:0:0:0:0:1]:8878", "http://[::1]:8878"),
+        (
+            "https://[2001:0db8:0:0:0:0:0:1]:8443",
+            "https://[2001:db8::1]:8443",
+        ),
+    ],
+)
+def test_build_canonicalizes_ip_host_spelling(
+    tmp_path: Path,
+    editor_origin: str,
+    expected_origin: str,
+) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, editor_origin=editor_origin)
+
+    assert manifest["editor_origin"] == expected_origin
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == expected_origin
+    assert _js_string_constant(app_js, "EDITOR_URL") == manifest["editor_url"]
+
+
+def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="http://127.0.0.1:8878/",
+    )
+
+    assert manifest["editor_origin"] == "http://127.0.0.1:8878"
+    assert manifest["engine_delivery"] == "operator-configured-browser-iframe"
+    assert manifest["network_boundary"] == {
+        "shell": "local-static-files",
+        "editor_runtime": "http://127.0.0.1:8878",
+        "public_embed_runtime": False,
+        "operator_configured_editor_runtime": True,
+        "offline_mode_requested": True,
+        "offline_complete": False,
+    }
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == "http://127.0.0.1:8878"
+    editor_url = _js_string_constant(app_js, "EDITOR_URL")
+    assert editor_url == manifest["editor_url"]
+    assert editor_url.startswith("http://127.0.0.1:8878/?embed=1&proto=json&configure=1")
+    assert "&offline=1" in editor_url
+    assert "&https=0" in editor_url
+    assert "frame-src http://127.0.0.1:8878;" in _content_security_policy(
+        str(manifest["editor_origin"])
+    )
+
+
+def test_build_canonicalizes_ascii_hostname_case(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="https://DRAWIO.SCHOOL.EXAMPLE:8443",
+    )
+
+    assert manifest["editor_origin"] == "https://drawio.school.example:8443"
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == manifest["editor_origin"]
+
+
+def test_build_allows_numeric_prefix_when_dns_label_is_unambiguous(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="https://1.2.3.example:8443",
+    )
+
+    assert manifest["editor_origin"] == "https://1.2.3.example:8443"
+
+
+def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="https://drawio.school.example:8443",
+    )
+
+    assert manifest["editor_origin"] == "https://drawio.school.example:8443"
+    assert manifest["engine_delivery"] == "operator-configured-browser-iframe"
+    assert manifest["network_boundary"]["operator_configured_editor_runtime"] is True
+    editor_url = str(manifest["editor_url"])
+    assert "&offline=1" in editor_url
+    assert "&https=0" not in editor_url
+
+
+@pytest.mark.parametrize(
+    "editor_origin",
+    [
+        "javascript:alert(1)",
+        "http://drawio.example.org",
+        "https://user@example.org",
+        "https://example.org/path",
+        "https://example.org?mode=1",
+        "https://example.org/#fragment",
+        " https://example.org",
+        "https://exa mple.org",
+        "https://example.org:99999",
+        "https://127.1:8443",
+        "https://127.000.000.001:8443",
+        "https://0x7f000001:8443",
+        "https://2130706433:8443",
+        "https://0177.0000.0000.0001:8443",
+        "https://[0:0:0:0:0:ffff:7f00:1]:8443",
+        "https://straße.example:8443",
+        "https://exämple.org:8443",
+        "http://[::1%25eth0]:8878",
+        "http://[127.0.0.1]:8878",
+        "https://drawio.example.org.:8443",
+        "https://[v1.fe80]:8443",
+        "https://1.2.3.4.5:8443",
+        "https://example.1:8443",
+    ],
+)
+def test_build_rejects_unsafe_editor_origins_before_writing(
+    tmp_path: Path,
+    editor_origin: str,
+) -> None:
+    output = tmp_path / "editor"
+
+    with pytest.raises(StandaloneEditorError):
+        build_standalone_editor(output, editor_origin=editor_origin)
+
+    assert not output.exists()
 
 
 def test_build_rejects_nonempty_output(tmp_path: Path) -> None:

@@ -33,18 +33,20 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 
 Der Host wird lokal ausgeliefert und bindet beim integrierten Server ausschließlich an `127.0.0.1`.
 
-Der Spike ist **nicht vollständig offline**: Die interaktive Editor-Engine wird von `https://embed.diagrams.net` geladen. Diagramminhalte werden anschließend über Browser-`postMessage` an dieses cross-origin `iframe` übergeben. Die Host-Seite akzeptiert Nachrichten ausschließlich vom exakt gebundenen Editor-Origin und setzt eine enge Content-Security-Policy.
+Standardmäßig ist der Editor **nicht vollständig offline**: Die interaktive Engine wird von `https://embed.diagrams.net` geladen. Diagramminhalte werden anschließend über Browser-`postMessage` an dieses cross-origin `iframe` übergeben. Die Host-Seite akzeptiert Nachrichten ausschließlich vom exakt gebundenen Editor-Origin und setzt eine enge Content-Security-Policy.
+
+Self-Hosting des Kernpfads wurde am 25.08.2026 separat mit dem offiziellen `jgraph/drawio`-Image und demselben Embed-Vertrag auf Loopback belegt: `configure → init → load → Bearbeitung → autosave → SVG/XML-Export` funktionierte mit `offline=1&https=0`, während im Browser alle nicht-lokalen HTTP(S)-Ziele blockiert waren. Der Produktpfad kann deshalb denselben Host gegen einen eigenen draw.io-Origin binden; dafür ist kein Fork und kein zweiter Grafikeditor nötig.
+
+Die CLI akzeptiert dazu `--editor-origin`. Der Wert wird vor jeder Bundle-Schreibwirkung fail-closed normalisiert: nur ein exakter `http(s)`-Origin ohne Credentials, Pfad, Query oder Fragment ist erlaubt; unverschlüsseltes HTTP ist ausschließlich für Loopback zulässig. Der Hostname muss in ASCII-Schreibweise vorliegen; internationale Domainnamen müssen daher bereits als Punycode angegeben werden, statt still über eine zweite IDNA-Regelwelt umgeschrieben zu werden. Browser-mehrdeutige numerische Hostformen einschließlich DNS-Namen mit rein numerischem letztem Label, IPv4-mapped IPv6, IPvFuture in Klammern und IPv6-Zonen-IDs werden abgelehnt; normale IPv6-Adressen und Default-Ports werden browsergleich kanonisiert. Ein benutzerdefinierter Origin aktiviert `offline=1`; bei Loopback-HTTP zusätzlich `https=0`. JavaScript-`targetOrigin`, eingehende `event.origin`-Prüfung und Manifest werden aus demselben normalisierten Wert erzeugt. Der integrierte `serve`-Pfad bindet zusätzlich CSP-`frame-src` exakt an diesen Origin. Ein mit `build` erzeugtes statisches Verzeichnis kann HTTP-Sicherheitsheader auf einem späteren Fremdhost nicht selbst erzwingen; der Betreiber dieses Hosts muss eine äquivalente CSP setzen.
 
 Daraus folgt ausdrücklich nicht:
 
-- dass der Spike für vertrauliche Inhalte freigegeben ist;
-- dass diagrams.net keine netzwerkseitigen Effekte auslöst;
-- dass Self-Hosting bereits validiert ist;
+- dass ein beliebig konfigurierter Custom-Origin tatsächlich unter Kontrolle des Operators steht;
+- dass das statische Bundle die draw.io-Runtime selbst enthält;
+- dass ein Self-Host ohne eigene Runtime-/Netzwerkprüfung vollständig offline oder für vertrauliche Inhalte freigegeben ist;
 - dass die aktuelle Engine dauerhaft gesetzt ist.
 
-Der Host behandelt Exportantworten auch vom erlaubten Editor-Origin weiterhin als untrusted: unerwartete Formate, URI-Typen, Kodierungen, XML-Wurzeln und übergroße Antworten werden verworfen. Der Spike bindet sich für Bildexporte bewusst an die aktuell dokumentierte base64-Daten-URI-Form und soll bei einem zukünftigen Providerformatwechsel fail-closed reagieren.
-
-Ein Produktionsentscheid muss Self-Hosting bzw. einen vollständig lokalen Editor-Bundle gesondert bewerten.
+Der Host behandelt Exportantworten auch vom erlaubten Editor-Origin weiterhin als untrusted: unerwartete Formate, URI-Typen, Kodierungen, XML-Wurzeln und übergroße Antworten werden verworfen. Der Produktpfad bindet sich für Bildexporte bewusst an die aktuell dokumentierte base64-Daten-URI-Form und soll bei einem zukünftigen Providerformatwechsel fail-closed reagieren.
 
 ## JSON-Canvas-Import v1
 
@@ -79,12 +81,27 @@ Statisches Bundle erzeugen:
 PYTHONPATH=src python -m schauwerk.visual.standalone_editor build --output-dir /tmp/schauwerk-editor
 ```
 
+Gegen einen eigenen HTTPS-draw.io-Origin bauen oder starten:
+
+```bash
+PYTHONPATH=src python -m schauwerk.visual.standalone_editor build \
+  --output-dir /tmp/schauwerk-editor \
+  --editor-origin https://drawio.example.org
+
+PYTHONPATH=src python -m schauwerk.visual.standalone_editor serve \
+  --port 8765 \
+  --editor-origin https://drawio.example.org
+```
+
+Für einen lokalen Test-Self-Host ist HTTP nur auf Loopback erlaubt, zum Beispiel `--editor-origin http://127.0.0.1:8878`.
+
 ## Acceptance für den Spike
 
 Automatisch:
 
 - Bundle entsteht deterministisch nur in einem leeren, symlink-sicheren Ziel;
-- Manifest benennt Netzwerkgrenze und Nichtbehauptungen;
+- Manifest benennt den exakt gerenderten Editor-Origin, die Netzwerkgrenze und Nichtbehauptungen;
+- Custom-Origin, JavaScript-`targetOrigin` und beim integrierten `serve` CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
 - Repo-`make validate` bleibt grün.

@@ -415,8 +415,8 @@ export function jsonCanvasToDrawioXml(source) {
 
 APP_JS = r"""import { detectInput, emptyDrawioXml, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
 
-const EDITOR_ORIGIN = "https://embed.diagrams.net";
-const EDITOR_URL = `${EDITOR_ORIGIN}/?embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&plugins=0&math=0&pwa=0&drafts=0&splash=0&suppressNewWindows=1`;
+const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
+const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
