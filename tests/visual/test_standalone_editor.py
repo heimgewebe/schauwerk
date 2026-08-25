@@ -65,6 +65,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'format: "xml"' not in app_js
     assert "validateExportDataUri(message.data, wanted)" in app_js
     assert "if (saveDraft(validateDiagramXml(message.xml)))" in app_js
+    assert "if (!editorReady)" in app_js
+    assert 'setStatus("Editor ist noch nicht bereit")' in app_js
+    assert app_js.index("if (!editorReady)") < app_js.index("pendingExport = format;")
     assert "if (pendingExport !== null)" in app_js
     assert 'setStatus("Export läuft bereits …")' in app_js
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
@@ -242,6 +245,16 @@ def test_build_rejects_nonempty_output(tmp_path: Path) -> None:
     assert (output / "keep.txt").read_text(encoding="utf-8") == "do not overwrite"
 
 
+def test_build_rejects_file_output_with_domain_error(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    output.write_text("do not overwrite", encoding="utf-8")
+
+    with pytest.raises(StandaloneEditorError, match="must be a directory"):
+        build_standalone_editor(output)
+
+    assert output.read_text(encoding="utf-8") == "do not overwrite"
+
+
 def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     tmp_path: Path,
 ) -> None:
@@ -289,10 +302,24 @@ for (const invalid of [
   () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
   () => validateExportDataUri(png, 'svg'),
   () => validateDiagramXml('<svg></svg>'),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    edges: [
+      {{id: 'same', fromNode: 'a', toNode: 'b'}},
+      {{id: 'same', fromNode: 'b', toNode: 'a'}},
+    ],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    edges: [
+      {{id: 'edge_2', fromNode: 'a', toNode: 'b'}},
+      {{fromNode: 'b', toNode: 'a'}},
+    ],
+  }}),
 ]) {{
   let rejected = false;
   try {{ invalid(); }} catch (_) {{ rejected = true; }}
-  if (!rejected) throw new Error('unsafe export payload accepted');
+  if (!rejected) throw new Error('invalid standalone-editor payload accepted');
 }}
 console.log('ok');
 """
