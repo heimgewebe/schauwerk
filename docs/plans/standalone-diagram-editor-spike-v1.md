@@ -37,7 +37,7 @@ Standardmäßig ist der Editor **nicht vollständig offline**: Die interaktive E
 
 Self-Hosting des Kernpfads wurde am 25.08.2026 separat mit dem offiziellen `jgraph/drawio`-Image und demselben Embed-Vertrag auf Loopback belegt: `configure → init → load → Bearbeitung → autosave → SVG/XML-Export` funktionierte mit `offline=1&https=0`, während im Browser alle nicht-lokalen HTTP(S)-Ziele blockiert waren. Der Produktpfad kann deshalb denselben Host gegen einen eigenen draw.io-Origin binden; dafür ist kein Fork und kein zweiter Grafikeditor nötig.
 
-Die CLI akzeptiert dazu `--editor-origin`. Der Wert wird vor jeder Bundle-Schreibwirkung fail-closed normalisiert: nur ein exakter `http(s)`-Origin ohne Credentials, Pfad, Query oder Fragment ist erlaubt; unverschlüsseltes HTTP ist ausschließlich für Loopback zulässig. Ein benutzerdefinierter Origin aktiviert `offline=1`; bei Loopback-HTTP zusätzlich `https=0`. JavaScript-`targetOrigin`, eingehende `event.origin`-Prüfung, Manifest und CSP-`frame-src` werden aus demselben normalisierten Wert erzeugt.
+Die CLI akzeptiert dazu `--editor-origin`. Der Wert wird vor jeder Bundle-Schreibwirkung fail-closed normalisiert: nur ein exakter `http(s)`-Origin ohne Credentials, Pfad, Query oder Fragment ist erlaubt; unverschlüsseltes HTTP ist ausschließlich für Loopback zulässig. Ein benutzerdefinierter Origin aktiviert `offline=1`; bei Loopback-HTTP zusätzlich `https=0`. JavaScript-`targetOrigin`, eingehende `event.origin`-Prüfung und Manifest werden aus demselben normalisierten Wert erzeugt. Der integrierte `serve`-Pfad bindet zusätzlich CSP-`frame-src` exakt an diesen Origin. Ein mit `build` erzeugtes statisches Verzeichnis kann HTTP-Sicherheitsheader auf einem späteren Fremdhost nicht selbst erzwingen; der Betreiber dieses Hosts muss eine äquivalente CSP setzen.
 
 Daraus folgt ausdrücklich nicht:
 
@@ -101,7 +101,7 @@ Automatisch:
 
 - Bundle entsteht deterministisch nur in einem leeren, symlink-sicheren Ziel;
 - Manifest benennt den exakt gerenderten Editor-Origin, die Netzwerkgrenze und Nichtbehauptungen;
-- Custom-Origin, JavaScript-`targetOrigin` und CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
+- Custom-Origin, JavaScript-`targetOrigin` und beim integrierten `serve` CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
 - Repo-`make validate` bleibt grün.

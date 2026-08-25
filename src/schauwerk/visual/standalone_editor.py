@@ -175,6 +175,7 @@ def build_standalone_editor(
         "files": written,
         "does_not_establish": [
             "bundled-editor-runtime",
+            "static-host-security-header-enforcement",
             (
                 "operator-control-of-editor-runtime"
                 if custom_origin
