@@ -55,7 +55,12 @@ def _normalize_editor_origin(value: str) -> str:
         or any(ch.isspace() for ch in value)
     ):
         raise StandaloneEditorError("editor origin must be one exact http(s) origin")
-    parsed = urlsplit(value)
+    if not value.isascii():
+        raise StandaloneEditorError("editor origin must use ASCII host syntax")
+    try:
+        parsed = urlsplit(value)
+    except ValueError as exc:
+        raise StandaloneEditorError("editor origin is not a valid URL origin") from exc
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise StandaloneEditorError("editor origin must use http or https")
     if parsed.username is not None or parsed.password is not None:
@@ -68,6 +73,8 @@ def _normalize_editor_origin(value: str) -> str:
         raise StandaloneEditorError("editor origin contains an invalid port") from exc
 
     host = parsed.hostname.casefold()
+    if "%" in host:
+        raise StandaloneEditorError("editor origin must not use an IPv6 zone identifier")
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:

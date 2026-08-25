@@ -152,6 +152,18 @@ def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     )
 
 
+def test_build_canonicalizes_ascii_hostname_case(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(
+        output,
+        editor_origin="https://DRAWIO.SCHOOL.EXAMPLE:8443",
+    )
+
+    assert manifest["editor_origin"] == "https://drawio.school.example:8443"
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == manifest["editor_origin"]
+
+
 def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     manifest = build_standalone_editor(
@@ -185,6 +197,11 @@ def test_build_supports_https_self_hosted_editor(tmp_path: Path) -> None:
         "https://2130706433:8443",
         "https://0177.0000.0000.0001:8443",
         "https://[0:0:0:0:0:ffff:7f00:1]:8443",
+        "https://straße.example:8443",
+        "https://exämple.org:8443",
+        "http://[::1%25eth0]:8878",
+        "http://[127.0.0.1]:8878",
+        "https://drawio.example.org.:8443",
     ],
 )
 def test_build_rejects_unsafe_editor_origins_before_writing(
