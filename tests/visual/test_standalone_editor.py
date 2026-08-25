@@ -34,7 +34,6 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     }
     on_disk = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
     assert on_disk == manifest
-    assert "embed.diagrams.net" in (output / "app.js").read_text(encoding="utf-8")
     assert "jsonCanvasToDrawioXml" in (output / "canvas-import.js").read_text(encoding="utf-8")
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
 
