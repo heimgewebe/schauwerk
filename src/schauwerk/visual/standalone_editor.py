@@ -59,9 +59,10 @@ def _normalize_editor_origin(value: str) -> str:
         raise StandaloneEditorError("editor origin must use ASCII host syntax")
     try:
         parsed = urlsplit(value)
+        hostname = parsed.hostname
     except ValueError as exc:
         raise StandaloneEditorError("editor origin is not a valid URL origin") from exc
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+    if parsed.scheme not in {"http", "https"} or not hostname:
         raise StandaloneEditorError("editor origin must use http or https")
     if parsed.username is not None or parsed.password is not None:
         raise StandaloneEditorError("editor origin must not contain credentials")
@@ -72,7 +73,7 @@ def _normalize_editor_origin(value: str) -> str:
     except ValueError as exc:
         raise StandaloneEditorError("editor origin contains an invalid port") from exc
 
-    host = parsed.hostname.casefold()
+    host = hostname.casefold()
     if "%" in host:
         raise StandaloneEditorError("editor origin must not use an IPv6 zone identifier")
     try:
@@ -155,6 +156,8 @@ def build_standalone_editor(
 
     output_dir = output_dir.expanduser().absolute()
     _reject_symlink_chain(output_dir)
+    if output_dir.exists() and not output_dir.is_dir():
+        raise StandaloneEditorError(f"output path must be a directory: {output_dir}")
     if output_dir.exists() and any(output_dir.iterdir()):
         raise StandaloneEditorError(f"output directory must be empty: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)

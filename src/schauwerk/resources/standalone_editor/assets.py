@@ -352,11 +352,15 @@ function validateJsonCanvas(value) {
     if (ids.has(node.id)) throw new Error(`Doppelte Knoten-ID: ${node.id}`);
     ids.add(node.id);
   }
+  const edgeIds = new Set();
   for (const [index, edge] of value.edges.entries()) {
     if (!edge || typeof edge !== "object") throw new Error(`Kante ${index + 1} ist ungültig.`);
     if (!ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
       throw new Error(`Kante ${index + 1} verweist auf einen unbekannten Knoten.`);
     }
+    const rawId = typeof edge.id === "string" && edge.id ? edge.id : `edge_${index + 1}`;
+    if (edgeIds.has(rawId)) throw new Error(`Doppelte Kanten-ID: ${rawId}`);
+    edgeIds.add(rawId);
   }
 }
 
@@ -604,6 +608,10 @@ async function openFile(file) {
 }
 
 function exportDiagram(format) {
+  if (!editorReady) {
+    setStatus("Editor ist noch nicht bereit");
+    return;
+  }
   if (pendingExport !== null) {
     setStatus("Export läuft bereits …");
     return;
