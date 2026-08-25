@@ -68,6 +68,37 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize(
+    ("editor_origin", "expected_origin", "expected_public", "expected_https_zero"),
+    [
+        ("https://embed.diagrams.net:443", EDITOR_ORIGIN, True, False),
+        ("http://127.0.0.1:80", "http://127.0.0.1", False, True),
+        ("http://[::1]:80", "http://[::1]", False, True),
+    ],
+)
+def test_build_canonicalizes_default_origin_ports(
+    tmp_path: Path,
+    editor_origin: str,
+    expected_origin: str,
+    expected_public: bool,
+    expected_https_zero: bool,
+) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, editor_origin=editor_origin)
+
+    assert manifest["editor_origin"] == expected_origin
+    assert manifest["network_boundary"]["public_embed_runtime"] is expected_public
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "EDITOR_ORIGIN") == expected_origin
+    editor_url = _js_string_constant(app_js, "EDITOR_URL")
+    assert editor_url == manifest["editor_url"]
+    assert ("&https=0" in editor_url) is expected_https_zero
+    if expected_public:
+        assert "&offline=1" not in editor_url
+    else:
+        assert "&offline=1" in editor_url
+
+
 def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     manifest = build_standalone_editor(

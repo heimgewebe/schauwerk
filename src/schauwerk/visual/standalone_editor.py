@@ -78,6 +78,9 @@ def _normalize_editor_origin(value: str) -> str:
     if parsed.scheme == "http" and not is_loopback:
         raise StandaloneEditorError("plain-http editor origins are allowed only on loopback")
 
+    if (parsed.scheme == "https" and port == 443) or (parsed.scheme == "http" and port == 80):
+        port = None
+
     display_host = f"[{host}]" if ip and ip.version == 6 else host
     netloc = display_host if port is None else f"{display_host}:{port}"
     return f"{parsed.scheme}://{netloc}"
