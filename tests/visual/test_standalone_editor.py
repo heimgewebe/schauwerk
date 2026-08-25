@@ -49,7 +49,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert 'format: "xml"' not in app_js
     assert "validateExportDataUri(message.data, wanted)" in app_js
-    assert "saveDraft(validateDiagramXml(message.xml))" in app_js
+    assert "if (saveDraft(validateDiagramXml(message.xml)))" in app_js
+    assert "if (pendingExport !== null)" in app_js
+    assert 'setStatus("Export läuft bereits …")' in app_js
     assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
 
 
@@ -88,6 +90,14 @@ const source = JSON.stringify({{
 }});
 const detected = detectInput(source);
 if (detected.kind !== 'json-canvas') throw new Error(`wrong kind: ${{detected.kind}}`);
+for (const mermaid of [
+  '%% comment\\nflowchart TD\\n  A --> B',
+  '%%{{init: {{"theme":"neutral"}}}}%%\\nsequenceDiagram\\n  A->>B: Hallo',
+  '---\\ntitle: Beispiel\\n---\\n%% comment\\ngraph LR\\n  A --> B',
+]) {{
+  const detectedMermaid = detectInput(mermaid);
+  if (detectedMermaid.kind !== 'mermaid') throw new Error(`commented Mermaid rejected: ${{detectedMermaid.kind}}`);
+}}
 const xml = jsonCanvasToDrawioXml(detected.value);
 if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
 if (!xml.includes('jsonCanvasId="a"')) throw new Error('missing source id');

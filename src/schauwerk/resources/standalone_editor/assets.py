@@ -196,7 +196,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
 }
 """
 
-CANVAS_IMPORT_JS = r"""const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
+CANVAS_IMPORT_JS = r"""const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
 
 export function normalizeInput(raw) {
   let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
@@ -472,13 +472,15 @@ function parseMessage(data) {
 }
 
 function saveDraft(xml) {
-  if (typeof xml !== "string" || !xml) return;
+  if (typeof xml !== "string" || !xml) return false;
   currentXml = xml;
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ title: currentTitle, xml, savedAt: Date.now() }));
     elements.restoreButton.hidden = false;
+    return true;
   } catch (_) {
     setStatus("Bearbeitet · lokaler Speicher voll");
+    return false;
   }
 }
 
@@ -602,6 +604,10 @@ async function openFile(file) {
 }
 
 function exportDiagram(format) {
+  if (pendingExport !== null) {
+    setStatus("Export läuft bereits …");
+    return;
+  }
   pendingExport = format;
   if (format === "drawio") {
     // The embed protocol has no XML export format. A supported SVG export
@@ -642,8 +648,9 @@ window.addEventListener("message", (event) => {
   }
   if (message.event === "autosave" || message.event === "save") {
     try {
-      saveDraft(validateDiagramXml(message.xml));
-      setStatus("Lokal gesichert");
+      if (saveDraft(validateDiagramXml(message.xml))) {
+        setStatus("Lokal gesichert");
+      }
     } catch (_) {
       setStatus("Ungültigen Autosave verworfen");
     }
