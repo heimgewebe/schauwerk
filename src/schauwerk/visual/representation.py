@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import tempfile
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -147,11 +148,11 @@ def _text_digest(value: str) -> str:
 def _clean_text(value: Any, *, field: str, maximum: int) -> str:
     if not isinstance(value, str):
         raise RepresentationError(f"{field} must be a string")
+    if len(value) > maximum:
+        raise RepresentationError(f"{field} exceeds {maximum} characters")
     text = " ".join(value.split())
     if not text:
         raise RepresentationError(f"{field} must not be empty")
-    if len(text) > maximum:
-        raise RepresentationError(f"{field} exceeds {maximum} characters")
     return text
 
 
@@ -161,13 +162,16 @@ def _safe_id(value: Any, *, field: str) -> str:
     return value
 
 
-def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
+def _normalize_representation_input(
+    value: Mapping[str, Any], *, allow_input_digest: bool
+) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise RepresentationError("representation input root must be an object")
+    allowed_fields = _PUBLIC_ROOT_FIELDS | ({"input_digest"} if allow_input_digest else set())
     _require_fields(
         value,
         field="representation input",
-        allowed=_PUBLIC_ROOT_FIELDS | {"input_digest"},
+        allowed=frozenset(allowed_fields),
         required=_PUBLIC_ROOT_FIELDS,
     )
     if value.get("schema_version") != INPUT_SCHEMA:
@@ -327,7 +331,7 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
     }
     computed_digest = _digest(normalized)
     supplied_digest = value.get("input_digest")
-    if supplied_digest is not None and (
+    if allow_input_digest and (
         not isinstance(supplied_digest, str)
         or _SHA256.fullmatch(supplied_digest) is None
         or supplied_digest != computed_digest
@@ -335,6 +339,19 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
         raise RepresentationError("input_digest does not match normalized representation input")
     normalized["input_digest"] = computed_digest
     return normalized
+
+
+def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate one public representation-input document and normalize it."""
+
+    return _normalize_representation_input(value, allow_input_digest=False)
+
+
+def _validate_representation_model(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Revalidate an internal normalized model including its exact digest."""
+
+    return _normalize_representation_input(value, allow_input_digest=True)
+
 
 def load_representation_input(path: Path) -> dict[str, Any]:
     try:
@@ -349,7 +366,11 @@ def load_representation_input(path: Path) -> dict[str, Any]:
 
 
 def route_representation(model: Mapping[str, Any]) -> dict[str, Any]:
-    normalized = validate_representation_input(model)
+    normalized = (
+        _validate_representation_model(model)
+        if "input_digest" in model
+        else validate_representation_input(model)
+    )
     intent = normalized["intent"]
     requirements = normalized["requirements"]
     node_count = len(normalized["nodes"])
@@ -469,6 +490,9 @@ def _validate_route_plan(
         or supplied_digest != _digest(body)
     ):
         raise RepresentationError("route plan digest mismatch")
+    expected = route_representation(normalized)
+    if _canonical(plan) != _canonical(expected):
+        raise RepresentationError("route plan does not match deterministic router decision")
     return dict(plan)
 
 
@@ -530,7 +554,11 @@ def _mermaid_edge_line(edge: Mapping[str, Any]) -> str:
 
 
 def render_mermaid(model: Mapping[str, Any], plan: Mapping[str, Any]) -> str:
-    normalized = validate_representation_input(model)
+    normalized = (
+        _validate_representation_model(model)
+        if "input_digest" in model
+        else validate_representation_input(model)
+    )
     plan = _validate_route_plan(normalized, plan)
     direction = "TD" if normalized["intent"] in {"sequence", "timeline", "process"} else "LR"
     lines = [
@@ -576,8 +604,25 @@ def render_mermaid(model: Mapping[str, Any], plan: Mapping[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+
+
+def _canvas_node_id(source_id: str) -> str:
+    return f"canvas_node:{source_id}"
+
+
+def _canvas_edge_id(source_id: str) -> str:
+    return f"canvas_edge:{source_id}"
+
+
+def _canvas_group_id(source_id: str) -> str:
+    return f"canvas_group:{source_id}"
+
 def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
-    normalized = validate_representation_input(model)
+    normalized = (
+        _validate_representation_model(model)
+        if "input_digest" in model
+        else validate_representation_input(model)
+    )
     _validate_route_plan(normalized, plan)
     nodes_by_group: dict[str | None, list[Mapping[str, Any]]] = defaultdict(list)
     for node in normalized["nodes"]:
@@ -610,7 +655,7 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
             )
             canvas_nodes.append(
                 {
-                    "id": f"canvas_group:{group_id}",
+                    "id": _canvas_group_id(str(group_id)),
                     "type": "group",
                     "x": base_x,
                     "y": 0,
@@ -626,7 +671,7 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
             summary = f"\n\n{node['summary']}" if node["summary"] else ""
             canvas_nodes.append(
                 {
-                    "id": node["id"],
+                    "id": _canvas_node_id(str(node["id"])),
                     "type": "text",
                     "text": f"# {node['label']}{summary}",
                     "x": x,
@@ -662,10 +707,10 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
             from_side, to_side = "left", "right"
         canvas_edges.append(
             {
-                "id": edge["id"],
-                "fromNode": edge["from"],
+                "id": _canvas_edge_id(str(edge["id"])),
+                "fromNode": _canvas_node_id(str(edge["from"])),
                 "fromSide": from_side,
-                "toNode": edge["to"],
+                "toNode": _canvas_node_id(str(edge["to"])),
                 "toSide": to_side,
                 "toEnd": "none" if edge["kind"] == "association" else "arrow",
                 "label": edge["label"],
@@ -739,6 +784,7 @@ def _frame_nodes(
     ]
     connector_room = min(2, max(0, 7 - len(result)))
     relation_rows: list[str] = []
+    self_loop_index = 0
     for edge in relevant_edges[:2]:
         source_id = str(edge["from"])
         target_id = str(edge["to"])
@@ -746,7 +792,21 @@ def _frame_nodes(
         target_label = clip_text(labels[target_id], 28)
         relation_label = clip_text(str(edge["label"]), 36)
         if source_id == target_id:
-            relation_rows.append(f"{source_label} ↺: {relation_label}")
+            loop = text_object(
+                _miro_edge_object_id(str(edge["id"])),
+                "caption",
+                80,
+                250 - self_loop_index * 55,
+                620,
+                50,
+                f"{source_label} ↺: {relation_label}",
+                font="caption",
+            )
+            loop["relation_type"] = edge["kind"]
+            loop["source_kind"] = "edge"
+            loop["source_id"] = str(edge["id"])
+            result.append(loop)
+            self_loop_index += 1
             continue
         if connector_room:
             connector = connector_object(
@@ -795,7 +855,11 @@ def _frame_nodes(
     return result
 
 def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
-    normalized = validate_representation_input(model)
+    normalized = (
+        _validate_representation_model(model)
+        if "input_digest" in model
+        else validate_representation_input(model)
+    )
     plan = _validate_route_plan(normalized, plan)
     nodes = normalized["nodes"]
     edges = normalized["edges"]
@@ -1004,17 +1068,21 @@ def _mermaid_coverage(model: Mapping[str, Any], source: str) -> dict[str, Any]:
 
 
 def _canvas_coverage(model: Mapping[str, Any], canvas: Mapping[str, Any]) -> dict[str, Any]:
+    node_prefix = "canvas_node:"
+    edge_prefix = "canvas_edge:"
     node_ids = [
-        str(item["id"])
+        str(item["id"])[len(node_prefix) :]
         for item in canvas.get("nodes", [])
         if isinstance(item, Mapping)
-        and item.get("type") != "group"
         and isinstance(item.get("id"), str)
+        and str(item["id"]).startswith(node_prefix)
     ]
     edge_ids = [
-        str(item["id"])
+        str(item["id"])[len(edge_prefix) :]
         for item in canvas.get("edges", [])
-        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+        if isinstance(item, Mapping)
+        and isinstance(item.get("id"), str)
+        and str(item["id"]).startswith(edge_prefix)
     ]
     return _coverage(model=model, node_ids=node_ids, edge_ids=edge_ids)
 
@@ -1044,7 +1112,10 @@ def _compile_representation_package_into(
     mermaid_source: str | None = None
     layout_dsl: str | None = None
     document_source: str | None = None
-    artifacts.append({"role": "normalized_input", **_write_json(output_dir / "input.json", model)})
+    public_input = {key: model[key] for key in _PUBLIC_ROOT_FIELDS}
+    artifacts.append(
+        {"role": "normalized_input", **_write_json(output_dir / "input.json", public_input)}
+    )
     artifacts.append({"role": "route_plan", **_write_json(output_dir / "route-plan.json", plan)})
 
     if "mermaid" in plan["selected_formats"]:
@@ -1164,29 +1235,88 @@ def _compile_representation_package_into(
     _write_json(output_dir / "receipt.json", receipt)
     return receipt
 
+
+
+def _safe_parent_snapshot(path: Path) -> os.stat_result:
+    current = path.stat(follow_symlinks=False)
+    if not stat.S_ISDIR(current.st_mode):
+        raise RepresentationError("representation output parent is not a directory")
+    owner_private = current.st_uid == os.getuid() and not current.st_mode & 0o022
+    root_sticky = (
+        current.st_uid == 0
+        and bool(current.st_mode & stat.S_ISVTX)
+        and bool(current.st_mode & 0o002)
+    )
+    if not (owner_private or root_sticky):
+        raise RepresentationError("representation output parent is unsafe")
+    return current
+
+
+def _same_path_identity(left: os.stat_result, right: os.stat_result) -> bool:
+    return (
+        left.st_dev == right.st_dev
+        and left.st_ino == right.st_ino
+        and left.st_mode == right.st_mode
+        and left.st_uid == right.st_uid
+        and left.st_gid == right.st_gid
+    )
+
+
+def _target_snapshot(path: Path) -> os.stat_result | None:
+    try:
+        current = path.stat(follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISDIR(current.st_mode):
+        raise RepresentationError(f"output path is not a directory: {path}")
+    if current.st_uid != os.getuid() or current.st_mode & 0o022:
+        raise RepresentationError("existing representation output directory is unsafe")
+    if any(path.iterdir()):
+        raise RepresentationError(f"output directory must be empty: {path}")
+    return current
+
 def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
-    """Compile into a sibling staging directory and publish only a complete package."""
+    """Compile privately and publish only after path identities remain stable."""
 
     target = output_dir.expanduser().absolute()
     _reject_output_symlink_chain(target)
-    if target.exists():
-        if not target.is_dir():
-            raise RepresentationError(f"output path is not a directory: {output_dir}")
-        if any(target.iterdir()):
-            raise RepresentationError(f"output directory must be empty: {output_dir}")
     target.parent.mkdir(parents=True, exist_ok=True)
     _reject_output_symlink_chain(target)
+    parent_before = _safe_parent_snapshot(target.parent)
+    target_before = _target_snapshot(target)
+
     staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.tmp-", dir=target.parent))
     os.chmod(staging, 0o700)
+    staging_before = staging.stat(follow_symlinks=False)
+    if staging_before.st_uid != os.getuid() or stat.S_IMODE(staging_before.st_mode) != 0o700:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise RepresentationError("representation staging directory is unsafe")
     try:
         receipt = _compile_representation_package_into(
             input_path=input_path, output_dir=staging
         )
         _reject_output_symlink_chain(target)
-        if target.exists() and (not target.is_dir() or any(target.iterdir())):
-            raise RepresentationError(f"output directory changed while compiling: {output_dir}")
+        parent_after = _safe_parent_snapshot(target.parent)
+        if not _same_path_identity(parent_before, parent_after):
+            raise RepresentationError("representation output parent identity changed")
+        staging_after = staging.stat(follow_symlinks=False)
+        if not _same_path_identity(staging_before, staging_after):
+            raise RepresentationError("representation staging identity changed")
+
+        if target_before is None:
+            try:
+                target.stat(follow_symlinks=False)
+            except FileNotFoundError:
+                pass
+            else:
+                raise RepresentationError("representation output target appeared while compiling")
+        else:
+            target_after = _target_snapshot(target)
+            if target_after is None or not _same_path_identity(target_before, target_after):
+                raise RepresentationError("representation output target identity changed")
+
         os.replace(staging, target)
-        directory_fd = os.open(target.parent, os.O_DIRECTORY)
+        directory_fd = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
         try:
             os.fsync(directory_fd)
         finally:

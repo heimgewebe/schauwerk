@@ -427,7 +427,9 @@ def validate_representation_package(package_dir: Path) -> dict[str, Any]:
         if not isinstance(input_value, dict):
             raise RepresentationDeliveryError("normalized representation input is invalid")
         model = validate_representation_input(input_value)
-        if model != input_value:
+        canonical_input = dict(model)
+        canonical_input.pop("input_digest", None)
+        if canonical_input != input_value:
             raise RepresentationDeliveryError("normalized representation input is not canonical")
         expected_plan = route_representation(model)
         route_plan = json.loads(payloads["route_plan"])

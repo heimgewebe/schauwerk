@@ -143,11 +143,12 @@ def test_mermaid_and_json_canvas_preserve_source_ids() -> None:
 
     canvas_node_ids = {node["id"] for node in canvas["nodes"]}
     source_node_ids = {node["id"] for node in model["nodes"]}
-    assert source_node_ids <= canvas_node_ids
+    assert {f"canvas_node:{identifier}" for identifier in source_node_ids} <= canvas_node_ids
     assert any(identifier.startswith("canvas_group:") for identifier in canvas_node_ids)
     for edge in canvas["edges"]:
-        assert edge["fromNode"] in source_node_ids
-        assert edge["toNode"] in source_node_ids
+        assert edge["id"].startswith("canvas_edge:")
+        assert edge["fromNode"] in canvas_node_ids
+        assert edge["toNode"] in canvas_node_ids
 
 
 def test_mermaid_labels_neutralize_edge_delimiters() -> None:
@@ -292,6 +293,11 @@ def test_runtime_validation_matches_public_schema_for_boolean_and_unknown_fields
     with pytest.raises(RepresentationError, match="unknown fields"):
         validate_representation_input(raw)
 
+    normalized = validate_representation_input(_minimal_representation())
+    with pytest.raises(RepresentationError, match="unknown fields"):
+        validate_representation_input(normalized)
+    assert route_representation(normalized)["input_digest"] == normalized["input_digest"]
+
 
 def test_requested_formats_reject_duplicates_instead_of_silently_rewriting_input() -> None:
     raw = _minimal_representation(requested_formats=["canvas", "canvas"])
@@ -341,7 +347,7 @@ def test_json_canvas_generated_group_ids_cannot_collide_with_source_nodes() -> N
     canvas = render_json_canvas(model, route_representation(model))
     ids = [item["id"] for item in canvas["nodes"]]
 
-    assert "canvas_group_authority" in ids
+    assert "canvas_node:canvas_group_authority" in ids
     assert "canvas_group:authority" in ids
     assert len(ids) == len(set(ids))
 
@@ -437,3 +443,104 @@ def test_output_path_rejects_dangling_symlink_chain(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="must not contain symlinks"):
         compile_representation_package(input_path=FIXTURE, output_dir=linked / "package")
+
+def test_runtime_rejects_raw_text_that_only_fits_after_whitespace_normalization() -> None:
+    raw = _minimal_representation()
+    raw["title"] = "A" + (" " * 160)
+    with pytest.raises(RepresentationError, match="exceeds 160 characters"):
+        validate_representation_input(raw)
+
+
+def test_renderer_rejects_self_consistently_rehashed_non_router_plan() -> None:
+    model = validate_representation_input(_minimal_representation(requested_formats=["mermaid"]))
+    plan = route_representation(model)
+    tampered = copy.deepcopy(plan)
+    tampered["primary_format"] = "canvas"
+    body = {key: value for key, value in tampered.items() if key != "plan_digest"}
+    tampered["plan_digest"] = representation._digest(body)
+
+    with pytest.raises(RepresentationError, match="deterministic router decision"):
+        render_mermaid(model, tampered)
+
+
+def test_canvas_node_and_edge_namespaces_are_disjoint_for_equal_source_ids() -> None:
+    raw = _minimal_representation(requested_formats=["canvas"])
+    raw["nodes"][0]["id"] = "shared"
+    raw["edges"][0]["id"] = "shared"
+    raw["edges"][0]["from"] = "shared"
+    model = validate_representation_input(raw)
+    canvas = render_json_canvas(model, route_representation(model))
+    node_ids = {item["id"] for item in canvas["nodes"]}
+    edge_ids = {item["id"] for item in canvas["edges"]}
+
+    assert "canvas_node:shared" in node_ids
+    assert "canvas_edge:shared" in edge_ids
+    assert node_ids.isdisjoint(edge_ids)
+    coverage = representation._canvas_coverage(model, canvas)
+    assert coverage["complete_nodes"] is True
+    assert coverage["complete_edges"] is True
+
+
+def test_miro_self_loop_retains_source_bound_relation_identity() -> None:
+    model = validate_representation_input(
+        _minimal_representation(node_count=2, requested_formats=["miro_native"], self_loop=True)
+    )
+    board = render_miro_board(model, route_representation(model))
+    source_edge = next(
+        item
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("source_kind") == "edge" and item.get("source_id") == "e0"
+    )
+
+    assert source_edge["id"] == "source_edge_e0"
+    assert source_edge["relation_type"] == "flow"
+    assert "↺" in source_edge["content"]
+    assert representation._miro_coverage(model, board)["edge_ids"] == ["e0"]
+
+
+def test_compiled_public_input_is_schema_exact_and_digest_is_externalized(tmp_path: Path) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    output_dir = tmp_path / "package"
+    receipt = compile_representation_package(input_path=input_path, output_dir=output_dir)
+    public_input = json.loads((output_dir / "input.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "schemas/representation-input.v1.schema.json").read_text())
+
+    Draft202012Validator(schema).validate(public_input)
+    assert "input_digest" not in public_input
+    assert len(receipt["input_digest"]) == 64
+
+
+def test_package_publish_rejects_world_writable_non_sticky_parent(tmp_path: Path) -> None:
+    parent = tmp_path / "unsafe"
+    parent.mkdir(mode=0o700)
+    parent.chmod(0o777)
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+
+    with pytest.raises(RepresentationError, match="output parent is unsafe"):
+        compile_representation_package(input_path=input_path, output_dir=parent / "package")
+    assert list(parent.iterdir()) == []
+
+
+def test_package_publish_detects_target_appearing_during_compile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original = representation._compile_representation_package_into
+
+    def compile_then_race(*, input_path: Path, output_dir: Path) -> dict[str, object]:
+        receipt = original(input_path=input_path, output_dir=output_dir)
+        target.mkdir(mode=0o700)
+        return receipt
+
+    monkeypatch.setattr(representation, "_compile_representation_package_into", compile_then_race)
+    with pytest.raises(RepresentationError, match="target appeared"):
+        representation.compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert target.is_dir()
+    assert list(target.iterdir()) == []
+    assert list(tmp_path.glob(".package.tmp-*")) == []
