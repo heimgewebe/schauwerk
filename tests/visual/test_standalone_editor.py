@@ -64,13 +64,20 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert 'format: "xml"' not in app_js
     assert "validateExportDataUri(message.data, wanted)" in app_js
+    assert "exportDataUriToBlob(validatedData, wanted)" in app_js
+    assert "downloadDataUri(" not in app_js
+    assert "preparedDownloadUrl = URL.createObjectURL(blob)" in app_js
+    assert "if (wanted === null) return;" in app_js
+    assert 'setStatus(`Export bereit · „${label} speichern“ tippen`)' in app_js
     assert "if (saveDraft(validateDiagramXml(message.xml)))" in app_js
     assert "if (!editorReady)" in app_js
     assert 'setStatus("Editor ist noch nicht bereit")' in app_js
     assert app_js.index("if (!editorReady)") < app_js.index("pendingExport = format;")
     assert "if (pendingExport !== null)" in app_js
     assert 'setStatus("Export läuft bereits …")' in app_js
-    assert "KI-Ergebnis hier einfügen" in (output / "index.html").read_text(encoding="utf-8")
+    index_html = (output / "index.html").read_text(encoding="utf-8")
+    assert "KI-Ergebnis hier einfügen" in index_html
+    assert 'id="downloadLink" hidden' in index_html
 
 
 @pytest.mark.parametrize(
@@ -268,7 +275,7 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ detectInput, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri }} from {module_url!r};
+import {{ detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri }} from {module_url!r};
 const source = JSON.stringify({{
   nodes: [
     {{id: 'group', type: 'group', x: -200, y: -100, width: 500, height: 300, label: 'Thema'}},
@@ -296,6 +303,11 @@ const png = 'data:image/png;base64,AA==';
 const svg = 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=';
 if (validateExportDataUri(png, 'png') !== png) throw new Error('png export rejected');
 if (validateExportDataUri(svg, 'svg') !== svg) throw new Error('svg export rejected');
+const pngBlob = exportDataUriToBlob(png, 'png');
+if (pngBlob.type !== 'image/png' || pngBlob.size !== 1) throw new Error('png blob preparation failed');
+const svgBlob = exportDataUriToBlob(svg, 'svg');
+if (svgBlob.type !== 'image/svg+xml') throw new Error('svg blob type is wrong');
+if (await svgBlob.text() !== '<svg></svg>') throw new Error('svg blob payload is wrong');
 if (validateDiagramXml('<mxfile><diagram/></mxfile>') !== '<mxfile><diagram/></mxfile>') throw new Error('project xml rejected');
 for (const invalid of [
   () => validateExportDataUri('javascript:alert(1)', 'svg'),
