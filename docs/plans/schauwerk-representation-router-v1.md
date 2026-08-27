@@ -40,19 +40,34 @@ schauwerk-representation-package.v1
 - gemischte Absichten erzeugen bewusst ein Hybridpaket;
 - explizit angeforderte Formate bleiben möglich, müssen aber im Plan sichtbar begründet sein.
 
-Der Router gibt Scores und menschenlesbare Gründe aus. Er behauptet weder ästhetische Qualität noch fachliche Wahrheit.
+Der Router gibt Scores und menschenlesbare Gründe aus. Er behauptet weder ästhetische Qualität noch fachliche Wahrheit. Jeder Renderer akzeptiert nur einen Route-Plan, dessen Input-Digest und Plan-Digest noch exakt zur normalisierten Eingabe passen.
+
+## Eingabevertrag
+
+Der Python-Laufzeitvalidator und `schemas/representation-input.v1.schema.json` bilden denselben Fail-Closed-Vertrag ab:
+
+- erforderliche Root-Felder müssen vorhanden sein;
+- unbekannte Root-, Gruppen-, Knoten-, Kanten- und Requirement-Felder werden abgelehnt statt still verworfen;
+- Requirements sind echte JSON-Booleans; Strings wie `"false"` werden nicht umgedeutet;
+- Kanten benötigen einen expliziten, bekannten Relationstyp;
+- doppelte `requested_formats` werden nicht still dedupliziert;
+- ein mitgelieferter `input_digest` muss exakt zur normalisierten Eingabe passen.
 
 ## Sicherheits- und Wahrheitsgrenzen
 
 - Mermaid wird als strikte Quelle ohne `click`-Direktiven oder ausführbaren Inhalt erzeugt.
 - Die Mermaid-Zielversion ist für reproduzierbare spätere SVG-Erzeugung auf 11.16.0 festgelegt.
-- JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten.
-- Ausgabepfade mit Symlinks werden abgelehnt.
+- Renderer-interne Mermaid-, Canvas- und Miro-IDs liegen in getrennten Namespaces; kanonische Source-IDs werden separat erhalten und können nicht mit dekorativen Objekten kollidieren.
+- JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten. Kantenanker folgen der tatsächlichen relativen Geometrie; vertikal gestapelte Knoten werden oben/unten verbunden.
+- Ausgabepfade mit Symlinks, einschließlich dangling Symlinks, werden abgelehnt.
 - Jeder Artefaktinhalt erhält SHA-256 und Bytezahl.
+- `coverage` misst ausschließlich tatsächlich im jeweiligen Renderer-Artefakt materialisierte Source-IDs. Sie ist kein Beweis für semantische oder visuelle Vollständigkeit.
+- Die Miro-native Fläche ist bewusst eine lesbare Auswahl und kein Vollständigkeitsrenderer. Die Evidence-Karte nennt deshalb materialisierte Knoten und Beziehungen explizit als `Miro-Auszug X/Y`.
+- Homogene fachliche Beziehungstypen werden als visuelles Risiko ausgewiesen, aber niemals durch erfundene Relationstypen „verbessert“ oder als Generatorfehler blockiert.
 - Miro-Qualität wird weiterhin lokal als Vertrag geprüft und erst durch einen separaten Live-Readback als Providerkonformität belegt.
 - Ein automatischer Vertragsscore ist kein Ästhetikurteil.
 
-## Paketinhalt
+## Paketinhalt und Veröffentlichung
 
 Ein Hybridpaket kann enthalten:
 
@@ -66,6 +81,8 @@ Ein Hybridpaket kann enthalten:
 - `overview.md` – narrative Fassung;
 - `nodes.tsv` – tabellarisches Inventar;
 - `manifest.json` und `receipt.json` – Digests und Nichtbehauptungen.
+
+Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis. Das Zielverzeichnis wird erst nach vollständiger erfolgreicher Kompilierung atomar veröffentlicht. Ein Renderer- oder Quality-Fehler darf daher kein halbfertiges Paket zurücklassen, das einen sicheren Retry blockiert.
 
 ## Pilot
 

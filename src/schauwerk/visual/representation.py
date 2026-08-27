@@ -6,6 +6,8 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import tempfile
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -14,6 +16,7 @@ from typing import Any
 from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
 
 from .composer_v2 import (
+    clip_text,
     connector_object,
     frame,
     shape_object,
@@ -77,10 +80,56 @@ _SUPPORTED_EDGE_KINDS = {
     "association",
 }
 _SUPPORTED_FORMATS = {"mermaid", "canvas", "miro_native", "table", "document"}
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_PUBLIC_ROOT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "id",
+        "title",
+        "purpose",
+        "intent",
+        "groups",
+        "nodes",
+        "edges",
+        "requirements",
+        "requested_formats",
+    }
+)
+_GROUP_FIELDS = frozenset({"id", "label"})
+_NODE_FIELDS = frozenset({"id", "label", "kind", "group", "summary"})
+_EDGE_FIELDS = frozenset({"id", "from", "to", "label", "kind"})
+_REQUIREMENT_KEYS = (
+    "formal_relations",
+    "free_spatial_layout",
+    "presentation",
+    "collaboration",
+    "rich_text",
+    "structured_comparison",
+    "portable_offline",
+)
+_REQUIREMENT_FIELDS = frozenset(_REQUIREMENT_KEYS)
 
 
 class RepresentationError(ValueError):
     pass
+
+
+def _require_fields(
+    value: Mapping[Any, Any],
+    *,
+    field: str,
+    allowed: frozenset[str],
+    required: frozenset[str],
+) -> None:
+    keys = set(value)
+    missing = sorted(required - keys)
+    if missing:
+        raise RepresentationError(f"{field} is missing required fields: {', '.join(missing)}")
+    unknown = sorted(keys - allowed, key=str)
+    if unknown:
+        raise RepresentationError(
+            f"{field} contains unknown fields: {', '.join(str(item) for item in unknown)}"
+        )
 
 
 def _canonical(value: Any) -> str:
@@ -113,6 +162,14 @@ def _safe_id(value: Any, *, field: str) -> str:
 
 
 def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        raise RepresentationError("representation input root must be an object")
+    _require_fields(
+        value,
+        field="representation input",
+        allowed=_PUBLIC_ROOT_FIELDS | {"input_digest"},
+        required=_PUBLIC_ROOT_FIELDS,
+    )
     if value.get("schema_version") != INPUT_SCHEMA:
         raise RepresentationError(f"schema_version must be {INPUT_SCHEMA}")
     identifier = _safe_id(value.get("id"), field="id")
@@ -122,46 +179,60 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
     if intent not in _SUPPORTED_INTENTS:
         raise RepresentationError(f"intent must be one of {sorted(_SUPPORTED_INTENTS)}")
 
-    raw_groups = value.get("groups", [])
+    raw_groups = value["groups"]
     if not isinstance(raw_groups, list):
         raise RepresentationError("groups must be a list")
     groups: list[dict[str, str]] = []
     group_ids: set[str] = set()
-    for index, raw in enumerate(raw_groups):
-        if not isinstance(raw, Mapping):
+    for index, raw_group in enumerate(raw_groups):
+        if not isinstance(raw_group, Mapping):
             raise RepresentationError(f"groups[{index}] must be an object")
-        group_id = _safe_id(raw.get("id"), field=f"groups[{index}].id")
+        _require_fields(
+            raw_group,
+            field=f"groups[{index}]",
+            allowed=_GROUP_FIELDS,
+            required=_GROUP_FIELDS,
+        )
+        group_id = _safe_id(raw_group.get("id"), field=f"groups[{index}].id")
         if group_id in group_ids:
             raise RepresentationError(f"duplicate group id: {group_id}")
         group_ids.add(group_id)
         groups.append(
             {
                 "id": group_id,
-                "label": _clean_text(raw.get("label"), field=f"groups[{index}].label", maximum=100),
+                "label": _clean_text(
+                    raw_group.get("label"), field=f"groups[{index}].label", maximum=100
+                ),
             }
         )
 
-    raw_nodes = value.get("nodes")
+    raw_nodes = value["nodes"]
     if not isinstance(raw_nodes, list) or not raw_nodes:
         raise RepresentationError("nodes must be a non-empty list")
     nodes: list[dict[str, Any]] = []
     node_ids: set[str] = set()
-    for index, raw in enumerate(raw_nodes):
-        if not isinstance(raw, Mapping):
+    for index, raw_node in enumerate(raw_nodes):
+        if not isinstance(raw_node, Mapping):
             raise RepresentationError(f"nodes[{index}] must be an object")
-        node_id = _safe_id(raw.get("id"), field=f"nodes[{index}].id")
+        _require_fields(
+            raw_node,
+            field=f"nodes[{index}]",
+            allowed=_NODE_FIELDS,
+            required=frozenset({"id", "label", "kind"}),
+        )
+        node_id = _safe_id(raw_node.get("id"), field=f"nodes[{index}].id")
         if node_id in node_ids:
             raise RepresentationError(f"duplicate node id: {node_id}")
         node_ids.add(node_id)
-        kind = raw.get("kind")
+        kind = raw_node.get("kind")
         if kind not in _SUPPORTED_NODE_KINDS:
             raise RepresentationError(
                 f"nodes[{index}].kind must be one of {sorted(_SUPPORTED_NODE_KINDS)}"
             )
-        group = raw.get("group")
+        group = raw_node.get("group")
         if group is not None and group not in group_ids:
             raise RepresentationError(f"nodes[{index}].group references unknown group: {group}")
-        summary = raw.get("summary", "")
+        summary = raw_node.get("summary", "")
         if not isinstance(summary, str) or len(summary) > 500:
             raise RepresentationError(
                 f"nodes[{index}].summary must be a string up to 500 characters"
@@ -169,30 +240,38 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
         nodes.append(
             {
                 "id": node_id,
-                "label": _clean_text(raw.get("label"), field=f"nodes[{index}].label", maximum=120),
+                "label": _clean_text(
+                    raw_node.get("label"), field=f"nodes[{index}].label", maximum=120
+                ),
                 "kind": kind,
                 "group": group,
                 "summary": " ".join(summary.split()),
             }
         )
 
-    raw_edges = value.get("edges", [])
+    raw_edges = value["edges"]
     if not isinstance(raw_edges, list):
         raise RepresentationError("edges must be a list")
     edges: list[dict[str, str]] = []
     edge_ids: set[str] = set()
-    for index, raw in enumerate(raw_edges):
-        if not isinstance(raw, Mapping):
+    for index, raw_edge in enumerate(raw_edges):
+        if not isinstance(raw_edge, Mapping):
             raise RepresentationError(f"edges[{index}] must be an object")
-        edge_id = _safe_id(raw.get("id"), field=f"edges[{index}].id")
+        _require_fields(
+            raw_edge,
+            field=f"edges[{index}]",
+            allowed=_EDGE_FIELDS,
+            required=_EDGE_FIELDS,
+        )
+        edge_id = _safe_id(raw_edge.get("id"), field=f"edges[{index}].id")
         if edge_id in edge_ids:
             raise RepresentationError(f"duplicate edge id: {edge_id}")
         edge_ids.add(edge_id)
-        source = raw.get("from")
-        target = raw.get("to")
+        source = raw_edge.get("from")
+        target = raw_edge.get("to")
         if source not in node_ids or target not in node_ids:
             raise RepresentationError(f"edges[{index}] references an unknown node")
-        kind = raw.get("kind", "flow")
+        kind = raw_edge.get("kind")
         if kind not in _SUPPORTED_EDGE_KINDS:
             raise RepresentationError(
                 f"edges[{index}].kind must be one of {sorted(_SUPPORTED_EDGE_KINDS)}"
@@ -202,32 +281,37 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
                 "id": edge_id,
                 "from": str(source),
                 "to": str(target),
-                "label": _clean_text(raw.get("label"), field=f"edges[{index}].label", maximum=120),
+                "label": _clean_text(
+                    raw_edge.get("label"), field=f"edges[{index}].label", maximum=120
+                ),
                 "kind": str(kind),
             }
         )
 
-    raw_requirements = value.get("requirements", {})
+    raw_requirements = value["requirements"]
     if not isinstance(raw_requirements, Mapping):
         raise RepresentationError("requirements must be an object")
-    requirements = {
-        key: bool(raw_requirements.get(key, False))
-        for key in (
-            "formal_relations",
-            "free_spatial_layout",
-            "presentation",
-            "collaboration",
-            "rich_text",
-            "structured_comparison",
-            "portable_offline",
-        )
-    }
-    raw_requested = value.get("requested_formats", [])
+    _require_fields(
+        raw_requirements,
+        field="requirements",
+        allowed=_REQUIREMENT_FIELDS,
+        required=frozenset(),
+    )
+    requirements: dict[str, bool] = {}
+    for key in _REQUIREMENT_KEYS:
+        raw_requirement = raw_requirements.get(key, False)
+        if not isinstance(raw_requirement, bool):
+            raise RepresentationError(f"requirements.{key} must be a boolean")
+        requirements[key] = raw_requirement
+
+    raw_requested = value["requested_formats"]
     if not isinstance(raw_requested, list) or any(
         not isinstance(item, str) or item not in _SUPPORTED_FORMATS for item in raw_requested
     ):
         raise RepresentationError(f"requested_formats must use {sorted(_SUPPORTED_FORMATS)}")
-    requested = sorted(set(str(item) for item in raw_requested))
+    if len(set(raw_requested)) != len(raw_requested):
+        raise RepresentationError("requested_formats must not contain duplicates")
+    requested = sorted(raw_requested)
 
     normalized: dict[str, Any] = {
         "schema_version": INPUT_SCHEMA,
@@ -241,9 +325,16 @@ def validate_representation_input(value: Mapping[str, Any]) -> dict[str, Any]:
         "requirements": requirements,
         "requested_formats": requested,
     }
-    normalized["input_digest"] = _digest(normalized)
+    computed_digest = _digest(normalized)
+    supplied_digest = value.get("input_digest")
+    if supplied_digest is not None and (
+        not isinstance(supplied_digest, str)
+        or _SHA256.fullmatch(supplied_digest) is None
+        or supplied_digest != computed_digest
+    ):
+        raise RepresentationError("input_digest does not match normalized representation input")
+    normalized["input_digest"] = computed_digest
     return normalized
-
 
 def load_representation_input(path: Path) -> dict[str, Any]:
     try:
@@ -361,6 +452,26 @@ def route_representation(model: Mapping[str, Any]) -> dict[str, Any]:
     return plan
 
 
+def _validate_route_plan(
+    normalized: Mapping[str, Any], plan: Mapping[str, Any]
+) -> dict[str, Any]:
+    if not isinstance(plan, Mapping):
+        raise RepresentationError("route plan must be an object")
+    if plan.get("schema_version") != PLAN_SCHEMA:
+        raise RepresentationError(f"route plan schema_version must be {PLAN_SCHEMA}")
+    if plan.get("input_digest") != normalized["input_digest"]:
+        raise RepresentationError("route plan is bound to another representation input")
+    supplied_digest = plan.get("plan_digest")
+    body = {key: item for key, item in plan.items() if key != "plan_digest"}
+    if (
+        not isinstance(supplied_digest, str)
+        or _SHA256.fullmatch(supplied_digest) is None
+        or supplied_digest != _digest(body)
+    ):
+        raise RepresentationError("route plan digest mismatch")
+    return dict(plan)
+
+
 def _mermaid_text(value: str) -> str:
     return (
         value.replace("<", "‹")
@@ -373,8 +484,16 @@ def _mermaid_text(value: str) -> str:
     )
 
 
+def _mermaid_node_id(identifier: str) -> str:
+    return f"sw_node_{identifier}"
+
+
+def _mermaid_group_id(identifier: str) -> str:
+    return f"sw_group_{identifier}"
+
+
 def _mermaid_node(node: Mapping[str, Any]) -> str:
-    identifier = str(node["id"])
+    identifier = _mermaid_node_id(str(node["id"]))
     label = _mermaid_text(str(node["label"]))
     kind = str(node["kind"])
     wrappers = {
@@ -392,8 +511,27 @@ def _mermaid_node(node: Mapping[str, Any]) -> str:
     return f"{identifier}{opening}{label}{closing}"
 
 
+_MERMAID_ARROWS = {
+    "authority": "==>",
+    "flow": "-->",
+    "evidence": "-.->",
+    "feedback": "-.->",
+    "risk": "--x",
+    "association": "---",
+}
+
+def _mermaid_edge_line(edge: Mapping[str, Any]) -> str:
+    label = _mermaid_text(str(edge["label"]))
+    return (
+        f"{_mermaid_node_id(str(edge['from']))} "
+        f"{_MERMAID_ARROWS[str(edge['kind'])]}|{label}| "
+        f"{_mermaid_node_id(str(edge['to']))}"
+    )
+
+
 def render_mermaid(model: Mapping[str, Any], plan: Mapping[str, Any]) -> str:
     normalized = validate_representation_input(model)
+    plan = _validate_route_plan(normalized, plan)
     direction = "TD" if normalized["intent"] in {"sequence", "timeline", "process"} else "LR"
     lines = [
         f"%% profile: {MERMAID_PROFILE}",
@@ -404,24 +542,20 @@ def render_mermaid(model: Mapping[str, Any], plan: Mapping[str, Any]) -> str:
     for node in normalized["nodes"]:
         grouped[node["group"]].append(node)
     for group in normalized["groups"]:
-        lines.append(f'  subgraph group_{group["id"]}["{_mermaid_text(group["label"])}"]')
+        lines.append(
+            f'  subgraph {_mermaid_group_id(str(group["id"]))}["{_mermaid_text(group["label"])}"]'
+        )
         for node in grouped[group["id"]]:
+            lines.append(f"    %% source-node-id: {node['id']}")
             lines.append(f"    {_mermaid_node(node)}")
         lines.append("  end")
     for node in grouped[None]:
+        lines.append(f"  %% source-node-id: {node['id']}")
         lines.append(f"  {_mermaid_node(node)}")
 
-    arrows = {
-        "authority": "==>",
-        "flow": "-->",
-        "evidence": "-.->",
-        "feedback": "-.->",
-        "risk": "--x",
-        "association": "---",
-    }
     for edge in normalized["edges"]:
-        label = _mermaid_text(edge["label"])
-        lines.append(f"  {edge['from']} {arrows[edge['kind']]}|{label}| {edge['to']}")
+        lines.append(f"  %% source-edge-id: {edge['id']}")
+        lines.append(f"  {_mermaid_edge_line(edge)}")
 
     class_styles = {
         "human": "fill:#E6F6F8,stroke:#147D92,color:#0B3C49",
@@ -437,13 +571,14 @@ def render_mermaid(model: Mapping[str, Any], plan: Mapping[str, Any]) -> str:
     for kind, style in class_styles.items():
         lines.append(f"  classDef {kind} {style};")
     for node in normalized["nodes"]:
-        lines.append(f"  class {node['id']} {node['kind']};")
+        lines.append(f"  class {_mermaid_node_id(str(node['id']))} {node['kind']};")
     lines.append(f"%% route-plan-digest: {plan['plan_digest']}")
     return "\n".join(lines) + "\n"
 
 
 def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
     normalized = validate_representation_input(model)
+    _validate_route_plan(normalized, plan)
     nodes_by_group: dict[str | None, list[Mapping[str, Any]]] = defaultdict(list)
     for node in normalized["nodes"]:
         nodes_by_group[node["group"]].append(node)
@@ -475,7 +610,7 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
             )
             canvas_nodes.append(
                 {
-                    "id": f"canvas_group_{group_id}",
+                    "id": f"canvas_group:{group_id}",
                     "type": "group",
                     "x": base_x,
                     "y": 0,
@@ -512,10 +647,19 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
     }
     canvas_edges: list[dict[str, Any]] = []
     for edge in normalized["edges"]:
-        source_x, _ = positions[edge["from"]]
-        target_x, _ = positions[edge["to"]]
-        from_side = "right" if source_x <= target_x else "left"
-        to_side = "left" if source_x <= target_x else "right"
+        source_x, source_y = positions[edge["from"]]
+        target_x, target_y = positions[edge["to"]]
+        if edge["from"] == edge["to"]:
+            from_side, to_side = "right", "top"
+        elif source_x == target_x:
+            if source_y <= target_y:
+                from_side, to_side = "bottom", "top"
+            else:
+                from_side, to_side = "top", "bottom"
+        elif source_x < target_x:
+            from_side, to_side = "right", "left"
+        else:
+            from_side, to_side = "left", "right"
         canvas_edges.append(
             {
                 "id": edge["id"],
@@ -545,53 +689,84 @@ def _miro_role(kind: str) -> tuple[str, str]:
     return "entity", "structure"
 
 
+def _miro_node_object_id(source_id: str) -> str:
+    return f"source_node_{source_id}"
+
+
+def _miro_edge_object_id(source_id: str) -> str:
+    return f"source_edge_{source_id}"
+
+
 def _frame_nodes(
     frame_id: str,
     nodes: Sequence[Mapping[str, Any]],
     edges: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Lay out a readable four-node relation strip.
+    """Lay out a readable four-node relation strip without inventing semantics.
 
     Miro positions connector captions independently of node geometry. Relation
     text therefore lives in one bounded legend while connectors remain semantic
-    but unlabelled.
+    but unlabelled. Source identities are carried as metadata and renderer-local
+    ids live in a disjoint namespace so decorative objects cannot impersonate
+    source coverage.
     """
 
     result: list[dict[str, Any]] = []
     selected = list(nodes[:4])
-    selected_ids = {node["id"] for node in selected}
-    for index, node in enumerate(selected):
-        role, color = _miro_role(str(node["kind"]))
-        result.append(
-            shape_object(
-                node["id"],
-                role,
-                80 + index * 360,
-                340,
-                240,
-                140,
-                str(node["label"]),
-                color=color,
-            )
-        )
-    room = min(2, max(0, 7 - len(result)))
-    relation_rows: list[str] = []
+    selected_ids = {str(node["id"]) for node in selected}
     labels = {str(node["id"]): str(node["label"]) for node in selected}
-    for edge in edges:
-        if room == 0:
-            break
-        if edge["from"] in selected_ids and edge["to"] in selected_ids:
-            connector = connector_object(edge["id"], edge["from"], edge["to"], "→")
-            connector["relation_type"] = edge["kind"]
-            result.append(connector)
-            source_label = labels[str(edge["from"])]
-            target_label = labels[str(edge["to"])]
-            relation_label = str(edge["label"])[:36]
-            relation_rows.append(
-                f"{source_label} → {target_label}: {relation_label}"
+    for index, node in enumerate(selected):
+        source_id = str(node["id"])
+        role, color = _miro_role(str(node["kind"]))
+        rendered = shape_object(
+            _miro_node_object_id(source_id),
+            role,
+            80 + index * 360,
+            340,
+            240,
+            140,
+            str(node["label"]),
+            color=color,
+        )
+        rendered["source_kind"] = "node"
+        rendered["source_id"] = source_id
+        result.append(rendered)
+
+    relevant_edges = [
+        edge
+        for edge in edges
+        if str(edge["from"]) in selected_ids and str(edge["to"]) in selected_ids
+    ]
+    connector_room = min(2, max(0, 7 - len(result)))
+    relation_rows: list[str] = []
+    for edge in relevant_edges[:2]:
+        source_id = str(edge["from"])
+        target_id = str(edge["to"])
+        source_label = clip_text(labels[source_id], 28)
+        target_label = clip_text(labels[target_id], 28)
+        relation_label = clip_text(str(edge["label"]), 36)
+        if source_id == target_id:
+            relation_rows.append(f"{source_label} ↺: {relation_label}")
+            continue
+        if connector_room:
+            connector = connector_object(
+                _miro_edge_object_id(str(edge["id"])),
+                _miro_node_object_id(source_id),
+                _miro_node_object_id(target_id),
+                "→",
             )
-            room -= 1
+            connector["relation_type"] = edge["kind"]
+            connector["source_kind"] = "edge"
+            connector["source_id"] = str(edge["id"])
+            result.append(connector)
+            connector_room -= 1
+        relation_rows.append(f"{source_label} → {target_label}: {relation_label}")
+
     if relation_rows:
+        legend = "   ·   ".join(relation_rows)
+        omitted = len(relevant_edges) - len(relation_rows)
+        if omitted > 0:
+            legend += f"   ·   +{omitted} weitere Beziehungen"
         result.append(
             text_object(
                 f"{frame_id}_relations",
@@ -600,7 +775,7 @@ def _frame_nodes(
                 260,
                 1360,
                 60,
-                "   ·   ".join(relation_rows),
+                clip_text(legend, 220),
                 font="caption",
             )
         )
@@ -619,9 +794,9 @@ def _frame_nodes(
         )
     return result
 
-
 def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
     normalized = validate_representation_input(model)
+    plan = _validate_route_plan(normalized, plan)
     nodes = normalized["nodes"]
     edges = normalized["edges"]
     frames = [
@@ -729,25 +904,29 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
             )
         )
     for index, node in enumerate(nodes[8:10]):
+        source_id = str(node["id"])
         role, color = _miro_role(str(node["kind"]))
-        frames[4]["objects"].append(
-            shape_object(
-                str(node["id"]),
-                role,
-                160 + index * 600,
-                520,
-                520,
-                100,
-                str(node["label"]),
-                color=color,
-            )
+        rendered = shape_object(
+            _miro_node_object_id(source_id),
+            role,
+            160 + index * 600,
+            520,
+            520,
+            100,
+            str(node["label"]),
+            color=color,
         )
+        rendered["source_kind"] = "node"
+        rendered["source_id"] = source_id
+        frames[4]["objects"].append(rendered)
+    materialized = _miro_coverage(normalized, {"frames": frames})
     evidence_summary = (
         "Repräsentationspaket\n"
-        f"Eingabe {normalized['input_digest'][:16]}… · Plan {plan['plan_digest'][:16]}…\n"
-        f"{len(nodes)} Knoten · {len(edges)} Beziehungen\n"
-        "Vertrag und Identität automatisch geprüft. Visuelle Freigabe nur mit "
-        "authentifizierter Provider-Aufnahme."
+        f"Eingabe {normalized['input_digest'][:12]}… · Plan {plan['plan_digest'][:12]}…\n"
+        f"Miro-Auszug {materialized['node_count']}/{len(nodes)} Knoten · "
+        f"{materialized['edge_count']}/{len(edges)} Beziehungen\n"
+        "Identität geprüft; vollständige Semantik bleibt im Paket. "
+        "Visuelle Freigabe separat."
     )
     frames[5]["objects"].append(
         shape_object(
@@ -772,7 +951,7 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
 def _reject_output_symlink_chain(path: Path) -> None:
     candidate = path.expanduser().absolute()
     for component in reversed([candidate, *candidate.parents]):
-        if component.exists() and component.is_symlink():
+        if component.is_symlink():
             raise RepresentationError("representation output path must not contain symlinks")
 
 
@@ -806,7 +985,38 @@ def _coverage(
         "edge_count": len(covered_edges),
         "complete_nodes": set(covered_nodes) == source_nodes,
         "complete_edges": set(covered_edges) == source_edges,
+        "coverage_kind": "source_id_materialization",
     }
+
+
+def _mermaid_coverage(model: Mapping[str, Any], source: str) -> dict[str, Any]:
+    node_ids: list[str] = []
+    edge_ids: list[str] = []
+    for line in source.splitlines():
+        stripped = line.strip()
+        node_prefix = "%% source-node-id: "
+        edge_prefix = "%% source-edge-id: "
+        if stripped.startswith(node_prefix):
+            node_ids.append(stripped[len(node_prefix) :])
+        elif stripped.startswith(edge_prefix):
+            edge_ids.append(stripped[len(edge_prefix) :])
+    return _coverage(model=model, node_ids=node_ids, edge_ids=edge_ids)
+
+
+def _canvas_coverage(model: Mapping[str, Any], canvas: Mapping[str, Any]) -> dict[str, Any]:
+    node_ids = [
+        str(item["id"])
+        for item in canvas.get("nodes", [])
+        if isinstance(item, Mapping)
+        and item.get("type") != "group"
+        and isinstance(item.get("id"), str)
+    ]
+    edge_ids = [
+        str(item["id"])
+        for item in canvas.get("edges", [])
+        if isinstance(item, Mapping) and isinstance(item.get("id"), str)
+    ]
+    return _coverage(model=model, node_ids=node_ids, edge_ids=edge_ids)
 
 
 def _miro_coverage(model: Mapping[str, Any], board: Mapping[str, Any]) -> dict[str, Any]:
@@ -814,24 +1024,22 @@ def _miro_coverage(model: Mapping[str, Any], board: Mapping[str, Any]) -> dict[s
     edge_ids: list[str] = []
     for current_frame in board["frames"]:
         for item in current_frame["objects"]:
-            if item["kind"] == "connector":
-                edge_ids.append(str(item["id"]))
-            else:
-                node_ids.append(str(item["id"]))
+            source_kind = item.get("source_kind")
+            source_id = item.get("source_id")
+            if source_kind == "node" and isinstance(source_id, str):
+                node_ids.append(source_id)
+            elif source_kind == "edge" and isinstance(source_id, str):
+                edge_ids.append(source_id)
     return _coverage(model=model, node_ids=node_ids, edge_ids=edge_ids)
 
 
-def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
-    _reject_output_symlink_chain(output_dir)
-    if output_dir.exists() and any(output_dir.iterdir()):
-        raise RepresentationError(f"output directory must be empty: {output_dir}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-    os.chmod(output_dir, 0o700)
+def _compile_representation_package_into(
+    *, input_path: Path, output_dir: Path
+) -> dict[str, Any]:
     model = load_representation_input(input_path)
     plan = route_representation(model)
     all_node_ids = [str(node["id"]) for node in model["nodes"]]
     all_edge_ids = [str(edge["id"]) for edge in model["edges"]]
-    full_coverage = _coverage(model=model, node_ids=all_node_ids, edge_ids=all_edge_ids)
     artifacts: list[dict[str, Any]] = []
     mermaid_source: str | None = None
     layout_dsl: str | None = None
@@ -844,7 +1052,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         artifacts.append(
             {
                 "role": "mermaid_source",
-                "coverage": full_coverage,
+                "coverage": _mermaid_coverage(model, mermaid_source),
                 **_write_text(output_dir / "diagram.mmd", mermaid_source),
             }
         )
@@ -853,7 +1061,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         artifacts.append(
             {
                 "role": "json_canvas",
-                "coverage": full_coverage,
+                "coverage": _canvas_coverage(model, canvas),
                 **_write_json(output_dir / "composition.canvas", canvas),
             }
         )
@@ -890,7 +1098,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         artifacts.append(
             {
                 "role": "narrative_document",
-                "coverage": full_coverage,
+                "coverage": _coverage(model=model, node_ids=[], edge_ids=[]),
                 **_write_text(output_dir / "overview.md", document_source),
             }
         )
@@ -932,8 +1140,8 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             "edge_ids": sorted(all_edge_ids),
         },
         "identity_contract": (
-            "stable source ids are preserved wherever an item is materialized; "
-            "coverage is explicit per renderer artifact"
+            "coverage, when present, measures stable source-id materialization in the "
+            "emitted renderer artifact; it does not establish semantic or visual completeness"
         ),
         "does_not_establish": plan["does_not_establish"],
     }
@@ -955,3 +1163,36 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
     receipt["receipt_digest"] = _digest(receipt)
     _write_json(output_dir / "receipt.json", receipt)
     return receipt
+
+def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
+    """Compile into a sibling staging directory and publish only a complete package."""
+
+    target = output_dir.expanduser().absolute()
+    _reject_output_symlink_chain(target)
+    if target.exists():
+        if not target.is_dir():
+            raise RepresentationError(f"output path is not a directory: {output_dir}")
+        if any(target.iterdir()):
+            raise RepresentationError(f"output directory must be empty: {output_dir}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    _reject_output_symlink_chain(target)
+    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.tmp-", dir=target.parent))
+    os.chmod(staging, 0o700)
+    try:
+        receipt = _compile_representation_package_into(
+            input_path=input_path, output_dir=staging
+        )
+        _reject_output_symlink_chain(target)
+        if target.exists() and (not target.is_dir() or any(target.iterdir())):
+            raise RepresentationError(f"output directory changed while compiling: {output_dir}")
+        os.replace(staging, target)
+        directory_fd = os.open(target.parent, os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+        return receipt
+    except BaseException:
+        if staging.exists():
+            shutil.rmtree(staging)
+        raise

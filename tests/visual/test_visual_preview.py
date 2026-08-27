@@ -98,9 +98,15 @@ def test_quality_gate_blocks_the_previous_auto_sized_table_overlap_before_previe
     frames = copy.deepcopy(board["frames"])
     decision = next(frame for frame in frames if frame["id"] == "route_decision")
     delivery = next(frame for frame in frames if frame["id"] == "route_delivery")
-    moved = [item for item in delivery["objects"] if item["id"] in {"quality_gate", "kill_switch"}]
+    moved = [
+        item
+        for item in delivery["objects"]
+        if item.get("source_id") in {"quality_gate", "kill_switch"}
+    ]
     delivery["objects"] = [
-        item for item in delivery["objects"] if item["id"] not in {"quality_gate", "kill_switch"}
+        item
+        for item in delivery["objects"]
+        if item.get("source_id") not in {"quality_gate", "kill_switch"}
     ]
     decision["objects"].extend(moved)
 
@@ -132,7 +138,7 @@ def test_preview_comparison_detects_new_text_overflow(tmp_path: Path) -> None:
     assert comparison["ok"] is False
     assert comparison["regression"] is True
     assert comparison["new_blockers"]
-    assert f"route_map/{raw['nodes'][0]['id']}" in comparison["changed_objects"]
+    assert f"route_map/source_node_{raw['nodes'][0]['id']}" in comparison["changed_objects"]
 
 
 def test_identical_previews_compare_without_regression(tmp_path: Path) -> None:

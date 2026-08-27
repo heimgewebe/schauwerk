@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
+import schauwerk.visual.representation as representation
 from schauwerk.runner import main
 from schauwerk.visual.representation import (
     RepresentationError,
@@ -22,6 +23,47 @@ from schauwerk.visual.system_v2 import validate_board_spec
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/operator-ecosystem-representation-v1.json"
+
+
+def _minimal_representation(
+    *,
+    node_count: int = 2,
+    requested_formats: list[str] | None = None,
+    self_loop: bool = False,
+    long_labels: bool = False,
+) -> dict[str, object]:
+    nodes = [
+        {
+            "id": f"n{index}",
+            "label": "L" * 120 if long_labels else f"Knoten {index}",
+            "kind": "concept",
+            "group": "g",
+            "summary": "",
+        }
+        for index in range(node_count)
+    ]
+    edges = [
+        {
+            "id": f"e{index}",
+            "from": f"n{index}",
+            "to": f"n{index}" if self_loop and index == 0 else f"n{index + 1}",
+            "label": "R" * 120 if long_labels else "führt zu",
+            "kind": "flow",
+        }
+        for index in range(max(1 if self_loop else 0, node_count - 1))
+    ]
+    return {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "probe",
+        "title": "Probe",
+        "purpose": "Generator regression probe",
+        "intent": "process",
+        "groups": [{"id": "g", "label": "Gruppe"}],
+        "nodes": nodes,
+        "edges": edges,
+        "requirements": {},
+        "requested_formats": requested_formats or [],
+    }
 
 
 def test_operator_fixture_matches_the_public_json_schema() -> None:
@@ -88,19 +130,21 @@ def test_mermaid_and_json_canvas_preserve_source_ids() -> None:
 
     assert mermaid.startswith("%% profile: mermaid-11.16.0-strict-source.v1\n")
     assert "flowchart LR" in mermaid
-    assert "subgraph group_authority" in mermaid
+    assert "subgraph sw_group_authority" in mermaid
     assert "click " not in mermaid
     assert "<script" not in mermaid.lower()
     for node in model["nodes"]:
         assert node["id"] in mermaid
-    assert 'repositories[("Repositories")]' in mermaid
-    assert 'quality_gate{"Prüfgate"}' in mermaid
-    assert 'kill_switch{{"Kill-Switch"}}' in mermaid
+    assert 'sw_node_repositories[("Repositories")]' in mermaid
+    assert 'sw_node_quality_gate{"Prüfgate"}' in mermaid
+    assert 'sw_node_kill_switch{{"Kill-Switch"}}' in mermaid
+    assert "%% source-node-id: repositories" in mermaid
+    assert "%% source-edge-id:" in mermaid
 
     canvas_node_ids = {node["id"] for node in canvas["nodes"]}
     source_node_ids = {node["id"] for node in model["nodes"]}
     assert source_node_ids <= canvas_node_ids
-    assert any(identifier.startswith("canvas_group_") for identifier in canvas_node_ids)
+    assert any(identifier.startswith("canvas_group:") for identifier in canvas_node_ids)
     for edge in canvas["edges"]:
         assert edge["fromNode"] in source_node_ids
         assert edge["toNode"] in source_node_ids
@@ -162,8 +206,8 @@ def test_package_is_deterministic_and_manifest_bound(tmp_path: Path) -> None:
     manifest = json.loads((tmp_path / "first" / "manifest.json").read_text())
     assert manifest["package_digest"] == first["package_digest"]
     assert manifest["identity_contract"] == (
-        "stable source ids are preserved wherever an item is materialized; "
-        "coverage is explicit per renderer artifact"
+        "coverage, when present, measures stable source-id materialization in the "
+        "emitted renderer artifact; it does not establish semantic or visual completeness"
     )
     artifacts = {item["role"]: item for item in manifest["artifacts"]}
     execution_plan = json.loads((tmp_path / "first" / "miro-execution-plan.json").read_text())
@@ -175,6 +219,13 @@ def test_package_is_deterministic_and_manifest_bound(tmp_path: Path) -> None:
     assert artifacts["json_canvas"]["coverage"]["complete_edges"] is True
     assert artifacts["miro_board_spec"]["coverage"]["complete_nodes"] is True
     assert artifacts["miro_board_spec"]["coverage"]["complete_edges"] is False
+    assert artifacts["narrative_document"]["coverage"]["complete_nodes"] is False
+    assert artifacts["narrative_document"]["coverage"]["complete_edges"] is False
+    assert all(
+        item["coverage"].get("coverage_kind") == "source_id_materialization"
+        for item in artifacts.values()
+        if "coverage" in item
+    )
 
 
 def test_cli_compiles_the_same_package(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -224,3 +275,165 @@ def test_output_path_rejects_symlink_chain(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="must not contain symlinks"):
         compile_representation_package(input_path=FIXTURE, output_dir=linked / "package")
     assert not (target / "package").exists()
+
+def test_runtime_validation_matches_public_schema_for_boolean_and_unknown_fields() -> None:
+    raw = _minimal_representation(requested_formats=["mermaid"])
+    raw["requirements"] = {"formal_relations": "false"}
+    with pytest.raises(RepresentationError, match="must be a boolean"):
+        validate_representation_input(raw)
+
+    raw = _minimal_representation()
+    raw["extra_root"] = True
+    with pytest.raises(RepresentationError, match="unknown fields"):
+        validate_representation_input(raw)
+
+    raw = _minimal_representation()
+    raw["nodes"][0]["extra_node"] = "unexpected"
+    with pytest.raises(RepresentationError, match="unknown fields"):
+        validate_representation_input(raw)
+
+
+def test_requested_formats_reject_duplicates_instead_of_silently_rewriting_input() -> None:
+    raw = _minimal_representation(requested_formats=["canvas", "canvas"])
+    with pytest.raises(RepresentationError, match="must not contain duplicates"):
+        validate_representation_input(raw)
+
+
+def test_renderers_reject_a_tampered_route_plan() -> None:
+    model = validate_representation_input(_minimal_representation(requested_formats=["mermaid"]))
+    plan = route_representation(model)
+    tampered = copy.deepcopy(plan)
+    tampered["primary_format"] = "canvas"
+
+    with pytest.raises(RepresentationError, match="plan digest mismatch"):
+        render_mermaid(model, tampered)
+
+
+def test_mermaid_uses_renderer_local_ids_for_reserved_source_identifiers() -> None:
+    raw = _minimal_representation(node_count=2, requested_formats=["mermaid"])
+    raw["nodes"][0]["id"] = "end"
+    raw["edges"][0]["from"] = "end"
+    model = validate_representation_input(raw)
+    rendered = render_mermaid(model, route_representation(model))
+
+    assert "%% source-node-id: end" in rendered
+    assert "sw_node_end" in rendered
+    assert "class sw_node_end concept;" in rendered
+
+
+def test_json_canvas_uses_vertical_anchors_for_same_column_edges() -> None:
+    model = validate_representation_input(_minimal_representation(requested_formats=["canvas"]))
+    canvas = render_json_canvas(model, route_representation(model))
+    edge = canvas["edges"][0]
+
+    assert edge["fromSide"] == "bottom"
+    assert edge["toSide"] == "top"
+
+
+def test_json_canvas_generated_group_ids_cannot_collide_with_source_nodes() -> None:
+    raw = _minimal_representation(requested_formats=["canvas"])
+    raw["groups"] = [{"id": "authority", "label": "Authority"}]
+    raw["nodes"][0]["id"] = "canvas_group_authority"
+    raw["nodes"][0]["group"] = "authority"
+    raw["nodes"][1]["group"] = "authority"
+    raw["edges"][0]["from"] = "canvas_group_authority"
+    model = validate_representation_input(raw)
+    canvas = render_json_canvas(model, route_representation(model))
+    ids = [item["id"] for item in canvas["nodes"]]
+
+    assert "canvas_group_authority" in ids
+    assert "canvas_group:authority" in ids
+    assert len(ids) == len(set(ids))
+
+
+def test_miro_homogeneous_relations_are_a_risk_not_a_generation_blocker() -> None:
+    model = validate_representation_input(
+        _minimal_representation(node_count=8, requested_formats=["miro_native"])
+    )
+    board = render_miro_board(model, route_representation(model))
+    quality = validate_board_spec(board)
+
+    assert quality["ok"] is True
+    assert not any(item["code"] == "relation_grammar" for item in quality["blockers"])
+    assert any(item["code"] == "relation_grammar" for item in quality["warnings"])
+    assert any(item["code"] == "relation_grammar" for item in quality["visual_risks"])
+    evidence = next(
+        item["content"]
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("id") == "route_evidence_card"
+    )
+    assert "Miro-Auszug 8/8 Knoten · 4/7 Beziehungen" in evidence
+
+
+def test_miro_self_loop_and_maximum_legal_labels_do_not_crash_quality_gate() -> None:
+    self_model = validate_representation_input(
+        _minimal_representation(node_count=2, requested_formats=["miro_native"], self_loop=True)
+    )
+    self_quality = validate_board_spec(
+        render_miro_board(self_model, route_representation(self_model))
+    )
+    assert self_quality["ok"] is True
+    assert not any(
+        item["code"] == "connector_label_collision" for item in self_quality["blockers"]
+    )
+
+    long_model = validate_representation_input(
+        _minimal_representation(
+            node_count=4, requested_formats=["miro_native"], long_labels=True
+        )
+    )
+    long_quality = validate_board_spec(
+        render_miro_board(long_model, route_representation(long_model))
+    )
+    assert long_quality["ok"] is True
+
+
+def test_miro_coverage_cannot_be_faked_by_decorative_id_collision() -> None:
+    raw = _minimal_representation(node_count=11, requested_formats=["miro_native"])
+    raw["nodes"][-1]["id"] = "route_entry"
+    raw["edges"][-1]["to"] = "route_entry"
+    model = validate_representation_input(raw)
+    board = render_miro_board(model, route_representation(model))
+    coverage = representation._miro_coverage(model, board)
+
+    assert coverage["complete_nodes"] is False
+    assert "route_entry" not in coverage["node_ids"]
+    evidence = next(
+        item["content"]
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("id") == "route_evidence_card"
+    )
+    assert "Miro-Auszug 10/11 Knoten" in evidence
+
+
+def test_package_failure_does_not_publish_partial_artifacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "input.json"
+    input_path.write_text(
+        json.dumps(_minimal_representation(node_count=8, requested_formats=["miro_native"])),
+        encoding="utf-8",
+    )
+    target = tmp_path / "package"
+
+    def fail_render(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("synthetic renderer failure")
+
+    monkeypatch.setattr(representation, "render_miro_board", fail_render)
+    with pytest.raises(RuntimeError, match="synthetic renderer failure"):
+        representation.compile_representation_package(
+            input_path=input_path, output_dir=target
+        )
+
+    assert not target.exists()
+    assert list(tmp_path.glob(".package.tmp-*")) == []
+
+
+def test_output_path_rejects_dangling_symlink_chain(tmp_path: Path) -> None:
+    linked = tmp_path / "dangling"
+    linked.symlink_to(tmp_path / "missing", target_is_directory=True)
+
+    with pytest.raises(ValueError, match="must not contain symlinks"):
+        compile_representation_package(input_path=FIXTURE, output_dir=linked / "package")
