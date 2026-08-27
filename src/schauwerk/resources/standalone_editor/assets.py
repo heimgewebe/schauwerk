@@ -57,6 +57,7 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button compact" id="projectButton" type="button">Projekt</button>
         <button class="button compact" data-export="png" type="button">PNG</button>
         <button class="button compact" data-export="svg" type="button">SVG</button>
+        <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
       </nav>
       <div class="editor-wrap">
         <iframe
@@ -145,6 +146,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
 .button.primary:hover { background: #2f4fb7; }
 .button.ghost { border-color: transparent; background: transparent; }
 .button.compact { min-height: 36px; padding: 7px 11px; border-radius: 9px; font-size: 0.9rem; }
+.download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.download-link[hidden] { display: none; }
 .restore-button {
   margin-top: 18px;
   padding: 0;
@@ -245,6 +248,20 @@ export function validateExportDataUri(value, format) {
     throw new Error("Exportdaten sind nicht gültig base64-kodiert.");
   }
   return value;
+}
+
+export function exportDataUriToBlob(value, format) {
+  const validated = validateExportDataUri(value, format);
+  const prefix = EXPORT_PREFIXES[format];
+  const mimeType = format === "png" ? "image/png" : format === "svg" ? "image/svg+xml" : null;
+  if (!prefix || !mimeType) throw new Error("Exportformat kann nicht als Datei vorbereitet werden.");
+
+  const binary = atob(validated.slice(prefix.length));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new Blob([bytes], { type: mimeType });
 }
 
 export function validateDiagramXml(value) {
@@ -417,7 +434,7 @@ export function jsonCanvasToDrawioXml(source) {
 }
 """
 
-APP_JS = r"""import { detectInput, emptyDrawioXml, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
+APP_JS = r"""import { detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
@@ -441,12 +458,14 @@ const elements = {
   backButton: document.querySelector("#backButton"),
   layoutButton: document.querySelector("#layoutButton"),
   projectButton: document.querySelector("#projectButton"),
+  downloadLink: document.querySelector("#downloadLink"),
 };
 
 let pendingLoad = null;
 let currentXml = null;
 let currentTitle = "Schaubild";
 let pendingExport = null;
+let preparedDownloadUrl = null;
 let editorReady = false;
 
 function setStatus(message) { elements.status.textContent = message; }
@@ -499,27 +518,28 @@ function readDraft() {
   }
 }
 
-function downloadBlob(blob, filename) {
-  const href = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = href;
-  anchor.download = filename;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(href), 1000);
+function clearPreparedDownload() {
+  if (preparedDownloadUrl !== null) {
+    URL.revokeObjectURL(preparedDownloadUrl);
+    preparedDownloadUrl = null;
+  }
+  elements.downloadLink.hidden = true;
+  elements.downloadLink.removeAttribute("href");
+  elements.downloadLink.removeAttribute("download");
+  elements.downloadLink.textContent = "Datei speichern";
 }
 
-function downloadDataUri(uri, filename) {
-  const anchor = document.createElement("a");
-  anchor.href = uri;
-  anchor.download = filename;
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
+function prepareDownload(blob, filename, label) {
+  clearPreparedDownload();
+  preparedDownloadUrl = URL.createObjectURL(blob);
+  elements.downloadLink.href = preparedDownloadUrl;
+  elements.downloadLink.download = filename;
+  elements.downloadLink.textContent = `${label} speichern`;
+  elements.downloadLink.hidden = false;
 }
 
 function showStart() {
+  clearPreparedDownload();
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
   setError("");
@@ -560,6 +580,8 @@ function prepareInput(raw, title = "Schaubild") {
 }
 
 function launch(load) {
+  clearPreparedDownload();
+  pendingExport = null;
   pendingLoad = load;
   editorReady = false;
   showWorkspace();
@@ -616,6 +638,7 @@ function exportDiagram(format) {
     setStatus("Export läuft bereits …");
     return;
   }
+  clearPreparedDownload();
   pendingExport = format;
   if (format === "drawio") {
     // The embed protocol has no XML export format. A supported SVG export
@@ -666,28 +689,44 @@ window.addEventListener("message", (event) => {
   }
   if (message.event === "export") {
     const wanted = pendingExport;
+    if (wanted === null) return;
     pendingExport = null;
+
+    let validatedData = null;
+    let validatedXml = null;
+    let filename;
+    let label;
     try {
       if (wanted === "drawio") {
         if (message.format !== "svg") throw new Error("Unerwartete Exportantwort.");
-        const xml = validateDiagramXml(message.xml);
-        saveDraft(xml);
-        downloadBlob(
-          new Blob([xml], { type: "application/xml;charset=utf-8" }),
-          `${safeFilename(currentTitle)}.drawio`
-        );
+        validatedXml = validateDiagramXml(message.xml);
+        saveDraft(validatedXml);
+        filename = `${safeFilename(currentTitle)}.drawio`;
+        label = "Projekt";
       } else if (wanted === "png" || wanted === "svg") {
         if (message.format !== wanted) throw new Error("Unerwartete Exportantwort.");
-        const data = validateExportDataUri(message.data, wanted);
+        validatedData = validateExportDataUri(message.data, wanted);
         if (typeof message.xml === "string") saveDraft(validateDiagramXml(message.xml));
-        downloadDataUri(data, `${safeFilename(currentTitle)}.${wanted}`);
+        filename = `${safeFilename(currentTitle)}.${wanted}`;
+        label = wanted.toUpperCase();
       } else {
         throw new Error("Exportantwort ohne passende Anforderung.");
       }
-      setStatus("Export erstellt");
     } catch (_) {
       setStatus("Unsichere oder ungültige Exportantwort verworfen");
+      return;
     }
+
+    try {
+      const blob = wanted === "drawio"
+        ? new Blob([validatedXml], { type: "application/xml;charset=utf-8" })
+        : exportDataUriToBlob(validatedData, wanted);
+      prepareDownload(blob, filename, label);
+    } catch (_) {
+      setStatus("Export konnte nicht zum Speichern vorbereitet werden");
+      return;
+    }
+    setStatus(`Export bereit · „${label} speichern“ tippen`);
     return;
   }
   if (message.event === "openLink") {
@@ -711,6 +750,9 @@ elements.restoreButton.addEventListener("click", () => {
   launch({ xml: draft.xml });
 });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
+elements.downloadLink.addEventListener("click", () => {
+  if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
+});
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;
   postToEditor({
