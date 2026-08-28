@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import errno
 import json
 import os
 import stat
@@ -1026,3 +1027,205 @@ def test_final_readback_permission_error_fails_closed(
     old_target = old_parent / "package"
     assert old_target.is_dir()
     _assert_scrubbed_compiler_entries(old_target)
+
+
+def test_package_rejects_direct_target_enametoolong_with_typed_error(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / ("x" * 256)
+
+    with pytest.raises(RepresentationError, match="target name is too long"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+
+def test_staging_close_failure_does_not_mask_validation_fault(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    original_close = os.close
+    close_fault_injected = False
+
+    def fail_identity(_left: os.stat_result, _right: os.stat_result) -> bool:
+        return False
+
+    def close_then_fail_once(descriptor: int) -> None:
+        nonlocal close_fault_injected
+        if descriptor != parent_fd and not close_fault_injected:
+            close_fault_injected = True
+            original_close(descriptor)
+            raise OSError(errno.EIO, "synthetic close failure")
+        original_close(descriptor)
+
+    monkeypatch.setattr(representation, "_same_path_identity", fail_identity)
+    monkeypatch.setattr(representation.os, "close", close_then_fail_once)
+    try:
+        with pytest.raises(RepresentationError, match="staging directory is unsafe"):
+            representation._create_private_staging(parent_fd, "package")
+    finally:
+        original_close(parent_fd)
+
+    assert close_fault_injected is True
+
+
+def test_immediate_published_target_readback_oserror_scrubs_owned_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_stat = representation.os.stat
+    target_bound_reads = 0
+
+    def fail_third_target_bound_read(
+        path: object, *args: object, **kwargs: object
+    ) -> os.stat_result:
+        nonlocal target_bound_reads
+        if (
+            path == target.name
+            and kwargs.get("dir_fd") is not None
+            and kwargs.get("follow_symlinks") is False
+        ):
+            target_bound_reads += 1
+            if target_bound_reads == 3:
+                raise PermissionError(errno.EACCES, "synthetic readback denial")
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(representation.os, "stat", fail_third_target_bound_read)
+    with pytest.raises(RepresentationError, match="identity could not be verified"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert target_bound_reads >= 3
+    assert target.is_dir()
+    _assert_scrubbed_compiler_entries(target)
+
+
+def test_immediate_parent_readback_oserror_scrubs_owned_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    original_snapshot = representation._safe_parent_snapshot
+    snapshot_calls = 0
+
+    def fail_post_publish_snapshot(path: Path) -> os.stat_result:
+        nonlocal snapshot_calls
+        snapshot_calls += 1
+        if snapshot_calls == 3:
+            raise PermissionError(errno.EACCES, "synthetic parent readback denial")
+        return original_snapshot(path)
+
+    monkeypatch.setattr(representation, "_safe_parent_snapshot", fail_post_publish_snapshot)
+    with pytest.raises(RepresentationError, match="parent identity changed during publication"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert snapshot_calls == 3
+    assert target.is_dir()
+    _assert_scrubbed_compiler_entries(target)
+
+
+def test_parent_durability_failure_scrubs_target_and_blocks_same_path_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    parent_identity = parent.stat()
+    original_fsync = representation.os.fsync
+    fault_injected = False
+
+    def fail_published_parent_fsync(descriptor: int) -> None:
+        nonlocal fault_injected
+        current = os.fstat(descriptor)
+        if (
+            not fault_injected
+            and target.exists()
+            and current.st_dev == parent_identity.st_dev
+            and current.st_ino == parent_identity.st_ino
+        ):
+            fault_injected = True
+            raise OSError(errno.EIO, "synthetic parent fsync failure")
+        original_fsync(descriptor)
+
+    monkeypatch.setattr(representation.os, "fsync", fail_published_parent_fsync)
+    with pytest.raises(RepresentationError, match="durability sync failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert fault_injected is True
+    assert target.is_dir()
+    _assert_scrubbed_compiler_entries(target)
+
+    monkeypatch.setattr(representation.os, "fsync", original_fsync)
+    with pytest.raises(RepresentationError, match="target must be absent"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+
+def test_cleanup_scrubs_owned_bytes_after_directory_mode_change(tmp_path: Path) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    staging_fd: int | None = None
+    owned_fds: dict[str, int] = {}
+    try:
+        staging_name, staging_fd, expected = representation._create_private_staging(
+            parent_fd, "package"
+        )
+        representation._write_text(
+            staging_fd, "overview.md", "compiler-owned", owned_fds=owned_fds
+        )
+        os.fchmod(staging_fd, 0o500)
+
+        scrubbed, namespace_clean = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected, owned_fds
+        )
+
+        assert scrubbed is True
+        assert namespace_clean is False
+        assert (parent / staging_name / "overview.md").stat().st_size == 0
+    finally:
+        for descriptor in owned_fds.values():
+            representation._close_fd_quietly(descriptor)
+        if staging_fd is not None:
+            representation._close_fd_quietly(staging_fd)
+        representation._close_fd_quietly(parent_fd)
+
+
+def test_cleanup_still_scrubs_owned_bytes_if_directory_fd_is_unreadable(
+    tmp_path: Path,
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    staging_fd: int | None = None
+    owned_fds: dict[str, int] = {}
+    try:
+        staging_name, staging_fd, expected = representation._create_private_staging(
+            parent_fd, "package"
+        )
+        representation._write_text(
+            staging_fd, "overview.md", "compiler-owned", owned_fds=owned_fds
+        )
+        representation._close_fd_quietly(staging_fd)
+
+        scrubbed, namespace_clean = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected, owned_fds
+        )
+
+        assert scrubbed is False
+        assert namespace_clean is False
+        assert (parent / staging_name / "overview.md").stat().st_size == 0
+        staging_fd = None
+    finally:
+        for descriptor in owned_fds.values():
+            representation._close_fd_quietly(descriptor)
+        if staging_fd is not None:
+            representation._close_fd_quietly(staging_fd)
+        representation._close_fd_quietly(parent_fd)

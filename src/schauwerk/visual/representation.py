@@ -1024,8 +1024,23 @@ def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict
 def _reject_output_symlink_chain(path: Path) -> None:
     candidate = path.expanduser().absolute()
     for component in reversed([candidate, *candidate.parents]):
-        if component.is_symlink():
+        try:
+            is_symlink = component.is_symlink()
+        except OSError as exc:
+            if exc.errno == errno.ENAMETOOLONG:
+                raise RepresentationError(
+                    "representation output target name is too long"
+                ) from exc
+            raise
+        if is_symlink:
             raise RepresentationError("representation output path must not contain symlinks")
+
+
+def _close_fd_quietly(descriptor: int) -> None:
+    try:
+        os.close(descriptor)
+    except OSError:
+        pass
 
 
 def _write_payload_at(
@@ -1044,7 +1059,7 @@ def _write_payload_at(
     retained = False
     if owned_fds is not None:
         if name in owned_fds:
-            os.close(descriptor)
+            _close_fd_quietly(descriptor)
             raise RepresentationError("representation artifact ownership ledger is inconsistent")
         owned_fds[name] = descriptor
         retained = True
@@ -1058,7 +1073,7 @@ def _write_payload_at(
         os.fsync(descriptor)
     finally:
         if not retained:
-            os.close(descriptor)
+            _close_fd_quietly(descriptor)
 
 
 def _write_text(
@@ -1350,6 +1365,12 @@ def _target_must_be_absent(parent_fd: int, target_name: str) -> None:
         os.stat(target_name, dir_fd=parent_fd, follow_symlinks=False)
     except FileNotFoundError:
         return
+    except OSError as exc:
+        if exc.errno == errno.ENAMETOOLONG:
+            raise RepresentationError(
+                "representation output target name is too long"
+            ) from exc
+        raise
     raise RepresentationError("representation output target must be absent")
 
 
@@ -1435,7 +1456,7 @@ def _create_private_staging(
             return staging_name, staging_fd, opened
         except BaseException:
             if staging_fd is not None:
-                os.close(staging_fd)
+                _close_fd_quietly(staging_fd)
             # Directory-name deletion cannot be made inode-conditional here.
             # Leave an empty private tombstone rather than risk deleting a substitute.
             raise
@@ -1450,10 +1471,6 @@ def _cleanup_bound_directory(
     owned_fds: Mapping[str, int],
 ) -> tuple[bool, bool]:
     """Scrub only invocation-owned file inodes; never unlink a mutable name."""
-
-    opened = os.fstat(directory_fd)
-    if not _same_path_identity(expected, opened):
-        raise RepresentationError("representation cleanup directory identity changed")
 
     scrubbed_all = True
     for descriptor in owned_fds.values():
@@ -1471,7 +1488,12 @@ def _cleanup_bound_directory(
     except OSError:
         scrubbed_all = False
 
-    namespace_clean = True
+    try:
+        opened = os.fstat(directory_fd)
+    except OSError:
+        namespace_clean = False
+    else:
+        namespace_clean = _same_path_identity(expected, opened)
     try:
         linked = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
     except OSError:
@@ -1576,8 +1598,17 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         _rename_noreplace(parent_fd, staging_name, target.name)
         published = True
 
-        published_stat = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
-        if not _same_path_identity(staging_before, published_stat):
+        try:
+            published_stat = os.stat(
+                target.name, dir_fd=parent_fd, follow_symlinks=False
+            )
+        except OSError:
+            published_readback_ok = False
+        else:
+            published_readback_ok = _same_path_identity(
+                staging_before, published_stat
+            )
+        if not published_readback_ok:
             outcome = _clear_bound_directory(
                 parent_fd, target.name, staging_fd, staging_before, owned_fds
             )
@@ -1587,12 +1618,17 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
                 "published representation package identity could not be verified; "
                 f"{outcome}"
             )
-        parent_path_after_publish = _safe_parent_snapshot(target.parent)
-        parent_opened_after_publish = os.fstat(parent_fd)
-        if (
-            not _same_path_identity(parent_before, parent_path_after_publish)
-            or not _same_path_identity(parent_before, parent_opened_after_publish)
-        ):
+        try:
+            parent_path_after_publish = _safe_parent_snapshot(target.parent)
+            parent_opened_after_publish = os.fstat(parent_fd)
+        except (OSError, RepresentationError):
+            parent_readback_ok = False
+        else:
+            parent_readback_ok = (
+                _same_path_identity(parent_before, parent_path_after_publish)
+                and _same_path_identity(parent_before, parent_opened_after_publish)
+            )
+        if not parent_readback_ok:
             outcome = _clear_bound_directory(
                 parent_fd, target.name, staging_fd, staging_before, owned_fds
             )
@@ -1605,9 +1641,14 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         try:
             os.fsync(parent_fd)
         except OSError as exc:
+            outcome = _clear_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before, owned_fds
+            )
+            published = False
+            staging_name = None
             raise RepresentationError(
-                "representation package was published but parent durability sync failed; "
-                "target remains"
+                "representation package publication durability sync failed; "
+                f"{outcome}"
             ) from exc
 
         try:
@@ -1650,16 +1691,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         raise
     finally:
         for descriptor in owned_fds.values():
-            try:
-                os.close(descriptor)
-            except OSError:
-                pass
+            _close_fd_quietly(descriptor)
         if staging_fd is not None:
-            try:
-                os.close(staging_fd)
-            except OSError:
-                pass
-        try:
-            os.close(parent_fd)
-        except OSError:
-            pass
+            _close_fd_quietly(staging_fd)
+        _close_fd_quietly(parent_fd)
