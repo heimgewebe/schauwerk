@@ -1043,6 +1043,16 @@ def _close_fd_quietly(descriptor: int) -> None:
         pass
 
 
+class _OwnedArtifactLedger(dict[str, int]):
+    def __init__(self) -> None:
+        super().__init__()
+        self.integrity: dict[str, tuple[int, str]] = {}
+
+    def record(self, name: str, descriptor: int, payload: bytes) -> None:
+        self[name] = descriptor
+        self.integrity[name] = (len(payload), hashlib.sha256(payload).hexdigest())
+
+
 def _write_payload_at(
     output_fd: int,
     name: str,
@@ -1052,7 +1062,7 @@ def _write_payload_at(
 ) -> None:
     if not name or Path(name).name != name:
         raise RepresentationError("representation artifact name must be one safe path component")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+    flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     descriptor = os.open(name, flags, 0o600, dir_fd=output_fd)
@@ -1061,7 +1071,10 @@ def _write_payload_at(
         if name in owned_fds:
             _close_fd_quietly(descriptor)
             raise RepresentationError("representation artifact ownership ledger is inconsistent")
-        owned_fds[name] = descriptor
+        if isinstance(owned_fds, _OwnedArtifactLedger):
+            owned_fds.record(name, descriptor, payload)
+        else:
+            owned_fds[name] = descriptor
         retained = True
     try:
         view = memoryview(payload)
@@ -1463,6 +1476,52 @@ def _create_private_staging(
     raise RepresentationError("could not allocate a private representation staging directory")
 
 
+def _digest_open_fd(descriptor: int, expected_size: int) -> str | None:
+    digest = hashlib.sha256()
+    offset = 0
+    try:
+        while offset < expected_size:
+            chunk = os.pread(
+                descriptor, min(1024 * 1024, expected_size - offset), offset
+            )
+            if not chunk:
+                return None
+            digest.update(chunk)
+            offset += len(chunk)
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
+def _verify_bound_artifacts(
+    directory_fd: int, owned_fds: _OwnedArtifactLedger
+) -> bool:
+    if set(owned_fds) != set(owned_fds.integrity):
+        return False
+    try:
+        observed_names = set(os.listdir(directory_fd))
+    except OSError:
+        return False
+    if observed_names != set(owned_fds):
+        return False
+    for name, descriptor in owned_fds.items():
+        expected_size, expected_digest = owned_fds.integrity[name]
+        try:
+            owned = os.fstat(descriptor)
+            linked = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError:
+            return False
+        if (
+            not stat.S_ISREG(owned.st_mode)
+            or not _same_path_identity(owned, linked)
+            or owned.st_size != expected_size
+            or linked.st_size != expected_size
+            or _digest_open_fd(descriptor, expected_size) != expected_digest
+        ):
+            return False
+    return True
+
+
 def _cleanup_bound_directory(
     parent_fd: int,
     name: str,
@@ -1562,7 +1621,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
     staging_name: str | None = None
     staging_fd: int | None = None
     staging_before: os.stat_result | None = None
-    owned_fds: dict[str, int] = {}
+    owned_fds = _OwnedArtifactLedger()
     published = False
     try:
         parent_opened = os.fstat(parent_fd)
@@ -1576,6 +1635,10 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         receipt = _compile_representation_package_into(
             input_path=input_path, output_fd=staging_fd, owned_fds=owned_fds
         )
+        if not _verify_bound_artifacts(staging_fd, owned_fds):
+            raise RepresentationError(
+                "representation staging artifact integrity changed before publication"
+            )
 
         parent_path_before_publish = _safe_parent_snapshot(target.parent)
         parent_opened_before_publish = os.fstat(parent_fd)
@@ -1605,8 +1668,9 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
         except OSError:
             published_readback_ok = False
         else:
-            published_readback_ok = _same_path_identity(
-                staging_before, published_stat
+            published_readback_ok = (
+                _same_path_identity(staging_before, published_stat)
+                and _verify_bound_artifacts(staging_fd, owned_fds)
             )
         if not published_readback_ok:
             outcome = _clear_bound_directory(
@@ -1666,6 +1730,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
                 and _same_path_identity(parent_before, final_parent_opened)
                 and _same_path_identity(staging_before, final_target_path)
                 and _same_path_identity(staging_before, final_target_bound)
+                and _verify_bound_artifacts(staging_fd, owned_fds)
             )
         if not final_readback_ok:
             outcome = _clear_bound_directory(

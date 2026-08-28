@@ -1229,3 +1229,161 @@ def test_cleanup_still_scrubs_owned_bytes_if_directory_fd_is_unreadable(
         if staging_fd is not None:
             representation._close_fd_quietly(staging_fd)
         representation._close_fd_quietly(parent_fd)
+
+
+def test_publish_rejects_foreign_same_basename_artifact_substitution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    captured_owned = tmp_path / "captured-owned-input.json"
+    original_publish = representation._rename_noreplace
+    foreign_payload = b"foreign-input"
+
+    def substitute_then_publish(
+        parent_fd: int, source_name: str, target_name: str
+    ) -> None:
+        staging_fd = os.open(
+            source_name, representation._directory_open_flags(), dir_fd=parent_fd
+        )
+        try:
+            os.rename(
+                "input.json",
+                captured_owned.name,
+                src_dir_fd=staging_fd,
+                dst_dir_fd=parent_fd,
+            )
+            foreign_fd = os.open(
+                "input.json",
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+                0o600,
+                dir_fd=staging_fd,
+            )
+            try:
+                os.write(foreign_fd, foreign_payload)
+                os.fsync(foreign_fd)
+            finally:
+                os.close(foreign_fd)
+        finally:
+            os.close(staging_fd)
+        original_publish(parent_fd, source_name, target_name)
+
+    monkeypatch.setattr(representation, "_rename_noreplace", substitute_then_publish)
+    with pytest.raises(RepresentationError, match="identity could not be verified"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert target.is_dir()
+    assert (target / "input.json").read_bytes() == foreign_payload
+    assert captured_owned.is_file()
+    assert captured_owned.stat().st_size == 0
+
+
+def test_publish_rejects_same_length_in_place_artifact_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_publish = representation._rename_noreplace
+    mutated_size = 0
+
+    def mutate_then_publish(
+        parent_fd: int, source_name: str, target_name: str
+    ) -> None:
+        nonlocal mutated_size
+        staging_fd = os.open(
+            source_name, representation._directory_open_flags(), dir_fd=parent_fd
+        )
+        try:
+            artifact_fd = os.open(
+                "input.json", os.O_WRONLY | os.O_CLOEXEC, dir_fd=staging_fd
+            )
+            try:
+                mutated_size = os.fstat(artifact_fd).st_size
+                replacement = b"X" * mutated_size
+                assert os.pwrite(artifact_fd, replacement, 0) == mutated_size
+                os.fsync(artifact_fd)
+            finally:
+                os.close(artifact_fd)
+        finally:
+            os.close(staging_fd)
+        original_publish(parent_fd, source_name, target_name)
+
+    monkeypatch.setattr(representation, "_rename_noreplace", mutate_then_publish)
+    with pytest.raises(RepresentationError, match="identity could not be verified"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert mutated_size > 0
+    assert target.is_dir()
+    assert (target / "input.json").stat().st_size == 0
+
+
+def test_final_readback_rejects_artifact_mutation_after_parent_fsync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    parent_identity = parent.stat()
+    original_fsync = representation.os.fsync
+    mutated = False
+
+    def fsync_then_mutate_published_artifact(descriptor: int) -> None:
+        nonlocal mutated
+        original_fsync(descriptor)
+        current = os.fstat(descriptor)
+        if (
+            not mutated
+            and target.exists()
+            and current.st_dev == parent_identity.st_dev
+            and current.st_ino == parent_identity.st_ino
+        ):
+            package_fd = os.open(target, representation._directory_open_flags())
+            try:
+                artifact_fd = os.open(
+                    "input.json", os.O_WRONLY | os.O_CLOEXEC, dir_fd=package_fd
+                )
+                try:
+                    size = os.fstat(artifact_fd).st_size
+                    assert os.pwrite(artifact_fd, b"Y" * size, 0) == size
+                    original_fsync(artifact_fd)
+                finally:
+                    os.close(artifact_fd)
+            finally:
+                os.close(package_fd)
+            mutated = True
+
+    monkeypatch.setattr(representation.os, "fsync", fsync_then_mutate_published_artifact)
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert mutated is True
+    assert target.is_dir()
+    assert (target / "input.json").stat().st_size == 0
+
+
+def test_package_verifies_bound_artifacts_at_all_three_publication_gates(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    original_verify = representation._verify_bound_artifacts
+    calls = 0
+
+    def count_verify(
+        directory_fd: int, owned_fds: representation._OwnedArtifactLedger
+    ) -> bool:
+        nonlocal calls
+        calls += 1
+        return original_verify(directory_fd, owned_fds)
+
+    monkeypatch.setattr(representation, "_verify_bound_artifacts", count_verify)
+    receipt = compile_representation_package(
+        input_path=input_path, output_dir=tmp_path / "package"
+    )
+
+    assert receipt["ok"] is True
+    assert calls == 3
