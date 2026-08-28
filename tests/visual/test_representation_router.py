@@ -1513,3 +1513,53 @@ def test_final_verifier_rejects_same_length_mutation_after_digest(
     assert mutated is True
     assert target.is_dir()
     assert (target / "input.json").stat().st_size == 0
+
+def test_final_verifier_rejects_same_length_mutation_between_post_digest_stats(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_verify = representation._verify_bound_artifacts
+    original_stat = representation.os.stat
+    verify_call = 0
+    stat_call = 0
+    mutated = False
+
+    def count_verify(
+        directory_fd: int, owned_fds: representation._OwnedArtifactLedger
+    ) -> bool:
+        nonlocal verify_call, stat_call
+        verify_call += 1
+        stat_call = 0
+        return original_verify(directory_fd, owned_fds)
+
+    def mutate_then_stat(path: str, *args: object, **kwargs: object) -> os.stat_result:
+        nonlocal stat_call, mutated
+        if verify_call == 3:
+            stat_call += 1
+            if stat_call == 2 and not mutated:
+                directory_fd = kwargs.get("dir_fd")
+                assert isinstance(directory_fd, int)
+                artifact_fd = os.open(
+                    path, os.O_WRONLY | os.O_CLOEXEC, dir_fd=directory_fd
+                )
+                try:
+                    size = os.fstat(artifact_fd).st_size
+                    assert size > 0
+                    assert os.pwrite(artifact_fd, b"Q" * size, 0) == size
+                    os.fsync(artifact_fd)
+                finally:
+                    os.close(artifact_fd)
+                mutated = True
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(representation, "_verify_bound_artifacts", count_verify)
+    monkeypatch.setattr(representation.os, "stat", mutate_then_stat)
+
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert mutated is True
+    assert target.is_dir()
+    assert (target / "input.json").stat().st_size == 0

@@ -1533,6 +1533,8 @@ def _verify_bound_artifacts(
             or linked_after.st_size != expected_size
             or owned_after.st_mtime_ns != owned_before.st_mtime_ns
             or owned_after.st_ctime_ns != owned_before.st_ctime_ns
+            or linked_after.st_mtime_ns != owned_after.st_mtime_ns
+            or linked_after.st_ctime_ns != owned_after.st_ctime_ns
         ):
             return False
     try:
