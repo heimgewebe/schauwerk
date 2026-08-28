@@ -76,8 +76,20 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "if (pendingExport !== null)" in app_js
     assert 'setStatus("Export läuft bereits …")' in app_js
     index_html = (output / "index.html").read_text(encoding="utf-8")
+    styles_css = (output / "styles.css").read_text(encoding="utf-8")
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
+    assert 'id="fullscreenButton"' in index_html
+    assert 'aria-pressed="false"' in index_html
+    assert 'aria-label="Vollbildmodus aktivieren"' in index_html
+    assert "body.editor-focus .topline" in styles_css
+    assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
+    assert "height: 100dvh" in styles_css
+    assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
+    assert "requestFullscreen" in app_js
+    assert "document.exitFullscreen" in app_js
+    assert 'document.addEventListener("fullscreenchange"' in app_js
+    assert 'event.key === "Escape"' in app_js
 
 
 @pytest.mark.parametrize(
