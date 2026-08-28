@@ -1476,3 +1476,40 @@ def test_final_verifier_rejects_entry_added_after_initial_name_readback(
     assert target.is_dir()
     assert (target / "foreign.txt").read_bytes() == foreign_payload
     assert (target / "input.json").stat().st_size == 0
+
+def test_final_verifier_rejects_same_length_mutation_after_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_verify = representation._verify_bound_artifacts
+    original_digest = representation._digest_open_fd
+    verify_call = 0
+    mutated = False
+
+    def count_verify(
+        directory_fd: int, owned_fds: representation._OwnedArtifactLedger
+    ) -> bool:
+        nonlocal verify_call
+        verify_call += 1
+        return original_verify(directory_fd, owned_fds)
+
+    def digest_then_mutate(descriptor: int, expected_size: int) -> str | None:
+        nonlocal mutated
+        digest = original_digest(descriptor, expected_size)
+        if verify_call == 3 and not mutated and expected_size > 0:
+            assert os.pwrite(descriptor, b"Z" * expected_size, 0) == expected_size
+            os.fsync(descriptor)
+            mutated = True
+        return digest
+
+    monkeypatch.setattr(representation, "_verify_bound_artifacts", count_verify)
+    monkeypatch.setattr(representation, "_digest_open_fd", digest_then_mutate)
+
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert mutated is True
+    assert target.is_dir()
+    assert (target / "input.json").stat().st_size == 0

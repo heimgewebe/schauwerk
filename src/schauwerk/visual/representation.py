@@ -1531,6 +1531,8 @@ def _verify_bound_artifacts(
             or not _same_path_identity(owned_after, linked_after)
             or owned_after.st_size != expected_size
             or linked_after.st_size != expected_size
+            or owned_after.st_mtime_ns != owned_before.st_mtime_ns
+            or owned_after.st_ctime_ns != owned_before.st_ctime_ns
         ):
             return False
     try:
