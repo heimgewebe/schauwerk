@@ -373,6 +373,11 @@ def validate_representation_package(package_dir: Path) -> dict[str, Any]:
     from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
 
     from .representation import (
+        _IDENTITY_CONTRACT,
+        _canvas_coverage,
+        _coverage,
+        _mermaid_coverage,
+        _miro_coverage,
         render_json_canvas,
         render_mermaid,
         render_miro_board,
@@ -442,15 +447,51 @@ def validate_representation_package(package_dir: Path) -> dict[str, Any]:
         if receipt.get("selected_formats") != expected_plan["selected_formats"]:
             raise RepresentationDeliveryError("representation receipt format binding mismatch")
 
+        expected_manifest_claims = {
+            "schema_version": PACKAGE_SCHEMA,
+            "input_id": model["id"],
+            "input_digest": model["input_digest"],
+            "plan_digest": expected_plan["plan_digest"],
+            "primary_format": expected_plan["primary_format"],
+            "selected_formats": expected_plan["selected_formats"],
+            "hybrid": expected_plan["hybrid"],
+            "source_ids": {
+                "node_ids": sorted(str(node["id"]) for node in model["nodes"]),
+                "edge_ids": sorted(str(edge["id"]) for edge in model["edges"]),
+            },
+            "identity_contract": _IDENTITY_CONTRACT,
+            "does_not_establish": expected_plan["does_not_establish"],
+        }
+        expected_manifest_fields = set(expected_manifest_claims) | {"artifacts", "package_digest"}
+        if set(manifest) != expected_manifest_fields:
+            raise RepresentationDeliveryError("representation manifest fields are not canonical")
+        for key, expected_value in expected_manifest_claims.items():
+            if manifest.get(key) != expected_value:
+                raise RepresentationDeliveryError(
+                    f"representation manifest {key} claim is not reproducible"
+                )
+
+        expected_role_order = ["normalized_input", "route_plan"]
+        expected_paths = {
+            "normalized_input": "input.json",
+            "route_plan": "route-plan.json",
+        }
+        expected_coverages: dict[str, dict[str, Any]] = {}
         mermaid_source: str | None = None
         if "mermaid" in expected_plan["selected_formats"]:
             mermaid_source = render_mermaid(model, expected_plan)
             if _decode_text(payloads["mermaid_source"], label="Mermaid source") != mermaid_source:
                 raise RepresentationDeliveryError("Mermaid artifact is not reproducible")
+            expected_role_order.append("mermaid_source")
+            expected_paths["mermaid_source"] = "diagram.mmd"
+            expected_coverages["mermaid_source"] = _mermaid_coverage(model, mermaid_source)
         if "canvas" in expected_plan["selected_formats"]:
             canvas = json.loads(payloads["json_canvas"])
             if canvas != render_json_canvas(model, expected_plan):
                 raise RepresentationDeliveryError("JSON Canvas artifact is not reproducible")
+            expected_role_order.append("json_canvas")
+            expected_paths["json_canvas"] = "composition.canvas"
+            expected_coverages["json_canvas"] = _canvas_coverage(model, canvas)
 
         layout_dsl: str | None = None
         quality: dict[str, Any] | None = None
@@ -470,17 +511,46 @@ def validate_representation_package(package_dir: Path) -> dict[str, Any]:
             execution_plan = compile_miro_execution_plan(model, expected_plan)
             if json.loads(payloads["miro_execution_plan"]) != execution_plan:
                 raise RepresentationDeliveryError("Miro execution plan is not reproducible")
+            expected_role_order.extend(
+                [
+                    "miro_execution_plan",
+                    "miro_board_spec",
+                    "miro_layout_dsl",
+                    "miro_quality",
+                ]
+            )
+            expected_paths.update(
+                {
+                    "miro_execution_plan": "miro-execution-plan.json",
+                    "miro_board_spec": "miro-board.json",
+                    "miro_layout_dsl": "miro-board.dsl",
+                    "miro_quality": "miro-quality.json",
+                }
+            )
+            expected_coverages["miro_board_spec"] = _miro_coverage(model, board)
 
         document_source: str | None = None
         if "document" in expected_plan["selected_formats"]:
             document_source = render_representation_document(model)
             if _decode_text(payloads["narrative_document"], label="document") != document_source:
                 raise RepresentationDeliveryError("document artifact is not reproducible")
+            expected_role_order.append("narrative_document")
+            expected_paths["narrative_document"] = "overview.md"
+            expected_coverages["narrative_document"] = _coverage(
+                model=model, node_ids=[], edge_ids=[]
+            )
         if "table" in expected_plan["selected_formats"]:
             if _decode_text(
                 payloads["node_table"], label="node table"
             ) != render_representation_table(model):
                 raise RepresentationDeliveryError("node table artifact is not reproducible")
+            expected_role_order.append("node_table")
+            expected_paths["node_table"] = "nodes.tsv"
+            expected_coverages["node_table"] = _coverage(
+                model=model,
+                node_ids=[str(node["id"]) for node in model["nodes"]],
+                edge_ids=[],
+            )
 
         expected_bundle = compile_representation_native_bundle(
             model,
@@ -501,6 +571,44 @@ def validate_representation_package(package_dir: Path) -> dict[str, Any]:
                 raise RepresentationDeliveryError("native bundle is not reproducible")
             bundle = validate_native_bundle(bundle_value)
             bundle_path = root / bundle_name
+            expected_role_order.append("miro_native_bundle")
+            expected_paths["miro_native_bundle"] = "miro-native-bundle.json"
+
+        if list(roles) != expected_role_order:
+            raise RepresentationDeliveryError(
+                "representation artifact role order is not reproducible"
+            )
+        for role, item in roles.items():
+            if item["path"] != expected_paths[role]:
+                raise RepresentationDeliveryError(
+                    f"representation artifact {role} path is not reproducible"
+                )
+            expected_coverage = expected_coverages.get(role)
+            if expected_coverage is None:
+                if "coverage" in item:
+                    raise RepresentationDeliveryError(
+                        f"representation artifact {role} has unexpected coverage"
+                    )
+            elif item.get("coverage") != expected_coverage:
+                raise RepresentationDeliveryError(
+                    f"representation artifact {role} coverage is not reproducible"
+                )
+
+        expected_receipt_body = {
+            "schema_version": PACKAGE_RECEIPT_SCHEMA,
+            "input_digest": model["input_digest"],
+            "plan_digest": expected_plan["plan_digest"],
+            "package_digest": manifest_digest,
+            "manifest_sha256": _bytes_digest(manifest_payload),
+            "artifact_count": len(expected_role_order) + 1,
+            "selected_formats": expected_plan["selected_formats"],
+            "primary_format": expected_plan["primary_format"],
+            "hybrid": expected_plan["hybrid"],
+            "mutation_attempted": False,
+            "ok": True,
+        }
+        if receipt_body != expected_receipt_body:
+            raise RepresentationDeliveryError("representation receipt claims are not reproducible")
 
         return {
             "root": root,

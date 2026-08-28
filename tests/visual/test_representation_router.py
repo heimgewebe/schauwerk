@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -538,9 +539,70 @@ def test_package_publish_detects_target_appearing_during_compile(
         return receipt
 
     monkeypatch.setattr(representation, "_compile_representation_package_into", compile_then_race)
-    with pytest.raises(RepresentationError, match="target appeared"):
+    with pytest.raises(RepresentationError, match="target must be absent"):
         representation.compile_representation_package(input_path=input_path, output_dir=target)
 
     assert target.is_dir()
     assert list(target.iterdir()) == []
     assert list(tmp_path.glob(".package.tmp-*")) == []
+
+
+def test_package_publish_rejects_preexisting_empty_target(tmp_path: Path) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    target.mkdir(mode=0o700)
+
+    with pytest.raises(RepresentationError, match="target must be absent"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert target.is_dir()
+    assert list(target.iterdir()) == []
+
+
+def test_package_publish_noreplace_closes_final_target_race(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original = representation._rename_noreplace
+
+    def race(parent_fd: int, source_name: str, target_name: str) -> None:
+        os.mkdir(target_name, 0o700, dir_fd=parent_fd)
+        original(parent_fd, source_name, target_name)
+
+    monkeypatch.setattr(representation, "_rename_noreplace", race)
+    with pytest.raises(RepresentationError, match="target appeared while publishing"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert target.is_dir()
+    assert list(target.iterdir()) == []
+    assert list(tmp_path.glob(".package.tmp-*")) == []
+
+
+def test_package_publish_detects_parent_swap_in_final_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    replacement = tmp_path / "replacement"
+    replacement.mkdir(mode=0o700)
+    old_parent = tmp_path / "old-parent"
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    original = representation._rename_noreplace
+
+    def swap_parent_then_publish(parent_fd: int, source_name: str, target_name: str) -> None:
+        parent.rename(old_parent)
+        replacement.rename(parent)
+        original(parent_fd, source_name, target_name)
+
+    monkeypatch.setattr(representation, "_rename_noreplace", swap_parent_then_publish)
+    with pytest.raises(RepresentationError, match="parent identity changed during publication"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert not (parent / "package").exists()
+    assert not (old_parent / "package").exists()
+    assert list(old_parent.glob(".package.tmp-*")) == []

@@ -75,6 +75,21 @@ def _compile(tmp_path: Path) -> Path:
     return package
 
 
+
+
+def _resign_manifest_and_receipt(package: Path, manifest: dict[str, Any]) -> None:
+    manifest.pop("package_digest", None)
+    manifest["package_digest"] = _digest(manifest)
+    manifest_payload = _write_private_json(package / "manifest.json", manifest)
+
+    receipt_path = package / "receipt.json"
+    receipt = json.loads(receipt_path.read_text())
+    receipt["package_digest"] = manifest["package_digest"]
+    receipt["manifest_sha256"] = _bytes_digest(manifest_payload)
+    receipt.pop("receipt_digest", None)
+    receipt["receipt_digest"] = _digest(receipt)
+    _write_private_json(receipt_path, receipt)
+
 def test_package_check_recomputes_all_artifacts_and_native_tools(tmp_path: Path) -> None:
     package = _compile(tmp_path)
 
@@ -143,6 +158,42 @@ def test_package_check_rejects_semantic_tampering_after_resigning(tmp_path: Path
     _write_private_json(receipt_path, receipt)
 
     with pytest.raises(RepresentationDeliveryError, match="native bundle is not reproducible"):
+        check_representation_package(package)
+
+
+
+
+@pytest.mark.parametrize("claim", ["coverage", "source_ids", "identity_contract"])
+def test_package_check_rejects_resigned_false_manifest_identity_claims(
+    tmp_path: Path, claim: str
+) -> None:
+    package = _compile(tmp_path)
+    manifest = json.loads((package / "manifest.json").read_text())
+    if claim == "coverage":
+        canvas = next(item for item in manifest["artifacts"] if item["role"] == "json_canvas")
+        canvas["coverage"]["node_count"] = 0
+        canvas["coverage"]["node_ids"] = []
+        canvas["coverage"]["complete_nodes"] = False
+    elif claim == "source_ids":
+        manifest["source_ids"]["node_ids"] = []
+    else:
+        manifest["identity_contract"] = "self-signed alternate identity contract"
+    _resign_manifest_and_receipt(package, manifest)
+
+    with pytest.raises(RepresentationDeliveryError, match="not reproducible"):
+        check_representation_package(package)
+
+
+def test_package_check_rejects_resigned_false_receipt_claim(tmp_path: Path) -> None:
+    package = _compile(tmp_path)
+    receipt_path = package / "receipt.json"
+    receipt = json.loads(receipt_path.read_text())
+    receipt["ok"] = False
+    receipt.pop("receipt_digest")
+    receipt["receipt_digest"] = _digest(receipt)
+    _write_private_json(receipt_path, receipt)
+
+    with pytest.raises(RepresentationDeliveryError, match="receipt claims are not reproducible"):
         check_representation_package(package)
 
 

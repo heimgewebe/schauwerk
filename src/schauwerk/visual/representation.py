@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import hashlib
 import json
 import os
@@ -109,6 +111,11 @@ _REQUIREMENT_KEYS = (
     "portable_offline",
 )
 _REQUIREMENT_FIELDS = frozenset(_REQUIREMENT_KEYS)
+_IDENTITY_CONTRACT = (
+    "coverage, when present, measures stable source-id materialization in the "
+    "emitted renderer artifact; it does not establish semantic or visual completeness"
+)
+_RENAME_NOREPLACE = 1
 
 
 class RepresentationError(ValueError):
@@ -1210,10 +1217,7 @@ def _compile_representation_package_into(
             "node_ids": sorted(all_node_ids),
             "edge_ids": sorted(all_edge_ids),
         },
-        "identity_contract": (
-            "coverage, when present, measures stable source-id materialization in the "
-            "emitted renderer artifact; it does not establish semantic or visual completeness"
-        ),
+        "identity_contract": _IDENTITY_CONTRACT,
         "does_not_establish": plan["does_not_establish"],
     }
     manifest["package_digest"] = _digest(manifest)
@@ -1262,67 +1266,127 @@ def _same_path_identity(left: os.stat_result, right: os.stat_result) -> bool:
     )
 
 
-def _target_snapshot(path: Path) -> os.stat_result | None:
+def _target_must_be_absent(parent_fd: int, target_name: str) -> None:
     try:
-        current = path.stat(follow_symlinks=False)
+        os.stat(target_name, dir_fd=parent_fd, follow_symlinks=False)
     except FileNotFoundError:
-        return None
-    if not stat.S_ISDIR(current.st_mode):
-        raise RepresentationError(f"output path is not a directory: {path}")
-    if current.st_uid != os.getuid() or current.st_mode & 0o022:
-        raise RepresentationError("existing representation output directory is unsafe")
-    if any(path.iterdir()):
-        raise RepresentationError(f"output directory must be empty: {path}")
-    return current
+        return
+    raise RepresentationError("representation output target must be absent")
+
+
+def _rename_noreplace(parent_fd: int, source_name: str, target_name: str) -> None:
+    """Publish one directory atomically without replacing a concurrently created target."""
+
+    libc = ctypes.CDLL(None, use_errno=True)
+    renameat2 = getattr(libc, "renameat2", None)
+    if renameat2 is None:
+        raise RepresentationError("atomic no-replace directory publication is unavailable")
+    renameat2.argtypes = [
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    renameat2.restype = ctypes.c_int
+    result = renameat2(
+        parent_fd,
+        os.fsencode(source_name),
+        parent_fd,
+        os.fsencode(target_name),
+        _RENAME_NOREPLACE,
+    )
+    if result == 0:
+        return
+    error_number = ctypes.get_errno()
+    if error_number in {errno.EEXIST, errno.ENOTEMPTY}:
+        raise RepresentationError("representation output target appeared while publishing")
+    if error_number in {errno.ENOSYS, errno.EINVAL, errno.EOPNOTSUPP}:
+        raise RepresentationError("atomic no-replace directory publication is unavailable")
+    raise OSError(error_number, os.strerror(error_number), target_name)
+
+
+def _remove_private_tree_at(parent_fd: int, name: str) -> None:
+    alias = Path(f"/proc/self/fd/{parent_fd}") / name
+    try:
+        shutil.rmtree(alias)
+    except FileNotFoundError:
+        return
+
 
 def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
-    """Compile privately and publish only after path identities remain stable."""
+    """Compile through an fd-bound private staging directory and publish NOREPLACE."""
 
     target = output_dir.expanduser().absolute()
     _reject_output_symlink_chain(target)
     target.parent.mkdir(parents=True, exist_ok=True)
     _reject_output_symlink_chain(target)
     parent_before = _safe_parent_snapshot(target.parent)
-    target_before = _target_snapshot(target)
-
-    staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.tmp-", dir=target.parent))
-    os.chmod(staging, 0o700)
-    staging_before = staging.stat(follow_symlinks=False)
-    if staging_before.st_uid != os.getuid() or stat.S_IMODE(staging_before.st_mode) != 0o700:
-        shutil.rmtree(staging, ignore_errors=True)
-        raise RepresentationError("representation staging directory is unsafe")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        directory_flags |= os.O_NOFOLLOW
+    parent_fd = os.open(target.parent, directory_flags)
+    staging_name: str | None = None
+    published = False
     try:
-        receipt = _compile_representation_package_into(
-            input_path=input_path, output_dir=staging
-        )
-        _reject_output_symlink_chain(target)
-        parent_after = _safe_parent_snapshot(target.parent)
-        if not _same_path_identity(parent_before, parent_after):
+        parent_opened = os.fstat(parent_fd)
+        if not _same_path_identity(parent_before, parent_opened):
             raise RepresentationError("representation output parent identity changed")
-        staging_after = staging.stat(follow_symlinks=False)
+        _target_must_be_absent(parent_fd, target.name)
+
+        staging_alias = Path(
+            tempfile.mkdtemp(
+                prefix=f".{target.name}.tmp-",
+                dir=target.parent,
+            )
+        )
+        staging_name = staging_alias.name
+        os.chmod(staging_alias, 0o700)
+        staging_before = os.stat(staging_name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            staging_before.st_uid != os.getuid()
+            or stat.S_IMODE(staging_before.st_mode) != 0o700
+        ):
+            raise RepresentationError("representation staging directory is unsafe")
+
+        receipt = _compile_representation_package_into(
+            input_path=input_path, output_dir=staging_alias
+        )
+
+        parent_path_before_publish = _safe_parent_snapshot(target.parent)
+        parent_opened_before_publish = os.fstat(parent_fd)
+        if (
+            not _same_path_identity(parent_before, parent_path_before_publish)
+            or not _same_path_identity(parent_before, parent_opened_before_publish)
+        ):
+            raise RepresentationError("representation output parent identity changed")
+        staging_after = os.stat(staging_name, dir_fd=parent_fd, follow_symlinks=False)
         if not _same_path_identity(staging_before, staging_after):
             raise RepresentationError("representation staging identity changed")
+        _target_must_be_absent(parent_fd, target.name)
 
-        if target_before is None:
-            try:
-                target.stat(follow_symlinks=False)
-            except FileNotFoundError:
-                pass
-            else:
-                raise RepresentationError("representation output target appeared while compiling")
-        else:
-            target_after = _target_snapshot(target)
-            if target_after is None or not _same_path_identity(target_before, target_after):
-                raise RepresentationError("representation output target identity changed")
+        _rename_noreplace(parent_fd, staging_name, target.name)
+        published = True
 
-        os.replace(staging, target)
-        directory_fd = os.open(target.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        published_stat = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
+        if not _same_path_identity(staging_before, published_stat):
+            raise RepresentationError("published representation package identity changed")
+        parent_path_after_publish = _safe_parent_snapshot(target.parent)
+        parent_opened_after_publish = os.fstat(parent_fd)
+        if (
+            not _same_path_identity(parent_before, parent_path_after_publish)
+            or not _same_path_identity(parent_before, parent_opened_after_publish)
+        ):
+            _remove_private_tree_at(parent_fd, target.name)
+            published = False
+            raise RepresentationError(
+                "representation output parent identity changed during publication"
+            )
+        os.fsync(parent_fd)
         return receipt
     except BaseException:
-        if staging.exists():
-            shutil.rmtree(staging)
+        if not published and staging_name is not None:
+            _remove_private_tree_at(parent_fd, staging_name)
         raise
+    finally:
+        os.close(parent_fd)

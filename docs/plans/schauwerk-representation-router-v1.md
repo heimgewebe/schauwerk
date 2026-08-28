@@ -61,7 +61,7 @@ Der Python-Laufzeitvalidator erfüllt den öffentlichen Vertrag aus `schemas/rep
 - Renderer-interne Mermaid-, Canvas- und Miro-IDs liegen in getrennten Namespaces; kanonische Source-IDs werden separat erhalten und können nicht mit dekorativen Objekten oder anderen Objektarten kollidieren.
 - JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten. Kantenanker folgen der tatsächlichen relativen Geometrie; vertikal gestapelte Knoten werden oben/unten verbunden.
 - Ausgabepfade mit Symlinks, einschließlich dangling Symlinks, werden abgelehnt.
-- Paketveröffentlichung akzeptiert nur einen sicheren Parent und bindet Parent-, Staging- und gegebenenfalls bestehende Zielidentität über den Compile-Vorgang; ein zwischenzeitlich erscheinendes oder ausgetauschtes Ziel führt zum Abbruch.
+- Paketveröffentlichung akzeptiert nur einen sicheren Parent und ein anfangs nicht existentes Ziel. Parent und Staging bleiben über den Compile-Vorgang identitätsgebunden; die finale Veröffentlichung erfolgt descriptor-relativ mit `RENAME_NOREPLACE`, sodass auch ein im letzten Mikrofenster erscheinendes Ziel nicht überschrieben wird.
 - Jeder Artefaktinhalt erhält SHA-256 und Bytezahl.
 - `coverage` misst ausschließlich tatsächlich im jeweiligen Renderer-Artefakt materialisierte Source-IDs. Sie ist kein Beweis für semantische oder visuelle Vollständigkeit.
 - Die Miro-native Fläche ist bewusst eine lesbare Auswahl und kein Vollständigkeitsrenderer. Die Evidence-Karte nennt deshalb materialisierte Knoten und Beziehungen explizit als `Miro-Auszug X/Y`.
@@ -85,7 +85,7 @@ Ein Hybridpaket kann enthalten:
 - `nodes.tsv` – tabellarisches Inventar;
 - `manifest.json` und `receipt.json` – Digests und Nichtbehauptungen.
 
-Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis. Das Zielverzeichnis wird erst nach vollständiger erfolgreicher Kompilierung und erneuter Identitätsprüfung atomar veröffentlicht. Ein Renderer-, Quality- oder Pfad-Race-Fehler darf daher kein halbfertiges Paket zurücklassen, das einen sicheren Retry blockiert.
+Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis. Das Zielverzeichnis muss vor Beginn fehlen und wird erst nach vollständiger erfolgreicher Kompilierung, erneuter Identitätsprüfung und einem atomaren No-Replace-Publish sichtbar. Ein Renderer-, Quality- oder Pfad-Race-Fehler darf daher weder ein fremdes Ziel überschreiben noch ein halbfertiges Paket zurücklassen, das einen sicheren Retry blockiert.
 
 ## Pilot
 
