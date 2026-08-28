@@ -26,6 +26,15 @@ ROOT = Path(__file__).resolve().parents[2]
 FIXTURE = ROOT / "docs/operators/fixtures/operator-ecosystem-representation-v1.json"
 
 
+def _assert_private_tombstones(root: Path, target_name: str = "package") -> list[Path]:
+    tombstones = sorted(root.glob(f".{target_name}.tmp-*"))
+    for tombstone in tombstones:
+        assert tombstone.is_dir()
+        assert tombstone.stat().st_mode & 0o777 == 0o700
+        assert list(tombstone.iterdir()) == []
+    return tombstones
+
+
 def _minimal_representation(
     *,
     node_count: int = 2,
@@ -435,7 +444,14 @@ def test_package_failure_does_not_publish_partial_artifacts(
         )
 
     assert not target.exists()
-    assert list(tmp_path.glob(".package.tmp-*")) == []
+    assert len(_assert_private_tombstones(tmp_path)) == 1
+
+    monkeypatch.undo()
+    retry = representation.compile_representation_package(
+        input_path=input_path, output_dir=target
+    )
+    assert retry["ok"] is True
+    assert target.is_dir()
 
 
 def test_output_path_rejects_dangling_symlink_chain(tmp_path: Path) -> None:
@@ -508,6 +524,13 @@ def test_miro_self_loop_with_ordinary_relation_does_not_overlap() -> None:
 
     assert validate_board_spec(board)["ok"] is True
     assert representation._miro_coverage(model, board)["edge_ids"] == ["e0", "e1"]
+    relation_legend = next(
+        item["content"]
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("id") == "route_map_relations"
+    )
+    assert "weitere Beziehungen" not in relation_legend
 
 
 def test_miro_two_self_loops_stay_clear_of_frame_thesis() -> None:
@@ -567,7 +590,7 @@ def test_package_publish_detects_target_appearing_during_compile(
 
     assert target.is_dir()
     assert list(target.iterdir()) == []
-    assert list(tmp_path.glob(".package.tmp-*")) == []
+    assert len(_assert_private_tombstones(tmp_path)) == 1
 
 
 def test_package_publish_rejects_preexisting_empty_target(tmp_path: Path) -> None:
@@ -601,7 +624,7 @@ def test_package_publish_noreplace_closes_final_target_race(
 
     assert target.is_dir()
     assert list(target.iterdir()) == []
-    assert list(tmp_path.glob(".package.tmp-*")) == []
+    assert len(_assert_private_tombstones(tmp_path)) == 1
 
 
 def test_package_publish_detects_parent_swap_in_final_window(
@@ -627,8 +650,11 @@ def test_package_publish_detects_parent_swap_in_final_window(
         compile_representation_package(input_path=input_path, output_dir=target)
 
     assert not (parent / "package").exists()
-    assert not (old_parent / "package").exists()
-    assert list(old_parent.glob(".package.tmp-*")) == []
+    old_target = old_parent / "package"
+    assert old_target.is_dir()
+    assert old_target.stat().st_mode & 0o777 == 0o700
+    assert list(old_target.iterdir()) == []
+    assert _assert_private_tombstones(old_parent) == []
 
 
 def test_package_staging_writes_remain_fd_bound_during_parent_swap(
@@ -655,7 +681,7 @@ def test_package_staging_writes_remain_fd_bound_during_parent_swap(
 
     assert list(parent.iterdir()) == []
     assert not (old_parent / "package").exists()
-    assert list(old_parent.glob(".package.tmp-*")) == []
+    assert len(_assert_private_tombstones(old_parent)) == 1
 
 
 def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
@@ -667,7 +693,7 @@ def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
         staging_name, staging_fd, expected = representation._create_private_staging(
             parent_fd, "package"
         )
-        representation._write_text(staging_fd, "owned.txt", "compiler-owned")
+        representation._write_text(staging_fd, "overview.md", "compiler-owned")
         moved_name = ".moved-owned-staging"
         os.rename(
             staging_name,
@@ -689,3 +715,141 @@ def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
         if staging_fd is not None:
             os.close(staging_fd)
         os.close(parent_fd)
+
+
+def test_miro_two_loops_disclose_one_real_omission() -> None:
+    raw = _minimal_representation(
+        node_count=3, requested_formats=["miro_native"], self_loop=True
+    )
+    raw["edges"][1]["from"] = "n1"
+    raw["edges"][1]["to"] = "n1"
+    raw["edges"].append(
+        {
+            "id": "e2",
+            "from": "n1",
+            "to": "n2",
+            "label": "später",
+            "kind": "flow",
+        }
+    )
+    model = validate_representation_input(raw)
+    board = render_miro_board(model, route_representation(model))
+    relation_legend = next(
+        item["content"]
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("id") == "route_map_relations"
+    )
+
+    assert "+1 weitere Beziehungen" in relation_legend
+    assert representation._miro_coverage(model, board)["edge_ids"] == ["e0", "e1"]
+
+
+def test_private_staging_validation_never_deletes_substituted_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    original_same = representation._same_path_identity
+    state: dict[str, str] = {}
+
+    def substitute_before_validation(left: os.stat_result, right: os.stat_result) -> bool:
+        if not state:
+            staging_name = next(
+                name for name in os.listdir(parent_fd) if name.startswith(".package.tmp-")
+            )
+            moved_name = ".moved-created-staging"
+            os.rename(
+                staging_name,
+                moved_name,
+                src_dir_fd=parent_fd,
+                dst_dir_fd=parent_fd,
+            )
+            os.mkdir(staging_name, 0o700, dir_fd=parent_fd)
+            state.update(staging=staging_name, moved=moved_name)
+            return False
+        return original_same(left, right)
+
+    monkeypatch.setattr(
+        representation, "_same_path_identity", substitute_before_validation
+    )
+    try:
+        with pytest.raises(RepresentationError, match="staging directory is unsafe"):
+            representation._create_private_staging(parent_fd, "package")
+        assert (parent / state["staging"]).is_dir()
+        assert (parent / state["moved"]).is_dir()
+    finally:
+        os.close(parent_fd)
+
+
+def test_bound_cleanup_never_removes_verified_directory_name(tmp_path: Path) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    staging_fd: int | None = None
+    try:
+        staging_name, staging_fd, expected = representation._create_private_staging(
+            parent_fd, "package"
+        )
+        representation._write_text(staging_fd, "overview.md", "compiler-owned")
+        cleaned = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected
+        )
+        assert cleaned is True
+        assert (parent / staging_name).is_dir()
+        assert list((parent / staging_name).iterdir()) == []
+    finally:
+        if staging_fd is not None:
+            os.close(staging_fd)
+        os.close(parent_fd)
+
+
+def test_package_final_readback_detects_parent_swap_after_fsync(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    replacement = tmp_path / "replacement"
+    replacement.mkdir(mode=0o700)
+    old_parent = tmp_path / "old-parent"
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    parent_identity = parent.stat()
+    original_fsync = representation.os.fsync
+    swapped = False
+
+    def fsync_then_swap(descriptor: int) -> None:
+        nonlocal swapped
+        original_fsync(descriptor)
+        current = os.fstat(descriptor)
+        if (
+            not swapped
+            and current.st_dev == parent_identity.st_dev
+            and current.st_ino == parent_identity.st_ino
+            and target.exists()
+        ):
+            parent.rename(old_parent)
+            replacement.rename(parent)
+            swapped = True
+
+    monkeypatch.setattr(representation.os, "fsync", fsync_then_swap)
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert swapped is True
+    assert not (parent / "package").exists()
+    old_target = old_parent / "package"
+    assert old_target.is_dir()
+    assert list(old_target.iterdir()) == []
+
+
+def test_package_rejects_target_name_too_long_for_private_staging(tmp_path: Path) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / ("a" * 240)
+
+    with pytest.raises(RepresentationError, match="target name is too long"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+    assert not target.exists()

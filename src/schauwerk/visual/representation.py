@@ -109,6 +109,12 @@ _IDENTITY_CONTRACT = (
     "emitted renderer artifact; it does not establish semantic or visual completeness"
 )
 _RENAME_NOREPLACE = 1
+_PACKAGE_ARTIFACT_NAMES = frozenset({
+    "input.json", "route-plan.json", "diagram.mmd", "composition.canvas",
+    "miro-execution-plan.json", "miro-board.json", "miro-board.dsl",
+    "miro-quality.json", "overview.md", "nodes.tsv",
+    "miro-native-bundle.json", "manifest.json", "receipt.json",
+})
 
 
 class RepresentationError(ValueError):
@@ -785,7 +791,8 @@ def _frame_nodes(
     connector_room = min(2, max(0, 7 - len(result)))
     relation_rows: list[str] = []
     self_loop_index = 0
-    for edge in relevant_edges[:2]:
+    processed_edge_count = min(2, len(relevant_edges))
+    for edge in relevant_edges[:processed_edge_count]:
         source_id = str(edge["from"])
         target_id = str(edge["to"])
         source_label = clip_text(labels[source_id], 28)
@@ -798,7 +805,7 @@ def _frame_nodes(
                 80,
                 500 + self_loop_index * 60,
                 620,
-                50,
+                40,
                 f"{source_label} ↺: {relation_label}",
                 font="caption",
             )
@@ -822,11 +829,11 @@ def _frame_nodes(
             connector_room -= 1
         relation_rows.append(f"{source_label} → {target_label}: {relation_label}")
 
-    if relation_rows:
-        legend = "   ·   ".join(relation_rows)
-        omitted = len(relevant_edges) - len(relation_rows)
+    omitted = len(relevant_edges) - processed_edge_count
+    if relation_rows or omitted > 0:
+        legend_parts = list(relation_rows)
         if omitted > 0:
-            legend += f"   ·   +{omitted} weitere Beziehungen"
+            legend_parts.append(f"+{omitted} weitere Beziehungen")
         result.append(
             text_object(
                 f"{frame_id}_relations",
@@ -835,7 +842,7 @@ def _frame_nodes(
                 260,
                 1360,
                 60,
-                clip_text(legend, 220),
+                clip_text("   ·   ".join(legend_parts), 220),
                 font="caption",
             )
         )
@@ -1329,6 +1336,12 @@ def _directory_open_flags() -> int:
 def _create_private_staging(
     parent_fd: int, target_name: str
 ) -> tuple[str, int, os.stat_result]:
+    name_max = os.fpathconf(parent_fd, "PC_NAME_MAX")
+    staging_probe = f".{target_name}.tmp-{'0' * 16}"
+    if len(os.fsencode(staging_probe)) > name_max:
+        raise RepresentationError(
+            "representation output target name is too long for private staging"
+        )
     for _ in range(64):
         staging_name = f".{target_name}.tmp-{secrets.token_hex(8)}"
         try:
@@ -1340,6 +1353,7 @@ def _create_private_staging(
             staging_fd = os.open(
                 staging_name, _directory_open_flags(), dir_fd=parent_fd
             )
+            os.fchmod(staging_fd, 0o700)
             opened = os.fstat(staging_fd)
             linked = os.stat(staging_name, dir_fd=parent_fd, follow_symlinks=False)
             if (
@@ -1354,10 +1368,8 @@ def _create_private_staging(
         except BaseException:
             if staging_fd is not None:
                 os.close(staging_fd)
-            try:
-                os.rmdir(staging_name, dir_fd=parent_fd)
-            except OSError:
-                pass
+            # Directory-name deletion cannot be made inode-conditional here.
+            # Leave an empty private tombstone rather than risk deleting a substitute.
             raise
     raise RepresentationError("could not allocate a private representation staging directory")
 
@@ -1368,15 +1380,20 @@ def _cleanup_bound_directory(
     directory_fd: int,
     expected: os.stat_result,
 ) -> bool:
-    """Clear compiler-owned files through a held fd; remove the name only if still bound."""
+    """Clear known compiler files through a held fd without deleting a directory name."""
 
     opened = os.fstat(directory_fd)
     if not _same_path_identity(expected, opened):
         raise RepresentationError("representation cleanup directory identity changed")
+    complete = True
     for entry in os.listdir(directory_fd):
+        if entry not in _PACKAGE_ARTIFACT_NAMES:
+            complete = False
+            continue
         current = os.stat(entry, dir_fd=directory_fd, follow_symlinks=False)
         if not stat.S_ISREG(current.st_mode):
-            raise RepresentationError("representation staging contains an unexpected entry")
+            complete = False
+            continue
         os.unlink(entry, dir_fd=directory_fd)
     os.fsync(directory_fd)
 
@@ -1384,11 +1401,7 @@ def _cleanup_bound_directory(
         linked = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
     except FileNotFoundError:
         return False
-    if not _same_path_identity(expected, linked):
-        return False
-    os.rmdir(name, dir_fd=parent_fd)
-    os.fsync(parent_fd)
-    return True
+    return complete and _same_path_identity(expected, linked)
 
 
 def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
@@ -1440,9 +1453,14 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
 
         published_stat = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
         if not _same_path_identity(staging_before, published_stat):
+            _cleanup_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before
+            )
+            published = False
+            staging_name = None
             raise RepresentationError(
                 "published representation package identity could not be verified; "
-                "target may remain"
+                "bound package files were cleared"
             )
         parent_path_after_publish = _safe_parent_snapshot(target.parent)
         parent_opened_after_publish = os.fstat(parent_fd)
@@ -1450,18 +1468,14 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             not _same_path_identity(parent_before, parent_path_after_publish)
             or not _same_path_identity(parent_before, parent_opened_after_publish)
         ):
-            cleaned = _cleanup_bound_directory(
+            _cleanup_bound_directory(
                 parent_fd, target.name, staging_fd, staging_before
             )
-            if not cleaned:
-                raise RepresentationError(
-                    "representation output parent identity changed during publication; "
-                    "bound package files were cleared but target identity changed"
-                )
             published = False
             staging_name = None
             raise RepresentationError(
-                "representation output parent identity changed during publication"
+                "representation output parent identity changed during publication; "
+                "bound package files were cleared and an empty tombstone may remain"
             )
         try:
             os.fsync(parent_fd)
@@ -1470,6 +1484,28 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
                 "representation package was published but parent durability sync failed; "
                 "target remains"
             ) from exc
+
+        try:
+            final_parent_path = _safe_parent_snapshot(target.parent)
+            final_target_path = target.stat(follow_symlinks=False)
+        except (FileNotFoundError, RepresentationError):
+            final_readback_ok = False
+        else:
+            final_readback_ok = (
+                _same_path_identity(parent_before, final_parent_path)
+                and _same_path_identity(parent_before, os.fstat(parent_fd))
+                and _same_path_identity(staging_before, final_target_path)
+            )
+        if not final_readback_ok:
+            _cleanup_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before
+            )
+            published = False
+            staging_name = None
+            raise RepresentationError(
+                "representation final publication readback failed after durability sync; "
+                "bound package files were cleared and an empty tombstone may remain"
+            )
         return receipt
     except BaseException:
         if (
