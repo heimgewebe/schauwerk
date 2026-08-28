@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -31,8 +32,22 @@ def _assert_private_tombstones(root: Path, target_name: str = "package") -> list
     for tombstone in tombstones:
         assert tombstone.is_dir()
         assert tombstone.stat().st_mode & 0o777 == 0o700
-        assert list(tombstone.iterdir()) == []
+        for entry in tombstone.iterdir():
+            current = entry.lstat()
+            assert stat.S_ISREG(current.st_mode)
+            assert current.st_size == 0
+            assert stat.S_IMODE(current.st_mode) & 0o077 == 0
     return tombstones
+
+
+def _assert_scrubbed_compiler_entries(directory: Path) -> None:
+    entries = list(directory.iterdir())
+    assert entries
+    for entry in entries:
+        current = entry.lstat()
+        assert stat.S_ISREG(current.st_mode)
+        assert current.st_size == 0
+        assert stat.S_IMODE(current.st_mode) & 0o077 == 0
 
 
 def _minimal_representation(
@@ -579,8 +594,12 @@ def test_package_publish_detects_target_appearing_during_compile(
     target = tmp_path / "package"
     original = representation._compile_representation_package_into
 
-    def compile_then_race(*, input_path: Path, output_fd: int) -> dict[str, object]:
-        receipt = original(input_path=input_path, output_fd=output_fd)
+    def compile_then_race(
+        *, input_path: Path, output_fd: int, owned_fds: dict[str, int]
+    ) -> dict[str, object]:
+        receipt = original(
+            input_path=input_path, output_fd=output_fd, owned_fds=owned_fds
+        )
         target.mkdir(mode=0o700)
         return receipt
 
@@ -653,7 +672,7 @@ def test_package_publish_detects_parent_swap_in_final_window(
     old_target = old_parent / "package"
     assert old_target.is_dir()
     assert old_target.stat().st_mode & 0o777 == 0o700
-    assert list(old_target.iterdir()) == []
+    _assert_scrubbed_compiler_entries(old_target)
     assert _assert_private_tombstones(old_parent) == []
 
 
@@ -670,10 +689,14 @@ def test_package_staging_writes_remain_fd_bound_during_parent_swap(
     target = parent / "package"
     original = representation._compile_representation_package_into
 
-    def swap_then_compile(*, input_path: Path, output_fd: int) -> dict[str, object]:
+    def swap_then_compile(
+        *, input_path: Path, output_fd: int, owned_fds: dict[str, int]
+    ) -> dict[str, object]:
         parent.rename(old_parent)
         replacement.rename(parent)
-        return original(input_path=input_path, output_fd=output_fd)
+        return original(
+            input_path=input_path, output_fd=output_fd, owned_fds=owned_fds
+        )
 
     monkeypatch.setattr(representation, "_compile_representation_package_into", swap_then_compile)
     with pytest.raises(RepresentationError, match="output parent identity changed"):
@@ -689,11 +712,14 @@ def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
     parent.mkdir(mode=0o700)
     parent_fd = os.open(parent, representation._directory_open_flags())
     staging_fd: int | None = None
+    owned_fds: dict[str, int] = {}
     try:
         staging_name, staging_fd, expected = representation._create_private_staging(
             parent_fd, "package"
         )
-        representation._write_text(staging_fd, "overview.md", "compiler-owned")
+        representation._write_text(
+            staging_fd, "overview.md", "compiler-owned", owned_fds=owned_fds
+        )
         moved_name = ".moved-owned-staging"
         os.rename(
             staging_name,
@@ -704,14 +730,19 @@ def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
         os.mkdir(staging_name, 0o700, dir_fd=parent_fd)
         (parent / staging_name / "marker.txt").write_text("unrelated", encoding="utf-8")
 
-        cleaned = representation._cleanup_bound_directory(
-            parent_fd, staging_name, staging_fd, expected
+        scrubbed, namespace_clean = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected, owned_fds
         )
 
-        assert cleaned is False
+        assert scrubbed is True
+        assert namespace_clean is False
         assert (parent / staging_name / "marker.txt").read_text() == "unrelated"
-        assert list((parent / moved_name).iterdir()) == []
+        owned = parent / moved_name / "overview.md"
+        assert owned.is_file()
+        assert owned.stat().st_size == 0
     finally:
+        for descriptor in owned_fds.values():
+            os.close(descriptor)
         if staging_fd is not None:
             os.close(staging_fd)
         os.close(parent_fd)
@@ -788,18 +819,24 @@ def test_bound_cleanup_never_removes_verified_directory_name(tmp_path: Path) -> 
     parent.mkdir(mode=0o700)
     parent_fd = os.open(parent, representation._directory_open_flags())
     staging_fd: int | None = None
+    owned_fds: dict[str, int] = {}
     try:
         staging_name, staging_fd, expected = representation._create_private_staging(
             parent_fd, "package"
         )
-        representation._write_text(staging_fd, "overview.md", "compiler-owned")
-        cleaned = representation._cleanup_bound_directory(
-            parent_fd, staging_name, staging_fd, expected
+        representation._write_text(
+            staging_fd, "overview.md", "compiler-owned", owned_fds=owned_fds
         )
-        assert cleaned is True
+        scrubbed, namespace_clean = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected, owned_fds
+        )
+        assert scrubbed is True
+        assert namespace_clean is True
         assert (parent / staging_name).is_dir()
-        assert list((parent / staging_name).iterdir()) == []
+        assert (parent / staging_name / "overview.md").stat().st_size == 0
     finally:
+        for descriptor in owned_fds.values():
+            os.close(descriptor)
         if staging_fd is not None:
             os.close(staging_fd)
         os.close(parent_fd)
@@ -842,7 +879,7 @@ def test_package_final_readback_detects_parent_swap_after_fsync(
     assert not (parent / "package").exists()
     old_target = old_parent / "package"
     assert old_target.is_dir()
-    assert list(old_target.iterdir()) == []
+    _assert_scrubbed_compiler_entries(old_target)
 
 
 def test_package_rejects_target_name_too_long_for_private_staging(tmp_path: Path) -> None:
@@ -853,3 +890,139 @@ def test_package_rejects_target_name_too_long_for_private_staging(tmp_path: Path
     with pytest.raises(RepresentationError, match="target name is too long"):
         compile_representation_package(input_path=input_path, output_dir=target)
     assert not target.exists()
+
+
+def test_miro_relation_legend_never_clips_away_omission_notice() -> None:
+    model = validate_representation_input(
+        _minimal_representation(
+            node_count=4, requested_formats=["miro_native"], long_labels=True
+        )
+    )
+    board = render_miro_board(model, route_representation(model))
+    legend = next(
+        item["content"]
+        for frame in board["frames"]
+        for item in frame["objects"]
+        if item.get("id") == "route_map_relations"
+    )
+
+    assert legend.endswith("+1 weitere Beziehungen")
+    assert len(legend) <= 220
+    assert validate_board_spec(board)["ok"] is True
+
+
+def test_cleanup_preserves_same_named_foreign_replacement(tmp_path: Path) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    staging_fd: int | None = None
+    owned_fds: dict[str, int] = {}
+    try:
+        staging_name, staging_fd, expected = representation._create_private_staging(
+            parent_fd, "package"
+        )
+        representation._write_text(
+            staging_fd, "overview.md", "compiler-owned", owned_fds=owned_fds
+        )
+        os.rename(
+            "overview.md",
+            "owned-overview.md",
+            src_dir_fd=staging_fd,
+            dst_dir_fd=staging_fd,
+        )
+        foreign = parent / staging_name / "overview.md"
+        foreign.write_text("foreign", encoding="utf-8")
+
+        scrubbed, namespace_clean = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected, owned_fds
+        )
+
+        assert scrubbed is True
+        assert namespace_clean is False
+        assert foreign.read_text(encoding="utf-8") == "foreign"
+        assert (parent / staging_name / "owned-overview.md").stat().st_size == 0
+    finally:
+        for descriptor in owned_fds.values():
+            os.close(descriptor)
+        if staging_fd is not None:
+            os.close(staging_fd)
+        os.close(parent_fd)
+
+
+def test_cleanup_failure_never_masks_primary_compile_fault(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+
+    def fail_input(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise RuntimeError("synthetic input failure")
+
+    def fail_cleanup(*_args: object, **_kwargs: object) -> tuple[bool, bool]:
+        raise OSError("synthetic cleanup failure")
+
+    monkeypatch.setattr(representation, "load_representation_input", fail_input)
+    monkeypatch.setattr(representation, "_cleanup_bound_directory", fail_cleanup)
+    with pytest.raises(RuntimeError, match="synthetic input failure"):
+        compile_representation_package(
+            input_path=input_path, output_dir=tmp_path / "package"
+        )
+
+
+def test_private_staging_accepts_indeterminate_name_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    monkeypatch.setattr(representation.os, "fpathconf", lambda *_args: -1)
+
+    receipt = compile_representation_package(
+        input_path=input_path, output_dir=tmp_path / "package"
+    )
+
+    assert receipt["ok"] is True
+
+
+def test_final_readback_permission_error_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    replacement = tmp_path / "replacement"
+    replacement.mkdir(mode=0o700)
+    old_parent = tmp_path / "old-parent"
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    parent_identity = parent.stat()
+    original_fsync = representation.os.fsync
+    swapped = False
+
+    def fsync_then_swap_to_unsearchable(descriptor: int) -> None:
+        nonlocal swapped
+        original_fsync(descriptor)
+        current = os.fstat(descriptor)
+        if (
+            not swapped
+            and current.st_dev == parent_identity.st_dev
+            and current.st_ino == parent_identity.st_ino
+            and target.exists()
+        ):
+            parent.rename(old_parent)
+            replacement.rename(parent)
+            parent.chmod(0o000)
+            swapped = True
+
+    monkeypatch.setattr(representation.os, "fsync", fsync_then_swap_to_unsearchable)
+    try:
+        with pytest.raises(RepresentationError, match="final publication readback failed"):
+            compile_representation_package(input_path=input_path, output_dir=target)
+    finally:
+        if parent.exists():
+            parent.chmod(0o700)
+
+    assert swapped is True
+    assert not (parent / "package").exists()
+    old_target = old_parent / "package"
+    assert old_target.is_dir()
+    _assert_scrubbed_compiler_entries(old_target)

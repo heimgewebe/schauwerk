@@ -109,12 +109,6 @@ _IDENTITY_CONTRACT = (
     "emitted renderer artifact; it does not establish semantic or visual completeness"
 )
 _RENAME_NOREPLACE = 1
-_PACKAGE_ARTIFACT_NAMES = frozenset({
-    "input.json", "route-plan.json", "diagram.mmd", "composition.canvas",
-    "miro-execution-plan.json", "miro-board.json", "miro-board.dsl",
-    "miro-quality.json", "overview.md", "nodes.tsv",
-    "miro-native-bundle.json", "manifest.json", "receipt.json",
-})
 
 
 class RepresentationError(ValueError):
@@ -831,9 +825,17 @@ def _frame_nodes(
 
     omitted = len(relevant_edges) - processed_edge_count
     if relation_rows or omitted > 0:
-        legend_parts = list(relation_rows)
+        separator = " · "
+        rows_text = separator.join(relation_rows)
         if omitted > 0:
-            legend_parts.append(f"+{omitted} weitere Beziehungen")
+            notice = f"+{omitted} weitere Beziehungen"
+            if rows_text:
+                row_budget = 220 - len(separator) - len(notice)
+                legend = f"{clip_text(rows_text, row_budget)}{separator}{notice}"
+            else:
+                legend = notice
+        else:
+            legend = clip_text(rows_text, 220)
         result.append(
             text_object(
                 f"{frame_id}_relations",
@@ -842,7 +844,7 @@ def _frame_nodes(
                 260,
                 1360,
                 60,
-                clip_text("   ·   ".join(legend_parts), 220),
+                legend,
                 font="caption",
             )
         )
@@ -1026,13 +1028,26 @@ def _reject_output_symlink_chain(path: Path) -> None:
             raise RepresentationError("representation output path must not contain symlinks")
 
 
-def _write_payload_at(output_fd: int, name: str, payload: bytes) -> None:
+def _write_payload_at(
+    output_fd: int,
+    name: str,
+    payload: bytes,
+    *,
+    owned_fds: dict[str, int] | None = None,
+) -> None:
     if not name or Path(name).name != name:
         raise RepresentationError("representation artifact name must be one safe path component")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
     descriptor = os.open(name, flags, 0o600, dir_fd=output_fd)
+    retained = False
+    if owned_fds is not None:
+        if name in owned_fds:
+            os.close(descriptor)
+            raise RepresentationError("representation artifact ownership ledger is inconsistent")
+        owned_fds[name] = descriptor
+        retained = True
     try:
         view = memoryview(payload)
         while view:
@@ -1042,19 +1057,32 @@ def _write_payload_at(output_fd: int, name: str, payload: bytes) -> None:
             view = view[written:]
         os.fsync(descriptor)
     finally:
-        os.close(descriptor)
+        if not retained:
+            os.close(descriptor)
 
 
-def _write_text(output_fd: int, name: str, content: str) -> dict[str, Any]:
+def _write_text(
+    output_fd: int,
+    name: str,
+    content: str,
+    *,
+    owned_fds: dict[str, int] | None = None,
+) -> dict[str, Any]:
     encoded = content.encode("utf-8")
-    _write_payload_at(output_fd, name, encoded)
+    _write_payload_at(output_fd, name, encoded, owned_fds=owned_fds)
     return {"path": name, "bytes": len(encoded), "sha256": _text_digest(content)}
 
 
-def _write_json(output_fd: int, name: str, value: Mapping[str, Any]) -> dict[str, Any]:
+def _write_json(
+    output_fd: int,
+    name: str,
+    value: Mapping[str, Any],
+    *,
+    owned_fds: dict[str, int] | None = None,
+) -> dict[str, Any]:
     content = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
     encoded = content.encode("utf-8")
-    _write_payload_at(output_fd, name, encoded)
+    _write_payload_at(output_fd, name, encoded, owned_fds=owned_fds)
     return {"path": name, "bytes": len(encoded), "sha256": _text_digest(content)}
 
 
@@ -1128,7 +1156,7 @@ def _miro_coverage(model: Mapping[str, Any], board: Mapping[str, Any]) -> dict[s
 
 
 def _compile_representation_package_into(
-    *, input_path: Path, output_fd: int
+    *, input_path: Path, output_fd: int, owned_fds: dict[str, int]
 ) -> dict[str, Any]:
     model = load_representation_input(input_path)
     plan = route_representation(model)
@@ -1140,9 +1168,21 @@ def _compile_representation_package_into(
     document_source: str | None = None
     public_input = {key: model[key] for key in _PUBLIC_ROOT_FIELDS}
     artifacts.append(
-        {"role": "normalized_input", **_write_json(output_fd, "input.json", public_input)}
+        {
+            "role": "normalized_input",
+            **_write_json(
+                output_fd, "input.json", public_input, owned_fds=owned_fds
+            ),
+        }
     )
-    artifacts.append({"role": "route_plan", **_write_json(output_fd, "route-plan.json", plan)})
+    artifacts.append(
+        {
+            "role": "route_plan",
+            **_write_json(
+                output_fd, "route-plan.json", plan, owned_fds=owned_fds
+            ),
+        }
+    )
 
     if "mermaid" in plan["selected_formats"]:
         mermaid_source = render_mermaid(model, plan)
@@ -1150,7 +1190,7 @@ def _compile_representation_package_into(
             {
                 "role": "mermaid_source",
                 "coverage": _mermaid_coverage(model, mermaid_source),
-                **_write_text(output_fd, "diagram.mmd", mermaid_source),
+                **_write_text(output_fd, "diagram.mmd", mermaid_source, owned_fds=owned_fds),
             }
         )
     if "canvas" in plan["selected_formats"]:
@@ -1159,7 +1199,7 @@ def _compile_representation_package_into(
             {
                 "role": "json_canvas",
                 "coverage": _canvas_coverage(model, canvas),
-                **_write_json(output_fd, "composition.canvas", canvas),
+                **_write_json(output_fd, "composition.canvas", canvas, owned_fds=owned_fds),
             }
         )
     if "miro_native" in plan["selected_formats"]:
@@ -1167,7 +1207,12 @@ def _compile_representation_package_into(
         artifacts.append(
             {
                 "role": "miro_execution_plan",
-                **_write_json(output_fd, "miro-execution-plan.json", execution_plan),
+                **_write_json(
+                    output_fd,
+                    "miro-execution-plan.json",
+                    execution_plan,
+                    owned_fds=owned_fds,
+                ),
             }
         )
         board = render_miro_board(model, plan)
@@ -1178,17 +1223,22 @@ def _compile_representation_package_into(
             {
                 "role": "miro_board_spec",
                 "coverage": miro_coverage,
-                **_write_json(output_fd, "miro-board.json", board),
+                **_write_json(output_fd, "miro-board.json", board, owned_fds=owned_fds),
             }
         )
         artifacts.append(
             {
                 "role": "miro_layout_dsl",
-                **_write_text(output_fd, "miro-board.dsl", layout_dsl),
+                **_write_text(output_fd, "miro-board.dsl", layout_dsl, owned_fds=owned_fds),
             }
         )
         artifacts.append(
-            {"role": "miro_quality", **_write_json(output_fd, "miro-quality.json", quality)}
+            {
+                "role": "miro_quality",
+                **_write_json(
+                    output_fd, "miro-quality.json", quality, owned_fds=owned_fds
+                ),
+            }
         )
     if "document" in plan["selected_formats"]:
         document_source = render_representation_document(model)
@@ -1196,7 +1246,7 @@ def _compile_representation_package_into(
             {
                 "role": "narrative_document",
                 "coverage": _coverage(model=model, node_ids=[], edge_ids=[]),
-                **_write_text(output_fd, "overview.md", document_source),
+                **_write_text(output_fd, "overview.md", document_source, owned_fds=owned_fds),
             }
         )
     if "table" in plan["selected_formats"]:
@@ -1204,7 +1254,12 @@ def _compile_representation_package_into(
             {
                 "role": "node_table",
                 "coverage": _coverage(model=model, node_ids=all_node_ids, edge_ids=[]),
-                **_write_text(output_fd, "nodes.tsv", render_representation_table(model)),
+                **_write_text(
+                    output_fd,
+                    "nodes.tsv",
+                    render_representation_table(model),
+                    owned_fds=owned_fds,
+                ),
             }
         )
 
@@ -1219,7 +1274,12 @@ def _compile_representation_package_into(
         artifacts.append(
             {
                 "role": "miro_native_bundle",
-                **_write_json(output_fd, "miro-native-bundle.json", native_bundle),
+                **_write_json(
+                    output_fd,
+                    "miro-native-bundle.json",
+                    native_bundle,
+                    owned_fds=owned_fds,
+                ),
             }
         )
 
@@ -1240,7 +1300,7 @@ def _compile_representation_package_into(
         "does_not_establish": plan["does_not_establish"],
     }
     manifest["package_digest"] = _digest(manifest)
-    manifest_artifact = _write_json(output_fd, "manifest.json", manifest)
+    manifest_artifact = _write_json(output_fd, "manifest.json", manifest, owned_fds=owned_fds)
     receipt: dict[str, Any] = {
         "schema_version": RECEIPT_SCHEMA,
         "input_digest": model["input_digest"],
@@ -1255,10 +1315,9 @@ def _compile_representation_package_into(
         "ok": True,
     }
     receipt["receipt_digest"] = _digest(receipt)
-    _write_json(output_fd, "receipt.json", receipt)
+    _write_json(output_fd, "receipt.json", receipt, owned_fds=owned_fds)
     os.fsync(output_fd)
     return receipt
-
 
 
 def _safe_parent_snapshot(path: Path) -> os.stat_result:
@@ -1336,9 +1395,12 @@ def _directory_open_flags() -> int:
 def _create_private_staging(
     parent_fd: int, target_name: str
 ) -> tuple[str, int, os.stat_result]:
-    name_max = os.fpathconf(parent_fd, "PC_NAME_MAX")
+    try:
+        name_max = os.fpathconf(parent_fd, "PC_NAME_MAX")
+    except (OSError, ValueError):
+        name_max = -1
     staging_probe = f".{target_name}.tmp-{'0' * 16}"
-    if len(os.fsencode(staging_probe)) > name_max:
+    if name_max > 0 and len(os.fsencode(staging_probe)) > name_max:
         raise RepresentationError(
             "representation output target name is too long for private staging"
         )
@@ -1348,6 +1410,12 @@ def _create_private_staging(
             os.mkdir(staging_name, 0o700, dir_fd=parent_fd)
         except FileExistsError:
             continue
+        except OSError as exc:
+            if exc.errno == errno.ENAMETOOLONG:
+                raise RepresentationError(
+                    "representation output target name is too long for private staging"
+                ) from exc
+            raise
         staging_fd: int | None = None
         try:
             staging_fd = os.open(
@@ -1379,29 +1447,85 @@ def _cleanup_bound_directory(
     name: str,
     directory_fd: int,
     expected: os.stat_result,
-) -> bool:
-    """Clear known compiler files through a held fd without deleting a directory name."""
+    owned_fds: Mapping[str, int],
+) -> tuple[bool, bool]:
+    """Scrub only invocation-owned file inodes; never unlink a mutable name."""
 
     opened = os.fstat(directory_fd)
     if not _same_path_identity(expected, opened):
         raise RepresentationError("representation cleanup directory identity changed")
-    complete = True
-    for entry in os.listdir(directory_fd):
-        if entry not in _PACKAGE_ARTIFACT_NAMES:
-            complete = False
-            continue
-        current = os.stat(entry, dir_fd=directory_fd, follow_symlinks=False)
-        if not stat.S_ISREG(current.st_mode):
-            complete = False
-            continue
-        os.unlink(entry, dir_fd=directory_fd)
-    os.fsync(directory_fd)
 
+    scrubbed_all = True
+    for descriptor in owned_fds.values():
+        try:
+            artifact = os.fstat(descriptor)
+            if not stat.S_ISREG(artifact.st_mode):
+                scrubbed_all = False
+                continue
+            os.ftruncate(descriptor, 0)
+            os.fsync(descriptor)
+        except OSError:
+            scrubbed_all = False
+    try:
+        os.fsync(directory_fd)
+    except OSError:
+        scrubbed_all = False
+
+    namespace_clean = True
     try:
         linked = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
-    except FileNotFoundError:
-        return False
-    return complete and _same_path_identity(expected, linked)
+    except OSError:
+        namespace_clean = False
+    else:
+        namespace_clean = _same_path_identity(expected, linked)
+
+    try:
+        observed_names = set(os.listdir(directory_fd))
+    except OSError:
+        namespace_clean = False
+        observed_names = set()
+    if observed_names != set(owned_fds):
+        namespace_clean = False
+
+    for artifact_name, descriptor in owned_fds.items():
+        try:
+            bound = os.stat(artifact_name, dir_fd=directory_fd, follow_symlinks=False)
+            owned = os.fstat(descriptor)
+        except OSError:
+            namespace_clean = False
+            continue
+        if not _same_path_identity(owned, bound) or bound.st_size != 0:
+            namespace_clean = False
+
+    return scrubbed_all, namespace_clean
+
+
+def _clear_bound_directory(
+    parent_fd: int,
+    name: str,
+    directory_fd: int,
+    expected: os.stat_result,
+    owned_fds: Mapping[str, int],
+) -> str:
+    """Best-effort scrub that never masks the fault which triggered cleanup."""
+
+    try:
+        scrubbed_all, namespace_clean = _cleanup_bound_directory(
+            parent_fd, name, directory_fd, expected, owned_fds
+        )
+    except Exception:
+        return "bound compiler bytes could not be scrubbed completely"
+    if not scrubbed_all:
+        return "bound compiler bytes could not be scrubbed completely"
+    if namespace_clean:
+        return (
+            "bound compiler bytes were scrubbed; zero-length private tombstone "
+            "entries may remain"
+        )
+    return (
+        "bound compiler bytes were scrubbed; concurrent entries or name changes "
+        "were preserved"
+    )
 
 
 def compile_representation_package(*, input_path: Path, output_dir: Path) -> dict[str, Any]:
@@ -1416,6 +1540,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
     staging_name: str | None = None
     staging_fd: int | None = None
     staging_before: os.stat_result | None = None
+    owned_fds: dict[str, int] = {}
     published = False
     try:
         parent_opened = os.fstat(parent_fd)
@@ -1427,7 +1552,7 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             parent_fd, target.name
         )
         receipt = _compile_representation_package_into(
-            input_path=input_path, output_fd=staging_fd
+            input_path=input_path, output_fd=staging_fd, owned_fds=owned_fds
         )
 
         parent_path_before_publish = _safe_parent_snapshot(target.parent)
@@ -1453,14 +1578,14 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
 
         published_stat = os.stat(target.name, dir_fd=parent_fd, follow_symlinks=False)
         if not _same_path_identity(staging_before, published_stat):
-            _cleanup_bound_directory(
-                parent_fd, target.name, staging_fd, staging_before
+            outcome = _clear_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before, owned_fds
             )
             published = False
             staging_name = None
             raise RepresentationError(
                 "published representation package identity could not be verified; "
-                "bound package files were cleared"
+                f"{outcome}"
             )
         parent_path_after_publish = _safe_parent_snapshot(target.parent)
         parent_opened_after_publish = os.fstat(parent_fd)
@@ -1468,14 +1593,14 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             not _same_path_identity(parent_before, parent_path_after_publish)
             or not _same_path_identity(parent_before, parent_opened_after_publish)
         ):
-            _cleanup_bound_directory(
-                parent_fd, target.name, staging_fd, staging_before
+            outcome = _clear_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before, owned_fds
             )
             published = False
             staging_name = None
             raise RepresentationError(
                 "representation output parent identity changed during publication; "
-                "bound package files were cleared and an empty tombstone may remain"
+                f"{outcome}"
             )
         try:
             os.fsync(parent_fd)
@@ -1487,24 +1612,29 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
 
         try:
             final_parent_path = _safe_parent_snapshot(target.parent)
+            final_parent_opened = os.fstat(parent_fd)
             final_target_path = target.stat(follow_symlinks=False)
-        except (FileNotFoundError, RepresentationError):
+            final_target_bound = os.stat(
+                target.name, dir_fd=parent_fd, follow_symlinks=False
+            )
+        except (OSError, RepresentationError):
             final_readback_ok = False
         else:
             final_readback_ok = (
                 _same_path_identity(parent_before, final_parent_path)
-                and _same_path_identity(parent_before, os.fstat(parent_fd))
+                and _same_path_identity(parent_before, final_parent_opened)
                 and _same_path_identity(staging_before, final_target_path)
+                and _same_path_identity(staging_before, final_target_bound)
             )
         if not final_readback_ok:
-            _cleanup_bound_directory(
-                parent_fd, target.name, staging_fd, staging_before
+            outcome = _clear_bound_directory(
+                parent_fd, target.name, staging_fd, staging_before, owned_fds
             )
             published = False
             staging_name = None
             raise RepresentationError(
                 "representation final publication readback failed after durability sync; "
-                "bound package files were cleared and an empty tombstone may remain"
+                f"{outcome}"
             )
         return receipt
     except BaseException:
@@ -1514,11 +1644,22 @@ def compile_representation_package(*, input_path: Path, output_dir: Path) -> dic
             and staging_fd is not None
             and staging_before is not None
         ):
-            _cleanup_bound_directory(
-                parent_fd, staging_name, staging_fd, staging_before
+            _clear_bound_directory(
+                parent_fd, staging_name, staging_fd, staging_before, owned_fds
             )
         raise
     finally:
+        for descriptor in owned_fds.values():
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
         if staging_fd is not None:
-            os.close(staging_fd)
-        os.close(parent_fd)
+            try:
+                os.close(staging_fd)
+            except OSError:
+                pass
+        try:
+            os.close(parent_fd)
+        except OSError:
+            pass
