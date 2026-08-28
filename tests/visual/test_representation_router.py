@@ -500,6 +500,29 @@ def test_miro_self_loop_retains_source_bound_relation_identity() -> None:
     assert representation._miro_coverage(model, board)["edge_ids"] == ["e0"]
 
 
+def test_miro_self_loop_with_ordinary_relation_does_not_overlap() -> None:
+    model = validate_representation_input(
+        _minimal_representation(node_count=3, requested_formats=["miro_native"], self_loop=True)
+    )
+    board = render_miro_board(model, route_representation(model))
+
+    assert validate_board_spec(board)["ok"] is True
+    assert representation._miro_coverage(model, board)["edge_ids"] == ["e0", "e1"]
+
+
+def test_miro_two_self_loops_stay_clear_of_frame_thesis() -> None:
+    raw = _minimal_representation(
+        node_count=3, requested_formats=["miro_native"], self_loop=True
+    )
+    raw["edges"][1]["from"] = "n1"
+    raw["edges"][1]["to"] = "n1"
+    model = validate_representation_input(raw)
+    board = render_miro_board(model, route_representation(model))
+
+    assert validate_board_spec(board)["ok"] is True
+    assert representation._miro_coverage(model, board)["edge_ids"] == ["e0", "e1"]
+
+
 def test_compiled_public_input_is_schema_exact_and_digest_is_externalized(tmp_path: Path) -> None:
     input_path = tmp_path / "source.json"
     input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
@@ -533,8 +556,8 @@ def test_package_publish_detects_target_appearing_during_compile(
     target = tmp_path / "package"
     original = representation._compile_representation_package_into
 
-    def compile_then_race(*, input_path: Path, output_dir: Path) -> dict[str, object]:
-        receipt = original(input_path=input_path, output_dir=output_dir)
+    def compile_then_race(*, input_path: Path, output_fd: int) -> dict[str, object]:
+        receipt = original(input_path=input_path, output_fd=output_fd)
         target.mkdir(mode=0o700)
         return receipt
 
@@ -606,3 +629,63 @@ def test_package_publish_detects_parent_swap_in_final_window(
     assert not (parent / "package").exists()
     assert not (old_parent / "package").exists()
     assert list(old_parent.glob(".package.tmp-*")) == []
+
+
+def test_package_staging_writes_remain_fd_bound_during_parent_swap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    replacement = tmp_path / "replacement"
+    replacement.mkdir(mode=0o700)
+    old_parent = tmp_path / "old-parent"
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = parent / "package"
+    original = representation._compile_representation_package_into
+
+    def swap_then_compile(*, input_path: Path, output_fd: int) -> dict[str, object]:
+        parent.rename(old_parent)
+        replacement.rename(parent)
+        return original(input_path=input_path, output_fd=output_fd)
+
+    monkeypatch.setattr(representation, "_compile_representation_package_into", swap_then_compile)
+    with pytest.raises(RepresentationError, match="output parent identity changed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert list(parent.iterdir()) == []
+    assert not (old_parent / "package").exists()
+    assert list(old_parent.glob(".package.tmp-*")) == []
+
+
+def test_bound_cleanup_preserves_substituted_directory(tmp_path: Path) -> None:
+    parent = tmp_path / "parent"
+    parent.mkdir(mode=0o700)
+    parent_fd = os.open(parent, representation._directory_open_flags())
+    staging_fd: int | None = None
+    try:
+        staging_name, staging_fd, expected = representation._create_private_staging(
+            parent_fd, "package"
+        )
+        representation._write_text(staging_fd, "owned.txt", "compiler-owned")
+        moved_name = ".moved-owned-staging"
+        os.rename(
+            staging_name,
+            moved_name,
+            src_dir_fd=parent_fd,
+            dst_dir_fd=parent_fd,
+        )
+        os.mkdir(staging_name, 0o700, dir_fd=parent_fd)
+        (parent / staging_name / "marker.txt").write_text("unrelated", encoding="utf-8")
+
+        cleaned = representation._cleanup_bound_directory(
+            parent_fd, staging_name, staging_fd, expected
+        )
+
+        assert cleaned is False
+        assert (parent / staging_name / "marker.txt").read_text() == "unrelated"
+        assert list((parent / moved_name).iterdir()) == []
+    finally:
+        if staging_fd is not None:
+            os.close(staging_fd)
+        os.close(parent_fd)

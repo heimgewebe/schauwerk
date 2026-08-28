@@ -61,7 +61,7 @@ Der Python-Laufzeitvalidator erfüllt den öffentlichen Vertrag aus `schemas/rep
 - Renderer-interne Mermaid-, Canvas- und Miro-IDs liegen in getrennten Namespaces; kanonische Source-IDs werden separat erhalten und können nicht mit dekorativen Objekten oder anderen Objektarten kollidieren.
 - JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten. Kantenanker folgen der tatsächlichen relativen Geometrie; vertikal gestapelte Knoten werden oben/unten verbunden.
 - Ausgabepfade mit Symlinks, einschließlich dangling Symlinks, werden abgelehnt.
-- Paketveröffentlichung akzeptiert nur einen sicheren Parent und ein anfangs nicht existentes Ziel. Parent und Staging bleiben über den Compile-Vorgang identitätsgebunden; die finale Veröffentlichung erfolgt descriptor-relativ mit `RENAME_NOREPLACE`, sodass auch ein im letzten Mikrofenster erscheinendes Ziel nicht überschrieben wird.
+- Paketveröffentlichung akzeptiert nur einen sicheren Parent und ein anfangs nicht existentes Ziel. Das Staging wird unter dem geöffneten Parent per Directory-FD erzeugt, sämtliche Paketdateien werden ausschließlich über den gehaltenen Staging-FD geschrieben, und die finale Veröffentlichung erfolgt descriptor-relativ mit `RENAME_NOREPLACE`, sodass weder ein Parent-Swap noch ein im letzten Mikrofenster erscheinendes Ziel Ausgaben umleiten oder überschreiben kann.
 - Jeder Artefaktinhalt erhält SHA-256 und Bytezahl.
 - `coverage` misst ausschließlich tatsächlich im jeweiligen Renderer-Artefakt materialisierte Source-IDs. Sie ist kein Beweis für semantische oder visuelle Vollständigkeit.
 - Die Miro-native Fläche ist bewusst eine lesbare Auswahl und kein Vollständigkeitsrenderer. Die Evidence-Karte nennt deshalb materialisierte Knoten und Beziehungen explizit als `Miro-Auszug X/Y`.
@@ -85,7 +85,7 @@ Ein Hybridpaket kann enthalten:
 - `nodes.tsv` – tabellarisches Inventar;
 - `manifest.json` und `receipt.json` – Digests und Nichtbehauptungen.
 
-Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis. Das Zielverzeichnis muss vor Beginn fehlen und wird erst nach vollständiger erfolgreicher Kompilierung, erneuter Identitätsprüfung und einem atomaren No-Replace-Publish sichtbar. Ein Renderer-, Quality- oder Pfad-Race-Fehler darf daher weder ein fremdes Ziel überschreiben noch ein halbfertiges Paket zurücklassen, das einen sicheren Retry blockiert.
+Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis, dessen Directory-FD während der gesamten Erzeugung die Schreibautorität trägt. Das Zielverzeichnis muss vor Beginn fehlen und wird erst nach vollständiger erfolgreicher Kompilierung, erneuter Identitätsprüfung und einem atomaren No-Replace-Publish sichtbar. Fehlerbereinigung löscht Compiler-Artefakte ebenfalls nur über den gebundenen Staging-FD; ein Renderer-, Quality- oder Pfad-Race-Fehler darf daher weder in einen ausgetauschten Parent schreiben noch ein fremdes Ziel überschreiben.
 
 ## Pilot
 
