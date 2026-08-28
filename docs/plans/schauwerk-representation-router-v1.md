@@ -65,7 +65,7 @@ Der Python-Laufzeitvalidator erfüllt den öffentlichen Vertrag aus `schemas/rep
 - Jeder Artefaktinhalt erhält SHA-256 und Bytezahl.
 - `coverage` misst ausschließlich tatsächlich im jeweiligen Renderer-Artefakt materialisierte Source-IDs. Sie ist kein Beweis für semantische oder visuelle Vollständigkeit.
 - Die Miro-native Fläche ist bewusst eine lesbare Auswahl und kein Vollständigkeitsrenderer. Die Evidence-Karte nennt deshalb materialisierte Knoten und Beziehungen explizit als `Miro-Auszug X/Y`.
-- Self-Loops bleiben als source-gebundene Relation materialisiert, auch wenn sie nicht als normaler Miro-Connector gezeichnet werden.
+- Self-Loops, die für einen Miro-Auszug selektiert werden, bleiben als source-gebundene Relation materialisiert, auch wenn sie nicht als normaler Miro-Connector gezeichnet werden. Nicht selektierte Self-Loops werden wie andere im bewusst begrenzten Miro-Auszug ausgelassene Beziehungen nicht materialisiert; die Evidence-Karte weist diese Grenze über die globale materialisierte Relation-Coverage `X/Y` aus.
 - Homogene fachliche Beziehungstypen werden als visuelles Risiko ausgewiesen, aber niemals durch erfundene Relationstypen „verbessert“ oder als Generatorfehler blockiert.
 - Miro-Qualität wird weiterhin lokal als Vertrag geprüft und erst durch einen separaten Live-Readback als Providerkonformität belegt.
 - Ein automatischer Vertragsscore ist kein Ästhetikurteil.
