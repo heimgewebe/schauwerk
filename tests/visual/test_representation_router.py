@@ -1387,3 +1387,92 @@ def test_package_verifies_bound_artifacts_at_all_three_publication_gates(
 
     assert receipt["ok"] is True
     assert calls == 3
+
+def test_final_verifier_rejects_append_during_digest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_verify = representation._verify_bound_artifacts
+    original_digest = representation._digest_open_fd
+    verify_call = 0
+    appended = False
+
+    def count_verify(
+        directory_fd: int, owned_fds: representation._OwnedArtifactLedger
+    ) -> bool:
+        nonlocal verify_call
+        verify_call += 1
+        return original_verify(directory_fd, owned_fds)
+
+    def append_then_digest(descriptor: int, expected_size: int) -> str | None:
+        nonlocal appended
+        if verify_call == 3 and not appended:
+            assert os.pwrite(descriptor, b"!", expected_size) == 1
+            os.fsync(descriptor)
+            appended = True
+        return original_digest(descriptor, expected_size)
+
+    monkeypatch.setattr(representation, "_verify_bound_artifacts", count_verify)
+    monkeypatch.setattr(representation, "_digest_open_fd", append_then_digest)
+
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert appended is True
+    assert target.is_dir()
+    assert (target / "input.json").stat().st_size == 0
+
+
+def test_final_verifier_rejects_entry_added_after_initial_name_readback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "source.json"
+    input_path.write_text(json.dumps(_minimal_representation()), encoding="utf-8")
+    target = tmp_path / "package"
+    original_verify = representation._verify_bound_artifacts
+    original_listdir = representation.os.listdir
+    verify_call = 0
+    gate_listdir_call = 0
+    injected = False
+    foreign_payload = b"foreign-entry"
+
+    def count_verify(
+        directory_fd: int, owned_fds: representation._OwnedArtifactLedger
+    ) -> bool:
+        nonlocal verify_call, gate_listdir_call
+        verify_call += 1
+        gate_listdir_call = 0
+        return original_verify(directory_fd, owned_fds)
+
+    def listdir_then_inject(directory_fd: int) -> list[str]:
+        nonlocal gate_listdir_call, injected
+        names = original_listdir(directory_fd)
+        if verify_call == 3:
+            gate_listdir_call += 1
+            if gate_listdir_call == 1 and not injected:
+                foreign_fd = os.open(
+                    "foreign.txt",
+                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC,
+                    0o600,
+                    dir_fd=directory_fd,
+                )
+                try:
+                    os.write(foreign_fd, foreign_payload)
+                    os.fsync(foreign_fd)
+                finally:
+                    os.close(foreign_fd)
+                injected = True
+        return names
+
+    monkeypatch.setattr(representation, "_verify_bound_artifacts", count_verify)
+    monkeypatch.setattr(representation.os, "listdir", listdir_then_inject)
+
+    with pytest.raises(RepresentationError, match="final publication readback failed"):
+        compile_representation_package(input_path=input_path, output_dir=target)
+
+    assert injected is True
+    assert target.is_dir()
+    assert (target / "foreign.txt").read_bytes() == foreign_payload
+    assert (target / "input.json").stat().st_size == 0

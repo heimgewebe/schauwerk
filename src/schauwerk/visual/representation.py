@@ -1496,30 +1496,47 @@ def _digest_open_fd(descriptor: int, expected_size: int) -> str | None:
 def _verify_bound_artifacts(
     directory_fd: int, owned_fds: _OwnedArtifactLedger
 ) -> bool:
-    if set(owned_fds) != set(owned_fds.integrity):
+    expected_names = set(owned_fds)
+    if expected_names != set(owned_fds.integrity):
         return False
     try:
         observed_names = set(os.listdir(directory_fd))
     except OSError:
         return False
-    if observed_names != set(owned_fds):
+    if observed_names != expected_names:
         return False
     for name, descriptor in owned_fds.items():
         expected_size, expected_digest = owned_fds.integrity[name]
         try:
-            owned = os.fstat(descriptor)
-            linked = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            owned_before = os.fstat(descriptor)
+            linked_before = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
         except OSError:
             return False
         if (
-            not stat.S_ISREG(owned.st_mode)
-            or not _same_path_identity(owned, linked)
-            or owned.st_size != expected_size
-            or linked.st_size != expected_size
+            not stat.S_ISREG(owned_before.st_mode)
+            or not _same_path_identity(owned_before, linked_before)
+            or owned_before.st_size != expected_size
+            or linked_before.st_size != expected_size
             or _digest_open_fd(descriptor, expected_size) != expected_digest
         ):
             return False
-    return True
+        try:
+            owned_after = os.fstat(descriptor)
+            linked_after = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError:
+            return False
+        if (
+            not stat.S_ISREG(owned_after.st_mode)
+            or not _same_path_identity(owned_before, owned_after)
+            or not _same_path_identity(owned_after, linked_after)
+            or owned_after.st_size != expected_size
+            or linked_after.st_size != expected_size
+        ):
+            return False
+    try:
+        return set(os.listdir(directory_fd)) == expected_names
+    except OSError:
+        return False
 
 
 def _cleanup_bound_directory(
