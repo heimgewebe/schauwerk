@@ -155,14 +155,18 @@ def test_flat_shape_wall_is_rejected() -> None:
     assert any(item["code"] == "shape_grammar" for item in quality["blockers"])
 
 
-def test_connector_rich_board_requires_semantic_relation_variety() -> None:
+def test_connector_rich_homogeneous_source_semantics_are_reported_not_rewritten() -> None:
     spec = reference_board_spec()
     for frame in spec["frames"]:
         for item in frame["objects"]:
             if item["kind"] == "connector":
                 item["relation_type"] = "flow"
     quality = audit_board_spec(spec)
-    assert any(item["code"] == "relation_grammar" for item in quality["blockers"])
+
+    assert not any(item["code"] == "relation_grammar" for item in quality["blockers"])
+    assert any(item["code"] == "relation_grammar" for item in quality["warnings"])
+    assert any(item["code"] == "relation_grammar" for item in quality["visual_risks"])
+    assert quality["ok"] is True
 
 
 def test_renderer_encodes_relation_semantics_before_labels() -> None:
@@ -219,3 +223,11 @@ def test_provider_auto_sized_rhythm_is_bounded() -> None:
     quality = audit_board_spec(spec)
 
     assert any(item["code"] == "rich_item_rhythm" for item in quality["blockers"])
+
+def test_visual_outputs_reject_dangling_parent_symlink(tmp_path: Path) -> None:
+    from schauwerk.visual.system_v2 import write_json
+
+    linked = tmp_path / "dangling"
+    linked.symlink_to(tmp_path / "missing", target_is_directory=True)
+    with pytest.raises(ValueError, match="must not contain symlinks"):
+        write_json(linked / "receipt.json", {"ok": True})

@@ -1019,6 +1019,10 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                     object=connector.get("id"),
                 )
                 continue
+            if source_id == target_id:
+                # The horizontal gap model is undefined for a self-loop; do not
+                # turn a legitimate self-transition into a negative-gap blocker.
+                continue
             label = " ".join(str(connector.get("content", "")).split())
             source_box = object_boxes.get(str(source_id))
             target_box = object_boxes.get(str(target_id))
@@ -1105,11 +1109,25 @@ def audit_board_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
             shape_types=sorted(shape_types),
         )
     if connector_count >= 4 and len(relation_types) < limits["min_relation_types_when_applicable"]:
-        block(
+        evidence = {
+            "connector_count": connector_count,
+            "relation_types": sorted(relation_types),
+        }
+        warn(
             "relation_grammar",
-            "connector-rich boards must encode at least two semantic relation types",
-            connector_count=connector_count,
-            relation_types=sorted(relation_types),
+            (
+                "connector-rich board uses one semantic relation type; "
+                "source semantics remain authoritative"
+            ),
+            **evidence,
+        )
+        visual_risk(
+            "relation_grammar",
+            (
+                "homogeneous relations reduce visual distinction but must not be "
+                "diversified artificially"
+            ),
+            **evidence,
         )
     if "map" not in roles:
         block(
@@ -1529,7 +1547,7 @@ def _reject_symlink_chain(path: Path) -> None:
     chain = [candidate]
     chain.extend(candidate.parents)
     for component in reversed(chain):
-        if component.exists() and component.is_symlink():
+        if component.is_symlink():
             raise ValueError("visual-system output path must not contain symlinks")
 
 

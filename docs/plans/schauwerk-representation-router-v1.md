@@ -40,24 +40,42 @@ schauwerk-representation-package.v1
 - gemischte Absichten erzeugen bewusst ein Hybridpaket;
 - explizit angeforderte Formate bleiben möglich, müssen aber im Plan sichtbar begründet sein.
 
-Der Router gibt Scores und menschenlesbare Gründe aus. Er behauptet weder ästhetische Qualität noch fachliche Wahrheit.
+Der Router gibt Scores und menschenlesbare Gründe aus. Er behauptet weder ästhetische Qualität noch fachliche Wahrheit. Jeder Renderer akzeptiert nur einen Route-Plan, der exakt der deterministisch neu berechneten Routerentscheidung für dieselbe normalisierte Eingabe entspricht; ein bloß selbstkonsistenter, neu gehashter Fremdplan reicht nicht.
+
+## Eingabevertrag
+
+Der Python-Laufzeitvalidator erfüllt den öffentlichen Vertrag aus `schemas/representation-input.v1.schema.json` fail-closed und ergänzt semantische Invarianten wie eindeutige IDs und gültige Referenzen:
+
+- erforderliche Root-Felder müssen vorhanden sein;
+- unbekannte Root-, Gruppen-, Knoten-, Kanten- und Requirement-Felder werden abgelehnt statt still verworfen;
+- Längenlimits gelten für den unveränderten Eingabestring, bevor Whitespace normalisiert wird;
+- Requirements sind echte JSON-Booleans; Strings wie `"false"` werden nicht umgedeutet;
+- Kanten benötigen einen expliziten, bekannten Relationstyp und gültige Source-/Target-IDs;
+- doppelte `requested_formats` werden nicht still dedupliziert;
+- öffentliche Eingaben enthalten keinen `input_digest`; der Digest wird erst nach erfolgreicher Normalisierung abgeleitet und intern separat gebunden.
 
 ## Sicherheits- und Wahrheitsgrenzen
 
 - Mermaid wird als strikte Quelle ohne `click`-Direktiven oder ausführbaren Inhalt erzeugt.
 - Die Mermaid-Zielversion ist für reproduzierbare spätere SVG-Erzeugung auf 11.16.0 festgelegt.
-- JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten.
-- Ausgabepfade mit Symlinks werden abgelehnt.
+- Renderer-interne Mermaid-, Canvas- und Miro-IDs liegen in getrennten Namespaces; kanonische Source-IDs werden separat erhalten und können nicht mit dekorativen Objekten oder anderen Objektarten kollidieren.
+- JSON Canvas verwendet das offene 1.0-Kernmodell aus Gruppen, Textknoten und Kanten. Kantenanker folgen der tatsächlichen relativen Geometrie; vertikal gestapelte Knoten werden oben/unten verbunden.
+- Ausgabepfade mit Symlinks, einschließlich dangling Symlinks, werden abgelehnt.
+- Paketveröffentlichung akzeptiert nur einen sicheren Parent und ein anfangs nicht existentes Ziel. Nach gegebenenfalls notwendiger Parent-Erzeugung werden Parent und Staging per Directory-FD gebunden; jede selbst erzeugte Paketdatei wird mit `O_EXCL` über den gehaltenen Staging-FD geöffnet und ihr eigener Datei-FD bleibt bis zum terminalen Ergebnis gebunden. Die finale Veröffentlichung benötigt unter Linux `renameat2(RENAME_NOREPLACE)` und schlägt ohne diese No-Replace-Fähigkeit fail-closed fehl. Die atomare Zusage gilt ausschließlich für diesen No-Replace-Namespace-Schritt; die Integritätsprüfungen erzeugen keinen atomaren Snapshot aller Paketbytes. Vor der Veröffentlichung, unmittelbar danach und nach dem Durability-`fsync` wird ein vollständiger, aber sequenzieller Prüfpass ausgeführt: Die Namensmenge wird gegen das Ownership-Ledger gelesen; je Artefakt werden Name→gehaltener Inode und Bytezahl geprüft sowie SHA-256 über den gehaltenen FD gelesen. Unmittelbar um diesen Inhaltsread werden zusätzlich erkennbare Größen-, Inode- und Zeitstempeländerungen fail-closed behandelt. Die `mtime`-/`ctime`-Stabilitätsprüfungen sind Defense-in-Depth für beobachtbare lokale Schreib-Races und ausdrücklich kein universeller Linux-Inhaltsversionszähler. Ein erfolgreicher Rückgabewert belegt daher diese kontrollierten, artefaktspezifischen Beobachtungen, nicht einen simultanen Paket-Gesamtzustand. Absichtlich konkurrierende Prozesse derselben Unix-Benutzerkennung liegen außerhalb der Schreibisolationsgarantie; `0700`/`0600` trennen Prozesse derselben Kennung nicht. Namespace- oder Inhaltsänderungen nach dem jeweils letzten kontrollierten Beobachtungspunkt eines Namens oder Artefakts werden nicht ausgeschlossen.
 - Jeder Artefaktinhalt erhält SHA-256 und Bytezahl.
+- `coverage` misst ausschließlich tatsächlich im jeweiligen Renderer-Artefakt materialisierte Source-IDs. Sie ist kein Beweis für semantische oder visuelle Vollständigkeit.
+- Die Miro-native Fläche ist bewusst eine lesbare Auswahl und kein Vollständigkeitsrenderer. Die Evidence-Karte nennt deshalb materialisierte Knoten und Beziehungen explizit als `Miro-Auszug X/Y`.
+- Self-Loops, die für einen Miro-Auszug selektiert werden, bleiben als source-gebundene Relation materialisiert, auch wenn sie nicht als normaler Miro-Connector gezeichnet werden. Nicht selektierte Self-Loops werden wie andere im bewusst begrenzten Miro-Auszug ausgelassene Beziehungen nicht materialisiert; die Evidence-Karte weist diese Grenze über die globale materialisierte Relation-Coverage `X/Y` aus.
+- Homogene fachliche Beziehungstypen werden als visuelles Risiko ausgewiesen, aber niemals durch erfundene Relationstypen „verbessert“ oder als Generatorfehler blockiert.
 - Miro-Qualität wird weiterhin lokal als Vertrag geprüft und erst durch einen separaten Live-Readback als Providerkonformität belegt.
 - Ein automatischer Vertragsscore ist kein Ästhetikurteil.
 
-## Paketinhalt
+## Paketinhalt und Veröffentlichung
 
 Ein Hybridpaket kann enthalten:
 
-- `input.json` – normalisierte semantische Eingabe;
-- `route-plan.json` – Auswahl, Scores, Gründe und Profile;
+- `input.json` – normalisierte, aber weiterhin schemaexakte öffentliche Eingabe ohne abgeleitete Digest-Felder;
+- `route-plan.json` – Auswahl, Scores, Gründe, Profile und Bindung an den abgeleiteten Input-Digest;
 - `diagram.mmd` – Mermaid-Quelle;
 - `composition.canvas` – JSON-Canvas-Datei;
 - `miro-board.json` – Miro-native Board-Spezifikation;
@@ -66,6 +84,8 @@ Ein Hybridpaket kann enthalten:
 - `overview.md` – narrative Fassung;
 - `nodes.tsv` – tabellarisches Inventar;
 - `manifest.json` und `receipt.json` – Digests und Nichtbehauptungen.
+
+Die Kompilierung erfolgt in einem benachbarten privaten Staging-Verzeichnis, dessen Directory-FD während der gesamten Erzeugung die compiler-internen Namespace- und Schreiboperationen bindet. Das Zielverzeichnis muss vor Beginn fehlen und wird erst nach vollständiger erfolgreicher Kompilierung, einem vollständigen Artefakt-Prüfpass und einem atomaren No-Replace-Publish sichtbar. Die Datei-FDs werden deshalb les- und schreibbar mit `O_EXCL` gehalten. Vor der Veröffentlichung, unmittelbar danach und beim finalen Post-`fsync`-Readback laufen dieselben sequenziellen Ledger-Prüfungen über Namensmenge, Name→Inode-Bindung, Bytezahl und FD-basierten SHA-256; die wiederholten Metadaten- und Zeitstempelvergleiche verkleinern erkennbare Race-Fenster, ersetzen aber keine Schreibisolation gegen einen absichtlich konkurrierenden Prozess derselben Unix-Benutzerkennung. „Atomar“ bezeichnet hier die No-Replace-Veröffentlichung des Directory-Namens, nicht einen gleichzeitigen Inhalts-Snapshot aller Artefakte. Die Fehlerbereinigung löscht weder Directory- noch Dateinamen. Stattdessen bleiben die Datei-FDs aller von diesem Lauf erfolgreich mit `O_EXCL` erzeugten Artefakte bis zum terminalen Ergebnis offen; bei einem Fehler nach Artefakterzeugung wird bestmöglich ausschließlich über diese exakt gebundenen Inodes auf 0 Bytes gekürzt und synchronisiert. Eine gleichnamig substituierte Fremddatei, unbekannte Einträge oder ein ausgetauschter Directory-Name werden dadurch nicht gelöscht oder überschrieben. Fehler vor der Veröffentlichung können einen privaten `0700`-Staging-Tombstone hinterlassen; dieser belegt nicht den eigentlichen Zielnamen, sodass ein Retry auf dem Ziel möglich bleibt. Fehler nach der atomaren Veröffentlichung können dagegen einen `0700`-Tombstone direkt unter dem Zielnamen mit null Byte großen Compiler-Einträgen hinterlassen. Wegen der No-Replace-Semantik blockiert ein solcher Ziel-Tombstone einen automatischen Same-Path-Retry, bis er separat identitätsgebunden geprüft und bereinigt wurde. Fremde Einträge werden bewusst erhalten. Cleanup- und Descriptor-Close-Fehler dürfen die ursprüngliche Compile- oder Publish-Ursache nicht maskieren.
 
 ## Pilot
 
