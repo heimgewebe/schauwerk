@@ -58,6 +58,7 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button compact" data-export="png" type="button">PNG</button>
         <button class="button compact" data-export="svg" type="button">SVG</button>
         <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
+        <button class="button compact fullscreen-toggle" id="fullscreenButton" type="button" aria-pressed="false" aria-label="Vollbildmodus aktivieren" title="Vollbildmodus für die Bearbeitung">Vollbild</button>
       </nav>
       <div class="editor-wrap">
         <iframe
@@ -173,8 +174,55 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
 }
 .document-title { max-width: min(36vw, 420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spacer { flex: 1; }
+.fullscreen-toggle { white-space: nowrap; }
 .editor-wrap { flex: 1; min-height: 520px; background: white; }
 .editor-wrap iframe { width: 100%; height: 100%; min-height: 520px; display: block; border: 0; background: white; }
+
+body.editor-focus { overflow: hidden; }
+body.editor-focus .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
+body.editor-focus .topline { display: none; }
+body.editor-focus .workspace { position: relative; height: 100vh; height: 100dvh; min-height: 0; }
+body.editor-focus .workspace-bar {
+  position: absolute;
+  z-index: 4;
+  top: max(6px, env(safe-area-inset-top));
+  right: max(6px, env(safe-area-inset-right));
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+body.editor-focus .workspace-bar > :not(.fullscreen-toggle) { display: none; }
+body.editor-focus .fullscreen-toggle {
+  position: relative;
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
+  background: rgba(24, 34, 52, 0.88);
+  border-color: rgba(133, 150, 180, 0.55);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+body.editor-focus .fullscreen-toggle::after {
+  content: "×";
+  display: grid;
+  place-items: center;
+  position: absolute;
+  inset: 0;
+  color: #f7f9fc;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1;
+}
+body.editor-focus .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
+body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
+.workspace:fullscreen { width: 100%; height: 100%; min-height: 0; background: white; }
+.workspace:fullscreen .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
+.workspace:fullscreen .editor-wrap iframe { min-height: 0; height: 100%; }
 
 @media (max-width: 720px) {
   .start-card { width: min(100% - 20px, 880px); margin: 18px auto; padding: 22px 18px; border-radius: 18px; }
@@ -195,7 +243,7 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
   .button.primary { background: #5674dc; border-color: #5674dc; }
   .boundary-note { color: #b5bed0; background: #202c41; }
   .error { color: #ffb4ad; background: #4f2525; }
-  .editor-wrap { background: #182234; }
+  .editor-wrap, .workspace:fullscreen { background: #182234; }
 }
 """
 
@@ -459,6 +507,7 @@ const elements = {
   layoutButton: document.querySelector("#layoutButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
+  fullscreenButton: document.querySelector("#fullscreenButton"),
 };
 
 let pendingLoad = null;
@@ -467,6 +516,8 @@ let currentTitle = "Schaubild";
 let pendingExport = null;
 let preparedDownloadUrl = null;
 let editorReady = false;
+let editorFocusActive = false;
+let nativeFullscreenActive = false;
 
 function setStatus(message) { elements.status.textContent = message; }
 function setError(message) {
@@ -538,7 +589,48 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.hidden = false;
 }
 
+function setEditorFocus(active) {
+  editorFocusActive = Boolean(active);
+  document.body.classList.toggle("editor-focus", editorFocusActive);
+  elements.fullscreenButton.setAttribute("aria-pressed", String(editorFocusActive));
+  elements.fullscreenButton.setAttribute(
+    "aria-label",
+    editorFocusActive ? "Vollbildmodus beenden" : "Vollbildmodus aktivieren",
+  );
+  elements.fullscreenButton.textContent = editorFocusActive ? "Beenden" : "Vollbild";
+  elements.fullscreenButton.title = editorFocusActive
+    ? "Vollbildmodus beenden"
+    : "Vollbildmodus für die Bearbeitung";
+}
+
+function leaveEditorFocus() {
+  setEditorFocus(false);
+  if (document.fullscreenElement === elements.workspace && typeof document.exitFullscreen === "function") {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+async function toggleEditorFullscreen() {
+  if (editorFocusActive) {
+    leaveEditorFocus();
+    setStatus("Vollbildmodus beendet");
+    return;
+  }
+
+  setEditorFocus(true);
+  setStatus("Vollbildmodus aktiv");
+  if (!document.fullscreenElement && typeof elements.workspace.requestFullscreen === "function") {
+    try {
+      await elements.workspace.requestFullscreen();
+    } catch (_) {
+      // iPadOS/Safari and embedded contexts can reject the native API.
+      // The CSS focus mode remains active and still removes the host chrome.
+    }
+  }
+}
+
 function showStart() {
+  leaveEditorFocus();
   clearPreparedDownload();
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
@@ -753,6 +845,26 @@ elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
 elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
+elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement === elements.workspace) {
+    nativeFullscreenActive = true;
+    setEditorFocus(true);
+    return;
+  }
+  if (nativeFullscreenActive && document.fullscreenElement === null) {
+    nativeFullscreenActive = false;
+    setEditorFocus(false);
+    setStatus("Vollbildmodus beendet");
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && editorFocusActive && !nativeFullscreenActive) {
+    setEditorFocus(false);
+    setStatus("Vollbildmodus beendet");
+  }
+});
+
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;
   postToEditor({

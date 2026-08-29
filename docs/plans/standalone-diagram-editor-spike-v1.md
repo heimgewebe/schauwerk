@@ -13,7 +13,8 @@ Der Nutzer soll:
 3. draw.io/XML wieder öffnen können;
 4. das Ergebnis visuell in nativen Diagrammobjekten bearbeiten können;
 5. lokal einen Entwurf wiederherstellen können;
-6. als `.drawio`, PNG oder SVG exportieren können.
+6. als `.drawio`, PNG oder SVG exportieren können;
+7. die Bearbeitung über einen expliziten Vollbildmodus auf nahezu die gesamte verfügbare Viewport-Höhe erweitern können.
 
 ## Architekturentscheidung des Spikes
 
@@ -27,7 +28,8 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - Autosave-/Save-Ereignisse liefern XML an die Host-Anwendung zurück;
 - PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
-- `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad.
+- `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad;
+- `Vollbild` aktiviert immer einen hostseitigen Fokusmodus, der die äußere Schauwerk-Kopfzeile entfernt und die Editorfläche mit `100dvh` auf den verfügbaren Viewport ausdehnt. Wenn die Browser-Fullscreen-API verfügbar ist, wird zusätzlich ausschließlich die Workspace-Fläche in natives Vollbild versetzt. Eine Ablehnung der API, insbesondere auf iPadOS/Safari oder in eingebetteten Kontexten, lässt den CSS-Fokusmodus bewusst aktiv statt die Funktion vollständig scheitern zu lassen.
 
 ## Sicherheits- und Datenschutzgrenze
 
@@ -102,6 +104,7 @@ Automatisch:
 - Bundle entsteht deterministisch nur in einem leeren, symlink-sicheren Ziel;
 - Manifest benennt den exakt gerenderten Editor-Origin, die Netzwerkgrenze und Nichtbehauptungen;
 - Custom-Origin, JavaScript-`targetOrigin` und beim integrierten `serve` CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
+- der Vollbildschalter ist explizit, zustandsanzeigend (`aria-pressed`), entfernt im Fokusmodus nur Host-Chrome und besitzt einen getesteten Fullscreen-API-Pfad mit CSS-Fallback;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
 - Repo-`make validate` bleibt grün.
@@ -114,7 +117,9 @@ Live im Browser:
 - Autosave liefert XML zurück;
 - Projekt-, PNG- und SVG-Export funktionieren;
 - `Aufräumen` läuft ohne Hostfehler;
-- iPad/Safari bleibt ein eigener Produkt-Acceptance-Punkt, falls der Desktop-Spike besteht.
+- `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen verbleibenden Viewport an den Editor; erneuter Klick beziehungsweise ein nativer Fullscreen-Ausstieg stellt den Normalzustand wieder her;
+- auf Browsern ohne nutzbare Fullscreen-API bleibt der hostseitige Fokusmodus funktionsfähig. Er behauptet ausdrücklich nicht, iPadOS- oder Browser-Systemleisten außerhalb der Webseite ausblenden zu können;
+- iPad/Safari bleibt für die tatsächlich erreichbare Viewport-Ausnutzung ein eigener Produkt-Acceptance-Punkt.
 
 ## Entscheidungsregel danach
 
