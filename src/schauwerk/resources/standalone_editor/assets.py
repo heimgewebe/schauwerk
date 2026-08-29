@@ -623,6 +623,11 @@ async function enterEditorFullscreen() {
         // The CSS focus mode remains active and still removes the host chrome.
       }
     }
+    if (!editorFocusActive) {
+      nativeFullscreenActive = false;
+      setStatus("Vollbildmodus beendet");
+      return false;
+    }
     nativeFullscreenActive = document.fullscreenElement === elements.workspace;
     setStatus("Vollbildmodus aktiv");
     return true;
