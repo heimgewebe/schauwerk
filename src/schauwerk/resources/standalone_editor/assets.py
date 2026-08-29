@@ -650,6 +650,12 @@ async function leaveEditorFullscreen() {
       try {
         await document.exitFullscreen();
       } catch (_) {
+        if (document.fullscreenElement !== elements.workspace) {
+          nativeFullscreenActive = false;
+          setEditorFocus(false);
+          setStatus("Vollbildmodus beendet");
+          return true;
+        }
         nativeFullscreenActive = true;
         setEditorFocus(true);
         setStatus("Vollbildmodus konnte nicht beendet werden");

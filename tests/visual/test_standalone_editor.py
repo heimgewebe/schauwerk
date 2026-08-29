@@ -95,7 +95,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "async function leaveEditorFullscreen()" in app_js
     assert "async function showStart()" in app_js
     assert "const exited = await leaveEditorFullscreen();" in app_js
-    assert app_js.index("await document.exitFullscreen();") < app_js.index("setEditorFocus(false);")
+    exit_await = app_js.index("await document.exitFullscreen();")
+    exit_catch = app_js.index("} catch (_) {", exit_await)
+    lost_ownership = app_js.index("if (document.fullscreenElement !== elements.workspace)", exit_catch)
+    failed_exit_restore = app_js.index("nativeFullscreenActive = true;", lost_ownership)
+    assert exit_await < lost_ownership < failed_exit_restore
     assert 'event.key === "Escape"' not in app_js
 
 
