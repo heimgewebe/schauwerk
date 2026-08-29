@@ -1,4 +1,7 @@
+import tomllib
 from pathlib import Path
+
+import yaml
 
 from schauwerk import __version__
 from schauwerk.registry_runtime import registry_show, registry_status
@@ -17,6 +20,21 @@ def test_canonical_lint_surface_includes_python_scripts() -> None:
         if "$(RUFF) check " in line
     ]
     assert lint_commands == ["$(RUFF) check src scripts tests"]
+
+
+def test_declared_python_support_matches_ci_matrix() -> None:
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    workflow = yaml.safe_load(
+        (root / ".github/workflows/validate.yml").read_text(encoding="utf-8")
+    )
+
+    assert project["requires-python"] == ">=3.11,<3.14"
+    assert workflow["jobs"]["validate"]["strategy"]["matrix"]["python-version"] == [
+        "3.11",
+        "3.12",
+        "3.13",
+    ]
 
 
 def test_seeded_registry_is_valid() -> None:

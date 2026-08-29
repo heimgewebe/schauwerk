@@ -7,7 +7,7 @@ name = "schauwerk"
 version = "0.1.0"
 description = "Visual work, projection, and publication layer for Heimgewebe."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = [
   "httpx>=0.28,<1",
   "jsonschema>=4.23,<5",
