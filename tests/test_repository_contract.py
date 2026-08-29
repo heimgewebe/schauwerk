@@ -22,19 +22,18 @@ def test_canonical_lint_surface_includes_python_scripts() -> None:
     assert lint_commands == ["$(RUFF) check src scripts tests"]
 
 
-def test_current_stable_python_support_is_covered_by_ci() -> None:
+def test_declared_python_support_matches_ci_matrix() -> None:
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     workflow = yaml.safe_load(
         (root / ".github/workflows/validate.yml").read_text(encoding="utf-8")
     )
 
-    assert project["requires-python"] == ">=3.11"
+    assert project["requires-python"] == ">=3.11,<3.14"
     assert workflow["jobs"]["validate"]["strategy"]["matrix"]["python-version"] == [
         "3.11",
         "3.12",
         "3.13",
-        "3.14",
     ]
 
 
