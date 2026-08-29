@@ -101,8 +101,16 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "nativeFullscreenActive" not in app_js
     assert "fullscreenTransitionActive" not in app_js
     assert "function showStart()" in app_js
-    assert "setEditorFocus(false);" in app_js
-    assert "elements.sourceInput.focus({ preventScroll: true });" in app_js
+    show_start = app_js.index("function showStart()")
+    show_start_end = app_js.index("function showWorkspace()", show_start)
+    show_start_source = app_js[show_start:show_start_end]
+    assert "setEditorFocus(false);" in show_start_source
+    assert "pendingLoad = null;" in show_start_source
+    assert "pendingExport = null;" in show_start_source
+    assert "editorReady = false;" in show_start_source
+    assert "replaceEditorFrame();" in show_start_source
+    assert show_start_source.index("replaceEditorFrame();") < show_start_source.index("elements.workspace.hidden = true;")
+    assert "elements.sourceInput.focus({ preventScroll: true });" in show_start_source
     assert 'event.key === "Escape"' not in app_js
 
 

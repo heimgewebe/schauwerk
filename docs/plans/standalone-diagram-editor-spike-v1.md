@@ -30,6 +30,7 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
 - `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad;
 - `Vollbild` ist bewusst ein hostseitiger Fokusmodus: Die äußere Schauwerk-Kopfzeile und Host-Aktionsleiste verschwinden bis auf den kleinen Ausstieg, und die Editorfläche nutzt mit `100dvh` den vollständigen Web-Viewport. Der Produktpfad verwendet **nicht** die Browser-Fullscreen-API. Damit bleibt das gewünschte Bearbeitungslayout unabhängig von Fullscreen-Promise-/Event-Reihenfolgen und funktioniert auch dort, wo natives Fullscreen auf iPadOS/Safari oder in eingebetteten Kontexten eingeschränkt ist.
+- `← Start` beendet die aktive Editor-Generation vollständig: Pending Load/Export werden verworfen und der iframe-Browsing-Context ersetzt. Fortsetzungsautorität ist der bereits hostseitig validierte und lokal gesicherte XML-Entwurf, nicht ein versteckter alter Editor.
 
 ## Sicherheits- und Datenschutzgrenze
 

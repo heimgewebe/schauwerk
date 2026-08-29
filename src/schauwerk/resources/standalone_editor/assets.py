@@ -606,6 +606,10 @@ function toggleEditorFullscreen() {
 
 function showStart() {
   setEditorFocus(false);
+  pendingLoad = null;
+  pendingExport = null;
+  editorReady = false;
+  replaceEditorFrame();
   clearPreparedDownload();
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
