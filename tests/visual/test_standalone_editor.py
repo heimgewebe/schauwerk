@@ -351,6 +351,8 @@ for (const validDrawio of [
   '<mxfile />',
   '<mxGraphModel foo="bar"/>',
   '<?xml version="1.0"?>\\n<mxfile/>',
+  '<?xml version="1.1" encoding="UTF-8" standalone="yes"?>\\n<mxGraphModel/>',
+  "<?xml version='1.0' encoding='UTF-8' standalone='no'?>\\n<mxfile/>",
 ]) {{
   if (detectInput(validDrawio).kind !== 'drawio') throw new Error(`valid drawio rejected: ${{validDrawio}}`);
 }}
@@ -362,6 +364,10 @@ for (const invalidDrawio of [
   '<mxGraphModelSuffix/>',
   '<mxGraphModel:foreign/>',
   '<MXFILE/>',
+  '<?xml-not-a-declaration?><mxfile/>',
+  '<?xml version="1.0"><mxfile/>',
+  '<?xml foo="bar"?><mxfile/>',
+  '<?xml version="2.0"?><mxfile/>',
 ]) {{
   if (detectInput(invalidDrawio).kind === 'drawio') throw new Error(`drawio near-miss accepted: ${{invalidDrawio}}`);
 }}
@@ -387,6 +393,10 @@ for (const invalid of [
   () => validateDiagramXml('<svg></svg>'),
   () => validateDiagramXml('<mxfile-evil/>'),
   () => validateDiagramXml('<mxGraphModel:foreign/>'),
+  () => validateDiagramXml('<?xml-not-a-declaration?><mxfile/>'),
+  () => validateDiagramXml('<?xml version="1.0"><mxfile/>'),
+  () => validateDiagramXml('<?xml foo="bar"?><mxfile/>'),
+  () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
   () => jsonCanvasToDrawioXml({{
     nodes: [{{id: 'a'}}, {{id: 'b'}}],
     edges: [

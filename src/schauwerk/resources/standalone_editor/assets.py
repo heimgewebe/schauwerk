@@ -243,7 +243,7 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
 }
 """
 
-CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
+CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml\s+version\s*=\s*(?:"1\.[01]"|'1\.[01]')(?:\s+encoding\s*=\s*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:\s+standalone\s*=\s*(?:"(?:yes|no)"|'(?:yes|no)'))?\s*\?>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
 const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
 
 export function normalizeInput(raw) {
