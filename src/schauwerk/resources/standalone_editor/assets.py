@@ -243,7 +243,8 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
 }
 """
 
-CANVAS_IMPORT_JS = r"""const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
+CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
+const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
 
 export function normalizeInput(raw) {
   let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
@@ -255,7 +256,7 @@ export function normalizeInput(raw) {
 export function detectInput(raw) {
   const text = normalizeInput(raw);
   if (!text) return { kind: "empty", text };
-  if (/^<(?:mxGraphModel|mxfile)\b/i.test(text)) return { kind: "drawio", text };
+  if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
   if (text.startsWith("{")) {
     try {
@@ -313,7 +314,7 @@ export function validateDiagramXml(value) {
     throw new Error("Projekt-XML ist ungültig oder zu groß.");
   }
   const normalized = value.trimStart();
-  if (!/^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/.test(normalized)) {
+  if (!DRAWIO_ROOT.test(normalized)) {
     throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
   }
   return value;
@@ -650,7 +651,7 @@ function prepareInput(raw, title = "Schaubild") {
     };
   }
   if (detected.kind === "drawio") {
-    return { xml: detected.text };
+    return { xml: validateDiagramXml(detected.text) };
   }
   if (detected.kind === "empty") {
     return { xml: emptyDrawioXml() };

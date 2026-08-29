@@ -86,6 +86,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
+    assert "return { xml: validateDiagramXml(detected.text) };" in app_js
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "previous.replaceWith(frame);" in app_js
@@ -344,6 +345,25 @@ for (const mermaid of [
 ]) {{
   const detectedMermaid = detectInput(mermaid);
   if (detectedMermaid.kind !== 'mermaid') throw new Error(`commented Mermaid rejected: ${{detectedMermaid.kind}}`);
+}}
+for (const validDrawio of [
+  '<mxfile><diagram/></mxfile>',
+  '<mxfile />',
+  '<mxGraphModel foo="bar"/>',
+  '<?xml version="1.0"?>\\n<mxfile/>',
+]) {{
+  if (detectInput(validDrawio).kind !== 'drawio') throw new Error(`valid drawio rejected: ${{validDrawio}}`);
+}}
+for (const invalidDrawio of [
+  '<mxfile-evil/>',
+  '<mxfileSuffix/>',
+  '<mxfile:foreign/>',
+  '<mxGraphModel-evil/>',
+  '<mxGraphModelSuffix/>',
+  '<mxGraphModel:foreign/>',
+  '<MXFILE/>',
+]) {{
+  if (detectInput(invalidDrawio).kind === 'drawio') throw new Error(`drawio near-miss accepted: ${{invalidDrawio}}`);
 }}
 const xml = jsonCanvasToDrawioXml(detected.value);
 if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
