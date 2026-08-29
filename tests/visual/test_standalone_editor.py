@@ -91,6 +91,17 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "previous.replaceWith(frame);" in app_js
     assert "elements.frame = frame;" in app_js
     assert "if (elements.frame !== frame) return;" in app_js
+    assert "let loadIntentGeneration = 0;" in app_js
+    assert "function invalidateLoadIntents()" in app_js
+    assert "const loadIntent = invalidateLoadIntents();" in app_js
+    assert "if (loadIntent !== loadIntentGeneration) return;" in app_js
+    open_file = app_js.index("async function openFile(file)")
+    open_file_end = app_js.index("function exportDiagram(format)", open_file)
+    open_file_source = app_js[open_file:open_file_end]
+    assert open_file_source.count("if (loadIntent !== loadIntentGeneration) return;") == 2
+    launch_start = app_js.index("function launch(load)")
+    launch_end = app_js.index("function loadPendingIntoEditor()", launch_start)
+    assert "invalidateLoadIntents();" in app_js[launch_start:launch_end]
     assert "function toggleEditorFullscreen()" in app_js
     assert "const active = !editorFocusActive;" in app_js
     assert "setEditorFocus(active);" in app_js
@@ -105,6 +116,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     show_start_end = app_js.index("function showWorkspace()", show_start)
     show_start_source = app_js[show_start:show_start_end]
     assert "setEditorFocus(false);" in show_start_source
+    assert "invalidateLoadIntents();" in show_start_source
     assert "pendingLoad = null;" in show_start_source
     assert "pendingExport = null;" in show_start_source
     assert "editorReady = false;" in show_start_source

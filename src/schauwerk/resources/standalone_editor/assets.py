@@ -513,6 +513,12 @@ let pendingExport = null;
 let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
+let loadIntentGeneration = 0;
+
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
 
 function setStatus(message) { elements.status.textContent = message; }
 function setError(message) {
@@ -605,6 +611,7 @@ function toggleEditorFullscreen() {
 }
 
 function showStart() {
+  invalidateLoadIntents();
   setEditorFocus(false);
   pendingLoad = null;
   pendingExport = null;
@@ -661,6 +668,7 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
+  invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
@@ -701,14 +709,17 @@ function openPasted() {
 async function openFile(file) {
   setError("");
   if (!file) return;
+  const loadIntent = invalidateLoadIntents();
   if (file.size > MAX_INPUT_BYTES) {
     setError("Die Datei ist für diesen Spike zu groß (maximal 5 MB).\n");
     return;
   }
   try {
     const text = await file.text();
+    if (loadIntent !== loadIntentGeneration) return;
     launch(prepareInput(text, file.name));
   } catch (error) {
+    if (loadIntent !== loadIntentGeneration) return;
     setError(error instanceof Error ? error.message : "Datei konnte nicht geöffnet werden.");
   }
 }
