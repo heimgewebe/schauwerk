@@ -614,14 +614,22 @@ async function enterEditorFullscreen() {
   setFullscreenTransition(true);
   setEditorFocus(true);
   setStatus("Vollbildmodus aktiv");
+  let nativeRequestResolved = false;
   try {
     if (!document.fullscreenElement && typeof elements.workspace.requestFullscreen === "function") {
       try {
         await elements.workspace.requestFullscreen();
+        nativeRequestResolved = true;
       } catch (_) {
         // iPadOS/Safari and embedded contexts can reject the native API.
         // The CSS focus mode remains active and still removes the host chrome.
       }
+    }
+    if (nativeRequestResolved && document.fullscreenElement !== elements.workspace) {
+      nativeFullscreenActive = false;
+      setEditorFocus(false);
+      setStatus("Vollbildmodus beendet");
+      return false;
     }
     if (nativeFullscreenActive && document.fullscreenElement !== elements.workspace) {
       nativeFullscreenActive = false;
@@ -744,15 +752,27 @@ function prepareInput(raw, title = "Schaubild") {
   throw new Error("Format nicht erkannt. Unterstützt werden Mermaid, .canvas und draw.io/XML.");
 }
 
+function replaceEditorFrame() {
+  const previous = elements.frame;
+  const frame = previous.cloneNode(false);
+  frame.removeAttribute("src");
+  previous.replaceWith(frame);
+  elements.frame = frame;
+  return frame;
+}
+
 function launch(load) {
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
   editorReady = false;
+  const frame = replaceEditorFrame();
   showWorkspace();
   setStatus("Editor wird geladen …");
-  elements.frame.src = "about:blank";
-  requestAnimationFrame(() => { elements.frame.src = EDITOR_URL; });
+  requestAnimationFrame(() => {
+    if (elements.frame !== frame) return;
+    frame.src = EDITOR_URL;
+  });
 }
 
 function loadPendingIntoEditor() {
@@ -919,13 +939,14 @@ elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
 elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
-document.addEventListener("fullscreenchange", () => {
+document.addEventListener("fullscreenchange", (event) => {
   if (document.fullscreenElement === elements.workspace) {
     nativeFullscreenActive = true;
     setEditorFocus(true);
     return;
   }
-  if (nativeFullscreenActive) {
+  const workspaceTransition = event.target === elements.workspace;
+  if (nativeFullscreenActive || (workspaceTransition && editorFocusActive)) {
     nativeFullscreenActive = false;
     setEditorFocus(false);
     if (!fullscreenTransitionActive) setStatus("Vollbildmodus beendet");

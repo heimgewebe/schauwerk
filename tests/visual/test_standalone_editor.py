@@ -86,9 +86,17 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
+    assert "function replaceEditorFrame()" in app_js
+    assert "const frame = previous.cloneNode(false);" in app_js
+    assert "previous.replaceWith(frame);" in app_js
+    assert "elements.frame = frame;" in app_js
+    assert "if (elements.frame !== frame) return;" in app_js
     assert "requestFullscreen" in app_js
+    assert "nativeRequestResolved = true" in app_js
+    assert "if (nativeRequestResolved && document.fullscreenElement !== elements.workspace)" in app_js
     assert "document.exitFullscreen" in app_js
-    assert 'document.addEventListener("fullscreenchange"' in app_js
+    assert 'document.addEventListener("fullscreenchange", (event)' in app_js
+    assert "event.target === elements.workspace" in app_js
     assert "fullscreenTransitionActive" in app_js
     assert app_js.count('setStatus("Vollbildmodus aktiv")') >= 2
     request_await = app_js.index("await elements.workspace.requestFullscreen();")
