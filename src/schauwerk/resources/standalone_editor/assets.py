@@ -220,10 +220,6 @@ body.editor-focus .fullscreen-toggle::after {
 }
 body.editor-focus .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
 body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
-.workspace:fullscreen { width: 100%; height: 100%; min-height: 0; background: white; }
-.workspace:fullscreen .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
-.workspace:fullscreen .editor-wrap iframe { min-height: 0; height: 100%; }
-
 @media (max-width: 720px) {
   .start-card { width: min(100% - 20px, 880px); margin: 18px auto; padding: 22px 18px; border-radius: 18px; }
   .primary-actions .button { flex: 1 1 42%; }
@@ -243,7 +239,7 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   .button.primary { background: #5674dc; border-color: #5674dc; }
   .boundary-note { color: #b5bed0; background: #202c41; }
   .error { color: #ffb4ad; background: #4f2525; }
-  .editor-wrap, .workspace:fullscreen { background: #182234; }
+  .editor-wrap { background: #182234; }
 }
 """
 
@@ -517,8 +513,6 @@ let pendingExport = null;
 let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
-let nativeFullscreenActive = false;
-let fullscreenTransitionActive = false;
 
 function setStatus(message) { elements.status.textContent = message; }
 function setError(message) {
@@ -590,11 +584,6 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.hidden = false;
 }
 
-function setFullscreenTransition(active) {
-  fullscreenTransitionActive = Boolean(active);
-  elements.fullscreenButton.setAttribute("aria-disabled", String(fullscreenTransitionActive));
-}
-
 function setEditorFocus(active) {
   editorFocusActive = Boolean(active);
   document.body.classList.toggle("editor-focus", editorFocusActive);
@@ -609,114 +598,20 @@ function setEditorFocus(active) {
     : "Vollbildmodus für die Bearbeitung";
 }
 
-async function enterEditorFullscreen() {
-  if (fullscreenTransitionActive) return false;
-  setFullscreenTransition(true);
-  setEditorFocus(true);
-  setStatus("Vollbildmodus aktiv");
-  let nativeRequestResolved = false;
-  try {
-    if (!document.fullscreenElement && typeof elements.workspace.requestFullscreen === "function") {
-      try {
-        await elements.workspace.requestFullscreen();
-        nativeRequestResolved = true;
-      } catch (_) {
-        // iPadOS/Safari and embedded contexts can reject the native API.
-        // The CSS focus mode remains active and still removes the host chrome.
-      }
-    }
-    if (nativeRequestResolved && document.fullscreenElement !== elements.workspace) {
-      nativeFullscreenActive = false;
-      setEditorFocus(false);
-      setStatus("Vollbildmodus beendet");
-      return false;
-    }
-    if (nativeFullscreenActive && document.fullscreenElement !== elements.workspace) {
-      nativeFullscreenActive = false;
-      setEditorFocus(false);
-      setStatus("Vollbildmodus beendet");
-      return false;
-    }
-    if (!editorFocusActive) {
-      nativeFullscreenActive = false;
-      setStatus("Vollbildmodus beendet");
-      return false;
-    }
-    nativeFullscreenActive = document.fullscreenElement === elements.workspace;
-    setStatus("Vollbildmodus aktiv");
-    return true;
-  } finally {
-    setFullscreenTransition(false);
-  }
+function toggleEditorFullscreen() {
+  const active = !editorFocusActive;
+  setEditorFocus(active);
+  setStatus(active ? "Vollbildmodus aktiv" : "Vollbildmodus beendet");
 }
 
-async function leaveEditorFullscreen() {
-  if (!editorFocusActive && document.fullscreenElement !== elements.workspace) return true;
-  if (fullscreenTransitionActive) {
-    setStatus("Vollbildwechsel läuft …");
-    return false;
-  }
-
-  setFullscreenTransition(true);
-  try {
-    if (document.fullscreenElement === elements.workspace) {
-      if (typeof document.exitFullscreen !== "function") {
-        nativeFullscreenActive = true;
-        setEditorFocus(true);
-        setStatus("Vollbildmodus kann hier nicht beendet werden");
-        return false;
-      }
-      try {
-        await document.exitFullscreen();
-      } catch (_) {
-        if (document.fullscreenElement !== elements.workspace) {
-          nativeFullscreenActive = false;
-          setEditorFocus(false);
-          setStatus("Vollbildmodus beendet");
-          return true;
-        }
-        nativeFullscreenActive = true;
-        setEditorFocus(true);
-        setStatus("Vollbildmodus konnte nicht beendet werden");
-        return false;
-      }
-      if (document.fullscreenElement === elements.workspace) {
-        nativeFullscreenActive = true;
-        setEditorFocus(true);
-        setStatus("Vollbildmodus konnte nicht beendet werden");
-        return false;
-      }
-    }
-
-    nativeFullscreenActive = false;
-    setEditorFocus(false);
-    setStatus("Vollbildmodus beendet");
-    return true;
-  } finally {
-    setFullscreenTransition(false);
-  }
-}
-
-async function toggleEditorFullscreen() {
-  if (fullscreenTransitionActive) {
-    setStatus("Vollbildwechsel läuft …");
-    return;
-  }
-  if (editorFocusActive || document.fullscreenElement === elements.workspace) {
-    await leaveEditorFullscreen();
-    return;
-  }
-  await enterEditorFullscreen();
-}
-
-async function showStart() {
-  const exited = await leaveEditorFullscreen();
-  if (!exited) return;
+function showStart() {
+  setEditorFocus(false);
   clearPreparedDownload();
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
   setError("");
   setStatus(currentXml ? "Entwurf lokal gesichert" : "Bereit");
+  elements.sourceInput.focus({ preventScroll: true });
 }
 
 function showWorkspace() {
@@ -939,19 +834,6 @@ elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
 elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
-document.addEventListener("fullscreenchange", (event) => {
-  if (document.fullscreenElement === elements.workspace) {
-    nativeFullscreenActive = true;
-    setEditorFocus(true);
-    return;
-  }
-  const workspaceTransition = event.target === elements.workspace;
-  if (nativeFullscreenActive || (workspaceTransition && editorFocusActive)) {
-    nativeFullscreenActive = false;
-    setEditorFocus(false);
-    if (!fullscreenTransitionActive) setStatus("Vollbildmodus beendet");
-  }
-});
 
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;

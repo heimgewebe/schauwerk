@@ -91,31 +91,18 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "previous.replaceWith(frame);" in app_js
     assert "elements.frame = frame;" in app_js
     assert "if (elements.frame !== frame) return;" in app_js
-    assert "requestFullscreen" in app_js
-    assert "nativeRequestResolved = true" in app_js
-    assert "if (nativeRequestResolved && document.fullscreenElement !== elements.workspace)" in app_js
-    assert "document.exitFullscreen" in app_js
-    assert 'document.addEventListener("fullscreenchange", (event)' in app_js
-    assert "event.target === elements.workspace" in app_js
-    assert "fullscreenTransitionActive" in app_js
-    assert app_js.count('setStatus("Vollbildmodus aktiv")') >= 2
-    request_await = app_js.index("await elements.workspace.requestFullscreen();")
-    lost_native_ownership = app_js.index(
-        "if (nativeFullscreenActive && document.fullscreenElement !== elements.workspace)",
-        request_await,
-    )
-    lost_enter_focus = app_js.index("if (!editorFocusActive)", lost_native_ownership)
-    final_enter_success = app_js.index('setStatus("Vollbildmodus aktiv")', lost_enter_focus)
-    assert request_await < lost_native_ownership < lost_enter_focus < final_enter_success
-    assert 'setAttribute("aria-disabled"' in app_js
-    assert "async function leaveEditorFullscreen()" in app_js
-    assert "async function showStart()" in app_js
-    assert "const exited = await leaveEditorFullscreen();" in app_js
-    exit_await = app_js.index("await document.exitFullscreen();")
-    exit_catch = app_js.index("} catch (_) {", exit_await)
-    lost_ownership = app_js.index("if (document.fullscreenElement !== elements.workspace)", exit_catch)
-    failed_exit_restore = app_js.index("nativeFullscreenActive = true;", lost_ownership)
-    assert exit_await < lost_ownership < failed_exit_restore
+    assert "function toggleEditorFullscreen()" in app_js
+    assert "const active = !editorFocusActive;" in app_js
+    assert "setEditorFocus(active);" in app_js
+    assert "requestFullscreen" not in app_js
+    assert "exitFullscreen" not in app_js
+    assert "fullscreenElement" not in app_js
+    assert "fullscreenchange" not in app_js
+    assert "nativeFullscreenActive" not in app_js
+    assert "fullscreenTransitionActive" not in app_js
+    assert "function showStart()" in app_js
+    assert "setEditorFocus(false);" in app_js
+    assert "elements.sourceInput.focus({ preventScroll: true });" in app_js
     assert 'event.key === "Escape"' not in app_js
 
 
