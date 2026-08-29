@@ -104,7 +104,7 @@ Automatisch:
 - Bundle entsteht deterministisch nur in einem leeren, symlink-sicheren Ziel;
 - Manifest benennt den exakt gerenderten Editor-Origin, die Netzwerkgrenze und Nichtbehauptungen;
 - Custom-Origin, JavaScript-`targetOrigin` und beim integrierten `serve` CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
-- der Vollbildschalter ist explizit, zustandsanzeigend (`aria-pressed`), entfernt im Fokusmodus nur Host-Chrome und besitzt einen getesteten Fullscreen-API-Pfad mit CSS-Fallback;
+- der Vollbildschalter ist explizit, zustandsanzeigend (`aria-pressed`) und serialisiert native Enter-/Exit-Übergänge. Erst ein bestätigter Exit darf den Fokusmodus oder den Workspace verbergen; bei einem fehlgeschlagenen Exit bleibt der Ausstieg sichtbar und der Zustand wahrheitsgemäß aktiv;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
 - Repo-`make validate` bleibt grün.
@@ -118,7 +118,7 @@ Live im Browser:
 - Projekt-, PNG- und SVG-Export funktionieren;
 - `Aufräumen` läuft ohne Hostfehler;
 - `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen verbleibenden Viewport an den Editor; erneuter Klick beziehungsweise ein nativer Fullscreen-Ausstieg stellt den Normalzustand wieder her;
-- auf Browsern ohne nutzbare Fullscreen-API bleibt der hostseitige Fokusmodus funktionsfähig. Er behauptet ausdrücklich nicht, iPadOS- oder Browser-Systemleisten außerhalb der Webseite ausblenden zu können;
+- auf Browsern ohne nutzbare Fullscreen-API bleibt der hostseitige Fokusmodus funktionsfähig. Sein verlässlicher Ausstieg ist der sichtbare Host-Knopf; ein `Escape` innerhalb des cross-origin draw.io-Iframes kann vom Host nicht abgefangen werden. Er behauptet außerdem nicht, iPadOS- oder Browser-Systemleisten außerhalb der Webseite ausblenden zu können;
 - iPad/Safari bleibt für die tatsächlich erreichbare Viewport-Ausnutzung ein eigener Produkt-Acceptance-Punkt.
 
 ## Entscheidungsregel danach

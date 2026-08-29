@@ -89,7 +89,14 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "requestFullscreen" in app_js
     assert "document.exitFullscreen" in app_js
     assert 'document.addEventListener("fullscreenchange"' in app_js
-    assert 'event.key === "Escape"' in app_js
+    assert "fullscreenTransitionActive" in app_js
+    assert app_js.count('setStatus("Vollbildmodus aktiv")') >= 2
+    assert 'setAttribute("aria-disabled"' in app_js
+    assert "async function leaveEditorFullscreen()" in app_js
+    assert "async function showStart()" in app_js
+    assert "const exited = await leaveEditorFullscreen();" in app_js
+    assert app_js.index("await document.exitFullscreen();") < app_js.index("setEditorFocus(false);")
+    assert 'event.key === "Escape"' not in app_js
 
 
 @pytest.mark.parametrize(
