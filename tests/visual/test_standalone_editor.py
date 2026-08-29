@@ -94,6 +94,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "let loadIntentGeneration = 0;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
+    assert 'elements.fileInput.value = "";' in app_js
+    file_change = app_js.index('elements.fileInput.addEventListener("change"')
+    file_reset = app_js.index('elements.fileInput.value = "";', file_change)
+    file_open = app_js.index("if (file) openFile(file);", file_reset)
+    assert file_change < file_reset < file_open
     assert "if (loadIntent !== loadIntentGeneration) return;" in app_js
     open_file = app_js.index("async function openFile(file)")
     open_file_end = app_js.index("function exportDiagram(format)", open_file)
@@ -360,6 +365,8 @@ for (const invalid of [
   () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
   () => validateExportDataUri(png, 'svg'),
   () => validateDiagramXml('<svg></svg>'),
+  () => validateDiagramXml('<mxfile-evil/>'),
+  () => validateDiagramXml('<mxGraphModel:foreign/>'),
   () => jsonCanvasToDrawioXml({{
     nodes: [{{id: 'a'}}, {{id: 'b'}}],
     edges: [

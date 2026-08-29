@@ -313,7 +313,7 @@ export function validateDiagramXml(value) {
     throw new Error("Projekt-XML ist ungültig oder zu groß.");
   }
   const normalized = value.trimStart();
-  if (!/^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)\b/.test(normalized)) {
+  if (!/^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/.test(normalized)) {
     throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
   }
   return value;
@@ -833,7 +833,11 @@ window.addEventListener("message", (event) => {
 
 elements.openPasteButton.addEventListener("click", openPasted);
 elements.fileButton.addEventListener("click", () => elements.fileInput.click());
-elements.fileInput.addEventListener("change", () => openFile(elements.fileInput.files?.[0]));
+elements.fileInput.addEventListener("change", () => {
+  const file = elements.fileInput.files?.[0] ?? null;
+  elements.fileInput.value = "";
+  if (file) openFile(file);
+});
 elements.blankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
   launch({ xml: emptyDrawioXml() });
