@@ -29,7 +29,8 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
 - `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad;
-- `Vollbild` aktiviert immer einen hostseitigen Fokusmodus, der die äußere Schauwerk-Kopfzeile entfernt und die Editorfläche mit `100dvh` auf den verfügbaren Viewport ausdehnt. Wenn die Browser-Fullscreen-API verfügbar ist, wird zusätzlich ausschließlich die Workspace-Fläche in natives Vollbild versetzt. Eine Ablehnung der API, insbesondere auf iPadOS/Safari oder in eingebetteten Kontexten, lässt den CSS-Fokusmodus bewusst aktiv statt die Funktion vollständig scheitern zu lassen.
+- `Vollbild` ist bewusst ein hostseitiger Fokusmodus: Die äußere Schauwerk-Kopfzeile und Host-Aktionsleiste verschwinden bis auf den kleinen Ausstieg, und die Editorfläche nutzt mit `100dvh` den vollständigen Web-Viewport. Der Produktpfad verwendet **nicht** die Browser-Fullscreen-API. Damit bleibt das gewünschte Bearbeitungslayout unabhängig von Fullscreen-Promise-/Event-Reihenfolgen und funktioniert auch dort, wo natives Fullscreen auf iPadOS/Safari oder in eingebetteten Kontexten eingeschränkt ist.
+- `← Start` beendet die aktive Editor-Generation vollständig: Pending Load/Export werden verworfen und der iframe-Browsing-Context ersetzt. Fortsetzungsautorität ist der bereits hostseitig validierte und lokal gesicherte XML-Entwurf, nicht ein versteckter alter Editor.
 
 ## Sicherheits- und Datenschutzgrenze
 
@@ -104,7 +105,7 @@ Automatisch:
 - Bundle entsteht deterministisch nur in einem leeren, symlink-sicheren Ziel;
 - Manifest benennt den exakt gerenderten Editor-Origin, die Netzwerkgrenze und Nichtbehauptungen;
 - Custom-Origin, JavaScript-`targetOrigin` und beim integrierten `serve` CSP-`frame-src` bleiben identisch gebunden; unsichere Origins scheitern vor Bundle-Schreibwirkung;
-- der Vollbildschalter ist explizit, zustandsanzeigend (`aria-pressed`), entfernt im Fokusmodus nur Host-Chrome und besitzt einen getesteten Fullscreen-API-Pfad mit CSS-Fallback;
+- der Vollbildschalter ist explizit und zustandsanzeigend (`aria-pressed`); sein Zustand wird ausschließlich durch den hostseitigen Fokusmodus bestimmt und hängt nicht von der Browser-Fullscreen-API ab;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
 - Repo-`make validate` bleibt grün.
@@ -117,8 +118,8 @@ Live im Browser:
 - Autosave liefert XML zurück;
 - Projekt-, PNG- und SVG-Export funktionieren;
 - `Aufräumen` läuft ohne Hostfehler;
-- `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen verbleibenden Viewport an den Editor; erneuter Klick beziehungsweise ein nativer Fullscreen-Ausstieg stellt den Normalzustand wieder her;
-- auf Browsern ohne nutzbare Fullscreen-API bleibt der hostseitige Fokusmodus funktionsfähig. Er behauptet ausdrücklich nicht, iPadOS- oder Browser-Systemleisten außerhalb der Webseite ausblenden zu können;
+- `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen Web-Viewport an den Editor; erneuter Klick stellt den Normalzustand wieder her;
+- der verlässliche Ausstieg ist der sichtbare Host-Knopf; ein `Escape` innerhalb des cross-origin draw.io-Iframes kann vom Host nicht abgefangen werden. Der Modus behauptet ausdrücklich nicht, Browser- oder iPadOS-Systemleisten außerhalb des Web-Viewports auszublenden;
 - iPad/Safari bleibt für die tatsächlich erreichbare Viewport-Ausnutzung ein eigener Produkt-Acceptance-Punkt.
 
 ## Entscheidungsregel danach

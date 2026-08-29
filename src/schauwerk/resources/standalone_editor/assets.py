@@ -220,10 +220,6 @@ body.editor-focus .fullscreen-toggle::after {
 }
 body.editor-focus .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
 body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
-.workspace:fullscreen { width: 100%; height: 100%; min-height: 0; background: white; }
-.workspace:fullscreen .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
-.workspace:fullscreen .editor-wrap iframe { min-height: 0; height: 100%; }
-
 @media (max-width: 720px) {
   .start-card { width: min(100% - 20px, 880px); margin: 18px auto; padding: 22px 18px; border-radius: 18px; }
   .primary-actions .button { flex: 1 1 42%; }
@@ -243,11 +239,12 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   .button.primary { background: #5674dc; border-color: #5674dc; }
   .boundary-note { color: #b5bed0; background: #202c41; }
   .error { color: #ffb4ad; background: #4f2525; }
-  .editor-wrap, .workspace:fullscreen { background: #182234; }
+  .editor-wrap { background: #182234; }
 }
 """
 
-CANVAS_IMPORT_JS = r"""const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
+CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml\s+version\s*=\s*(?:"1\.[01]"|'1\.[01]')(?:\s+encoding\s*=\s*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:\s+standalone\s*=\s*(?:"(?:yes|no)"|'(?:yes|no)'))?\s*\?>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
+const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
 
 export function normalizeInput(raw) {
   let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
@@ -259,7 +256,7 @@ export function normalizeInput(raw) {
 export function detectInput(raw) {
   const text = normalizeInput(raw);
   if (!text) return { kind: "empty", text };
-  if (/^<(?:mxGraphModel|mxfile)\b/i.test(text)) return { kind: "drawio", text };
+  if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
   if (text.startsWith("{")) {
     try {
@@ -317,7 +314,7 @@ export function validateDiagramXml(value) {
     throw new Error("Projekt-XML ist ungültig oder zu groß.");
   }
   const normalized = value.trimStart();
-  if (!/^(?:<\?xml[^>]*>\s*)?<(?:mxfile|mxGraphModel)\b/.test(normalized)) {
+  if (!DRAWIO_ROOT.test(normalized)) {
     throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
   }
   return value;
@@ -517,7 +514,12 @@ let pendingExport = null;
 let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
-let nativeFullscreenActive = false;
+let loadIntentGeneration = 0;
+
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
 
 function setStatus(message) { elements.status.textContent = message; }
 function setError(message) {
@@ -603,39 +605,25 @@ function setEditorFocus(active) {
     : "Vollbildmodus für die Bearbeitung";
 }
 
-function leaveEditorFocus() {
-  setEditorFocus(false);
-  if (document.fullscreenElement === elements.workspace && typeof document.exitFullscreen === "function") {
-    document.exitFullscreen().catch(() => {});
-  }
-}
-
-async function toggleEditorFullscreen() {
-  if (editorFocusActive) {
-    leaveEditorFocus();
-    setStatus("Vollbildmodus beendet");
-    return;
-  }
-
-  setEditorFocus(true);
-  setStatus("Vollbildmodus aktiv");
-  if (!document.fullscreenElement && typeof elements.workspace.requestFullscreen === "function") {
-    try {
-      await elements.workspace.requestFullscreen();
-    } catch (_) {
-      // iPadOS/Safari and embedded contexts can reject the native API.
-      // The CSS focus mode remains active and still removes the host chrome.
-    }
-  }
+function toggleEditorFullscreen() {
+  const active = !editorFocusActive;
+  setEditorFocus(active);
+  setStatus(active ? "Vollbildmodus aktiv" : "Vollbildmodus beendet");
 }
 
 function showStart() {
-  leaveEditorFocus();
+  invalidateLoadIntents();
+  setEditorFocus(false);
+  pendingLoad = null;
+  pendingExport = null;
+  editorReady = false;
+  replaceEditorFrame();
   clearPreparedDownload();
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
   setError("");
   setStatus(currentXml ? "Entwurf lokal gesichert" : "Bereit");
+  elements.sourceInput.focus({ preventScroll: true });
 }
 
 function showWorkspace() {
@@ -663,7 +651,7 @@ function prepareInput(raw, title = "Schaubild") {
     };
   }
   if (detected.kind === "drawio") {
-    return { xml: detected.text };
+    return { xml: validateDiagramXml(detected.text) };
   }
   if (detected.kind === "empty") {
     return { xml: emptyDrawioXml() };
@@ -671,15 +659,28 @@ function prepareInput(raw, title = "Schaubild") {
   throw new Error("Format nicht erkannt. Unterstützt werden Mermaid, .canvas und draw.io/XML.");
 }
 
+function replaceEditorFrame() {
+  const previous = elements.frame;
+  const frame = previous.cloneNode(false);
+  frame.removeAttribute("src");
+  previous.replaceWith(frame);
+  elements.frame = frame;
+  return frame;
+}
+
 function launch(load) {
+  invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
   editorReady = false;
+  const frame = replaceEditorFrame();
   showWorkspace();
   setStatus("Editor wird geladen …");
-  elements.frame.src = "about:blank";
-  requestAnimationFrame(() => { elements.frame.src = EDITOR_URL; });
+  requestAnimationFrame(() => {
+    if (elements.frame !== frame) return;
+    frame.src = EDITOR_URL;
+  });
 }
 
 function loadPendingIntoEditor() {
@@ -709,14 +710,17 @@ function openPasted() {
 async function openFile(file) {
   setError("");
   if (!file) return;
+  const loadIntent = invalidateLoadIntents();
   if (file.size > MAX_INPUT_BYTES) {
     setError("Die Datei ist für diesen Spike zu groß (maximal 5 MB).\n");
     return;
   }
   try {
     const text = await file.text();
+    if (loadIntent !== loadIntentGeneration) return;
     launch(prepareInput(text, file.name));
   } catch (error) {
+    if (loadIntent !== loadIntentGeneration) return;
     setError(error instanceof Error ? error.message : "Datei konnte nicht geöffnet werden.");
   }
 }
@@ -830,7 +834,11 @@ window.addEventListener("message", (event) => {
 
 elements.openPasteButton.addEventListener("click", openPasted);
 elements.fileButton.addEventListener("click", () => elements.fileInput.click());
-elements.fileInput.addEventListener("change", () => openFile(elements.fileInput.files?.[0]));
+elements.fileInput.addEventListener("change", () => {
+  const file = elements.fileInput.files?.[0] ?? null;
+  elements.fileInput.value = "";
+  if (file) openFile(file);
+});
 elements.blankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
   launch({ xml: emptyDrawioXml() });
@@ -846,24 +854,6 @@ elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
 elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
-document.addEventListener("fullscreenchange", () => {
-  if (document.fullscreenElement === elements.workspace) {
-    nativeFullscreenActive = true;
-    setEditorFocus(true);
-    return;
-  }
-  if (nativeFullscreenActive && document.fullscreenElement === null) {
-    nativeFullscreenActive = false;
-    setEditorFocus(false);
-    setStatus("Vollbildmodus beendet");
-  }
-});
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && editorFocusActive && !nativeFullscreenActive) {
-    setEditorFocus(false);
-    setStatus("Vollbildmodus beendet");
-  }
-});
 
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;

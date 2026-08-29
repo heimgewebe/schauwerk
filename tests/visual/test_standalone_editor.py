@@ -86,10 +86,50 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
-    assert "requestFullscreen" in app_js
-    assert "document.exitFullscreen" in app_js
-    assert 'document.addEventListener("fullscreenchange"' in app_js
-    assert 'event.key === "Escape"' in app_js
+    assert "return { xml: validateDiagramXml(detected.text) };" in app_js
+    assert "function replaceEditorFrame()" in app_js
+    assert "const frame = previous.cloneNode(false);" in app_js
+    assert "previous.replaceWith(frame);" in app_js
+    assert "elements.frame = frame;" in app_js
+    assert "if (elements.frame !== frame) return;" in app_js
+    assert "let loadIntentGeneration = 0;" in app_js
+    assert "function invalidateLoadIntents()" in app_js
+    assert "const loadIntent = invalidateLoadIntents();" in app_js
+    assert 'elements.fileInput.value = "";' in app_js
+    file_change = app_js.index('elements.fileInput.addEventListener("change"')
+    file_reset = app_js.index('elements.fileInput.value = "";', file_change)
+    file_open = app_js.index("if (file) openFile(file);", file_reset)
+    assert file_change < file_reset < file_open
+    assert "if (loadIntent !== loadIntentGeneration) return;" in app_js
+    open_file = app_js.index("async function openFile(file)")
+    open_file_end = app_js.index("function exportDiagram(format)", open_file)
+    open_file_source = app_js[open_file:open_file_end]
+    assert open_file_source.count("if (loadIntent !== loadIntentGeneration) return;") == 2
+    launch_start = app_js.index("function launch(load)")
+    launch_end = app_js.index("function loadPendingIntoEditor()", launch_start)
+    assert "invalidateLoadIntents();" in app_js[launch_start:launch_end]
+    assert "function toggleEditorFullscreen()" in app_js
+    assert "const active = !editorFocusActive;" in app_js
+    assert "setEditorFocus(active);" in app_js
+    assert "requestFullscreen" not in app_js
+    assert "exitFullscreen" not in app_js
+    assert "fullscreenElement" not in app_js
+    assert "fullscreenchange" not in app_js
+    assert "nativeFullscreenActive" not in app_js
+    assert "fullscreenTransitionActive" not in app_js
+    assert "function showStart()" in app_js
+    show_start = app_js.index("function showStart()")
+    show_start_end = app_js.index("function showWorkspace()", show_start)
+    show_start_source = app_js[show_start:show_start_end]
+    assert "setEditorFocus(false);" in show_start_source
+    assert "invalidateLoadIntents();" in show_start_source
+    assert "pendingLoad = null;" in show_start_source
+    assert "pendingExport = null;" in show_start_source
+    assert "editorReady = false;" in show_start_source
+    assert "replaceEditorFrame();" in show_start_source
+    assert show_start_source.index("replaceEditorFrame();") < show_start_source.index("elements.workspace.hidden = true;")
+    assert "elements.sourceInput.focus({ preventScroll: true });" in show_start_source
+    assert 'event.key === "Escape"' not in app_js
 
 
 @pytest.mark.parametrize(
@@ -306,6 +346,31 @@ for (const mermaid of [
   const detectedMermaid = detectInput(mermaid);
   if (detectedMermaid.kind !== 'mermaid') throw new Error(`commented Mermaid rejected: ${{detectedMermaid.kind}}`);
 }}
+for (const validDrawio of [
+  '<mxfile><diagram/></mxfile>',
+  '<mxfile />',
+  '<mxGraphModel foo="bar"/>',
+  '<?xml version="1.0"?>\\n<mxfile/>',
+  '<?xml version="1.1" encoding="UTF-8" standalone="yes"?>\\n<mxGraphModel/>',
+  "<?xml version='1.0' encoding='UTF-8' standalone='no'?>\\n<mxfile/>",
+]) {{
+  if (detectInput(validDrawio).kind !== 'drawio') throw new Error(`valid drawio rejected: ${{validDrawio}}`);
+}}
+for (const invalidDrawio of [
+  '<mxfile-evil/>',
+  '<mxfileSuffix/>',
+  '<mxfile:foreign/>',
+  '<mxGraphModel-evil/>',
+  '<mxGraphModelSuffix/>',
+  '<mxGraphModel:foreign/>',
+  '<MXFILE/>',
+  '<?xml-not-a-declaration?><mxfile/>',
+  '<?xml version="1.0"><mxfile/>',
+  '<?xml foo="bar"?><mxfile/>',
+  '<?xml version="2.0"?><mxfile/>',
+]) {{
+  if (detectInput(invalidDrawio).kind === 'drawio') throw new Error(`drawio near-miss accepted: ${{invalidDrawio}}`);
+}}
 const xml = jsonCanvasToDrawioXml(detected.value);
 if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
 if (!xml.includes('jsonCanvasId="a"')) throw new Error('missing source id');
@@ -326,6 +391,12 @@ for (const invalid of [
   () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
   () => validateExportDataUri(png, 'svg'),
   () => validateDiagramXml('<svg></svg>'),
+  () => validateDiagramXml('<mxfile-evil/>'),
+  () => validateDiagramXml('<mxGraphModel:foreign/>'),
+  () => validateDiagramXml('<?xml-not-a-declaration?><mxfile/>'),
+  () => validateDiagramXml('<?xml version="1.0"><mxfile/>'),
+  () => validateDiagramXml('<?xml foo="bar"?><mxfile/>'),
+  () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
   () => jsonCanvasToDrawioXml({{
     nodes: [{{id: 'a'}}, {{id: 'b'}}],
     edges: [
