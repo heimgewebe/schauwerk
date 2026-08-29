@@ -92,9 +92,13 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "fullscreenTransitionActive" in app_js
     assert app_js.count('setStatus("Vollbildmodus aktiv")') >= 2
     request_await = app_js.index("await elements.workspace.requestFullscreen();")
-    lost_enter_focus = app_js.index("if (!editorFocusActive)", request_await)
+    lost_native_ownership = app_js.index(
+        "if (nativeFullscreenActive && document.fullscreenElement !== elements.workspace)",
+        request_await,
+    )
+    lost_enter_focus = app_js.index("if (!editorFocusActive)", lost_native_ownership)
     final_enter_success = app_js.index('setStatus("Vollbildmodus aktiv")', lost_enter_focus)
-    assert request_await < lost_enter_focus < final_enter_success
+    assert request_await < lost_native_ownership < lost_enter_focus < final_enter_success
     assert 'setAttribute("aria-disabled"' in app_js
     assert "async function leaveEditorFullscreen()" in app_js
     assert "async function showStart()" in app_js
