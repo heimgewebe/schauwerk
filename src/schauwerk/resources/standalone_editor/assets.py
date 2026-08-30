@@ -246,6 +246,21 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
 CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml\s+version\s*=\s*(?:"1\.[01]"|'1\.[01]')(?:\s+encoding\s*=\s*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:\s+standalone\s*=\s*(?:"(?:yes|no)"|'(?:yes|no)'))?\s*\?>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
 const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|gantt|mindmap|timeline|journey|pie|quadrantChart|requirementDiagram|gitGraph|C4(?:Context|Container|Component)|architecture-beta|radar-beta|packet-beta|venn-beta|treemap-beta|treeView-beta|ishikawa-beta|kanban|zenuml|wardley-beta|eventmodeling)\b/i;
 
+export const READABLE_NODE_FONT_SIZE = 18;
+export const READABLE_EDGE_FONT_SIZE = 16;
+export const MIN_READABLE_SCALE = 0.65;
+export const READABILITY_ZOOM_FACTOR = 1.2;
+export const MAX_READABILITY_ZOOM_STEPS = 8;
+
+export function readabilityZoomStepCount(scale) {
+  const current = Number(scale);
+  if (!Number.isFinite(current) || current <= 0 || current >= MIN_READABLE_SCALE) return 0;
+  return Math.min(
+    MAX_READABILITY_ZOOM_STEPS,
+    Math.ceil(Math.log(MIN_READABLE_SCALE / current) / Math.log(READABILITY_ZOOM_FACTOR)),
+  );
+}
+
 export function normalizeInput(raw) {
   let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
   const fenced = text.match(/^```(?:mermaid|mmd|json|canvas|xml|drawio)?\s*\n([\s\S]*?)\n```$/i);
@@ -373,10 +388,10 @@ function nodeLabel(node) {
 
 function nodeStyle(node) {
   if (node.type === "group") {
-    return "swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontStyle=1;container=0;collapsible=0;";
+    return `swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontSize=${READABLE_NODE_FONT_SIZE};fontStyle=1;container=0;collapsible=0;`;
   }
   const [fill, stroke] = palette(node.color);
-  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;spacing=12;`;
+  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;fontSize=${READABLE_NODE_FONT_SIZE};spacing=12;`;
   if (node.type === "file") return `shape=note;${common}`;
   if (node.type === "link") return `rounded=1;arcSize=12;${common}fontColor=#2455b5;`;
   return `rounded=1;arcSize=12;verticalAlign=top;${common}`;
@@ -398,7 +413,7 @@ function edgeStyle(edge) {
   const endArrow = edge.toEnd === "none" ? "none" : "classic";
   const startArrow = edge.fromEnd === "arrow" ? "classic" : "none";
   return [
-    "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;",
+    `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;fontSize=${READABLE_EDGE_FONT_SIZE};`,
     `endArrow=${endArrow};endFill=1;startArrow=${startArrow};startFill=1;`,
     sidePoint(edge.fromSide, "exit"),
     sidePoint(edge.toSide, "entry"),
@@ -479,7 +494,7 @@ export function jsonCanvasToDrawioXml(source) {
 }
 """
 
-APP_JS = r"""import { detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
+APP_JS = r"""import { READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
@@ -691,11 +706,19 @@ function loadPendingIntoEditor() {
     title: currentTitle,
     libs: "general;flowchart",
     fit: 1,
+    maxFitScale: 1,
     modified: "unsavedChanges",
     noExitBtn: 1,
   };
   postToEditor({ ...base, ...(pendingLoad || { xml: emptyDrawioXml() }) });
   pendingLoad = null;
+}
+
+function enforceReadableInitialScale(scale) {
+  const steps = readabilityZoomStepCount(scale);
+  for (let step = 0; step < steps; step += 1) {
+    postToEditor({ action: "invokeAction", actionName: "zoomIn" });
+  }
 }
 
 function openPasted() {
@@ -759,6 +782,9 @@ window.addEventListener("message", (event) => {
       action: "configure",
       config: {
         defaultFonts: ["Helvetica", "Arial", "Verdana"],
+        zoomFactor: READABILITY_ZOOM_FACTOR,
+        defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) },
+        defaultEdgeStyle: { fontSize: String(READABLE_EDGE_FONT_SIZE) },
         enabledLibraries: ["general", "flowchart"],
       },
     });
@@ -770,6 +796,7 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (message.event === "load") {
+    enforceReadableInitialScale(message.scale);
     setStatus("Bereit · Änderungen werden lokal gesichert");
     return;
   }
