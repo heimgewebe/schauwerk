@@ -60,8 +60,20 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert _js_string_constant(app_js, "EDITOR_URL") == manifest["editor_url"]
     assert "offline=1" not in _js_string_constant(app_js, "EDITOR_URL")
     assert "jsonCanvasToDrawioXml" in helper_js
+    assert "READABLE_NODE_FONT_SIZE = 18" in helper_js
+    assert "READABLE_EDGE_FONT_SIZE = 16" in helper_js
+    assert "MIN_READABLE_SCALE = 0.65" in helper_js
+    assert "fontSize=${READABLE_NODE_FONT_SIZE}" in helper_js
+    assert "fontSize=${READABLE_EDGE_FONT_SIZE}" in helper_js
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
+    assert "maxFitScale: 1" in app_js
+    assert "zoomFactor: READABILITY_ZOOM_FACTOR" in app_js
+    assert "defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) }" in app_js
+    assert "defaultEdgeStyle: { fontSize: String(READABLE_EDGE_FONT_SIZE) }" in app_js
+    assert "function enforceReadableInitialScale(scale)" in app_js
+    assert "enforceReadableInitialScale(message.scale);" in app_js
+    assert 'actionName: "zoomIn"' in app_js
     assert 'format: "xml"' not in app_js
     assert "validateExportDataUri(message.data, wanted)" in app_js
     assert "exportDataUriToBlob(validatedData, wanted)" in app_js
@@ -327,7 +339,12 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, validateDiagramXml, validateExportDataUri }} from {module_url!r};
+import {{ READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri }} from {module_url!r};
+if (READABLE_NODE_FONT_SIZE !== 18 || READABLE_EDGE_FONT_SIZE !== 16) throw new Error('readability font profile drifted');
+if (readabilityZoomStepCount(0.4) !== 3) throw new Error('40 percent fit should zoom three steps');
+if (readabilityZoomStepCount(0.65) !== 0) throw new Error('readability floor should not zoom');
+if (readabilityZoomStepCount('not-a-scale') !== 0) throw new Error('invalid scale should not zoom');
+if (readabilityZoomStepCount(0.1) !== 8) throw new Error('extreme fit should respect zoom safety cap');
 const source = JSON.stringify({{
   nodes: [
     {{id: 'group', type: 'group', x: -200, y: -100, width: 500, height: 300, label: 'Thema'}},
@@ -376,6 +393,8 @@ if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
 if (!xml.includes('jsonCanvasId="a"')) throw new Error('missing source id');
 if (!xml.includes('ermöglicht')) throw new Error('missing edge label');
 if (!xml.includes('exitX=1')) throw new Error('missing source-side binding');
+if (!xml.includes('fontSize=18')) throw new Error('missing readable node font size');
+if (!xml.includes('fontSize=16')) throw new Error('missing readable edge font size');
 const png = 'data:image/png;base64,AA==';
 const svg = 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=';
 if (validateExportDataUri(png, 'png') !== png) throw new Error('png export rejected');

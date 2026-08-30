@@ -25,6 +25,7 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - Mermaid wird als `descriptor.format = "mermaid"` mit `wrap = true` geladen und dadurch in native editierbare draw.io-Shapes übersetzt;
 - JSON Canvas wird clientseitig in ein minimales `mxGraphModel` übersetzt;
 - draw.io/XML wird direkt geladen;
+- ein gemeinsames Lesbarkeitsprofil priorisiert Text vor maximaler Gesamtübersicht: JSON-Canvas-Knoten und neue Editor-Knoten starten mit 18 px, Kantenbeschriftungen mit 16 px; `fit` bleibt für den Erstüberblick aktiv, aber ein gemeldeter Initialzoom unter 65 % wird begrenzt per dokumentierter `zoomIn`-Aktion angehoben. Bestehendes draw.io/XML wird dabei nicht umgeschrieben; nur der anfängliche Viewport wird korrigiert;
 - Autosave-/Save-Ereignisse liefern XML an die Host-Anwendung zurück;
 - PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
@@ -108,6 +109,7 @@ Automatisch:
 - der Vollbildschalter ist explizit und zustandsanzeigend (`aria-pressed`); sein Zustand wird ausschließlich durch den hostseitigen Fokusmodus bestimmt und hängt nicht von der Browser-Fullscreen-API ab;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
+- Lesbarkeitsprofil und Zoom-Floor werden deterministisch getestet: 18 px für Knoten, 16 px für Kanten und bei einem 40-%-Fit genau drei 1,2-fache Zoomschritte;
 - Repo-`make validate` bleibt grün.
 
 Live im Browser:
