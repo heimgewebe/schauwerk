@@ -35,7 +35,7 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
         <button class="button" id="fileButton" type="button">Datei öffnen</button>
         <button class="button ghost" id="blankButton" type="button">Leer beginnen</button>
-        <input id="fileInput" type="file" hidden accept=".canvas,.mmd,.mermaid,.drawio,.xml,.json,text/plain,application/json">
+        <input id="fileInput" type="file" hidden>
       </div>
 
       <button class="restore-button" id="restoreButton" type="button" hidden>Letzten lokalen Entwurf wiederherstellen</button>
@@ -261,10 +261,15 @@ export function readabilityZoomStepCount(scale) {
   );
 }
 
+const FULL_INPUT_FENCE = /^```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
+const INLINE_INPUT_FENCE = /```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
+
 export function normalizeInput(raw) {
   let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
-  const fenced = text.match(/^```(?:mermaid|mmd|json|canvas|xml|drawio)?\s*\n([\s\S]*?)\n```$/i);
-  if (fenced) text = fenced[1].trim();
+  const fenced = text.match(FULL_INPUT_FENCE);
+  if (fenced) return fenced[1].trim();
+  const inlineFences = [...text.matchAll(INLINE_INPUT_FENCE)];
+  if (inlineFences.length === 1) text = inlineFences[0][1].trim();
   return text;
 }
 
@@ -285,7 +290,11 @@ export function detectInput(raw) {
 }
 
 export function isJsonCanvas(value) {
-  return Boolean(value && typeof value === "object" && Array.isArray(value.nodes) && Array.isArray(value.edges));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
+  const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
+  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0;
+  return (!hasNodes || Array.isArray(value.nodes)) && (!hasEdges || Array.isArray(value.edges));
 }
 
 const MAX_EXPORT_DATA_URI_CHARS = 32 * 1024 * 1024;
@@ -422,15 +431,17 @@ function edgeStyle(edge) {
 
 function validateJsonCanvas(value) {
   if (!isJsonCanvas(value)) throw new Error("Keine gültige JSON-Canvas-Struktur.");
+  const nodes = value.nodes ?? [];
+  const edges = value.edges ?? [];
   const ids = new Set();
-  for (const [index, node] of value.nodes.entries()) {
+  for (const [index, node] of nodes.entries()) {
     if (!node || typeof node !== "object") throw new Error(`Knoten ${index + 1} ist ungültig.`);
     if (typeof node.id !== "string" || !node.id) throw new Error(`Knoten ${index + 1} hat keine ID.`);
     if (ids.has(node.id)) throw new Error(`Doppelte Knoten-ID: ${node.id}`);
     ids.add(node.id);
   }
   const edgeIds = new Set();
-  for (const [index, edge] of value.edges.entries()) {
+  for (const [index, edge] of edges.entries()) {
     if (!edge || typeof edge !== "object") throw new Error(`Kante ${index + 1} ist ungültig.`);
     if (!ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
       throw new Error(`Kante ${index + 1} verweist auf einen unbekannten Knoten.`);
@@ -439,6 +450,7 @@ function validateJsonCanvas(value) {
     if (edgeIds.has(rawId)) throw new Error(`Doppelte Kanten-ID: ${rawId}`);
     edgeIds.add(rawId);
   }
+  return { nodes, edges };
 }
 
 export function emptyDrawioXml() {
@@ -447,9 +459,9 @@ export function emptyDrawioXml() {
 
 export function jsonCanvasToDrawioXml(source) {
   const value = typeof source === "string" ? JSON.parse(normalizeInput(source)) : source;
-  validateJsonCanvas(value);
+  const { nodes, edges } = validateJsonCanvas(value);
 
-  const geometryNodes = value.nodes.filter((node) => node && typeof node === "object");
+  const geometryNodes = nodes.filter((node) => node && typeof node === "object");
   const minX = Math.min(0, ...geometryNodes.map((node) => numberOr(node.x, 0)));
   const minY = Math.min(0, ...geometryNodes.map((node) => numberOr(node.y, 0)));
   const offsetX = 40 - minX;
@@ -479,7 +491,7 @@ export function jsonCanvasToDrawioXml(source) {
     );
   }
 
-  for (const [index, edge] of value.edges.entries()) {
+  for (const [index, edge] of edges.entries()) {
     const source = nodeId(edge.fromNode);
     const target = nodeId(edge.toNode);
     const rawId = typeof edge.id === "string" && edge.id ? edge.id : `edge_${index + 1}`;

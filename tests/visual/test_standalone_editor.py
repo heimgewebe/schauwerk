@@ -92,6 +92,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
     assert 'id="fullscreenButton"' in index_html
+    assert '<input id="fileInput" type="file" hidden>' in index_html
+    assert 'id="fileInput" type="file" hidden accept=' not in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
@@ -355,6 +357,22 @@ const source = JSON.stringify({{
 }});
 const detected = detectInput(source);
 if (detected.kind !== 'json-canvas') throw new Error(`wrong kind: ${{detected.kind}}`);
+const nodesOnly = JSON.stringify({{nodes: [{{id: 'solo', type: 'text', x: 0, y: 0, width: 200, height: 100, text: 'Solo'}}]}});
+if (detectInput(nodesOnly).kind !== 'json-canvas') throw new Error('nodes-only JSON Canvas rejected');
+if (!jsonCanvasToDrawioXml(nodesOnly).includes('jsonCanvasId="solo"')) throw new Error('nodes-only JSON Canvas did not convert');
+const edgesOnly = JSON.stringify({{edges: []}});
+if (detectInput(edgesOnly).kind !== 'json-canvas') throw new Error('edges-only JSON Canvas rejected');
+if (!jsonCanvasToDrawioXml(edgesOnly).includes('<mxGraphModel')) throw new Error('edges-only JSON Canvas did not convert');
+if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canvas rejected');
+if (detectInput('{{"unrelated":true}}').kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
+const fence = '`'.repeat(3);
+for (const inlineCanvas of [
+  fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
+  fence + '.canvas\\n' + nodesOnly + '\\n' + fence,
+  'Hier ist das Schaubild:\\n\\n' + fence + 'json-canvas\\n' + nodesOnly + '\\n' + fence + '\\n\\nDu kannst es bearbeiten.',
+]) {{
+  if (detectInput(inlineCanvas).kind !== 'json-canvas') throw new Error(`inline JSON Canvas rejected: ${{inlineCanvas}}`);
+}}
 for (const mermaid of [
   '%% comment\\nflowchart TD\\n  A --> B',
   '%%{{init: {{"theme":"neutral"}}}}%%\\nsequenceDiagram\\n  A->>B: Hallo',
