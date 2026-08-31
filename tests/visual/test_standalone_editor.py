@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -92,6 +94,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
     assert 'id="fullscreenButton"' in index_html
+    file_input = re.search(r'<input\b[^>]*\bid="fileInput"[^>]*>', index_html)
+    assert file_input is not None
+    assert re.search(r"\baccept\s*=", file_input.group(0), flags=re.IGNORECASE) is None
+    assert "placeholder=\"Zum Beispiel:&#10;flowchart TD&#10;" in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
@@ -331,6 +337,8 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
 ) -> None:
     node = shutil.which("node")
     if node is None:
+        if os.environ.get("CI"):
+            pytest.fail("node is required in CI for standalone-editor JavaScript coverage")
         pytest.skip("node is not installed")
 
     output = tmp_path / "editor"
@@ -339,7 +347,7 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri }} from {module_url!r};
+import {{ MAX_INPUT_BYTES, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
 if (READABLE_NODE_FONT_SIZE !== 18 || READABLE_EDGE_FONT_SIZE !== 16) throw new Error('readability font profile drifted');
 if (readabilityZoomStepCount(0.4) !== 3) throw new Error('40 percent fit should zoom three steps');
 if (readabilityZoomStepCount(0.65) !== 0) throw new Error('readability floor should not zoom');
@@ -355,6 +363,37 @@ const source = JSON.stringify({{
 }});
 const detected = detectInput(source);
 if (detected.kind !== 'json-canvas') throw new Error(`wrong kind: ${{detected.kind}}`);
+const nodesOnly = JSON.stringify({{nodes: [{{id: 'solo', type: 'text', x: 0, y: 0, width: 200, height: 100, text: 'Solo'}}]}});
+if (detectInput(nodesOnly).kind !== 'json-canvas') throw new Error('nodes-only JSON Canvas rejected');
+if (!jsonCanvasToDrawioXml(nodesOnly).includes('jsonCanvasId="solo"')) throw new Error('nodes-only JSON Canvas did not convert');
+const edgesOnly = JSON.stringify({{edges: []}});
+if (detectInput(edgesOnly).kind !== 'json-canvas') throw new Error('edges-only JSON Canvas rejected');
+if (!jsonCanvasToDrawioXml(edgesOnly).includes('<mxGraphModel')) throw new Error('edges-only JSON Canvas did not convert');
+if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canvas rejected');
+if (detectInput('{{"unrelated":true}}').kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
+if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
+if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');
+for (const foreignNode of [
+  {{id: 'a', type: 'server', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'file', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'link', x: 0, y: 0, width: 100, height: 50}},
+]) {{
+  if (detectInput(JSON.stringify({{nodes: [foreignNode]}})).kind !== 'unknown') throw new Error('invalid typed Canvas node accepted');
+}}
+const fence = '`'.repeat(3);
+for (const inlineCanvas of [
+  fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
+  fence + '.canvas\\n' + nodesOnly + '\\n' + fence,
+  'Hier ist das Schaubild:\\n\\n' + fence + 'json-canvas\\n' + nodesOnly + '\\n' + fence + '\\n\\nDu kannst es bearbeiten.',
+  'Hinweis:\\n' + fence + 'json\\n{{"unrelated":true}}\\n' + fence + '\\nSchaubild:\\n' + fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
+  'Schaubild:\\r\\n' + fence + '.canvas\\r\\n' + nodesOnly + '\\r\\n' + fence,
+]) {{
+  if (detectInput(inlineCanvas).kind !== 'json-canvas') throw new Error(`inline JSON Canvas rejected: ${{inlineCanvas}}`);
+}}
+const ambiguousCanvas = fence + 'canvas\\n' + nodesOnly + '\\n' + fence + '\\n' + fence + 'mermaid\\nflowchart TD\\n A --> B\\n' + fence;
+if (detectInput(ambiguousCanvas).kind !== 'unknown') throw new Error('ambiguous multi-diagram paste should remain unknown');
+if (!jsonCanvasToDrawioXml(fence + 'canvas\\n' + nodesOnly + '\\n' + fence).includes('jsonCanvasId="solo"')) throw new Error('fenced string conversion path failed');
 for (const mermaid of [
   '%% comment\\nflowchart TD\\n  A --> B',
   '%%{{init: {{"theme":"neutral"}}}}%%\\nsequenceDiagram\\n  A->>B: Hallo',
@@ -404,38 +443,75 @@ if (pngBlob.type !== 'image/png' || pngBlob.size !== 1) throw new Error('png blo
 const svgBlob = exportDataUriToBlob(svg, 'svg');
 if (svgBlob.type !== 'image/svg+xml') throw new Error('svg blob type is wrong');
 if (await svgBlob.text() !== '<svg></svg>') throw new Error('svg blob payload is wrong');
-if (validateDiagramXml('<mxfile><diagram/></mxfile>') !== '<mxfile><diagram/></mxfile>') throw new Error('project xml rejected');
+if (validateInputText('abc') !== 'abc') throw new Error('small input rejected');
+if (new TextEncoder().encode(validateInputText('ä')).byteLength !== 2) throw new Error('UTF-8 input sizing drifted');
 for (const invalid of [
   () => validateExportDataUri('javascript:alert(1)', 'svg'),
   () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
   () => validateExportDataUri(png, 'svg'),
-  () => validateDiagramXml('<svg></svg>'),
-  () => validateDiagramXml('<mxfile-evil/>'),
-  () => validateDiagramXml('<mxGraphModel:foreign/>'),
-  () => validateDiagramXml('<?xml-not-a-declaration?><mxfile/>'),
-  () => validateDiagramXml('<?xml version="1.0"><mxfile/>'),
-  () => validateDiagramXml('<?xml foo="bar"?><mxfile/>'),
-  () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
+  () => validateInputText('x'.repeat(MAX_INPUT_BYTES + 1)),
+  () => validateInputText('ä'.repeat(Math.floor(MAX_INPUT_BYTES / 2) + 1)),
   () => jsonCanvasToDrawioXml({{
-    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'a', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
+    ],
+    edges: [],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
+    ],
     edges: [
       {{id: 'same', fromNode: 'a', toNode: 'b'}},
       {{id: 'same', fromNode: 'b', toNode: 'a'}},
     ],
   }}),
   () => jsonCanvasToDrawioXml({{
-    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
+    ],
     edges: [
       {{id: 'edge_2', fromNode: 'a', toNode: 'b'}},
-      {{fromNode: 'b', toNode: 'a'}},
+      {{id: 'edge_2', fromNode: 'b', toNode: 'a'}},
     ],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}}],
+    edges: [{{id: 'dangling', fromNode: 'a', toNode: 'missing'}}],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [
+      {{id: 'a', type: 'text', x: -Number.MAX_VALUE, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: Number.MAX_VALUE, y: 0, width: 100, height: 50, text: 'B'}},
+    ],
+    edges: [],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'x-overflow', type: 'text', x: Number.MAX_VALUE, y: 0, width: Number.MAX_VALUE, height: 50, text: 'X'}}],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'y-overflow', type: 'text', x: 0, y: Number.MAX_VALUE, width: 100, height: Number.MAX_VALUE, text: 'Y'}}],
   }}),
 ]) {{
   let rejected = false;
   try {{ invalid(); }} catch (_) {{ rejected = true; }}
   if (!rejected) throw new Error('invalid standalone-editor payload accepted');
 }}
-console.log('ok');
+const hostileXml = jsonCanvasToDrawioXml({{
+  nodes: [{{
+    id: 'a"><mxCell id="0"/>',
+    type: 'text',
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 50,
+    text: 'A' + String.fromCharCode(7, 9, 13, 10, 0xd800, 0xdfff, 0xfffe, 0xffff) + '<&😀',
+  }}],
+}});
+console.log(JSON.stringify({{status: 'ok', hostileXml}}));
 """
     completed = subprocess.run(
         [node, "--input-type=module", "--eval", code],
@@ -445,4 +521,68 @@ console.log('ok');
         timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip() == "ok"
+    result = json.loads(completed.stdout)
+    assert result["status"] == "ok"
+    assert "\x07" not in result["hostileXml"]
+    assert chr(0xFFFE) not in result["hostileXml"]
+    assert chr(0xFFFF) not in result["hostileXml"]
+    assert not any(0xD800 <= ord(character) <= 0xDFFF for character in result["hostileXml"])
+    assert "😀" in result["hostileXml"]
+    assert "�" in result["hostileXml"]
+    ET.fromstring(result["hostileXml"])
+
+
+
+def test_canvas_import_browser_xml_validation_when_chrome_available(tmp_path: Path) -> None:
+    chrome = shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
+    if chrome is None:
+        pytest.skip("Chrome/Chromium is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    harness = output / "xml-validation-test.html"
+    harness.write_text(
+        """<!doctype html><meta charset=\"utf-8\"><pre id=\"result\">pending</pre><script type=\"module\">
+import { validateDiagramXml } from './canvas-import.js';
+const valid = [
+  '<mxfile><diagram/></mxfile>',
+  '<mxGraphModel><root/></mxGraphModel>',
+  '<?xml version=\"1.0\"?><mxfile/>',
+];
+const invalid = [
+  '<mxfile><diagram></mxfile>',
+  '<mxGraphModel/><mxfile/>',
+  '<mxfile/>trailing',
+  '<!DOCTYPE mxfile><mxfile/>',
+];
+let ok = true;
+for (const value of valid) {
+  try { validateDiagramXml(value); } catch (_) { ok = false; }
+}
+for (const value of invalid) {
+  let rejected = false;
+  try { validateDiagramXml(value); } catch (_) { rejected = true; }
+  if (!rejected) ok = false;
+}
+document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
+</script>""",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            chrome,
+            "--headless=new",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--allow-file-access-from-files",
+            "--virtual-time-budget=3000",
+            "--dump-dom",
+            harness.as_uri(),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert '<pre id="result">PASS</pre>' in completed.stdout

@@ -28,14 +28,14 @@ INDEX_HTML = r"""<!doctype html>
 
       <label class="paste-box" for="sourceInput">
         <span>KI-Ergebnis hier einfügen</span>
-        <textarea id="sourceInput" spellcheck="false" placeholder="Zum Beispiel:\nflowchart TD\n  A[Bindung] --> B[Exploration]"></textarea>
+        <textarea id="sourceInput" spellcheck="false" placeholder="Zum Beispiel:&#10;flowchart TD&#10;  A[Bindung] --> B[Exploration]"></textarea>
       </label>
 
       <div class="primary-actions">
         <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
         <button class="button" id="fileButton" type="button">Datei öffnen</button>
         <button class="button ghost" id="blankButton" type="button">Leer beginnen</button>
-        <input id="fileInput" type="file" hidden accept=".canvas,.mmd,.mermaid,.drawio,.xml,.json,text/plain,application/json">
+        <input id="fileInput" type="file" hidden>
       </div>
 
       <button class="restore-button" id="restoreButton" type="button" hidden>Letzten lokalen Entwurf wiederherstellen</button>
@@ -261,15 +261,10 @@ export function readabilityZoomStepCount(scale) {
   );
 }
 
-export function normalizeInput(raw) {
-  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
-  const fenced = text.match(/^```(?:mermaid|mmd|json|canvas|xml|drawio)?\s*\n([\s\S]*?)\n```$/i);
-  if (fenced) text = fenced[1].trim();
-  return text;
-}
+const FULL_INPUT_FENCE = /^```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
+const INLINE_INPUT_FENCE = /```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
 
-export function detectInput(raw) {
-  const text = normalizeInput(raw);
+function detectNormalizedInput(text) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
@@ -284,16 +279,80 @@ export function detectInput(raw) {
   return { kind: "unknown", text };
 }
 
-export function isJsonCanvas(value) {
-  return Boolean(value && typeof value === "object" && Array.isArray(value.nodes) && Array.isArray(value.edges));
+export function normalizeInput(raw) {
+  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
+  const fenced = text.match(FULL_INPUT_FENCE);
+  if (fenced) return fenced[1].trim();
+
+  const recognizedFences = [...text.matchAll(INLINE_INPUT_FENCE)]
+    .map((match) => match[1].trim())
+    .filter((candidate) => detectNormalizedInput(candidate).kind !== "unknown");
+  if (recognizedFences.length === 1) text = recognizedFences[0];
+  return text;
 }
 
+export function detectInput(raw) {
+  return detectNormalizedInput(normalizeInput(raw));
+}
+
+function isCanvasNode(node) {
+  if (
+    !node ||
+    typeof node !== "object" ||
+    Array.isArray(node) ||
+    typeof node.id !== "string" ||
+    !node.id ||
+    !["text", "file", "link", "group"].includes(node.type) ||
+    !Number.isInteger(node.x) ||
+    !Number.isInteger(node.y) ||
+    !Number.isInteger(node.width) ||
+    !Number.isInteger(node.height)
+  ) return false;
+  if (node.type === "text") return typeof node.text === "string";
+  if (node.type === "file") return typeof node.file === "string" && Boolean(node.file);
+  if (node.type === "link") return typeof node.url === "string" && Boolean(node.url);
+  return true;
+}
+
+function isCanvasEdge(edge) {
+  return Boolean(
+    edge &&
+    typeof edge === "object" &&
+    !Array.isArray(edge) &&
+    typeof edge.id === "string" &&
+    edge.id &&
+    typeof edge.fromNode === "string" &&
+    edge.fromNode &&
+    typeof edge.toNode === "string" &&
+    edge.toNode
+  );
+}
+
+export function isJsonCanvas(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
+  const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
+  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0;
+  if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
+  if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
+  return true;
+}
+
+export const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 const MAX_EXPORT_DATA_URI_CHARS = 32 * 1024 * 1024;
 const MAX_PROJECT_XML_CHARS = 10 * 1024 * 1024;
 const EXPORT_PREFIXES = {
   png: "data:image/png;base64,",
   svg: "data:image/svg+xml;base64,",
 };
+
+export function validateInputText(value) {
+  const text = String(value ?? "");
+  if (new TextEncoder().encode(text).byteLength > MAX_INPUT_BYTES) {
+    throw new Error("Die Eingabe ist zu groß (maximal 5 MB).");
+  }
+  return text;
+}
 
 export function validateExportDataUri(value, format) {
   if (typeof value !== "string" || value.length > MAX_EXPORT_DATA_URI_CHARS) {
@@ -332,15 +391,47 @@ export function validateDiagramXml(value) {
   if (!DRAWIO_ROOT.test(normalized)) {
     throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
   }
+  if (/<!DOCTYPE\b/i.test(normalized)) {
+    throw new Error("Projekt-XML darf keine Dokumenttyp-Deklaration enthalten.");
+  }
+  if (typeof DOMParser !== "function") {
+    throw new Error("Projekt-XML kann in dieser Umgebung nicht sicher geprüft werden.");
+  }
+  const document = new DOMParser().parseFromString(normalized, "application/xml");
+  if (document.getElementsByTagName("parsererror").length > 0 || document.doctype) {
+    throw new Error("Projekt-XML ist nicht wohlgeformt.");
+  }
+  const root = document.documentElement;
+  if (!root || !["mxfile", "mxGraphModel"].includes(root.localName) || root.namespaceURI) {
+    throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
+  }
   return value;
 }
 
+function xmlSafeText(value) {
+  let output = "";
+  for (const character of String(value ?? "")) {
+    const codePoint = character.codePointAt(0);
+    const allowed =
+      codePoint === 0x9 ||
+      codePoint === 0xa ||
+      codePoint === 0xd ||
+      (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+      (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+      (codePoint >= 0x10000 && codePoint <= 0x10ffff);
+    output += allowed ? character : "\uFFFD";
+  }
+  return output;
+}
+
 function xmlAttr(value) {
-  return String(value ?? "")
+  return xmlSafeText(value)
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
+    .replaceAll("\t", "&#x9;")
+    .replaceAll("\r", "&#xd;")
     .replaceAll("\n", "&#xa;");
 }
 
@@ -422,15 +513,17 @@ function edgeStyle(edge) {
 
 function validateJsonCanvas(value) {
   if (!isJsonCanvas(value)) throw new Error("Keine gültige JSON-Canvas-Struktur.");
+  const nodes = value.nodes ?? [];
+  const edges = value.edges ?? [];
   const ids = new Set();
-  for (const [index, node] of value.nodes.entries()) {
+  for (const [index, node] of nodes.entries()) {
     if (!node || typeof node !== "object") throw new Error(`Knoten ${index + 1} ist ungültig.`);
     if (typeof node.id !== "string" || !node.id) throw new Error(`Knoten ${index + 1} hat keine ID.`);
     if (ids.has(node.id)) throw new Error(`Doppelte Knoten-ID: ${node.id}`);
     ids.add(node.id);
   }
   const edgeIds = new Set();
-  for (const [index, edge] of value.edges.entries()) {
+  for (const [index, edge] of edges.entries()) {
     if (!edge || typeof edge !== "object") throw new Error(`Kante ${index + 1} ist ungültig.`);
     if (!ids.has(edge.fromNode) || !ids.has(edge.toNode)) {
       throw new Error(`Kante ${index + 1} verweist auf einen unbekannten Knoten.`);
@@ -439,6 +532,7 @@ function validateJsonCanvas(value) {
     if (edgeIds.has(rawId)) throw new Error(`Doppelte Kanten-ID: ${rawId}`);
     edgeIds.add(rawId);
   }
+  return { nodes, edges };
 }
 
 export function emptyDrawioXml() {
@@ -447,11 +541,11 @@ export function emptyDrawioXml() {
 
 export function jsonCanvasToDrawioXml(source) {
   const value = typeof source === "string" ? JSON.parse(normalizeInput(source)) : source;
-  validateJsonCanvas(value);
+  const { nodes, edges } = validateJsonCanvas(value);
 
-  const geometryNodes = value.nodes.filter((node) => node && typeof node === "object");
-  const minX = Math.min(0, ...geometryNodes.map((node) => numberOr(node.x, 0)));
-  const minY = Math.min(0, ...geometryNodes.map((node) => numberOr(node.y, 0)));
+  const geometryNodes = nodes.filter((node) => node && typeof node === "object");
+  const minX = geometryNodes.reduce((minimum, node) => Math.min(minimum, numberOr(node.x, 0)), 0);
+  const minY = geometryNodes.reduce((minimum, node) => Math.min(minimum, numberOr(node.y, 0)), 0);
   const offsetX = 40 - minX;
   const offsetY = 40 - minY;
   const groups = geometryNodes.filter((node) => node.type === "group");
@@ -459,10 +553,24 @@ export function jsonCanvasToDrawioXml(source) {
   const cells = [];
 
   for (const node of [...groups, ...regular]) {
-    const x = numberOr(node.x, 0) + offsetX;
-    const y = numberOr(node.y, 0) + offsetY;
-    const width = Math.max(40, numberOr(node.width, node.type === "group" ? 440 : 320));
-    const height = Math.max(30, numberOr(node.height, node.type === "group" ? 300 : 140));
+    const sourceX = numberOr(node.x, 0);
+    const sourceY = numberOr(node.y, 0);
+    const sourceWidth = numberOr(node.width, node.type === "group" ? 440 : 320);
+    const sourceHeight = numberOr(node.height, node.type === "group" ? 300 : 140);
+    const sourceRight = sourceX + sourceWidth;
+    const sourceBottom = sourceY + sourceHeight;
+    if (![sourceX, sourceY, sourceWidth, sourceHeight, sourceRight, sourceBottom].every(Number.isFinite)) {
+      throw new Error(`Knoten ${node.id} erzeugt ungültige Geometrie.`);
+    }
+    const x = sourceX + offsetX;
+    const y = sourceY + offsetY;
+    const width = Math.max(40, sourceWidth);
+    const height = Math.max(30, sourceHeight);
+    const right = x + width;
+    const bottom = y + height;
+    if (![x, y, width, height, right, bottom].every(Number.isFinite)) {
+      throw new Error(`Knoten ${node.id} erzeugt ungültige Geometrie.`);
+    }
     const id = nodeId(node.id);
     const metadata = [
       `id="${xmlAttr(id)}"`,
@@ -479,7 +587,7 @@ export function jsonCanvasToDrawioXml(source) {
     );
   }
 
-  for (const [index, edge] of value.edges.entries()) {
+  for (const [index, edge] of edges.entries()) {
     const source = nodeId(edge.fromNode);
     const target = nodeId(edge.toNode);
     const rawId = typeof edge.id === "string" && edge.id ? edge.id : `edge_${index + 1}`;
@@ -490,16 +598,17 @@ export function jsonCanvasToDrawioXml(source) {
     );
   }
 
-  return `<mxGraphModel grid="0" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join("")}</root></mxGraphModel>`;
+  const xml = `<mxGraphModel grid="0" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join("")}</root></mxGraphModel>`;
+  if (xml.length > MAX_PROJECT_XML_CHARS) throw new Error("Konvertiertes Projekt-XML ist zu groß.");
+  return xml;
 }
 """
 
-APP_JS = r"""import { READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
+APP_JS = r"""import { MAX_INPUT_BYTES, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
-const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
 const elements = {
   startView: document.querySelector("#startView"),
@@ -648,7 +757,7 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
-  const detected = detectInput(raw);
+  const detected = detectInput(validateInputText(raw));
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   pendingExport = null;
