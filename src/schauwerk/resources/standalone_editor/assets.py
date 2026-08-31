@@ -296,19 +296,22 @@ export function detectInput(raw) {
 }
 
 function isCanvasNode(node) {
-  return Boolean(
-    node &&
-    typeof node === "object" &&
-    !Array.isArray(node) &&
-    typeof node.id === "string" &&
-    node.id &&
-    typeof node.type === "string" &&
-    node.type &&
-    Number.isFinite(node.x) &&
-    Number.isFinite(node.y) &&
-    Number.isFinite(node.width) &&
-    Number.isFinite(node.height)
-  );
+  if (
+    !node ||
+    typeof node !== "object" ||
+    Array.isArray(node) ||
+    typeof node.id !== "string" ||
+    !node.id ||
+    !["text", "file", "link", "group"].includes(node.type) ||
+    !Number.isFinite(node.x) ||
+    !Number.isFinite(node.y) ||
+    !Number.isFinite(node.width) ||
+    !Number.isFinite(node.height)
+  ) return false;
+  if (node.type === "text") return typeof node.text === "string";
+  if (node.type === "file") return typeof node.file === "string" && Boolean(node.file);
+  if (node.type === "link") return typeof node.url === "string" && Boolean(node.url);
+  return true;
 }
 
 function isCanvasEdge(edge) {
@@ -516,6 +519,9 @@ export function jsonCanvasToDrawioXml(source) {
     const y = numberOr(node.y, 0) + offsetY;
     const width = Math.max(40, numberOr(node.width, node.type === "group" ? 440 : 320));
     const height = Math.max(30, numberOr(node.height, node.type === "group" ? 300 : 140));
+    if (![x, y, width, height].every(Number.isFinite)) {
+      throw new Error(`Knoten ${node.id} erzeugt ungültige Geometrie.`);
+    }
     const id = nodeId(node.id);
     const metadata = [
       `id="${xmlAttr(id)}"`,

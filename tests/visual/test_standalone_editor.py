@@ -373,6 +373,14 @@ if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canv
 if (detectInput('{{"unrelated":true}}').kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');
+for (const foreignNode of [
+  {{id: 'a', type: 'server', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'file', x: 0, y: 0, width: 100, height: 50}},
+  {{id: 'a', type: 'link', x: 0, y: 0, width: 100, height: 50}},
+]) {{
+  if (detectInput(JSON.stringify({{nodes: [foreignNode]}})).kind !== 'unknown') throw new Error('invalid typed Canvas node accepted');
+}}
 const fence = '`'.repeat(3);
 for (const inlineCanvas of [
   fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
@@ -449,15 +457,15 @@ for (const invalid of [
   () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
   () => jsonCanvasToDrawioXml({{
     nodes: [
-      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
-      {{id: 'a', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'a', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
     ],
     edges: [],
   }}),
   () => jsonCanvasToDrawioXml({{
     nodes: [
-      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
-      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
     ],
     edges: [
       {{id: 'same', fromNode: 'a', toNode: 'b'}},
@@ -466,8 +474,8 @@ for (const invalid of [
   }}),
   () => jsonCanvasToDrawioXml({{
     nodes: [
-      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
-      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'B'}},
     ],
     edges: [
       {{id: 'edge_2', fromNode: 'a', toNode: 'b'}},
@@ -475,8 +483,15 @@ for (const invalid of [
     ],
   }}),
   () => jsonCanvasToDrawioXml({{
-    nodes: [{{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}}],
+    nodes: [{{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}}],
     edges: [{{id: 'dangling', fromNode: 'a', toNode: 'missing'}}],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [
+      {{id: 'a', type: 'text', x: -Number.MAX_VALUE, y: 0, width: 100, height: 50, text: 'A'}},
+      {{id: 'b', type: 'text', x: Number.MAX_VALUE, y: 0, width: 100, height: 50, text: 'B'}},
+    ],
+    edges: [],
   }}),
 ]) {{
   let rejected = false;
