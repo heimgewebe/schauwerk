@@ -435,13 +435,17 @@ function xmlAttr(value) {
     .replaceAll("\n", "&#xa;");
 }
 
-function textEncoderHex(value) {
-  const bytes = new TextEncoder().encode(String(value));
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+function utf16CodeUnitHex(value) {
+  const text = String(value);
+  let encoded = "";
+  for (let index = 0; index < text.length; index += 1) {
+    encoded += text.charCodeAt(index).toString(16).padStart(4, "0");
+  }
+  return encoded;
 }
 
-function nodeId(value) { return `jc_${textEncoderHex(value)}`; }
-function edgeId(value) { return `jce_${textEncoderHex(value)}`; }
+function nodeId(value) { return `jc_${utf16CodeUnitHex(value)}`; }
+function edgeId(value) { return `jce_${utf16CodeUnitHex(value)}`; }
 
 function numberOr(value, fallback) {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
