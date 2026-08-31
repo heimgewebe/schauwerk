@@ -489,6 +489,12 @@ for (const invalid of [
     ],
     edges: [],
   }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'x-overflow', type: 'text', x: Number.MAX_VALUE, y: 0, width: Number.MAX_VALUE, height: 50, text: 'X'}}],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'y-overflow', type: 'text', x: 0, y: Number.MAX_VALUE, width: 100, height: Number.MAX_VALUE, text: 'Y'}}],
+  }}),
 ]) {{
   let rejected = false;
   try {{ invalid(); }} catch (_) {{ rejected = true; }}
@@ -502,7 +508,7 @@ const hostileXml = jsonCanvasToDrawioXml({{
     y: 0,
     width: 100,
     height: 50,
-    text: 'A' + String.fromCharCode(7, 9, 13, 10) + '<&',
+    text: 'A' + String.fromCharCode(7, 9, 13, 10, 0xd800, 0xdfff, 0xfffe, 0xffff) + '<&😀',
   }}],
 }});
 console.log(JSON.stringify({{status: 'ok', hostileXml}}));
@@ -518,6 +524,11 @@ console.log(JSON.stringify({{status: 'ok', hostileXml}}));
     result = json.loads(completed.stdout)
     assert result["status"] == "ok"
     assert "\x07" not in result["hostileXml"]
+    assert chr(0xFFFE) not in result["hostileXml"]
+    assert chr(0xFFFF) not in result["hostileXml"]
+    assert not any(0xD800 <= ord(character) <= 0xDFFF for character in result["hostileXml"])
+    assert "😀" in result["hostileXml"]
+    assert "�" in result["hostileXml"]
     ET.fromstring(result["hostileXml"])
 
 

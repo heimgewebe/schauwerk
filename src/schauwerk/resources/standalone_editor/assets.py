@@ -408,9 +408,24 @@ export function validateDiagramXml(value) {
   return value;
 }
 
+function xmlSafeText(value) {
+  let output = "";
+  for (const character of String(value ?? "")) {
+    const codePoint = character.codePointAt(0);
+    const allowed =
+      codePoint === 0x9 ||
+      codePoint === 0xa ||
+      codePoint === 0xd ||
+      (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+      (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+      (codePoint >= 0x10000 && codePoint <= 0x10ffff);
+    output += allowed ? character : "\uFFFD";
+  }
+  return output;
+}
+
 function xmlAttr(value) {
-  return String(value ?? "")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "\uFFFD")
+  return xmlSafeText(value)
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
@@ -538,11 +553,22 @@ export function jsonCanvasToDrawioXml(source) {
   const cells = [];
 
   for (const node of [...groups, ...regular]) {
-    const x = numberOr(node.x, 0) + offsetX;
-    const y = numberOr(node.y, 0) + offsetY;
-    const width = Math.max(40, numberOr(node.width, node.type === "group" ? 440 : 320));
-    const height = Math.max(30, numberOr(node.height, node.type === "group" ? 300 : 140));
-    if (![x, y, width, height].every(Number.isFinite)) {
+    const sourceX = numberOr(node.x, 0);
+    const sourceY = numberOr(node.y, 0);
+    const sourceWidth = numberOr(node.width, node.type === "group" ? 440 : 320);
+    const sourceHeight = numberOr(node.height, node.type === "group" ? 300 : 140);
+    const sourceRight = sourceX + sourceWidth;
+    const sourceBottom = sourceY + sourceHeight;
+    if (![sourceX, sourceY, sourceWidth, sourceHeight, sourceRight, sourceBottom].every(Number.isFinite)) {
+      throw new Error(`Knoten ${node.id} erzeugt ungültige Geometrie.`);
+    }
+    const x = sourceX + offsetX;
+    const y = sourceY + offsetY;
+    const width = Math.max(40, sourceWidth);
+    const height = Math.max(30, sourceHeight);
+    const right = x + width;
+    const bottom = y + height;
+    if (![x, y, width, height, right, bottom].every(Number.isFinite)) {
       throw new Error(`Knoten ${node.id} erzeugt ungültige Geometrie.`);
     }
     const id = nodeId(node.id);
