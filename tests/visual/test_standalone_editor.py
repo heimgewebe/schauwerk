@@ -347,7 +347,7 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri }} from {module_url!r};
+import {{ MAX_INPUT_BYTES, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
 if (READABLE_NODE_FONT_SIZE !== 18 || READABLE_EDGE_FONT_SIZE !== 16) throw new Error('readability font profile drifted');
 if (readabilityZoomStepCount(0.4) !== 3) throw new Error('40 percent fit should zoom three steps');
 if (readabilityZoomStepCount(0.65) !== 0) throw new Error('readability floor should not zoom');
@@ -443,18 +443,14 @@ if (pngBlob.type !== 'image/png' || pngBlob.size !== 1) throw new Error('png blo
 const svgBlob = exportDataUriToBlob(svg, 'svg');
 if (svgBlob.type !== 'image/svg+xml') throw new Error('svg blob type is wrong');
 if (await svgBlob.text() !== '<svg></svg>') throw new Error('svg blob payload is wrong');
-if (validateDiagramXml('<mxfile><diagram/></mxfile>') !== '<mxfile><diagram/></mxfile>') throw new Error('project xml rejected');
+if (validateInputText('abc') !== 'abc') throw new Error('small input rejected');
+if (new TextEncoder().encode(validateInputText('ä')).byteLength !== 2) throw new Error('UTF-8 input sizing drifted');
 for (const invalid of [
   () => validateExportDataUri('javascript:alert(1)', 'svg'),
   () => validateExportDataUri('data:image/svg+xml;base64,%%%=', 'svg'),
   () => validateExportDataUri(png, 'svg'),
-  () => validateDiagramXml('<svg></svg>'),
-  () => validateDiagramXml('<mxfile-evil/>'),
-  () => validateDiagramXml('<mxGraphModel:foreign/>'),
-  () => validateDiagramXml('<?xml-not-a-declaration?><mxfile/>'),
-  () => validateDiagramXml('<?xml version="1.0"><mxfile/>'),
-  () => validateDiagramXml('<?xml foo="bar"?><mxfile/>'),
-  () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
+  () => validateInputText('x'.repeat(MAX_INPUT_BYTES + 1)),
+  () => validateInputText('ä'.repeat(Math.floor(MAX_INPUT_BYTES / 2) + 1)),
   () => jsonCanvasToDrawioXml({{
     nodes: [
       {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'A'}},
@@ -523,3 +519,59 @@ console.log(JSON.stringify({{status: 'ok', hostileXml}}));
     assert result["status"] == "ok"
     assert "\x07" not in result["hostileXml"]
     ET.fromstring(result["hostileXml"])
+
+
+
+def test_canvas_import_browser_xml_validation_when_chrome_available(tmp_path: Path) -> None:
+    chrome = shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
+    if chrome is None:
+        pytest.skip("Chrome/Chromium is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    harness = output / "xml-validation-test.html"
+    harness.write_text(
+        """<!doctype html><meta charset=\"utf-8\"><pre id=\"result\">pending</pre><script type=\"module\">
+import { validateDiagramXml } from './canvas-import.js';
+const valid = [
+  '<mxfile><diagram/></mxfile>',
+  '<mxGraphModel><root/></mxGraphModel>',
+  '<?xml version=\"1.0\"?><mxfile/>',
+];
+const invalid = [
+  '<mxfile><diagram></mxfile>',
+  '<mxGraphModel/><mxfile/>',
+  '<mxfile/>trailing',
+  '<!DOCTYPE mxfile><mxfile/>',
+];
+let ok = true;
+for (const value of valid) {
+  try { validateDiagramXml(value); } catch (_) { ok = false; }
+}
+for (const value of invalid) {
+  let rejected = false;
+  try { validateDiagramXml(value); } catch (_) { rejected = true; }
+  if (!rejected) ok = false;
+}
+document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
+</script>""",
+        encoding="utf-8",
+    )
+    completed = subprocess.run(
+        [
+            chrome,
+            "--headless=new",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--allow-file-access-from-files",
+            "--virtual-time-budget=3000",
+            "--dump-dom",
+            harness.as_uri(),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert '<pre id="result">PASS</pre>' in completed.stdout

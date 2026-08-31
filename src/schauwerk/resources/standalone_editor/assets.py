@@ -303,10 +303,10 @@ function isCanvasNode(node) {
     typeof node.id !== "string" ||
     !node.id ||
     !["text", "file", "link", "group"].includes(node.type) ||
-    !Number.isFinite(node.x) ||
-    !Number.isFinite(node.y) ||
-    !Number.isFinite(node.width) ||
-    !Number.isFinite(node.height)
+    !Number.isInteger(node.x) ||
+    !Number.isInteger(node.y) ||
+    !Number.isInteger(node.width) ||
+    !Number.isInteger(node.height)
   ) return false;
   if (node.type === "text") return typeof node.text === "string";
   if (node.type === "file") return typeof node.file === "string" && Boolean(node.file);
@@ -338,12 +338,21 @@ export function isJsonCanvas(value) {
   return true;
 }
 
+export const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 const MAX_EXPORT_DATA_URI_CHARS = 32 * 1024 * 1024;
 const MAX_PROJECT_XML_CHARS = 10 * 1024 * 1024;
 const EXPORT_PREFIXES = {
   png: "data:image/png;base64,",
   svg: "data:image/svg+xml;base64,",
 };
+
+export function validateInputText(value) {
+  const text = String(value ?? "");
+  if (new TextEncoder().encode(text).byteLength > MAX_INPUT_BYTES) {
+    throw new Error("Die Eingabe ist zu groß (maximal 5 MB).");
+  }
+  return text;
+}
 
 export function validateExportDataUri(value, format) {
   if (typeof value !== "string" || value.length > MAX_EXPORT_DATA_URI_CHARS) {
@@ -380,6 +389,20 @@ export function validateDiagramXml(value) {
   }
   const normalized = value.trimStart();
   if (!DRAWIO_ROOT.test(normalized)) {
+    throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
+  }
+  if (/<!DOCTYPE\b/i.test(normalized)) {
+    throw new Error("Projekt-XML darf keine Dokumenttyp-Deklaration enthalten.");
+  }
+  if (typeof DOMParser !== "function") {
+    throw new Error("Projekt-XML kann in dieser Umgebung nicht sicher geprüft werden.");
+  }
+  const document = new DOMParser().parseFromString(normalized, "application/xml");
+  if (document.getElementsByTagName("parsererror").length > 0 || document.doctype) {
+    throw new Error("Projekt-XML ist nicht wohlgeformt.");
+  }
+  const root = document.documentElement;
+  if (!root || !["mxfile", "mxGraphModel"].includes(root.localName) || root.namespaceURI) {
     throw new Error("Projekt-XML besitzt keinen unterstützten draw.io-Wurzelknoten.");
   }
   return value;
@@ -549,16 +572,17 @@ export function jsonCanvasToDrawioXml(source) {
     );
   }
 
-  return `<mxGraphModel grid="0" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join("")}</root></mxGraphModel>`;
+  const xml = `<mxGraphModel grid="0" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/>${cells.join("")}</root></mxGraphModel>`;
+  if (xml.length > MAX_PROJECT_XML_CHARS) throw new Error("Konvertiertes Projekt-XML ist zu groß.");
+  return xml;
 }
 """
 
-APP_JS = r"""import { READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri } from "./canvas-import.js";
+APP_JS = r"""import { MAX_INPUT_BYTES, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
-const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
 const elements = {
   startView: document.querySelector("#startView"),
@@ -707,7 +731,7 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
-  const detected = detectInput(raw);
+  const detected = detectInput(validateInputText(raw));
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   pendingExport = null;
