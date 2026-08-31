@@ -511,7 +511,23 @@ const hostileXml = jsonCanvasToDrawioXml({{
     text: 'A' + String.fromCharCode(7, 9, 13, 10, 0xd800, 0xdfff, 0xfffe, 0xffff) + '<&😀',
   }}],
 }});
-console.log(JSON.stringify({{status: 'ok', hostileXml}}));
+const highSurrogate = String.fromCharCode(0xd800);
+const lowSurrogate = String.fromCharCode(0xdfff);
+const replacementCharacter = '\uFFFD';
+const identityXml = jsonCanvasToDrawioXml({{
+  nodes: [
+    {{id: highSurrogate, type: 'text', x: 0, y: 0, width: 100, height: 50, text: 'High'}},
+    {{id: lowSurrogate, type: 'text', x: 120, y: 0, width: 100, height: 50, text: 'Low'}},
+    {{id: replacementCharacter, type: 'text', x: 240, y: 0, width: 100, height: 50, text: 'Replacement'}},
+    {{id: '😀', type: 'text', x: 360, y: 0, width: 100, height: 50, text: 'Emoji'}},
+  ],
+  edges: [
+    {{id: highSurrogate, fromNode: highSurrogate, toNode: lowSurrogate}},
+    {{id: lowSurrogate, fromNode: lowSurrogate, toNode: replacementCharacter}},
+    {{id: replacementCharacter, fromNode: replacementCharacter, toNode: '😀'}},
+  ],
+}});
+console.log(JSON.stringify({{status: 'ok', hostileXml, identityXml}}));
 """
     completed = subprocess.run(
         [node, "--input-type=module", "--eval", code],
@@ -530,6 +546,20 @@ console.log(JSON.stringify({{status: 'ok', hostileXml}}));
     assert "😀" in result["hostileXml"]
     assert "�" in result["hostileXml"]
     ET.fromstring(result["hostileXml"])
+
+    identity_root = ET.fromstring(result["identityXml"])
+    node_ids = [element.attrib["id"] for element in identity_root.findall(".//object")]
+    edge_ids = [
+        element.attrib["id"]
+        for element in identity_root.findall(".//mxCell")
+        if element.attrib.get("edge") == "1"
+    ]
+    assert len(node_ids) == 4
+    assert len(node_ids) == len(set(node_ids))
+    assert len(edge_ids) == 3
+    assert len(edge_ids) == len(set(edge_ids))
+    assert {"jc_d800", "jc_dfff", "jc_fffd", "jc_d83dde00"} <= set(node_ids)
+    assert {"jce_d800", "jce_dfff", "jce_fffd"} <= set(edge_ids)
 
 
 
