@@ -70,6 +70,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert "maxFitScale: 1" in app_js
+    assert re.search(
+        r'^import \{[^}]*\bREADABILITY_ZOOM_FACTOR\b[^}]*\} from "\./canvas-import\.js";$',
+        app_js,
+        flags=re.MULTILINE,
+    )
     assert "zoomFactor: READABILITY_ZOOM_FACTOR" in app_js
     assert "defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) }" in app_js
     assert "defaultEdgeStyle: { fontSize: String(READABLE_EDGE_FONT_SIZE) }" in app_js
