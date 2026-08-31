@@ -28,7 +28,7 @@ INDEX_HTML = r"""<!doctype html>
 
       <label class="paste-box" for="sourceInput">
         <span>KI-Ergebnis hier einfügen</span>
-        <textarea id="sourceInput" spellcheck="false" placeholder="Zum Beispiel:\nflowchart TD\n  A[Bindung] --> B[Exploration]"></textarea>
+        <textarea id="sourceInput" spellcheck="false" placeholder="Zum Beispiel:&#10;flowchart TD&#10;  A[Bindung] --> B[Exploration]"></textarea>
       </label>
 
       <div class="primary-actions">
@@ -264,17 +264,7 @@ export function readabilityZoomStepCount(scale) {
 const FULL_INPUT_FENCE = /^```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
 const INLINE_INPUT_FENCE = /```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
 
-export function normalizeInput(raw) {
-  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
-  const fenced = text.match(FULL_INPUT_FENCE);
-  if (fenced) return fenced[1].trim();
-  const inlineFences = [...text.matchAll(INLINE_INPUT_FENCE)];
-  if (inlineFences.length === 1) text = inlineFences[0][1].trim();
-  return text;
-}
-
-export function detectInput(raw) {
-  const text = normalizeInput(raw);
+function detectNormalizedInput(text) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
@@ -289,12 +279,60 @@ export function detectInput(raw) {
   return { kind: "unknown", text };
 }
 
+export function normalizeInput(raw) {
+  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
+  const fenced = text.match(FULL_INPUT_FENCE);
+  if (fenced) return fenced[1].trim();
+
+  const recognizedFences = [...text.matchAll(INLINE_INPUT_FENCE)]
+    .map((match) => match[1].trim())
+    .filter((candidate) => detectNormalizedInput(candidate).kind !== "unknown");
+  if (recognizedFences.length === 1) text = recognizedFences[0];
+  return text;
+}
+
+export function detectInput(raw) {
+  return detectNormalizedInput(normalizeInput(raw));
+}
+
+function isCanvasNode(node) {
+  return Boolean(
+    node &&
+    typeof node === "object" &&
+    !Array.isArray(node) &&
+    typeof node.id === "string" &&
+    node.id &&
+    typeof node.type === "string" &&
+    node.type &&
+    Number.isFinite(node.x) &&
+    Number.isFinite(node.y) &&
+    Number.isFinite(node.width) &&
+    Number.isFinite(node.height)
+  );
+}
+
+function isCanvasEdge(edge) {
+  return Boolean(
+    edge &&
+    typeof edge === "object" &&
+    !Array.isArray(edge) &&
+    typeof edge.id === "string" &&
+    edge.id &&
+    typeof edge.fromNode === "string" &&
+    edge.fromNode &&
+    typeof edge.toNode === "string" &&
+    edge.toNode
+  );
+}
+
 export function isJsonCanvas(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
   if (!hasNodes && !hasEdges) return Object.keys(value).length === 0;
-  return (!hasNodes || Array.isArray(value.nodes)) && (!hasEdges || Array.isArray(value.edges));
+  if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
+  if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
+  return true;
 }
 
 const MAX_EXPORT_DATA_URI_CHARS = 32 * 1024 * 1024;
@@ -346,10 +384,13 @@ export function validateDiagramXml(value) {
 
 function xmlAttr(value) {
   return String(value ?? "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "\uFFFD")
     .replaceAll("&", "&amp;")
     .replaceAll('"', "&quot;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
+    .replaceAll("\t", "&#x9;")
+    .replaceAll("\r", "&#xd;")
     .replaceAll("\n", "&#xa;");
 }
 
@@ -462,8 +503,8 @@ export function jsonCanvasToDrawioXml(source) {
   const { nodes, edges } = validateJsonCanvas(value);
 
   const geometryNodes = nodes.filter((node) => node && typeof node === "object");
-  const minX = Math.min(0, ...geometryNodes.map((node) => numberOr(node.x, 0)));
-  const minY = Math.min(0, ...geometryNodes.map((node) => numberOr(node.y, 0)));
+  const minX = geometryNodes.reduce((minimum, node) => Math.min(minimum, numberOr(node.x, 0)), 0);
+  const minY = geometryNodes.reduce((minimum, node) => Math.min(minimum, numberOr(node.y, 0)), 0);
   const offsetX = 40 - minX;
   const offsetY = 40 - minY;
   const groups = geometryNodes.filter((node) => node.type === "group");

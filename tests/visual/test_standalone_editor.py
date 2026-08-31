@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import shutil
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -92,8 +94,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
     assert 'id="fullscreenButton"' in index_html
-    assert '<input id="fileInput" type="file" hidden>' in index_html
-    assert 'id="fileInput" type="file" hidden accept=' not in index_html
+    file_input = re.search(r'<input\b[^>]*\bid="fileInput"[^>]*>', index_html)
+    assert file_input is not None
+    assert re.search(r"\baccept\s*=", file_input.group(0), flags=re.IGNORECASE) is None
+    assert "placeholder=\"Zum Beispiel:&#10;flowchart TD&#10;" in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
@@ -333,6 +337,8 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
 ) -> None:
     node = shutil.which("node")
     if node is None:
+        if os.environ.get("CI"):
+            pytest.fail("node is required in CI for standalone-editor JavaScript coverage")
         pytest.skip("node is not installed")
 
     output = tmp_path / "editor"
@@ -365,14 +371,21 @@ if (detectInput(edgesOnly).kind !== 'json-canvas') throw new Error('edges-only J
 if (!jsonCanvasToDrawioXml(edgesOnly).includes('<mxGraphModel')) throw new Error('edges-only JSON Canvas did not convert');
 if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canvas rejected');
 if (detectInput('{{"unrelated":true}}').kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
+if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
+if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');
 const fence = '`'.repeat(3);
 for (const inlineCanvas of [
   fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
   fence + '.canvas\\n' + nodesOnly + '\\n' + fence,
   'Hier ist das Schaubild:\\n\\n' + fence + 'json-canvas\\n' + nodesOnly + '\\n' + fence + '\\n\\nDu kannst es bearbeiten.',
+  'Hinweis:\\n' + fence + 'json\\n{{"unrelated":true}}\\n' + fence + '\\nSchaubild:\\n' + fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
+  'Schaubild:\\r\\n' + fence + '.canvas\\r\\n' + nodesOnly + '\\r\\n' + fence,
 ]) {{
   if (detectInput(inlineCanvas).kind !== 'json-canvas') throw new Error(`inline JSON Canvas rejected: ${{inlineCanvas}}`);
 }}
+const ambiguousCanvas = fence + 'canvas\\n' + nodesOnly + '\\n' + fence + '\\n' + fence + 'mermaid\\nflowchart TD\\n A --> B\\n' + fence;
+if (detectInput(ambiguousCanvas).kind !== 'unknown') throw new Error('ambiguous multi-diagram paste should remain unknown');
+if (!jsonCanvasToDrawioXml(fence + 'canvas\\n' + nodesOnly + '\\n' + fence).includes('jsonCanvasId="solo"')) throw new Error('fenced string conversion path failed');
 for (const mermaid of [
   '%% comment\\nflowchart TD\\n  A --> B',
   '%%{{init: {{"theme":"neutral"}}}}%%\\nsequenceDiagram\\n  A->>B: Hallo',
@@ -435,25 +448,53 @@ for (const invalid of [
   () => validateDiagramXml('<?xml foo="bar"?><mxfile/>'),
   () => validateDiagramXml('<?xml version="2.0"?><mxfile/>'),
   () => jsonCanvasToDrawioXml({{
-    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
+      {{id: 'a', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+    ],
+    edges: [],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+    ],
     edges: [
       {{id: 'same', fromNode: 'a', toNode: 'b'}},
       {{id: 'same', fromNode: 'b', toNode: 'a'}},
     ],
   }}),
   () => jsonCanvasToDrawioXml({{
-    nodes: [{{id: 'a'}}, {{id: 'b'}}],
+    nodes: [
+      {{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}},
+      {{id: 'b', type: 'text', x: 120, y: 0, width: 100, height: 50}},
+    ],
     edges: [
       {{id: 'edge_2', fromNode: 'a', toNode: 'b'}},
-      {{fromNode: 'b', toNode: 'a'}},
+      {{id: 'edge_2', fromNode: 'b', toNode: 'a'}},
     ],
+  }}),
+  () => jsonCanvasToDrawioXml({{
+    nodes: [{{id: 'a', type: 'text', x: 0, y: 0, width: 100, height: 50}}],
+    edges: [{{id: 'dangling', fromNode: 'a', toNode: 'missing'}}],
   }}),
 ]) {{
   let rejected = false;
   try {{ invalid(); }} catch (_) {{ rejected = true; }}
   if (!rejected) throw new Error('invalid standalone-editor payload accepted');
 }}
-console.log('ok');
+const hostileXml = jsonCanvasToDrawioXml({{
+  nodes: [{{
+    id: 'a"><mxCell id="0"/>',
+    type: 'text',
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 50,
+    text: 'A' + String.fromCharCode(7, 9, 13, 10) + '<&',
+  }}],
+}});
+console.log(JSON.stringify({{status: 'ok', hostileXml}}));
 """
     completed = subprocess.run(
         [node, "--input-type=module", "--eval", code],
@@ -463,4 +504,7 @@ console.log('ok');
         timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.strip() == "ok"
+    result = json.loads(completed.stdout)
+    assert result["status"] == "ok"
+    assert "\x07" not in result["hostileXml"]
+    ET.fromstring(result["hostileXml"])
