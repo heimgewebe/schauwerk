@@ -353,13 +353,20 @@ def test_mermaid_uses_renderer_local_ids_for_reserved_source_identifiers() -> No
     assert "class sw_node_end concept;" in rendered
 
 
-def test_json_canvas_uses_vertical_anchors_for_same_column_edges() -> None:
+def test_json_canvas_uses_vertical_anchors_and_clear_corridors_for_same_column_edges() -> None:
     model = validate_representation_input(_minimal_representation(requested_formats=["canvas"]))
     canvas = render_json_canvas(model, route_representation(model))
     edge = canvas["edges"][0]
+    nodes = sorted(
+        (node for node in canvas["nodes"] if node.get("type") == "text"),
+        key=lambda node: node["y"],
+    )
+    first, second = nodes[:2]
+    free_vertical_corridor = second["y"] - (first["y"] + first["height"])
 
     assert edge["fromSide"] == "bottom"
     assert edge["toSide"] == "top"
+    assert free_vertical_corridor >= 100
 
 
 def test_json_canvas_generated_group_ids_cannot_collide_with_source_nodes() -> None:

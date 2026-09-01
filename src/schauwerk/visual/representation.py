@@ -43,6 +43,13 @@ MERMAID_PROFILE = "mermaid-11.16.0-strict-source.v1"
 JSON_CANVAS_PROFILE = "json-canvas-1.0.v1"
 MIRO_PROFILE = "miro-native-composition.v1"
 
+_CANVAS_NODE_WIDTH = 360
+_CANVAS_NODE_HEIGHT = 150
+_CANVAS_NODE_VERTICAL_CORRIDOR = 120
+_CANVAS_ROW_STRIDE = _CANVAS_NODE_HEIGHT + _CANVAS_NODE_VERTICAL_CORRIDOR
+_CANVAS_GROUP_TOP = 100
+_CANVAS_GROUP_BOTTOM_PADDING = 100
+
 _SAFE_ID = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _SUPPORTED_INTENTS = {
     "architecture",
@@ -647,9 +654,14 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
     for column, group_id in enumerate(group_order):
         members = nodes_by_group[group_id]
         base_x = column * 520
-        base_y = 100
+        base_y = _CANVAS_GROUP_TOP
         if group_id is not None:
-            height = max(360, 140 + len(members) * 220)
+            last_member_bottom = (
+                _CANVAS_GROUP_TOP
+                + max(0, len(members) - 1) * _CANVAS_ROW_STRIDE
+                + _CANVAS_NODE_HEIGHT
+            )
+            height = max(360, last_member_bottom + _CANVAS_GROUP_BOTTOM_PADDING)
             label = next(
                 group["label"] for group in normalized["groups"] if group["id"] == group_id
             )
@@ -666,7 +678,7 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
             )
         for row, node in enumerate(members):
             x = base_x + 40
-            y = base_y + row * 210
+            y = base_y + row * _CANVAS_ROW_STRIDE
             positions[node["id"]] = (x, y)
             summary = f"\n\n{node['summary']}" if node["summary"] else ""
             canvas_nodes.append(
@@ -676,8 +688,8 @@ def render_json_canvas(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dic
                     "text": f"# {node['label']}{summary}",
                     "x": x,
                     "y": y,
-                    "width": 360,
-                    "height": 150,
+                    "width": _CANVAS_NODE_WIDTH,
+                    "height": _CANVAS_NODE_HEIGHT,
                     "color": color_by_kind[node["kind"]],
                 }
             )

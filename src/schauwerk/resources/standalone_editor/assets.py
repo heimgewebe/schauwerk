@@ -252,6 +252,18 @@ export const MIN_READABLE_SCALE = 0.65;
 export const READABILITY_ZOOM_FACTOR = 1.2;
 export const MAX_READABILITY_ZOOM_STEPS = 8;
 
+export const COLLISION_SAFE_LAYOUT_CONFIG = Object.freeze({
+  "elk.direction": "DOWN",
+  "elk.spacing.nodeNode": "48",
+  "elk.spacing.edgeNode": "28",
+  "elk.spacing.edgeEdge": "18",
+  "elk.spacing.edgeLabel": "10",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "84",
+  "elk.layered.spacing.edgeNodeBetweenLayers": "32",
+  "elk.layered.spacing.edgeEdgeBetweenLayers": "24",
+  "elk.layered.edgeLabels.centerLabelPlacementStrategy": "SPACE_EFFICIENT_LAYER",
+});
+
 export function readabilityZoomStepCount(scale) {
   const current = Number(scale);
   if (!Number.isFinite(current) || current <= 0 || current >= MIN_READABLE_SCALE) return 0;
@@ -508,7 +520,7 @@ function edgeStyle(edge) {
   const endArrow = edge.toEnd === "none" ? "none" : "classic";
   const startArrow = edge.fromEnd === "arrow" ? "classic" : "none";
   return [
-    `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;fontSize=${READABLE_EDGE_FONT_SIZE};`,
+    `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;fontSize=${READABLE_EDGE_FONT_SIZE};sourcePerimeterSpacing=12;targetPerimeterSpacing=12;spacing=6;labelBackgroundColor=#ffffff;`,
     `endArrow=${endArrow};endFill=1;startArrow=${startArrow};startFill=1;`,
     sidePoint(edge.fromSide, "exit"),
     sidePoint(edge.toSide, "entry"),
@@ -608,7 +620,7 @@ export function jsonCanvasToDrawioXml(source) {
 }
 """
 
-APP_JS = r"""import { MAX_INPUT_BYTES, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
+APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_INPUT_BYTES, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
@@ -643,6 +655,7 @@ let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
+let pendingInitialCollisionSafeLayout = false;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -743,6 +756,7 @@ function showStart() {
   invalidateLoadIntents();
   setEditorFocus(false);
   pendingLoad = null;
+  pendingInitialCollisionSafeLayout = false;
   pendingExport = null;
   editorReady = false;
   replaceEditorFrame();
@@ -801,6 +815,7 @@ function launch(load) {
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
+  pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
   editorReady = false;
   const frame = replaceEditorFrame();
   showWorkspace();
@@ -832,6 +847,13 @@ function enforceReadableInitialScale(scale) {
   for (let step = 0; step < steps; step += 1) {
     postToEditor({ action: "invokeAction", actionName: "zoomIn" });
   }
+}
+
+function requestCollisionSafeLayout() {
+  postToEditor({
+    action: "layout",
+    layouts: [{ layout: "elkLayered", config: COLLISION_SAFE_LAYOUT_CONFIG }],
+  });
 }
 
 function openPasted() {
@@ -897,7 +919,17 @@ window.addEventListener("message", (event) => {
         defaultFonts: ["Helvetica", "Arial", "Verdana"],
         zoomFactor: READABILITY_ZOOM_FACTOR,
         defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) },
-        defaultEdgeStyle: { fontSize: String(READABLE_EDGE_FONT_SIZE) },
+        defaultEdgeStyle: {
+          fontSize: String(READABLE_EDGE_FONT_SIZE),
+          edgeStyle: "orthogonalEdgeStyle",
+          rounded: "1",
+          orthogonalLoop: "1",
+          jettySize: "auto",
+          sourcePerimeterSpacing: "12",
+          targetPerimeterSpacing: "12",
+          spacing: "6",
+          labelBackgroundColor: "#ffffff",
+        },
         enabledLibraries: ["general", "flowchart"],
       },
     });
@@ -909,8 +941,15 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (message.event === "load") {
+    const shouldAutoLayout = pendingInitialCollisionSafeLayout;
+    pendingInitialCollisionSafeLayout = false;
     enforceReadableInitialScale(message.scale);
-    setStatus("Bereit · Änderungen werden lokal gesichert");
+    if (shouldAutoLayout) {
+      requestCollisionSafeLayout();
+      setStatus("Bereit · Kanten werden kollisionsarm angeordnet");
+    } else {
+      setStatus("Bereit · Änderungen werden lokal gesichert");
+    }
     return;
   }
   if (message.event === "autosave" || message.event === "save") {
@@ -997,10 +1036,7 @@ elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
 
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;
-  postToEditor({
-    action: "layout",
-    layouts: [{ layout: "elkLayered", config: { "elk.direction": "DOWN", "elk.spacing.nodeNode": "40", "elk.layered.spacing.nodeNodeBetweenLayers": "60" } }],
-  });
+  requestCollisionSafeLayout();
   setStatus("Layout wird berechnet …");
 });
 document.querySelectorAll("[data-export]").forEach((button) => {
