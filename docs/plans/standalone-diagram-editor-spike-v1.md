@@ -14,7 +14,8 @@ Der Nutzer soll:
 4. das Ergebnis visuell in nativen Diagrammobjekten bearbeiten können;
 5. lokal einen Entwurf wiederherstellen können;
 6. als `.drawio`, PNG oder SVG exportieren können;
-7. die Bearbeitung über einen expliziten Vollbildmodus auf nahezu die gesamte verfügbare Viewport-Höhe erweitern können.
+7. die Bearbeitung über einen expliziten Vollbildmodus auf nahezu die gesamte verfügbare Viewport-Höhe erweitern können;
+8. den Schriftstandard vor dem Öffnen frei zwischen 8 und 72 px setzen sowie die Schriftgröße ausgewählter oder aller Diagrammelemente im Editor ändern können.
 
 ## Architekturentscheidung des Spikes
 
@@ -25,7 +26,8 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - Mermaid wird als `descriptor.format = "mermaid"` mit `wrap = true` geladen und dadurch in native editierbare draw.io-Shapes übersetzt;
 - JSON Canvas wird clientseitig in ein minimales `mxGraphModel` übersetzt;
 - draw.io/XML wird direkt geladen;
-- ein gemeinsames Lesbarkeitsprofil priorisiert Text vor maximaler Gesamtübersicht: JSON-Canvas-Knoten und neue Editor-Knoten starten mit 18 px, Kantenbeschriftungen mit 16 px; `fit` bleibt für den Erstüberblick aktiv, aber ein gemeldeter Initialzoom unter 65 % wird begrenzt per dokumentierter `zoomIn`-Aktion angehoben. Bestehendes draw.io/XML wird dabei nicht umgeschrieben; nur der anfängliche Viewport wird korrigiert;
+- ein gemeinsames Lesbarkeitsprofil priorisiert Text vor maximaler Gesamtübersicht: Standard sind 18 px für Knoten und 16 px für Kantenbeschriftungen. Der Nutzer kann den Knoten-Schriftstandard vor dem Öffnen frei zwischen 8 und 72 px setzen; Kanten folgen mit derselben 2-px-Differenz. Die Präferenz wird lokal gespeichert und gilt nur als Default für neu erzeugte bzw. aus JSON Canvas erzeugte Elemente. Bestehendes draw.io/XML und lokal gesicherte Entwürfe werden nicht umgeschrieben. Für bestehende Elemente nutzt Schauwerk ausschließlich dokumentierte `invokeAction`-Aufrufe auf die native draw.io-Auswahl: `A−`/`A+` verkleinern bzw. vergrößern, `Schrift` öffnet das native Format-Panel für exakte Werte, und `Alle` wählt das gesamte Diagramm und öffnet dasselbe Panel. Manuelle Formatierung bleibt damit autoritativ;
+- `fit` bleibt für den Erstüberblick aktiv, aber ein gemeldeter Initialzoom unter 65 % wird begrenzt per dokumentierter `zoomIn`-Aktion angehoben;
 - Autosave-/Save-Ereignisse liefern XML an die Host-Anwendung zurück;
 - PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
@@ -63,7 +65,7 @@ Unterstützt werden die vier JSON-Canvas-1.0-Knotentypen:
 
 Kanten behalten Quelle, Ziel, Label, Pfeilende und – soweit angegeben – Anschlussseite. Negative Canvas-Koordinaten werden lediglich gemeinsam in den positiven draw.io-Arbeitsraum verschoben; relative Positionen bleiben erhalten.
 
-Nicht behauptet wird ein verlustfreier `.canvas → draw.io → .canvas`-Roundtrip. `.canvas` ist in diesem Produktpfad Importkompatibilität, nicht kanonische Wahrheit.
+Nicht behauptet wird ein verlustfreier `.canvas → draw.io → .canvas`-Roundtrip. `.canvas` ist in diesem Produktpfad Importkompatibilität, nicht kanonische Wahrheit. Das JSON-Canvas-1.0-Kernmodell besitzt in diesem Importpfad kein eigenes Schriftgrößenfeld; der Schauwerk-Schriftstandard füllt daher beim Import nur diese fehlende Darstellungsentscheidung. Bereits als draw.io/XML vorliegende manuelle Schriftgrößen werden unverändert geladen.
 
 ## Warum noch kein tiefer draw.io-Fork
 
@@ -109,7 +111,7 @@ Automatisch:
 - der Vollbildschalter ist explizit und zustandsanzeigend (`aria-pressed`); sein Zustand wird ausschließlich durch den hostseitigen Fokusmodus bestimmt und hängt nicht von der Browser-Fullscreen-API ab;
 - Mermaid-, JSON-Canvas- und draw.io-Eingänge sind in der Oberfläche vorhanden;
 - JSON-Canvas-Konverter wird mit echter JavaScript-Laufzeit geprüft, sofern Node verfügbar ist;
-- Lesbarkeitsprofil und Zoom-Floor werden deterministisch getestet: 18 px für Knoten, 16 px für Kanten und bei einem 40-%-Fit genau drei 1,2-fache Zoomschritte;
+- Lesbarkeitsprofil und Zoom-Floor werden deterministisch getestet: 18 px für Knoten, 16 px für Kanten und bei einem 40-%-Fit genau drei 1,2-fache Zoomschritte; zusätzlich werden 8–72-px-Präferenzgrenzen, ein abweichender JSON-Canvas-Schriftstandard und die nativen Schrift-Aktionen (`decreaseFontSize`, `increaseFontSize`, `format`, `selectAll`) geprüft;
 - Repo-`make validate` bleibt grün.
 
 Live im Browser:
@@ -120,6 +122,8 @@ Live im Browser:
 - Autosave liefert XML zurück;
 - Projekt-, PNG- und SVG-Export funktionieren;
 - `Aufräumen` läuft ohne Hostfehler;
+- ein geänderter Schriftstandard wird bei anschließend neu erzeugten Elementen verwendet; vorhandenes draw.io/XML bleibt unverändert;
+- `A−`/`A+` wirken auf eine Einzel- und Mehrfachauswahl; `Schrift` öffnet das native Textformatierungs-Panel für exakte Werte; `Alle` erlaubt dieselbe Änderung für das gesamte Diagramm;
 - `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen Web-Viewport an den Editor; erneuter Klick stellt den Normalzustand wieder her;
 - der verlässliche Ausstieg ist der sichtbare Host-Knopf; ein `Escape` innerhalb des cross-origin draw.io-Iframes kann vom Host nicht abgefangen werden. Der Modus behauptet ausdrücklich nicht, Browser- oder iPadOS-Systemleisten außerhalb des Web-Viewports auszublenden;
 - iPad/Safari bleibt für die tatsächlich erreichbare Viewport-Ausnutzung ein eigener Produkt-Acceptance-Punkt.
