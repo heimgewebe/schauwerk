@@ -69,8 +69,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert '"elk.layered.spacing.edgeNodeBetweenLayers": "32"' in helper_js
     assert '"elk.layered.edgeLabels.centerLabelPlacementStrategy": "SPACE_EFFICIENT_LAYER"' in helper_js
     assert "MIN_READABLE_SCALE = 0.65" in helper_js
-    assert "fontSize=${READABLE_NODE_FONT_SIZE}" in helper_js
-    assert "fontSize=${READABLE_EDGE_FONT_SIZE}" in helper_js
+    assert helper_js.count("fontSize=${fontSize}") >= 2
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert "maxFitScale: 1" in app_js
@@ -80,12 +79,20 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         flags=re.MULTILINE,
     )
     assert "zoomFactor: READABILITY_ZOOM_FACTOR" in app_js
-    assert "defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) }" in app_js
+    assert "MIN_CONFIGURABLE_FONT_SIZE = 8" in helper_js
+    assert "MAX_CONFIGURABLE_FONT_SIZE = 72" in helper_js
+    assert 'FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1"' in app_js
+    assert "defaultVertexStyle: { fontSize: String(preferredNodeFontSize) }" in app_js
     assert "defaultEdgeStyle: {" in app_js
-    assert "fontSize: String(READABLE_EDGE_FONT_SIZE)" in app_js
+    assert "fontSize: String(edgeFontSizeFor(preferredNodeFontSize))" in app_js
     assert 'sourcePerimeterSpacing: "12"' in app_js
     assert 'targetPerimeterSpacing: "12"' in app_js
     assert 'labelBackgroundColor: "#ffffff"' in app_js
+    assert 'actionName: "decreaseFontSize"' in app_js
+    assert 'actionName: "increaseFontSize"' in app_js
+    assert 'actionName: "format"' in app_js
+    assert 'actionName: "selectAll"' in app_js
+    assert app_js.index("preferredNodeFontSize = readFontPreference();") < app_js.index('initialQuery.get("new") === "1"')
     assert "function enforceReadableInitialScale(scale)" in app_js
     assert "enforceReadableInitialScale(message.scale);" in app_js
     assert 'actionName: "zoomIn"' in app_js
@@ -107,6 +114,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
     assert 'id="fullscreenButton"' in index_html
+    assert 'id="fontDefaultInput" type="number" min="8" max="72" step="1"' in index_html
+    assert 'id="fontDecreaseButton"' in index_html
+    assert 'id="fontPanelButton"' in index_html
+    assert 'id="fontIncreaseButton"' in index_html
+    assert 'id="fontAllButton"' in index_html
     file_input = re.search(r'<input\b[^>]*\bid="fileInput"[^>]*>', index_html)
     assert file_input is not None
     assert re.search(r"\baccept\s*=", file_input.group(0), flags=re.IGNORECASE) is None
@@ -372,8 +384,9 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ COLLISION_SAFE_LAYOUT_CONFIG, MAX_INPUT_BYTES, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
+import {{ COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
 if (READABLE_NODE_FONT_SIZE !== 18 || READABLE_EDGE_FONT_SIZE !== 16) throw new Error('readability font profile drifted');
+if (MIN_CONFIGURABLE_FONT_SIZE !== 8 || MAX_CONFIGURABLE_FONT_SIZE !== 72) throw new Error('configurable font bounds drifted');
 if (COLLISION_SAFE_LAYOUT_CONFIG["elk.spacing.edgeNode"] !== "28") throw new Error('edge-node spacing drifted');
 if (COLLISION_SAFE_LAYOUT_CONFIG["elk.layered.spacing.nodeNodeBetweenLayers"] !== "84") throw new Error('layer corridor drifted');
 if (COLLISION_SAFE_LAYOUT_CONFIG["elk.layered.edgeLabels.centerLabelPlacementStrategy"] !== "SPACE_EFFICIENT_LAYER") throw new Error('edge-label placement drifted');
@@ -467,6 +480,12 @@ if (!xml.includes('spacing=6')) throw new Error('missing edge-label spacing');
 if (!xml.includes('labelBackgroundColor=#ffffff')) throw new Error('missing edge-label background');
 if (!xml.includes('fontSize=18')) throw new Error('missing readable node font size');
 if (!xml.includes('fontSize=16')) throw new Error('missing readable edge font size');
+const customFontXml = jsonCanvasToDrawioXml(detected.value, {{nodeFontSize: 24, edgeFontSize: 22}});
+if (!customFontXml.includes('fontSize=24')) throw new Error('custom node font size missing');
+if (!customFontXml.includes('fontSize=22')) throw new Error('custom edge font size missing');
+const invalidFontXml = jsonCanvasToDrawioXml(detected.value, {{nodeFontSize: 7, edgeFontSize: 73}});
+if (!invalidFontXml.includes('fontSize=18')) throw new Error('invalid node font size did not fall back');
+if (!invalidFontXml.includes('fontSize=16')) throw new Error('invalid edge font size did not fall back');
 const png = 'data:image/png;base64,AA==';
 const svg = 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=';
 if (validateExportDataUri(png, 'png') !== png) throw new Error('png export rejected');

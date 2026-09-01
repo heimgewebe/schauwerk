@@ -38,6 +38,13 @@ INDEX_HTML = r"""<!doctype html>
         <input id="fileInput" type="file" hidden>
       </div>
 
+      <label class="font-default-control" for="fontDefaultInput">
+        <span>Schriftstandard</span>
+        <input id="fontDefaultInput" type="number" min="8" max="72" step="1" inputmode="numeric" aria-describedby="fontDefaultHint">
+        <span>px</span>
+      </label>
+      <p class="field-hint" id="fontDefaultHint">Gilt für neu erzeugte Elemente. Bestehende Formatierungen bleiben unverändert.</p>
+
       <button class="restore-button" id="restoreButton" type="button" hidden>Letzten lokalen Entwurf wiederherstellen</button>
       <p class="error" id="error" role="alert" hidden></p>
 
@@ -53,6 +60,12 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button compact ghost" id="backButton" type="button">← Start</button>
         <strong class="document-title" id="documentTitle">Schaubild</strong>
         <span class="spacer"></span>
+        <div class="font-controls" role="group" aria-label="Schriftgröße">
+          <button class="button compact" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
+          <button class="button compact" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Schrift</button>
+          <button class="button compact" id="fontIncreaseButton" type="button" aria-label="Schriftgröße der Auswahl vergrößern" title="Ausgewählte Beschriftungen vergrößern">A+</button>
+          <button class="button compact" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alle</button>
+        </div>
         <button class="button compact" id="layoutButton" type="button">Aufräumen</button>
         <button class="button compact" id="projectButton" type="button">Projekt</button>
         <button class="button compact" data-export="png" type="button">PNG</button>
@@ -131,6 +144,10 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
 .paste-box textarea:focus { border-color: #5674dc; box-shadow: 0 0 0 4px rgba(86, 116, 220, 0.13); }
 
 .primary-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.font-default-control { display: flex; align-items: center; gap: 8px; width: fit-content; margin-top: 18px; font-weight: 650; }
+.font-default-control input { width: 72px; min-height: 40px; border: 1px solid #cfd7e6; border-radius: 10px; padding: 7px 9px; color: inherit; background: inherit; }
+.font-default-control input:focus { outline: 3px solid rgba(86, 116, 220, 0.3); outline-offset: 2px; }
+.field-hint { margin: 6px 0 0; color: #667085; font-size: 0.82rem; }
 .button {
   min-height: 44px;
   border: 1px solid #c9d2e3;
@@ -174,6 +191,8 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-s
 }
 .document-title { max-width: min(36vw, 420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spacer { flex: 1; }
+.font-controls { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.font-controls .button { min-width: 40px; }
 .fullscreen-toggle { white-space: nowrap; }
 .editor-wrap { flex: 1; min-height: 520px; background: white; }
 .editor-wrap iframe { width: 100%; height: 100%; min-height: 520px; display: block; border: 0; background: white; }
@@ -232,8 +251,8 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   :root { color: #e8edf7; background: #111827; }
   .topline, .start-card, .workspace-bar { background: #182234; border-color: #344056; }
   .brand, .paste-box textarea { color: #e8edf7; }
-  .status, .lede { color: #aeb8ca; }
-  .paste-box textarea { background: #111827; border-color: #3b475d; }
+  .status, .lede, .field-hint { color: #aeb8ca; }
+  .paste-box textarea, .font-default-control input { background: #111827; border-color: #3b475d; }
   .button { color: #e8edf7; background: #202c41; border-color: #42506a; }
   .button:hover { background: #29364d; }
   .button.primary { background: #5674dc; border-color: #5674dc; }
@@ -248,6 +267,8 @@ const MERMAID_HEADER = /^(?:---[\s\S]*?---\s*)?(?:(?:%%[^\r\n]*)(?:\r?\n|$)\s*)*
 
 export const READABLE_NODE_FONT_SIZE = 18;
 export const READABLE_EDGE_FONT_SIZE = 16;
+export const MIN_CONFIGURABLE_FONT_SIZE = 8;
+export const MAX_CONFIGURABLE_FONT_SIZE = 72;
 export const MIN_READABLE_SCALE = 0.65;
 export const READABILITY_ZOOM_FACTOR = 1.2;
 export const MAX_READABILITY_ZOOM_STEPS = 8;
@@ -493,12 +514,19 @@ function nodeLabel(node) {
   return stripMarkdown(node.text ?? node.label ?? "Text");
 }
 
-function nodeStyle(node) {
+function configuredFontSize(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= MIN_CONFIGURABLE_FONT_SIZE && parsed <= MAX_CONFIGURABLE_FONT_SIZE
+    ? parsed
+    : fallback;
+}
+
+function nodeStyle(node, fontSize) {
   if (node.type === "group") {
-    return `swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontSize=${READABLE_NODE_FONT_SIZE};fontStyle=1;container=0;collapsible=0;`;
+    return `swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontSize=${fontSize};fontStyle=1;container=0;collapsible=0;`;
   }
   const [fill, stroke] = palette(node.color);
-  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;fontSize=${READABLE_NODE_FONT_SIZE};spacing=12;`;
+  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;fontSize=${fontSize};spacing=12;`;
   if (node.type === "file") return `shape=note;${common}`;
   if (node.type === "link") return `rounded=1;arcSize=12;${common}fontColor=#2455b5;`;
   return `rounded=1;arcSize=12;verticalAlign=top;${common}`;
@@ -516,11 +544,11 @@ function sidePoint(side, prefix) {
   return `${prefix}X=${point[0]};${prefix}Y=${point[1]};${prefix}Dx=0;${prefix}Dy=0;`;
 }
 
-function edgeStyle(edge) {
+function edgeStyle(edge, fontSize) {
   const endArrow = edge.toEnd === "none" ? "none" : "classic";
   const startArrow = edge.fromEnd === "arrow" ? "classic" : "none";
   return [
-    `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;fontSize=${READABLE_EDGE_FONT_SIZE};sourcePerimeterSpacing=12;targetPerimeterSpacing=12;spacing=6;labelBackgroundColor=#ffffff;`,
+    `edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=0;fontSize=${fontSize};sourcePerimeterSpacing=12;targetPerimeterSpacing=12;spacing=6;labelBackgroundColor=#ffffff;`,
     `endArrow=${endArrow};endFill=1;startArrow=${startArrow};startFill=1;`,
     sidePoint(edge.fromSide, "exit"),
     sidePoint(edge.toSide, "entry"),
@@ -555,9 +583,11 @@ export function emptyDrawioXml() {
   return '<mxGraphModel grid="0" page="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/></root></mxGraphModel>';
 }
 
-export function jsonCanvasToDrawioXml(source) {
+export function jsonCanvasToDrawioXml(source, options = {}) {
   const value = typeof source === "string" ? JSON.parse(normalizeInput(source)) : source;
   const { nodes, edges } = validateJsonCanvas(value);
+  const nodeFontSize = configuredFontSize(options.nodeFontSize, READABLE_NODE_FONT_SIZE);
+  const edgeFontSize = configuredFontSize(options.edgeFontSize, READABLE_EDGE_FONT_SIZE);
 
   const geometryNodes = nodes.filter((node) => node && typeof node === "object");
   const minX = geometryNodes.reduce((minimum, node) => Math.min(minimum, numberOr(node.x, 0)), 0);
@@ -597,7 +627,7 @@ export function jsonCanvasToDrawioXml(source) {
     if (node.type === "link" && typeof node.url === "string") metadata.push(`link="${xmlAttr(node.url)}"`);
     if (node.type === "file" && typeof node.file === "string") metadata.push(`jsonCanvasFile="${xmlAttr(node.file)}"`);
     cells.push(
-      `<object ${metadata.join(" ")}><mxCell style="${xmlAttr(nodeStyle(node))}" vertex="1" parent="1">` +
+      `<object ${metadata.join(" ")}><mxCell style="${xmlAttr(nodeStyle(node, nodeFontSize))}" vertex="1" parent="1">` +
       `<mxGeometry x="${x}" y="${y}" width="${width}" height="${height}" as="geometry"/>` +
       `</mxCell></object>`
     );
@@ -609,7 +639,7 @@ export function jsonCanvasToDrawioXml(source) {
     const rawId = typeof edge.id === "string" && edge.id ? edge.id : `edge_${index + 1}`;
     cells.push(
       `<mxCell id="${xmlAttr(edgeId(rawId))}" value="${xmlAttr(edge.label ?? "")}" ` +
-      `style="${xmlAttr(edgeStyle(edge))}" edge="1" parent="1" source="${xmlAttr(source)}" target="${xmlAttr(target)}">` +
+      `style="${xmlAttr(edgeStyle(edge, edgeFontSize))}" edge="1" parent="1" source="${xmlAttr(source)}" target="${xmlAttr(target)}">` +
       '<mxGeometry relative="1" as="geometry"/></mxCell>'
     );
   }
@@ -620,11 +650,12 @@ export function jsonCanvasToDrawioXml(source) {
 }
 """
 
-APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_INPUT_BYTES, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
+APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
+const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
 
 const elements = {
   startView: document.querySelector("#startView"),
@@ -645,6 +676,11 @@ const elements = {
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
   fullscreenButton: document.querySelector("#fullscreenButton"),
+  fontDefaultInput: document.querySelector("#fontDefaultInput"),
+  fontDecreaseButton: document.querySelector("#fontDecreaseButton"),
+  fontPanelButton: document.querySelector("#fontPanelButton"),
+  fontIncreaseButton: document.querySelector("#fontIncreaseButton"),
+  fontAllButton: document.querySelector("#fontAllButton"),
 };
 
 let pendingLoad = null;
@@ -656,6 +692,7 @@ let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
 let pendingInitialCollisionSafeLayout = false;
+let preferredNodeFontSize = READABLE_NODE_FONT_SIZE;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -686,6 +723,46 @@ function parseMessage(data) {
   if (data && typeof data === "object") return data;
   if (typeof data !== "string") return null;
   try { return JSON.parse(data); } catch (_) { return null; }
+}
+
+function parseFontSize(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= MIN_CONFIGURABLE_FONT_SIZE && parsed <= MAX_CONFIGURABLE_FONT_SIZE
+    ? parsed
+    : null;
+}
+
+function edgeFontSizeFor(nodeFontSize) {
+  return Math.max(MIN_CONFIGURABLE_FONT_SIZE, nodeFontSize - (READABLE_NODE_FONT_SIZE - READABLE_EDGE_FONT_SIZE));
+}
+
+function readFontPreference() {
+  try {
+    return parseFontSize(localStorage.getItem(FONT_PREFERENCE_KEY)) ?? READABLE_NODE_FONT_SIZE;
+  } catch (_) {
+    return READABLE_NODE_FONT_SIZE;
+  }
+}
+
+function storeFontPreference(value) {
+  try {
+    localStorage.setItem(FONT_PREFERENCE_KEY, String(value));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function applyFontPreferenceInput() {
+  const parsed = parseFontSize(elements.fontDefaultInput.value);
+  if (parsed === null) {
+    elements.fontDefaultInput.value = String(preferredNodeFontSize);
+    setStatus(`Schriftstandard: ${MIN_CONFIGURABLE_FONT_SIZE}–${MAX_CONFIGURABLE_FONT_SIZE} px`);
+    return;
+  }
+  preferredNodeFontSize = parsed;
+  const stored = storeFontPreference(parsed);
+  setStatus(stored ? `Schriftstandard ${parsed} px gespeichert` : `Schriftstandard ${parsed} px · Speichern nicht möglich`);
 }
 
 function saveDraft(xml) {
@@ -788,7 +865,10 @@ function prepareInput(raw, title = "Schaubild") {
   }
   if (detected.kind === "json-canvas") {
     return {
-      xml: jsonCanvasToDrawioXml(detected.value),
+      xml: jsonCanvasToDrawioXml(detected.value, {
+        nodeFontSize: preferredNodeFontSize,
+        edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
+      }),
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
@@ -918,9 +998,9 @@ window.addEventListener("message", (event) => {
       config: {
         defaultFonts: ["Helvetica", "Arial", "Verdana"],
         zoomFactor: READABILITY_ZOOM_FACTOR,
-        defaultVertexStyle: { fontSize: String(READABLE_NODE_FONT_SIZE) },
+        defaultVertexStyle: { fontSize: String(preferredNodeFontSize) },
         defaultEdgeStyle: {
-          fontSize: String(READABLE_EDGE_FONT_SIZE),
+          fontSize: String(edgeFontSizeFor(preferredNodeFontSize)),
           edgeStyle: "orthogonalEdgeStyle",
           rounded: "1",
           orthogonalLoop: "1",
@@ -1029,6 +1109,28 @@ elements.restoreButton.addEventListener("click", () => {
   launch({ xml: draft.xml });
 });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
+elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);
+elements.fontDecreaseButton.addEventListener("click", () => {
+  if (!editorReady) return setStatus("Editor ist noch nicht bereit");
+  postToEditor({ action: "invokeAction", actionName: "decreaseFontSize" });
+  setStatus("Schriftgröße der Auswahl wird verkleinert");
+});
+elements.fontIncreaseButton.addEventListener("click", () => {
+  if (!editorReady) return setStatus("Editor ist noch nicht bereit");
+  postToEditor({ action: "invokeAction", actionName: "increaseFontSize" });
+  setStatus("Schriftgröße der Auswahl wird vergrößert");
+});
+elements.fontPanelButton.addEventListener("click", () => {
+  if (!editorReady) return setStatus("Editor ist noch nicht bereit");
+  postToEditor({ action: "invokeAction", actionName: "format" });
+  setStatus("Textformatierung für die Auswahl geöffnet");
+});
+elements.fontAllButton.addEventListener("click", () => {
+  if (!editorReady) return setStatus("Editor ist noch nicht bereit");
+  postToEditor({ action: "invokeAction", actionName: "selectAll" });
+  postToEditor({ action: "invokeAction", actionName: "format" });
+  setStatus("Gesamtes Schaubild ausgewählt · Schrift im Text-Panel einstellen");
+});
 elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
@@ -1055,6 +1157,9 @@ elements.startView.addEventListener("drop", (event) => {
 elements.sourceInput.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key === "Enter") openPasted();
 });
+
+preferredNodeFontSize = readFontPreference();
+elements.fontDefaultInput.value = String(preferredNodeFontSize);
 
 const initialQuery = new URLSearchParams(window.location.search);
 if (initialQuery.get("new") === "1") {
