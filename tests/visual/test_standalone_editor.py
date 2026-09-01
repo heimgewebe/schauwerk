@@ -64,6 +64,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "jsonCanvasToDrawioXml" in helper_js
     assert "READABLE_NODE_FONT_SIZE = 18" in helper_js
     assert "READABLE_EDGE_FONT_SIZE = 16" in helper_js
+    assert "COLLISION_SAFE_LAYOUT_CONFIG = Object.freeze" in helper_js
+    assert '"elk.spacing.edgeNode": "28"' in helper_js
+    assert '"elk.layered.spacing.edgeNodeBetweenLayers": "32"' in helper_js
+    assert '"elk.layered.edgeLabels.centerLabelPlacementStrategy": "SPACE_EFFICIENT_LAYER"' in helper_js
     assert "MIN_READABLE_SCALE = 0.65" in helper_js
     assert helper_js.count("fontSize=${fontSize}") >= 2
     assert "event.origin !== EDITOR_ORIGIN" in app_js
@@ -79,7 +83,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "MAX_CONFIGURABLE_FONT_SIZE = 72" in helper_js
     assert 'FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1"' in app_js
     assert "defaultVertexStyle: { fontSize: String(preferredNodeFontSize) }" in app_js
-    assert "defaultEdgeStyle: { fontSize: String(edgeFontSizeFor(preferredNodeFontSize)) }" in app_js
+    assert "defaultEdgeStyle: {" in app_js
+    assert "fontSize: String(edgeFontSizeFor(preferredNodeFontSize))" in app_js
+    assert 'sourcePerimeterSpacing: "12"' in app_js
+    assert 'targetPerimeterSpacing: "12"' in app_js
+    assert 'labelBackgroundColor: "#ffffff"' in app_js
     assert 'actionName: "decreaseFontSize"' in app_js
     assert 'actionName: "increaseFontSize"' in app_js
     assert 'actionName: "format"' in app_js
@@ -128,6 +136,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "elements.frame = frame;" in app_js
     assert "if (elements.frame !== frame) return;" in app_js
     assert "let loadIntentGeneration = 0;" in app_js
+    assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
     assert 'elements.fileInput.value = "";' in app_js
@@ -142,7 +151,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert open_file_source.count("if (loadIntent !== loadIntentGeneration) return;") == 2
     launch_start = app_js.index("function launch(load)")
     launch_end = app_js.index("function loadPendingIntoEditor()", launch_start)
-    assert "invalidateLoadIntents();" in app_js[launch_start:launch_end]
+    launch_source = app_js[launch_start:launch_end]
+    assert "invalidateLoadIntents();" in launch_source
+    assert 'pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";' in launch_source
     assert "function toggleEditorFullscreen()" in app_js
     assert "const active = !editorFocusActive;" in app_js
     assert "setEditorFocus(active);" in app_js
@@ -164,6 +175,15 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "replaceEditorFrame();" in show_start_source
     assert show_start_source.index("replaceEditorFrame();") < show_start_source.index("elements.workspace.hidden = true;")
     assert "elements.sourceInput.focus({ preventScroll: true });" in show_start_source
+    assert "pendingInitialCollisionSafeLayout = false;" in show_start_source
+    load_event_start = app_js.index('if (message.event === "load")')
+    load_event_end = app_js.index('if (message.event === "autosave"', load_event_start)
+    load_event_source = app_js[load_event_start:load_event_end]
+    assert "const shouldAutoLayout = pendingInitialCollisionSafeLayout;" in load_event_source
+    assert load_event_source.index("pendingInitialCollisionSafeLayout = false;") < load_event_source.index("requestCollisionSafeLayout();")
+    assert 'layouts: [{ layout: "elkLayered", config: COLLISION_SAFE_LAYOUT_CONFIG }]' in app_js
+    assert app_js.count("config: COLLISION_SAFE_LAYOUT_CONFIG") == 1
+    assert '"elk.spacing.nodeNode": "40"' not in app_js
     assert 'event.key === "Escape"' not in app_js
 
 
@@ -364,9 +384,12 @@ def test_canvas_import_module_converts_basic_json_canvas_when_node_available(
     module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
 
     code = f"""
-import {{ MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
+import {{ COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateExportDataUri, validateInputText }} from {module_url!r};
 if (READABLE_NODE_FONT_SIZE !== 18 || READABLE_EDGE_FONT_SIZE !== 16) throw new Error('readability font profile drifted');
 if (MIN_CONFIGURABLE_FONT_SIZE !== 8 || MAX_CONFIGURABLE_FONT_SIZE !== 72) throw new Error('configurable font bounds drifted');
+if (COLLISION_SAFE_LAYOUT_CONFIG["elk.spacing.edgeNode"] !== "28") throw new Error('edge-node spacing drifted');
+if (COLLISION_SAFE_LAYOUT_CONFIG["elk.layered.spacing.nodeNodeBetweenLayers"] !== "84") throw new Error('layer corridor drifted');
+if (COLLISION_SAFE_LAYOUT_CONFIG["elk.layered.edgeLabels.centerLabelPlacementStrategy"] !== "SPACE_EFFICIENT_LAYER") throw new Error('edge-label placement drifted');
 if (readabilityZoomStepCount(0.4) !== 3) throw new Error('40 percent fit should zoom three steps');
 if (readabilityZoomStepCount(0.65) !== 0) throw new Error('readability floor should not zoom');
 if (readabilityZoomStepCount('not-a-scale') !== 0) throw new Error('invalid scale should not zoom');
@@ -450,6 +473,11 @@ if (!xml.includes('<mxGraphModel')) throw new Error('missing graph model');
 if (!xml.includes('jsonCanvasId="a"')) throw new Error('missing source id');
 if (!xml.includes('ermöglicht')) throw new Error('missing edge label');
 if (!xml.includes('exitX=1')) throw new Error('missing source-side binding');
+if (!xml.includes('entryX=0')) throw new Error('missing target-side binding');
+if (!xml.includes('sourcePerimeterSpacing=12')) throw new Error('missing source perimeter clearance');
+if (!xml.includes('targetPerimeterSpacing=12')) throw new Error('missing target perimeter clearance');
+if (!xml.includes('spacing=6')) throw new Error('missing edge-label spacing');
+if (!xml.includes('labelBackgroundColor=#ffffff')) throw new Error('missing edge-label background');
 if (!xml.includes('fontSize=18')) throw new Error('missing readable node font size');
 if (!xml.includes('fontSize=16')) throw new Error('missing readable edge font size');
 const customFontXml = jsonCanvasToDrawioXml(detected.value, {{nodeFontSize: 24, edgeFontSize: 22}});
