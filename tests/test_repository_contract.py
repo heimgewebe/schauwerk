@@ -124,6 +124,49 @@ def test_make_prefers_active_supported_python_over_side_install(tmp_path: Path) 
     assert not side_marker.exists()
 
 
+def test_make_skips_unusable_version_manager_shim(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    make = shutil.which("make")
+    assert make is not None
+
+    broken_marker = tmp_path / "broken-python-probed"
+    fallback_marker = tmp_path / "fallback-python-used"
+    broken_python = tmp_path / "python3.13"
+    fallback_python = tmp_path / "python3.12"
+    broken_python.write_text(
+        "#!/bin/sh\n"
+        f"printf 'probed\\n' >> '{broken_marker}'\n"
+        "exit 127\n",
+        encoding="utf-8",
+    )
+    fallback_python.write_text(
+        "#!/bin/sh\n"
+        f"printf 'used\\n' >> '{fallback_marker}'\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    broken_python.chmod(0o755)
+    fallback_python.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            make,
+            "-f",
+            str(root / "Makefile"),
+            "--no-print-directory",
+            "python-version-check",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={"PATH": str(tmp_path)},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert broken_marker.is_file()
+    assert fallback_marker.is_file()
+
+
 def test_declared_python_support_matches_ci_matrix() -> None:
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
