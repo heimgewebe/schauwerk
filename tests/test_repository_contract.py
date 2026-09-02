@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -17,9 +20,66 @@ def test_canonical_lint_surface_includes_python_scripts() -> None:
     lint_commands = [
         line.strip()
         for line in (root / "Makefile").read_text(encoding="utf-8").splitlines()
-        if "$(RUFF) check " in line
+        if "$(PYTHON) -m ruff check " in line
     ]
-    assert lint_commands == ["$(RUFF) check src scripts tests"]
+    assert lint_commands == ["$(PYTHON) -m ruff check src scripts tests"]
+
+
+def test_make_validation_uses_one_supported_python_toolchain(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    makefile = (root / "Makefile").read_text(encoding="utf-8")
+
+    assert "python3.13" in makefile
+    assert "python3.12" in makefile
+    assert "python3.11" in makefile
+    assert "command -v python3" in makefile
+    assert (
+        "PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,$(SYSTEM_PYTHON))"
+        in makefile
+    )
+    assert "RUFF ?=" not in makefile
+    assert "PYTEST ?=" not in makefile
+    assert "$(PYTHON) -m ruff check src scripts tests" in makefile
+    assert "$(PYTHON) -m pytest" in makefile
+    for target in ("lint", "compile-check", "registry-validate", "test"):
+        assert f"{target}: python-version-check" in makefile
+
+    make = shutil.which("make")
+    assert make is not None
+    supported = subprocess.run(
+        [make, "--no-print-directory", "python-version-check", f"PYTHON={sys.executable}"],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert supported.returncode == 0, supported.stdout + supported.stderr
+
+    unsupported_python = tmp_path / "python"
+    unsupported_python.write_text(
+        "#!/bin/sh\n"
+        "if [ \"$1\" = \"--version\" ]; then echo 'Python 3.10.0'; exit 0; fi\n"
+        "exit 1\n",
+        encoding="utf-8",
+    )
+    unsupported_python.chmod(0o755)
+    unsupported = subprocess.run(
+        [
+            make,
+            "-f",
+            str(root / "Makefile"),
+            "--no-print-directory",
+            "python-version-check",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={"PATH": str(tmp_path)},
+    )
+    assert unsupported.returncode != 0
+    assert "requires Python >=3.11,<3.14" in unsupported.stdout
+    assert "Python 3.10.0" in unsupported.stdout
 
 
 def test_declared_python_support_matches_ci_matrix() -> None:
