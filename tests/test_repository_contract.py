@@ -167,6 +167,41 @@ def test_make_skips_unusable_version_manager_shim(tmp_path: Path) -> None:
     assert fallback_marker.is_file()
 
 
+def test_make_preserves_path_entries_with_spaces(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    make = shutil.which("make")
+    assert make is not None
+
+    bin_dir = tmp_path / "Python Runtime"
+    bin_dir.mkdir()
+    marker_file = tmp_path / "spaced-path-python-used"
+    python = bin_dir / "python3.12"
+    python.write_text(
+        "#!/bin/sh\n"
+        f"printf 'used\\n' >> '{marker_file}'\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    python.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            make,
+            "-f",
+            str(root / "Makefile"),
+            "--no-print-directory",
+            "python-version-check",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={"PATH": str(bin_dir)},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert marker_file.is_file()
+
+
 def test_declared_python_support_matches_ci_matrix() -> None:
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
