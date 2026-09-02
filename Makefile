@@ -1,13 +1,14 @@
 .PHONY: python-version-check lint compile-check test registry-validate validate
 
-SYSTEM_PYTHON := $(shell command -v python3.13 2>/dev/null || command -v python3.12 2>/dev/null || command -v python3.11 2>/dev/null || command -v python3 2>/dev/null || command -v python 2>/dev/null)
+PYTHON_CANDIDATES := python3 python python3.13 python3.12 python3.11
+SYSTEM_PYTHON := $(shell for candidate in $(PYTHON_CANDIDATES); do path=$$(command -v "$$candidate" 2>/dev/null) || continue; "$$path" -c 'import sys; raise SystemExit(0 if (3, 11) <= sys.version_info[:2] < (3, 14) else 1)' >/dev/null 2>&1 && { printf '%s\n' "$$path"; break; }; done)
 PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,$(SYSTEM_PYTHON))
 
 export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
 python-version-check:
 	@if [ -z "$(PYTHON)" ]; then \
-		echo "Schauwerk requires Python >=3.11,<3.14. Create .venv with Python 3.11-3.13 or set PYTHON=/path/to/python."; \
+		echo "Schauwerk requires Python >=3.11,<3.14. No supported interpreter was found on PATH; create .venv with Python 3.11-3.13 or set PYTHON=/path/to/python."; \
 		exit 2; \
 	fi
 	@$(PYTHON) -c 'import sys; raise SystemExit(0 if (3, 11) <= sys.version_info[:2] < (3, 14) else 1)' || { \

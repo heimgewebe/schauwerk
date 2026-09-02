@@ -29,10 +29,7 @@ def test_make_validation_uses_one_supported_python_toolchain(tmp_path: Path) -> 
     root = Path(__file__).resolve().parents[1]
     makefile = (root / "Makefile").read_text(encoding="utf-8")
 
-    assert "python3.13" in makefile
-    assert "python3.12" in makefile
-    assert "python3.11" in makefile
-    assert "command -v python3" in makefile
+    assert "PYTHON_CANDIDATES := python3 python python3.13 python3.12 python3.11" in makefile
     assert (
         "PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,$(SYSTEM_PYTHON))"
         in makefile
@@ -79,7 +76,52 @@ def test_make_validation_uses_one_supported_python_toolchain(tmp_path: Path) -> 
     )
     assert unsupported.returncode != 0
     assert "requires Python >=3.11,<3.14" in unsupported.stdout
-    assert "Python 3.10.0" in unsupported.stdout
+    assert "No supported interpreter was found on PATH" in unsupported.stdout
+
+
+def test_make_prefers_active_supported_python_over_side_install(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[1]
+    make = shutil.which("make")
+    assert make is not None
+
+    active_marker = tmp_path / "active-python-used"
+    side_marker = tmp_path / "side-python-used"
+    active_python = tmp_path / "python3"
+    side_python = tmp_path / "python3.12"
+    active_python.write_text(
+        "#!/bin/sh\n"
+        f"printf 'used\\n' >> '{active_marker}'\n"
+        "if [ \"$1\" = \"--version\" ]; then echo 'Python 3.11.16'; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    side_python.write_text(
+        "#!/bin/sh\n"
+        f"printf 'used\\n' >> '{side_marker}'\n"
+        "if [ \"$1\" = \"--version\" ]; then echo 'Python 3.12.11'; fi\n"
+        "exit 0\n",
+        encoding="utf-8",
+    )
+    active_python.chmod(0o755)
+    side_python.chmod(0o755)
+
+    result = subprocess.run(
+        [
+            make,
+            "-f",
+            str(root / "Makefile"),
+            "--no-print-directory",
+            "python-version-check",
+        ],
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={"PATH": str(tmp_path)},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert active_marker.is_file()
+    assert not side_marker.exists()
 
 
 def test_declared_python_support_matches_ci_matrix() -> None:
