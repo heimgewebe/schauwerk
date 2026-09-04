@@ -35,23 +35,62 @@ class FileTokenStorage(TokenStorage):
         return f"FileTokenStorage(path={self.path!s})"
 
     def _ensure_parent(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(self.path.parent, 0o700)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            os.chmod(self.path.parent, 0o700)
+        except OSError as exc:
+            raise MiroCredentialError("OAuth state directory is unavailable") from exc
 
     @contextmanager
     def _lock(self, *, exclusive: bool) -> Iterator[None]:
-        self._ensure_parent()
-        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        if exclusive:
+            self._ensure_parent()
+            flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+            try:
+                descriptor = os.open(self.lock_path, flags, 0o600)
+            except OSError as exc:
+                raise MiroCredentialError("OAuth lock path is unsafe") from exc
+            try:
+                metadata = os.fstat(descriptor)
+                if not stat.S_ISREG(metadata.st_mode):
+                    raise MiroCredentialError("OAuth lock path is not a regular file")
+                os.fchmod(descriptor, 0o600)
+                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                yield
+            finally:
+                fcntl.flock(descriptor, fcntl.LOCK_UN)
+                os.close(descriptor)
+            return
+
+        # Read paths must remain observational: do not create/chmod the state
+        # directory or lock file merely to inspect credentials. Atomic replace
+        # makes an unlocked read safe when no lock file exists; if a writer lock
+        # already exists, share-lock that exact inode without changing it.
         try:
-            descriptor = os.open(self.lock_path, flags, 0o600)
+            parent = self.path.parent.lstat()
+        except FileNotFoundError:
+            yield
+            return
+        if stat.S_ISLNK(parent.st_mode) or not stat.S_ISDIR(parent.st_mode):
+            raise MiroCredentialError("OAuth state directory is unsafe")
+        if parent.st_mode & 0o077:
+            raise MiroCredentialError("OAuth state directory has unsafe permissions")
+
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(self.lock_path, flags)
+        except FileNotFoundError:
+            yield
+            return
         except OSError as exc:
             raise MiroCredentialError("OAuth lock path is unsafe") from exc
         try:
             metadata = os.fstat(descriptor)
             if not stat.S_ISREG(metadata.st_mode):
                 raise MiroCredentialError("OAuth lock path is not a regular file")
-            os.fchmod(descriptor, 0o600)
-            fcntl.flock(descriptor, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+            if metadata.st_mode & 0o077:
+                raise MiroCredentialError("OAuth lock path has unsafe permissions")
+            fcntl.flock(descriptor, fcntl.LOCK_SH)
             yield
         finally:
             fcntl.flock(descriptor, fcntl.LOCK_UN)

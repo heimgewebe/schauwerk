@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from .model import (
+    _SAFE_FILE,
     PUBLICATION_LINK_SCHEMA,
     PUBLICATION_OBJECT_SCHEMA,
     PUBLICATION_PREVIEW_SCHEMA,
@@ -1140,13 +1141,44 @@ def resolve_publication_file(
         if status["state"] != "active":
             raise PublicationError(f"publication is {status['state']}")
         name = relative_name or manifest["entrypoint"]
-        if not isinstance(name, str) or name not in manifest["files"]:
+        if (
+            not isinstance(name, str)
+            or not _SAFE_FILE.fullmatch(name)
+            or name not in manifest["files"]
+        ):
             raise PublicationError("publication file is not declared")
-        path = _object_path(paths, status["publication_id"], status["version"]) / "bundle" / name
-        if path.is_symlink() or not path.is_file():
-            raise PublicationError("publication file became unsafe during delivery")
-        payload = path.read_bytes()
         record = manifest["files"][name]
+        bundle_path = (
+            _object_path(paths, status["publication_id"], status["version"]) / "bundle"
+        )
+        bundle_descriptor = _open_directory_nofollow(bundle_path)
+        descriptor: int | None = None
+        try:
+            nofollow = getattr(os, "O_NOFOLLOW", None)
+            if nofollow is None:
+                raise PublicationError("safe publication delivery is unavailable")
+            try:
+                descriptor = os.open(
+                    name, os.O_RDONLY | nofollow, dir_fd=bundle_descriptor
+                )
+            except OSError as exc:
+                if exc.errno in {errno.ELOOP, errno.ENOENT, errno.ENOTDIR}:
+                    raise PublicationError(
+                        "publication file became unsafe during delivery"
+                    ) from exc
+                raise
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise PublicationError("publication file became unsafe during delivery")
+            if metadata.st_size != record["bytes"]:
+                raise PublicationError("publication file size changed during delivery")
+            with os.fdopen(descriptor, "rb") as handle:
+                descriptor = None
+                payload = handle.read(record["bytes"] + 1)
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+            os.close(bundle_descriptor)
         if len(payload) != record["bytes"]:
             raise PublicationError("publication file size changed during delivery")
         if hashlib.sha256(payload).hexdigest() != record["sha256"]:

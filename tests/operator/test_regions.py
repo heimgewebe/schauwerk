@@ -964,3 +964,49 @@ def test_sw009_live_apply_candidate_check_rejects_provider_url_path(tmp_path) ->
     assert result["ready_for_live_apply"] is False
     assert "candidate_provider_reference_present" in result["blocked_reasons"]
     assert result["boundary"]["no_miro_mutation"] is True
+
+
+def test_sw009_provider_reference_detection_uses_parsed_miro_hosts() -> None:
+    from schauwerk.operator.receipts import _candidate_contains_provider_reference
+
+    assert _candidate_contains_provider_reference(
+        {"value": "HTTPS://MIRO.COM/app/board/private"}
+    )
+    assert _candidate_contains_provider_reference(
+        {"value": "review https://team.miro.com/app/board/private now"}
+    )
+    assert _candidate_contains_provider_reference(
+        {"value": "miro.com/app/board/private"}
+    )
+    assert _candidate_contains_provider_reference(
+        {"value": "https://team.miro.com./app/board/private"}
+    )
+    assert not _candidate_contains_provider_reference(
+        {"value": "https://miro.com.evil.test/app/board/private"}
+    )
+    assert not _candidate_contains_provider_reference(
+        {"value": "https://notmiro.com/app/board/private"}
+    )
+
+
+def test_sw009_live_apply_candidate_check_rejects_any_url_in_local_path(tmp_path) -> None:
+    from schauwerk.operator.receipts import _stable_digest
+    from schauwerk.operator.regions import (
+        compile_region_sw009_live_apply_candidate_receipt,
+    )
+
+    candidate = _ready_sw009_candidate(tmp_path)
+    candidate["scaffold_path"] = "HTTPS://example.test/not-local"
+    candidate.pop("candidate_digest")
+    candidate["candidate_digest"] = _stable_digest(candidate)
+    candidate_path = tmp_path / "candidate.json"
+    candidate_path.write_text(json.dumps(candidate), encoding="utf-8")
+
+    result = compile_region_sw009_live_apply_candidate_receipt(
+        candidate=candidate,
+        candidate_path=candidate_path,
+    )
+
+    assert result["ok"] is False
+    assert result["ready_for_live_apply"] is False
+    assert "candidate_path_invalid" in result["blocked_reasons"]

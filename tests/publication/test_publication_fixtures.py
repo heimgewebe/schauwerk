@@ -21,6 +21,7 @@ from schauwerk.publication.store import (
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
+HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -107,6 +108,9 @@ def test_sw013_evidence_is_schema_valid_and_reproducible(tmp_path: Path) -> None
         "src/schauwerk/cli_handlers.py",
         "src/schauwerk/cli_parser.py",
         "src/schauwerk/runner.py",
+        "src/schauwerk/publication/server.py",
+        "src/schauwerk/publication/store.py",
+        "tests/publication/test_publication_boundary.py",
         "tests/publication/test_publication_fixtures.py",
     }
     for name, expected in acceptance["implementation_file_sha256"].items():
@@ -206,3 +210,47 @@ def test_immutable_fixture_modes_are_read_only_after_release(tmp_path: Path) -> 
                 assert stat.S_IMODE(path.stat().st_mode) == 0o444
     finally:
         _make_store_removable(store)
+
+
+def test_infrastructure_hardening_acceptance_binds_current_security_revision() -> None:
+    receipt = json.loads(
+        (HARDENING_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
+    )
+    assert receipt["schema_version"] == "schauwerk-infrastructure-hardening-acceptance.v1"
+    assert receipt["acceptance_digest"] == digest_mapping(receipt, "acceptance_digest")
+    assert receipt["parent_evidence"] == {
+        "acceptance_digest": "88628daaff65b9b7956d03204ca106dd8e2b41990cc47eab8e9923825141ba75",
+        "path": "docs/operators/evidence/sw013-schaufenster-20260711/acceptance-receipt.json",
+    }
+    expected_files = {
+        ".github/workflows/validate.yml",
+        "src/schauwerk/operator/receipts.py",
+        "src/schauwerk/publication/server.py",
+        "src/schauwerk/publication/store.py",
+        "src/schauwerk/runner.py",
+        "src/schauwerk/surfaces/miro/credentials.py",
+        "tests/miro/test_credentials.py",
+        "tests/operator/test_regions.py",
+        "tests/publication/test_publication_boundary.py",
+        "tests/test_runner_output_security.py",
+        "tests/test_validate_workflow_security.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    assert set(receipt["implementation_file_sha256"]) == expected_files
+    for name, expected in receipt["implementation_file_sha256"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert receipt["checks"] == {
+        "action_refs_sha_pinned": True,
+        "credential_reads_are_observational": True,
+        "dynamic_http_headers_reject_controls": True,
+        "focused_security_regressions_passed": True,
+        "headless_browser_smoke_preflights_runnable_runtime": True,
+        "local_path_fields_reject_urls": True,
+        "miro_provider_hosts_are_parsed": True,
+        "productive_publication_attempted": False,
+        "provider_mutation_attempted": False,
+        "publication_delivery_uses_descriptor_relative_nofollow": True,
+        "user_visible_cli_output_redacts_secret_keys": True,
+    }
+    assert "Miro live authorization" in receipt["does_not_establish"]
+    assert "GitHub repository security settings" in receipt["does_not_establish"]

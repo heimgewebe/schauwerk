@@ -14,6 +14,14 @@ from .model import PublicationError
 from .store import resolve_publication_file
 
 
+def _safe_header_value(value: object, *, label: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > 512:
+        raise PublicationError(f"{label} header value is invalid")
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise PublicationError(f"{label} header value is invalid")
+    return value
+
+
 class PublicationHTTPServer(HTTPServer):
     def __init__(self, address: tuple[str, int], store_root: Path):
         self.store_root = store_root
@@ -48,7 +56,9 @@ class PublicationRequestHandler(BaseHTTPRequestHandler):
     ) -> None:
         self.send_response(status)
         self._security_headers()
-        self.send_header("Content-Type", content_type)
+        self.send_header(
+            "Content-Type", _safe_header_value(content_type, label="content-type")
+        )
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         if not head_only:
@@ -114,12 +124,23 @@ class PublicationRequestHandler(BaseHTTPRequestHandler):
                 code = HTTPStatus.CONFLICT
             self._send_json(code, {"error": message}, head_only=head_only)
             return
+        try:
+            safe_content_type = _safe_header_value(content_type, label="content-type")
+            safe_digest = _safe_header_value(status["object_digest"], label="etag")
+            safe_version = _safe_header_value(status["version"], label="publication-version")
+        except (KeyError, PublicationError):
+            self._send_json(
+                HTTPStatus.CONFLICT,
+                {"error": "publication response metadata is unsafe"},
+                head_only=head_only,
+            )
+            return
         self.send_response(HTTPStatus.OK)
         self._security_headers()
-        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Type", safe_content_type)
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("ETag", f'"{status["object_digest"]}"')
-        self.send_header("X-Schauwerk-Publication-Version", status["version"])
+        self.send_header("ETag", f'"{safe_digest}"')
+        self.send_header("X-Schauwerk-Publication-Version", safe_version)
         self.end_headers()
         if not head_only:
             self.wfile.write(payload)
