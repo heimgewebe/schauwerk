@@ -1,0 +1,81 @@
+{
+  "alerts": [
+    {
+      "disposition": "false_positive_after_main_evidence",
+      "guards": [
+        "lstat before read",
+        "symlinks rejected",
+        "non-regular files rejected",
+        "2 MiB size limit",
+        "UTF-8 JSON parsing with typed failure"
+      ],
+      "numbers": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "path": "src/schauwerk/publication/model.py",
+      "rule": "py/path-injection",
+      "threat_model": "The path is explicitly selected by the local CLI operator. It is not an HTTP/provider path and does not cross a privilege boundary beyond the invoking user's existing filesystem read authority."
+    },
+    {
+      "disposition": "false_positive_after_main_evidence",
+      "guards": [
+        "strict _SAFE_FILE fullmatch",
+        "exact manifest membership",
+        "trusted bundle dir_fd opened without symlink traversal",
+        "O_NOFOLLOW on the final component",
+        "fstat regular-file check",
+        "manifest byte-size check",
+        "bounded read",
+        "SHA-256 recheck before delivery"
+      ],
+      "numbers": [
+        17
+      ],
+      "path": "src/schauwerk/publication/store.py",
+      "rule": "py/path-injection",
+      "threat_model": "The HTTP-derived filename is accepted only when it matches the strict safe filename regex and is an exact key in the verified immutable manifest. The read is relative to an already-opened bundle directory descriptor and uses O_NOFOLLOW."
+    },
+    {
+      "disposition": "code_hardening_then_rescan",
+      "guards": [
+        "recursive sensitive-key redaction",
+        "credential-like material inside ordinary string leaves is redacted before serialization",
+        "Bearer values are redacted before serialization",
+        "stdout writes only the sanitized value"
+      ],
+      "numbers": [
+        6,
+        16
+      ],
+      "path": "src/schauwerk/runner.py",
+      "rule": "py/clear-text-logging-sensitive-data",
+      "threat_model": "User-visible CLI results may contain provider error strings under non-sensitive field names, so key-only redaction is insufficient defence in depth."
+    }
+  ],
+  "dismissal_policy": "Dismiss only path alerts 7-10 and 17 after this evidence is merged to main and a fresh CodeQL run still reports the same taint-only findings. Do not dismiss runner alerts 6 or 16 unless a fresh scan proves they are only scanner-model gaps after the added string sanitization.",
+  "does_not_establish": [
+    "future CodeQL results",
+    "absence of vulnerabilities outside the listed findings",
+    "permission to dismiss a finding before merged evidence and fresh scan"
+  ],
+  "main_codeql_conclusion": "success",
+  "main_codeql_run": 33918071760,
+  "observed_main": "7e92a3e2b331633b0115479e23f62dba6f95261c",
+  "open_high_alerts_observed": 7,
+  "parent_evidence": {
+    "acceptance_digest": "a8cbb2b696f0fe152018155ac0f555b95df7a1b8d5783a403e42deca369bcfb8",
+    "file_sha256": "36990ee66f27efe4204d65f5b6c6c8cc140102c03a4b018179b322a0c4f68d1d",
+    "path": "docs/operators/evidence/infrastructure-hardening-20260904/acceptance-receipt.json"
+  },
+  "schema_version": "schauwerk-codeql-residual-triage.v1",
+  "source_bindings": {
+    "src/schauwerk/publication/model.py": "9cdd8c26b982beec8ac417e8a82d95aeb02f0ddfac23a0c58613911b8dab0681",
+    "src/schauwerk/publication/store.py": "1ac48606de4eb29f831cf28189da5833c380508ab7d5d119ed1f269997717218",
+    "src/schauwerk/runner.py": "2d8970ce86cf4a0438818d7897445da8646a36e31d22a02117971cce35900405",
+    "tests/test_runner_output_security.py": "51a8e681b5c82d39970080d547533321fd1cb5d34491996b7a4a7477dcf44fa5"
+  },
+  "triage_digest": "934731fa020663db22f48fc65bfda4b6c4eed78f90886a0a11b9249a1856c144"
+}

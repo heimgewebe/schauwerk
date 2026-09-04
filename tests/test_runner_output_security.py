@@ -46,3 +46,36 @@ def test_text_output_redacts_secret_values(capsys) -> None:
     assert "refresh-token: <redacted>" in output
     assert "api_key: <redacted>" in output
     assert "top-secret" not in output
+
+
+def test_json_output_redacts_secret_like_strings_at_stdout_sink(capsys) -> None:
+    emit(
+        {
+            "message": "authorization=Bearer sink-secret-token",
+            "note": "password=sink-secret-password",
+            "plain": "visible",
+        },
+        as_json=True,
+    )
+
+    output = capsys.readouterr().out
+    value = json.loads(output)
+    assert value["plain"] == "visible"
+    assert "sink-secret" not in output
+    assert value["message"] == "authorization=<redacted>"
+    assert value["note"] == "password=<redacted>"
+
+
+def test_text_output_redacts_bearer_value_under_non_sensitive_key(capsys) -> None:
+    emit(
+        {
+            "detail": "request failed with Bearer sink-secret-bearer",
+            "status": "blocked",
+        },
+        as_json=False,
+    )
+
+    output = capsys.readouterr().out
+    assert "detail: request failed with Bearer <redacted>" in output
+    assert "status: blocked" in output
+    assert "sink-secret" not in output
