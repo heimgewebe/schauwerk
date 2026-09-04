@@ -1,5 +1,5 @@
 {
-  "acceptance_digest": "0310a353cae566b74d806c5f7018b5ffcfeb6fcac22e27c59fa5edaefcf3416e",
+  "acceptance_digest": "776e9aa1e9a9de75f989e0241b335b129255227ee083aa98eb4af2a52454d56f",
   "accepted_at": "2026-09-04",
   "base_head": "c6a8d10136f2129cc48a35f870fdc8723ad923e1",
   "checks": {
@@ -22,7 +22,7 @@
     "absence of future provider or dependency drift"
   ],
   "implementation_file_sha256": {
-    ".github/workflows/validate.yml": "ac7670ad487d867e64cee92d0a7d96b84d1462d4fd1bb5e1952f1f80440685a3",
+    ".github/workflows/validate.yml": "5193e565a5a039e02dbce93628262d465f6bdea82270add0ee3ec0325a0a967f",
     "src/schauwerk/operator/receipts.py": "c3ca43a99c63cec796db2d4f983d16fff1fc19074be139227b2a55d07275dea1",
     "src/schauwerk/publication/server.py": "58adaf19e6e51c8fb3a42e5344be5edadcf93994ff699bb5f30c59cc1397f6a9",
     "src/schauwerk/publication/store.py": "1ac48606de4eb29f831cf28189da5833c380508ab7d5d119ed1f269997717218",
@@ -32,8 +32,8 @@
     "tests/operator/test_regions.py": "c7ba7d2bf2686e29e14938415e18437c3e7311545e7bba271a77130d48958a34",
     "tests/publication/test_publication_boundary.py": "2216f70751d6dde2ada1bc65f97e3e78bee21ff65b28570db968462198bc4422",
     "tests/test_runner_output_security.py": "b390fd315a77518962479dce999cb55089eb1b619cdbf7e8a8dae0f4363e1588",
-    "tests/test_validate_workflow_security.py": "96254eb3a393f41ad9ae7cc364fb6b43a97dfb966b9b5c607efe90e5a0e0766c",
-    "tests/visual/test_standalone_editor.py": "7cd088ef69500c44fe107b72dd17c39ec5195b2ec6f33cc5d3f973a6fa1cadd7"
+    "tests/test_validate_workflow_security.py": "7a3aaabe6b8fdbf05b8787d3c634673bb76266b974986638f327afef1e9481f9",
+    "tests/visual/test_standalone_editor.py": "7a38f0b2db8148890262351caff908f1f8eebb91d2b8ef64f94fea93a453f6a6"
   },
   "parent_evidence": {
     "acceptance_digest": "88628daaff65b9b7956d03204ca106dd8e2b41990cc47eab8e9923825141ba75",

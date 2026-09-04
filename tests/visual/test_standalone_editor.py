@@ -650,12 +650,17 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
 </script>""",
         encoding="utf-8",
     )
-    chrome_env = {
-        **os.environ,
-        "HOME": str(tmp_path / "home"),
-        "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
-        "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
-    }
+    chrome_env = dict(os.environ)
+    local_profile_args: list[str] = []
+    if not os.environ.get("CI"):
+        chrome_env.update(
+            {
+                "HOME": str(tmp_path / "home"),
+                "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+                "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+            }
+        )
+        local_profile_args = [f"--user-data-dir={tmp_path / 'chrome-profile'}"]
     chrome_base = [
         chrome,
         "--headless=new",
@@ -667,7 +672,7 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
         preflight = subprocess.run(
             [
                 *chrome_base,
-                f"--user-data-dir={tmp_path / 'chrome-preflight-profile'}",
+                *local_profile_args,
                 "--dump-dom",
                 "about:blank",
             ],
@@ -689,7 +694,7 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
     completed = subprocess.run(
         [
             *chrome_base,
-            f"--user-data-dir={tmp_path / 'chrome-test-profile'}",
+            *local_profile_args,
             "--allow-file-access-from-files",
             "--virtual-time-budget=3000",
             "--dump-dom",
