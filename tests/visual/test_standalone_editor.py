@@ -668,28 +668,25 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
         "--disable-dev-shm-usage",
         "--no-sandbox",
     ]
-    try:
-        preflight = subprocess.run(
-            [
-                *chrome_base,
-                *local_profile_args,
-                "--dump-dom",
-                "about:blank",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=5,
-            env=chrome_env,
-        )
-    except subprocess.TimeoutExpired:
-        if os.environ.get("CI"):
-            pytest.fail("Chrome is installed but headless execution is unavailable in CI")
-        pytest.skip("Chrome is installed but headless execution is unavailable")
-    if preflight.returncode != 0:
-        if os.environ.get("CI"):
-            pytest.fail("Chrome is installed but headless execution is unavailable in CI")
-        pytest.skip("Chrome is installed but headless execution is unavailable")
+    if not os.environ.get("CI"):
+        try:
+            preflight = subprocess.run(
+                [
+                    *chrome_base,
+                    *local_profile_args,
+                    "--dump-dom",
+                    "about:blank",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                env=chrome_env,
+            )
+        except subprocess.TimeoutExpired:
+            pytest.skip("Chrome is installed but headless execution is unavailable")
+        if preflight.returncode != 0:
+            pytest.skip("Chrome is installed but headless execution is unavailable")
 
     completed = subprocess.run(
         [
