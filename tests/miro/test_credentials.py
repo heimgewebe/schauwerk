@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import os
 
@@ -122,3 +123,51 @@ def test_legacy_token_without_saved_time_loads_as_expired(tmp_path) -> None:
 
     assert tokens is not None
     assert tokens.expires_in == 0
+
+
+def test_summary_of_missing_state_is_observational(tmp_path) -> None:
+    path = tmp_path / "missing-state" / "oauth.json"
+    storage = FileTokenStorage(path)
+
+    result = storage.summary()
+
+    assert result["exists"] is False
+    assert not path.parent.exists()
+    assert not storage.lock_path.exists()
+
+
+def test_summary_does_not_create_or_rewrite_lock_state(tmp_path, monkeypatch) -> None:
+    import schauwerk.surfaces.miro.credentials as credentials
+
+    parent = tmp_path / "state"
+    parent.mkdir(mode=0o700)
+    os.chmod(parent, 0o700)
+    path = parent / "oauth.json"
+    path.write_text("{}\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    storage = FileTokenStorage(path)
+
+    def reject_chmod(*_args, **_kwargs):
+        raise AssertionError("read-only credential summary must not chmod")
+
+    monkeypatch.setattr(credentials.os, "chmod", reject_chmod)
+    result = storage.summary()
+
+    assert result["exists"] is True
+    assert not storage.lock_path.exists()
+
+
+def test_write_to_unavailable_state_directory_raises_typed_error(tmp_path, monkeypatch) -> None:
+    import schauwerk.surfaces.miro.credentials as credentials
+
+    parent = tmp_path / "state"
+    parent.mkdir(mode=0o700)
+    path = parent / "oauth.json"
+    storage = FileTokenStorage(path)
+
+    def read_only_chmod(*_args, **_kwargs):
+        raise OSError(errno.EROFS, "read-only filesystem")
+
+    monkeypatch.setattr(credentials.os, "chmod", read_only_chmod)
+    with pytest.raises(MiroCredentialError, match="state directory is unavailable"):
+        asyncio.run(storage.set_tokens(sample_token()))

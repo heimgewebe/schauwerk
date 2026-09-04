@@ -1,0 +1,44 @@
+{
+  "acceptance_digest": "0310a353cae566b74d806c5f7018b5ffcfeb6fcac22e27c59fa5edaefcf3416e",
+  "accepted_at": "2026-09-04",
+  "base_head": "c6a8d10136f2129cc48a35f870fdc8723ad923e1",
+  "checks": {
+    "action_refs_sha_pinned": true,
+    "credential_reads_are_observational": true,
+    "dynamic_http_headers_reject_controls": true,
+    "focused_security_regressions_passed": true,
+    "headless_browser_smoke_preflights_runnable_runtime": true,
+    "local_path_fields_reject_urls": true,
+    "miro_provider_hosts_are_parsed": true,
+    "productive_publication_attempted": false,
+    "provider_mutation_attempted": false,
+    "publication_delivery_uses_descriptor_relative_nofollow": true,
+    "user_visible_cli_output_redacts_secret_keys": true
+  },
+  "does_not_establish": [
+    "Miro live authorization",
+    "GitHub repository security settings",
+    "productive classroom operation",
+    "absence of future provider or dependency drift"
+  ],
+  "implementation_file_sha256": {
+    ".github/workflows/validate.yml": "ac7670ad487d867e64cee92d0a7d96b84d1462d4fd1bb5e1952f1f80440685a3",
+    "src/schauwerk/operator/receipts.py": "c3ca43a99c63cec796db2d4f983d16fff1fc19074be139227b2a55d07275dea1",
+    "src/schauwerk/publication/server.py": "58adaf19e6e51c8fb3a42e5344be5edadcf93994ff699bb5f30c59cc1397f6a9",
+    "src/schauwerk/publication/store.py": "1ac48606de4eb29f831cf28189da5833c380508ab7d5d119ed1f269997717218",
+    "src/schauwerk/runner.py": "8193f04c12c2d4d49a8c9b2f9d35bfc771d53551a721e011bfca3b0a8ae92084",
+    "src/schauwerk/surfaces/miro/credentials.py": "99e3d1e4febf8f3dc4b56b53e98db63c49b6c14c89c68ff520b6ed4c59ab21be",
+    "tests/miro/test_credentials.py": "673c8880bced9d0f6e2b8b9d10b8b2cbf0f36aa53fac369ebb101eb7d2e7dcdb",
+    "tests/operator/test_regions.py": "c7ba7d2bf2686e29e14938415e18437c3e7311545e7bba271a77130d48958a34",
+    "tests/publication/test_publication_boundary.py": "2216f70751d6dde2ada1bc65f97e3e78bee21ff65b28570db968462198bc4422",
+    "tests/test_runner_output_security.py": "b390fd315a77518962479dce999cb55089eb1b619cdbf7e8a8dae0f4363e1588",
+    "tests/test_validate_workflow_security.py": "96254eb3a393f41ad9ae7cc364fb6b43a97dfb966b9b5c607efe90e5a0e0766c",
+    "tests/visual/test_standalone_editor.py": "7cd088ef69500c44fe107b72dd17c39ec5195b2ec6f33cc5d3f973a6fa1cadd7"
+  },
+  "parent_evidence": {
+    "acceptance_digest": "88628daaff65b9b7956d03204ca106dd8e2b41990cc47eab8e9923825141ba75",
+    "path": "docs/operators/evidence/sw013-schaufenster-20260711/acceptance-receipt.json"
+  },
+  "schema_version": "schauwerk-infrastructure-hardening-acceptance.v1",
+  "scope": "classroom-readiness-infrastructure-hardening"
+}

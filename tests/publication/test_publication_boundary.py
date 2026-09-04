@@ -15,7 +15,7 @@ from schauwerk.publication.model import (
     compile_declaration,
     compile_preview,
 )
-from schauwerk.publication.server import create_publication_server
+from schauwerk.publication.server import _safe_header_value, create_publication_server
 from schauwerk.publication.store import (
     publication_status,
     release_publication,
@@ -1138,3 +1138,43 @@ def test_withdrawal_reason_control_characters_fail_before_link_mutation(
             withdrawn_at="2026-07-13T00:00:00Z",
         )
     assert (store / "links/grabowski-brief.json").read_bytes() == before
+
+
+def test_publication_response_headers_reject_control_characters() -> None:
+    assert _safe_header_value("text/html; charset=utf-8", label="content-type") == (
+        "text/html; charset=utf-8"
+    )
+    with pytest.raises(PublicationError, match="header value is invalid"):
+        _safe_header_value("text/html\r\nX-Injected: yes", label="content-type")
+    with pytest.raises(PublicationError, match="header value is invalid"):
+        _safe_header_value("1.0.0\nX-Injected: yes", label="publication-version")
+
+
+def test_delivery_rejects_symlink_swapped_after_verification(tmp_path: Path, monkeypatch) -> None:
+    import schauwerk.publication.store as store_module
+
+    declaration, preview = compiled_pair(expires_at=None)
+    store = tmp_path / "store"
+    release_publication(
+        declaration=declaration,
+        preview=preview,
+        source_dir=SOURCE,
+        store_root=store,
+    )
+    target = store / "objects/grabowski-operational-brief/1.0.0/bundle/index.html"
+    foreign = tmp_path / "foreign.html"
+    foreign.write_text("foreign", encoding="utf-8")
+    original_verify = store_module._verify_object_from_paths
+
+    def verify_then_swap(paths, publication_id: str, version: str):
+        manifest = original_verify(paths, publication_id, version)
+        target.parent.chmod(0o700)
+        target.unlink()
+        target.symlink_to(foreign)
+        return manifest
+
+    monkeypatch.setattr(store_module, "_verify_object_from_paths", verify_then_swap)
+    with pytest.raises(PublicationError, match="unsafe during delivery"):
+        store_module.resolve_publication_file(store, "grabowski-brief", None)
+    assert foreign.read_text(encoding="utf-8") == "foreign"
+    _make_store_removable(store)

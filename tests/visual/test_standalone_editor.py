@@ -650,12 +650,46 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
 </script>""",
         encoding="utf-8",
     )
+    chrome_env = {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+        "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+    }
+    chrome_base = [
+        chrome,
+        "--headless=new",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-sandbox",
+    ]
+    try:
+        preflight = subprocess.run(
+            [
+                *chrome_base,
+                f"--user-data-dir={tmp_path / 'chrome-preflight-profile'}",
+                "--dump-dom",
+                "about:blank",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            env=chrome_env,
+        )
+    except subprocess.TimeoutExpired:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome is installed but headless execution is unavailable in CI")
+        pytest.skip("Chrome is installed but headless execution is unavailable")
+    if preflight.returncode != 0:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome is installed but headless execution is unavailable in CI")
+        pytest.skip("Chrome is installed but headless execution is unavailable")
+
     completed = subprocess.run(
         [
-            chrome,
-            "--headless=new",
-            "--disable-gpu",
-            "--no-sandbox",
+            *chrome_base,
+            f"--user-data-dir={tmp_path / 'chrome-test-profile'}",
             "--allow-file-access-from-files",
             "--virtual-time-budget=3000",
             "--dump-dom",
@@ -665,6 +699,7 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
         capture_output=True,
         text=True,
         timeout=15,
+        env=chrome_env,
     )
     assert completed.returncode == 0, completed.stderr
     assert '<pre id="result">PASS</pre>' in completed.stdout

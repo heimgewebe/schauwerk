@@ -123,12 +123,51 @@ from .cli_parser import build_parser
 from .fundus.cli import handle_fundus_command
 from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
 
+_SENSITIVE_OUTPUT_KEYS = frozenset(
+    {
+        "access_token",
+        "api_key",
+        "authorization",
+        "client_secret",
+        "cookie",
+        "id_token",
+        "password",
+        "passwd",
+        "refresh_token",
+        "secret",
+        "set_cookie",
+        "token",
+    }
+)
+
+
+def _sensitive_output_key(value: object) -> bool:
+    normalized = str(value).strip().lower().replace("-", "_")
+    if normalized in _SENSITIVE_OUTPUT_KEYS:
+        return True
+    return normalized.endswith(("_password", "_secret", "_token", "_api_key"))
+
+
+def _sanitize_output(value: Any) -> Any:
+    """Remove credential values from every user-visible CLI result."""
+    if isinstance(value, dict):
+        return {
+            key: "<redacted>" if _sensitive_output_key(key) else _sanitize_output(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_sanitize_output(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_sanitize_output(item) for item in value)
+    return value
+
 
 def emit(value: Any, *, as_json: bool) -> None:
+    safe_value = _sanitize_output(value)
     if as_json:
-        print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+        print(json.dumps(safe_value, ensure_ascii=False, indent=2, sort_keys=True))
     else:
-        for key, item in value.items():
+        for key, item in safe_value.items():
             print(f"{key}: {item}")
 
 

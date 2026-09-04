@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from schauwerk.operator.core import (
     _ALLOWED_FIXTURE_ACTIONS,
@@ -855,18 +857,40 @@ def _candidate_manifest_digest(candidate: dict[str, Any]) -> str:
     )
 
 
+_MIRO_REFERENCE_TOKEN = re.compile(
+    r"(?i)(?<![a-z0-9.-])(?:https?://)?(?:[a-z0-9-]+\.)*miro\.com\.?"
+    r"(?::[0-9]{1,5})?(?=$|[/\s<>'\"\]\[{}(),;])"
+    r"(?:/[^\s<>'\"]*)?"
+)
+
+
+def _is_miro_host(value: str | None) -> bool:
+    if value is None:
+        return False
+    host = value.rstrip(".").lower()
+    return host == "miro.com" or host.endswith(".miro.com")
+
+
+def _text_contains_miro_provider_reference(value: str) -> bool:
+    for match in _MIRO_REFERENCE_TOKEN.finditer(value):
+        token = match.group(0)
+        candidate = token if "://" in token else f"https://{token}"
+        try:
+            host = urlsplit(candidate).hostname
+        except ValueError:
+            continue
+        if _is_miro_host(host):
+            return True
+    return False
+
+
 def _candidate_contains_provider_reference(value: object) -> bool:
     if isinstance(value, dict):
         return any(_candidate_contains_provider_reference(item) for item in value.values())
     if isinstance(value, list):
         return any(_candidate_contains_provider_reference(item) for item in value)
     if isinstance(value, str):
-        lowered = value.lower()
-        return (
-            "miro.com/app/board/" in lowered
-            or "https://miro.com" in lowered
-            or "http://miro.com" in lowered
-        )
+        return _text_contains_miro_provider_reference(value)
     return False
 
 
@@ -874,7 +898,11 @@ def _candidate_path(candidate_path: Path, value: Any, *, label: str) -> Path | N
     if not isinstance(value, str) or not value.strip():
         return None
     raw = value.strip()
-    if "miro.com" in raw or "https://" in raw or "http://" in raw:
+    try:
+        parsed = urlsplit(raw)
+    except ValueError as exc:
+        raise ValueError(f"{label} must be a valid local path") from exc
+    if parsed.scheme or parsed.netloc or _text_contains_miro_provider_reference(raw):
         raise ValueError(f"{label} must be a local path, not a provider URL")
     path = Path(raw)
     if not path.is_absolute():
@@ -937,8 +965,8 @@ def compile_region_sw009_live_apply_candidate_receipt(
             candidate.get("sw003_evidence_packet_path"),
             label="sw003_evidence_packet_path",
         )
-    except ValueError as exc:
-        blocked_reasons.append(str(exc).replace(" ", "_"))
+    except ValueError:
+        blocked_reasons.append("candidate_path_invalid")
         scaffold_path = None
         evidence_packet_path = None
 
