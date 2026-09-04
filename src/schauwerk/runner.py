@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from typing import Any
 
@@ -123,6 +124,37 @@ from .cli_parser import build_parser
 from .fundus.cli import handle_fundus_command
 from .surfaces.miro.errors import MiroError, find_nested_miro_error, redact_text
 
+_STRING_SECRET_PATTERNS = (
+    (
+        re.compile(
+            r"(?i)(\bauthorization\b\s*[:=]\s*)(?:(?:bearer|basic)\s+)?"
+            r"[^\s,}\]]+"
+        ),
+        r"\1<redacted>",
+    ),
+    (
+        re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+"),
+        "Bearer <redacted>",
+    ),
+    (
+        re.compile(
+            r"(?i)(\b(?:access[_-]?token|refresh[_-]?token|client[_-]?secret|"
+            r"api[_-]?key|password|passwd|cookie|id[_-]?token)"
+            r"\b\s*[:=]\s*)([^\s,}\]]+)"
+        ),
+        r"\1<redacted>",
+    ),
+)
+
+
+def _redact_output_string(value: str) -> str:
+    """Redact credential-like material embedded in an otherwise ordinary string."""
+    text = value
+    for pattern, replacement in _STRING_SECRET_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 _SENSITIVE_OUTPUT_KEYS = frozenset(
     {
         "access_token",
@@ -159,16 +191,18 @@ def _sanitize_output(value: Any) -> Any:
         return [_sanitize_output(item) for item in value]
     if isinstance(value, tuple):
         return tuple(_sanitize_output(item) for item in value)
+    if isinstance(value, str):
+        return _redact_output_string(value)
     return value
 
 
 def emit(value: Any, *, as_json: bool) -> None:
     safe_value = _sanitize_output(value)
     if as_json:
-        print(json.dumps(safe_value, ensure_ascii=False, indent=2, sort_keys=True))
+        rendered = json.dumps(safe_value, ensure_ascii=False, indent=2, sort_keys=True)
     else:
-        for key, item in safe_value.items():
-            print(f"{key}: {item}")
+        rendered = "\n".join(f"{key}: {item}" for key, item in safe_value.items())
+    sys.stdout.write(rendered + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:

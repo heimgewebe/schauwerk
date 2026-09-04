@@ -22,6 +22,7 @@ from schauwerk.publication.store import (
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
+CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -212,7 +213,7 @@ def test_immutable_fixture_modes_are_read_only_after_release(tmp_path: Path) -> 
         _make_store_removable(store)
 
 
-def test_infrastructure_hardening_acceptance_binds_current_security_revision() -> None:
+def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions() -> None:
     receipt = json.loads(
         (HARDENING_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -237,8 +238,36 @@ def test_infrastructure_hardening_acceptance_binds_current_security_revision() -
         "tests/visual/test_standalone_editor.py",
     }
     assert set(receipt["implementation_file_sha256"]) == expected_files
+
+    successor = json.loads(
+        (CODEQL_TRIAGE_EVIDENCE / "triage.json").read_text(encoding="utf-8")
+    )
+    assert successor["schema_version"] == "schauwerk-codeql-residual-triage.v1"
+    assert successor["parent_evidence"] == {
+        "acceptance_digest": receipt["acceptance_digest"],
+        "file_sha256": hashlib.sha256(
+            (HARDENING_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": "docs/operators/evidence/infrastructure-hardening-20260904/acceptance-receipt.json",
+    }
+    successor_body = dict(successor)
+    successor_digest = successor_body.pop("triage_digest")
+    assert hashlib.sha256(
+        json.dumps(
+            successor_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+    ).hexdigest() == successor_digest
+
+    superseded_files = {
+        "src/schauwerk/runner.py",
+        "tests/test_runner_output_security.py",
+    }
     for name, expected in receipt["implementation_file_sha256"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        if name in superseded_files:
+            assert successor["source_bindings"][name] == current
+        else:
+            assert current == expected
     assert receipt["checks"] == {
         "action_refs_sha_pinned": True,
         "credential_reads_are_observational": True,
