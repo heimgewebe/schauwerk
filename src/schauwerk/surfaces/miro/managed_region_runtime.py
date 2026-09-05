@@ -13,7 +13,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .board_registry import BoardAllowlist, validate_alias
 from .credentials import FileTokenStorage
-from .discovery import build_oauth_provider
+from .discovery import serialized_oauth_provider
 from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
@@ -107,9 +107,6 @@ async def _call_layout_tool(
 ) -> Any:
     name = validate_alias(alias)
     board_reference = BoardAllowlist(settings.board_allowlist_path).resolve(name)
-    oauth = build_oauth_provider(
-        settings, storage, _authorization_required, _authorization_required
-    )
     payload = {
         "miro_url": board_reference,
         "invocation_source": "schauwerk-sw009-live-executor",
@@ -117,20 +114,23 @@ async def _call_layout_tool(
         **arguments,
     }
     try:
-        with quiet_provider_stderr():
-            async with threadless_dns_resolution():
-                async with httpx.AsyncClient(
-                    auth=oauth,
-                    follow_redirects=True,
-                    timeout=httpx.Timeout(settings.network_timeout_seconds),
-                    headers={"User-Agent": "schauwerk/0.1"},
-                ) as http_client:
-                    async with streamable_http_client(
-                        settings.server_url, http_client=http_client
-                    ) as (read_stream, write_stream, _session_id):
-                        async with ClientSession(read_stream, write_stream) as session:
-                            await session.initialize()
-                            return await session.call_tool(tool_name, payload)
+        async with serialized_oauth_provider(
+            settings, storage, _authorization_required, _authorization_required
+        ) as oauth:
+            with quiet_provider_stderr():
+                async with threadless_dns_resolution():
+                    async with httpx.AsyncClient(
+                        auth=oauth,
+                        follow_redirects=True,
+                        timeout=httpx.Timeout(settings.network_timeout_seconds),
+                        headers={"User-Agent": "schauwerk/0.1"},
+                    ) as http_client:
+                        async with streamable_http_client(
+                            settings.server_url, http_client=http_client
+                        ) as (read_stream, write_stream, _session_id):
+                            async with ClientSession(read_stream, write_stream) as session:
+                                await session.initialize()
+                                return await session.call_tool(tool_name, payload)
     except MiroError:
         raise
     except BaseException as exc:
@@ -217,9 +217,7 @@ class MiroManagedRegionProvider:
     async def read_dsl(self, *, alias: str) -> str:
         return await run_layout_read_dsl(self.settings, self.storage, alias=alias)
 
-    async def replace_text(
-        self, *, alias: str, old_text: str, new_text: str
-    ) -> dict[str, Any]:
+    async def replace_text(self, *, alias: str, old_text: str, new_text: str) -> dict[str, Any]:
         return (
             await run_layout_replace_text(
                 self.settings,

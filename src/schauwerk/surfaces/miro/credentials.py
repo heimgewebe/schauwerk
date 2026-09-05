@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import fcntl
 import json
 import os
 import stat
 import tempfile
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -17,7 +18,7 @@ from mcp.client.auth import TokenStorage
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import ValidationError
 
-from .errors import MiroCredentialError
+from .errors import MiroConnectionError, MiroCredentialError
 
 
 class FileTokenStorage(TokenStorage):
@@ -30,6 +31,7 @@ class FileTokenStorage(TokenStorage):
     def __init__(self, path: Path) -> None:
         self.path = path
         self.lock_path = path.with_suffix(path.suffix + ".lock")
+        self.flow_lock_path = path.with_suffix(path.suffix + ".flow.lock")
 
     def __repr__(self) -> str:
         return f"FileTokenStorage(path={self.path!s})"
@@ -95,6 +97,52 @@ class FileTokenStorage(TokenStorage):
         finally:
             fcntl.flock(descriptor, fcntl.LOCK_UN)
             os.close(descriptor)
+
+    def _acquire_flow_lock(self, timeout_seconds: float) -> int:
+        if timeout_seconds <= 0:
+            raise ValueError("OAuth flow lock timeout must be positive")
+        self._ensure_parent()
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            descriptor = os.open(self.flow_lock_path, flags, 0o600)
+        except OSError as exc:
+            raise MiroCredentialError("OAuth flow lock path is unsafe") from exc
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise MiroCredentialError("OAuth flow lock path is not a regular file")
+            os.fchmod(descriptor, 0o600)
+            deadline = time.monotonic() + timeout_seconds
+            while True:
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return descriptor
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise MiroConnectionError(
+                            "Miro OAuth flow is busy; retry after the active "
+                            "Miro operation finishes"
+                        )
+                    time.sleep(0.05)
+        except Exception:
+            os.close(descriptor)
+            raise
+
+    @staticmethod
+    def _release_flow_lock(descriptor: int) -> None:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+
+    @asynccontextmanager
+    async def oauth_flow_lock(self, *, timeout_seconds: float = 75.0) -> AsyncIterator[None]:
+        """Serialize one complete live OAuth session across Schauwerk processes."""
+        descriptor = await asyncio.to_thread(self._acquire_flow_lock, timeout_seconds)
+        try:
+            yield
+        finally:
+            await asyncio.to_thread(self._release_flow_lock, descriptor)
 
     @staticmethod
     def _assert_owner_only(path: Path) -> os.stat_result:

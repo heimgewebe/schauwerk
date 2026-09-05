@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
+MIRO_OAUTH_EVIDENCE = ROOT / "docs/operators/evidence/miro-oauth-refresh-hardening-20260905"
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -239,9 +240,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(receipt["implementation_file_sha256"]) == expected_files
 
-    successor = json.loads(
-        (CODEQL_TRIAGE_EVIDENCE / "triage.json").read_text(encoding="utf-8")
-    )
+    successor = json.loads((CODEQL_TRIAGE_EVIDENCE / "triage.json").read_text(encoding="utf-8"))
     assert successor["schema_version"] == "schauwerk-codeql-residual-triage.v1"
     assert successor["parent_evidence"] == {
         "acceptance_digest": receipt["acceptance_digest"],
@@ -252,20 +251,54 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     successor_body = dict(successor)
     successor_digest = successor_body.pop("triage_digest")
-    assert hashlib.sha256(
-        json.dumps(
-            successor_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")
-    ).hexdigest() == successor_digest
+    assert (
+        hashlib.sha256(
+            json.dumps(
+                successor_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
+        == successor_digest
+    )
 
-    superseded_files = {
+    oauth_successor = json.loads(
+        (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
+    )
+    assert oauth_successor["schema_version"] == "schauwerk-miro-oauth-refresh-hardening.v1"
+    assert oauth_successor["parent_evidence"] == {
+        "file_sha256": hashlib.sha256(
+            (CODEQL_TRIAGE_EVIDENCE / "triage.json").read_bytes()
+        ).hexdigest(),
+        "path": "docs/operators/evidence/codeql-residual-triage-20260904/triage.json",
+        "schema_version": successor["schema_version"],
+        "triage_digest": successor["triage_digest"],
+    }
+    oauth_body = dict(oauth_successor)
+    oauth_digest = oauth_body.pop("evidence_digest")
+    assert (
+        hashlib.sha256(
+            json.dumps(
+                oauth_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest()
+        == oauth_digest
+    )
+    for name, expected in oauth_successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+
+    codeql_superseded_files = {
         "src/schauwerk/runner.py",
         "tests/test_runner_output_security.py",
     }
+    oauth_superseded_files = {
+        "src/schauwerk/surfaces/miro/credentials.py",
+        "tests/miro/test_credentials.py",
+    }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in superseded_files:
+        if name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
+        elif name in oauth_superseded_files:
+            assert oauth_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {

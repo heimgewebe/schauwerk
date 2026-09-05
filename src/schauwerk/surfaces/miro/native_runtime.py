@@ -19,7 +19,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .board_registry import BoardAllowlist, validate_alias
 from .credentials import FileTokenStorage
-from .discovery import build_oauth_provider, list_all_tools
+from .discovery import list_all_tools, serialized_oauth_provider
 from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
@@ -187,65 +187,65 @@ async def run_native_bundle(
         with native_receipt_lock(settings, destination):
             bundle = load_native_bundle(input_path)
             resume_receipt = load_native_resume_receipt(resume_path) if resume_path else None
-            oauth = build_oauth_provider(
-                settings, storage, _authorization_required, _authorization_required
-            )
 
             def checkpoint(receipt: dict[str, Any]) -> None:
                 write_snapshot_json(destination, receipt)
 
             try:
-                with quiet_provider_stderr():
-                    async with threadless_dns_resolution():
-                        async with (
-                            httpx.AsyncClient(
-                                auth=oauth,
-                                follow_redirects=True,
-                                timeout=httpx.Timeout(settings.network_timeout_seconds),
-                                headers={"User-Agent": "schauwerk/0.1"},
-                            ) as http_client,
-                            httpx.AsyncClient(
-                                follow_redirects=False,
-                                timeout=httpx.Timeout(settings.network_timeout_seconds),
-                                headers={"User-Agent": "schauwerk/0.1"},
-                                trust_env=False,
-                            ) as upload_client,
-                        ):
+                async with serialized_oauth_provider(
+                    settings, storage, _authorization_required, _authorization_required
+                ) as oauth:
+                    with quiet_provider_stderr():
+                        async with threadless_dns_resolution():
+                            async with (
+                                httpx.AsyncClient(
+                                    auth=oauth,
+                                    follow_redirects=True,
+                                    timeout=httpx.Timeout(settings.network_timeout_seconds),
+                                    headers={"User-Agent": "schauwerk/0.1"},
+                                ) as http_client,
+                                httpx.AsyncClient(
+                                    follow_redirects=False,
+                                    timeout=httpx.Timeout(settings.network_timeout_seconds),
+                                    headers={"User-Agent": "schauwerk/0.1"},
+                                    trust_env=False,
+                                ) as upload_client,
+                            ):
 
-                            async def upload_html(upload_url: str, payload: bytes) -> None:
-                                try:
-                                    response = await upload_client.put(
-                                        _validated_upload_url(upload_url),
-                                        content=payload,
-                                        headers={"Content-Type": "text/html"},
-                                    )
-                                except httpx.HTTPError as exc:
-                                    raise MiroConnectionError(
-                                        "Miro prototype HTML upload failed"
-                                    ) from exc
-                                if response.status_code < 200 or response.status_code >= 300:
-                                    raise MiroConnectionError(
-                                        "Miro prototype HTML upload failed with HTTP "
-                                        f"{response.status_code}"
-                                    )
+                                async def upload_html(upload_url: str, payload: bytes) -> None:
+                                    try:
+                                        response = await upload_client.put(
+                                            _validated_upload_url(upload_url),
+                                            content=payload,
+                                            headers={"Content-Type": "text/html"},
+                                        )
+                                    except httpx.HTTPError as exc:
+                                        raise MiroConnectionError(
+                                            "Miro prototype HTML upload failed"
+                                        ) from exc
+                                    if response.status_code < 200 or response.status_code >= 300:
+                                        raise MiroConnectionError(
+                                            "Miro prototype HTML upload failed with HTTP "
+                                            f"{response.status_code}"
+                                        )
 
-                            async with streamable_http_client(
-                                settings.server_url, http_client=http_client
-                            ) as (read_stream, write_stream, _session_id):
-                                async with ClientSession(read_stream, write_stream) as session:
-                                    await session.initialize()
-                                    tools = await list_all_tools(session)
-                                    return await execute_native_bundle(
-                                        call_tool=session.call_tool,
-                                        tool_catalogue=_tool_document(tools),
-                                        board_alias=name,
-                                        board_url=board_url,
-                                        bundle=bundle,
-                                        checkpoint=checkpoint,
-                                        resume_receipt=resume_receipt,
-                                        bundle_root=input_path.expanduser().absolute().parent,
-                                        upload_html=upload_html,
-                                    )
+                                async with streamable_http_client(
+                                    settings.server_url, http_client=http_client
+                                ) as (read_stream, write_stream, _session_id):
+                                    async with ClientSession(read_stream, write_stream) as session:
+                                        await session.initialize()
+                                        tools = await list_all_tools(session)
+                                        return await execute_native_bundle(
+                                            call_tool=session.call_tool,
+                                            tool_catalogue=_tool_document(tools),
+                                            board_alias=name,
+                                            board_url=board_url,
+                                            bundle=bundle,
+                                            checkpoint=checkpoint,
+                                            resume_receipt=resume_receipt,
+                                            bundle_root=input_path.expanduser().absolute().parent,
+                                            upload_html=upload_html,
+                                        )
             except MiroError:
                 raise
             except BaseException as exc:
