@@ -272,15 +272,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "schema_version": successor["schema_version"],
         "triage_digest": successor["triage_digest"],
     }
-    oauth_body = dict(oauth_successor)
-    oauth_digest = oauth_body.pop("evidence_digest")
-    assert (
-        hashlib.sha256(
-            json.dumps(
-                oauth_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")
-        ).hexdigest()
-        == oauth_digest
+    assert oauth_successor["evidence_digest"] == digest_mapping(
+        oauth_successor, "evidence_digest"
     )
     for name, expected in oauth_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
