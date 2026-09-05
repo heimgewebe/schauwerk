@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
@@ -25,12 +27,30 @@ from .runtime import threadless_dns_resolution
 
 
 class PersistentOAuthClientProvider(OAuthClientProvider):
-    """OAuth provider that restores token expiry after loading stored tokens."""
+    """OAuth provider with persistent expiry and RFC-compatible refresh carry-forward."""
 
     async def _initialize(self) -> None:  # pragma: no cover - exercised via unit tests
         await super()._initialize()
         if self.context.current_tokens is not None:
             self.context.update_token_expiry(self.context.current_tokens)
+
+    async def _handle_refresh_response(self, response: httpx.Response) -> bool:
+        prior = self.context.current_tokens
+        refreshed = await super()._handle_refresh_response(response)
+        current = self.context.current_tokens
+        if not refreshed or current is None or prior is None:
+            return refreshed
+
+        updates: dict[str, str] = {}
+        if not current.refresh_token and prior.refresh_token:
+            updates["refresh_token"] = prior.refresh_token
+        if current.scope is None and prior.scope is not None:
+            updates["scope"] = prior.scope
+        if updates:
+            current = current.model_copy(update=updates)
+            self.context.current_tokens = current
+            await self.context.storage.set_tokens(current)
+        return refreshed
 
 
 def build_oauth_provider(
@@ -54,6 +74,25 @@ def build_oauth_provider(
         callback_handler=callback_handler,
         timeout=settings.network_timeout_seconds,
     )
+
+
+@asynccontextmanager
+async def serialized_oauth_provider(
+    settings: MiroSettings,
+    storage: FileTokenStorage,
+    redirect_handler: RedirectHandler,
+    callback_handler: CallbackHandler,
+    *,
+    lock_timeout_seconds: float | None = None,
+) -> AsyncIterator[OAuthClientProvider]:
+    """Hold one process-shared OAuth transaction lock for a complete live MCP session."""
+    timeout = (
+        lock_timeout_seconds
+        if lock_timeout_seconds is not None
+        else max(15.0, settings.network_timeout_seconds + 15.0)
+    )
+    async with storage.oauth_flow_lock(timeout_seconds=timeout):
+        yield build_oauth_provider(settings, storage, redirect_handler, callback_handler)
 
 
 def normalize_tool(tool: Any) -> ToolInfo:
@@ -101,23 +140,23 @@ async def discover_tools(
     redirect_handler: RedirectHandler,
     callback_handler: CallbackHandler,
 ) -> ToolCatalogue:
-    oauth = build_oauth_provider(settings, storage, redirect_handler, callback_handler)
     try:
-        async with threadless_dns_resolution():
-            async with httpx.AsyncClient(
-                auth=oauth,
-                follow_redirects=True,
-                timeout=httpx.Timeout(settings.network_timeout_seconds),
-                headers={"User-Agent": "schauwerk/0.1"},
-            ) as http_client:
-                async with streamable_http_client(settings.server_url, http_client=http_client) as (
-                    read_stream,
-                    write_stream,
-                    _session_id,
-                ):
-                    async with ClientSession(read_stream, write_stream) as session:
-                        initialized = await session.initialize()
-                        tools = await list_all_tools(session)
+        async with serialized_oauth_provider(
+            settings, storage, redirect_handler, callback_handler
+        ) as oauth:
+            async with threadless_dns_resolution():
+                async with httpx.AsyncClient(
+                    auth=oauth,
+                    follow_redirects=True,
+                    timeout=httpx.Timeout(settings.network_timeout_seconds),
+                    headers={"User-Agent": "schauwerk/0.1"},
+                ) as http_client:
+                    async with streamable_http_client(
+                        settings.server_url, http_client=http_client
+                    ) as (read_stream, write_stream, _session_id):
+                        async with ClientSession(read_stream, write_stream) as session:
+                            initialized = await session.initialize()
+                            tools = await list_all_tools(session)
     except MiroError:
         raise
     except BaseException as exc:

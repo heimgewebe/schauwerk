@@ -10,7 +10,7 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import AnyUrl
 
 from schauwerk.surfaces.miro.credentials import FileTokenStorage, write_json_owner_only
-from schauwerk.surfaces.miro.errors import MiroCredentialError
+from schauwerk.surfaces.miro.errors import MiroConnectionError, MiroCredentialError
 
 
 def sample_token() -> OAuthToken:
@@ -171,3 +171,40 @@ def test_write_to_unavailable_state_directory_raises_typed_error(tmp_path, monke
     monkeypatch.setattr(credentials.os, "chmod", read_only_chmod)
     with pytest.raises(MiroCredentialError, match="state directory is unavailable"):
         asyncio.run(storage.set_tokens(sample_token()))
+
+
+def test_oauth_flow_lock_serializes_storage_instances(tmp_path) -> None:
+    async def scenario() -> None:
+        path = tmp_path / "state" / "oauth.json"
+        first = FileTokenStorage(path)
+        second = FileTokenStorage(path)
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        async def holder() -> None:
+            async with first.oauth_flow_lock(timeout_seconds=0.5):
+                entered.set()
+                await release.wait()
+
+        task = asyncio.create_task(holder())
+        await entered.wait()
+        with pytest.raises(MiroConnectionError, match="OAuth flow is busy"):
+            async with second.oauth_flow_lock(timeout_seconds=0.05):
+                raise AssertionError("contending OAuth flow must not enter")
+        release.set()
+        await task
+        async with second.oauth_flow_lock(timeout_seconds=0.5):
+            pass
+
+        assert first.flow_lock_path.is_file()
+        assert first.flow_lock_path.stat().st_mode & 0o077 == 0
+
+    asyncio.run(scenario())
+
+
+def test_observational_summary_does_not_create_oauth_flow_lock(tmp_path) -> None:
+    path = tmp_path / "missing-state" / "oauth.json"
+    storage = FileTokenStorage(path)
+
+    assert storage.summary()["exists"] is False
+    assert not storage.flow_lock_path.exists()

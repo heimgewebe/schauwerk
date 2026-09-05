@@ -12,7 +12,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .board_registry import BoardAllowlist, validate_alias
 from .credentials import FileTokenStorage
-from .discovery import build_oauth_provider
+from .discovery import serialized_oauth_provider
 from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
@@ -84,32 +84,32 @@ async def run_layout_create(
     """Apply rendered DSL to one allowlisted board and return a redacted receipt."""
     name = validate_alias(alias)
     board_reference = BoardAllowlist(settings.board_allowlist_path).resolve(name)
-    oauth = build_oauth_provider(
-        settings, storage, _authorization_required, _authorization_required
-    )
     try:
-        with quiet_provider_stderr():
-            async with threadless_dns_resolution():
-                async with httpx.AsyncClient(
-                    auth=oauth,
-                    follow_redirects=True,
-                    timeout=httpx.Timeout(settings.network_timeout_seconds),
-                    headers={"User-Agent": "schauwerk/0.1"},
-                ) as http_client:
-                    async with streamable_http_client(
-                        settings.server_url, http_client=http_client
-                    ) as (read_stream, write_stream, _session_id):
-                        async with ClientSession(read_stream, write_stream) as session:
-                            await session.initialize()
-                            result = await session.call_tool(
-                                "layout_" + "create",
-                                {
-                                    "miro_" + "url": board_reference,
-                                    "dsl": dsl,
-                                    "invocation_source": invocation_source,
-                                    "is_repository": True,
-                                },
-                            )
+        async with serialized_oauth_provider(
+            settings, storage, _authorization_required, _authorization_required
+        ) as oauth:
+            with quiet_provider_stderr():
+                async with threadless_dns_resolution():
+                    async with httpx.AsyncClient(
+                        auth=oauth,
+                        follow_redirects=True,
+                        timeout=httpx.Timeout(settings.network_timeout_seconds),
+                        headers={"User-Agent": "schauwerk/0.1"},
+                    ) as http_client:
+                        async with streamable_http_client(
+                            settings.server_url, http_client=http_client
+                        ) as (read_stream, write_stream, _session_id):
+                            async with ClientSession(read_stream, write_stream) as session:
+                                await session.initialize()
+                                result = await session.call_tool(
+                                    "layout_" + "create",
+                                    {
+                                        "miro_" + "url": board_reference,
+                                        "dsl": dsl,
+                                        "invocation_source": invocation_source,
+                                        "is_repository": True,
+                                    },
+                                )
     except MiroError:
         raise
     except BaseException as exc:

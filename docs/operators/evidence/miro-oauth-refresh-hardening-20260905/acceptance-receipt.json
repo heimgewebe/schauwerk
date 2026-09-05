@@ -1,0 +1,74 @@
+{
+  "base_head": "cfd33bf9a46a77e51fcce0745139c54fa1f1b877",
+  "cause_assessment": {
+    "exact_historical_cause_proven": false,
+    "reason": "Miro refresh tokens rotate and old pairs become invalid; per-file locks did not serialize complete live OAuth sessions across Schauwerk processes.",
+    "refresh_response_omission_risk": "known_sdk_failure_class",
+    "rotating_refresh_token_concurrency_risk": "plausible_and_architecturally_real"
+  },
+  "checks": {
+    "all_miro_tests_passed": true,
+    "complete_live_oauth_sessions_are_process_serialized": true,
+    "direct_live_session_sites_serialized": 9,
+    "focused_credentials_and_discovery_tests_passed": 23,
+    "full_repository_tests_passed": 1111,
+    "local_status_remains_observational": true,
+    "oauth_flow_lock_is_owner_only_and_nofollow": true,
+    "productive_miro_mutation_attempted": false,
+    "productive_oauth_refresh_forced": false,
+    "refresh_token_is_carried_forward_when_refresh_response_omits_it": true,
+    "scope_is_carried_forward_when_refresh_response_omits_it": true
+  },
+  "does_not_establish": [
+    "the exact historical cause of the 2026-09-04 refresh failure",
+    "successful current Miro reauthorization",
+    "a successful post-merge production refresh rotation",
+    "multi-hour soak stability after deployment",
+    "provider behavior beyond the observed Miro OAuth contract"
+  ],
+  "evidence_digest": "20a7341f6b77ddf77eef84707d4a4b6d269d69f9c2c834027bb387551bcf7589",
+  "historical_observation": {
+    "access_token_expires_in_seconds": 3599,
+    "first_live_refresh_failure_at": "2026-09-04T19:39:50Z",
+    "installed_mcp_version": "1.28.1",
+    "keepalive_interval_minutes": 45,
+    "keepalive_randomized_delay_minutes": 3,
+    "live_success_after_refresh_at": "2026-09-04T18:52:45Z",
+    "oauth_state_has_refresh_token": true,
+    "refresh_failure": "HTTP 401",
+    "successful_refresh_observed_at": "2026-09-04T18:07:06Z"
+  },
+  "observed_at": "2026-09-05T03:30:00Z",
+  "parent_evidence": {
+    "file_sha256": "4bfd3581feb7303bb184b0521fb9f63d8c5db585bb7b49a3517831c2b5e73108",
+    "path": "docs/operators/evidence/codeql-residual-triage-20260904/triage.json",
+    "schema_version": "schauwerk-codeql-residual-triage.v1",
+    "triage_digest": "934731fa020663db22f48fc65bfda4b6c4eed78f90886a0a11b9249a1856c144"
+  },
+  "provider_contract_observation": {
+    "access_tokens_short_lived": true,
+    "old_token_pair_invalid_after_refresh": true,
+    "refresh_tokens_rotate_on_refresh": true,
+    "source": "Miro official OAuth documentation observed 2026-09-05"
+  },
+  "schema_version": "schauwerk-miro-oauth-refresh-hardening.v1",
+  "scope": "durable-miro-mcp-oauth-refresh",
+  "source_bindings": {
+    "src/schauwerk/surfaces/miro/credentials.py": "92e80957c4cb5c65bb4999bb13ddfed90a0b6001160f5c1f595f9cc3b3a9dced",
+    "src/schauwerk/surfaces/miro/discovery.py": "01572300e75617c652c24fd1bcc5dd860273fa65e7c4fbdf813c48b04c89d66f",
+    "src/schauwerk/surfaces/miro/layout_runtime.py": "356f1fbeb3d93dc00740b99827a5ba6a1554e9880f0eedc0f8ccec7a60e9afcd",
+    "src/schauwerk/surfaces/miro/live_test_runtime.py": "a02f38c8c8321941ea0ce9283f97cd632a8aeaa50bd76893f2a428997fc5fcf0",
+    "src/schauwerk/surfaces/miro/managed_image_service.py": "61a143987a066c217d52daed2f37a5f20416de3c79c937e553a69b9b455c3907",
+    "src/schauwerk/surfaces/miro/managed_region_runtime.py": "cf3cab89eb8514d2114d0aeacb040c048fa03b881d4aaa3f9b0b838453874fb0",
+    "src/schauwerk/surfaces/miro/native_runtime.py": "832eeb7953715e260e4313a942b2c4248b7461d6a0ee872c4c25e311943aa73e",
+    "src/schauwerk/surfaces/miro/readonly.py": "8f06a91f39adf7cc12d637f9839a7833f165829385e6e8e55f9f0ffcaf838be3",
+    "src/schauwerk/surfaces/miro/snapshot_runtime.py": "3da72ce35b8f67ee2cd49cdca21cc1a49d0dd3e7fd68dcaa25a690549d1d8ab7",
+    "tests/miro/test_credentials.py": "b2d6ea546f9eba30ccfda0e079a1d0c8cb73c5026520142fae31a231794ffc03",
+    "tests/miro/test_discovery.py": "c70c352a7c6dd19bf0b0bd03377ec7a66ce7f53d2352df1be35522821d4e6c0a"
+  },
+  "test_receipts": {
+    "all_miro_tests": "29f7e8c35e2450619b64943e0a8c9ccb71977b72e88300555b1c71e9e24abe47",
+    "focused_oauth_tests": "0e8c8399f788d4c949409af478fc9276a433f7f4ea1c3f4084101f183dd74795",
+    "full_repository_validation": "221251ecd431c055e9c8327f61baa94593c25574d33ae7bcff3c2779d2d48535"
+  }
+}

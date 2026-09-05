@@ -19,7 +19,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .board_registry import BoardAllowlist, validate_alias
 from .credentials import FileTokenStorage
-from .discovery import build_oauth_provider, list_all_tools
+from .discovery import list_all_tools, serialized_oauth_provider
 from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
@@ -280,37 +280,41 @@ async def _live_mcp(
     settings: MiroSettings,
     storage: FileTokenStorage,
 ) -> AsyncIterator[tuple[Any, set[str], httpx.AsyncClient]]:
-    oauth = build_oauth_provider(
-        settings,
-        storage,
-        _authorization_required,
-        _authorization_required,
-    )
     try:
-        with quiet_provider_stderr():
-            async with threadless_dns_resolution():
-                async with (
-                    httpx.AsyncClient(
-                        auth=oauth,
-                        follow_redirects=True,
-                        timeout=httpx.Timeout(settings.network_timeout_seconds),
-                        headers={"User-Agent": "schauwerk/0.1"},
-                    ) as http_client,
-                    httpx.AsyncClient(
-                        follow_redirects=False,
-                        timeout=httpx.Timeout(settings.network_timeout_seconds),
-                        headers={"User-Agent": "schauwerk/0.1"},
-                        trust_env=False,
-                    ) as upload_client,
-                ):
-                    async with streamable_http_client(
-                        settings.server_url,
-                        http_client=http_client,
-                    ) as (read_stream, write_stream, _session_id):
-                        async with ClientSession(read_stream, write_stream) as session:
-                            await session.initialize()
-                            tools = await list_all_tools(session)
-                            yield session.call_tool, {tool.name for tool in tools}, upload_client
+        async with serialized_oauth_provider(
+            settings,
+            storage,
+            _authorization_required,
+            _authorization_required,
+        ) as oauth:
+            with quiet_provider_stderr():
+                async with threadless_dns_resolution():
+                    async with (
+                        httpx.AsyncClient(
+                            auth=oauth,
+                            follow_redirects=True,
+                            timeout=httpx.Timeout(settings.network_timeout_seconds),
+                            headers={"User-Agent": "schauwerk/0.1"},
+                        ) as http_client,
+                        httpx.AsyncClient(
+                            follow_redirects=False,
+                            timeout=httpx.Timeout(settings.network_timeout_seconds),
+                            headers={"User-Agent": "schauwerk/0.1"},
+                            trust_env=False,
+                        ) as upload_client,
+                    ):
+                        async with streamable_http_client(
+                            settings.server_url,
+                            http_client=http_client,
+                        ) as (read_stream, write_stream, _session_id):
+                            async with ClientSession(read_stream, write_stream) as session:
+                                await session.initialize()
+                                tools = await list_all_tools(session)
+                                yield (
+                                    session.call_tool,
+                                    {tool.name for tool in tools},
+                                    upload_client,
+                                )
     except MiroError:
         raise
     except BaseException as exc:

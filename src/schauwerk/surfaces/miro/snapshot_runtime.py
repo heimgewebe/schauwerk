@@ -13,7 +13,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from .board_registry import BoardAllowlist, validate_alias
 from .credentials import FileTokenStorage
-from .discovery import build_oauth_provider
+from .discovery import serialized_oauth_provider
 from .errors import (
     MiroAuthorizationRequired,
     MiroConnectionError,
@@ -37,7 +37,6 @@ def prepare_snapshot_destination(path: Path) -> Path:
     if destination.is_symlink() or any(parent.is_symlink() for parent in destination.parents):
         raise MiroCredentialError("Snapshot output path is unsafe")
     return destination
-
 
 
 def write_snapshot_json(path: Path, value: dict) -> None:
@@ -67,6 +66,7 @@ def write_snapshot_json(path: Path, value: dict) -> None:
         except FileNotFoundError:
             pass
         raise
+
 
 def verify_snapshot_pair(
     first: SnapshotRead, second: SnapshotRead, *, alias: str
@@ -130,33 +130,35 @@ async def run_verified_snapshot(
     destination = prepare_snapshot_destination(
         output_path or settings.snapshots_root / f"{name}.json"
     )
-    oauth = build_oauth_provider(
-        settings, storage, _authorization_required, _authorization_required
-    )
     try:
-        async with threadless_dns_resolution():
-            async with httpx.AsyncClient(
-                auth=oauth,
-                follow_redirects=True,
-                timeout=httpx.Timeout(settings.network_timeout_seconds),
-                headers={"User-Agent": "schauwerk/0.1"},
-            ) as http_client:
-                async with streamable_http_client(settings.server_url, http_client=http_client) as (
-                    read_stream,
-                    write_stream,
-                    _session_id,
-                ):
-                    async with ClientSession(read_stream, write_stream) as session:
-                        await session.initialize()
-                        arguments = {
-                            "miro_url": miro_url,
-                            "item_limit": item_limit,
-                            "comment_limit": comment_limit,
-                            "max_pages": max_pages,
-                            "include_comments": include_comments,
-                        }
-                        first = await read_board_snapshot(session.call_tool, **arguments)
-                        second = await read_board_snapshot(session.call_tool, **arguments)
+        async with serialized_oauth_provider(
+            settings, storage, _authorization_required, _authorization_required
+        ) as oauth:
+            async with threadless_dns_resolution():
+                async with httpx.AsyncClient(
+                    auth=oauth,
+                    follow_redirects=True,
+                    timeout=httpx.Timeout(settings.network_timeout_seconds),
+                    headers={"User-Agent": "schauwerk/0.1"},
+                ) as http_client:
+                    async with streamable_http_client(
+                        settings.server_url, http_client=http_client
+                    ) as (
+                        read_stream,
+                        write_stream,
+                        _session_id,
+                    ):
+                        async with ClientSession(read_stream, write_stream) as session:
+                            await session.initialize()
+                            arguments = {
+                                "miro_url": miro_url,
+                                "item_limit": item_limit,
+                                "comment_limit": comment_limit,
+                                "max_pages": max_pages,
+                                "include_comments": include_comments,
+                            }
+                            first = await read_board_snapshot(session.call_tool, **arguments)
+                            second = await read_board_snapshot(session.call_tool, **arguments)
     except MiroError:
         raise
     except BaseException as exc:
