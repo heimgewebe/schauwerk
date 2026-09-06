@@ -25,7 +25,7 @@ dev = ["pytest>=8.3", "ruff>=0.15", "setuptools>=69", "vtracer==0.6.15", "wheel"
 trace = ["vtracer==0.6.15"]
 
 [project.scripts]
-schauwerk = "schauwerk.runner:main"
+schauwerk = "schauwerk.classroom_runner:main"
 schauwerk-miro-companion-serve = "schauwerk.surfaces.miro.companion_server:main"
 schauwerk-registry-validate = "schauwerk.registry_validation:main"
 
