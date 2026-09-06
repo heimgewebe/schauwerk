@@ -1,0 +1,44 @@
+learn:
+  topic: "Vibe-Coding mit Kids"
+  audience: "Klasse"
+  author_role: "Projektgruppe"
+  guiding_question: "Wie machen wir aus einer Idee einen testbaren KI-Code-Versuch?"
+  goals:
+    - "eine kleine Programmidee klar beschreiben"
+    - "einen nachvollziehbaren Prompt formulieren"
+    - "KI-Code selbst testen und Fehler erkennen"
+    - "eine Verbesserung begruenden"
+  key_terms:
+    - "Prompt"
+    - "Code"
+    - "Test"
+    - "Fehler"
+    - "Iteration"
+  materials:
+    - "Miro-Klassenraum"
+    - "Browser oder iPad"
+    - "Coding-Umgebung mit KI"
+  steps:
+    - title: "Idee"
+      minutes: 5
+      activity: "Legt fest, was euer kleines Programm tun soll."
+      output: "eine klare Idee"
+    - title: "Erster Prompt"
+      minutes: 10
+      activity: "Formuliert den Auftrag an die KI und erzeugt einen ersten Versuch."
+      output: "Prompt und KI-Ergebnis"
+    - title: "Test"
+      minutes: 10
+      activity: "Probiert das Ergebnis aus und beschreibt konkret, was funktioniert und was nicht."
+      output: "beobachteter Fehler oder bestandener Test"
+    - title: "Verbesserung"
+      minutes: 10
+      activity: "Aendert Prompt oder Code gezielt und testet erneut."
+      output: "zweiter Versuch mit Begruendung"
+    - title: "Reflexion"
+      minutes: 10
+      activity: "Haltet fest, was die KI geleistet hat und was ihr selbst beurteilen musstet."
+      output: "eine Erkenntnis der Gruppe"
+  collaboration: "Arbeitet in Kleingruppen. Entscheidungen und Tests werden im Gruppenbereich sichtbar festgehalten."
+  check: "Was musstet ihr selbst beurteilen, obwohl die KI Code erzeugt hat?"
+  privacy_note: "Keine Namen, Kontaktdaten oder persoenlichen Informationen auf dem gemeinsamen Board."
