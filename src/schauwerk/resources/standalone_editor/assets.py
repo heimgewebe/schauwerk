@@ -271,7 +271,7 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   .button { color: #e8edf7; background: #202c41; border-color: #42506a; }
   .button:hover { background: #29364d; }
   .button.primary { background: #5674dc; border-color: #5674dc; }
-  body.editor-focus .font-controls { background: rgba(24, 34, 52, 0.94); }
+  body.editor-focus .workspace-bar > .font-controls { background: rgba(24, 34, 52, 0.94); }
   .boundary-note { color: #b5bed0; background: #202c41; }
   .error { color: #ffb4ad; background: #4f2525; }
   .editor-wrap { background: #182234; }
