@@ -11,6 +11,12 @@ endif
 
 export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
+ifneq ($(CI),)
+ifneq ($(RUNNER_TEMP),)
+export CHROME_USER_DATA_DIR := $(RUNNER_TEMP)/schauwerk-chrome-profile
+endif
+endif
+
 python-version-check:
 	@if [ -z "$(PYTHON)" ]; then \
 		echo "Schauwerk requires Python >=3.11,<3.14. No supported interpreter was found on PATH; create .venv with Python 3.11-3.13 or set PYTHON=/path/to/python."; \
