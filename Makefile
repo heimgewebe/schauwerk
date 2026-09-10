@@ -11,6 +11,12 @@ endif
 
 export PYTHONPATH := $(CURDIR)/src$(if $(PYTHONPATH),:$(PYTHONPATH),)
 
+ifneq ($(CI),)
+ifneq ($(RUNNER_TEMP),)
+export CHROME_USER_DATA_DIR := $(RUNNER_TEMP)/schauwerk-chrome-profile
+endif
+endif
+
 python-version-check:
 	@if [ -z "$(PYTHON)" ]; then \
 		echo "Schauwerk requires Python >=3.11,<3.14. No supported interpreter was found on PATH; create .venv with Python 3.11-3.13 or set PYTHON=/path/to/python."; \
@@ -30,7 +36,13 @@ compile-check: python-version-check
 registry-validate: python-version-check
 	$(PYTHON) -m schauwerk.registry_validation
 
+# The DOM/Chrome smoke test is browser-runtime coverage, not Python-version coverage.
+# CI runs it once on the canonical 3.12 lane; 3.11 and 3.13 still run every Python test.
 test: python-version-check
-	$(PYTHON) -m pytest
+	@if [ -n "$(CI)" ] && ! $(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)'; then \
+		$(PYTHON) -m pytest -k 'not test_canvas_import_browser_xml_validation_when_chrome_available'; \
+	else \
+		$(PYTHON) -m pytest; \
+	fi
 
 validate: lint compile-check registry-validate test
