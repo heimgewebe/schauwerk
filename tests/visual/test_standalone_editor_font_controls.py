@@ -15,9 +15,11 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
 
     hide_selector = "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)"
     assert styles_css.count(hide_selector) == 1
-    assert "body.editor-focus .font-controls {" in styles_css
+    show_selector = "body.editor-focus .workspace-bar > .font-controls"
+    assert styles_css.count(show_selector) == 1
+    assert styles_css.index(hide_selector) < styles_css.index(show_selector)
     focus_controls = styles_css[
-        styles_css.index("body.editor-focus .font-controls {")
+        styles_css.index(f"{show_selector} {{")
         : styles_css.index("body.editor-focus .font-controls .button")
     ]
     assert "display: inline-flex;" in focus_controls

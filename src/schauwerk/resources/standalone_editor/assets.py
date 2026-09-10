@@ -213,7 +213,7 @@ body.editor-focus .workspace-bar {
   pointer-events: none;
 }
 body.editor-focus .workspace-bar > :not(.fullscreen-toggle) { display: none; }
-body.editor-focus .font-controls {
+body.editor-focus .workspace-bar > .font-controls {
   display: inline-flex;
   padding: 3px;
   border: 1px solid rgba(133, 150, 180, 0.55);
