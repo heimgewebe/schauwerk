@@ -28,19 +28,21 @@ EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
     "plugins=0&math=0&pwa=0&drafts=0&splash=0&suppressNewWindows=1"
 )
-AI_HANDOFF_PROMPT: Final = """Erstelle aus dem Auftrag ein editierbares Schaubild.
-
-Wähle das Ausgabeformat passend zur Darstellung:
-- Mermaid für Abläufe, Hierarchien, gerichtete Beziehungen, Sequenzen und klassische Diagramme.
-- JSON Canvas 1.0 für freie räumliche Anordnung, Gruppen, Cluster, Konzeptkarten oder wenn Position und Nähe der Elemente wesentlich sind.
-
-Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen Zusammenhänge schnell erkennbar sind.
-
-Gib genau ein vollständiges, direkt importierbares Ergebnis aus:
-- Mermaid als einen `mermaid`-Codeblock.
-- JSON Canvas als einen `json`-Codeblock im gültigen JSON-Canvas-1.0-Format.
-
-Kein Vorwort, keine Erklärung und keine zusätzliche Variante."""
+AI_HANDOFF_PROMPT: Final = (
+    "Erstelle aus dem Auftrag ein editierbares Schaubild.\n\n"
+    "Wähle das Ausgabeformat passend zur Darstellung:\n"
+    "- Mermaid für Abläufe, Hierarchien, gerichtete Beziehungen, Sequenzen und "
+    "klassische Diagramme.\n"
+    "- JSON Canvas 1.0 für freie räumliche Anordnung, Gruppen, Cluster, Konzeptkarten "
+    "oder wenn Position und Nähe der Elemente wesentlich sind.\n\n"
+    "Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, "
+    "gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen "
+    "Zusammenhänge schnell erkennbar sind.\n\n"
+    "Gib genau ein vollständiges, direkt importierbares Ergebnis aus:\n"
+    "- Mermaid als einen `mermaid`-Codeblock.\n"
+    "- JSON Canvas als einen `json`-Codeblock im gültigen JSON-Canvas-1.0-Format.\n\n"
+    "Kein Vorwort, keine Erklärung und keine zusätzliche Variante."
+)
 _EDITOR_ORIGIN_MARKER: Final = 'const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";'
 _EDITOR_URL_MARKER: Final = 'const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";'
 _HANDOFF_BUTTON_ANCHOR: Final = (
