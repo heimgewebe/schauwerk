@@ -212,8 +212,9 @@ body.editor-focus .workspace-bar {
   background: transparent;
   pointer-events: none;
 }
-body.editor-focus .workspace-bar > :not(.font-controls):not(.fullscreen-toggle) { display: none; }
+body.editor-focus .workspace-bar > :not(.fullscreen-toggle) { display: none; }
 body.editor-focus .font-controls {
+  display: inline-flex;
   padding: 3px;
   border: 1px solid rgba(133, 150, 180, 0.55);
   border-radius: 11px;
