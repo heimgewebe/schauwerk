@@ -28,8 +28,28 @@ EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
     "plugins=0&math=0&pwa=0&drafts=0&splash=0&suppressNewWindows=1"
 )
+AI_HANDOFF_PROMPT: Final = """Erstelle aus dem Auftrag ein editierbares Schaubild.
+
+Wähle das Ausgabeformat passend zur Darstellung:
+- Mermaid für Abläufe, Hierarchien, gerichtete Beziehungen, Sequenzen und klassische Diagramme.
+- JSON Canvas 1.0 für freie räumliche Anordnung, Gruppen, Cluster, Konzeptkarten oder wenn Position und Nähe der Elemente wesentlich sind.
+
+Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen Zusammenhänge schnell erkennbar sind.
+
+Gib genau ein vollständiges, direkt importierbares Ergebnis aus:
+- Mermaid als einen `mermaid`-Codeblock.
+- JSON Canvas als einen `json`-Codeblock im gültigen JSON-Canvas-1.0-Format.
+
+Kein Vorwort, keine Erklärung und keine zusätzliche Variante."""
 _EDITOR_ORIGIN_MARKER: Final = 'const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";'
 _EDITOR_URL_MARKER: Final = 'const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";'
+_HANDOFF_BUTTON_ANCHOR: Final = (
+    '        <button class="button ghost" id="blankButton" type="button">Leer beginnen</button>'
+)
+_HANDOFF_BUTTON_HTML: Final = (
+    '        <button class="button ghost" id="copyAiGuideButton" type="button">'
+    "KI-Anleitung kopieren</button>"
+)
 
 
 class StandaloneEditorError(ValueError):
@@ -130,6 +150,38 @@ def _render_assets(*, editor_origin: str, editor_url: str) -> dict[str, str]:
         f"const EDITOR_URL = {json.dumps(editor_url, ensure_ascii=False)};",
         1,
     )
+
+    index_html = rendered["index.html"]
+    if index_html.count(_HANDOFF_BUTTON_ANCHOR) != 1:
+        raise StandaloneEditorError("standalone editor handoff button anchor has drifted")
+    rendered["index.html"] = index_html.replace(
+        _HANDOFF_BUTTON_ANCHOR,
+        f"{_HANDOFF_BUTTON_ANCHOR}\n{_HANDOFF_BUTTON_HTML}",
+        1,
+    )
+
+    prompt_json = json.dumps(AI_HANDOFF_PROMPT, ensure_ascii=False)
+    app_js += f"""
+
+const AI_HANDOFF_PROMPT = {prompt_json};
+const copyAiGuideButton = document.querySelector("#copyAiGuideButton");
+copyAiGuideButton.addEventListener("click", async () => {{
+  setError("");
+  try {{
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {{
+      throw new Error("clipboard unavailable");
+    }}
+    await navigator.clipboard.writeText(AI_HANDOFF_PROMPT);
+    copyAiGuideButton.textContent = "Anleitung kopiert";
+    setStatus("KI-Anleitung kopiert");
+    window.setTimeout(() => {{
+      copyAiGuideButton.textContent = "KI-Anleitung kopieren";
+    }}, 1800);
+  }} catch (_) {{
+    setError("KI-Anleitung konnte nicht kopiert werden. Bitte Zwischenablage-Zugriff erlauben.");
+  }}
+}});
+"""
     rendered["app.js"] = app_js
     return rendered
 
