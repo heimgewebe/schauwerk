@@ -32,7 +32,7 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 - PNG und SVG werden über das dokumentierte Export-Protokoll angefordert; Bildantworten werden im Host auf angefordertes Format, erwarteten `data:`-Medientyp, base64-Form und Größe begrenzt;
 - `.drawio` wird aus dem `xml`-Readback eines unterstützten SVG-Exports erzeugt, weil das Embed-Protokoll kein separates `format=xml` kennt; das XML wird auf Größe und draw.io-Wurzeltyp begrenzt;
 - `Aufräumen` nutzt den dokumentierten ELK-Layout-Pfad;
-- `Vollbild` ist bewusst ein hostseitiger Fokusmodus: Die äußere Schauwerk-Kopfzeile und Host-Aktionsleiste verschwinden bis auf den kleinen Ausstieg, und die Editorfläche nutzt mit `100dvh` den vollständigen Web-Viewport. Der Produktpfad verwendet **nicht** die Browser-Fullscreen-API. Damit bleibt das gewünschte Bearbeitungslayout unabhängig von Fullscreen-Promise-/Event-Reihenfolgen und funktioniert auch dort, wo natives Fullscreen auf iPadOS/Safari oder in eingebetteten Kontexten eingeschränkt ist.
+- `Vollbild` ist bewusst ein hostseitiger Fokusmodus: Die äußere Schauwerk-Kopfzeile und alle nicht unmittelbar zur Textbearbeitung nötigen Host-Aktionen verschwinden. Die vier Schriftaktionen `A−`/`Schrift`/`A+`/`Alle` sowie der kleine Ausstieg bleiben als kompakte schwebende Steuerung erreichbar; die Editorfläche nutzt mit `100dvh` den vollständigen Web-Viewport. Der Produktpfad verwendet **nicht** die Browser-Fullscreen-API. Damit bleibt das gewünschte Bearbeitungslayout unabhängig von Fullscreen-Promise-/Event-Reihenfolgen und funktioniert auch dort, wo natives Fullscreen auf iPadOS/Safari oder in eingebetteten Kontexten eingeschränkt ist.
 - `← Start` beendet die aktive Editor-Generation vollständig: Pending Load/Export werden verworfen und der iframe-Browsing-Context ersetzt. Fortsetzungsautorität ist der bereits hostseitig validierte und lokal gesicherte XML-Entwurf, nicht ein versteckter alter Editor.
 
 ## Sicherheits- und Datenschutzgrenze
@@ -124,7 +124,7 @@ Live im Browser:
 - `Aufräumen` läuft ohne Hostfehler;
 - ein geänderter Schriftstandard wird bei anschließend neu erzeugten Elementen verwendet; vorhandenes draw.io/XML bleibt unverändert;
 - `A−`/`A+` wirken auf eine Einzel- und Mehrfachauswahl; `Schrift` öffnet das native Textformatierungs-Panel für exakte Werte; `Alle` erlaubt dieselbe Änderung für das gesamte Diagramm;
-- `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und die Host-Aktionsleiste bis auf einen kleinen Ausstiegsknopf und gibt den vollständigen Web-Viewport an den Editor; erneuter Klick stellt den Normalzustand wieder her;
+- `Vollbild` entfernt die äußere Schauwerk-Kopfzeile und alle übrigen Host-Aktionen, hält aber `A−`/`Schrift`/`A+`/`Alle` sowie den kleinen Ausstieg erreichbar und gibt den vollständigen Web-Viewport an den Editor; die Steuerung bleibt auch bei schmaler Ansicht erreichbar, erneuter Klick stellt den Normalzustand wieder her;
 - der verlässliche Ausstieg ist der sichtbare Host-Knopf; ein `Escape` innerhalb des cross-origin draw.io-Iframes kann vom Host nicht abgefangen werden. Der Modus behauptet ausdrücklich nicht, Browser- oder iPadOS-Systemleisten außerhalb des Web-Viewports auszublenden;
 - iPad/Safari bleibt für die tatsächlich erreichbare Viewport-Ausnutzung ein eigener Produkt-Acceptance-Punkt.
 
