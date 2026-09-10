@@ -126,7 +126,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
-    assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
+    assert (
+        "body.editor-focus .workspace-bar > :not(.font-controls):not(.fullscreen-toggle)"
+        in styles_css
+    )
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
     assert "return { xml: validateDiagramXml(detected.text) };" in app_js
@@ -185,6 +188,37 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert app_js.count("config: COLLISION_SAFE_LAYOUT_CONFIG") == 1
     assert '"elk.spacing.nodeNode": "40"' not in app_js
     assert 'event.key === "Escape"' not in app_js
+
+
+def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    index_html = (output / "index.html").read_text(encoding="utf-8")
+    styles_css = (output / "styles.css").read_text(encoding="utf-8")
+
+    assert styles_css.count(
+        "body.editor-focus .workspace-bar > :not(.font-controls):not(.fullscreen-toggle)"
+    ) == 1
+    assert "body.editor-focus .font-controls {" in styles_css
+    assert "pointer-events: auto;" in styles_css[
+        styles_css.index("body.editor-focus .font-controls {") : styles_css.index(
+            "body.editor-focus .font-controls .button"
+        )
+    ]
+    assert "@media (max-width: 1024px)" in styles_css
+    assert ".workspace-bar > .font-controls { order: -2; }" in styles_css
+    assert ".workspace-bar > .fullscreen-toggle { order: -1; }" in styles_css
+
+    for control_id in (
+        "fontDecreaseButton",
+        "fontPanelButton",
+        "fontIncreaseButton",
+        "fontAllButton",
+        "fullscreenButton",
+    ):
+        assert index_html.count(f'id="{control_id}"') == 1
 
 
 @pytest.mark.parametrize(
