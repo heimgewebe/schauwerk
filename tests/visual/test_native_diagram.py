@@ -10,7 +10,7 @@ import pytest
 
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
 from schauwerk.visual.native_diagram import _xml_escape, render_native_diagram
-from schauwerk.visual.representation import validate_representation_input
+from schauwerk.visual.representation import RepresentationError, validate_representation_input
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_ROOT = ROOT / "docs/operators/fixtures/golden"
@@ -197,6 +197,17 @@ def test_xml_forbidden_codepoints_are_replaced_and_supplementary_unicode_survive
         "Edge�🛡",
     ):
         assert expected in text
+
+
+def test_unpaired_unicode_surrogate_fails_closed_before_rendering() -> None:
+    raw = _load("decision-flow-v1.json")
+    raw["nodes"][0]["summary"] = "Unpaired high surrogate: \ud800"
+
+    with pytest.raises(
+        RepresentationError,
+        match=r"^representation input contains Unicode surrogate code points$",
+    ):
+        render_native_diagram(raw)
 
 
 def test_xml_escape_preserves_allowed_whitespace_and_valid_unicode() -> None:

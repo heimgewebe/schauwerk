@@ -72,9 +72,38 @@ def _xml_escape(value: str) -> str:
     return escape("".join(compatible), quote=True)
 
 
+def _reject_unicode_surrogates(value: Any) -> None:
+    """Reject surrogate code points before the semantic validator computes its digest."""
+
+    pending = [value]
+    seen: set[int] = set()
+    while pending:
+        item = pending.pop()
+        if isinstance(item, str):
+            if any(0xD800 <= ord(character) <= 0xDFFF for character in item):
+                raise RepresentationError(
+                    "representation input contains Unicode surrogate code points"
+                )
+            continue
+        if isinstance(item, Mapping):
+            identity = id(item)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            pending.extend(item.keys())
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            identity = id(item)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            pending.extend(item)
+
+
 def _normalized_input(value: Mapping[str, Any]) -> dict[str, Any]:
     """Use the existing public validator for both raw and normalized inputs."""
 
+    _reject_unicode_surrogates(value)
     public_value = dict(value)
     has_digest = "input_digest" in public_value
     supplied_digest = public_value.pop("input_digest", None)
