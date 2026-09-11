@@ -672,7 +672,8 @@ const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
-const DEFAULT_EDITOR_FONT_SIZE = 24;
+const PRODUCT_DEFAULT_NODE_FONT_SIZE = 24;
+const PRODUCT_DEFAULT_EDGE_FONT_SIZE = 22;
 
 const elements = {
   startView: document.querySelector("#startView"),
@@ -709,7 +710,8 @@ let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
 let pendingInitialCollisionSafeLayout = false;
-let preferredNodeFontSize = DEFAULT_EDITOR_FONT_SIZE;
+let pendingCreationDefaults = false;
+let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -750,14 +752,14 @@ function parseFontSize(value) {
 }
 
 function edgeFontSizeFor(nodeFontSize) {
-  return nodeFontSize;
+  return Math.max(MIN_CONFIGURABLE_FONT_SIZE, nodeFontSize - (PRODUCT_DEFAULT_NODE_FONT_SIZE - PRODUCT_DEFAULT_EDGE_FONT_SIZE));
 }
 
 function readFontPreference() {
   try {
-    return parseFontSize(localStorage.getItem(FONT_PREFERENCE_KEY)) ?? DEFAULT_EDITOR_FONT_SIZE;
+    return parseFontSize(localStorage.getItem(FONT_PREFERENCE_KEY)) ?? PRODUCT_DEFAULT_NODE_FONT_SIZE;
   } catch (_) {
-    return DEFAULT_EDITOR_FONT_SIZE;
+    return PRODUCT_DEFAULT_NODE_FONT_SIZE;
   }
 }
 
@@ -851,6 +853,7 @@ function showStart() {
   setEditorFocus(false);
   pendingLoad = null;
   pendingInitialCollisionSafeLayout = false;
+  pendingCreationDefaults = false;
   pendingExport = null;
   editorReady = false;
   replaceEditorFrame();
@@ -913,6 +916,8 @@ function launch(load) {
   pendingExport = null;
   pendingLoad = load;
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
+  const sourceFormat = load?.sourceMetadata?.value;
+  pendingCreationDefaults = sourceFormat === "mermaid" || sourceFormat === "json-canvas-1.0" || load?.xml === emptyDrawioXml();
   editorReady = false;
   const frame = replaceEditorFrame();
   showWorkspace();
@@ -1013,21 +1018,25 @@ window.addEventListener("message", (event) => {
     const config = {
       defaultFonts: ["Helvetica", "Arial", "Verdana"],
       zoomFactor: READABILITY_ZOOM_FACTOR,
-      defaultVertexStyle: { fontSize: String(preferredNodeFontSize) },
-      defaultEdgeStyle: {
-        fontSize: String(edgeFontSizeFor(preferredNodeFontSize)),
-        edgeStyle: "orthogonalEdgeStyle",
-        rounded: "1",
-        orthogonalLoop: "1",
-        jettySize: "auto",
-        sourcePerimeterSpacing: "12",
-        targetPerimeterSpacing: "12",
-        spacing: "6",
-        labelBackgroundColor: "#ffffff",
-      },
       enabledLibraries: ["general", "flowchart"],
     };
-    config.defaultVertexStyle.align = "left";
+    if (pendingCreationDefaults) {
+      Object.assign(config, {
+        defaultVertexStyle: { fontSize: String(preferredNodeFontSize) },
+        defaultEdgeStyle: {
+          fontSize: String(edgeFontSizeFor(preferredNodeFontSize)),
+          edgeStyle: "orthogonalEdgeStyle",
+          rounded: "1",
+          orthogonalLoop: "1",
+          jettySize: "auto",
+          sourcePerimeterSpacing: "12",
+          targetPerimeterSpacing: "12",
+          spacing: "6",
+          labelBackgroundColor: "#ffffff",
+        },
+      });
+      config.defaultVertexStyle.align = "left";
+    }
     postToEditor({ action: "configure", config });
     return;
   }
