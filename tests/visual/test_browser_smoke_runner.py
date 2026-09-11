@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -38,3 +39,33 @@ def test_browser_smoke_retries_once_with_fresh_profiles(
     assert calls[0]["path"] != calls[1]["path"]
     assert "--user-data-dir=" in calls[0]["wrapper"]
     assert "--user-data-dir=" in calls[1]["wrapper"]
+
+
+def test_ci_python_failure_stops_before_browser_smoke(tmp_path: Path) -> None:
+    marker = tmp_path / "browser-smoke-started"
+    fake_python = tmp_path / "python"
+    fake_python.write_text(
+        "#!/bin/sh\n"
+        "case \" $* \" in\n"
+        "  *\" -m pytest -k \"*) exit 23 ;;\n"
+        f"  *\" scripts/run_browser_smoke.py \"*) touch \"{marker}\"; exit 0 ;;\n"
+        "  *) exit 0 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    env = os.environ.copy()
+    env["CI"] = "true"
+
+    completed = subprocess.run(
+        ["make", "test", f"PYTHON={fake_python}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[2],
+        env=env,
+    )
+
+    assert completed.returncode != 0
+    assert "Fehler 23" in completed.stderr or "Error 23" in completed.stderr
+    assert not marker.exists()

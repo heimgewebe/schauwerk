@@ -36,7 +36,7 @@ registry-validate: python-version-check
 # smoke once on Python 3.12 with a fresh Chrome profile and one bounded retry.
 test: python-version-check
 	@if [ -n "$(CI)" ]; then \
-		$(PYTHON) -m pytest -k 'not $(BROWSER_SMOKE_TEST)'; \
+		$(PYTHON) -m pytest -k 'not $(BROWSER_SMOKE_TEST)' || exit $$?; \
 		if $(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)'; then \
 			$(MAKE) browser-smoke PYTHON="$(PYTHON)"; \
 		fi; \
