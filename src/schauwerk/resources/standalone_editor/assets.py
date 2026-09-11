@@ -539,10 +539,10 @@ function configuredFontSize(value, fallback) {
 
 function nodeStyle(node, fontSize) {
   if (node.type === "group") {
-    return `swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontSize=${fontSize};fontStyle=1;container=0;collapsible=0;`;
+    return `swimlane;html=0;rounded=1;startSize=28;fillColor=#f5f5f5;strokeColor=#b8c1d1;fontSize=${fontSize};fontStyle=1;align=left;container=0;collapsible=0;`;
   }
   const [fill, stroke] = palette(node.color);
-  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;fontSize=${fontSize};spacing=12;`;
+  const common = `whiteSpace=wrap;html=0;fillColor=${fill};strokeColor=${stroke};fontColor=#172033;fontSize=${fontSize};align=left;spacing=12;`;
   if (node.type === "file") return `shape=note;${common}`;
   if (node.type === "link") return `rounded=1;arcSize=12;${common}fontColor=#2455b5;`;
   return `rounded=1;arcSize=12;verticalAlign=top;${common}`;
@@ -672,6 +672,7 @@ const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
+const DEFAULT_EDITOR_FONT_SIZE = 24;
 
 const elements = {
   startView: document.querySelector("#startView"),
@@ -708,7 +709,7 @@ let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
 let pendingInitialCollisionSafeLayout = false;
-let preferredNodeFontSize = READABLE_NODE_FONT_SIZE;
+let preferredNodeFontSize = DEFAULT_EDITOR_FONT_SIZE;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -749,14 +750,14 @@ function parseFontSize(value) {
 }
 
 function edgeFontSizeFor(nodeFontSize) {
-  return Math.max(MIN_CONFIGURABLE_FONT_SIZE, nodeFontSize - (READABLE_NODE_FONT_SIZE - READABLE_EDGE_FONT_SIZE));
+  return nodeFontSize;
 }
 
 function readFontPreference() {
   try {
-    return parseFontSize(localStorage.getItem(FONT_PREFERENCE_KEY)) ?? READABLE_NODE_FONT_SIZE;
+    return parseFontSize(localStorage.getItem(FONT_PREFERENCE_KEY)) ?? DEFAULT_EDITOR_FONT_SIZE;
   } catch (_) {
-    return READABLE_NODE_FONT_SIZE;
+    return DEFAULT_EDITOR_FONT_SIZE;
   }
 }
 
@@ -1009,26 +1010,25 @@ window.addEventListener("message", (event) => {
   if (!message) return;
 
   if (message.event === "configure") {
-    postToEditor({
-      action: "configure",
-      config: {
-        defaultFonts: ["Helvetica", "Arial", "Verdana"],
-        zoomFactor: READABILITY_ZOOM_FACTOR,
-        defaultVertexStyle: { fontSize: String(preferredNodeFontSize) },
-        defaultEdgeStyle: {
-          fontSize: String(edgeFontSizeFor(preferredNodeFontSize)),
-          edgeStyle: "orthogonalEdgeStyle",
-          rounded: "1",
-          orthogonalLoop: "1",
-          jettySize: "auto",
-          sourcePerimeterSpacing: "12",
-          targetPerimeterSpacing: "12",
-          spacing: "6",
-          labelBackgroundColor: "#ffffff",
-        },
-        enabledLibraries: ["general", "flowchart"],
+    const config = {
+      defaultFonts: ["Helvetica", "Arial", "Verdana"],
+      zoomFactor: READABILITY_ZOOM_FACTOR,
+      defaultVertexStyle: { fontSize: String(preferredNodeFontSize) },
+      defaultEdgeStyle: {
+        fontSize: String(edgeFontSizeFor(preferredNodeFontSize)),
+        edgeStyle: "orthogonalEdgeStyle",
+        rounded: "1",
+        orthogonalLoop: "1",
+        jettySize: "auto",
+        sourcePerimeterSpacing: "12",
+        targetPerimeterSpacing: "12",
+        spacing: "6",
+        labelBackgroundColor: "#ffffff",
       },
-    });
+      enabledLibraries: ["general", "flowchart"],
+    };
+    config.defaultVertexStyle.align = "left";
+    postToEditor({ action: "configure", config });
     return;
   }
   if (message.event === "init") {
