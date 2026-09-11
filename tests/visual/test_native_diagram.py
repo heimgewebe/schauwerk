@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from schauwerk.visual.native_diagram import render_native_diagram
+from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
+from schauwerk.visual.native_diagram import _xml_escape, render_native_diagram
 from schauwerk.visual.representation import validate_representation_input
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +59,7 @@ def test_golden_diagram_is_parseable_and_materializes_every_source_id(
     root = _parse(svg)
 
     assert root.tag == f"{{{SVG_NAMESPACE}}}svg"
+    assert root.attrib["data-visual-grammar"] == GRAMMAR_SCHEMA_VERSION
     assert root.attrib["data-intent"] == raw["intent"]
     assert sorted(_source_ids(root, "node")) == sorted(node["id"] for node in raw["nodes"])
     assert sorted(_source_ids(root, "edge")) == sorted(edge["id"] for edge in raw["edges"])
@@ -170,3 +172,34 @@ def test_hostile_looking_labels_are_escaped_as_inert_text() -> None:
     assert "<image" not in svg.lower()
     assert "<a " not in svg.lower()
     assert "&lt;script" in svg.lower()
+
+
+def test_xml_forbidden_codepoints_are_replaced_and_supplementary_unicode_survives() -> None:
+    raw = _load("decision-flow-v1.json")
+    raw["title"] = "Title\x00🛰"
+    raw["purpose"] = "Purpose\x01𐐷"
+    raw["groups"][0]["label"] = "Group\x02🦉"
+    raw["nodes"][0]["label"] = "Node\x03🚀"
+    raw["nodes"][0]["summary"] = "Summary\x04🧭"
+    raw["edges"][0]["label"] = "Edge\x05🛡"
+
+    svg = render_native_diagram(raw)
+    root = _parse(svg)
+    text = "".join(root.itertext())
+
+    assert not any(character in svg for character in "\x00\x01\x02\x03\x04\x05")
+    for expected in (
+        "Title�🛰",
+        "Purpose�𐐷",
+        "Group�🦉",
+        "Node�🚀",
+        "Summary�🧭",
+        "Edge�🛡",
+    ):
+        assert expected in text
+
+
+def test_xml_escape_preserves_allowed_whitespace_and_valid_unicode() -> None:
+    allowed = "\t\n\rValid BMP ä and supplementary 🛰 𐐷"
+
+    assert _xml_escape(allowed) == allowed

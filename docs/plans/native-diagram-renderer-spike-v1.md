@@ -8,6 +8,8 @@ Dieser genehmigte Spike prüft einen kleinen, deterministischen, nativen SVG-Ren
 
 Die bestehende `schauwerk-representation-input.v1`-Eingabe bleibt die semantische Autorität. Der Spike führt weder ein neues kanonisches Graphmodell noch eine zweite Semantikschicht ein. Inhalt, Gruppen, Knoten, Kanten und stabile Source-IDs werden mit `validate_representation_input` geprüft und danach nur dargestellt.
 
+`src/schauwerk/visual/grammar.py` mit `schauwerk-visual-grammar.v1` und `docs/visual/schauwerk-visual-system-v2.md` bleiben die kanonische, rendererunabhängige Design- und Qualitätsautorität. Die renderer-lokale Knotenart- und Beziehungsdarstellung dieses Gate-1-Spikes ist ein experimentelles Rendererprofil, keine konkurrierende visuelle Grammatik. Gemeinsam genutzte semantische Rollen müssen vor jedem Cutover mit den kanonischen semantischen Tokens abgeglichen werden; dieser Spike nimmt einen solchen Cutover nicht vor. Das SVG bindet seine Gate-Evidenz deshalb als Metadatum an die geltende `GRAMMAR_SCHEMA_VERSION`.
+
 ## Abgrenzung der Gates
 
 1. **Gate 1 – visueller Renderer:** Ein kleiner, dependency-freier Python-Pfad erzeugt deterministisches, statisches SVG. Seine Aufgabe ist ausschließlich, die Qualität einer nativen visuellen Grammatik anhand fester Fälle sichtbar zu prüfen.
@@ -25,7 +27,7 @@ Gate 1 muss die vorhandenen semantischen Eingaben vollständig darstellen:
 
 Jeder Fall muss alle Source-Knoten und Source-Kanten im SVG rücklesbar materialisieren. Die Prüfung umfasst außerdem deterministische Bytes, valides SVG, Text-Escaping, gruppierte Regionen, gekrümmte Beziehungen und eine vollständig lokale, inaktive Ausgabe ohne Skripte, externe Ressourcen, Links oder Laufzeitabhängigkeit.
 
-## Vorläufige visuelle Grammatik
+## Experimentelles Rendererprofil
 
 - Gruppen werden als ruhige beschriftete Regionen dargestellt.
 - Knotentypen teilen ein festes Kartenraster, unterscheiden sich aber durch Farbe, Rundung, Akzent und kleines Typzeichen.
@@ -33,7 +35,7 @@ Jeder Fall muss alle Source-Knoten und Source-Kanten im SVG rücklesbar material
 - Beziehungstypen bleiben über Farbe, Strichstärke und Strichmuster erkennbar.
 - Source-IDs bleiben getrennt von sichtbaren Labels als Renderer-Metadaten erhalten.
 
-Diese Grammatik ist Gate-Evidenz, kein dauerhaft zugesagtes Designsystem.
+Dieses Profil ist Gate-Evidenz, kein dauerhaft zugesagtes Designsystem.
 
 ## Bewusst nicht enthalten
 

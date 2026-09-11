@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from html import escape
 from typing import Any
 
+from .grammar import GRAMMAR_SCHEMA_VERSION
 from .representation import RepresentationError, validate_representation_input
 
 __all__ = ["render_native_diagram"]
@@ -53,6 +54,22 @@ _KIND_LABEL = {
     "evidence": "EVIDENZ",
     "concept": "KONZEPT",
 }
+
+
+def _xml_escape(value: str) -> str:
+    """Replace XML 1.0-forbidden code points, then escape markup characters."""
+
+    compatible: list[str] = []
+    for character in value:
+        codepoint = ord(character)
+        allowed = (
+            codepoint in {0x09, 0x0A, 0x0D}
+            or 0x20 <= codepoint <= 0xD7FF
+            or 0xE000 <= codepoint <= 0xFFFD
+            or 0x10000 <= codepoint <= 0x10FFFF
+        )
+        compatible.append(character if allowed else "\uFFFD")
+    return escape("".join(compatible), quote=True)
 
 
 def _normalized_input(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -103,7 +120,7 @@ def _svg_text_lines(
     ]
     for index, line in enumerate(lines):
         dy = 0 if index == 0 else line_height
-        rendered.append(f'<tspan x="{x:.1f}" dy="{dy}">{escape(line)}</tspan>')
+        rendered.append(f'<tspan x="{x:.1f}" dy="{dy}">{_xml_escape(line)}</tspan>')
     rendered.append("</text>")
     return rendered
 
@@ -256,10 +273,12 @@ def _render_edge(
     label_height = 20 + max(0, len(label_lines) - 1) * 13
     label_top = label_y - label_height / 2
     source_id = str(edge["id"])
+    source_id_xml = _xml_escape(source_id)
+    kind_xml = _xml_escape(kind)
     lines = [
-        f'<g id="native-edge-{source_id}" data-source-kind="edge" '
-        f'data-source-id="{source_id}" data-kind="{kind}">',
-        f"<title>{escape(str(edge['label']))}</title>",
+        f'<g id="native-edge-{source_id_xml}" data-source-kind="edge" '
+        f'data-source-id="{source_id_xml}" data-kind="{kind_xml}">',
+        f"<title>{_xml_escape(str(edge['label']))}</title>",
         f'<path d="{path}" fill="none" stroke="{color}" stroke-width="{width:.1f}" '
         f'stroke-linecap="round" stroke-linejoin="round"{dash_attribute}{marker_attribute}/>',
         f'<rect x="{label_x - label_width / 2:.1f}" y="{label_top:.1f}" '
@@ -328,10 +347,12 @@ def _render_node(node: Mapping[str, Any], position: tuple[int, int]) -> list[str
     label_lines = _wrapped(str(node["label"]), width=25, limit=2)
     summary_lines = _wrapped(str(node["summary"]), width=34, limit=3)
     summary_y = y + 63 + len(label_lines) * 18
+    source_id_xml = _xml_escape(source_id)
+    kind_xml = _xml_escape(kind)
     lines = [
-        f'<g id="native-node-{source_id}" data-source-kind="node" '
-        f'data-source-id="{source_id}" data-kind="{kind}">',
-        f"<title>{escape(str(node['label']))}</title>",
+        f'<g id="native-node-{source_id_xml}" data-source-kind="node" '
+        f'data-source-id="{source_id_xml}" data-kind="{kind_xml}">',
+        f"<title>{_xml_escape(str(node['label']))}</title>",
         f'<rect x="{x}" y="{y}" width="{_NODE_WIDTH}" height="{_NODE_HEIGHT}" '
         f'rx="{radius}" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>',
         f'<path d="M {x + 5} {y + 18} V {y + _NODE_HEIGHT - 18}" stroke="{stroke}" '
@@ -385,10 +406,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         '<?xml version="1.0" encoding="UTF-8"?>',
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
         f'width="{width}" height="{height}" role="img" aria-labelledby="native-diagram-title" '
-        f'data-renderer="schauwerk-native-diagram-v1" data-intent="{model["intent"]}" '
-        f'data-input-digest="{model["input_digest"]}">',
-        f'<title id="native-diagram-title">{escape(str(model["title"]))}</title>',
-        f'<desc>{escape(str(model["purpose"]))}</desc>',
+        f'data-renderer="schauwerk-native-diagram-v1" '
+        f'data-visual-grammar="{_xml_escape(GRAMMAR_SCHEMA_VERSION)}" '
+        f'data-intent="{_xml_escape(str(model["intent"]))}" '
+        f'data-input-digest="{_xml_escape(str(model["input_digest"]))}">',
+        f'<title id="native-diagram-title">{_xml_escape(str(model["title"]))}</title>',
+        f'<desc>{_xml_escape(str(model["purpose"]))}</desc>',
         f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
     ]
     lines.extend(_marker_definitions())
@@ -420,14 +443,14 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             ' data-renderer-region="ungrouped"'
             if group_id is None
             else (
-                f' id="native-group-{group_id}" data-source-kind="group" '
-                f'data-source-id="{group_id}"'
+                f' id="native-group-{_xml_escape(group_id)}" data-source-kind="group" '
+                f'data-source-id="{_xml_escape(group_id)}"'
             )
         )
         lines.extend(
             (
                 f"<g{identity}>",
-                f"<title>{escape(label)}</title>",
+                f"<title>{_xml_escape(label)}</title>",
                 f'<rect x="{x}" y="{y}" width="{region_width}" height="{region_height}" '
                 'rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>',
                 f'<path d="M {x + 18} {y + 44} H {x + region_width - 18}" stroke="#e2e8f0"/>',
