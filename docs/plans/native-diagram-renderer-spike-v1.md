@@ -1,6 +1,6 @@
 # Native Diagram Renderer Spike v1
 
-Stand: 2026-09-11
+Stand: 2026-09-12
 
 ## Entscheidung und Ziel
 
@@ -33,9 +33,25 @@ Jeder Fall muss alle Source-Knoten und Source-Kanten im SVG rücklesbar material
 - Knotentypen teilen ein festes Kartenraster, unterscheiden sich aber durch Farbe, Rundung, Akzent und kleines Typzeichen.
 - Beziehungen sind kubische Kurven mit leisen Pfeilspitzen statt draw.io-artiger orthogonaler Ellenbogen.
 - Beziehungstypen bleiben über Farbe, Strichstärke und Strichmuster erkennbar.
+- Gerichtete Prozessdiagramme dürfen ein eigenes, aus der bestehenden Semantik abgeleitetes Ranglayout verwenden; Gruppen bleiben Darstellungskontext und werden nicht zur neuen fachlichen Autorität.
+- Rückkopplungen und vertikale Nebenpfade werden deterministisch getrennt geroutet, damit sie die primäre Leserichtung nicht dominieren.
 - Source-IDs bleiben getrennt von sichtbaren Labels als Renderer-Metadaten erhalten.
 
 Dieses Profil ist Gate-Evidenz, kein dauerhaft zugesagtes Designsystem.
+
+## Visuelles Gate – Arbeitsstand 2026-09-12
+
+Nach mehreren begrenzten Iterationen wurde ausschließlich an den beobachteten Schwächen gearbeitet: effektive Schriftgröße, Prozesskomposition, Ja-/Nein-/Feedback-Trennung und Kantenverdichtung. Ein unabhängiger Code-Review deckte zusätzlich zwei technische Risiken auf: breite Glyphen konnten bei der größeren Typografie über ihre Boxen laufen, und zwei Prozesskanten schnitten im Entscheidungsfall fremde Karten. Die Korrektur wurde anschließend auf den Prozess-Intent begrenzt: Nebenäste laufen im freien Zeilenzwischenraum, der Feedbackpfad unterhalb aller Prozessknoten, und die Breitenbegrenzung greift nur dort, wo sie für den Prozessfall benötigt wird. Systemlandschaft und Narrative behalten ihre zuvor stärkere Typografie und ihr ruhigeres Routing. Der Kandidat bleibt renderer-only; es wurde keine Interaktions- oder Frontend-Schicht geöffnet.
+
+Ein neues blindes A/B unter identischem Viewport `1440×900` verglich genau diesen v4-Native-Kandidaten mit dem draw.io-Pfad aus Schauwerk `main` `11be2927d2d3f1fe907c0f5fda0f8e52fad0be2e`. Der Reviewer kannte die Renderer-Zuordnung nicht. Ergebnis nach Auflösung:
+
+- `system-landscape-v1`: Native klar besser;
+- `decision-flow-v1`: Native klar besser;
+- `narrative-journey-v1`: Native klar besser.
+
+Die v4-Renderer-Evidenz vor dieser reinen Dokumentationsaktualisierung ist an Manifest-SHA-256 `792e7a4f86e8aa78c25f894cb023915ede8e4e3b66375bae0e7db00bed03ed9a`, Native-Source-SHA-256 `b1007de3bb667269fbc11d296982a6aa3b644ce22a288b95b600fb16c9a24e84` und den damaligen Arbeitsdiff `958b5743f540c86d246dc897298ae740bffd391c81938c7d306e2cedf0733875` gebunden. Der Diff-Digest ist ausdrücklich keine finale Commitbindung, weil schon diese Planaktualisierung den Gesamtdiff verändert. Auf dem v4-Kandidaten bestanden 16 fokussierte Renderer-Tests sowie `make validate` mit 1.139 Tests; Ruff, Compile und Registry-Validierung waren grün.
+
+**Gate-Urteil:** Die visuelle Hypothese ist mit den nachträglich geschlossenen Kollisions- und Überlaufrisiken erneut klar bestätigt. Vor Publikation muss der exakte finale Dirty-State noch einmal gerendert und technisch geprüft werden. Phase 2 öffnet erst operativ, wenn dieselben Renderer- und Testbytes als Commit publiziert wurden und der exakte PR-HEAD CI, Review sowie einen commitgebundenen visuellen Readback ohne Regression besteht. Bis dahin bleibt Phase 2 geschlossen.
 
 ## Bewusst nicht enthalten
 
@@ -48,3 +64,5 @@ Dieses Profil ist Gate-Evidenz, kein dauerhaft zugesagtes Designsystem.
 ## Stop-Regel
 
 Wenn die nativen Ausgaben der drei Golden Cases gegenüber den bisherigen Diagrammwegen nicht **sichtbar besser** sind, endet die Untersuchung nach Gate 1. Technische Deterministik und vollständige Source-ID-Coverage allein rechtfertigen weder einen neuen Editor noch den Ersatz von Mermaid oder draw.io.
+
+Nach einem bestandenen Gate ist die nächste zulässige Stufe ausschließlich ein separater Phase-2-Slice für Pan/Zoom, Selection und Node-Drag auf frischem `main`. Ein Voll-Editor, React/React Flow oder eine andere Frontend-Toolchain bleiben weiterhin hinter diesem zweiten Nachweis.
