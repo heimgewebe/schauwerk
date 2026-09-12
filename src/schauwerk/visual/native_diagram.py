@@ -392,6 +392,7 @@ def _edge_geometry(
     self_loop: bool,
     lane: int,
     kind: str,
+    canvas_width: int,
     canvas_height: int,
     intent: str,
 ) -> tuple[str, float, float, str]:
@@ -458,20 +459,48 @@ def _edge_geometry(
         route = "process-branch"
         source_center_x = source_x + _NODE_WIDTH / 2
         target_center_x = target_x + _NODE_WIDTH / 2
+        lane_offset = max(-8.0, min(8.0, lane / 2))
+        row_step = _NODE_HEIGHT + _PROCESS_ROW_GAP
+        spans_intervening_row = abs(target_y - source_y) > row_step
         if source_y < target_y:
             start_x = source_center_x
             start_y = source_y + _NODE_HEIGHT
             end_x = target_center_x
             end_y = target_y
+            source_corridor_y = start_y + _PROCESS_ROW_GAP / 2 + lane_offset
+            target_corridor_y = end_y - _PROCESS_ROW_GAP / 2 + lane_offset
+            label_offset_y = -16.0
         else:
             start_x = source_center_x
             start_y = source_y
             end_x = target_center_x
             end_y = target_y + _NODE_HEIGHT
-        corridor_y = (start_y + end_y) / 2 + max(-8.0, min(8.0, lane / 2))
+            source_corridor_y = start_y - _PROCESS_ROW_GAP / 2 + lane_offset
+            target_corridor_y = end_y + _PROCESS_ROW_GAP / 2 + lane_offset
+            label_offset_y = 16.0
+        if spans_intervening_row:
+            # Long branches leave their source row through its local gap, travel
+            # vertically in the dedicated right gutter, and enter the target row
+            # through its local gap. No horizontal segment crosses an intervening card.
+            gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+            bend = 18.0
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"C {start_x:.1f} {start_y + (bend if source_y < target_y else -bend):.1f}, "
+                f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+                f"L {end_x:.1f} {target_corridor_y:.1f} "
+                f"C {end_x:.1f} {target_corridor_y:.1f}, "
+                f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
+                f"{end_x:.1f} {end_y:.1f}"
+            )
+            label_x = (start_x + gutter_x) / 2
+            label_y = source_corridor_y + label_offset_y
+            return path, label_x, label_y, route
+        corridor_y = (start_y + end_y) / 2 + lane_offset
         control_one = (start_x, corridor_y)
         control_two = (end_x, corridor_y)
-        label_offset_y = -16.0 if source_y < target_y else 16.0
     elif source_x < target_x:
         start_x = source_x + _NODE_WIDTH
         start_y = source_y + _NODE_HEIGHT / 2
@@ -505,6 +534,7 @@ def _render_edge(
     positions: Mapping[str, tuple[int, int]],
     *,
     index: int,
+    canvas_width: int,
     canvas_height: int,
     intent: str,
 ) -> list[str]:
@@ -518,6 +548,7 @@ def _render_edge(
         self_loop=edge["from"] == edge["to"],
         lane=lane,
         kind=kind,
+        canvas_width=canvas_width,
         canvas_height=canvas_height,
         intent=intent,
     )
@@ -576,7 +607,7 @@ def _render_edge(
             weight=600,
             color=color,
             anchor="middle",
-            max_width=label_width - 16 if intent == "process" else None,
+            max_width=label_width - 16,
         )
     )
     lines.append("</g>")
@@ -670,7 +701,7 @@ def _render_node(
             size=label_size,
             weight=700,
             color="#172033",
-            max_width=_NODE_WIDTH - 36 if intent == "process" else None,
+            max_width=_NODE_WIDTH - 36,
         )
     )
     lines.extend(
@@ -682,7 +713,7 @@ def _render_node(
             size=summary_size,
             weight=400,
             color="#52606d",
-            max_width=_NODE_WIDTH - 36 if intent == "process" else None,
+            max_width=_NODE_WIDTH - 36,
         )
     )
     lines.append("</g>")
@@ -758,9 +789,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 size=16,
                 weight=700,
                 color="#334155",
-                max_width=(
-                    region_width - 40 if str(model["intent"]) == "process" else None
-                ),
+                max_width=region_width - 40,
             )
         )
         lines.append("</g>")
@@ -771,6 +800,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 edge,
                 positions,
                 index=index,
+                canvas_width=width,
                 canvas_height=height,
                 intent=str(model["intent"]),
             )

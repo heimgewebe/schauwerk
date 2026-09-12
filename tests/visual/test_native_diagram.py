@@ -330,34 +330,127 @@ def test_grouped_vertical_relations_and_feedback_use_quiet_routes() -> None:
     assert narrative_edges["journey07"].attrib["data-route"] == "feedback-return"
 
 
-def test_wide_dynamic_text_is_bounded_inside_renderer_boxes() -> None:
-    raw = _load("decision-flow-v1.json")
+@pytest.mark.parametrize("fixture_name", GOLDEN_FILES)
+def test_wide_dynamic_text_is_bounded_inside_renderer_boxes(fixture_name: str) -> None:
+    raw = _load(fixture_name)
+    node_id = raw["nodes"][0]["id"]
+    edge_id = raw["edges"][0]["id"]
+    group_id = raw["groups"][0]["id"]
     raw["nodes"][0]["label"] = "W" * 20
     raw["nodes"][0]["summary"] = "W" * 28
     raw["edges"][0]["label"] = "W" * 24
+    raw["groups"][0]["label"] = "W" * 30
 
     root = _parse(render_native_diagram(raw))
-    request = next(
+    node = next(
         element
         for element in root.iter()
-        if element.attrib.get("data-source-id") == "request"
+        if element.attrib.get("data-source-id") == node_id
         and element.attrib.get("data-source-kind") == "node"
     )
-    request_texts = request.findall(f"{{{SVG_NAMESPACE}}}text")
-    for text_node in request_texts[1:]:
+    node_texts = node.findall(f"{{{SVG_NAMESPACE}}}text")
+    for text_node in node_texts[1:]:
         for tspan in text_node.findall(f"{{{SVG_NAMESPACE}}}tspan"):
             assert float(tspan.attrib["textLength"]) <= 214.0
             assert tspan.attrib["lengthAdjust"] == "spacingAndGlyphs"
 
-    flow01 = next(
+    edge = next(
         element
         for element in root.iter()
-        if element.attrib.get("data-source-id") == "flow01"
+        if element.attrib.get("data-source-id") == edge_id
         and element.attrib.get("data-source-kind") == "edge"
     )
-    edge_text = flow01.find(f"{{{SVG_NAMESPACE}}}text")
+    edge_rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+    edge_text = edge.find(f"{{{SVG_NAMESPACE}}}text")
+    assert edge_rect is not None
     assert edge_text is not None
-    edge_tspan = edge_text.find(f"{{{SVG_NAMESPACE}}}tspan")
-    assert edge_tspan is not None
-    assert float(edge_tspan.attrib["textLength"]) <= 196.0
-    assert edge_tspan.attrib["lengthAdjust"] == "spacingAndGlyphs"
+    for tspan in edge_text.findall(f"{{{SVG_NAMESPACE}}}tspan"):
+        assert float(tspan.attrib["textLength"]) <= float(edge_rect.attrib["width"]) - 16
+        assert tspan.attrib["lengthAdjust"] == "spacingAndGlyphs"
+
+    group = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == group_id
+        and element.attrib.get("data-source-kind") == "group"
+    )
+    group_rect = group.find(f"{{{SVG_NAMESPACE}}}rect")
+    group_text = group.find(f"{{{SVG_NAMESPACE}}}text")
+    assert group_rect is not None
+    assert group_text is not None
+    group_tspan = group_text.find(f"{{{SVG_NAMESPACE}}}tspan")
+    assert group_tspan is not None
+    assert float(group_tspan.attrib["textLength"]) <= float(group_rect.attrib["width"]) - 40
+    assert group_tspan.attrib["lengthAdjust"] == "spacingAndGlyphs"
+
+
+def test_existing_non_process_wide_card_label_is_bounded() -> None:
+    root = _parse(render_native_diagram(_load("system-landscape-v1.json")))
+    tspan = next(
+        element
+        for element in root.iter(f"{{{SVG_NAMESPACE}}}tspan")
+        if "".join(element.itertext()) == "Produktive Laufzeit"
+    )
+    assert float(tspan.attrib["textLength"]) <= 214.0
+    assert tspan.attrib["lengthAdjust"] == "spacingAndGlyphs"
+
+
+def test_process_branch_spanning_multiple_rows_uses_outer_gutter() -> None:
+    raw = _load("decision-flow-v1.json")
+    raw["nodes"].append(
+        {
+            "id": "defer",
+            "label": "Später entscheiden",
+            "kind": "risk",
+            "group": "outcome",
+            "summary": "Dritter Ausgang für einen mehrzeiligen Nebenpfad.",
+        }
+    )
+    raw["edges"].append(
+        {
+            "id": "flow10",
+            "from": "risk_gate",
+            "to": "defer",
+            "label": "später",
+            "kind": "risk",
+        }
+    )
+
+    root = _parse(render_native_diagram(raw))
+    node_boxes = []
+    for element in root.iter():
+        if element.attrib.get("data-source-kind") != "node":
+            continue
+        rect = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        node_boxes.append(
+            (
+                float(rect.attrib["x"]),
+                float(rect.attrib["y"]),
+                float(rect.attrib["width"]),
+                float(rect.attrib["height"]),
+            )
+        )
+
+    branch = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == "flow10"
+        and element.attrib.get("data-source-kind") == "edge"
+    )
+    assert branch.attrib["data-route"] == "process-branch"
+    path = branch.find(f"{{{SVG_NAMESPACE}}}path")
+    assert path is not None
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+    ]
+    assert len(line_points) == 3
+    gutter_x = line_points[0][0]
+    assert line_points[1][0] == gutter_x
+    assert gutter_x > max(x + width for x, _, width, _ in node_boxes)
+    for corridor_y in (line_points[0][1], line_points[1][1]):
+        assert all(
+            not (y < corridor_y < y + height)
+            for _, y, _, height in node_boxes
+        )
