@@ -600,6 +600,8 @@ def _edge_geometry(
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
+    long_vertical_gutter_x: float | None = None,
+    long_vertical_label_y: float | None = None,
     label_height: int = 0,
     label_width: int = 0,
     feedback_label_y: float | None = None,
@@ -804,7 +806,11 @@ def _edge_geometry(
             direction = 1.0 if end_y > start_y else -1.0
             source_corridor_y = start_y + direction * non_process_row_gap / 2
             target_corridor_y = end_y - direction * non_process_row_gap / 2
-            gutter_x = source_x + node_width + 12.0
+            gutter_x = (
+                long_vertical_gutter_x
+                if long_vertical_gutter_x is not None
+                else source_x + node_width + 12.0
+            )
             path = (
                 f"M {center_x:.1f} {start_y:.1f} "
                 f"L {center_x:.1f} {source_corridor_y:.1f} "
@@ -813,6 +819,13 @@ def _edge_geometry(
                 f"L {center_x:.1f} {target_corridor_y:.1f} "
                 f"L {center_x:.1f} {end_y:.1f}"
             )
+            if long_vertical_gutter_x is not None:
+                label_y = (
+                    long_vertical_label_y
+                    if long_vertical_label_y is not None
+                    else (source_corridor_y + target_corridor_y) / 2
+                )
+                return path, gutter_x + 8 + label_width / 2, label_y, route
             return path, (center_x + gutter_x) / 2, source_corridor_y, route
         distance = abs(end_y - start_y)
         bend = max(28.0, distance * 0.42)
@@ -960,6 +973,8 @@ def _render_edge(
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
+    long_vertical_gutter_x: float | None = None,
+    long_vertical_label_y: float | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
@@ -1108,6 +1123,8 @@ def _render_edge(
         long_branch_slot=long_branch_slot,
         long_branch_count=long_branch_count,
         long_branch_label_y=long_branch_label_y,
+        long_vertical_gutter_x=long_vertical_gutter_x,
+        long_vertical_label_y=long_vertical_label_y,
         label_height=label_height,
         label_width=label_width,
         feedback_label_y=feedback_label_y,
@@ -1450,6 +1467,93 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             for group_id, label, x, y, region_width, region_height in regions
                         ]
                     height += top_shift
+    non_process_row_gap = _ROW_GAP if regions else _NON_PROCESS_ROW_GAP
+    long_vertical_gutter_x: dict[str, float] = {}
+    long_vertical_label_y: dict[str, float] = {}
+    if intent != "process":
+        node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
+        row_step = _NODE_HEIGHT + non_process_row_gap
+        corridor_use_count: dict[tuple[int, int, int], int] = defaultdict(int)
+        corridor_groups: dict[
+            tuple[int, int, int],
+            list[tuple[float, str, int, int]],
+        ] = defaultdict(list)
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if source[0] != target[0] or source[1] == target[1]:
+                continue
+            direction = 1 if source[1] < target[1] else -1
+            corridor_key = (source[0], source[1], direction)
+            corridor_use_count[corridor_key] += 1
+            if abs(target[1] - source[1]) <= row_step:
+                continue
+            if direction > 0:
+                start_y = source[1] + _NODE_HEIGHT
+                end_y = target[1]
+            else:
+                start_y = source[1]
+                end_y = target[1] + _NODE_HEIGHT
+            source_corridor_y = start_y + direction * non_process_row_gap / 2
+            target_corridor_y = end_y - direction * non_process_row_gap / 2
+            natural_y = (source_corridor_y + target_corridor_y) / 2
+            label_size = 17 if intent == "narrative" else 15
+            label_line_height = 19 if intent == "narrative" else 17
+            provisional = _wrapped(str(edge["label"]), width=24, limit=2)
+            label_width = min(
+                190,
+                max(70, max(len(line) for line in provisional) * 8 + 24),
+            )
+            label_text_inset = 7 if intent == "narrative" else 8
+            label_lines = _bounded_wrapped(
+                str(edge["label"]),
+                width=24,
+                limit=2,
+                size=label_size,
+                max_width=label_width - 2 * label_text_inset,
+            )
+            label_height = (28 if intent == "narrative" else 26) + max(
+                0, len(label_lines) - 1
+            ) * label_line_height
+            corridor_groups[corridor_key].append(
+                (natural_y, str(edge["id"]), label_width, label_height)
+            )
+
+        shared_long_verticals = [
+            item
+            for corridor_key, items in corridor_groups.items()
+            if corridor_use_count[corridor_key] > 1
+            for item in items
+        ]
+        if shared_long_verticals:
+            obstacle_right = max(x + node_width for x, _ in positions.values())
+            if regions:
+                obstacle_right = max(
+                    obstacle_right,
+                    max(x + region_width for _, _, x, _, region_width, _ in regions),
+                )
+            previous_bottom = 0.0
+            required_right = float(width)
+            for slot, (natural_y, edge_id, label_width, label_height) in enumerate(
+                sorted(shared_long_verticals, key=lambda item: (item[0], item[1]))
+            ):
+                gutter_x = obstacle_right + 12.0 + slot * _PROCESS_GUTTER_LANE_STEP
+                packed_y = max(
+                    natural_y,
+                    previous_bottom + 8 + label_height / 2,
+                )
+                long_vertical_gutter_x[edge_id] = gutter_x
+                long_vertical_label_y[edge_id] = packed_y
+                previous_bottom = packed_y + label_height / 2
+                required_right = max(
+                    required_right,
+                    gutter_x + 8 + label_width + _PAGE_MARGIN,
+                )
+            width = max(width, math.ceil(required_right))
+            height = max(height, math.ceil(previous_bottom + 8))
+
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
     long_branch_pack_bottom = 0.0
@@ -1699,10 +1803,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 canvas_height=height,
                 intent=intent,
                 process_row_gap=process_row_gap,
-                non_process_row_gap=_ROW_GAP if regions else _NON_PROCESS_ROW_GAP,
+                non_process_row_gap=non_process_row_gap,
                 long_branch_slot=long_branch_slots.get(str(edge["id"])),
                 long_branch_count=len(long_branch_slots),
                 long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
+                long_vertical_gutter_x=long_vertical_gutter_x.get(str(edge["id"])),
+                long_vertical_label_y=long_vertical_label_y.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,

@@ -1901,3 +1901,158 @@ def test_wrapped_single_narrative_feedback_uses_footer_not_purpose_strip() -> No
         y + height for _, y, _, height in _node_boxes(root).values()
     )
     assert label[1] >= max_node_bottom + _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE
+
+def test_shared_long_vertical_non_process_labels_use_stable_outer_lanes() -> None:
+    raw = _feedback_model(grouped=True, source="a0", target="a2", label="unused")
+    raw["nodes"].extend(
+        [
+            {
+                "id": "a3",
+                "label": "A3",
+                "kind": "system",
+                "group": "left",
+                "summary": "Vierte Karte links.",
+            },
+            {
+                "id": "b3",
+                "label": "B3",
+                "kind": "system",
+                "group": "right",
+                "summary": "Vierte Karte rechts.",
+            },
+        ]
+    )
+    edges = [
+        {
+            "id": "long_a",
+            "from": "a0",
+            "to": "a2",
+            "label": "erste lange Beziehung",
+            "kind": "evidence",
+        },
+        {
+            "id": "long_b",
+            "from": "a0",
+            "to": "a3",
+            "label": "zweite lange Beziehung",
+            "kind": "risk",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        result = {}
+        for edge in root.iter():
+            edge_id = edge.attrib.get("data-source-id")
+            if edge_id not in {"long_a", "long_b"}:
+                continue
+            path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+            rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert path is not None and rect is not None
+            result[edge_id] = (path.attrib["d"], _rect_box(rect))
+        return result, root
+
+    forward, root = geometry(edges)
+    reverse, _ = geometry(list(reversed(edges)))
+    assert forward == reverse
+    assert set(forward) == {"long_a", "long_b"}
+
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert not _boxes_overlap(boxes["long_a"], boxes["long_b"])
+    node_boxes = list(_node_boxes(root).values())
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in boxes.values()
+        for node_box in node_boxes
+    )
+
+    max_node_right = max(x + width for x, _, width, _ in node_boxes)
+    gutter_xs = []
+    for path, _ in forward.values():
+        line_points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        ]
+        assert len(line_points) == 5
+        gutter_xs.append(line_points[1][0])
+        assert line_points[1][0] == line_points[2][0] > max_node_right
+    assert len(set(gutter_xs)) == 2
+
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+    assert all(
+        0 <= x and x + width <= canvas_width and 0 <= y and y + height <= canvas_height
+        for x, y, width, height in boxes.values()
+    )
+
+def test_short_and_long_same_column_edges_share_corridor_without_label_overlap() -> None:
+    raw = _feedback_model(grouped=True, source="a0", target="a2", label="unused")
+    edges = [
+        {
+            "id": "short_a",
+            "from": "a0",
+            "to": "a1",
+            "label": "kurze Beziehung",
+            "kind": "evidence",
+        },
+        {
+            "id": "long_a",
+            "from": "a0",
+            "to": "a2",
+            "label": "lange Beziehung",
+            "kind": "risk",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        result = {}
+        for edge in root.iter():
+            edge_id = edge.attrib.get("data-source-id")
+            if edge_id not in {"short_a", "long_a"}:
+                continue
+            path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+            rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert path is not None and rect is not None
+            result[edge_id] = (path.attrib["d"], _rect_box(rect))
+        return result, root
+
+    forward, root = geometry(edges)
+    reverse, _ = geometry(list(reversed(edges)))
+    assert forward == reverse
+    assert set(forward) == {"short_a", "long_a"}
+
+    short_only, _ = geometry([edges[0]])
+    assert forward["short_a"] == short_only["short_a"]
+
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert not _boxes_overlap(boxes["short_a"], boxes["long_a"])
+    node_boxes = list(_node_boxes(root).values())
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in boxes.values()
+        for node_box in node_boxes
+    )
+
+    max_node_right = max(x + width for x, _, width, _ in node_boxes)
+    long_path = forward["long_a"][0]
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", long_path)
+    ]
+    assert len(line_points) == 5
+    assert line_points[1][0] == line_points[2][0] > max_node_right
+
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+    assert all(
+        0 <= x and x + width <= canvas_width and 0 <= y and y + height <= canvas_height
+        for x, y, width, height in boxes.values()
+    )
+
