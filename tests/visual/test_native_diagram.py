@@ -10,6 +10,10 @@ import pytest
 
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
 from schauwerk.visual.native_diagram import (
+    _ellipsize_to_width,
+    _estimated_wrap_width,
+    _rebalance_single_word_lines,
+    _split_token_to_width,
     _xml_escape,
     render_native_diagram,
 )
@@ -39,6 +43,58 @@ def _source_ids(root: ET.Element, source_kind: str) -> list[str]:
         for element in root.iter()
         if element.attrib.get("data-source-kind") == source_kind
     ]
+
+
+def _rect_box(rect: ET.Element) -> tuple[float, float, float, float]:
+    return tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+
+
+def _boxes_overlap(
+    first: tuple[float, float, float, float],
+    second: tuple[float, float, float, float],
+) -> bool:
+    ax, ay, aw, ah = first
+    bx, by, bw, bh = second
+    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
+
+
+def _node_boxes(root: ET.Element) -> dict[str, tuple[float, float, float, float]]:
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    for node in root.iter():
+        if node.attrib.get("data-source-kind") != "node":
+            continue
+        rect = node.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        boxes[node.attrib["data-source-id"]] = _rect_box(rect)
+    return boxes
+
+
+def _edge_label_boxes(root: ET.Element) -> dict[str, tuple[float, float, float, float]]:
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    for edge in root.iter():
+        if edge.attrib.get("data-source-kind") != "edge":
+            continue
+        rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        boxes[edge.attrib["data-source-id"]] = _rect_box(rect)
+    return boxes
+
+
+def _point_on_box_boundary(
+    point: tuple[float, float],
+    box: tuple[float, float, float, float],
+    *,
+    tolerance: float = 0.1,
+) -> bool:
+    px, py = point
+    x, y, width, height = box
+    on_vertical = (
+        abs(px - x) <= tolerance or abs(px - (x + width)) <= tolerance
+    ) and y - tolerance <= py <= y + height + tolerance
+    on_horizontal = (
+        abs(py - y) <= tolerance or abs(py - (y + height)) <= tolerance
+    ) and x - tolerance <= px <= x + width + tolerance
+    return on_vertical or on_horizontal
 
 
 def test_native_diagram_is_byte_deterministic_for_raw_and_normalized_input() -> None:
@@ -326,6 +382,119 @@ def test_process_layout_uses_graph_rank_and_readable_typography() -> None:
     narrative_view_box = [float(value) for value in narrative.attrib["viewBox"].split()]
     assert narrative_view_box[2] <= 1450
 
+def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use_elbows() -> None:
+    root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
+    groups = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "group"
+    }
+    region_heights = {}
+    for group_id, group in groups.items():
+        rect = group.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        region_heights[group_id] = float(rect.attrib["height"])
+    assert region_heights["orientation"] == region_heights["proof"]
+    assert region_heights["orientation"] < region_heights["movement"]
+
+    edges = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+    }
+    for edge_id in ("journey02", "journey05"):
+        edge = edges[edge_id]
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        assert edge.attrib["data-route"] == "narrative-elbow"
+        assert " L " in path.attrib["d"]
+        assert " C " not in path.attrib["d"]
+
+
+def test_narrative_feedback_loop_hugs_content_and_labels_the_return_near_target() -> None:
+    root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
+    nodes = _node_boxes(root)
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+        and element.attrib.get("data-source-id") == "journey07"
+    )
+    path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+    label = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+    assert path is not None and label is not None
+    numbers = [float(value) for value in re.findall(r"-?\d+(?:\.\d+)?", path.attrib["d"])]
+    xs = numbers[0::2]
+    ys = numbers[1::2]
+    question = nodes["question"]
+    meaning = nodes["meaning"]
+    label_box = _rect_box(label)
+    assert min(xs) >= question[0] - 14.1
+    assert max(xs) <= meaning[0] + meaning[2] + 14.1
+    assert min(ys) == 120.0
+    assert label_box[1] + label_box[3] < question[1]
+    assert label_box[0] < question[0] + question[2]
+    other_labels = [
+        box
+        for edge_id, box in _edge_label_boxes(root).items()
+        if edge_id != "journey07"
+    ]
+    assert min(ys) < min(box[1] for box in other_labels)
+    assert not any(_boxes_overlap(label_box, box) for box in nodes.values())
+
+
+def test_narrow_knowledge_map_labels_remain_complete_without_ellipsis() -> None:
+    raw = _load("system-landscape-v1.json")
+    root = _parse(render_native_diagram(raw))
+    edges = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+    }
+    source_edges = {edge["id"]: edge for edge in raw["edges"]}
+    for edge_id in ("land02", "land06"):
+        edge = edges[edge_id]
+        text = edge.find(f"{{{SVG_NAMESPACE}}}text")
+        rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert text is not None and rect is not None
+        lines = [
+            "".join(tspan.itertext())
+            for tspan in text.findall(f"{{{SVG_NAMESPACE}}}tspan")
+        ]
+        assert " ".join(lines) == source_edges[edge_id]["label"]
+        assert "…" not in "".join(lines)
+        assert text.attrib["font-size"] == "14"
+        assert float(rect.attrib["width"]) <= 118.0
+
+
+def test_narrative_summary_wrapping_avoids_nonfinal_single_word_orphans() -> None:
+    root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
+    for node in root.iter():
+        if node.attrib.get("data-source-kind") != "node":
+            continue
+        texts = node.findall(f"{{{SVG_NAMESPACE}}}text")
+        assert texts
+        summary_lines = [
+            "".join(tspan.itertext())
+            for tspan in texts[-1].findall(f"{{{SVG_NAMESPACE}}}tspan")
+        ]
+        assert summary_lines
+        assert all(len(line.split()) >= 2 for line in summary_lines[:-1])
+
+
+def test_single_narrative_feedback_path_is_visually_subordinate() -> None:
+    root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+        and element.attrib.get("data-source-id") == "journey07"
+    )
+    path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+    assert path is not None
+    assert path.attrib["stroke-opacity"] == "0.42"
+
+
 def test_grouped_vertical_relations_and_feedback_use_quiet_routes() -> None:
     landscape = _parse(render_native_diagram(_load("system-landscape-v1.json")))
     edges = {
@@ -352,6 +521,53 @@ def test_grouped_vertical_relations_and_feedback_use_quiet_routes() -> None:
     assert narrative_edges["journey07"].attrib["data-route"] == "feedback-return"
 
 
+def test_narrative_diagonal_edge_labels_use_vertical_corridors_without_word_breaks() -> None:
+    raw = _load("narrative-journey-v1.json")
+    root = _parse(render_native_diagram(raw))
+    node_boxes = _node_boxes(root)
+    edges = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+    }
+    expected_lines = {
+        "journey02": ["macht Bruch", "sichtbar"],
+        "journey05": ["erzeugt", "Beleg"],
+    }
+    edge_by_id = {edge["id"]: edge for edge in raw["edges"]}
+
+    for edge_id, expected in expected_lines.items():
+        edge = edges[edge_id]
+        label_rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        label_text = edge.find(f"{{{SVG_NAMESPACE}}}text")
+        assert label_rect is not None and label_text is not None
+        lines = [
+            "".join(tspan.itertext())
+            for tspan in label_text.findall(f"{{{SVG_NAMESPACE}}}tspan")
+        ]
+        assert lines == expected
+        assert "…" not in "".join(lines)
+        if edge_id == "journey05":
+            assert label_text.attrib["font-size"] == "15"
+            assert float(label_rect.attrib["width"]) == 85.0
+
+        source = edge_by_id[edge_id]
+        source_box = node_boxes[source["from"]]
+        target_box = node_boxes[source["to"]]
+        label_box = _rect_box(label_rect)
+        assert all(
+            not _boxes_overlap(label_box, node_box)
+            for node_box in node_boxes.values()
+        )
+        if edge_id == "journey02":
+            upper = min(source_box, target_box, key=lambda box: box[1])
+            lower = max(source_box, target_box, key=lambda box: box[1])
+            upper_bottom = upper[1] + upper[3]
+            lower_top = lower[1]
+            assert upper_bottom < label_box[1]
+            assert label_box[1] + label_box[3] < lower_top
+
+
 @pytest.mark.parametrize(
     ("fixture_name", "edge_id"),
     (("system-landscape-v1.json", "land09"), ("narrative-journey-v1.json", "journey07")),
@@ -359,16 +575,10 @@ def test_grouped_vertical_relations_and_feedback_use_quiet_routes() -> None:
 def test_non_process_feedback_label_stays_outside_every_card(
     fixture_name: str, edge_id: str
 ) -> None:
-    root = _parse(render_native_diagram(_load(fixture_name)))
-    node_boxes: list[tuple[float, float, float, float]] = []
-    for element in root.iter():
-        if element.attrib.get("data-source-kind") != "node":
-            continue
-        rect = element.find(f"{{{SVG_NAMESPACE}}}rect")
-        assert rect is not None
-        node_boxes.append(
-            tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
-        )
+    raw_model = _load(fixture_name)
+    root = _parse(render_native_diagram(raw_model))
+    node_boxes = _node_boxes(root)
+    source = next(edge for edge in raw_model["edges"] if edge["id"] == edge_id)
 
     edge = next(
         element
@@ -382,44 +592,38 @@ def test_non_process_feedback_label_stays_outside_every_card(
     assert label_rect is not None
     assert label_text is not None
     assert path is not None
-    lx, ly, lw, lh = (
-        float(label_rect.attrib[key]) for key in ("x", "y", "width", "height")
-    )
+    lx, ly, lw, lh = _rect_box(label_rect)
     assert lw >= 230
     assert len(label_text.findall(f"{{{SVG_NAMESPACE}}}tspan")) == 1
-    assert all(
-        not (lx < x + width and lx + lw > x and ly < y + height and ly + lh > y)
-        for x, y, width, height in node_boxes
-    )
+    _assert_feedback_route_avoids_cards(root, edge_id)
 
     points = [
         (float(x), float(y))
         for x, y in re.findall(r"[ML] ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
     ]
-    assert len(points) == 4
-    for (x1, y1), (x2, y2) in zip(points, points[1:]):
-        if x1 == x2:
-            segment_top, segment_bottom = sorted((y1, y2))
-            assert all(
-                not (
-                    x < x1 < x + width
-                    and segment_top < y + height
-                    and segment_bottom > y
-                )
-                for x, y, width, height in node_boxes
-            )
-        elif y1 == y2:
-            segment_left, segment_right = sorted((x1, x2))
-            assert all(
-                not (
-                    y < y1 < y + height
-                    and segment_left < x + width
-                    and segment_right > x
-                )
-                for x, y, width, height in node_boxes
-            )
-        else:
-            raise AssertionError("feedback corridor must remain orthogonal")
+    assert len(points) >= 2
+    assert _point_on_box_boundary(points[0], node_boxes[source["from"]])
+    assert _point_on_box_boundary(points[-1], node_boxes[source["to"]])
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+    assert all(0 <= x <= canvas_width and 0 <= y <= canvas_height for x, y in points)
+
+    label_center_y = ly + lh / 2
+    if raw_model["intent"] == "narrative":
+        min_node_top = min(y for _, y, _, _ in node_boxes.values())
+        return_segments = [
+            (x1, x2, y1)
+            for (x1, y1), (x2, y2) in zip(points, points[1:])
+            if y1 == y2 and y1 < min_node_top
+        ]
+    else:
+        max_node_bottom = max(y + height for _, y, _, height in node_boxes.values())
+        return_segments = [
+            (x1, x2, y1)
+            for (x1, y1), (x2, y2) in zip(points, points[1:])
+            if y1 == y2 and y1 > max_node_bottom
+        ]
+    assert return_segments
+    assert any(abs(y - label_center_y) <= 0.1 for _, _, y in return_segments)
 
 
 @pytest.mark.parametrize(
@@ -705,16 +909,7 @@ def test_multiple_long_process_branches_use_distinct_gutter_lanes_and_labels() -
 
 
 def _assert_feedback_route_avoids_cards(root: ET.Element, edge_id: str) -> None:
-    node_boxes: list[tuple[float, float, float, float]] = []
-    for element in root.iter():
-        if element.attrib.get("data-source-kind") != "node":
-            continue
-        rect = element.find(f"{{{SVG_NAMESPACE}}}rect")
-        assert rect is not None
-        node_boxes.append(
-            tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
-        )
-
+    node_boxes = list(_node_boxes(root).values())
     edge = next(
         element
         for element in root.iter()
@@ -726,21 +921,18 @@ def _assert_feedback_route_avoids_cards(root: ET.Element, edge_id: str) -> None:
     path = edge.find(f"{{{SVG_NAMESPACE}}}path")
     assert label_rect is not None
     assert path is not None
-    lx, ly, lw, lh = (
-        float(label_rect.attrib[key]) for key in ("x", "y", "width", "height")
-    )
-    assert all(
-        not (lx < x + width and lx + lw > x and ly < y + height and ly + lh > y)
-        for x, y, width, height in node_boxes
-    )
-    canvas_height = float(root.attrib["viewBox"].split()[3])
+    label_box = _rect_box(label_rect)
+    assert all(not _boxes_overlap(label_box, node_box) for node_box in node_boxes)
+    _, ly, _, lh = label_box
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
     assert 0 <= ly and ly + lh <= canvas_height
 
     points = [
         (float(x), float(y))
         for x, y in re.findall(r"[ML] ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
     ]
-    assert len(points) in {4, 6}
+    assert len(points) >= 2
+    assert all(0 <= x <= canvas_width and 0 <= y <= canvas_height for x, y in points)
     for (x1, y1), (x2, y2) in zip(points, points[1:]):
         if x1 == x2:
             segment_top, segment_bottom = sorted((y1, y2))
@@ -929,13 +1121,11 @@ def _minimal_process_model(node_count: int) -> dict:
     return raw
 
 
-def test_single_long_process_branch_preserves_legacy_gutter_contract() -> None:
+def test_adjacent_ungrouped_process_branch_stays_in_row_corridor() -> None:
     raw = _minimal_process_model(8)
-    baseline = _parse(render_native_diagram(raw))
-    baseline_width = float(baseline.attrib["viewBox"].split()[2])
     raw["edges"] = [
         {
-            "id": "single_long",
+            "id": "adjacent_branch",
             "from": "n0",
             "to": "n7",
             "label": "x",
@@ -943,22 +1133,88 @@ def test_single_long_process_branch_preserves_legacy_gutter_contract() -> None:
         }
     ]
     root = _parse(render_native_diagram(raw))
-    assert float(root.attrib["viewBox"].split()[2]) == baseline_width
     edge = next(
         element
         for element in root.iter()
-        if element.attrib.get("data-source-id") == "single_long"
+        if element.attrib.get("data-source-id") == "adjacent_branch"
     )
     path = edge.find(f"{{{SVG_NAMESPACE}}}path")
     rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
     assert path is not None and rect is not None
-    line_points = [
-        (float(x), float(y))
-        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+    assert edge.attrib["data-route"] == "process-branch"
+    assert " L " not in path.attrib["d"]
+    node_boxes = [
+        tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+        for node in root.iter()
+        if node.attrib.get("data-source-kind") == "node"
+        for rect in [node.find(f"{{{SVG_NAMESPACE}}}rect")]
+        if rect is not None
     ]
-    assert line_points[0][0] == baseline_width - 40.0
-    assert line_points[1][0] == baseline_width - 40.0
-    assert float(rect.attrib["width"]) == 48.0
+    rows = sorted({y for _, y, _, _ in node_boxes})
+    assert len(rows) == 2
+    upper_bottom = rows[0] + 166.0
+    lower_top = rows[1]
+    assert lower_top - upper_bottom == 70.0
+    label_y = float(rect.attrib["y"])
+    label_height = float(rect.attrib["height"])
+    assert upper_bottom < label_y and label_y + label_height < lower_top
+
+def test_single_long_process_branch_is_card_safe_and_order_independent() -> None:
+    raw = _minimal_process_model(18)
+    long_edge = {
+        "id": "single_long",
+        "from": "n0",
+        "to": "n13",
+        "label": "W" * 120,
+        "kind": "risk",
+    }
+    fillers = [
+        {
+            "id": f"filler{index}",
+            "from": f"n{index + 1}",
+            "to": f"n{index + 1}",
+            "label": "a",
+            "kind": "association",
+        }
+        for index in range(4)
+    ]
+
+    def geometry(edges: list[dict]) -> tuple[str, tuple[float, float, float, float], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = edges
+        root = _parse(render_native_diagram(candidate))
+        edge = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == "single_long"
+        )
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and rect is not None
+        box = tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+        return path.attrib["d"], box, root
+
+    forward_path, forward_box, forward_root = geometry([long_edge, *fillers])
+    reverse_path, reverse_box, _ = geometry([*fillers, long_edge])
+    assert forward_path == reverse_path
+    assert forward_box == reverse_box
+    assert " L " in forward_path
+
+    lx, ly, lw, lh = forward_box
+    node_boxes = [
+        tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
+        for node in forward_root.iter()
+        if node.attrib.get("data-source-kind") == "node"
+        for rect in [node.find(f"{{{SVG_NAMESPACE}}}rect")]
+        if rect is not None
+    ]
+    assert all(
+        not (lx < x + width and lx + lw > x and ly < y + height and ly + lh > y)
+        for x, y, width, height in node_boxes
+    )
+    first_row_bottom = min(y for _, y, _, _ in node_boxes) + 166.0
+    second_row_top = sorted({y for _, y, _, _ in node_boxes})[1]
+    assert first_row_bottom < ly and ly + lh < second_row_top
 
 
 def _many_long_branches_model() -> dict:
@@ -973,12 +1229,12 @@ def _many_long_branches_model() -> dict:
         }
     ]
     long_label = "absichtlich sehr lange zweizeilige Verzweigungsbeschriftung"
-    for index in range(6):
+    for index in range(8):
         edges.append(
             {
                 "id": f"long{index + 1}",
-                "from": f"n{index + 6}",
-                "to": f"n{12 + ((index + 1) % 6)}",
+                "from": f"n{index % 6}",
+                "to": f"n{12 + ((index + 2 + index // 6) % 6)}",
                 "label": long_label if index % 2 else "kurz",
                 "kind": "risk",
             }
@@ -1027,8 +1283,8 @@ def test_many_long_process_branch_labels_pack_order_independently_and_expand_can
     forward_geometry = _long_branch_geometry(forward)
     reverse_geometry = _long_branch_geometry(reverse)
     assert forward_geometry == reverse_geometry
-    assert len(forward_geometry) == 7
-    assert len({values[0] for values in forward_geometry.values()}) == 7
+    assert len(forward_geometry) == 9
+    assert len({values[0] for values in forward_geometry.values()}) == 9
 
     boxes = [values[1:] for values in forward_geometry.values()]
     for index, (ax, ay, aw, ah) in enumerate(boxes):
@@ -1405,3 +1661,154 @@ def test_two_line_grouped_process_label_clears_region_headers_and_cards() -> Non
     assert len(endpoint_tops) == 2
     assert label_top >= group_header_bottom + 8
     assert label_bottom <= min(endpoint_tops) - 4
+
+@pytest.mark.parametrize("fixture_name", GOLDEN_FILES)
+def test_golden_edge_labels_clear_every_card(fixture_name: str) -> None:
+    root = _parse(render_native_diagram(_load(fixture_name)))
+    nodes = _node_boxes(root)
+    labels = _edge_label_boxes(root)
+    collisions = [
+        (edge_id, node_id)
+        for edge_id, label_box in labels.items()
+        for node_id, node_box in nodes.items()
+        if _boxes_overlap(label_box, node_box)
+    ]
+    assert collisions == []
+
+
+@pytest.mark.parametrize("fixture_name", GOLDEN_FILES)
+def test_golden_edge_labels_do_not_overlap_each_other(fixture_name: str) -> None:
+    root = _parse(render_native_diagram(_load(fixture_name)))
+    labels = list(_edge_label_boxes(root).items())
+    collisions = [
+        (edge_id, other_id)
+        for index, (edge_id, label_box) in enumerate(labels)
+        for other_id, other_box in labels[index + 1 :]
+        if _boxes_overlap(label_box, other_box)
+    ]
+    assert collisions == []
+
+
+def _feedback_geometry(
+    raw: dict, edges: list[dict]
+) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+    candidate = copy.deepcopy(raw)
+    candidate["edges"] = copy.deepcopy(edges)
+    root = _parse(render_native_diagram(candidate))
+    geometry: dict[str, tuple[str, tuple[float, float, float, float]]] = {}
+    for edge in root.iter():
+        edge_id = edge.attrib.get("data-source-id")
+        if edge.attrib.get("data-source-kind") != "edge" or edge_id is None:
+            continue
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and rect is not None
+        geometry[edge_id] = (path.attrib["d"], _rect_box(rect))
+    return geometry, root
+
+
+def _assert_feedback_geometry_is_distinct_and_order_independent(
+    raw: dict, edges: list[dict]
+) -> None:
+    forward, root = _feedback_geometry(raw, edges)
+    reverse, _ = _feedback_geometry(raw, list(reversed(edges)))
+    assert forward == reverse
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert len(boxes) == len(edges)
+    assert len(set(boxes.values())) == len(edges)
+    pairs = list(boxes.items())
+    assert all(
+        not _boxes_overlap(box, other_box)
+        for index, (_, box) in enumerate(pairs)
+        for _, other_box in pairs[index + 1 :]
+    )
+    node_boxes = list(_node_boxes(root).values())
+    assert all(
+        not _boxes_overlap(box, node_box)
+        for box in boxes.values()
+        for node_box in node_boxes
+    )
+
+
+def test_multiple_non_process_feedback_edges_use_distinct_stable_footer_lanes() -> None:
+    raw = _feedback_model(
+        grouped=False,
+        source="u0",
+        target="u4",
+        label="placeholder",
+    )
+    edges = [
+        {"id": "feedback_a", "from": "u0", "to": "u4", "label": "zurück A", "kind": "feedback"},
+        {"id": "feedback_b", "from": "u4", "to": "u0", "label": "zurück B", "kind": "feedback"},
+        {"id": "feedback_c", "from": "u1", "to": "u5", "label": "zurück C", "kind": "feedback"},
+    ]
+    _assert_feedback_geometry_is_distinct_and_order_independent(raw, edges)
+
+
+def test_multiple_process_feedback_edges_use_distinct_stable_footer_lanes() -> None:
+    raw = _minimal_process_model(18)
+    edges = [
+        {"id": "feedback_a", "from": "n0", "to": "n12", "label": "zurück A", "kind": "feedback"},
+        {"id": "feedback_b", "from": "n12", "to": "n0", "label": "zurück B", "kind": "feedback"},
+        {"id": "feedback_c", "from": "n1", "to": "n13", "label": "zurück C", "kind": "feedback"},
+    ]
+    _assert_feedback_geometry_is_distinct_and_order_independent(raw, edges)
+
+
+def test_ellipsize_returns_empty_when_even_ellipsis_does_not_fit() -> None:
+    size = 17
+    ellipsis_width = _estimated_wrap_width("…", size=size)
+    assert _ellipsize_to_width("abcdef", size=size, max_width=ellipsis_width - 0.1) == ""
+
+
+@pytest.mark.parametrize(
+    ("value", "max_width", "expected"),
+    (
+        ("MiWi.i", 25.0, ["Mi", "Wi", ".i"]),
+        ("MiWi.i", 55.0, ["MiWi", ".i"]),
+        ("MiWi.i", 95.0, ["MiWi.i"]),
+        ("Übergrößenprüfung", 25.0, ["Ü", "be", "rg", "r", "ö", "ß", "en", "pr", "ü", "fu", "ng"]),
+        ("Übergrößenprüfung", 55.0, ["Überg", "röße", "nprüf", "ung"]),
+        ("Übergrößenprüfung", 95.0, ["Übergrö", "ßenprüfu", "ng"]),
+        ("MWMWiiii[]{}", 25.0, ["M", "W", "M", "Wi", "iii[", "]{}"]),
+        ("MWMWiiii[]{}", 55.0, ["MW", "MWii", "ii[]{}"]),
+        ("MWMWiiii[]{}", 95.0, ["MWMWiii", "i[]{}"]),
+    ),
+)
+def test_incremental_token_split_matches_legacy_width_contract(
+    value: str, max_width: float, expected: list[str]
+) -> None:
+    def legacy_width(text: str) -> float:
+        units = 0.0
+        for character in text:
+            if character == " " or character in "ilI.,'`:;!|[](){}":
+                units += 0.35
+            elif character in "MW@#%&QGmwo":
+                units += 1.12
+            elif ord(character) > 127:
+                units += 0.9
+            elif character.isupper():
+                units += 0.86
+            else:
+                units += 0.58
+        return units * 17
+
+    pieces = _split_token_to_width(value, size=17, max_width=max_width)
+    assert pieces == expected
+    assert "".join(pieces) == value
+    assert all(pieces)
+    assert all(legacy_width(piece) <= max_width or len(piece) == 1 for piece in pieces)
+
+
+
+def test_narrative_orphan_rebalance_does_not_relocate_an_orphan() -> None:
+    assert _rebalance_single_word_lines(
+        ["alpha beta", "gamma", "delta epsilon"],
+        size=19,
+        max_width=240.0,
+    ) == ["alpha beta", "gamma", "delta epsilon"]
+    assert _rebalance_single_word_lines(
+        ["alpha beta gamma", "delta", "epsilon zeta"],
+        size=19,
+        max_width=240.0,
+    ) == ["alpha beta", "gamma delta", "epsilon zeta"]
