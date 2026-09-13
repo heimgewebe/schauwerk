@@ -2157,3 +2157,33 @@ def test_long_vertical_process_edge_routes_around_intervening_card() -> None:
     assert edge.attrib["data-route"] == "vertical"
     assert path.attrib["d"].count(" L ") == 5
 
+
+
+def test_process_feedback_starts_after_packed_long_vertical_labels() -> None:
+    raw = _minimal_process_model(30)
+    raw["edges"] = [
+        {
+            "id": f"vertical_{index}",
+            "from": "n24",
+            "to": "n12",
+            "label": f"lange vertikale Beziehung {index}",
+            "kind": "evidence",
+        }
+        for index in range(4)
+    ] + [
+        {
+            "id": "feedback",
+            "from": "n29",
+            "to": "n0",
+            "label": "Rückmeldung zum Anfang",
+            "kind": "feedback",
+        }
+    ]
+
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    feedback = labels["feedback"]
+    verticals = [labels[f"vertical_{index}"] for index in range(4)]
+    assert all(not _boxes_overlap(feedback, box) for box in verticals)
+    vertical_bottom = max(y + height for _, y, _, height in verticals)
+    assert feedback[1] >= vertical_bottom + 10

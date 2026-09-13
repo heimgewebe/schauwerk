@@ -979,6 +979,7 @@ def _render_edge(
     feedback_slot: int | None = None,
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
+    force_feedback_footer: bool = False,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -1084,7 +1085,11 @@ def _render_edge(
     elif (
         kind == "feedback"
         and feedback_slot is not None
-        and (intent != "process" or feedback_count > 1)
+        and (
+            intent != "process"
+            or feedback_count > 1
+            or force_feedback_footer
+        )
     ):
         feedback_label_y = (
             feedback_origin_bottom
@@ -1532,6 +1537,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         if corridor_use_count[corridor_key] > 1
         for item in items
     ]
+    long_vertical_pack_bottom = 0.0
     if shared_long_verticals:
         obstacle_right = max(x + node_width for x, _ in positions.values())
         if regions:
@@ -1557,6 +1563,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 gutter_x + 8 + label_width + _PAGE_MARGIN,
             )
         width = max(width, math.ceil(required_right))
+        long_vertical_pack_bottom = previous_bottom
         height = max(height, math.ceil(previous_bottom + 8))
 
     long_branch_slots: dict[str, int] = {}
@@ -1618,7 +1625,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         # lanes so list ordering can never collapse them onto each other.
         max_node_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
         feedback_base_bottom = (
-            max(max_node_bottom, long_branch_pack_bottom)
+            max(max_node_bottom, long_branch_pack_bottom, long_vertical_pack_bottom)
             if intent == "process"
             else max_node_bottom
         )
@@ -1817,6 +1824,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
+                force_feedback_footer=(
+                    intent == "process" and long_vertical_pack_bottom > 0.0
+                ),
             )
         )
     for node in model["nodes"]:
