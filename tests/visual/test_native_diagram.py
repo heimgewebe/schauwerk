@@ -2187,3 +2187,175 @@ def test_process_feedback_starts_after_packed_long_vertical_labels() -> None:
     assert all(not _boxes_overlap(feedback, box) for box in verticals)
     vertical_bottom = max(y + height for _, y, _, height in verticals)
     assert feedback[1] >= vertical_bottom + 10
+
+
+def test_wrapped_adjacent_process_branches_use_outer_card_safe_lanes() -> None:
+    raw = _load("decision-flow-v1.json")
+    long_label = ("x " * 60).strip()
+    assert len(long_label) == 119
+
+    for edge_id in ("flow02", "flow04", "flow06"):
+        candidate = copy.deepcopy(raw)
+        edge = next(edge for edge in candidate["edges"] if edge["id"] == edge_id)
+        edge["label"] = long_label
+        root = _parse(render_native_diagram(candidate))
+        labels = _edge_label_boxes(root)
+        nodes = _node_boxes(root)
+        label_box = labels[edge_id]
+        assert all(not _boxes_overlap(label_box, node_box) for node_box in nodes.values())
+
+        edge_group = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == edge_id
+        )
+        path = edge_group.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        assert edge_group.attrib["data-route"] == "process-branch"
+        line_points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+        ]
+        max_node_right = max(x + width for x, _, width, _ in nodes.values())
+        assert any(x > max_node_right for x, _ in line_points)
+        canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+        x, y, width, height = label_box
+        assert 0 <= x and x + width <= canvas_width
+        assert 0 <= y and y + height <= canvas_height
+
+
+def test_single_long_process_branch_forces_feedback_below_card_field() -> None:
+    raw = _minimal_process_model(14)
+    long_edge = {
+        "id": "long",
+        "from": "n0",
+        "to": "n13",
+        "label": "lange prozessbeziehung",
+        "kind": "flow",
+    }
+    feedback_edge = {
+        "id": "feedback",
+        "from": "n0",
+        "to": "n13",
+        "label": "rueckmeldung",
+        "kind": "feedback",
+    }
+    raw["edges"] = [long_edge, feedback_edge]
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    nodes = _node_boxes(root)
+
+    assert not _boxes_overlap(labels["long"], labels["feedback"])
+    max_node_bottom = max(y + height for _, y, _, height in nodes.values())
+    assert labels["feedback"][1] >= max_node_bottom + 10
+
+    long_only = _minimal_process_model(14)
+    long_only["edges"] = [copy.deepcopy(long_edge)]
+    long_only_root = _parse(render_native_diagram(long_only))
+    assert labels["long"] == _edge_label_boxes(long_only_root)["long"]
+
+
+def test_parallel_narrative_relations_use_stable_outer_lanes() -> None:
+    raw = _load("narrative-journey-v1.json")
+    original = copy.deepcopy(next(edge for edge in raw["edges"] if edge["id"] == "journey01"))
+    parallel = copy.deepcopy(original)
+    parallel["id"] = "parallel_copy"
+    parallel["label"] = "zweite parallele beziehung"
+    remaining = [edge for edge in raw["edges"] if edge["id"] != "journey01"]
+
+    def geometry(
+        ordered: list[dict],
+    ) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered + remaining)
+        root = _parse(render_native_diagram(candidate))
+        result = {}
+        for edge in root.iter():
+            edge_id = edge.attrib.get("data-source-id")
+            if edge_id not in {"journey01", "parallel_copy"}:
+                continue
+            path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+            rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert path is not None and rect is not None
+            result[edge_id] = (path.attrib["d"], _rect_box(rect))
+            assert edge.attrib["data-route"] == "narrative-parallel"
+        return result, root
+
+    forward, root = geometry([original, parallel])
+    reverse, _ = geometry([parallel, original])
+    assert forward == reverse
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert not _boxes_overlap(boxes["journey01"], boxes["parallel_copy"])
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in boxes.values()
+        for node_box in nodes.values()
+    )
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
+    gutters = []
+    for path, label_box in forward.values():
+        line_points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        ]
+        gutter_x = max(x for x, _ in line_points)
+        gutters.append(gutter_x)
+        assert gutter_x > max_node_right
+        canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+        x, y, width, height = label_box
+        assert 0 <= x and x + width <= canvas_width
+        assert 0 <= y and y + height <= canvas_height
+    assert len(set(gutters)) == 2
+
+
+def test_parallel_same_row_narrative_relations_use_row_gap_outer_lanes() -> None:
+    raw = _load("narrative-journey-v1.json")
+    raw["edges"] = [
+        {
+            "id": "same_a",
+            "from": "question",
+            "to": "tension",
+            "label": "erste parallele beziehung",
+            "kind": "flow",
+        },
+        {
+            "id": "same_b",
+            "from": "question",
+            "to": "tension",
+            "label": "zweite parallele beziehung",
+            "kind": "flow",
+        },
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    nodes = _node_boxes(root)
+    assert not _boxes_overlap(labels["same_a"], labels["same_b"])
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in labels.values()
+        for node_box in nodes.values()
+    )
+
+    row_bottom = nodes["question"][1] + nodes["question"][3]
+    next_row_top = min(
+        y
+        for _, y, _, _ in nodes.values()
+        if y > nodes["question"][1]
+    )
+    for edge_id in ("same_a", "same_b"):
+        group = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == edge_id
+        )
+        path = group.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+        ]
+        corridor_ys = {y for _, y in points[:-1]}
+        assert len(corridor_ys) == 1
+        corridor_y = next(iter(corridor_ys))
+        assert row_bottom < corridor_y < next_row_top

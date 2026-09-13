@@ -602,6 +602,8 @@ def _edge_geometry(
     long_branch_label_y: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
+    process_branch_gutter_x: float | None = None,
+    narrative_parallel_gutter_x: float | None = None,
     label_height: int = 0,
     label_width: int = 0,
     feedback_label_y: float | None = None,
@@ -786,6 +788,41 @@ def _edge_geometry(
         reach = 78 + abs(lane)
         control_one = (start_x + reach, start_y - 44)
         control_two = (end_x + reach, end_y + 44)
+    elif intent == "narrative" and narrative_parallel_gutter_x is not None:
+        route = "narrative-parallel"
+        gutter_x = narrative_parallel_gutter_x
+        if source_y != target_y:
+            direction = 1.0 if source_y < target_y else -1.0
+            start_x = source_x + node_width / 2
+            end_x = target_x + node_width / 2
+            start_y = source_y + _NODE_HEIGHT if direction > 0 else source_y
+            end_y = target_y if direction > 0 else target_y + _NODE_HEIGHT
+            source_corridor_y = start_y + direction * non_process_row_gap / 2
+            target_corridor_y = end_y - direction * non_process_row_gap / 2
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"L {start_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+                f"L {end_x:.1f} {target_corridor_y:.1f} "
+                f"L {end_x:.1f} {end_y:.1f}"
+            )
+            label_y = (source_corridor_y + target_corridor_y) / 2
+        else:
+            start_x = source_x + node_width / 2
+            end_x = target_x + node_width / 2
+            start_y = source_y + _NODE_HEIGHT
+            end_y = target_y + _NODE_HEIGHT
+            corridor_y = start_y + non_process_row_gap / 2
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"L {start_x:.1f} {corridor_y:.1f} "
+                f"L {gutter_x:.1f} {corridor_y:.1f} "
+                f"L {end_x:.1f} {corridor_y:.1f} "
+                f"L {end_x:.1f} {end_y:.1f}"
+            )
+            label_y = corridor_y
+        return path, gutter_x + 8 + label_width / 2, label_y, route
     elif source_x == target_x:
         route = "vertical"
         center_x = source_x + node_width / 2
@@ -893,6 +930,26 @@ def _edge_geometry(
             source_corridor_y = start_y - process_row_gap / 2 + lane_offset
             target_corridor_y = end_y + process_row_gap / 2 + lane_offset
             label_offset_y = 16.0
+        if not spans_intervening_row and process_branch_gutter_x is not None:
+            gutter_x = process_branch_gutter_x
+            bend = 18.0
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"C {start_x:.1f} {start_y + (bend if source_y < target_y else -bend):.1f}, "
+                f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+                f"L {end_x:.1f} {target_corridor_y:.1f} "
+                f"C {end_x:.1f} {target_corridor_y:.1f}, "
+                f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
+                f"{end_x:.1f} {end_y:.1f}"
+            )
+            return (
+                path,
+                gutter_x + 8 + label_width / 2,
+                (source_corridor_y + target_corridor_y) / 2,
+                route,
+            )
         if spans_intervening_row:
             slot = long_branch_slot or 0
             count = max(1, long_branch_count)
@@ -976,6 +1033,8 @@ def _render_edge(
     long_branch_label_y: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
+    process_branch_gutter_x: float | None = None,
+    narrative_parallel_gutter_x: float | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
@@ -1131,6 +1190,8 @@ def _render_edge(
         long_branch_label_y=long_branch_label_y,
         long_vertical_gutter_x=long_vertical_gutter_x,
         long_vertical_label_y=long_vertical_label_y,
+        process_branch_gutter_x=process_branch_gutter_x,
+        narrative_parallel_gutter_x=narrative_parallel_gutter_x,
         label_height=label_height,
         label_width=label_width,
         feedback_label_y=feedback_label_y,
@@ -1566,6 +1627,82 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         long_vertical_pack_bottom = previous_bottom
         height = max(height, math.ceil(previous_bottom + 8))
 
+    process_branch_gutter_x: dict[str, float] = {}
+    if intent == "process":
+        unsafe_adjacent_branches: list[str] = []
+        process_adjacent_step = _NODE_HEIGHT + process_row_gap
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if (
+                source[0] == target[0]
+                or source[1] == target[1]
+                or abs(target[1] - source[1]) > process_adjacent_step
+            ):
+                continue
+            label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
+            label_height = 29 + max(0, len(label_lines) - 1) * 19
+            if process_row_gap < label_height + 8:
+                unsafe_adjacent_branches.append(str(edge["id"]))
+        if unsafe_adjacent_branches:
+            obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())
+            if regions:
+                obstacle_right = max(
+                    obstacle_right,
+                    max(x + region_width for _, _, x, _, region_width, _ in regions),
+                )
+            cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
+            required_right = float(width)
+            for edge_id in sorted(unsafe_adjacent_branches):
+                process_branch_gutter_x[edge_id] = cursor
+                label_right = cursor + 8 + 212
+                required_right = max(required_right, label_right + _PAGE_MARGIN)
+                cursor = label_right + 12
+            width = max(width, math.ceil(required_right))
+
+    narrative_parallel_gutter_x: dict[str, float] = {}
+    if intent == "narrative":
+        parallel_groups: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            endpoint_key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+            parallel_groups[endpoint_key].append(str(edge["id"]))
+        parallel_edge_ids = sorted(
+            edge_id
+            for edge_ids in parallel_groups.values()
+            if len(edge_ids) > 1
+            for edge_id in edge_ids
+        )
+        if parallel_edge_ids:
+            obstacle_right = max(x + _NARRATIVE_NODE_WIDTH for x, _ in positions.values())
+            if regions:
+                obstacle_right = max(
+                    obstacle_right,
+                    max(x + region_width for _, _, x, _, region_width, _ in regions),
+                )
+            cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
+            required_right = float(width)
+            for edge_id in parallel_edge_ids:
+                narrative_parallel_gutter_x[edge_id] = cursor
+                label_right = cursor + 8 + 206
+                required_right = max(required_right, label_right + _PAGE_MARGIN)
+                cursor = label_right + 12
+            width = max(width, math.ceil(required_right))
+            same_row_parallel = any(
+                positions[str(edge["from"])][1] == positions[str(edge["to"])][1]
+                and str(edge["id"]) in narrative_parallel_gutter_x
+                for edge in model["edges"]
+            )
+            if same_row_parallel:
+                max_node_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
+                height = max(
+                    height,
+                    math.ceil(max_node_bottom + non_process_row_gap / 2 + 32),
+                )
+
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
     long_branch_pack_bottom = 0.0
@@ -1821,11 +1958,14 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
                 long_vertical_gutter_x=long_vertical_gutter_x.get(str(edge["id"])),
                 long_vertical_label_y=long_vertical_label_y.get(str(edge["id"])),
+                process_branch_gutter_x=process_branch_gutter_x.get(str(edge["id"])),
+                narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
                 force_feedback_footer=(
-                    intent == "process" and long_vertical_pack_bottom > 0.0
+                    intent == "process"
+                    and (long_vertical_pack_bottom > 0.0 or bool(long_branch_slots))
                 ),
             )
         )
