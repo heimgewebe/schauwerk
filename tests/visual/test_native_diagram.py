@@ -10,6 +10,7 @@ import pytest
 
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
 from schauwerk.visual.native_diagram import (
+    _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE,
     _ellipsize_to_width,
     _estimated_wrap_width,
     _rebalance_single_word_lines,
@@ -1812,3 +1813,91 @@ def test_narrative_orphan_rebalance_does_not_relocate_an_orphan() -> None:
         size=19,
         max_width=240.0,
     ) == ["alpha beta", "gamma delta", "epsilon zeta"]
+
+
+def test_long_vertical_non_process_edge_routes_around_intervening_card() -> None:
+    raw = _feedback_model(grouped=True, source="a0", target="a2", label="unused")
+    raw["edges"] = [
+        {
+            "id": "long_vertical",
+            "from": "a0",
+            "to": "a2",
+            "label": "lange vertikale Beziehung",
+            "kind": "evidence",
+        }
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    nodes = _node_boxes(root)
+    assert not _boxes_overlap(labels["long_vertical"], nodes["a1"])
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == "long_vertical"
+    )
+    path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+    assert path is not None
+    assert edge.attrib["data-route"] == "vertical"
+    assert path.attrib["d"].count(" L ") == 5
+
+
+def test_process_feedback_lanes_start_after_long_branch_label_pack() -> None:
+    raw = _many_long_branches_model()
+    raw["edges"].extend(
+        [
+            {
+                "id": "fba",
+                "from": "n17",
+                "to": "n0",
+                "label": "erste Rückmeldung",
+                "kind": "feedback",
+            },
+            {
+                "id": "fbb",
+                "from": "n16",
+                "to": "n1",
+                "label": "zweite Rückmeldung",
+                "kind": "feedback",
+            },
+        ]
+    )
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    long_bottom = max(
+        y + height
+        for edge_id, (_, y, _, height) in labels.items()
+        if edge_id.startswith("long")
+    )
+    feedback_top = min(labels[edge_id][1] for edge_id in ("fba", "fbb"))
+    assert feedback_top >= long_bottom + 10
+    assert all(
+        not _boxes_overlap(labels[long_id], labels[feedback_id])
+        for long_id in labels
+        if long_id.startswith("long")
+        for feedback_id in ("fba", "fbb")
+    )
+
+
+def test_wrapped_single_narrative_feedback_uses_footer_not_purpose_strip() -> None:
+    raw = _load("narrative-journey-v1.json")
+    raw["purpose"] = (
+        "Absichtlich zweizeiliger Purpose mit genug Text, damit dieser Bereich "
+        "sicher zwei sichtbare Zeilen verwendet und geprüft werden kann."
+    )
+    feedback = next(edge for edge in raw["edges"] if edge["kind"] == "feedback")
+    feedback["label"] = "Diese absichtlich lange Rückmeldung braucht sicher zwei Zeilen"
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    label = labels[feedback["id"]]
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == feedback["id"]
+    )
+    text = edge.find(f"{{{SVG_NAMESPACE}}}text")
+    assert text is not None
+    assert len(text.findall(f"{{{SVG_NAMESPACE}}}tspan")) == 2
+    max_node_bottom = max(
+        y + height for _, y, _, height in _node_boxes(root).values()
+    )
+    assert label[1] >= max_node_bottom + _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE

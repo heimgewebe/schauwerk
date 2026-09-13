@@ -596,6 +596,7 @@ def _edge_geometry(
     canvas_height: int,
     intent: str,
     process_row_gap: int = _PROCESS_ROW_GAP,
+    non_process_row_gap: int = _ROW_GAP,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
@@ -794,13 +795,31 @@ def _edge_geometry(
             start_x = end_x = center_x
             start_y = source_y
             end_y = target_y + _NODE_HEIGHT
+        row_step = _NODE_HEIGHT + non_process_row_gap
+        if intent != "process" and abs(target_y - source_y) > row_step:
+            # A direct vertical span across multiple rows would pass through an
+            # intervening card and place its label there. Leave through the
+            # nearest row-gap corridor, travel just outside the card column, and
+            # re-enter through the target-side row gap instead.
+            direction = 1.0 if end_y > start_y else -1.0
+            source_corridor_y = start_y + direction * non_process_row_gap / 2
+            target_corridor_y = end_y - direction * non_process_row_gap / 2
+            gutter_x = source_x + node_width + 12.0
+            path = (
+                f"M {center_x:.1f} {start_y:.1f} "
+                f"L {center_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+                f"L {center_x:.1f} {target_corridor_y:.1f} "
+                f"L {center_x:.1f} {end_y:.1f}"
+            )
+            return path, (center_x + gutter_x) / 2, source_corridor_y, route
         distance = abs(end_y - start_y)
         bend = max(28.0, distance * 0.42)
         direction = 1.0 if end_y > start_y else -1.0
         control_one = (center_x, start_y + direction * bend)
         control_two = (center_x, end_y - direction * bend)
-        # Center vertical labels on the inter-row corridor. The opaque label
-        # background masks the edge beneath it and leaves horizontal card gaps free.
+        # Adjacent vertical labels remain centered on the inter-row corridor.
         label_offset_x = 0.0
     elif intent == "narrative" and source_x != target_x:
         route = "narrative-elbow"
@@ -937,11 +956,13 @@ def _render_edge(
     canvas_height: int,
     intent: str,
     process_row_gap: int = _PROCESS_ROW_GAP,
+    non_process_row_gap: int = _ROW_GAP,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
+    feedback_base_bottom: float | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -1022,6 +1043,9 @@ def _render_edge(
         0, len(label_lines) - 1
     ) * label_line_height
     max_node_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
+    feedback_origin_bottom = (
+        feedback_base_bottom if feedback_base_bottom is not None else max_node_bottom
+    )
     feedback_label_y = None
     if (
         kind == "feedback"
@@ -1029,17 +1053,25 @@ def _render_edge(
         and feedback_slot is not None
         and feedback_count == 1
     ):
-        # A single narrative feedback relation reads as a return-to-origin cue.
-        # Put it in the dedicated strip between purpose copy and group headers,
-        # instead of drawing a second full-width baseline beneath the story.
-        feedback_label_y = _NARRATIVE_SINGLE_FEEDBACK_TOP_Y
+        # A one-line narrative feedback relation reads cleanly as a
+        # return-to-origin cue in the narrow header strip. Wrapped feedback
+        # labels cannot fit there without covering the purpose block, so they
+        # use the already-reserved footer instead.
+        if label_height <= 28:
+            feedback_label_y = _NARRATIVE_SINGLE_FEEDBACK_TOP_Y
+        else:
+            feedback_label_y = (
+                feedback_origin_bottom
+                + _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE
+                + label_height / 2
+            )
     elif (
         kind == "feedback"
         and feedback_slot is not None
         and (intent != "process" or feedback_count > 1)
     ):
         feedback_label_y = (
-            max_node_bottom
+            feedback_origin_bottom
             + 10
             + feedback_slot * _FEEDBACK_LABEL_LANE_STEP
             + label_height / 2
@@ -1072,6 +1104,7 @@ def _render_edge(
         canvas_height=canvas_height,
         intent=intent,
         process_row_gap=process_row_gap,
+        non_process_row_gap=non_process_row_gap,
         long_branch_slot=long_branch_slot,
         long_branch_count=long_branch_count,
         long_branch_label_y=long_branch_label_y,
@@ -1419,6 +1452,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     height += top_shift
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
+    long_branch_pack_bottom = 0.0
     if intent == "process":
         row_step = _NODE_HEIGHT + process_row_gap
         long_branches: list[tuple[float, str, Mapping[str, Any]]] = []
@@ -1456,6 +1490,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 )
                 long_branch_label_y[edge_id] = packed_y
                 previous_bottom = packed_y + label_height / 2
+            long_branch_pack_bottom = previous_bottom
             height = max(height, math.ceil(previous_bottom + 8))
     feedback_edges = sorted(
         (edge for edge in model["edges"] if str(edge["kind"]) == "feedback"),
@@ -1467,11 +1502,17 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     )
     feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
     feedback_count = len(feedback_edges)
+    feedback_base_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
     if feedback_count:
         # A single feedback relation keeps the established footer/corridor
         # geometry. Multiple feedback labels receive semantic, id-stable footer
         # lanes so list ordering can never collapse them onto each other.
         max_node_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
+        feedback_base_bottom = (
+            max(max_node_bottom, long_branch_pack_bottom)
+            if intent == "process"
+            else max_node_bottom
+        )
         feedback_heights: list[int] = []
         if intent == "process":
             for edge in feedback_edges:
@@ -1496,7 +1537,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             height = max(
                 height,
                 math.ceil(
-                    max_node_bottom
+                    feedback_base_bottom
                     + 10
                     + feedback_count * _FEEDBACK_LABEL_LANE_STEP
                     + 8
@@ -1505,7 +1546,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         elif intent == "process":
             height = max(
                 height,
-                math.ceil(max_node_bottom + 58 + feedback_heights[0] / 2),
+                math.ceil(feedback_base_bottom + 58 + feedback_heights[0] / 2),
             )
         elif intent == "narrative":
             height = max(
@@ -1658,11 +1699,13 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 canvas_height=height,
                 intent=intent,
                 process_row_gap=process_row_gap,
+                non_process_row_gap=_ROW_GAP if regions else _NON_PROCESS_ROW_GAP,
                 long_branch_slot=long_branch_slots.get(str(edge["id"])),
                 long_branch_count=len(long_branch_slots),
                 long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
+                feedback_base_bottom=feedback_base_bottom,
             )
         )
     for node in model["nodes"]:
