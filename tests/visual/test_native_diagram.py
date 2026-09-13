@@ -2056,3 +2056,104 @@ def test_short_and_long_same_column_edges_share_corridor_without_label_overlap()
         for x, y, width, height in boxes.values()
     )
 
+def test_opposite_direction_long_vertical_edges_share_physical_corridor() -> None:
+    raw = _feedback_model(grouped=True, source="a0", target="a2", label="unused")
+    raw["nodes"].extend(
+        [
+            {
+                "id": "a3",
+                "label": "A3",
+                "kind": "system",
+                "group": "left",
+                "summary": "Vierte Karte links.",
+            },
+            {
+                "id": "b3",
+                "label": "B3",
+                "kind": "system",
+                "group": "right",
+                "summary": "Vierte Karte rechts.",
+            },
+        ]
+    )
+    edges = [
+        {
+            "id": "down",
+            "from": "a1",
+            "to": "a3",
+            "label": "abwärts im geteilten Korridor",
+            "kind": "evidence",
+        },
+        {
+            "id": "up",
+            "from": "a2",
+            "to": "a0",
+            "label": "aufwärts im geteilten Korridor",
+            "kind": "risk",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        result = {}
+        for edge in root.iter():
+            edge_id = edge.attrib.get("data-source-id")
+            if edge_id not in {"down", "up"}:
+                continue
+            path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+            rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert path is not None and rect is not None
+            result[edge_id] = (path.attrib["d"], _rect_box(rect))
+        return result, root
+
+    forward, root = geometry(edges)
+    reverse, _ = geometry(list(reversed(edges)))
+    assert forward == reverse
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert not _boxes_overlap(boxes["down"], boxes["up"])
+
+    node_boxes = list(_node_boxes(root).values())
+    max_node_right = max(x + width for x, _, width, _ in node_boxes)
+    gutter_xs = []
+    for path, label_box in forward.values():
+        assert all(not _boxes_overlap(label_box, node_box) for node_box in node_boxes)
+        line_points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        ]
+        assert len(line_points) == 5
+        gutter_xs.append(line_points[1][0])
+        assert line_points[1][0] == line_points[2][0] > max_node_right
+    assert len(set(gutter_xs)) == 2
+
+
+def test_long_vertical_process_edge_routes_around_intervening_card() -> None:
+    raw = _minimal_process_model(18)
+    raw["edges"] = [
+        {
+            "id": "process_long_vertical",
+            "from": "n0",
+            "to": "n12",
+            "label": "lange vertikale Prozessbeziehung",
+            "kind": "evidence",
+        }
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+    nodes = _node_boxes(root)
+    assert not _boxes_overlap(labels["process_long_vertical"], nodes["n6"])
+
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == "process_long_vertical"
+    )
+    path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+    assert path is not None
+    assert edge.attrib["data-route"] == "vertical"
+    assert path.attrib["d"].count(" L ") == 5
+
