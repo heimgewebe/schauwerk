@@ -21,6 +21,8 @@ _PROCESS_HORIZONTAL_GAP = 52
 _PROCESS_ROW_GAP = 52
 _PROCESS_EDGE_GUTTER = 80
 _PROCESS_LANE_STEP = 14
+_PROCESS_GUTTER_LANE_STEP = 18
+_PROCESS_LONG_BRANCH_GUTTER = 240
 _PAGE_MARGIN = 48
 _CONTENT_TOP = 140
 _ROW_GAP = 52
@@ -134,7 +136,7 @@ def _wrapped(value: str, *, width: int, limit: int) -> list[str]:
 
 
 def _estimated_text_width(value: str, *, size: int) -> float:
-    """Estimate rendered width conservatively without introducing a font dependency."""
+    """Keep the established conservative estimate for optional process compression."""
 
     narrow = set("ilI.,'`:;!|[](){}")
     wide = set("MW@#%&QGmwo")
@@ -155,6 +157,99 @@ def _estimated_text_width(value: str, *, size: int) -> float:
     return units * size
 
 
+def _estimated_wrap_width(value: str, *, size: int) -> float:
+    """Estimate natural browser width for wrapping; clip paths remain authoritative."""
+
+    narrow = set("ilI.,'`:;!|[](){}")
+    wide = set("MW@#%&QGmwo")
+    units = 0.0
+    for character in value:
+        if character.isspace():
+            units += 0.35
+        elif character in narrow:
+            units += 0.35
+        elif character in wide:
+            units += 1.12
+        elif ord(character) > 0x7F:
+            units += 0.9
+        elif character.isupper():
+            units += 0.86
+        else:
+            units += 0.58
+    return units * size
+
+
+def _split_token_to_width(value: str, *, size: int, max_width: float) -> list[str]:
+    pieces: list[str] = []
+    current = ""
+    for character in value:
+        candidate = current + character
+        if current and _estimated_wrap_width(candidate, size=size) > max_width:
+            pieces.append(current)
+            current = character
+        else:
+            current = candidate
+    if current:
+        pieces.append(current)
+    return pieces or [value]
+
+
+def _ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
+    ellipsis = "…"
+    candidate = value.rstrip()
+    while candidate and _estimated_wrap_width(candidate + ellipsis, size=size) > max_width:
+        candidate = candidate[:-1].rstrip()
+    return candidate + ellipsis if candidate else ellipsis
+
+
+def _bounded_wrapped(
+    value: str,
+    *,
+    width: int,
+    limit: int,
+    size: int,
+    max_width: float,
+) -> list[str]:
+    """Wrap for readability while keeping a clip path as the final overflow guard."""
+
+    initial = textwrap.wrap(
+        value,
+        width=width,
+        break_long_words=True,
+        break_on_hyphens=False,
+        replace_whitespace=False,
+    )
+    refined: list[str] = []
+    for initial_line in initial:
+        current = ""
+        for word in initial_line.split():
+            pieces = (
+                [word]
+                if _estimated_wrap_width(word, size=size) <= max_width
+                else _split_token_to_width(word, size=size, max_width=max_width)
+            )
+            for piece_index, piece in enumerate(pieces):
+                separator = " " if current and piece_index == 0 else ""
+                candidate = current + separator + piece
+                if current and _estimated_wrap_width(candidate, size=size) > max_width:
+                    refined.append(current)
+                    current = piece
+                else:
+                    current = candidate
+                if piece_index < len(pieces) - 1 and current:
+                    refined.append(current)
+                    current = ""
+        if current:
+            refined.append(current)
+
+    if len(refined) > limit:
+        refined = refined[:limit]
+        refined[-1] = _ellipsize_to_width(
+            refined[-1], size=size, max_width=max_width
+        )
+    return refined
+
+
 def _svg_text_lines(
     lines: Sequence[str],
     *,
@@ -166,19 +261,26 @@ def _svg_text_lines(
     color: str,
     anchor: str = "start",
     max_width: float | None = None,
+    clip_id: str | None = None,
+    allow_glyph_compression: bool = False,
 ) -> list[str]:
     if not lines:
         return []
+    clip_attribute = (
+        f' clip-path="url(#{_xml_escape(clip_id)})"' if clip_id is not None else ""
+    )
     rendered = [
         f'<text x="{x:.1f}" y="{y:.1f}" text-anchor="{anchor}" '
         f'font-family="ui-sans-serif, system-ui, sans-serif" font-size="{size}" '
-        f'font-weight="{weight}" fill="{color}">'
+        f'font-weight="{weight}" fill="{color}"{clip_attribute}>'
     ]
     for index, line in enumerate(lines):
         dy = 0 if index == 0 else line_height
         length_limit = (
             f' textLength="{max_width:.1f}" lengthAdjust="spacingAndGlyphs"'
-            if max_width is not None and _estimated_text_width(line, size=size) > max_width
+            if allow_glyph_compression
+            and max_width is not None
+            and _estimated_text_width(line, size=size) > max_width
             else ""
         )
         rendered.append(
@@ -312,6 +414,10 @@ def _layout(
 ) -> tuple[dict[str, tuple[int, int]], list[tuple[str | None, str, int, int, int, int]], int, int]:
     nodes = model["nodes"]
     groups = model["groups"]
+    is_narrative = model["intent"] == "narrative"
+    node_width = 320 if is_narrative else _NODE_WIDTH
+    group_width = 354 if is_narrative else _GROUP_WIDTH
+    group_gap = 67 if is_narrative else (92 if model["intent"] == "knowledge_map" else _GROUP_GAP)
     positions: dict[str, tuple[int, int]] = {}
     regions: list[tuple[str | None, str, int, int, int, int]] = []
 
@@ -333,18 +439,18 @@ def _layout(
         maximum_rows = max(1, *(len(column_nodes) for _, _, column_nodes in columns))
         region_height = 64 + maximum_rows * _NODE_HEIGHT + (maximum_rows - 1) * _ROW_GAP + 28
         for column, (group_id, label, column_nodes) in enumerate(columns):
-            region_x = _PAGE_MARGIN + column * (_GROUP_WIDTH + _GROUP_GAP)
-            regions.append((group_id, label, region_x, _CONTENT_TOP, _GROUP_WIDTH, region_height))
+            region_x = _PAGE_MARGIN + column * (group_width + group_gap)
+            regions.append((group_id, label, region_x, _CONTENT_TOP, group_width, region_height))
             for row, node in enumerate(column_nodes):
                 positions[node["id"]] = (
-                    region_x + (_GROUP_WIDTH - _NODE_WIDTH) // 2,
+                    region_x + (group_width - node_width) // 2,
                     _CONTENT_TOP + 56 + row * (_NODE_HEIGHT + _ROW_GAP),
                 )
         width = max(
             900,
             _PAGE_MARGIN * 2
-            + len(columns) * _GROUP_WIDTH
-            + max(0, len(columns) - 1) * _GROUP_GAP,
+            + len(columns) * group_width
+            + max(0, len(columns) - 1) * group_gap,
         ) + _EDGE_GUTTER
         height = _CONTENT_TOP + region_height + _PAGE_MARGIN
         return positions, regions, width, height
@@ -356,16 +462,25 @@ def _layout(
         column = index % column_count
         row = index // column_count
         positions[node["id"]] = (
-            _PAGE_MARGIN + column * (_NODE_WIDTH + horizontal_gap),
+            _PAGE_MARGIN + column * (node_width + horizontal_gap),
             _CONTENT_TOP + row * (_NODE_HEIGHT + 70),
         )
     row_count = (len(nodes) + column_count - 1) // column_count
     width = max(
         900,
-        _PAGE_MARGIN * 2 + column_count * _NODE_WIDTH + (column_count - 1) * horizontal_gap,
+        _PAGE_MARGIN * 2 + column_count * node_width + (column_count - 1) * horizontal_gap,
     ) + _EDGE_GUTTER
     height = _CONTENT_TOP + row_count * _NODE_HEIGHT + max(0, row_count - 1) * 70 + _PAGE_MARGIN
     return positions, regions, width, height
+
+
+def _clip_definition(
+    clip_id: str, *, x: float, y: float, width: float, height: float
+) -> str:
+    return (
+        f'<defs><clipPath id="{_xml_escape(clip_id)}"><rect x="{x:.1f}" y="{y:.1f}" '
+        f'width="{width:.1f}" height="{height:.1f}"/></clipPath></defs>'
+    )
 
 
 def _marker_definitions() -> list[str]:
@@ -395,52 +510,155 @@ def _edge_geometry(
     canvas_width: int,
     canvas_height: int,
     intent: str,
+    long_branch_slot: int | None = None,
+    long_branch_count: int = 0,
+    long_branch_label_y: float | None = None,
+    label_height: int = 0,
+    max_node_bottom: float = 0.0,
+    preserve_same_row_feedback_footer: bool = True,
 ) -> tuple[str, float, float, str]:
     source_x, source_y = source
     target_x, target_y = target
+    node_width = 320 if intent == "narrative" else _NODE_WIDTH
     route = "standard"
     label_offset_x = 0.0
     label_offset_y = 0.0
-    if self_loop:
-        start_x = source_x + _NODE_WIDTH
+    if kind == "feedback" and intent == "process":
+        route = "feedback-return"
+        if (
+            source_x > target_x
+            and source_y == target_y
+            and not self_loop
+            and preserve_same_row_feedback_footer
+        ):
+            # Preserve the accepted same-row reverse-feedback geometry when its
+            # vertical endpoint legs have no lower-row card beneath them.
+            start_x = source_x + node_width / 2
+            start_y = source_y + _NODE_HEIGHT
+            end_x = target_x + node_width / 2
+            end_y = target_y + _NODE_HEIGHT
+            baseline_y = canvas_height - 40 + max(-8.0, min(8.0, lane / 2))
+            bend = 34.0
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"C {start_x:.1f} {start_y + bend:.1f}, {start_x:.1f} {baseline_y:.1f}, "
+                f"{start_x:.1f} {baseline_y:.1f} "
+                f"L {end_x:.1f} {baseline_y:.1f} "
+                f"C {end_x:.1f} {baseline_y:.1f}, {end_x:.1f} {end_y + bend:.1f}, "
+                f"{end_x:.1f} {end_y:.1f}"
+            )
+            return path, (start_x + end_x) / 2, baseline_y, route
+
+        # Other process-feedback directions leave through the nearest row gap,
+        # travel in the outer gutter, and re-enter through the target row gap.
+        # This avoids vertical runs through cards in the same column.
+        start_x = source_x + node_width / 2
+        end_x = target_x + node_width / 2
+        bend = 18.0
+        if source_y < target_y:
+            start_y = source_y + _NODE_HEIGHT
+            end_y = target_y
+            source_corridor_y = start_y + _PROCESS_ROW_GAP / 2
+            target_corridor_y = end_y - _PROCESS_ROW_GAP / 2
+            start_bend = bend
+            end_bend = -bend
+        elif source_y > target_y:
+            start_y = source_y
+            end_y = target_y + _NODE_HEIGHT
+            source_corridor_y = start_y - _PROCESS_ROW_GAP / 2
+            target_corridor_y = end_y + _PROCESS_ROW_GAP / 2
+            start_bend = -bend
+            end_bend = bend
+        else:
+            start_y = end_y = source_y + _NODE_HEIGHT
+            source_corridor_y = target_corridor_y = start_y + _PROCESS_ROW_GAP / 2
+            start_bend = end_bend = bend
+        gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+        path = (
+            f"M {start_x:.1f} {start_y:.1f} "
+            f"C {start_x:.1f} {start_y + start_bend:.1f}, "
+            f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
+            f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+            f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+            f"L {end_x:.1f} {target_corridor_y:.1f} "
+            f"C {end_x:.1f} {target_corridor_y:.1f}, "
+            f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
+        )
+        return path, (start_x + gutter_x) / 2, source_corridor_y, route
+    elif kind == "feedback" and intent != "process":
+        route = "feedback-return"
+        upper_bottom = min(source_y, target_y) + _NODE_HEIGHT
+        lower_top = max(source_y, target_y)
+        corridor_gap = lower_top - upper_bottom
+        adjacent_rows = abs(source_y - target_y) <= _NODE_HEIGHT + 70
+        if (
+            source_y != target_y
+            and adjacent_rows
+            and corridor_gap >= label_height + 12
+        ):
+            # Any non-process feedback relation may use the whitespace between
+            # rows. Vertical legs stop at card boundaries, so same-column and
+            # left-to-right feedback are as safe as the accepted reverse route.
+            start_x = source_x + node_width / 2
+            end_x = target_x + node_width / 2
+            if source_y > target_y:
+                start_y = source_y
+                end_y = target_y + _NODE_HEIGHT
+            else:
+                start_y = source_y + _NODE_HEIGHT
+                end_y = target_y
+            corridor_y = (upper_bottom + lower_top) / 2
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"L {start_x:.1f} {corridor_y:.1f} "
+                f"L {end_x:.1f} {corridor_y:.1f} "
+                f"L {end_x:.1f} {end_y:.1f}"
+            )
+            return path, (start_x + end_x) / 2, corridor_y, route
+
+        # Same-row or narrow-gap feedback leaves on the outer side of both
+        # cards, then travels below the complete card field. For the historical
+        # right-to-left case this intentionally preserves the accepted geometry.
+        channel_offset = 28.0
+        start_y = source_y + _NODE_HEIGHT / 2
+        end_y = target_y + _NODE_HEIGHT / 2
+        if source_x > target_x:
+            start_x = source_x + node_width
+            end_x = target_x
+            source_channel_x = min(canvas_width - 16.0, start_x + channel_offset)
+            target_channel_x = max(16.0, end_x - channel_offset)
+        elif source_x < target_x:
+            start_x = source_x
+            end_x = target_x + node_width
+            source_channel_x = max(16.0, start_x - channel_offset)
+            target_channel_x = min(canvas_width - 16.0, end_x + channel_offset)
+        else:
+            start_x = end_x = source_x + node_width
+            source_channel_x = target_channel_x = min(
+                canvas_width - 16.0, start_x + channel_offset
+            )
+        safe_center = max_node_bottom + label_height / 2 + 10
+        baseline_y = min(canvas_height - label_height / 2 - 8, safe_center)
+        path = (
+            f"M {start_x:.1f} {start_y:.1f} "
+            f"L {source_channel_x:.1f} {start_y:.1f} "
+            f"L {source_channel_x:.1f} {baseline_y:.1f} "
+            f"L {target_channel_x:.1f} {baseline_y:.1f} "
+            f"L {target_channel_x:.1f} {end_y:.1f} "
+            f"L {end_x:.1f} {end_y:.1f}"
+        )
+        return path, (source_channel_x + target_channel_x) / 2, baseline_y, route
+    elif self_loop:
+        start_x = source_x + node_width
         start_y = source_y + _NODE_HEIGHT * 0.35
-        end_x = source_x + _NODE_WIDTH
+        end_x = source_x + node_width
         end_y = source_y + _NODE_HEIGHT * 0.72
         reach = 78 + abs(lane)
         control_one = (start_x + reach, start_y - 44)
         control_two = (end_x + reach, end_y + 44)
-    elif kind == "feedback" and source_x > target_x and intent == "process":
-        # Process feedback leaves the cards vertically, crosses below every node,
-        # then returns vertically. This avoids cutting through branch outcomes.
-        route = "feedback-return"
-        start_x = source_x + _NODE_WIDTH / 2
-        start_y = source_y + _NODE_HEIGHT
-        end_x = target_x + _NODE_WIDTH / 2
-        end_y = target_y + _NODE_HEIGHT
-        baseline_y = canvas_height - 40 + max(-8.0, min(8.0, lane / 2))
-        bend = 34.0
-        path = (
-            f"M {start_x:.1f} {start_y:.1f} "
-            f"C {start_x:.1f} {start_y + bend:.1f}, {start_x:.1f} {baseline_y:.1f}, "
-            f"{start_x:.1f} {baseline_y:.1f} "
-            f"L {end_x:.1f} {baseline_y:.1f} "
-            f"C {end_x:.1f} {baseline_y:.1f}, {end_x:.1f} {end_y + bend:.1f}, "
-            f"{end_x:.1f} {end_y:.1f}"
-        )
-        return path, (start_x + end_x) / 2, baseline_y, route
-    elif kind == "feedback" and source_x > target_x:
-        route = "feedback-return"
-        start_x = source_x
-        start_y = source_y + _NODE_HEIGHT / 2
-        end_x = target_x + _NODE_WIDTH
-        end_y = target_y + _NODE_HEIGHT / 2
-        baseline_y = canvas_height - _PAGE_MARGIN - 22 + lane
-        reach = max(112.0, min(190.0, (start_x - end_x) * 0.18))
-        control_one = (start_x, baseline_y)
-        control_two = (end_x, baseline_y)
     elif source_x == target_x:
         route = "vertical"
-        center_x = source_x + _NODE_WIDTH / 2
+        center_x = source_x + node_width / 2
         if source_y < target_y:
             start_x = end_x = center_x
             start_y = source_y + _NODE_HEIGHT
@@ -454,14 +672,18 @@ def _edge_geometry(
         direction = 1.0 if end_y > start_y else -1.0
         control_one = (center_x, start_y + direction * bend)
         control_two = (center_x, end_y - direction * bend)
-        label_offset_x = _NODE_WIDTH / 2 + 100.0
+        label_offset_x = node_width / 2 + 100.0
     elif intent == "process" and source_y != target_y:
         route = "process-branch"
-        source_center_x = source_x + _NODE_WIDTH / 2
-        target_center_x = target_x + _NODE_WIDTH / 2
-        lane_offset = max(-8.0, min(8.0, lane / 2))
+        source_center_x = source_x + node_width / 2
+        target_center_x = target_x + node_width / 2
         row_step = _NODE_HEIGHT + _PROCESS_ROW_GAP
         spans_intervening_row = abs(target_y - source_y) > row_step
+        if spans_intervening_row and long_branch_count > 1 and long_branch_slot is not None:
+            centered_slot = long_branch_slot - (long_branch_count - 1) / 2
+            lane_offset = max(-8.0, min(8.0, centered_slot * 4.0))
+        else:
+            lane_offset = max(-8.0, min(8.0, lane / 2))
         if source_y < target_y:
             start_x = source_center_x
             start_y = source_y + _NODE_HEIGHT
@@ -479,10 +701,15 @@ def _edge_geometry(
             target_corridor_y = end_y + _PROCESS_ROW_GAP / 2 + lane_offset
             label_offset_y = 16.0
         if spans_intervening_row:
-            # Long branches leave their source row through its local gap, travel
-            # vertically in the dedicated right gutter, and enter the target row
-            # through its local gap. No horizontal segment crosses an intervening card.
-            gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+            slot = long_branch_slot or 0
+            count = max(1, long_branch_count)
+            if count == 1:
+                # Compatibility contract: one long branch keeps the established
+                # Gate-1 gutter width and label placement byte-for-byte. Extra
+                # gutter allocation exists only to separate multiple long branches.
+                gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+            else:
+                gutter_x = canvas_width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
             bend = 18.0
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
@@ -495,14 +722,26 @@ def _edge_geometry(
                 f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
                 f"{end_x:.1f} {end_y:.1f}"
             )
-            label_x = (start_x + gutter_x) / 2
-            label_y = source_corridor_y + label_offset_y
+            if count == 1:
+                label_x = (start_x + gutter_x) / 2
+                label_y = source_corridor_y + label_offset_y
+            else:
+                process_gutter_width = (
+                    _PROCESS_LONG_BRANCH_GUTTER
+                    + (count - 1) * _PROCESS_GUTTER_LANE_STEP
+                )
+                label_x = canvas_width - process_gutter_width / 2
+                label_y = (
+                    long_branch_label_y
+                    if long_branch_label_y is not None
+                    else (source_corridor_y + target_corridor_y) / 2
+                )
             return path, label_x, label_y, route
         corridor_y = (start_y + end_y) / 2 + lane_offset
         control_one = (start_x, corridor_y)
         control_two = (end_x, corridor_y)
     elif source_x < target_x:
-        start_x = source_x + _NODE_WIDTH
+        start_x = source_x + node_width
         start_y = source_y + _NODE_HEIGHT / 2
         end_x = target_x
         end_y = target_y + _NODE_HEIGHT / 2
@@ -512,7 +751,7 @@ def _edge_geometry(
     else:
         start_x = source_x
         start_y = source_y + _NODE_HEIGHT / 2
-        end_x = target_x + _NODE_WIDTH
+        end_x = target_x + node_width
         end_y = target_y + _NODE_HEIGHT / 2
         reach = max(52.0, (start_x - end_x) * 0.42)
         control_one = (start_x - reach, start_y + lane)
@@ -537,59 +776,132 @@ def _render_edge(
     canvas_width: int,
     canvas_height: int,
     intent: str,
+    long_branch_slot: int | None = None,
+    long_branch_count: int = 0,
+    long_branch_label_y: float | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
     lane_step = _PROCESS_LANE_STEP if intent == "process" else 8
     lane = ((index % 5) - 2) * lane_step
+    source_position = positions[str(edge["from"])]
+    target_position = positions[str(edge["to"])]
+
+    if intent == "process":
+        label_size = 17
+        label_line_height = 19
+        label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
+        label_width = min(212, max(48, max(len(line) for line in label_lines) * 8 + 22))
+        allow_glyph_compression = True
+    else:
+        label_size = 17 if intent == "narrative" else 15
+        label_line_height = 19 if intent == "narrative" else 17
+        vertical = source_position[0] == target_position[0]
+        feedback_label = kind == "feedback"
+        label_width_cap = 236 if feedback_label else (190 if vertical else 206)
+        minimum_width = 236 if feedback_label else (70 if vertical else 84)
+        provisional = _wrapped(str(edge["label"]), width=24, limit=2)
+        label_width = min(
+            label_width_cap,
+            max(minimum_width, max(len(line) for line in provisional) * 8 + 24),
+        )
+        label_lines = _bounded_wrapped(
+            str(edge["label"]),
+            width=24,
+            limit=2,
+            size=label_size,
+            max_width=label_width - 16,
+        )
+        allow_glyph_compression = False
+
+    label_height = (29 if intent == "process" else (28 if intent == "narrative" else 26)) + max(
+        0, len(label_lines) - 1
+    ) * label_line_height
+    preserve_same_row_feedback_footer = True
+    if (
+        intent == "process"
+        and kind == "feedback"
+        and source_position[0] > target_position[0]
+        and source_position[1] == target_position[1]
+        and edge["from"] != edge["to"]
+    ):
+        endpoint_xs = (
+            source_position[0] + _NODE_WIDTH / 2,
+            target_position[0] + _NODE_WIDTH / 2,
+        )
+        preserve_same_row_feedback_footer = not any(
+            node_y > source_position[1]
+            and any(node_x < endpoint_x < node_x + _NODE_WIDTH for endpoint_x in endpoint_xs)
+            for node_x, node_y in positions.values()
+        )
+
     path, label_x, label_y, route = _edge_geometry(
-        positions[str(edge["from"])],
-        positions[str(edge["to"])],
+        source_position,
+        target_position,
         self_loop=edge["from"] == edge["to"],
         lane=lane,
         kind=kind,
         canvas_width=canvas_width,
         canvas_height=canvas_height,
         intent=intent,
+        long_branch_slot=long_branch_slot,
+        long_branch_count=long_branch_count,
+        long_branch_label_y=long_branch_label_y,
+        label_height=label_height,
+        max_node_bottom=max(y + _NODE_HEIGHT for _, y in positions.values()),
+        preserve_same_row_feedback_footer=preserve_same_row_feedback_footer,
     )
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
     marker_attribute = "" if kind == "association" else f' marker-end="url(#native-arrow-{kind})"'
-    label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
-    if intent == "process":
-        label_size = 17
-        label_line_height = 19
-        label_width = min(212, max(48, max(len(line) for line in label_lines) * 8 + 22))
-        label_height = 29 + max(0, len(label_lines) - 1) * label_line_height
-    else:
-        label_size = 17 if intent == "narrative" else 15
-        label_line_height = 19 if intent == "narrative" else 17
-        label_width = min(
-            190 if route == "vertical" else 206,
-            max(
-                70 if route == "vertical" else 84,
-                max(len(line) for line in label_lines) * 8 + 24,
-            ),
-        )
-        label_height = (28 if intent == "narrative" else 26) + max(
-            0, len(label_lines) - 1
-        ) * label_line_height
     same_process_row = (
         intent == "process"
         and route == "standard"
-        and positions[str(edge["from"])][1] == positions[str(edge["to"])][1]
+        and source_position[1] == target_position[1]
     )
     if same_process_row:
-        label_y = min(
-            positions[str(edge["from"])][1], positions[str(edge["to"])][1]
-        ) - 18
+        row_top = min(source_position[1], target_position[1])
+        if label_height > 29:
+            label_y = row_top - label_height / 2 - 4
+        else:
+            # Keep the accepted one-line placement byte-for-byte.
+            label_y = row_top - 18
+    if intent == "process" and route == "standard":
+        # Self-loops can place their Bézier midpoint beyond the rightmost card.
+        # Clamp only the label box; in-bounds standard labels remain unchanged.
+        half_label_width = label_width / 2
+        label_x = min(
+            max(label_x, half_label_width + 8),
+            canvas_width - half_label_width - 8,
+        )
+    if route == "vertical" and kind != "feedback":
+        # Vertical labels sit to the right of their edge. Clamp only when the
+        # computed label box would leave the SVG canvas; normal placement stays
+        # byte-for-byte unchanged.
+        half_label_width = label_width / 2
+        label_x = min(
+            max(label_x, half_label_width + 8),
+            canvas_width - half_label_width - 8,
+        )
     label_top = label_y - label_height / 2
+    # Short process labels should remain natural text when they already fit.
+    # Give their clip guard 2 px more breathing room per side instead of
+    # forcing glyph compression merely because the estimate was optimistic.
+    clip_padding = 6 if intent == "process" else 8
     source_id = str(edge["id"])
     source_id_xml = _xml_escape(source_id)
     kind_xml = _xml_escape(kind)
+    clip_id = f"native-clip-edge-{source_id}"
     lines = [
         f'<g id="native-edge-{source_id_xml}" data-source-kind="edge" '
         f'data-source-id="{source_id_xml}" data-kind="{kind_xml}" '
         f'data-route="{route}">',
+        _clip_definition(
+            clip_id,
+            x=label_x - label_width / 2 + clip_padding,
+            y=label_top + 3,
+            width=label_width - 2 * clip_padding,
+            height=label_height - 6,
+        ),
         f"<title>{_xml_escape(str(edge['label']))}</title>",
         f'<path d="{path}" fill="none" stroke="{color}" stroke-width="{width:.1f}" '
         f'stroke-linecap="round" stroke-linejoin="round"{dash_attribute}{marker_attribute}/>',
@@ -601,13 +913,15 @@ def _render_edge(
         _svg_text_lines(
             label_lines,
             x=label_x,
-            y=label_top + (20 if intent == "process" else (20 if intent == "narrative" else 18)),
+            y=label_top + (20 if intent in {"process", "narrative"} else 18),
             line_height=label_line_height,
             size=label_size,
             weight=600,
             color=color,
             anchor="middle",
-            max_width=label_width - 16,
+            max_width=label_width - 2 * clip_padding,
+            clip_id=clip_id,
+            allow_glyph_compression=allow_glyph_compression,
         )
     )
     lines.append("</g>")
@@ -662,20 +976,54 @@ def _render_node(
     kind = str(node["kind"])
     fill, stroke, radius = _NODE_STYLE[kind]
     source_id = str(node["id"])
-    label_lines = _wrapped(str(node["label"]), width=20, limit=2)
-    summary_lines = _wrapped(str(node["summary"]), width=28, limit=3)
+    node_width = 320 if intent == "narrative" else _NODE_WIDTH
     label_size = 22
     label_line_height = 23
-    summary_size = 19 if intent in {"process", "narrative"} else 17
-    summary_line_height = 20 if intent in {"process", "narrative"} else 18
-    summary_y = y + 61 + len(label_lines) * label_line_height
+    if intent == "process":
+        summary_size = 19
+        summary_line_height = 20
+        label_lines = _wrapped(str(node["label"]), width=20, limit=2)
+        summary_lines = _wrapped(str(node["summary"]), width=28, limit=3)
+        summary_y = y + 61 + len(label_lines) * label_line_height
+    else:
+        # Natural wrapping is preferable to horizontal glyph compression. Knowledge
+        # maps can retain the accepted 17 px scale without losing Golden-case copy.
+        summary_size = 19 if intent == "narrative" else (17 if intent == "knowledge_map" else 16)
+        summary_line_height = 19 if intent == "narrative" else summary_size
+        label_lines = _bounded_wrapped(
+            str(node["label"]),
+            width=24 if intent == "narrative" else 20,
+            limit=2,
+            size=label_size,
+            max_width=node_width - 36,
+        )
+        summary_y = y + 57 + len(label_lines) * label_line_height
+        available_lines = max(
+            1,
+            int((y + _NODE_HEIGHT - 6 - summary_y) // summary_line_height) + 1,
+        )
+        summary_lines = _bounded_wrapped(
+            str(node["summary"]),
+            width=32 if intent == "narrative" else 28,
+            limit=available_lines,
+            size=summary_size,
+            max_width=node_width - 36,
+        )
     source_id_xml = _xml_escape(source_id)
     kind_xml = _xml_escape(kind)
+    clip_id = f"native-clip-node-{source_id}"
     lines = [
         f'<g id="native-node-{source_id_xml}" data-source-kind="node" '
         f'data-source-id="{source_id_xml}" data-kind="{kind_xml}">',
+        _clip_definition(
+            clip_id,
+            x=x + 18,
+            y=y + 32,
+            width=node_width - 36,
+            height=_NODE_HEIGHT - 34,
+        ),
         f"<title>{_xml_escape(str(node['label']))}</title>",
-        f'<rect x="{x}" y="{y}" width="{_NODE_WIDTH}" height="{_NODE_HEIGHT}" '
+        f'<rect x="{x}" y="{y}" width="{node_width}" height="{_NODE_HEIGHT}" '
         f'rx="{radius}" fill="{fill}" stroke="{stroke}" stroke-width="1.5"/>',
         f'<path d="M {x + 5} {y + 18} V {y + _NODE_HEIGHT - 18}" stroke="{stroke}" '
         'stroke-width="3" stroke-linecap="round"/>',
@@ -701,7 +1049,9 @@ def _render_node(
             size=label_size,
             weight=700,
             color="#172033",
-            max_width=_NODE_WIDTH - 36,
+            max_width=node_width - 36,
+            clip_id=clip_id,
+            allow_glyph_compression=intent == "process",
         )
     )
     lines.extend(
@@ -713,7 +1063,9 @@ def _render_node(
             size=summary_size,
             weight=400,
             color="#52606d",
-            max_width=_NODE_WIDTH - 36,
+            max_width=node_width - 36,
+            clip_id=clip_id,
+            allow_glyph_compression=intent == "process",
         )
     )
     lines.append("</g>")
@@ -725,7 +1077,140 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
 
     model = _normalized_input(value)
     positions, regions, width, height = _layout(model)
-    purpose_lines = _wrapped(str(model["purpose"]), width=max(72, min(150, width // 9)), limit=2)
+    intent = str(model["intent"])
+    if intent == "process":
+        # Standard same-row process labels sit above their cards. One-line
+        # labels already fit the established header gap, but a two-line label
+        # needs extra headroom so it clears both the purpose block and cards.
+        same_row_label_heights = [
+            29 + max(0, len(_wrapped(str(edge["label"]), width=24, limit=2)) - 1) * 19
+            for edge in model["edges"]
+            if str(edge["kind"]) != "feedback"
+            and positions[str(edge["from"])][1] == positions[str(edge["to"])][1]
+        ]
+        if same_row_label_heights:
+            tallest_label = max(same_row_label_heights)
+            if tallest_label > 29:
+                purpose_bottom = 104
+                required_first_row_top = purpose_bottom + 8 + tallest_label
+                if regions:
+                    # Group headers occupy the first 44 px of each region.
+                    # A two-line same-row label sits `label_height + 4` above
+                    # its card, so reserve another 8 px below the separator.
+                    group_header_bottom = max(
+                        region_y + 44 for _, _, _, region_y, _, _ in regions
+                    )
+                    required_first_row_top = max(
+                        required_first_row_top,
+                        group_header_bottom + 12 + tallest_label,
+                    )
+                first_row_top = min(y for _, y in positions.values())
+                top_shift = max(0, required_first_row_top - first_row_top)
+                if top_shift:
+                    positions = {
+                        node_id: (x, y + top_shift)
+                        for node_id, (x, y) in positions.items()
+                    }
+                    if regions:
+                        regions = [
+                            (group_id, label, x, y, region_width, region_height + top_shift)
+                            for group_id, label, x, y, region_width, region_height in regions
+                        ]
+                    height += top_shift
+    long_branch_slots: dict[str, int] = {}
+    long_branch_label_y: dict[str, float] = {}
+    if intent == "process":
+        row_step = _NODE_HEIGHT + _PROCESS_ROW_GAP
+        long_branches: list[tuple[float, str, Mapping[str, Any]]] = []
+        for edge in model["edges"]:
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if (
+                str(edge["kind"]) != "feedback"
+                and edge["from"] != edge["to"]
+                and source[0] != target[0]
+                and source[1] != target[1]
+                and abs(target[1] - source[1]) > row_step
+            ):
+                natural_y = (source[1] + target[1] + _NODE_HEIGHT) / 2
+                long_branches.append((natural_y, str(edge["id"]), edge))
+        long_branches.sort(key=lambda item: (item[0], item[1]))
+        for slot, (_, edge_id, _) in enumerate(long_branches):
+            long_branch_slots[edge_id] = slot
+        if len(long_branches) > 1:
+            required_gutter = (
+                _PROCESS_LONG_BRANCH_GUTTER
+                + (len(long_branches) - 1) * _PROCESS_GUTTER_LANE_STEP
+            )
+            width += max(0, required_gutter - _PROCESS_EDGE_GUTTER)
+            previous_bottom = 0.0
+            for natural_y, edge_id, edge in long_branches:
+                slot = long_branch_slots[edge_id]
+                centered_slot = slot - (len(long_branches) - 1) / 2
+                stable_lane_offset = max(-8.0, min(8.0, centered_slot * 4.0))
+                label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
+                label_height = 29 + max(0, len(label_lines) - 1) * 19
+                packed_y = max(
+                    natural_y + stable_lane_offset,
+                    previous_bottom + 8 + label_height / 2,
+                )
+                long_branch_label_y[edge_id] = packed_y
+                previous_bottom = packed_y + label_height / 2
+            height = max(height, int(previous_bottom + 8.999))
+    if any(str(edge["kind"]) == "feedback" for edge in model["edges"]):
+        # Reserve enough footer for feedback labels in every intent. Process
+        # reverse-feedback uses a baseline 40 px above the canvas bottom and can
+        # carry an additional -8 px lane offset, so it needs the larger reserve.
+        max_node_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
+        feedback_heights: list[int] = []
+        if intent == "process":
+            for edge in model["edges"]:
+                if str(edge["kind"]) != "feedback":
+                    continue
+                label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
+                feedback_heights.append(29 + max(0, len(label_lines) - 1) * 19)
+            if feedback_heights:
+                height = max(
+                    height,
+                    int(max_node_bottom + 58 + max(feedback_heights) / 2 + 0.999),
+                )
+        else:
+            label_size = 17 if intent == "narrative" else 15
+            line_height = 19 if intent == "narrative" else 17
+            base_height = 28 if intent == "narrative" else 26
+            for edge in model["edges"]:
+                if str(edge["kind"]) != "feedback":
+                    continue
+                label_lines = _bounded_wrapped(
+                    str(edge["label"]),
+                    width=24,
+                    limit=2,
+                    size=label_size,
+                    max_width=220,
+                )
+                feedback_heights.append(
+                    base_height + max(0, len(label_lines) - 1) * line_height
+                )
+            if feedback_heights:
+                height = max(height, max_node_bottom + 18 + max(feedback_heights))
+
+    purpose_max_width = width - 2 * _PAGE_MARGIN
+    title_lines = _bounded_wrapped(
+        str(model["title"]),
+        width=max(32, min(96, width // 14)),
+        limit=1,
+        size=28,
+        max_width=purpose_max_width,
+    )
+    purpose_lines = _bounded_wrapped(
+        str(model["purpose"]),
+        width=max(72, min(150, width // 9)),
+        limit=2,
+        size=15,
+        max_width=purpose_max_width,
+    )
+    title_clip_id = "native-clip-title"
+    purpose_clip_id = "native-clip-purpose"
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
@@ -739,15 +1224,35 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
     ]
     lines.extend(_marker_definitions())
+    lines.append(
+        _clip_definition(
+            title_clip_id,
+            x=_PAGE_MARGIN,
+            y=20,
+            width=purpose_max_width,
+            height=40,
+        )
+    )
+    lines.append(
+        _clip_definition(
+            purpose_clip_id,
+            x=_PAGE_MARGIN,
+            y=64,
+            width=purpose_max_width,
+            height=40,
+        )
+    )
     lines.extend(
         _svg_text_lines(
-            [str(model["title"])],
+            title_lines,
             x=_PAGE_MARGIN,
             y=52,
             line_height=32,
             size=28,
             weight=750,
             color="#172033",
+            max_width=purpose_max_width,
+            clip_id=title_clip_id,
         )
     )
     lines.extend(
@@ -759,10 +1264,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             size=15,
             weight=400,
             color="#52606d",
+            max_width=purpose_max_width,
+            clip_id=purpose_clip_id,
         )
     )
 
-    for group_id, label, x, y, region_width, region_height in regions:
+    for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
         identity = (
             ' data-renderer-region="ungrouped"'
             if group_id is None
@@ -780,9 +1287,30 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 f'<path d="M {x + 18} {y + 44} H {x + region_width - 18}" stroke="#e2e8f0"/>',
             )
         )
+        group_clip_id = f"native-clip-region-{region_index}"
+        lines.append(
+            _clip_definition(
+                group_clip_id,
+                x=x + 20,
+                y=y + 10,
+                width=region_width - 40,
+                height=28,
+            )
+        )
+        group_lines = (
+            [label]
+            if intent == "process"
+            else _bounded_wrapped(
+                label,
+                width=32,
+                limit=1,
+                size=16,
+                max_width=region_width - 40,
+            )
+        )
         lines.extend(
             _svg_text_lines(
-                [label],
+                group_lines,
                 x=x + 20,
                 y=y + 29,
                 line_height=15,
@@ -790,6 +1318,8 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 weight=700,
                 color="#334155",
                 max_width=region_width - 40,
+                clip_id=group_clip_id,
+                allow_glyph_compression=intent == "process",
             )
         )
         lines.append("</g>")
@@ -802,7 +1332,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 index=index,
                 canvas_width=width,
                 canvas_height=height,
-                intent=str(model["intent"]),
+                intent=intent,
+                long_branch_slot=long_branch_slots.get(str(edge["id"])),
+                long_branch_count=len(long_branch_slots),
+                long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
             )
         )
     for node in model["nodes"]:
@@ -810,7 +1343,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             _render_node(
                 node,
                 positions[str(node["id"])],
-                intent=str(model["intent"]),
+                intent=intent,
             )
         )
 
