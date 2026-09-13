@@ -604,6 +604,7 @@ def _edge_geometry(
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
+    narrative_self_loop_gutter_x: float | None = None,
     label_height: int = 0,
     label_width: int = 0,
     feedback_label_y: float | None = None,
@@ -780,6 +781,25 @@ def _edge_geometry(
         else:
             label_x = (source_channel_x + target_channel_x) / 2
         return path, label_x, baseline_y, route
+    elif (
+        self_loop
+        and intent == "narrative"
+        and narrative_self_loop_gutter_x is not None
+    ):
+        route = "narrative-self-loop"
+        start_x = source_x + node_width * 0.35
+        end_x = source_x + node_width * 0.65
+        start_y = end_y = source_y + _NODE_HEIGHT
+        corridor_y = start_y + non_process_row_gap / 2
+        gutter_x = narrative_self_loop_gutter_x
+        path = (
+            f"M {start_x:.1f} {start_y:.1f} "
+            f"L {start_x:.1f} {corridor_y:.1f} "
+            f"L {gutter_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {end_y:.1f}"
+        )
+        return path, gutter_x + 8 + label_width / 2, corridor_y, route
     elif self_loop:
         start_x = source_x + node_width
         start_y = source_y + _NODE_HEIGHT * 0.35
@@ -1034,7 +1054,11 @@ def _render_edge(
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
+    process_adjacent_slot: int | None = None,
+    process_adjacent_count: int = 0,
+    process_adjacent_label_y: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
+    narrative_self_loop_gutter_x: float | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
@@ -1043,7 +1067,15 @@ def _render_edge(
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
     lane_step = _PROCESS_LANE_STEP if intent == "process" else 8
-    if kind == "feedback" and feedback_slot is not None and feedback_count > 1:
+    if (
+        intent == "process"
+        and kind != "feedback"
+        and process_adjacent_slot is not None
+        and process_adjacent_count > 1
+    ):
+        centered_slot = process_adjacent_slot - (process_adjacent_count - 1) / 2
+        lane = int(centered_slot * lane_step)
+    elif kind == "feedback" and feedback_slot is not None and feedback_count > 1:
         centered_slot = feedback_slot - (feedback_count - 1) / 2
         lane = int(centered_slot * lane_step)
     else:
@@ -1192,6 +1224,7 @@ def _render_edge(
         long_vertical_label_y=long_vertical_label_y,
         process_branch_gutter_x=process_branch_gutter_x,
         narrative_parallel_gutter_x=narrative_parallel_gutter_x,
+        narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
         label_height=label_height,
         label_width=label_width,
         feedback_label_y=feedback_label_y,
@@ -1254,7 +1287,9 @@ def _render_edge(
     ):
         upper_bottom = min(source_position[1], target_position[1]) + _NODE_HEIGHT
         lower_top = max(source_position[1], target_position[1])
-        if lower_top - upper_bottom >= label_height + 8:
+        if process_adjacent_label_y is not None:
+            label_y = process_adjacent_label_y
+        elif lower_top - upper_bottom >= label_height + 8:
             label_y = (upper_bottom + lower_top) / 2
     if intent == "process" and route == "standard":
         # Self-loops can place their Bézier midpoint beyond the rightmost card.
@@ -1628,9 +1663,16 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         height = max(height, math.ceil(previous_bottom + 8))
 
     process_branch_gutter_x: dict[str, float] = {}
+    process_adjacent_slot: dict[str, int] = {}
+    process_adjacent_count: dict[str, int] = {}
+    process_adjacent_label_y: dict[str, float] = {}
     if intent == "process":
-        unsafe_adjacent_branches: list[str] = []
+        unsafe_adjacent_branches: set[str] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
+        adjacent_groups: dict[
+            tuple[str, str],
+            list[tuple[str, int, float, float]],
+        ] = defaultdict(list)
         for edge in model["edges"]:
             if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
                 continue
@@ -1644,8 +1686,35 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 continue
             label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
             label_height = 29 + max(0, len(label_lines) - 1) * 19
-            if process_row_gap < label_height + 8:
-                unsafe_adjacent_branches.append(str(edge["id"]))
+            upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
+            lower_top = max(source[1], target[1])
+            endpoint_key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+            adjacent_groups[endpoint_key].append(
+                (str(edge["id"]), label_height, upper_bottom, lower_top)
+            )
+            if lower_top - upper_bottom < label_height + 8:
+                unsafe_adjacent_branches.add(str(edge["id"]))
+
+        for items in adjacent_groups.values():
+            if len(items) <= 1:
+                continue
+            ordered = sorted(items, key=lambda item: item[0])
+            count = len(ordered)
+            for slot, (edge_id, _, _, _) in enumerate(ordered):
+                process_adjacent_slot[edge_id] = slot
+                process_adjacent_count[edge_id] = count
+            upper_bottom = ordered[0][2]
+            lower_top = ordered[0][3]
+            available_height = lower_top - upper_bottom
+            required_height = sum(item[1] for item in ordered) + 8 * (count - 1)
+            if required_height <= available_height:
+                cursor_y = upper_bottom + (available_height - required_height) / 2
+                for edge_id, label_height, _, _ in ordered:
+                    process_adjacent_label_y[edge_id] = cursor_y + label_height / 2
+                    cursor_y += label_height + 8
+            else:
+                unsafe_adjacent_branches.update(item[0] for item in ordered)
+
         if unsafe_adjacent_branches:
             obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())
             if regions:
@@ -1702,6 +1771,56 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     height,
                     math.ceil(max_node_bottom + non_process_row_gap / 2 + 32),
                 )
+
+    narrative_self_loop_gutter_x: dict[str, float] = {}
+    if intent == "narrative":
+        narrative_self_loops = sorted(
+            (
+                edge
+                for edge in model["edges"]
+                if str(edge["kind"]) != "feedback" and edge["from"] == edge["to"]
+            ),
+            key=lambda edge: str(edge["id"]),
+        )
+        if narrative_self_loops:
+            obstacle_right = max(x + _NARRATIVE_NODE_WIDTH for x, _ in positions.values())
+            if regions:
+                obstacle_right = max(
+                    obstacle_right,
+                    max(x + region_width for _, _, x, _, region_width, _ in regions),
+                )
+            cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
+            required_right = float(width)
+            required_bottom = float(height)
+            for edge in narrative_self_loops:
+                provisional = _wrapped(str(edge["label"]), width=24, limit=2)
+                label_width = min(
+                    190,
+                    max(70, max(len(line) for line in provisional) * 8 + 24),
+                )
+                label_lines = _bounded_wrapped(
+                    str(edge["label"]),
+                    width=24,
+                    limit=2,
+                    size=17,
+                    max_width=label_width - 14,
+                )
+                label_height = 28 + max(0, len(label_lines) - 1) * 19
+                edge_id = str(edge["id"])
+                narrative_self_loop_gutter_x[edge_id] = cursor
+                required_right = max(
+                    required_right,
+                    cursor + 8 + label_width + _PAGE_MARGIN,
+                )
+                source_y = positions[str(edge["from"])][1]
+                corridor_y = source_y + _NODE_HEIGHT + non_process_row_gap / 2
+                required_bottom = max(
+                    required_bottom,
+                    corridor_y + label_height / 2 + 8,
+                )
+                cursor += 8 + label_width + 12
+            width = max(width, math.ceil(required_right))
+            height = max(height, math.ceil(required_bottom))
 
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
@@ -1959,7 +2078,11 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 long_vertical_gutter_x=long_vertical_gutter_x.get(str(edge["id"])),
                 long_vertical_label_y=long_vertical_label_y.get(str(edge["id"])),
                 process_branch_gutter_x=process_branch_gutter_x.get(str(edge["id"])),
+                process_adjacent_slot=process_adjacent_slot.get(str(edge["id"])),
+                process_adjacent_count=process_adjacent_count.get(str(edge["id"]), 0),
+                process_adjacent_label_y=process_adjacent_label_y.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
+                narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,

@@ -2359,3 +2359,115 @@ def test_parallel_same_row_narrative_relations_use_row_gap_outer_lanes() -> None
         assert len(corridor_ys) == 1
         corridor_y = next(iter(corridor_ys))
         assert row_bottom < corridor_y < next_row_top
+
+
+def test_opposite_direction_adjacent_process_edges_use_stable_label_lanes() -> None:
+    raw = _minimal_process_model(12)
+    edges = [
+        {
+            "id": "down",
+            "from": "n1",
+            "to": "n6",
+            "label": "abwärts",
+            "kind": "flow",
+        },
+        {
+            "id": "up",
+            "from": "n6",
+            "to": "n1",
+            "label": "aufwärts",
+            "kind": "risk",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[str, tuple[float, float, float, float]]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        result = {}
+        for edge in root.iter():
+            edge_id = edge.attrib.get("data-source-id")
+            if edge_id not in {"down", "up"}:
+                continue
+            path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+            rect = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+            assert path is not None and rect is not None
+            result[edge_id] = (path.attrib["d"], _rect_box(rect))
+            assert edge.attrib["data-route"] == "process-branch"
+        return result, root
+
+    forward, root = geometry(edges)
+    reverse, _ = geometry(list(reversed(edges)))
+    assert forward == reverse
+    boxes = {edge_id: box for edge_id, (_, box) in forward.items()}
+    assert not _boxes_overlap(boxes["down"], boxes["up"])
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in boxes.values()
+        for node_box in nodes.values()
+    )
+    upper_bottom = min(nodes["n1"][1], nodes["n6"][1]) + nodes["n1"][3]
+    lower_top = max(nodes["n1"][1], nodes["n6"][1])
+    assert all(
+        upper_bottom <= y and y + height <= lower_top
+        for _, y, _, height in boxes.values()
+    )
+
+
+def test_narrative_self_loop_uses_stable_outer_row_gap_lane() -> None:
+    raw = _load("narrative-journey-v1.json")
+    loop = {
+        "id": "loop",
+        "from": "question",
+        "to": "question",
+        "label": "mehrstufige reflexive beziehung",
+        "kind": "flow",
+    }
+    companion = copy.deepcopy(next(edge for edge in raw["edges"] if edge["id"] == "journey02"))
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[str, tuple[float, float, float, float], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        group = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == "loop"
+        )
+        path = group.find(f"{{{SVG_NAMESPACE}}}path")
+        rect = group.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and rect is not None
+        assert group.attrib["data-route"] == "narrative-self-loop"
+        return path.attrib["d"], _rect_box(rect), root
+
+    forward_path, forward_box, root = geometry([loop, companion])
+    reverse_path, reverse_box, _ = geometry([companion, loop])
+    assert (forward_path, forward_box) == (reverse_path, reverse_box)
+    nodes = _node_boxes(root)
+    assert all(not _boxes_overlap(forward_box, node_box) for node_box in nodes.values())
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
+    x, y, width, height = forward_box
+    assert x > max_node_right
+    line_points = [
+        (float(px), float(py))
+        for px, py in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", forward_path)
+    ]
+    assert len(line_points) == 4
+    corridor_y = line_points[0][1]
+    assert all(py == corridor_y for _, py in line_points[:-1])
+    assert max(px for px, _ in line_points) > max_node_right
+    source_bottom = nodes["question"][1] + nodes["question"][3]
+    next_row_top = min(
+        node_y
+        for _, node_y, _, _ in nodes.values()
+        if node_y > nodes["question"][1]
+    )
+    assert source_bottom < corridor_y < next_row_top
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+    assert 0 <= x and x + width <= canvas_width
+    assert 0 <= y and y + height <= canvas_height
