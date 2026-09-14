@@ -896,8 +896,8 @@ def _process_anchored_corridor_labels(
     Self-loops keep the same-row label slot above their card, long same-column
     relations keep the source-side row corridor, and a singleton long branch
     keeps the source-side row corridor between its card and the outer process
-    gutter. None of them can be repacked inside the corridor, so movable labels
-    have to yield to them.
+    gutter. They keep their anchors unless overlapping occupants require an
+    outer lane; they cannot be repacked inside the corridor.
     """
     long_branch_ids = _process_long_branch_ids(
         model, positions, process_row_gap=process_row_gap
@@ -1286,6 +1286,9 @@ def _edge_geometry(
             direction = 1.0 if end_y > start_y else -1.0
             source_corridor_y = start_y + direction * vertical_row_gap / 2
             target_corridor_y = end_y - direction * vertical_row_gap / 2
+            if intent == "process" and process_branch_gutter_x is not None:
+                long_vertical_gutter_x = process_branch_gutter_x
+                long_vertical_label_y = source_corridor_y
             gutter_x = (
                 long_vertical_gutter_x
                 if long_vertical_gutter_x is not None
@@ -1374,7 +1377,7 @@ def _edge_geometry(
             source_corridor_y = start_y - process_row_gap / 2 + lane_offset
             target_corridor_y = end_y + process_row_gap / 2 + lane_offset
             label_offset_y = 16.0
-        if not spans_intervening_row and process_branch_gutter_x is not None:
+        if process_branch_gutter_x is not None:
             gutter_x = process_branch_gutter_x
             bend = 18.0
             path = (
@@ -2173,6 +2176,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         unsafe_adjacent_branches: set[str] = set()
         unsafe_corridors: set[tuple[int, int]] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
+        edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
         corridor_groups: dict[
             tuple[int, int],
             list[tuple[float, str, float, int, bool]],
@@ -2243,9 +2247,34 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 cluster = sorted(cluster, key=lambda item: item[1])
                 movable = [item for item in cluster if not item[4]]
                 if len(movable) != len(cluster):
-                    # An anchored label owns this stretch of the corridor and
-                    # cannot be repacked, so every movable label sharing it
-                    # leaves through the outer gutter instead.
+                    # Keep self-loop envelopes and fixed-column anchors before
+                    # canvas-relative long branches: growing an outer gutter
+                    # must not shift the anchor that the other labels yield to.
+                    anchored = sorted(
+                        (item for item in cluster if item[4]),
+                        key=lambda item: (
+                            edges_by_id[item[1]]["from"] != edges_by_id[item[1]]["to"],
+                            positions[str(edges_by_id[item[1]]["from"])][0]
+                            != positions[str(edges_by_id[item[1]]["to"])][0],
+                            item[1],
+                        ),
+                    )
+                    retained: list[tuple[float, str, float, int, bool]] = []
+                    for item in anchored:
+                        natural_x, edge_id, label_width, _, _ = item
+                        edge = edges_by_id[edge_id]
+                        if edge["from"] != edge["to"] and any(
+                            natural_x - label_width / 2 < other_x + other_width / 2
+                            and natural_x + label_width / 2 > other_x - other_width / 2
+                            for other_x, _, other_width, _, _ in retained
+                        ):
+                            # Only a real overlap displaces an anchor, not the
+                            # extra 8 px clearance used to form packing clusters.
+                            movable.append(item)
+                        else:
+                            retained.append(item)
+                    # Movable and conflicting anchored occupants share the
+                    # existing deterministic outer-gutter allocator.
                     unsafe_adjacent_branches.update(item[1] for item in movable)
                     if movable:
                         unsafe_corridors.add(corridor)

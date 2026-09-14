@@ -3432,3 +3432,127 @@ def test_process_feedback_yields_to_anchored_self_loop_corridor() -> None:
         "L 2514.0 341.0 L 2514.0 341.0 L 1421.0 341.0 "
         "C 1421.0 341.0, 1421.0 358.0, 1421.0 376.0"
     )
+
+
+def _anchored_process_labels_model() -> dict:
+    raw = _minimal_process_model(18)
+    label = "abcdefghijklmnopqrstuv abcdefghijklmnopqrstuv"
+    raw["edges"] = [
+        {"id": "diag", "from": "n0", "to": "n15", "label": label, "kind": "flow"},
+        {"id": "vert", "from": "n3", "to": "n15", "label": label, "kind": "risk"},
+    ]
+    return raw
+
+
+@pytest.mark.parametrize("edge_ids", [("diag", "vert"), ("z_diagonal", "a_vertical")])
+def test_colliding_anchored_process_labels_use_stable_outer_lanes(
+    edge_ids: tuple[str, str],
+) -> None:
+    raw = _anchored_process_labels_model()
+    for edge, edge_id in zip(raw["edges"], edge_ids):
+        edge["id"] = edge_id
+    forward = _parse(render_native_diagram(raw))
+    raw["edges"].reverse()
+    reverse = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(forward)
+    paths = _edge_paths(forward)
+
+    assert labels == _edge_label_boxes(reverse)
+    assert paths == _edge_paths(reverse)
+    assert forward.attrib["viewBox"] == reverse.attrib["viewBox"]
+    for root in (forward, reverse):
+        assert {
+            edge.attrib["data-source-id"]: edge.attrib["data-route"]
+            for edge in root.iter()
+            if edge.attrib.get("data-source-kind") == "edge"
+        } == {edge_ids[0]: "process-branch", edge_ids[1]: "vertical"}
+
+    # On 9e753b4 these 198x48 boxes started at x=1244.5 and x=1390.5,
+    # both at y=317, so the two opaque labels overlapped by 52 px.
+    assert {box[2:] for box in labels.values()} == {(198.0, 48.0)}
+    assert not _boxes_overlap(labels[edge_ids[0]], labels[edge_ids[1]])
+    nodes = _node_boxes(forward)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in labels.values()
+        for node_box in nodes.values()
+    )
+    _, _, canvas_width, canvas_height = map(float, forward.attrib["viewBox"].split())
+    assert all(
+        0 <= x and 0 <= y and x + width <= canvas_width and y + height <= canvas_height
+        for x, y, width, height in labels.values()
+    )
+
+    # Keep the fixed-column anchor exactly; the canvas-relative diagonal takes
+    # an outer lane regardless of either input order or relation-id priority.
+    assert labels[edge_ids[1]] == (1390.5, 317.0, 198.0, 48.0)
+    assert paths[edge_ids[1]] == (
+        "M 1421.0 306.0 L 1421.0 341.0 L 1558.0 341.0 "
+        "L 1558.0 577.0 L 1421.0 577.0 L 1421.0 612.0"
+    )
+    assert labels[edge_ids[0]][0] > max(x + width for x, _, width, _ in nodes.values())
+
+
+@pytest.mark.parametrize("edge_id", ["diag", "vert"])
+def test_singleton_anchored_process_label_keeps_preimage_geometry(edge_id: str) -> None:
+    raw = _anchored_process_labels_model()
+    raw["edges"] = [edge for edge in raw["edges"] if edge["id"] == edge_id]
+    root = _parse(render_native_diagram(raw))
+    expected_boxes = {
+        "diag": (1244.5, 317.0, 198.0, 48.0),
+        "vert": (1390.5, 317.0, 198.0, 48.0),
+    }
+    expected_paths = {
+        "diag": (
+            "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
+            "L 2514.0 341.0 L 2514.0 577.0 L 1421.0 577.0 "
+            "C 1421.0 577.0, 1421.0 594.0, 1421.0 612.0"
+        ),
+        "vert": (
+            "M 1421.0 306.0 L 1421.0 341.0 L 1558.0 341.0 "
+            "L 1558.0 577.0 L 1421.0 577.0 L 1421.0 612.0"
+        ),
+    }
+    assert _edge_label_boxes(root) == {edge_id: expected_boxes[edge_id]}
+    assert _edge_paths(root) == {edge_id: expected_paths[edge_id]}
+    assert root.attrib["viewBox"] == "0 0 2554 826"
+
+
+@pytest.mark.parametrize("close_pair", [False, True])
+def test_nonoverlapping_anchored_process_labels_keep_preimage_geometry(close_pair: bool) -> None:
+    raw = _anchored_process_labels_model()
+    if close_pair:
+        # A 4 px gap puts both anchors in the same packing cluster without an
+        # actual overlap. The usual 8 px packing clearance must not move them.
+        for edge in raw["edges"]:
+            edge["label"] = "abcdefghijklmno"
+        expected_boxes = {
+            "diag": (1272.5, 326.5, 142.0, 29.0),
+            "vert": (1418.5, 326.5, 142.0, 29.0),
+        }
+        center_x, gutter_x = "1421.0", "1558.0"
+    else:
+        raw["edges"][1].update({"from": "n2", "to": "n14"})
+        expected_boxes = {
+            "diag": (1244.5, 317.0, 198.0, 48.0),
+            "vert": (974.5, 317.0, 198.0, 48.0),
+        }
+        center_x, gutter_x = "1005.0", "1142.0"
+    expected_paths = {
+        "diag": (
+            "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
+            "L 2514.0 341.0 L 2514.0 577.0 L 1421.0 577.0 "
+            "C 1421.0 577.0, 1421.0 594.0, 1421.0 612.0"
+        ),
+        "vert": (
+            f"M {center_x} 306.0 L {center_x} 341.0 L {gutter_x} 341.0 "
+            f"L {gutter_x} 577.0 L {center_x} 577.0 L {center_x} 612.0"
+        ),
+    }
+    for edges in (raw["edges"], list(reversed(raw["edges"]))):
+        raw["edges"] = edges
+        root = _parse(render_native_diagram(raw))
+        assert _edge_label_boxes(root) == expected_boxes
+        assert _edge_paths(root) == expected_paths
+        assert root.attrib["viewBox"] == "0 0 2554 826"
+    assert not _boxes_overlap(expected_boxes["diag"], expected_boxes["vert"])
