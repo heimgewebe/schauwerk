@@ -81,6 +81,17 @@ def _edge_label_boxes(root: ET.Element) -> dict[str, tuple[float, float, float, 
     return boxes
 
 
+def _edge_paths(root: ET.Element) -> dict[str, str]:
+    paths: dict[str, str] = {}
+    for edge in root.iter():
+        if edge.attrib.get("data-source-kind") != "edge":
+            continue
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        paths[edge.attrib["data-source-id"]] = path.attrib["d"]
+    return paths
+
+
 def _point_on_box_boundary(
     point: tuple[float, float],
     box: tuple[float, float, float, float],
@@ -2885,8 +2896,9 @@ def test_crowded_process_row_gutter_lanes_clear_two_line_self_loop() -> None:
 
     forward, root = boxes([first_row_edge, second_row_edge, self_loop])
     reverse, reverse_root = boxes([self_loop, second_row_edge, first_row_edge])
-    # The outer-gutter allocation is derived from bounds, not from list order.
-    for edge_id in ("row_a", "row_b"):
+    # The outer-gutter allocation is derived from bounds, not from list order,
+    # and the self-loop arc keeps its own card-scoped lane.
+    for edge_id in ("row_a", "row_b", "loop"):
         assert forward[edge_id] == reverse[edge_id]
     assert forward["row_a"][3] > 29  # the crowded labels really do wrap
     assert forward["loop"][3] > 29
@@ -2941,3 +2953,91 @@ def test_long_vertical_process_edge_yields_corridor_to_self_loop_label() -> None
                 not _boxes_overlap(labels[edge_id], node_box)
                 for node_box in nodes.values()
             )
+
+
+def test_crowded_process_self_loop_geometry_is_independent_of_relation_order() -> None:
+    raw = _minimal_process_model(12)
+    crowded = "sehr lange prozessbeziehung mit erklaerendem text"
+    first_row_edge = {
+        "id": "row_a",
+        "from": "n9",
+        "to": "n10",
+        "label": crowded,
+        "kind": "flow",
+    }
+    second_row_edge = {
+        "id": "row_b",
+        "from": "n11",
+        "to": "n8",
+        "label": crowded,
+        "kind": "risk",
+    }
+    self_loop = {
+        "id": "loop",
+        "from": "n11",
+        "to": "n11",
+        "label": "zweizeiliger selbstbezug der karte",
+        "kind": "flow",
+    }
+
+    def rendered(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, tuple[float, float, float, float]],
+        dict[str, str],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root
+
+    forward_boxes, forward_paths, root = rendered(
+        [first_row_edge, second_row_edge, self_loop]
+    )
+    reverse_boxes, reverse_paths, reverse_root = rendered(
+        [self_loop, second_row_edge, first_row_edge]
+    )
+
+    # A self-loop arc expresses its lane through its reach, so the relation
+    # list order must not decide where the loop or its label lands.
+    for edge_id in ("row_a", "row_b", "loop"):
+        assert forward_boxes[edge_id] == reverse_boxes[edge_id]
+        assert forward_paths[edge_id] == reverse_paths[edge_id]
+
+    assert forward_boxes["row_a"][3] > 29  # the crowded labels really do wrap
+    assert forward_boxes["loop"][3] > 29
+    for labels, tree in ((forward_boxes, root), (reverse_boxes, reverse_root)):
+        nodes = _node_boxes(tree)
+        for edge_id in ("row_a", "row_b", "loop"):
+            assert all(
+                not _boxes_overlap(labels[edge_id], node_box)
+                for node_box in nodes.values()
+            )
+        for first, second in (("loop", "row_a"), ("loop", "row_b"), ("row_a", "row_b")):
+            assert not _boxes_overlap(labels[first], labels[second])
+
+
+def test_stacked_process_self_loops_keep_distinct_stable_arcs() -> None:
+    raw = _minimal_process_model(6)
+    loops = [
+        {
+            "id": f"loop_{suffix}",
+            "from": "n3",
+            "to": "n3",
+            "label": f"selbstbezug {suffix}",
+            "kind": "flow",
+        }
+        for suffix in ("a", "b", "c")
+    ]
+
+    def paths(ordered_edges: list[dict]) -> dict[str, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        return _edge_paths(_parse(render_native_diagram(candidate)))
+
+    forward = paths(loops)
+    reverse = paths(list(reversed(loops)))
+    assert forward == reverse
+    # Loops on one card stay apart instead of collapsing onto a shared arc.
+    assert len(set(forward.values())) == len(loops)

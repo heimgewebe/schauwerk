@@ -790,6 +790,41 @@ def _anchored_corridor_label_x(
     return (center_x + gutter_x) / 2, 0.0
 
 
+def _bezier_self_loop_lanes(
+    model: Mapping[str, Any],
+    *,
+    intent: str,
+    narrative_self_loop_gutter_x: Mapping[str, float],
+) -> dict[str, int]:
+    """Deterministic lanes for the self-loops that render as a Bezier arc.
+
+    Such a loop expresses its lane only through the reach of the arc, so two
+    loops on one card would otherwise coincide. Every other route ignores the
+    lane of a self-loop. Stacking the loops of one card by relation id keeps
+    the arcs apart without letting the relation list order decide the reach.
+    """
+    lane_step = _PROCESS_LANE_STEP if intent == "process" else 8
+    stacked: dict[str, list[str]] = defaultdict(list)
+    for edge in model["edges"]:
+        edge_id = str(edge["id"])
+        if (
+            edge["from"] != edge["to"]
+            or str(edge["kind"]) == "feedback"
+            or edge_id in narrative_self_loop_gutter_x
+        ):
+            continue
+        stacked[str(edge["from"])].append(edge_id)
+    lanes: dict[str, int] = {}
+    for edge_ids in stacked.values():
+        for slot, edge_id in enumerate(sorted(edge_ids)):
+            # The corridor bound above reserves this reach window, so a deeper
+            # stack keeps the outermost lane instead of growing past it.
+            lanes[edge_id] = int(
+                min(slot * lane_step, _PROCESS_SELF_LOOP_MAX_LANE_REACH)
+            )
+    return lanes
+
+
 def _process_anchored_corridor_labels(
     model: Mapping[str, Any],
     positions: Mapping[str, tuple[int, int]],
@@ -1372,6 +1407,7 @@ def _render_edge(
     row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
+    self_loop_lane: int | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
@@ -1380,7 +1416,9 @@ def _render_edge(
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
     lane_step = _PROCESS_LANE_STEP if intent == "process" else 8
-    if (
+    if self_loop_lane is not None:
+        lane = self_loop_lane
+    elif (
         intent == "process"
         and kind != "feedback"
         and process_adjacent_slot is not None
@@ -2235,6 +2273,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             width = max(width, math.ceil(required_right))
             height = max(height, math.ceil(required_bottom))
 
+    self_loop_lanes = _bezier_self_loop_lanes(
+        model,
+        intent=intent,
+        narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
+    )
+
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
     long_branch_pack_bottom = 0.0
@@ -2523,6 +2567,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
+                self_loop_lane=self_loop_lanes.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
