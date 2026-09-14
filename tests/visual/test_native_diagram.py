@@ -2471,3 +2471,92 @@ def test_narrative_self_loop_uses_stable_outer_row_gap_lane() -> None:
     canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
     assert 0 <= x and x + width <= canvas_width
     assert 0 <= y and y + height <= canvas_height
+
+
+def test_adjacent_vertical_and_diagonal_non_process_labels_pack_same_row_corridor() -> None:
+    raw = _minimal_process_model(6)
+    raw["intent"] = "architecture"
+    raw["id"] = "architecture_6"
+    edges = [
+        {
+            "id": "vertical",
+            "from": "n1",
+            "to": "n5",
+            "label": "vertikale beziehung im korridor",
+            "kind": "flow",
+        },
+        {
+            "id": "diagonal",
+            "from": "n2",
+            "to": "n4",
+            "label": "diagonale beziehung im korridor",
+            "kind": "risk",
+        },
+    ]
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        labels = _edge_label_boxes(root)
+        return {edge["id"]: labels[edge["id"]] for edge in edges}, root
+
+    forward, root = boxes(edges)
+    reverse, _ = boxes(list(reversed(edges)))
+    assert forward == reverse
+    assert not _boxes_overlap(forward["vertical"], forward["diagonal"])
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in forward.values()
+        for node_box in nodes.values()
+    )
+    upper_bottom = nodes["n1"][1] + nodes["n1"][3]
+    lower_top = nodes["n5"][1]
+    assert all(
+        upper_bottom <= y and y + height <= lower_top
+        for _, y, _, height in forward.values()
+    )
+
+
+def test_process_feedback_self_loop_avoids_occupied_adjacent_branch_corridor() -> None:
+    raw = _minimal_process_model(7)
+    feedback = {
+        "id": "feedback",
+        "from": "n0",
+        "to": "n0",
+        "label": "rückmeldung",
+        "kind": "feedback",
+    }
+    branch = {
+        "id": "branch",
+        "from": "n5",
+        "to": "n6",
+        "label": "zweizeilige prozessbeziehung mit langem text",
+        "kind": "flow",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        labels = _edge_label_boxes(root)
+        return {edge_id: labels[edge_id] for edge_id in ("feedback", "branch")}, root
+
+    forward, root = boxes([feedback, branch])
+    reverse, _ = boxes([branch, feedback])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["feedback"], forward["branch"])
+    nodes = _node_boxes(root)
+    max_node_bottom = max(y + height for _, y, _, height in nodes.values())
+    assert forward["feedback"][1] >= max_node_bottom + 10
+
+    branch_only = copy.deepcopy(raw)
+    branch_only["edges"] = [copy.deepcopy(branch)]
+    assert forward["branch"] == _edge_label_boxes(
+        _parse(render_native_diagram(branch_only))
+    )["branch"]

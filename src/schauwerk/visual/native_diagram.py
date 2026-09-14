@@ -1057,6 +1057,7 @@ def _render_edge(
     process_adjacent_slot: int | None = None,
     process_adjacent_count: int = 0,
     process_adjacent_label_y: float | None = None,
+    row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
     feedback_slot: int | None = None,
@@ -1291,6 +1292,8 @@ def _render_edge(
             label_y = process_adjacent_label_y
         elif lower_top - upper_bottom >= label_height + 8:
             label_y = (upper_bottom + lower_top) / 2
+    if intent != "process" and row_corridor_label_x is not None:
+        label_x = row_corridor_label_x
     if intent == "process" and route == "standard":
         # Self-loops can place their Bézier midpoint beyond the rightmost card.
         # Clamp only the label box; in-bounds standard labels remain unchanged.
@@ -1662,10 +1665,135 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         long_vertical_pack_bottom = previous_bottom
         height = max(height, math.ceil(previous_bottom + 8))
 
+    row_corridor_label_x: dict[str, float] = {}
+    if intent != "process":
+        row_corridor_groups: dict[
+            float,
+            list[tuple[float, str, int, int]],
+        ] = defaultdict(list)
+        adjacent_step = _NODE_HEIGHT + non_process_row_gap
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if (
+                source[1] == target[1]
+                or abs(target[1] - source[1]) > adjacent_step
+            ):
+                continue
+            vertical = source[0] == target[0]
+            label_size = 17 if intent == "narrative" else 15
+            label_line_height = 19 if intent == "narrative" else 17
+            label_width_cap = 190 if vertical else 206
+            minimum_width = 70 if vertical else 84
+            compact_narrative_label = False
+            compact_knowledge_label = False
+            if not vertical:
+                horizontal_gap = abs(target[0] - source[0]) - node_width
+                vertical_corridor = abs(target[1] - source[1]) - _NODE_HEIGHT
+                use_narrative_vertical_corridor = (
+                    intent == "narrative"
+                    and _ROW_GAP <= vertical_corridor <= _NON_PROCESS_ROW_GAP
+                )
+                if horizontal_gap > 0 and not use_narrative_vertical_corridor:
+                    corridor_margin = 8 if intent == "knowledge_map" else 16
+                    label_width_cap = min(
+                        label_width_cap,
+                        max(48, int(horizontal_gap - corridor_margin)),
+                    )
+                    minimum_width = min(minimum_width, label_width_cap)
+                    compact_narrative_label = (
+                        intent == "narrative"
+                        and vertical_corridor > _NON_PROCESS_ROW_GAP
+                    )
+                    compact_knowledge_label = (
+                        intent == "knowledge_map" and label_width_cap <= 118
+                    )
+                    if compact_narrative_label:
+                        label_size = 15
+                    elif compact_knowledge_label:
+                        label_size = 14
+                        label_line_height = 16
+            provisional = _wrapped(str(edge["label"]), width=24, limit=2)
+            label_width = min(
+                label_width_cap,
+                max(minimum_width, max(len(line) for line in provisional) * 8 + 24),
+            )
+            label_text_inset = (
+                4
+                if compact_knowledge_label
+                else (
+                    6
+                    if compact_narrative_label
+                    else (7 if intent == "narrative" else 8)
+                )
+            )
+            label_lines = _bounded_wrapped(
+                str(edge["label"]),
+                width=24,
+                limit=2,
+                size=label_size,
+                max_width=label_width - 2 * label_text_inset,
+            )
+            label_height = (28 if intent == "narrative" else 26) + max(
+                0, len(label_lines) - 1
+            ) * label_line_height
+            upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
+            lower_top = max(source[1], target[1])
+            vertical_clearance = lower_top - upper_bottom
+            if vertical:
+                if vertical_clearance < label_height:
+                    continue
+                natural_x = source[0] + node_width / 2
+            else:
+                left_card_right = min(source[0], target[0]) + node_width
+                right_card_left = max(source[0], target[0])
+                horizontal_clearance = right_card_left - left_card_right
+                narrative_corridor = (
+                    intent == "narrative"
+                    and _ROW_GAP <= vertical_clearance <= _NON_PROCESS_ROW_GAP
+                    and vertical_clearance >= label_height + 4
+                )
+                generic_corridor = (
+                    horizontal_clearance >= label_width + 8
+                    and vertical_clearance >= label_height + 8
+                )
+                if not (narrative_corridor or generic_corridor):
+                    continue
+                natural_x = (left_card_right + right_card_left) / 2
+            corridor_y = (upper_bottom + lower_top) / 2
+            row_corridor_groups[corridor_y].append(
+                (natural_x, str(edge["id"]), label_width, label_height)
+            )
+
+        required_right = float(width)
+        for items in row_corridor_groups.values():
+            if len(items) <= 1:
+                continue
+            previous_right: float | None = None
+            for natural_x, edge_id, label_width, _ in sorted(
+                items, key=lambda item: (item[0], item[1])
+            ):
+                packed_x = natural_x
+                if (
+                    previous_right is not None
+                    and natural_x - label_width / 2 < previous_right + 8
+                ):
+                    packed_x = previous_right + 8 + label_width / 2
+                    row_corridor_label_x[edge_id] = packed_x
+                previous_right = packed_x + label_width / 2
+                required_right = max(
+                    required_right, previous_right + _PAGE_MARGIN
+                )
+        if row_corridor_label_x:
+            width = max(width, math.ceil(required_right))
+
     process_branch_gutter_x: dict[str, float] = {}
     process_adjacent_slot: dict[str, int] = {}
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_y: dict[str, float] = {}
+    occupied_process_adjacent_corridors: set[float] = set()
     if intent == "process":
         unsafe_adjacent_branches: set[str] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
@@ -1679,15 +1807,20 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
             if (
-                source[0] == target[0]
-                or source[1] == target[1]
+                source[1] == target[1]
                 or abs(target[1] - source[1]) > process_adjacent_step
             ):
                 continue
-            label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
-            label_height = 29 + max(0, len(label_lines) - 1) * 19
             upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
             lower_top = max(source[1], target[1])
+            if lower_top > upper_bottom:
+                occupied_process_adjacent_corridors.add(
+                    (upper_bottom + lower_top) / 2
+                )
+            if source[0] == target[0]:
+                continue
+            label_lines = _wrapped(str(edge["label"]), width=24, limit=2)
+            label_height = 29 + max(0, len(label_lines) - 1) * 19
             endpoint_key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
             adjacent_groups[endpoint_key].append(
                 (str(edge["id"]), label_height, upper_bottom, lower_top)
@@ -1873,6 +2006,15 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         ),
     )
     feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
+    feedback_footer_ids: set[str] = set()
+    if intent == "process" and occupied_process_adjacent_corridors:
+        for edge in feedback_edges:
+            if edge["from"] != edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            corridor_y = source[1] + _NODE_HEIGHT + process_row_gap / 2
+            if corridor_y in occupied_process_adjacent_corridors:
+                feedback_footer_ids.add(str(edge["id"]))
     feedback_count = len(feedback_edges)
     feedback_base_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
     if feedback_count:
@@ -2081,6 +2223,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 process_adjacent_slot=process_adjacent_slot.get(str(edge["id"])),
                 process_adjacent_count=process_adjacent_count.get(str(edge["id"]), 0),
                 process_adjacent_label_y=process_adjacent_label_y.get(str(edge["id"])),
+                row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
@@ -2088,7 +2231,11 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_base_bottom=feedback_base_bottom,
                 force_feedback_footer=(
                     intent == "process"
-                    and (long_vertical_pack_bottom > 0.0 or bool(long_branch_slots))
+                    and (
+                        long_vertical_pack_bottom > 0.0
+                        or bool(long_branch_slots)
+                        or str(edge["id"]) in feedback_footer_ids
+                    )
                 ),
             )
         )
