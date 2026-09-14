@@ -773,6 +773,17 @@ def _row_corridor_containing(
     return None
 
 
+def _process_label_corridor_above(
+    row_y: int,
+    positions: Mapping[str, tuple[int, int]],
+    *,
+    header_corridor: tuple[int, int],
+) -> tuple[int, int]:
+    """Include the header rail in label occupancy without changing card-to-card gaps."""
+    corridor = _process_row_corridor_bounds(row_y, positions, direction=-1)
+    return corridor if corridor is not None else header_corridor
+
+
 def _anchored_corridor_label_x(
     source_x: int,
     *,
@@ -878,6 +889,7 @@ def _process_anchored_corridor_labels(
     process_row_gap: int,
     long_vertical_gutter_x: Mapping[str, float],
     canvas_width: int,
+    header_corridor: tuple[int, int],
 ) -> list[tuple[tuple[int, int], float, str, float, int]]:
     """Process labels whose physical row corridor is fixed by their own route.
 
@@ -900,7 +912,9 @@ def _process_anchored_corridor_labels(
         self_loop = edge["from"] == edge["to"]
         long_branch_gutter_x: float | None = None
         if self_loop:
-            corridor = _process_row_corridor_bounds(source[1], positions, direction=-1)
+            corridor = _process_label_corridor_above(
+                source[1], positions, header_corridor=header_corridor
+            )
         elif long_branch_ids == [edge_id]:
             # The sole long branch renders its label in the source row corridor
             # instead of the shared outer label pack, so it occupies that
@@ -1585,10 +1599,18 @@ def _render_edge(
     marker_attribute = "" if kind == "association" else f' marker-end="url(#native-arrow-{kind})"'
     same_process_row = (
         intent == "process"
-        and route == "standard"
         and source_position[1] == target_position[1]
+        and (
+            route == "standard"
+            or (
+                route == "process-row-gutter"
+                and source_position[1] == min(y for _, y in positions.values())
+            )
+        )
     )
     if same_process_row:
+        # A first-row gutter label shares the header rail's safe vertical slot;
+        # centering a wrapped box on the path could cover the purpose block.
         row_top = min(source_position[1], target_position[1])
         if process_adjacent_label_y is not None:
             label_y = process_adjacent_label_y
@@ -2144,6 +2166,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     process_adjacent_label_y: dict[str, float] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     if intent == "process":
+        header_corridor = (
+            max([104, *(y + 44 for _, _, _, y, _, _ in regions)]),
+            min(y for _, y in positions.values()),
+        )
         unsafe_adjacent_branches: set[str] = set()
         unsafe_corridors: set[tuple[int, int]] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
@@ -2157,11 +2183,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
             if source[1] == target[1]:
-                corridor = _process_row_corridor_bounds(
-                    source[1], positions, direction=-1
+                corridor = _process_label_corridor_above(
+                    source[1], positions, header_corridor=header_corridor
                 )
-                if corridor is None:
-                    continue
             elif abs(target[1] - source[1]) <= process_adjacent_step:
                 upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
                 lower_top = max(source[1], target[1])
@@ -2183,6 +2207,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             process_row_gap=process_row_gap,
             long_vertical_gutter_x=long_vertical_gutter_x,
             canvas_width=width,
+            header_corridor=header_corridor,
         )
         for corridor, natural_x, edge_id, label_width, label_height in (
             anchored_corridor_labels
@@ -2228,7 +2253,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 count = len(cluster)
                 if count == 1:
                     _, edge_id, _, label_height, _ = cluster[0]
-                    if label_height + 8 > available_height:
+                    # The header already reserves the established singleton
+                    # slot; only collisions there require a geometry change.
+                    if corridor != header_corridor and label_height + 8 > available_height:
                         unsafe_adjacent_branches.add(edge_id)
                         unsafe_corridors.add(corridor)
                     continue

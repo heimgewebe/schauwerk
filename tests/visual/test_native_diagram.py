@@ -1596,6 +1596,108 @@ def test_two_line_same_row_process_label_clears_header_and_cards() -> None:
     assert label_bottom <= first_row_top - 4
 
 
+def test_first_row_process_labels_pack_shared_header_rail() -> None:
+    raw = _minimal_process_model(6)
+    label = "abcdefghijklmnopqrstuv abcdefghijklmnopqrstuv"
+    self_loop = {
+        "id": "loop",
+        "from": "n4",
+        "to": "n4",
+        "label": label,
+        "kind": "flow",
+    }
+    same_row = {
+        "id": "row",
+        "from": "n5",
+        "to": "n3",
+        "label": label,
+        "kind": "flow",
+    }
+
+    def geometry(ordered_edges: list[dict]) -> tuple[dict, dict, ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root
+
+    # On c57c6a8 the combined model left both labels at these singleton boxes:
+    # their 14.5 px horizontal overlap filled the entire 48 px label height.
+    before_boxes = {
+        "loop": (1921.5, 108.0, 198.0, 48.0),
+        "row": (1738.0, 108.0, 198.0, 48.0),
+    }
+    assert _boxes_overlap(before_boxes["loop"], before_boxes["row"])
+    singleton_loop, loop_paths, _ = geometry([self_loop])
+    singleton_row, row_paths, singleton_root = geometry([same_row])
+    assert singleton_loop == {"loop": before_boxes["loop"]}
+    assert singleton_row == {"row": before_boxes["row"]}
+    assert loop_paths["loop"] == (
+        "M 1962.0 218.1 C 2040.0 174.1, 2040.0 323.5, 1962.0 279.5"
+    )
+    assert row_paths["row"] == (
+        "M 2128.0 243.0 C 1883.6 215.0, 1790.4 215.0, 1546.0 243.0"
+    )
+
+    forward_boxes, forward_paths, root = geometry([self_loop, same_row])
+    reverse_boxes, reverse_paths, reverse_root = geometry([same_row, self_loop])
+    assert forward_boxes == reverse_boxes
+    assert forward_paths == reverse_paths
+    assert root.attrib["viewBox"] == reverse_root.attrib["viewBox"]
+    assert forward_boxes["loop"] == singleton_loop["loop"]
+    assert forward_paths["loop"] == loop_paths["loop"]
+    assert all(box[2:] == (198.0, 48.0) for box in forward_boxes.values())
+    assert not _boxes_overlap(forward_boxes["loop"], forward_boxes["row"])
+
+    nodes = _node_boxes(root)
+    assert len({y for _, y, _, _ in nodes.values()}) == 1
+    canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+    assert canvas_width > float(singleton_root.attrib["viewBox"].split()[2])
+    header_boxes = [
+        _rect_box(rect)
+        for clip_id in ("native-clip-title", "native-clip-purpose")
+        for rect in root.findall(
+            f".//{{{SVG_NAMESPACE}}}clipPath[@id='{clip_id}']/{{{SVG_NAMESPACE}}}rect"
+        )
+    ]
+    assert len(header_boxes) == 2
+    for label_box in forward_boxes.values():
+        assert all(
+            not _boxes_overlap(label_box, obstacle)
+            for obstacle in [*nodes.values(), *header_boxes]
+        )
+        x, y, width, height = label_box
+        assert 0 <= x < x + width <= canvas_width
+        assert 0 <= y < y + height <= canvas_height
+
+
+@pytest.mark.parametrize("edge_ids", (("loop",), ("row",), ("loop", "row")))
+def test_uncrowded_first_row_process_labels_keep_geometry(edge_ids: tuple[str, ...]) -> None:
+    raw = _minimal_process_model(6)
+    edges = {
+        "loop": {"id": "loop", "from": "n4", "to": "n4", "label": "x", "kind": "flow"},
+        "row": {"id": "row", "from": "n5", "to": "n3", "label": "x", "kind": "flow"},
+    }
+    raw["edges"] = [edges[edge_id] for edge_id in edge_ids]
+    root = _parse(render_native_diagram(raw))
+    # These exact preimage boxes and paths cover both isolated first-row
+    # occupants and a noncolliding pair, including the narrower one-line rail.
+    expected_boxes = {
+        "loop": (1996.5, 107.5, 48.0, 29.0),
+        "row": (1813.0, 107.5, 48.0, 29.0),
+    }
+    expected_paths = {
+        "loop": "M 1962.0 198.1 C 2040.0 154.1, 2040.0 303.5, 1962.0 259.5",
+        "row": (
+            "M 2128.0 223.0 C 1883.6 209.0, 1790.4 209.0, 1546.0 223.0"
+            if len(edge_ids) == 2
+            else "M 2128.0 223.0 C 1883.6 195.0, 1790.4 195.0, 1546.0 223.0"
+        ),
+    }
+    assert _edge_label_boxes(root) == {edge_id: expected_boxes[edge_id] for edge_id in edge_ids}
+    assert _edge_paths(root) == {edge_id: expected_paths[edge_id] for edge_id in edge_ids}
+    assert root.attrib["viewBox"] == "0 0 2554 354"
+
+
 def test_two_line_rightmost_process_self_loop_label_stays_inside_canvas_and_card() -> None:
     raw = _minimal_process_model(6)
     raw["edges"] = [
