@@ -3041,3 +3041,178 @@ def test_stacked_process_self_loops_keep_distinct_stable_arcs() -> None:
     assert forward == reverse
     # Loops on one card stay apart instead of collapsing onto a shared arc.
     assert len(set(forward.values())) == len(loops)
+
+
+def test_long_diagonal_and_vertical_non_process_geometry_is_edge_order_independent() -> None:
+    raw = _minimal_process_model(14)
+    raw["intent"] = "architecture"
+    raw["id"] = "architecture_14"
+    edges = [
+        {
+            "id": "diag",
+            "from": "n9",
+            "to": "n1",
+            "label": "lange diagonale beziehung",
+            "kind": "flow",
+        },
+        {
+            "id": "vertical",
+            "from": "n12",
+            "to": "n2",
+            "label": "lange vertikale beziehung",
+            "kind": "risk",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, tuple[float, float, float, float]],
+        dict[str, str],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root
+
+    forward_boxes, forward_paths, root = geometry(edges)
+    reverse_boxes, reverse_paths, _ = geometry(list(reversed(edges)))
+
+    # The generic Bezier route carries its lane in the control points, so a
+    # permuted relation list must not move the curve, only the label box.
+    assert forward_boxes == reverse_boxes
+    assert forward_paths == reverse_paths
+
+    # The accepted geometry of both relations is preserved.
+    assert forward_paths["diag"] == (
+        "M 535.0 612.0 L 535.0 577.0 L 672.0 577.0 "
+        "L 672.0 341.0 L 535.0 341.0 L 535.0 306.0"
+    )
+    assert forward_paths["vertical"] == (
+        "M 298.0 931.0 C 497.1 923.0, 572.9 215.0, 772.0 223.0"
+    )
+
+    assert not _boxes_overlap(forward_boxes["diag"], forward_boxes["vertical"])
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in forward_boxes.values()
+        for node_box in nodes.values()
+    )
+
+
+def test_long_process_branch_occupies_its_source_corridor_against_adjacent_branch() -> None:
+    raw = _minimal_process_model(14)
+    long_branch = {
+        "id": "long_branch",
+        "from": "n12",
+        "to": "n1",
+        "label": "lange diagonale prozessbeziehung mit text",
+        "kind": "flow",
+    }
+    adjacent = {
+        "id": "adjacent",
+        "from": "n13",
+        "to": "n11",
+        "label": "benachbarte prozessbeziehung mit langem text",
+        "kind": "risk",
+    }
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, tuple[float, float, float, float]],
+        dict[str, str],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root
+
+    forward_boxes, forward_paths, root = geometry([long_branch, adjacent])
+    reverse_boxes, reverse_paths, _ = geometry([adjacent, long_branch])
+
+    assert forward_boxes == reverse_boxes
+    assert forward_paths == reverse_paths
+
+    # Both labels really do wrap, which is what made them collide before the
+    # long branch was registered as a physical corridor occupant.
+    assert forward_boxes["long_branch"][3] > 29
+    assert forward_boxes["adjacent"][3] > 29
+    assert not _boxes_overlap(
+        forward_boxes["long_branch"], forward_boxes["adjacent"]
+    )
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in forward_boxes.values()
+        for node_box in nodes.values()
+    )
+
+    # An unaffected singleton long branch keeps its accepted geometry.
+    solo_boxes, solo_paths, _ = geometry([long_branch])
+    assert solo_boxes["long_branch"] == (1252.5, 553.0, 182.0, 48.0)
+    assert solo_paths["long_branch"] == (
+        "M 173.0 612.0 C 173.0 594.0, 173.0 577.0, 173.0 577.0 "
+        "L 2514.0 577.0 L 2514.0 341.0 L 589.0 341.0 "
+        "C 589.0 341.0, 589.0 324.0, 589.0 306.0"
+    )
+
+
+def test_process_feedback_yields_to_anchored_self_loop_corridor() -> None:
+    raw = _minimal_process_model(12)
+    self_loop = {
+        "id": "self_loop",
+        "from": "n8",
+        "to": "n8",
+        "label": "zweizeilige selbstbeziehung mit langem text",
+        "kind": "flow",
+    }
+    feedback = {
+        "id": "feedback",
+        "from": "n0",
+        "to": "n9",
+        "label": "rueckmeldung mit langem text",
+        "kind": "feedback",
+    }
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, tuple[float, float, float, float]],
+        dict[str, str],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root
+
+    forward_boxes, forward_paths, root = geometry([self_loop, feedback])
+    reverse_boxes, reverse_paths, _ = geometry([feedback, self_loop])
+
+    assert forward_boxes == reverse_boxes
+    assert forward_paths == reverse_paths
+
+    assert forward_boxes["self_loop"][3] > 29
+    assert not _boxes_overlap(forward_boxes["self_loop"], forward_boxes["feedback"])
+    nodes = _node_boxes(root)
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for label_box in forward_boxes.values()
+        for node_box in nodes.values()
+    )
+    # The feedback label leaves the corridor the anchored loop owns and lands
+    # in the reserved footer below the complete card field.
+    assert forward_boxes["feedback"][1] > max(y + height for _, y, _, height in nodes.values())
+
+    # Ordinary feedback without an anchored corridor user is untouched.
+    solo_boxes, solo_paths, _ = geometry([feedback])
+    assert solo_boxes["feedback"] == (1240.5, 317.0, 206.0, 48.0)
+    assert solo_paths["feedback"] == (
+        "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
+        "L 2514.0 341.0 L 2514.0 341.0 L 1421.0 341.0 "
+        "C 1421.0 341.0, 1421.0 358.0, 1421.0 376.0"
+    )

@@ -777,6 +777,7 @@ def _anchored_corridor_label_x(
     source_x: int,
     *,
     self_loop: bool,
+    long_branch_gutter_x: float | None = None,
 ) -> tuple[float, float]:
     """Return the centre and the extra width of one anchored label's x bound."""
     if self_loop:
@@ -785,9 +786,31 @@ def _anchored_corridor_label_x(
         nearest = source_x + _NODE_WIDTH + 0.75 * _SELF_LOOP_BASE_REACH
         farthest = nearest + 0.75 * _PROCESS_SELF_LOOP_MAX_LANE_REACH
         return (nearest + farthest) / 2, farthest - nearest
+    if long_branch_gutter_x is not None:
+        # A singleton long branch centres its label between the source card
+        # and the outer process gutter it leaves through.
+        return (source_x + _NODE_WIDTH / 2 + long_branch_gutter_x) / 2, 0.0
     center_x = source_x + _NODE_WIDTH / 2
     gutter_x = source_x + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET
     return (center_x + gutter_x) / 2, 0.0
+
+
+def _stable_lane_ranks(model: Mapping[str, Any]) -> dict[str, int]:
+    """Order-independent lane ranks for relations that fall back to a plain lane.
+
+    The generic Bezier route expresses its lane only through the offset of its
+    control points, so co-routed relations need distinct lanes. Deriving that
+    lane from the position of a relation in the input list let a permuted
+    relation list move control points, which breaks the determinism contract.
+    Ranking the relation ids instead keeps the lane a function of the relation
+    set while preserving the accepted spread of the established diagrams.
+    """
+    return {
+        edge_id: rank
+        for rank, edge_id in enumerate(
+            sorted(str(edge["id"]) for edge in model["edges"])
+        )
+    }
 
 
 def _bezier_self_loop_lanes(
@@ -825,19 +848,48 @@ def _bezier_self_loop_lanes(
     return lanes
 
 
+def _process_long_branch_ids(
+    model: Mapping[str, Any],
+    positions: Mapping[str, tuple[int, int]],
+    *,
+    process_row_gap: int,
+) -> list[str]:
+    """Ids of the process relations that leave through the long-branch gutter."""
+    row_step = _NODE_HEIGHT + process_row_gap
+    long_branches: list[str] = []
+    for edge in model["edges"]:
+        if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+            continue
+        source = positions[str(edge["from"])]
+        target = positions[str(edge["to"])]
+        if (
+            source[0] != target[0]
+            and source[1] != target[1]
+            and abs(target[1] - source[1]) > row_step
+        ):
+            long_branches.append(str(edge["id"]))
+    return sorted(long_branches)
+
+
 def _process_anchored_corridor_labels(
     model: Mapping[str, Any],
     positions: Mapping[str, tuple[int, int]],
     *,
     process_row_gap: int,
     long_vertical_gutter_x: Mapping[str, float],
+    canvas_width: int,
 ) -> list[tuple[tuple[int, int], float, str, float, int]]:
     """Process labels whose physical row corridor is fixed by their own route.
 
-    Self-loops keep the same-row label slot above their card and long
-    same-column relations keep the source-side row corridor. Neither can be
-    repacked inside the corridor, so movable labels have to yield to them.
+    Self-loops keep the same-row label slot above their card, long same-column
+    relations keep the source-side row corridor, and a singleton long branch
+    keeps the source-side row corridor between its card and the outer process
+    gutter. None of them can be repacked inside the corridor, so movable labels
+    have to yield to them.
     """
+    long_branch_ids = _process_long_branch_ids(
+        model, positions, process_row_gap=process_row_gap
+    )
     anchored: list[tuple[tuple[int, int], float, str, float, int]] = []
     for edge in model["edges"]:
         if str(edge["kind"]) == "feedback":
@@ -846,8 +898,17 @@ def _process_anchored_corridor_labels(
         source = positions[str(edge["from"])]
         target = positions[str(edge["to"])]
         self_loop = edge["from"] == edge["to"]
+        long_branch_gutter_x: float | None = None
         if self_loop:
             corridor = _process_row_corridor_bounds(source[1], positions, direction=-1)
+        elif long_branch_ids == [edge_id]:
+            # The sole long branch renders its label in the source row corridor
+            # instead of the shared outer label pack, so it occupies that
+            # physical corridor exactly like an anchored same-column relation.
+            long_branch_gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+            corridor = _process_row_corridor_bounds(
+                source[1], positions, direction=1 if source[1] < target[1] else -1
+            )
         elif (
             source[0] != target[0]
             or source[1] == target[1]
@@ -863,7 +924,9 @@ def _process_anchored_corridor_labels(
             continue
         metrics = _edge_label_metrics(edge, positions, "process")
         natural_x, extra_width = _anchored_corridor_label_x(
-            source[0], self_loop=self_loop
+            source[0],
+            self_loop=self_loop,
+            long_branch_gutter_x=long_branch_gutter_x,
         )
         anchored.append(
             (corridor, natural_x, edge_id, metrics.width + extra_width, metrics.height)
@@ -1389,7 +1452,7 @@ def _render_edge(
     edge: Mapping[str, Any],
     positions: Mapping[str, tuple[int, int]],
     *,
-    index: int,
+    lane_rank: int,
     canvas_width: int,
     canvas_height: int,
     intent: str,
@@ -1430,7 +1493,7 @@ def _render_edge(
         centered_slot = feedback_slot - (feedback_count - 1) / 2
         lane = int(centered_slot * lane_step)
     else:
-        lane = ((index % 5) - 2) * lane_step
+        lane = ((lane_rank % 5) - 2) * lane_step
     source_position = positions[str(edge["from"])]
     target_position = positions[str(edge["to"])]
 
@@ -2109,10 +2172,14 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             positions,
             process_row_gap=process_row_gap,
             long_vertical_gutter_x=long_vertical_gutter_x,
+            canvas_width=width,
         )
         for corridor, natural_x, edge_id, label_width, label_height in (
             anchored_corridor_labels
         ):
+            # Anchored labels are physical corridor occupants like every other
+            # corridor user, so feedback routing has to see them here as well.
+            occupied_process_adjacent_corridors.add(corridor)
             corridor_groups[corridor].append(
                 (natural_x, edge_id, label_width, label_height, True)
             )
@@ -2278,6 +2345,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         intent=intent,
         narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
     )
+    lane_ranks = _stable_lane_ranks(model)
 
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
@@ -2544,12 +2612,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         )
         lines.append("</g>")
 
-    for index, edge in enumerate(model["edges"]):
+    for edge in model["edges"]:
         lines.extend(
             _render_edge(
                 edge,
                 positions,
-                index=index,
+                lane_rank=lane_ranks[str(edge["id"])],
                 canvas_width=width,
                 canvas_height=height,
                 intent=intent,
