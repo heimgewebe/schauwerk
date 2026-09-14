@@ -824,6 +824,13 @@ def _stable_lane_ranks(model: Mapping[str, Any]) -> dict[str, int]:
     }
 
 
+def _process_anchor_order_key(edge: Mapping[str, Any]) -> tuple[str, str, str]:
+    """Order process self-loops by meaning; preserve other relations' id order."""
+    if edge["from"] == edge["to"]:
+        return str(edge["label"]), str(edge["kind"]), str(edge["id"])
+    return "", "", str(edge["id"])
+
+
 def _bezier_self_loop_lanes(
     model: Mapping[str, Any],
     *,
@@ -834,11 +841,11 @@ def _bezier_self_loop_lanes(
 
     Such a loop expresses its lane only through the reach of the arc, so two
     loops on one card would otherwise coincide. Every other route ignores the
-    lane of a self-loop. Stacking the loops of one card by relation id keeps
-    the arcs apart without letting the relation list order decide the reach.
+    lane of a self-loop. Process loops use the same semantic order as their
+    label anchors; other intents retain the established relation-id order.
     """
     lane_step = _PROCESS_LANE_STEP if intent == "process" else 8
-    stacked: dict[str, list[str]] = defaultdict(list)
+    stacked: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for edge in model["edges"]:
         edge_id = str(edge["id"])
         if (
@@ -847,13 +854,17 @@ def _bezier_self_loop_lanes(
             or edge_id in narrative_self_loop_gutter_x
         ):
             continue
-        stacked[str(edge["from"])].append(edge_id)
+        stacked[str(edge["from"])].append(edge)
     lanes: dict[str, int] = {}
-    for edge_ids in stacked.values():
-        for slot, edge_id in enumerate(sorted(edge_ids)):
+    for edges in stacked.values():
+        ordered = sorted(
+            edges,
+            key=_process_anchor_order_key if intent == "process" else lambda edge: str(edge["id"]),
+        )
+        for slot, edge in enumerate(ordered):
             # The corridor bound above reserves this reach window, so a deeper
             # stack keeps the outermost lane instead of growing past it.
-            lanes[edge_id] = int(
+            lanes[str(edge["id"])] = int(
                 min(slot * lane_step, _PROCESS_SELF_LOOP_MAX_LANE_REACH)
             )
     return lanes
@@ -985,6 +996,7 @@ def _edge_geometry(
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
+    anchored_branch_gutter_x: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
@@ -1404,7 +1416,11 @@ def _edge_geometry(
                 # Keep the established single-branch gutter width, but use the
                 # stable long-branch slot above. The label stays centered in the
                 # source row gap so it cannot drift into an intervening card.
-                gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
+                gutter_x = (
+                    anchored_branch_gutter_x
+                    if anchored_branch_gutter_x is not None
+                    else canvas_width - _PROCESS_EDGE_GUTTER / 2
+                )
             else:
                 gutter_x = canvas_width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
             bend = 18.0
@@ -1478,6 +1494,7 @@ def _render_edge(
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_label_y: float | None = None,
+    anchored_branch_gutter_x: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
@@ -1582,6 +1599,7 @@ def _render_edge(
         long_branch_slot=long_branch_slot,
         long_branch_count=long_branch_count,
         long_branch_label_y=long_branch_label_y,
+        anchored_branch_gutter_x=anchored_branch_gutter_x,
         long_vertical_gutter_x=long_vertical_gutter_x,
         long_vertical_label_y=long_vertical_label_y,
         process_branch_gutter_x=process_branch_gutter_x,
@@ -1622,6 +1640,10 @@ def _render_edge(
         else:
             # Keep the accepted one-line placement byte-for-byte.
             label_y = row_top - 18
+        if edge["from"] == edge["to"] and process_branch_gutter_x is not None:
+            # Conflicting loop labels use the packed outer lane while their
+            # Bezier arcs retain the established, capped reach window.
+            label_x = process_branch_gutter_x + 8 + label_width / 2
     if (
         intent != "process"
         and kind != "feedback"
@@ -2164,6 +2186,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             width = max(width, math.ceil(required_right))
 
     process_branch_gutter_x: dict[str, float] = {}
+    anchored_branch_gutter_x: dict[str, float] = {}
     process_adjacent_slot: dict[str, int] = {}
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_y: dict[str, float] = {}
@@ -2256,14 +2279,13 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             edges_by_id[item[1]]["from"] != edges_by_id[item[1]]["to"],
                             positions[str(edges_by_id[item[1]]["from"])][0]
                             != positions[str(edges_by_id[item[1]]["to"])][0],
-                            item[1],
+                            _process_anchor_order_key(edges_by_id[item[1]]),
                         ),
                     )
                     retained: list[tuple[float, str, float, int, bool]] = []
                     for item in anchored:
                         natural_x, edge_id, label_width, _, _ = item
-                        edge = edges_by_id[edge_id]
-                        if edge["from"] != edge["to"] and any(
+                        if any(
                             natural_x - label_width / 2 < other_x + other_width / 2
                             and natural_x + label_width / 2 > other_x - other_width / 2
                             for other_x, _, other_width, _, _ in retained
@@ -2278,6 +2300,15 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     unsafe_adjacent_branches.update(item[1] for item in movable)
                     if movable:
                         unsafe_corridors.add(corridor)
+                        for _, edge_id, _, _, _ in retained:
+                            edge = edges_by_id[edge_id]
+                            if positions[str(edge["from"])][0] != positions[str(edge["to"])][0]:
+                                # This singleton branch is the anchor that
+                                # displaced its neighbours. Freeze its planned
+                                # gutter before their lanes grow the canvas.
+                                anchored_branch_gutter_x[edge_id] = (
+                                    width - _PROCESS_EDGE_GUTTER / 2
+                                )
                     continue
                 count = len(cluster)
                 if count == 1:
@@ -2318,7 +2349,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     obstacle_right = max(obstacle_right, natural_x + label_width / 2)
             cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
             required_right = float(width)
-            for edge_id in sorted(unsafe_adjacent_branches):
+            for edge_id in sorted(
+                unsafe_adjacent_branches,
+                key=lambda edge_id: _process_anchor_order_key(edges_by_id[edge_id]),
+            ):
                 process_branch_gutter_x[edge_id] = cursor
                 label_right = cursor + 8 + _PROCESS_LABEL_MAX_WIDTH
                 required_right = max(required_right, label_right + _PAGE_MARGIN)
@@ -2739,6 +2773,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 long_branch_slot=long_branch_slots.get(str(edge["id"])),
                 long_branch_count=len(long_branch_slots),
                 long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
+                anchored_branch_gutter_x=anchored_branch_gutter_x.get(str(edge["id"])),
                 long_vertical_gutter_x=long_vertical_gutter_x.get(str(edge["id"])),
                 long_vertical_label_y=long_vertical_label_y.get(str(edge["id"])),
                 process_branch_gutter_x=process_branch_gutter_x.get(str(edge["id"])),

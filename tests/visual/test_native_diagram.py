@@ -3556,3 +3556,195 @@ def test_nonoverlapping_anchored_process_labels_keep_preimage_geometry(close_pai
         assert _edge_paths(root) == expected_paths
         assert root.attrib["viewBox"] == "0 0 2554 826"
     assert not _boxes_overlap(expected_boxes["diag"], expected_boxes["vert"])
+
+
+def _rightmost_singleton_branch_model() -> dict:
+    raw = _minimal_process_model(18)
+    label = "abcdefghijklmnopqrstuvw abcdefghijklmnopqrstuvw"
+    raw["edges"] = [
+        {"id": "branch", "from": "n5", "to": "n13", "label": label, "kind": "flow"},
+        {"id": "vertical", "from": "n11", "to": "n5", "label": label, "kind": "risk"},
+    ]
+    return raw
+
+
+def _assert_process_pair_labels_are_safe_and_semantically_stable(raw: dict) -> ET.Element:
+    forward = _parse(render_native_diagram(raw))
+
+    def geometry(model: dict, root: ET.Element) -> dict:
+        labels, paths = _edge_label_boxes(root), _edge_paths(root)
+        return {
+            (edge["from"], edge["to"], edge["kind"], edge["label"]): (
+                labels[edge["id"]], paths[edge["id"]]
+            )
+            for edge in model["edges"]
+        }
+
+    expected = geometry(raw, forward)
+    for reverse, swap_ids in ((False, False), (True, False), (False, True), (True, True)):
+        candidate = copy.deepcopy(raw)
+        if swap_ids:
+            first, second = candidate["edges"]
+            first["id"], second["id"] = second["id"], first["id"]
+        if reverse:
+            candidate["edges"].reverse()
+        root = _parse(render_native_diagram(candidate))
+        assert geometry(candidate, root) == expected
+        assert root.attrib["viewBox"] == forward.attrib["viewBox"]
+        assert _node_boxes(root) == _node_boxes(forward)
+        labels = list(_edge_label_boxes(root).values())
+        assert len(labels) == 2
+        assert not _boxes_overlap(*labels)
+        header_boxes = [
+            _rect_box(rect)
+            for clip_id in ("native-clip-title", "native-clip-purpose")
+            for rect in root.findall(
+                f".//{{{SVG_NAMESPACE}}}clipPath[@id='{clip_id}']/{{{SVG_NAMESPACE}}}rect"
+            )
+        ]
+        assert all(
+            not _boxes_overlap(label, obstacle)
+            for label in labels
+            for obstacle in [*_node_boxes(root).values(), *header_boxes]
+        )
+        canvas_width, canvas_height = map(float, root.attrib["viewBox"].split()[2:])
+        assert all(
+            0 <= x < x + width <= canvas_width and 0 <= y < y + height <= canvas_height
+            for x, y, width, height in labels
+        )
+    return forward
+
+
+def test_singleton_branch_anchor_survives_adjacent_vertical_canvas_growth() -> None:
+    raw = _rightmost_singleton_branch_model()
+    # On 7c9b41e these 206x48 boxes began at x=2396.5 and x=2526,
+    # both at y=317: growing the canvas moved the anchor into a 76.5 px overlap.
+    root = _assert_process_pair_labels_are_safe_and_semantically_stable(raw)
+    solo = copy.deepcopy(raw)
+    solo["edges"] = solo["edges"][:1]
+    singleton = _parse(render_native_diagram(solo))
+    assert _edge_label_boxes(root)["branch"] == _edge_label_boxes(singleton)["branch"]
+    assert _edge_paths(root)["branch"] == _edge_paths(singleton)["branch"]
+    assert float(root.attrib["viewBox"].split()[2]) > float(
+        singleton.attrib["viewBox"].split()[2]
+    )
+
+
+@pytest.mark.parametrize("edge_id", ["branch", "vertical"])
+def test_rightmost_branch_corridor_singletons_keep_preimage_geometry(edge_id: str) -> None:
+    raw = _rightmost_singleton_branch_model()
+    raw["edges"] = [edge for edge in raw["edges"] if edge["id"] == edge_id]
+    root = _parse(render_native_diagram(raw))
+    expected_boxes = {
+        "branch": (2280.5, 317.0, 206.0, 48.0),
+        "vertical": (2150.0, 317.0, 206.0, 48.0),
+    }
+    expected_paths = {
+        "branch": (
+            "M 2253.0 306.0 C 2253.0 324.0, 2253.0 341.0, 2253.0 341.0 "
+            "L 2514.0 341.0 L 2514.0 577.0 L 589.0 577.0 "
+            "C 589.0 577.0, 589.0 594.0, 589.0 612.0"
+        ),
+        "vertical": "M 2253.0 376.0 C 2253.0 346.6, 2253.0 335.4, 2253.0 306.0",
+    }
+    assert _edge_label_boxes(root) == {edge_id: expected_boxes[edge_id]}
+    assert _edge_paths(root) == {edge_id: expected_paths[edge_id]}
+    assert root.attrib["viewBox"] == "0 0 2554 826"
+
+
+def test_noncolliding_rightmost_branch_corridor_keeps_preimage_geometry() -> None:
+    raw = _rightmost_singleton_branch_model()
+    for edge in raw["edges"]:
+        edge["label"] = "x"
+    root = _assert_process_pair_labels_are_safe_and_semantically_stable(raw)
+    assert _edge_label_boxes(root) == {
+        "branch": (2359.5, 326.5, 48.0, 29.0),
+        "vertical": (2229.0, 326.5, 48.0, 29.0),
+    }
+    assert _edge_paths(root) == {
+        "branch": (
+            "M 2253.0 306.0 C 2253.0 324.0, 2253.0 341.0, 2253.0 341.0 "
+            "L 2514.0 341.0 L 2514.0 577.0 L 589.0 577.0 "
+            "C 589.0 577.0, 589.0 594.0, 589.0 612.0"
+        ),
+        "vertical": "M 2253.0 376.0 C 2253.0 346.6, 2253.0 335.4, 2253.0 306.0",
+    }
+    assert root.attrib["viewBox"] == "0 0 2554 826"
+
+
+def test_uncontested_singleton_branch_keeps_geometry_when_another_corridor_grows() -> None:
+    raw = _rightmost_singleton_branch_model()
+    label = raw["edges"][0]["label"]
+    raw["edges"] = raw["edges"][:1] + [
+        {"id": "row_a", "from": "n6", "to": "n13", "label": label, "kind": "flow"},
+        {"id": "row_b", "from": "n7", "to": "n12", "label": label, "kind": "risk"},
+    ]
+    for edges in (raw["edges"], list(reversed(raw["edges"]))):
+        raw["edges"] = edges
+        root = _parse(render_native_diagram(raw))
+        # No label yields to this branch in its source corridor. Keep the
+        # accepted final-width route when unrelated lower-row packing grows.
+        assert _edge_label_boxes(root)["branch"] == (2512.5, 317.0, 206.0, 48.0)
+        assert _edge_paths(root)["branch"] == (
+            "M 2253.0 306.0 C 2253.0 324.0, 2253.0 341.0, 2253.0 341.0 "
+            "L 2978.0 341.0 L 2978.0 577.0 L 589.0 577.0 "
+            "C 589.0 577.0, 589.0 594.0, 589.0 612.0"
+        )
+        assert root.attrib["viewBox"] == "0 0 3018 826"
+
+
+def _two_process_self_loops_model(node_count: int = 1) -> dict:
+    raw = _minimal_process_model(node_count)
+    node_id = f"n{node_count - 1}"
+    raw["edges"] = [
+        {
+            "id": f"loop_{suffix}",
+            "from": node_id,
+            "to": node_id,
+            "label": label,
+            "kind": "flow",
+        }
+        for suffix, label in (
+            ("a", "erster selbstbezug mit langem text"),
+            ("b", "zweizeiliger selbstbezug der karte"),
+        )
+    ]
+    return raw
+
+
+@pytest.mark.parametrize("node_count", [1, 12])
+def test_two_process_self_loop_labels_pack_without_changing_arc_lanes(node_count: int) -> None:
+    raw = _two_process_self_loops_model(node_count)
+    # The minimal one-node model on 7c9b41e put 198x48 and 212x48 labels
+    # at (257.5, 108) and (261, 108): centres only 10.5 px apart.
+    root = _assert_process_pair_labels_are_safe_and_semantically_stable(raw)
+    assert {box[2:] for box in _edge_label_boxes(root).values()} == {
+        (198.0, 48.0), (212.0, 48.0)
+    }
+    solo = copy.deepcopy(raw)
+    solo["edges"] = solo["edges"][:1]
+    singleton = _parse(render_native_diagram(solo))
+    assert _edge_label_boxes(root)["loop_a"] == _edge_label_boxes(singleton)["loop_a"]
+    assert _edge_paths(root)["loop_a"] == _edge_paths(singleton)["loop_a"]
+    assert len(set(_edge_paths(root).values())) == 2
+    if node_count == 1:
+        assert _edge_paths(root) == {
+            "loop_a": "M 298.0 218.1 C 376.0 174.1, 376.0 323.5, 298.0 279.5",
+            "loop_b": "M 298.0 218.1 C 390.0 174.1, 390.0 323.5, 298.0 279.5",
+        }
+
+
+@pytest.mark.parametrize("edge_id", ["loop_a", "loop_b"])
+def test_two_process_self_loop_singletons_keep_exact_preimage_geometry(edge_id: str) -> None:
+    raw = _two_process_self_loops_model()
+    raw["edges"] = [edge for edge in raw["edges"] if edge["id"] == edge_id]
+    root = _parse(render_native_diagram(raw))
+    expected_boxes = {
+        "loop_a": (257.5, 108.0, 198.0, 48.0),
+        "loop_b": (250.5, 108.0, 212.0, 48.0),
+    }
+    assert _edge_label_boxes(root) == {edge_id: expected_boxes[edge_id]}
+    assert _edge_paths(root) == {
+        edge_id: "M 298.0 218.1 C 376.0 174.1, 376.0 323.5, 298.0 279.5"
+    }
+    assert root.attrib["viewBox"] == "0 0 1028 374"
