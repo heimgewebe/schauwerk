@@ -2210,26 +2210,6 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         unsafe_corridors: set[tuple[int, int]] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
         edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
-        singleton_long_branches = [
-            edge
-            for edge in model["edges"]
-            if str(edge["kind"]) != "feedback"
-            and edge["from"] != edge["to"]
-            and positions[str(edge["from"])][0] != positions[str(edge["to"])][0]
-            and positions[str(edge["from"])][1] != positions[str(edge["to"])][1]
-            and abs(
-                positions[str(edge["to"])][1] - positions[str(edge["from"])][1]
-            )
-            > process_adjacent_step
-        ]
-        if len(singleton_long_branches) == 1:
-            # A single long diagonal derives its gutter from canvas width. Bind
-            # that anchor before unrelated outer-lane packing can grow width;
-            # otherwise rendering would recompute the same branch against the
-            # enlarged canvas and move its label into newly packed occupants.
-            anchored_branch_gutter_x[str(singleton_long_branches[0]["id"])] = (
-                width - _PROCESS_EDGE_GUTTER / 2
-            )
         corridor_groups: dict[
             tuple[int, int],
             list[tuple[float, str, float, int, bool]],
