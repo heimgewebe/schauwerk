@@ -3679,18 +3679,69 @@ def test_uncontested_singleton_branch_keeps_geometry_when_another_corridor_grows
         {"id": "row_a", "from": "n6", "to": "n13", "label": label, "kind": "flow"},
         {"id": "row_b", "from": "n7", "to": "n12", "label": label, "kind": "risk"},
     ]
+    solo = copy.deepcopy(raw)
+    solo["edges"] = solo["edges"][:1]
+    singleton = _parse(render_native_diagram(solo))
     for edges in (raw["edges"], list(reversed(raw["edges"]))):
         raw["edges"] = edges
         root = _parse(render_native_diagram(raw))
-        # No label yields to this branch in its source corridor. Keep the
-        # accepted final-width route when unrelated lower-row packing grows.
-        assert _edge_label_boxes(root)["branch"] == (2512.5, 317.0, 206.0, 48.0)
-        assert _edge_paths(root)["branch"] == (
-            "M 2253.0 306.0 C 2253.0 324.0, 2253.0 341.0, 2253.0 341.0 "
-            "L 2978.0 341.0 L 2978.0 577.0 L 589.0 577.0 "
-            "C 589.0 577.0, 589.0 594.0, 589.0 612.0"
-        )
+        # Unrelated outer-lane packing may grow the final canvas, but it must
+        # not redefine the canvas-relative singleton branch anchor afterwards.
+        assert _edge_label_boxes(root)["branch"] == _edge_label_boxes(singleton)["branch"]
+        assert _edge_paths(root)["branch"] == _edge_paths(singleton)["branch"]
         assert root.attrib["viewBox"] == "0 0 3018 826"
+
+
+def test_singleton_branch_anchor_is_frozen_before_unrelated_outer_lane_growth() -> None:
+    raw = _minimal_process_model(13)
+    label = "abcdefghijklmnopqrstuvwx abcdefghijklmnopqrstuvwx"
+    raw["edges"] = [
+        {"id": "branch", "from": "n5", "to": "n12", "label": label, "kind": "flow"},
+        {"id": "adjacent", "from": "n11", "to": "n3", "label": label, "kind": "risk"},
+        {"id": "row", "from": "n11", "to": "n10", "label": label, "kind": "flow"},
+    ]
+    solo = copy.deepcopy(raw)
+    solo["edges"] = solo["edges"][:1]
+    singleton = _parse(render_native_diagram(solo))
+    singleton_box = _edge_label_boxes(singleton)["branch"]
+    singleton_path = _edge_paths(singleton)["branch"]
+
+    expected_by_semantics = None
+    for ordered in (raw["edges"], list(reversed(raw["edges"]))):
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        boxes = _edge_label_boxes(root)
+        paths = _edge_paths(root)
+        by_semantics = {
+            (edge["from"], edge["to"], edge["kind"]): (
+                boxes[edge["id"]], paths[edge["id"]]
+            )
+            for edge in candidate["edges"]
+        }
+        if expected_by_semantics is None:
+            expected_by_semantics = by_semantics
+        else:
+            assert by_semantics == expected_by_semantics
+
+        # The branch keeps the singleton x anchor even though the crowded
+        # neighboring corridors increase row spacing and final canvas width.
+        branch_box = boxes["branch"]
+        assert branch_box[0] == singleton_box[0]
+        assert branch_box[2:] == singleton_box[2:]
+        assert "L 2514.0" in paths["branch"]
+        assert "L 2514.0" in singleton_path
+        assert float(root.attrib["viewBox"].split()[2]) > float(
+            singleton.attrib["viewBox"].split()[2]
+        )
+        for first, second in (("branch", "adjacent"), ("branch", "row"), ("adjacent", "row")):
+            assert not _boxes_overlap(boxes[first], boxes[second])
+        nodes = _node_boxes(root)
+        assert all(
+            not _boxes_overlap(label_box, node_box)
+            for label_box in boxes.values()
+            for node_box in nodes.values()
+        )
 
 
 def _two_process_self_loops_model(node_count: int = 1) -> dict:

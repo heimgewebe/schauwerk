@@ -2192,6 +2192,16 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     process_adjacent_label_y: dict[str, float] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     if intent == "process":
+        long_branch_ids = _process_long_branch_ids(
+            model, positions, process_row_gap=process_row_gap
+        )
+        if len(long_branch_ids) == 1:
+            # A singleton long branch is canvas-relative, so bind its gutter to
+            # the planning width before any unrelated outer-lane allocation can
+            # enlarge the final canvas and move the accepted route underneath it.
+            anchored_branch_gutter_x[long_branch_ids[0]] = (
+                width - _PROCESS_EDGE_GUTTER / 2
+            )
         header_corridor = (
             max([104, *(y + 44 for _, _, _, y, _, _ in regions)]),
             min(y for _, y in positions.values()),
@@ -2200,6 +2210,26 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         unsafe_corridors: set[tuple[int, int]] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
         edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
+        singleton_long_branches = [
+            edge
+            for edge in model["edges"]
+            if str(edge["kind"]) != "feedback"
+            and edge["from"] != edge["to"]
+            and positions[str(edge["from"])][0] != positions[str(edge["to"])][0]
+            and positions[str(edge["from"])][1] != positions[str(edge["to"])][1]
+            and abs(
+                positions[str(edge["to"])][1] - positions[str(edge["from"])][1]
+            )
+            > process_adjacent_step
+        ]
+        if len(singleton_long_branches) == 1:
+            # A single long diagonal derives its gutter from canvas width. Bind
+            # that anchor before unrelated outer-lane packing can grow width;
+            # otherwise rendering would recompute the same branch against the
+            # enlarged canvas and move its label into newly packed occupants.
+            anchored_branch_gutter_x[str(singleton_long_branches[0]["id"])] = (
+                width - _PROCESS_EDGE_GUTTER / 2
+            )
         corridor_groups: dict[
             tuple[int, int],
             list[tuple[float, str, float, int, bool]],
@@ -2300,15 +2330,6 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     unsafe_adjacent_branches.update(item[1] for item in movable)
                     if movable:
                         unsafe_corridors.add(corridor)
-                        for _, edge_id, _, _, _ in retained:
-                            edge = edges_by_id[edge_id]
-                            if positions[str(edge["from"])][0] != positions[str(edge["to"])][0]:
-                                # This singleton branch is the anchor that
-                                # displaced its neighbours. Freeze its planned
-                                # gutter before their lanes grow the canvas.
-                                anchored_branch_gutter_x[edge_id] = (
-                                    width - _PROCESS_EDGE_GUTTER / 2
-                                )
                     continue
                 count = len(cluster)
                 if count == 1:
