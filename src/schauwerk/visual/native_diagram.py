@@ -736,6 +736,49 @@ def _edge_label_metrics(
     )
 
 
+def _process_row_corridor_bounds(
+    row_y: int,
+    positions: Mapping[str, tuple[int, int]],
+    *,
+    direction: int,
+) -> tuple[int, int] | None:
+    """Return the real card-to-card gap immediately above or below one process row."""
+    row_levels = sorted({y for _, y in positions.values()})
+    try:
+        index = row_levels.index(row_y)
+    except ValueError:
+        return None
+    if direction > 0:
+        if index + 1 >= len(row_levels):
+            return None
+        return row_y + _NODE_HEIGHT, row_levels[index + 1]
+    if index == 0:
+        return None
+    return row_levels[index - 1] + _NODE_HEIGHT, row_y
+
+
+def _preserve_same_row_process_feedback_return(
+    source_position: tuple[int, int],
+    target_position: tuple[int, int],
+    positions: Mapping[str, tuple[int, int]],
+) -> bool:
+    """Whether reverse same-row feedback can keep the accepted bottom return lane."""
+    if (
+        source_position[0] <= target_position[0]
+        or source_position[1] != target_position[1]
+    ):
+        return False
+    endpoint_xs = (
+        source_position[0] + _NODE_WIDTH / 2,
+        target_position[0] + _NODE_WIDTH / 2,
+    )
+    return not any(
+        node_y > source_position[1]
+        and any(node_x < endpoint_x < node_x + _NODE_WIDTH for endpoint_x in endpoint_xs)
+        for node_x, node_y in positions.values()
+    )
+
+
 def _edge_geometry(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -996,6 +1039,26 @@ def _edge_geometry(
             )
             label_y = corridor_y
         return path, gutter_x + 8 + label_width / 2, label_y, route
+    elif (
+        intent == "process"
+        and process_branch_gutter_x is not None
+        and source_y == target_y
+        and not self_loop
+    ):
+        route = "process-row-gutter"
+        start_x = source_x + node_width / 2
+        end_x = target_x + node_width / 2
+        start_y = end_y = source_y
+        corridor_y = source_y - process_row_gap / 2
+        gutter_x = process_branch_gutter_x
+        path = (
+            f"M {start_x:.1f} {start_y:.1f} "
+            f"L {start_x:.1f} {corridor_y:.1f} "
+            f"L {gutter_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {end_y:.1f}"
+        )
+        return path, gutter_x + 8 + label_width / 2, corridor_y, route
     elif source_x == target_x:
         route = "vertical"
         center_x = source_x + node_width / 2
@@ -1009,6 +1072,21 @@ def _edge_geometry(
             end_y = target_y + _NODE_HEIGHT
         vertical_row_gap = process_row_gap if intent == "process" else non_process_row_gap
         row_step = _NODE_HEIGHT + vertical_row_gap
+        if (
+            intent == "process"
+            and process_branch_gutter_x is not None
+            and abs(target_y - source_y) <= row_step
+        ):
+            corridor_y = (start_y + end_y) / 2
+            gutter_x = process_branch_gutter_x
+            path = (
+                f"M {center_x:.1f} {start_y:.1f} "
+                f"L {center_x:.1f} {corridor_y:.1f} "
+                f"L {gutter_x:.1f} {corridor_y:.1f} "
+                f"L {center_x:.1f} {corridor_y:.1f} "
+                f"L {center_x:.1f} {end_y:.1f}"
+            )
+            return path, gutter_x + 8 + label_width / 2, corridor_y, "process-row-gutter"
         if abs(target_y - source_y) > row_step:
             # A direct vertical span across multiple rows would pass through an
             # intervening card and place its label there. Leave through the
@@ -1285,23 +1363,13 @@ def _render_edge(
             + feedback_slot * _FEEDBACK_LABEL_LANE_STEP
             + label_height / 2
         )
-    preserve_same_row_feedback_footer = True
-    if (
-        intent == "process"
-        and kind == "feedback"
-        and source_position[0] > target_position[0]
-        and source_position[1] == target_position[1]
-        and edge["from"] != edge["to"]
-    ):
-        endpoint_xs = (
-            source_position[0] + _NODE_WIDTH / 2,
-            target_position[0] + _NODE_WIDTH / 2,
+    preserve_same_row_feedback_footer = (
+        edge["from"] != edge["to"]
+        and _preserve_same_row_process_feedback_return(
+            source_position, target_position, positions
         )
-        preserve_same_row_feedback_footer = not any(
-            node_y > source_position[1]
-            and any(node_x < endpoint_x < node_x + _NODE_WIDTH for endpoint_x in endpoint_xs)
-            for node_x, node_y in positions.values()
-        )
+    )
+
 
     path, label_x, label_y, route = _edge_geometry(
         source_position,
@@ -1342,7 +1410,9 @@ def _render_edge(
     )
     if same_process_row:
         row_top = min(source_position[1], target_position[1])
-        if label_height > 29:
+        if process_adjacent_label_y is not None:
+            label_y = process_adjacent_label_y
+        elif label_height > 29:
             label_y = row_top - label_height / 2 - 4
         else:
             # Keep the accepted one-line placement byte-for-byte.
@@ -1377,7 +1447,7 @@ def _render_edge(
             label_y = (upper_card_bottom + lower_card_top) / 2
     if (
         intent == "process"
-        and route == "process-branch"
+        and route in {"process-branch", "vertical"}
         and source_position[1] != target_position[1]
         and abs(source_position[1] - target_position[1])
         <= _NODE_HEIGHT + process_row_gap
@@ -1833,59 +1903,81 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     process_adjacent_slot: dict[str, int] = {}
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_y: dict[str, float] = {}
-    occupied_process_adjacent_corridors: set[float] = set()
+    occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     if intent == "process":
         unsafe_adjacent_branches: set[str] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
-        adjacent_groups: dict[
-            tuple[str, str],
-            list[tuple[str, int, float, float]],
+        corridor_groups: dict[
+            tuple[int, int],
+            list[tuple[float, str, int, int]],
         ] = defaultdict(list)
         for edge in model["edges"]:
             if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
                 continue
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
-            if (
-                source[1] == target[1]
-                or abs(target[1] - source[1]) > process_adjacent_step
-            ):
-                continue
-            upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
-            lower_top = max(source[1], target[1])
-            if lower_top > upper_bottom:
-                occupied_process_adjacent_corridors.add(
-                    (upper_bottom + lower_top) / 2
+            if source[1] == target[1]:
+                corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=-1
                 )
-            if source[0] == target[0]:
-                continue
-            label_height = _edge_label_metrics(edge, positions, intent).height
-            endpoint_key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
-            adjacent_groups[endpoint_key].append(
-                (str(edge["id"]), label_height, upper_bottom, lower_top)
-            )
-            if lower_top - upper_bottom < label_height + 8:
-                unsafe_adjacent_branches.add(str(edge["id"]))
-
-        for items in adjacent_groups.values():
-            if len(items) <= 1:
-                continue
-            ordered = sorted(items, key=lambda item: item[0])
-            count = len(ordered)
-            for slot, (edge_id, _, _, _) in enumerate(ordered):
-                process_adjacent_slot[edge_id] = slot
-                process_adjacent_count[edge_id] = count
-            upper_bottom = ordered[0][2]
-            lower_top = ordered[0][3]
-            available_height = lower_top - upper_bottom
-            required_height = sum(item[1] for item in ordered) + 8 * (count - 1)
-            if required_height <= available_height:
-                cursor_y = upper_bottom + (available_height - required_height) / 2
-                for edge_id, label_height, _, _ in ordered:
-                    process_adjacent_label_y[edge_id] = cursor_y + label_height / 2
-                    cursor_y += label_height + 8
+                if corridor is None:
+                    continue
+            elif abs(target[1] - source[1]) <= process_adjacent_step:
+                upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
+                lower_top = max(source[1], target[1])
+                if lower_top <= upper_bottom:
+                    continue
+                corridor = (upper_bottom, lower_top)
             else:
-                unsafe_adjacent_branches.update(item[0] for item in ordered)
+                continue
+            occupied_process_adjacent_corridors.add(corridor)
+            metrics = _edge_label_metrics(edge, positions, intent)
+            natural_x = (source[0] + target[0] + _NODE_WIDTH) / 2
+            corridor_groups[corridor].append(
+                (natural_x, str(edge["id"]), metrics.width, metrics.height)
+            )
+
+        for corridor, items in corridor_groups.items():
+            upper_bottom, lower_top = corridor
+            available_height = lower_top - upper_bottom
+            ordered = sorted(items, key=lambda item: (item[0], item[1]))
+            clusters: list[list[tuple[float, str, int, int]]] = []
+            current: list[tuple[float, str, int, int]] = []
+            current_right: float | None = None
+            for item in ordered:
+                natural_x, _, label_width, _ = item
+                left = natural_x - label_width / 2
+                right = natural_x + label_width / 2
+                if current and current_right is not None and left >= current_right + 8:
+                    clusters.append(current)
+                    current = []
+                    current_right = None
+                current.append(item)
+                current_right = right if current_right is None else max(current_right, right)
+            if current:
+                clusters.append(current)
+
+            for cluster in clusters:
+                cluster = sorted(cluster, key=lambda item: item[1])
+                count = len(cluster)
+                if count == 1:
+                    _, edge_id, _, label_height = cluster[0]
+                    if label_height + 8 > available_height:
+                        unsafe_adjacent_branches.add(edge_id)
+                    continue
+                for slot, (_, edge_id, _, _) in enumerate(cluster):
+                    process_adjacent_slot[edge_id] = slot
+                    process_adjacent_count[edge_id] = count
+                required_height = (
+                    sum(item[3] for item in cluster) + 8 * (count - 1)
+                )
+                if required_height <= available_height:
+                    cursor_y = upper_bottom + (available_height - required_height) / 2
+                    for _, edge_id, _, label_height in cluster:
+                        process_adjacent_label_y[edge_id] = cursor_y + label_height / 2
+                        cursor_y += label_height + 8
+                else:
+                    unsafe_adjacent_branches.update(item[1] for item in cluster)
 
         if unsafe_adjacent_branches:
             obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())
@@ -2039,25 +2131,42 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         for edge in feedback_edges:
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
+            feedback_corridors: set[tuple[int, int]] = set()
             if source[1] < target[1]:
-                feedback_corridors = {
-                    source[1] + _NODE_HEIGHT + process_row_gap / 2,
-                    target[1] - process_row_gap / 2,
-                }
+                source_corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=1
+                )
+                target_corridor = _process_row_corridor_bounds(
+                    target[1], positions, direction=-1
+                )
+                if source_corridor is not None:
+                    feedback_corridors.add(source_corridor)
+                if target_corridor is not None:
+                    feedback_corridors.add(target_corridor)
             elif source[1] > target[1]:
-                feedback_corridors = {
-                    source[1] - process_row_gap / 2,
-                    target[1] + _NODE_HEIGHT + process_row_gap / 2,
-                }
+                source_corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=-1
+                )
+                target_corridor = _process_row_corridor_bounds(
+                    target[1], positions, direction=1
+                )
+                if source_corridor is not None:
+                    feedback_corridors.add(source_corridor)
+                if target_corridor is not None:
+                    feedback_corridors.add(target_corridor)
             else:
-                if edge["from"] != edge["to"]:
-                    # Same-row non-self feedback already uses the established
-                    # bottom return lane; it does not consume this inter-row
-                    # corridor and must not be forced into a footer lane.
+                if (
+                    edge["from"] != edge["to"]
+                    and _preserve_same_row_process_feedback_return(
+                        source, target, positions
+                    )
+                ):
                     continue
-                feedback_corridors = {
-                    source[1] + _NODE_HEIGHT + process_row_gap / 2
-                }
+                source_corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=1
+                )
+                if source_corridor is not None:
+                    feedback_corridors.add(source_corridor)
             if feedback_corridors & occupied_process_adjacent_corridors:
                 feedback_footer_ids.add(str(edge["id"]))
     feedback_count = len(feedback_edges)

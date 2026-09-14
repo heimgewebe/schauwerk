@@ -2660,3 +2660,102 @@ def test_long_vertical_and_adjacent_non_process_labels_pack_same_row_corridor() 
     assert forward["long_vertical"] == _edge_label_boxes(
         _parse(render_native_diagram(long_only))
     )["long_vertical"]
+
+
+def test_crossing_adjacent_process_branches_pack_shared_physical_corridor() -> None:
+    raw = _minimal_process_model(14)
+    first = {
+        "id": "cross_a",
+        "from": "n12",
+        "to": "n7",
+        "label": "erste kreuzende prozessbeziehung mit langem text",
+        "kind": "flow",
+    }
+    second = {
+        "id": "cross_b",
+        "from": "n6",
+        "to": "n13",
+        "label": "zweite kreuzende prozessbeziehung mit langem text",
+        "kind": "risk",
+    }
+
+    def boxes(ordered_edges: list[dict]) -> dict[str, tuple[float, float, float, float]]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        return _edge_label_boxes(_parse(render_native_diagram(candidate)))
+
+    forward = boxes([first, second])
+    reverse = boxes([second, first])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["cross_a"], forward["cross_b"])
+
+
+def test_same_row_process_label_packs_with_adjacent_vertical_corridor() -> None:
+    raw = _minimal_process_model(12)
+    same_row = {
+        "id": "same_row",
+        "from": "n7",
+        "to": "n11",
+        "label": "gleiche zeile mit ausreichend langem zweizeiligen label",
+        "kind": "flow",
+    }
+    adjacent_vertical = {
+        "id": "adj_vertical",
+        "from": "n3",
+        "to": "n9",
+        "label": "vertikale relation mit ausreichend langem zweizeiligen label",
+        "kind": "risk",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([same_row, adjacent_vertical])
+    reverse, _ = boxes([adjacent_vertical, same_row])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["same_row"], forward["adj_vertical"])
+    nodes = _node_boxes(root)
+    for edge_id in ("same_row", "adj_vertical"):
+        assert all(
+            not _boxes_overlap(forward[edge_id], node_box)
+            for node_box in nodes.values()
+        )
+
+
+def test_forward_same_row_process_feedback_avoids_occupied_corridor() -> None:
+    raw = _minimal_process_model(10)
+    feedback = {
+        "id": "feedback_fwd",
+        "from": "n0",
+        "to": "n1",
+        "label": "rückmeldung",
+        "kind": "feedback",
+    }
+    adjacent_vertical = {
+        "id": "adj_vertical",
+        "from": "n9",
+        "to": "n3",
+        "label": "vertikale relation mit langem text",
+        "kind": "flow",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([feedback, adjacent_vertical])
+    reverse, _ = boxes([adjacent_vertical, feedback])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["feedback_fwd"], forward["adj_vertical"])
+    nodes = _node_boxes(root)
+    max_node_bottom = max(y + height for _, y, _, height in nodes.values())
+    assert forward["feedback_fwd"][1] >= max_node_bottom + 10
