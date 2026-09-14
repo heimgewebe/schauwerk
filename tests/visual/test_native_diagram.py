@@ -2759,3 +2759,185 @@ def test_forward_same_row_process_feedback_avoids_occupied_corridor() -> None:
     nodes = _node_boxes(root)
     max_node_bottom = max(y + height for _, y, _, height in nodes.values())
     assert forward["feedback_fwd"][1] >= max_node_bottom + 10
+
+
+def test_long_vertical_process_label_packs_with_same_row_corridor() -> None:
+    raw = _minimal_process_model(18)
+    long_vertical = {
+        "id": "long_vertical",
+        "from": "n0",
+        "to": "n12",
+        "label": "lange vertikale prozessrelation mit langem text",
+        "kind": "flow",
+    }
+    same_row = {
+        "id": "same_row",
+        "from": "n6",
+        "to": "n7",
+        "label": "gleiche zeile",
+        "kind": "risk",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([long_vertical, same_row])
+    reverse, _ = boxes([same_row, long_vertical])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["long_vertical"], forward["same_row"])
+    nodes = _node_boxes(root)
+    for edge_id in ("long_vertical", "same_row"):
+        assert all(
+            not _boxes_overlap(forward[edge_id], node_box)
+            for node_box in nodes.values()
+        )
+
+    # The long vertical relation is anchored on its source row corridor, so the
+    # same-row label yields instead of displacing the accepted singleton box.
+    singleton, _ = boxes([long_vertical])
+    assert singleton["long_vertical"] == forward["long_vertical"]
+
+
+def test_long_diagonal_non_process_label_packs_shared_row_corridor() -> None:
+    raw = _minimal_process_model(16)
+    raw["intent"] = "architecture"
+    raw["id"] = "long_diagonal_corridor"
+    long_diagonal = {
+        "id": "long_diagonal",
+        "from": "n0",
+        "to": "n13",
+        "label": "lange diagonale relation",
+        "kind": "flow",
+    }
+    adjacent_diagonal = {
+        "id": "adjacent_diagonal",
+        "from": "n4",
+        "to": "n9",
+        "label": "kurze diagonale relation",
+        "kind": "risk",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([long_diagonal, adjacent_diagonal])
+    reverse, _ = boxes([adjacent_diagonal, long_diagonal])
+    assert forward == reverse
+    assert not _boxes_overlap(forward["long_diagonal"], forward["adjacent_diagonal"])
+    nodes = _node_boxes(root)
+    for edge_id in ("long_diagonal", "adjacent_diagonal"):
+        assert all(
+            not _boxes_overlap(forward[edge_id], node_box)
+            for node_box in nodes.values()
+        )
+
+    # Packing keeps both labels in the shared corridor and only shifts the
+    # id-stable later one sideways; the earlier label keeps its accepted box.
+    singleton_long, _ = boxes([long_diagonal])
+    singleton_adjacent, _ = boxes([adjacent_diagonal])
+    assert singleton_adjacent["adjacent_diagonal"] == forward["adjacent_diagonal"]
+    assert singleton_long["long_diagonal"][1:] == forward["long_diagonal"][1:]
+    assert singleton_long["long_diagonal"][0] < forward["long_diagonal"][0]
+
+
+def test_crowded_process_row_gutter_lanes_clear_two_line_self_loop() -> None:
+    raw = _minimal_process_model(12)
+    crowded = "sehr lange prozessbeziehung mit erklaerendem text"
+    first_row_edge = {
+        "id": "row_a",
+        "from": "n6",
+        "to": "n9",
+        "label": crowded,
+        "kind": "flow",
+    }
+    second_row_edge = {
+        "id": "row_b",
+        "from": "n7",
+        "to": "n8",
+        "label": crowded,
+        "kind": "risk",
+    }
+    self_loop = {
+        "id": "loop",
+        "from": "n11",
+        "to": "n11",
+        "label": "zweizeiliger selbstbezug der karte",
+        "kind": "flow",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([first_row_edge, second_row_edge, self_loop])
+    reverse, reverse_root = boxes([self_loop, second_row_edge, first_row_edge])
+    # The outer-gutter allocation is derived from bounds, not from list order.
+    for edge_id in ("row_a", "row_b"):
+        assert forward[edge_id] == reverse[edge_id]
+    assert forward["row_a"][3] > 29  # the crowded labels really do wrap
+    assert forward["loop"][3] > 29
+    for labels, tree in ((forward, root), (reverse, reverse_root)):
+        for edge_id in ("row_a", "row_b"):
+            assert not _boxes_overlap(labels["loop"], labels[edge_id])
+        nodes = _node_boxes(tree)
+        for edge_id in ("row_a", "row_b", "loop"):
+            assert all(
+                not _boxes_overlap(labels[edge_id], node_box)
+                for node_box in nodes.values()
+            )
+
+
+def test_long_vertical_process_edge_yields_corridor_to_self_loop_label() -> None:
+    raw = _minimal_process_model(24)
+    long_vertical = {
+        "id": "long_vertical",
+        "from": "n0",
+        "to": "n12",
+        "label": "eine mittellange beziehung",
+        "kind": "flow",
+    }
+    self_loop = {
+        "id": "self_loop",
+        "from": "n6",
+        "to": "n6",
+        "label": "zweizeiliger selbstbezug der karte",
+        "kind": "risk",
+    }
+
+    def boxes(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), root
+
+    forward, root = boxes([long_vertical, self_loop])
+    reverse, reverse_root = boxes([self_loop, long_vertical])
+    # The self-loop owns the same-row slot of that column corridor, so the long
+    # same-column relation takes the shared outer lane regardless of list order.
+    assert forward["long_vertical"] == reverse["long_vertical"]
+    singleton, _ = boxes([long_vertical])
+    assert singleton["long_vertical"][0] < forward["long_vertical"][0]
+    for labels, tree in ((forward, root), (reverse, reverse_root)):
+        assert not _boxes_overlap(labels["long_vertical"], labels["self_loop"])
+        nodes = _node_boxes(tree)
+        for edge_id in ("long_vertical", "self_loop"):
+            assert all(
+                not _boxes_overlap(labels[edge_id], node_box)
+                for node_box in nodes.values()
+            )

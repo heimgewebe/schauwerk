@@ -25,6 +25,9 @@ _PROCESS_EDGE_GUTTER = 80
 _PROCESS_LANE_STEP = 14
 _PROCESS_GUTTER_LANE_STEP = 18
 _PROCESS_LONG_BRANCH_GUTTER = 240
+_SELF_LOOP_BASE_REACH = 78.0
+_PROCESS_SELF_LOOP_MAX_LANE_REACH = 2.0 * _PROCESS_LANE_STEP
+_CORRIDOR_GUTTER_OFFSET = 12.0
 _PAGE_MARGIN = 48
 _CONTENT_TOP = 140
 _ROW_GAP = 52
@@ -757,6 +760,82 @@ def _process_row_corridor_bounds(
     return row_levels[index - 1] + _NODE_HEIGHT, row_y
 
 
+def _row_corridor_containing(
+    label_y: float,
+    positions: Mapping[str, tuple[int, int]],
+) -> tuple[int, int] | None:
+    """Return the real card-to-card gap that holds one label centre, if any."""
+    row_levels = sorted({y for _, y in positions.values()})
+    for upper, lower in zip(row_levels, row_levels[1:]):
+        upper_bottom = upper + _NODE_HEIGHT
+        if upper_bottom <= label_y <= lower:
+            return upper_bottom, lower
+    return None
+
+
+def _anchored_corridor_label_x(
+    source_x: int,
+    *,
+    self_loop: bool,
+) -> tuple[float, float]:
+    """Return the centre and the extra width of one anchored label's x bound."""
+    if self_loop:
+        # A self-loop label rides its Bezier midpoint outside the card column.
+        # The reach depends on the rendered lane, so bound every possible lane.
+        nearest = source_x + _NODE_WIDTH + 0.75 * _SELF_LOOP_BASE_REACH
+        farthest = nearest + 0.75 * _PROCESS_SELF_LOOP_MAX_LANE_REACH
+        return (nearest + farthest) / 2, farthest - nearest
+    center_x = source_x + _NODE_WIDTH / 2
+    gutter_x = source_x + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET
+    return (center_x + gutter_x) / 2, 0.0
+
+
+def _process_anchored_corridor_labels(
+    model: Mapping[str, Any],
+    positions: Mapping[str, tuple[int, int]],
+    *,
+    process_row_gap: int,
+    long_vertical_gutter_x: Mapping[str, float],
+) -> list[tuple[tuple[int, int], float, str, float, int]]:
+    """Process labels whose physical row corridor is fixed by their own route.
+
+    Self-loops keep the same-row label slot above their card and long
+    same-column relations keep the source-side row corridor. Neither can be
+    repacked inside the corridor, so movable labels have to yield to them.
+    """
+    anchored: list[tuple[tuple[int, int], float, str, float, int]] = []
+    for edge in model["edges"]:
+        if str(edge["kind"]) == "feedback":
+            continue
+        edge_id = str(edge["id"])
+        source = positions[str(edge["from"])]
+        target = positions[str(edge["to"])]
+        self_loop = edge["from"] == edge["to"]
+        if self_loop:
+            corridor = _process_row_corridor_bounds(source[1], positions, direction=-1)
+        elif (
+            source[0] != target[0]
+            or source[1] == target[1]
+            or abs(target[1] - source[1]) <= _NODE_HEIGHT + process_row_gap
+            or edge_id in long_vertical_gutter_x
+        ):
+            continue
+        else:
+            corridor = _process_row_corridor_bounds(
+                source[1], positions, direction=1 if source[1] < target[1] else -1
+            )
+        if corridor is None:
+            continue
+        metrics = _edge_label_metrics(edge, positions, "process")
+        natural_x, extra_width = _anchored_corridor_label_x(
+            source[0], self_loop=self_loop
+        )
+        anchored.append(
+            (corridor, natural_x, edge_id, metrics.width + extra_width, metrics.height)
+        )
+    return anchored
+
+
 def _preserve_same_row_process_feedback_return(
     source_position: tuple[int, int],
     target_position: tuple[int, int],
@@ -1001,7 +1080,7 @@ def _edge_geometry(
         start_y = source_y + _NODE_HEIGHT * 0.35
         end_x = source_x + node_width
         end_y = source_y + _NODE_HEIGHT * 0.72
-        reach = 78 + abs(lane)
+        reach = _SELF_LOOP_BASE_REACH + abs(lane)
         control_one = (start_x + reach, start_y - 44)
         control_two = (end_x + reach, end_y + 44)
     elif intent == "narrative" and narrative_parallel_gutter_x is not None:
@@ -1098,7 +1177,7 @@ def _edge_geometry(
             gutter_x = (
                 long_vertical_gutter_x
                 if long_vertical_gutter_x is not None
-                else source_x + node_width + 12.0
+                else source_x + node_width + _CORRIDOR_GUTTER_OFFSET
             )
             path = (
                 f"M {center_x:.1f} {start_y:.1f} "
@@ -1742,10 +1821,22 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         list[tuple[float, str, int, int]],
     ] = defaultdict(list)
     for edge in model["edges"]:
-        if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+        if str(edge["kind"]) == "feedback":
             continue
         source = positions[str(edge["from"])]
         target = positions[str(edge["to"])]
+        if edge["from"] == edge["to"]:
+            # A process self-loop parks its label in the same-row slot above its
+            # card. That is the very corridor a long same-column relation would
+            # otherwise occupy at this column, and neither label can be moved
+            # inside it, so count the self-loop as a corridor user.
+            if intent == "process" and _process_row_corridor_bounds(
+                source[1], positions, direction=-1
+            ) is not None:
+                corridor_use_count[
+                    (source[0], source[1] - vertical_row_gap / 2)
+                ] += 1
+            continue
         if source[0] != target[0] or source[1] == target[1]:
             continue
         direction = 1 if source[1] < target[1] else -1
@@ -1829,10 +1920,47 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             corridor_y = start_y + direction * non_process_row_gap / 2
             metrics = _edge_label_metrics(edge, positions, intent)
             center_x = source[0] + node_width / 2
-            default_gutter_x = source[0] + node_width + 12.0
+            default_gutter_x = source[0] + node_width + _CORRIDOR_GUTTER_OFFSET
             natural_x = (center_x + default_gutter_x) / 2
             row_corridor_groups[corridor_y].append(
                 (natural_x, edge_id, metrics.width, metrics.height)
+            )
+
+        # A long diagonal spanning an odd number of rows renders its label in
+        # the middle physical corridor rather than over an intervening card.
+        # Register it there so adjacent-row labels are packed against it.
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if (
+                source[0] == target[0]
+                or source[1] == target[1]
+                or abs(target[1] - source[1]) <= adjacent_step
+            ):
+                continue
+            metrics = _edge_label_metrics(edge, positions, intent)
+            left_card_right = min(source[0], target[0]) + node_width
+            right_card_left = max(source[0], target[0])
+            upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
+            lower_top = max(source[1], target[1])
+            if (
+                right_card_left - left_card_right < metrics.width + 8
+                or lower_top - upper_bottom < metrics.height + 8
+            ):
+                continue
+            label_y = (upper_bottom + lower_top) / 2
+            corridor = _row_corridor_containing(label_y, positions)
+            if corridor is None:
+                continue
+            row_corridor_groups[(corridor[0] + corridor[1]) / 2].append(
+                (
+                    (left_card_right + right_card_left) / 2,
+                    str(edge["id"]),
+                    metrics.width,
+                    metrics.height,
+                )
             )
 
         for edge in model["edges"]:
@@ -1906,10 +2034,11 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     if intent == "process":
         unsafe_adjacent_branches: set[str] = set()
+        unsafe_corridors: set[tuple[int, int]] = set()
         process_adjacent_step = _NODE_HEIGHT + process_row_gap
         corridor_groups: dict[
             tuple[int, int],
-            list[tuple[float, str, int, int]],
+            list[tuple[float, str, float, int, bool]],
         ] = defaultdict(list)
         for edge in model["edges"]:
             if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
@@ -1934,18 +2063,31 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             metrics = _edge_label_metrics(edge, positions, intent)
             natural_x = (source[0] + target[0] + _NODE_WIDTH) / 2
             corridor_groups[corridor].append(
-                (natural_x, str(edge["id"]), metrics.width, metrics.height)
+                (natural_x, str(edge["id"]), float(metrics.width), metrics.height, False)
+            )
+
+        anchored_corridor_labels = _process_anchored_corridor_labels(
+            model,
+            positions,
+            process_row_gap=process_row_gap,
+            long_vertical_gutter_x=long_vertical_gutter_x,
+        )
+        for corridor, natural_x, edge_id, label_width, label_height in (
+            anchored_corridor_labels
+        ):
+            corridor_groups[corridor].append(
+                (natural_x, edge_id, label_width, label_height, True)
             )
 
         for corridor, items in corridor_groups.items():
             upper_bottom, lower_top = corridor
             available_height = lower_top - upper_bottom
             ordered = sorted(items, key=lambda item: (item[0], item[1]))
-            clusters: list[list[tuple[float, str, int, int]]] = []
-            current: list[tuple[float, str, int, int]] = []
+            clusters: list[list[tuple[float, str, float, int, bool]]] = []
+            current: list[tuple[float, str, float, int, bool]] = []
             current_right: float | None = None
             for item in ordered:
-                natural_x, _, label_width, _ = item
+                natural_x, _, label_width, _, _ = item
                 left = natural_x - label_width / 2
                 right = natural_x + label_width / 2
                 if current and current_right is not None and left >= current_right + 8:
@@ -1959,13 +2101,23 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
 
             for cluster in clusters:
                 cluster = sorted(cluster, key=lambda item: item[1])
+                movable = [item for item in cluster if not item[4]]
+                if len(movable) != len(cluster):
+                    # An anchored label owns this stretch of the corridor and
+                    # cannot be repacked, so every movable label sharing it
+                    # leaves through the outer gutter instead.
+                    unsafe_adjacent_branches.update(item[1] for item in movable)
+                    if movable:
+                        unsafe_corridors.add(corridor)
+                    continue
                 count = len(cluster)
                 if count == 1:
-                    _, edge_id, _, label_height = cluster[0]
+                    _, edge_id, _, label_height, _ = cluster[0]
                     if label_height + 8 > available_height:
                         unsafe_adjacent_branches.add(edge_id)
+                        unsafe_corridors.add(corridor)
                     continue
-                for slot, (_, edge_id, _, _) in enumerate(cluster):
+                for slot, (_, edge_id, _, _, _) in enumerate(cluster):
                     process_adjacent_slot[edge_id] = slot
                     process_adjacent_count[edge_id] = count
                 required_height = (
@@ -1973,11 +2125,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 )
                 if required_height <= available_height:
                     cursor_y = upper_bottom + (available_height - required_height) / 2
-                    for _, edge_id, _, label_height in cluster:
+                    for _, edge_id, _, label_height, _ in cluster:
                         process_adjacent_label_y[edge_id] = cursor_y + label_height / 2
                         cursor_y += label_height + 8
                 else:
                     unsafe_adjacent_branches.update(item[1] for item in cluster)
+                    unsafe_corridors.add(corridor)
 
         if unsafe_adjacent_branches:
             obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())
@@ -1986,6 +2139,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     obstacle_right,
                     max(x + region_width for _, _, x, _, region_width, _ in regions),
                 )
+            # Outer-gutter lanes share the corridor y of the labels they take
+            # over, so they must also clear anchored labels reaching past the
+            # card column in exactly those corridors.
+            for corridor, natural_x, _, label_width, _ in anchored_corridor_labels:
+                if corridor in unsafe_corridors:
+                    obstacle_right = max(obstacle_right, natural_x + label_width / 2)
             cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
             required_right = float(width)
             for edge_id in sorted(unsafe_adjacent_branches):
