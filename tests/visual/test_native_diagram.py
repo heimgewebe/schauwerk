@@ -2627,6 +2627,120 @@ def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:
     assert label_top + label_height / 2 == physical_gap_center
 
 
+def test_ungrouped_forward_same_row_process_feedback_uses_actual_row_gap() -> None:
+    raw = _minimal_process_model(14)
+    feedback = {
+        "id": "feedback",
+        "from": "n0",
+        "to": "n1",
+        "label": "rückmeldung",
+        "kind": "feedback",
+    }
+    geometry, root = _feedback_geometry(raw, [feedback])
+    repeated, _ = _feedback_geometry(copy.deepcopy(raw), [copy.deepcopy(feedback)])
+    assert geometry == repeated
+
+    nodes = _node_boxes(root)
+    source_bottom = nodes["n0"][1] + nodes["n0"][3]
+    physical_gap_center = (source_bottom + nodes["n6"][1]) / 2
+    path, (_, label_top, _, label_height) = geometry["feedback"]
+    assert source_bottom == 306.0
+    assert physical_gap_center == 341.0
+    assert label_top + label_height / 2 == physical_gap_center
+    assert path == (
+        "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
+        "L 2514.0 341.0 L 2514.0 341.0 L 589.0 341.0 "
+        "C 589.0 341.0, 589.0 324.0, 589.0 306.0"
+    )
+    assert all(
+        not _boxes_overlap(geometry["feedback"][1], node_box)
+        for node_box in nodes.values()
+    )
+
+
+def test_distant_singleton_long_branch_preserves_forward_same_row_feedback() -> None:
+    raw = _minimal_process_model(14)
+    feedback = {
+        "id": "feedback",
+        "from": "n0",
+        "to": "n1",
+        "label": "rückmeldung",
+        "kind": "feedback",
+    }
+    long_branch = {
+        "id": "long_branch",
+        "from": "n12",
+        "to": "n1",
+        "label": "lange diagonale prozessbeziehung mit text",
+        "kind": "flow",
+    }
+    solo, _ = _feedback_geometry(raw, [feedback])
+    combined, root = _feedback_geometry(raw, [feedback, long_branch])
+    reordered, _ = _feedback_geometry(raw, [long_branch, feedback])
+
+    assert combined["feedback"] == solo["feedback"]
+    assert combined == reordered
+    assert solo["feedback"][1] == (1288.5, 326.5, 110.0, 29.0)
+    assert not _boxes_overlap(combined["feedback"][1], combined["long_branch"][1])
+    assert all(
+        not _boxes_overlap(label_box, node_box)
+        for _, label_box in combined.values()
+        for node_box in _node_boxes(root).values()
+    )
+
+
+@pytest.mark.parametrize("pack_target", ("n12", "n13"), ids=("long_vertical", "long_branch"))
+@pytest.mark.parametrize(
+    ("feedback_source", "expects_footer"),
+    (("n24", False), ("n29", True)),
+    ids=("clear_of_pack", "overlapping_pack"),
+)
+def test_process_feedback_footer_depends_on_packed_label_bounds(
+    pack_target: str, feedback_source: str, expects_footer: bool
+) -> None:
+    raw = _minimal_process_model(30)
+    packed_edges = [
+        {
+            "id": f"packed_{index}",
+            "from": "n24",
+            "to": pack_target,
+            "label": f"lange vertikale Beziehung {index}",
+            "kind": "evidence",
+        }
+        for index in range(4)
+    ]
+    feedback = {
+        "id": "feedback",
+        "from": feedback_source,
+        "to": "n0",
+        "label": "Rückmeldung zum Anfang",
+        "kind": "feedback",
+    }
+    edges = [*packed_edges, feedback]
+    geometry, root = _feedback_geometry(raw, edges)
+    reordered, _ = _feedback_geometry(raw, list(reversed(edges)))
+    assert geometry == reordered
+
+    feedback_box = geometry["feedback"][1]
+    packed_boxes = [geometry[edge["id"]][1] for edge in packed_edges]
+    nodes = _node_boxes(root)
+    assert all(not _boxes_overlap(feedback_box, box) for box in packed_boxes)
+    assert all(not _boxes_overlap(feedback_box, box) for box in nodes.values())
+    _, label_top, _, label_height = feedback_box
+    if expects_footer:
+        occupied_bottom = max(y + height for _, y, _, height in [*packed_boxes, *nodes.values()])
+        assert label_top >= occupied_bottom + 10
+    else:
+        source_corridor_y = (nodes["n18"][1] + nodes["n18"][3] + nodes["n24"][1]) / 2
+        assert label_top + label_height / 2 == source_corridor_y == 1049.0
+        # Sharing the pack's y range alone is insufficient: this feedback label
+        # stays to its left, so its unoccupied row corridor remains available.
+        assert any(
+            label_top < y + height and label_top + label_height > y
+            for _, y, _, height in packed_boxes
+        )
+
+
 def test_long_vertical_and_adjacent_non_process_labels_pack_same_row_corridor() -> None:
     raw = _minimal_process_model(10)
     raw["intent"] = "architecture"

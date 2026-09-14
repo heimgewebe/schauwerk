@@ -1040,7 +1040,7 @@ def _edge_geometry(
             end_bend = bend
         else:
             start_y = end_y = source_y + _NODE_HEIGHT
-            source_corridor_y = target_corridor_y = start_y + _PROCESS_ROW_GAP / 2
+            source_corridor_y = target_corridor_y = start_y + process_row_gap / 2
             start_bend = end_bend = bend
         gutter_x = canvas_width - _PROCESS_EDGE_GUTTER / 2
         if feedback_label_y is not None:
@@ -1913,6 +1913,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     non_process_row_gap = _ROW_GAP if regions else _NON_PROCESS_ROW_GAP
     long_vertical_gutter_x: dict[str, float] = {}
     long_vertical_label_y: dict[str, float] = {}
+    packed_process_label_bounds: list[tuple[float, float, float, float]] = []
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
     vertical_row_gap = process_row_gap if intent == "process" else non_process_row_gap
     row_step = _NODE_HEIGHT + vertical_row_gap
@@ -1984,6 +1985,15 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             long_vertical_gutter_x[edge_id] = gutter_x
             long_vertical_label_y[edge_id] = packed_y
             previous_bottom = packed_y + label_height / 2
+            if intent == "process":
+                packed_process_label_bounds.append(
+                    (
+                        gutter_x + 8,
+                        packed_y - label_height / 2,
+                        gutter_x + 8 + label_width,
+                        previous_bottom,
+                    )
+                )
             required_right = max(
                 required_right,
                 gutter_x + 8 + label_width + _PAGE_MARGIN,
@@ -2379,13 +2389,23 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 slot = long_branch_slots[edge_id]
                 centered_slot = slot - (len(long_branches) - 1) / 2
                 stable_lane_offset = max(-8.0, min(8.0, centered_slot * 4.0))
-                label_height = _edge_label_metrics(edge, positions, intent).height
+                metrics = _edge_label_metrics(edge, positions, intent)
+                label_height = metrics.height
                 packed_y = max(
                     natural_y + stable_lane_offset,
                     previous_bottom + 8 + label_height / 2,
                 )
                 long_branch_label_y[edge_id] = packed_y
                 previous_bottom = packed_y + label_height / 2
+                label_x = width - required_gutter / 2
+                packed_process_label_bounds.append(
+                    (
+                        label_x - metrics.width / 2,
+                        packed_y - label_height / 2,
+                        label_x + metrics.width / 2,
+                        previous_bottom,
+                    )
+                )
             long_branch_pack_bottom = previous_bottom
             height = max(height, math.ceil(previous_bottom + 8))
     feedback_edges = sorted(
@@ -2481,6 +2501,43 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             )
         else:
             height = max(height, max_node_bottom + 18 + feedback_heights[0])
+
+    if intent == "process" and feedback_count == 1 and packed_process_label_bounds:
+        edge = feedback_edges[0]
+        edge_id = str(edge["id"])
+        if edge_id not in feedback_footer_ids:
+            # Packed labels occupy their rendered rectangles, not every row
+            # corridor in the diagram. Check the unforced feedback label after
+            # canvas sizing so the accepted reverse return uses its real footer.
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            metrics = _edge_label_metrics(edge, positions, intent)
+            _, label_x, label_y, _ = _edge_geometry(
+                source,
+                target,
+                self_loop=edge["from"] == edge["to"],
+                lane=((lane_ranks[edge_id] % 5) - 2) * _PROCESS_LANE_STEP,
+                kind="feedback",
+                canvas_width=width,
+                canvas_height=height,
+                intent=intent,
+                process_row_gap=process_row_gap,
+                preserve_same_row_feedback_footer=(
+                    edge["from"] != edge["to"]
+                    and _preserve_same_row_process_feedback_return(source, target, positions)
+                ),
+            )
+            half_width = metrics.width / 2
+            half_height = metrics.height / 2
+            label_x = min(max(label_x, half_width + 8), width - half_width - 8)
+            if any(
+                label_x - half_width < right + 8
+                and label_x + half_width > left - 8
+                and label_y - half_height < bottom + 8
+                and label_y + half_height > top - 8
+                for left, top, right, bottom in packed_process_label_bounds
+            ):
+                feedback_footer_ids.add(edge_id)
 
     purpose_max_width = width - 2 * _PAGE_MARGIN
     title_lines = _bounded_wrapped(
@@ -2639,14 +2696,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
-                force_feedback_footer=(
-                    intent == "process"
-                    and (
-                        long_vertical_pack_bottom > 0.0
-                        or bool(long_branch_slots)
-                        or str(edge["id"]) in feedback_footer_ids
-                    )
-                ),
+                force_feedback_footer=str(edge["id"]) in feedback_footer_ids,
             )
         )
     for node in model["nodes"]:
