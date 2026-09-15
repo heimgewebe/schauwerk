@@ -1647,6 +1647,7 @@ def _render_edge(
     if (
         intent != "process"
         and kind != "feedback"
+        and route != "narrative-parallel"
         and source_position[0] != target_position[0]
         and source_position[1] != target_position[1]
     ):
@@ -1685,8 +1686,23 @@ def _render_edge(
             label_y = process_adjacent_label_y
         elif lower_top - upper_bottom >= label_height + 8:
             label_y = (upper_bottom + lower_top) / 2
-    if intent != "process" and row_corridor_label_x is not None:
+    if (
+        intent != "process"
+        and route != "narrative-parallel"
+        and row_corridor_label_x is not None
+    ):
         label_x = row_corridor_label_x
+    if edge["from"] == edge["to"] and intent != "process" and route == "standard":
+        # A generic Bezier self-loop owns its arc geometry, but its label must
+        # clear the card independently of the lane reach. Use the rendered
+        # label width rather than inflating the loop lane, which could merely
+        # move the collision to a neighbouring card.
+        node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
+        half_label_width = label_width / 2
+        label_x = max(
+            label_x,
+            source_position[0] + node_width + half_label_width + 8,
+        )
     if intent == "process" and route == "standard":
         # Self-loops can place their Bézier midpoint beyond the rightmost card.
         # Clamp only the label box; in-bounds standard labels remain unchanged.

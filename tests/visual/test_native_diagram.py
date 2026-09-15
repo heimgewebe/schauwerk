@@ -2422,6 +2422,93 @@ def test_parallel_narrative_relations_use_stable_outer_lanes() -> None:
     assert len(set(gutters)) == 2
 
 
+def _review_regression_model(
+    intent: str,
+    node_count: int,
+    edges: list[tuple[int, int, str, str]],
+    *,
+    grouped: bool = False,
+) -> dict:
+    return {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "review_pr184",
+        "title": "PR184 independent regression test",
+        "purpose": "Relationship label boxes must not cover each other or node cards.",
+        "intent": intent,
+        "groups": (
+            [{"id": "g0", "label": "A"}, {"id": "g1", "label": "B"}]
+            if grouped
+            else []
+        ),
+        "nodes": [
+            {
+                "id": f"n{index}",
+                "label": f"Node {index}",
+                "summary": "Review node.",
+                "kind": "concept",
+                "group": ("g0" if index < node_count // 2 else "g1") if grouped else None,
+            }
+            for index in range(node_count)
+        ],
+        "edges": [
+            {
+                "id": f"e{index}",
+                "from": f"n{source}",
+                "to": f"n{target}",
+                "label": label,
+                "kind": kind,
+            }
+            for index, (source, target, label, kind) in enumerate(edges)
+        ],
+        "requirements": {
+            "formal_relations": True,
+            "free_spatial_layout": True,
+            "presentation": True,
+            "collaboration": True,
+            "rich_text": False,
+            "structured_comparison": False,
+            "portable_offline": True,
+        },
+        "requested_formats": ["canvas"],
+    }
+
+
+def test_long_parallel_narrative_labels_keep_allocated_outer_positions() -> None:
+    raw = _review_regression_model(
+        "narrative",
+        6,
+        [
+            (0, 5, "First explanation of relationship", "flow"),
+            (0, 5, "Second explanation of relationship", "association"),
+        ],
+        grouped=True,
+    )
+    root = _parse(render_native_diagram(raw))
+    labels = _edge_label_boxes(root)
+
+    assert not _boxes_overlap(labels["e0"], labels["e1"])
+    for edge_id in ("e0", "e1"):
+        group = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == edge_id
+        )
+        assert group.attrib["data-route"] == "narrative-parallel"
+
+
+def test_single_architecture_self_loop_label_box_clears_its_own_card() -> None:
+    raw = _review_regression_model(
+        "architecture",
+        1,
+        [(0, 0, "Relation label", "flow")],
+    )
+    root = _parse(render_native_diagram(raw))
+    label = _edge_label_boxes(root)["e0"]
+    node = _node_boxes(root)["n0"]
+
+    assert not _boxes_overlap(label, node)
+
+
 def test_parallel_same_row_narrative_relations_use_row_gap_outer_lanes() -> None:
     raw = _load("narrative-journey-v1.json")
     raw["edges"] = [
