@@ -4019,3 +4019,55 @@ def test_generic_non_process_self_loop_label_stays_inside_canvas() -> None:
     assert x + width <= canvas_width
     assert not _boxes_overlap(label_box, source_box)
     assert svg == render_native_diagram(copy.deepcopy(raw))
+
+
+
+def test_generic_non_process_self_loop_routes_clear_of_next_card() -> None:
+    raw = _load("system-landscape-v1.json")
+    raw["id"] = "generic_self_loop_neighbor_regression"
+    raw["title"] = "Generic self loop neighbor regression"
+    raw["purpose"] = "Keep a generic self-loop label clear of the next card."
+    raw["intent"] = "state"
+    raw["groups"] = []
+    raw["nodes"] = [
+        {
+            "id": f"n{index}",
+            "label": f"Node {index}",
+            "kind": "system",
+            "group": None,
+            "summary": "Regression node",
+        }
+        for index in range(6)
+    ]
+    raw["edges"] = [
+        {
+            "id": "loop",
+            "from": "n3",
+            "to": "n3",
+            "label": "Breite Beziehung zur nächsten Karte mit mehreren Worten",
+            "kind": "flow",
+        }
+    ]
+
+    svg = render_native_diagram(raw)
+    root = _parse(svg)
+    label_box = _edge_label_boxes(root)["loop"]
+    node_boxes = _node_boxes(root)
+    _, _, canvas_width, canvas_height = (
+        float(value) for value in root.attrib["viewBox"].split()
+    )
+    x, y, width, height = label_box
+    edge_group = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "edge"
+        and element.attrib.get("data-source-id") == "loop"
+    )
+
+    assert edge_group.attrib["data-route"] == "generic-self-loop"
+    assert not _boxes_overlap(label_box, node_boxes["n3"])
+    assert not _boxes_overlap(label_box, node_boxes["n4"])
+    assert all(not _boxes_overlap(label_box, box) for box in node_boxes.values())
+    assert 0 <= x and x + width <= canvas_width
+    assert 0 <= y and y + height <= canvas_height
+    assert svg == render_native_diagram(copy.deepcopy(raw))

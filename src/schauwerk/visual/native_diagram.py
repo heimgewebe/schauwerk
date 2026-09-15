@@ -1013,6 +1013,7 @@ def _edge_geometry(
     process_branch_gutter_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
+    generic_self_loop_gutter_x: float | None = None,
     label_height: int = 0,
     label_width: int = 0,
     feedback_label_y: float | None = None,
@@ -1202,6 +1203,25 @@ def _edge_geometry(
         start_y = end_y = source_y + _NODE_HEIGHT
         corridor_y = start_y + non_process_row_gap / 2
         gutter_x = narrative_self_loop_gutter_x
+        path = (
+            f"M {start_x:.1f} {start_y:.1f} "
+            f"L {start_x:.1f} {corridor_y:.1f} "
+            f"L {gutter_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {corridor_y:.1f} "
+            f"L {end_x:.1f} {end_y:.1f}"
+        )
+        return path, gutter_x + 8 + label_width / 2, corridor_y, route
+    elif (
+        self_loop
+        and intent not in {"process", "narrative"}
+        and generic_self_loop_gutter_x is not None
+    ):
+        route = "generic-self-loop"
+        start_x = source_x + node_width * 0.35
+        end_x = source_x + node_width * 0.65
+        start_y = end_y = source_y + _NODE_HEIGHT
+        corridor_y = start_y + non_process_row_gap / 2
+        gutter_x = generic_self_loop_gutter_x
         path = (
             f"M {start_x:.1f} {start_y:.1f} "
             f"L {start_x:.1f} {corridor_y:.1f} "
@@ -1515,6 +1535,7 @@ def _render_edge(
     row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
+    generic_self_loop_gutter_x: float | None = None,
     self_loop_lane: int | None = None,
     feedback_slot: int | None = None,
     feedback_count: int = 0,
@@ -1616,6 +1637,7 @@ def _render_edge(
         process_branch_gutter_x=process_branch_gutter_x,
         narrative_parallel_gutter_x=narrative_parallel_gutter_x,
         narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
+        generic_self_loop_gutter_x=generic_self_loop_gutter_x,
         label_height=label_height,
         label_width=label_width,
         feedback_label_y=feedback_label_y,
@@ -1989,22 +2011,6 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     long_vertical_label_y: dict[str, float] = {}
     packed_process_label_bounds: list[tuple[float, float, float, float]] = []
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
-    if intent not in {"process", "narrative"}:
-        # Generic non-process self-loop labels are pushed fully to the right of
-        # their source card during rendering. Reserve that exact label bound in
-        # the viewBox up front so a loop on the rightmost card cannot be clipped.
-        required_self_loop_right = float(width)
-        for edge in model["edges"]:
-            if str(edge["kind"]) == "feedback" or edge["from"] != edge["to"]:
-                continue
-            metrics = _edge_label_metrics(edge, positions, intent)
-            source_x = positions[str(edge["from"])][0]
-            label_right = source_x + node_width + metrics.width + 8
-            required_self_loop_right = max(
-                required_self_loop_right,
-                label_right + 8,
-            )
-        width = max(width, math.ceil(required_self_loop_right))
     vertical_row_gap = process_row_gap if intent == "process" else non_process_row_gap
     row_step = _NODE_HEIGHT + vertical_row_gap
     corridor_use_count: dict[tuple[int, float], int] = defaultdict(int)
@@ -2417,6 +2423,54 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 required_right = max(required_right, label_right + _PAGE_MARGIN)
                 cursor = label_right + 12
             width = max(width, math.ceil(required_right))
+
+    generic_self_loop_gutter_x: dict[str, float] = {}
+    if intent not in {"process", "narrative"}:
+        generic_self_loops: list[Mapping[str, Any]] = []
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] != edge["to"]:
+                continue
+            source_id = str(edge["from"])
+            source_x, source_y = positions[source_id]
+            metrics = _edge_label_metrics(edge, positions, intent)
+            natural_left = source_x + node_width + 8
+            natural_right = natural_left + metrics.width
+            collides_with_peer = any(
+                node_id != source_id
+                and node_y == source_y
+                and natural_left < node_x + node_width
+                and natural_right > node_x
+                for node_id, (node_x, node_y) in positions.items()
+            )
+            if collides_with_peer or natural_right > width - 8:
+                generic_self_loops.append(edge)
+        if generic_self_loops:
+            obstacle_right = max(x + node_width for x, _ in positions.values())
+            if regions:
+                obstacle_right = max(
+                    obstacle_right,
+                    max(x + region_width for _, _, x, _, region_width, _ in regions),
+                )
+            cursor = max(obstacle_right + 12.0, width - _PAGE_MARGIN + 12.0)
+            required_right = float(width)
+            required_bottom = float(height)
+            for edge in sorted(generic_self_loops, key=lambda item: str(item["id"])):
+                metrics = _edge_label_metrics(edge, positions, intent)
+                edge_id = str(edge["id"])
+                generic_self_loop_gutter_x[edge_id] = cursor
+                required_right = max(
+                    required_right,
+                    cursor + 8 + metrics.width + _PAGE_MARGIN,
+                )
+                source_y = positions[str(edge["from"])][1]
+                corridor_y = source_y + _NODE_HEIGHT + non_process_row_gap / 2
+                required_bottom = max(
+                    required_bottom,
+                    corridor_y + metrics.height / 2 + 8,
+                )
+                cursor += 8 + metrics.width + 12
+            width = max(width, math.ceil(required_right))
+            height = max(height, math.ceil(required_bottom))
 
     narrative_parallel_gutter_x: dict[str, float] = {}
     if intent == "narrative":
@@ -2860,6 +2914,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
+                generic_self_loop_gutter_x=generic_self_loop_gutter_x.get(str(edge["id"])),
                 self_loop_lane=self_loop_lanes.get(str(edge["id"])),
                 feedback_slot=feedback_slots.get(str(edge["id"])),
                 feedback_count=feedback_count,
