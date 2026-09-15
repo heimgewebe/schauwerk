@@ -395,7 +395,13 @@ def test_process_layout_uses_graph_rank_and_readable_typography() -> None:
     assert narrative_view_box[2] <= 1450
 
 def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use_curves() -> None:
-    root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
+    raw = _load("narrative-journey-v1.json")
+    rendered = render_native_diagram(raw)
+    assert rendered.encode("utf-8") == render_native_diagram(copy.deepcopy(raw)).encode("utf-8")
+    assert rendered.encode("utf-8") == render_native_diagram(
+        validate_representation_input(raw)
+    ).encode("utf-8")
+    root = _parse(rendered)
     groups = {
         element.attrib["data-source-id"]: element
         for element in root.iter()
@@ -414,6 +420,8 @@ def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use
         for element in root.iter()
         if element.attrib.get("data-source-kind") == "edge"
     }
+    assert sorted(edges) == sorted(edge["id"] for edge in raw["edges"])
+    node_boxes = _node_boxes(root)
     for edge_id in ("journey02", "journey05"):
         edge = edges[edge_id]
         path = edge.find(f"{{{SVG_NAMESPACE}}}path")
@@ -427,6 +435,9 @@ def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use
             (control_x - start_x) * (end_y - start_y)
             - (control_y - start_y) * (end_x - start_x)
         ) > 0.001
+        label = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert label is not None
+        assert all(not _boxes_overlap(_rect_box(label), box) for box in node_boxes.values())
 
 
 def test_narrative_feedback_loop_hugs_content_and_labels_the_return_near_target() -> None:
