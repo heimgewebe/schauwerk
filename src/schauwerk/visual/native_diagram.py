@@ -788,6 +788,7 @@ def _anchored_corridor_label_x(
     source_x: int,
     *,
     self_loop: bool,
+    self_loop_max_lane_reach: float = _PROCESS_SELF_LOOP_MAX_LANE_REACH,
     long_branch_gutter_x: float | None = None,
 ) -> tuple[float, float]:
     """Return the centre and the extra width of one anchored label's x bound."""
@@ -795,7 +796,7 @@ def _anchored_corridor_label_x(
         # A self-loop label rides its Bezier midpoint outside the card column.
         # The reach depends on the rendered lane, so bound every possible lane.
         nearest = source_x + _NODE_WIDTH + 0.75 * _SELF_LOOP_BASE_REACH
-        farthest = nearest + 0.75 * _PROCESS_SELF_LOOP_MAX_LANE_REACH
+        farthest = nearest + 0.75 * self_loop_max_lane_reach
         return (nearest + farthest) / 2, farthest - nearest
     if long_branch_gutter_x is not None:
         # A singleton long branch centres its label between the source card
@@ -862,11 +863,10 @@ def _bezier_self_loop_lanes(
             key=_process_anchor_order_key if intent == "process" else lambda edge: str(edge["id"]),
         )
         for slot, edge in enumerate(ordered):
-            # The corridor bound above reserves this reach window, so a deeper
-            # stack keeps the outermost lane instead of growing past it.
-            lanes[str(edge["id"])] = int(
-                min(slot * lane_step, _PROCESS_SELF_LOOP_MAX_LANE_REACH)
-            )
+            # Keep the established first three process lanes byte-for-byte, but
+            # do not collapse deeper stacks onto the third arc. The process
+            # corridor planner expands the self-loop envelope for overflow lanes.
+            lanes[str(edge["id"])] = slot * lane_step
     return lanes
 
 
@@ -913,6 +913,10 @@ def _process_anchored_corridor_labels(
     long_branch_ids = _process_long_branch_ids(
         model, positions, process_row_gap=process_row_gap
     )
+    self_loop_counts: dict[str, int] = defaultdict(int)
+    for relation in model["edges"]:
+        if str(relation["kind"]) != "feedback" and relation["from"] == relation["to"]:
+            self_loop_counts[str(relation["from"])] += 1
     anchored: list[tuple[tuple[int, int], float, str, float, int]] = []
     for edge in model["edges"]:
         if str(edge["kind"]) == "feedback":
@@ -948,9 +952,16 @@ def _process_anchored_corridor_labels(
         if corridor is None:
             continue
         metrics = _edge_label_metrics(edge, positions, "process")
+        self_loop_max_lane_reach = _PROCESS_SELF_LOOP_MAX_LANE_REACH
+        if self_loop:
+            self_loop_max_lane_reach = max(
+                self_loop_max_lane_reach,
+                (self_loop_counts[str(edge["from"])] - 1) * _PROCESS_LANE_STEP,
+            )
         natural_x, extra_width = _anchored_corridor_label_x(
             source[0],
             self_loop=self_loop,
+            self_loop_max_lane_reach=self_loop_max_lane_reach,
             long_branch_gutter_x=long_branch_gutter_x,
         )
         anchored.append(
@@ -1642,7 +1653,7 @@ def _render_edge(
             label_y = row_top - 18
         if edge["from"] == edge["to"] and process_branch_gutter_x is not None:
             # Conflicting loop labels use the packed outer lane while their
-            # Bezier arcs retain the established, capped reach window.
+            # Bezier arcs keep distinct semantic lanes, including overflow stacks.
             label_x = process_branch_gutter_x + 8 + label_width / 2
     if (
         intent != "process"

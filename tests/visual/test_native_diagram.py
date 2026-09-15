@@ -3331,7 +3331,7 @@ def test_stacked_process_self_loops_keep_distinct_stable_arcs() -> None:
             "label": f"selbstbezug {suffix}",
             "kind": "flow",
         }
-        for suffix in ("a", "b", "c")
+        for suffix in ("a", "b", "c", "d")
     ]
 
     def paths(ordered_edges: list[dict]) -> dict[str, str]:
@@ -3905,3 +3905,35 @@ def test_two_process_self_loop_singletons_keep_exact_preimage_geometry(edge_id: 
         edge_id: "M 298.0 218.1 C 376.0 174.1, 376.0 323.5, 298.0 279.5"
     }
     assert root.attrib["viewBox"] == "0 0 1028 374"
+
+
+@pytest.mark.parametrize("label", ["", "   "])
+def test_empty_process_edge_label_is_rejected_before_label_metrics(label: str) -> None:
+    raw = _minimal_process_model(2)
+    raw["edges"] = [
+        {
+            "id": "edge_a",
+            "from": "n0",
+            "to": "n1",
+            "label": label,
+            "kind": "flow",
+        }
+    ]
+    with pytest.raises(RepresentationError, match=r"edges\[0\]\.label must not be empty"):
+        render_native_diagram(raw)
+
+
+@pytest.mark.parametrize("edge_id", ["edge space", "edge#fragment", "edge/slash"])
+def test_svg_fragment_source_id_must_use_representation_safe_id(edge_id: str) -> None:
+    raw = _minimal_process_model(2)
+    raw["edges"] = [
+        {
+            "id": edge_id,
+            "from": "n0",
+            "to": "n1",
+            "label": "sichere beziehung",
+            "kind": "flow",
+        }
+    ]
+    with pytest.raises(RepresentationError, match=r"edges\[0\]\.id must match"):
+        render_native_diagram(raw)
