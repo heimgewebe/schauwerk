@@ -1989,6 +1989,22 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     long_vertical_label_y: dict[str, float] = {}
     packed_process_label_bounds: list[tuple[float, float, float, float]] = []
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
+    if intent not in {"process", "narrative"}:
+        # Generic non-process self-loop labels are pushed fully to the right of
+        # their source card during rendering. Reserve that exact label bound in
+        # the viewBox up front so a loop on the rightmost card cannot be clipped.
+        required_self_loop_right = float(width)
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback" or edge["from"] != edge["to"]:
+                continue
+            metrics = _edge_label_metrics(edge, positions, intent)
+            source_x = positions[str(edge["from"])][0]
+            label_right = source_x + node_width + metrics.width + 8
+            required_self_loop_right = max(
+                required_self_loop_right,
+                label_right + 8,
+            )
+        width = max(width, math.ceil(required_self_loop_right))
     vertical_row_gap = process_row_gap if intent == "process" else non_process_row_gap
     row_step = _NODE_HEIGHT + vertical_row_gap
     corridor_use_count: dict[tuple[int, float], int] = defaultdict(int)
@@ -2218,6 +2234,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_y: dict[str, float] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
+    process_outer_label_right = max(
+        (right for _, _, right, _ in packed_process_label_bounds),
+        default=0.0,
+    )
     if intent == "process":
         long_branch_ids = _process_long_branch_ids(
             model, positions, process_row_gap=process_row_gap
@@ -2382,6 +2402,17 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 key=lambda edge_id: _process_anchor_order_key(edges_by_id[edge_id]),
             ):
                 process_branch_gutter_x[edge_id] = cursor
+                actual_label_right = (
+                    cursor
+                    + 8
+                    + _edge_label_metrics(edges_by_id[edge_id], positions, intent).width
+                )
+                process_outer_label_right = max(
+                    process_outer_label_right, actual_label_right
+                )
+                # Keep the established fixed-width lane reservation so existing
+                # process-gutter geometry does not move merely because this
+                # cross-packer occupancy bound became explicit.
                 label_right = cursor + 8 + _PROCESS_LABEL_MAX_WIDTH
                 required_right = max(required_right, label_right + _PAGE_MARGIN)
                 cursor = label_right + 12
@@ -2502,6 +2533,24 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 + (len(long_branches) - 1) * _PROCESS_GUTTER_LANE_STEP
             )
             width += max(0, required_gutter - _PROCESS_EDGE_GUTTER)
+            if process_outer_label_right:
+                widest_long_branch_label = max(
+                    _edge_label_metrics(edge, positions, intent).width
+                    for _, _, edge in long_branches
+                )
+                # The long-branch packer runs after the adjacent/anchored outer
+                # lanes. Keep its whole label column to the right of the actual
+                # earlier label extent instead of assuming the historical 80 px
+                # edge gutter is still empty.
+                width = max(
+                    width,
+                    math.ceil(
+                        process_outer_label_right
+                        + 8
+                        + widest_long_branch_label / 2
+                        + required_gutter / 2
+                    ),
+                )
             previous_bottom = 0.0
             for natural_y, edge_id, edge in long_branches:
                 slot = long_branch_slots[edge_id]

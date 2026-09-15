@@ -3937,3 +3937,85 @@ def test_svg_fragment_source_id_must_use_representation_safe_id(edge_id: str) ->
     ]
     with pytest.raises(RepresentationError, match=r"edges\[0\]\.id must match"):
         render_native_diagram(raw)
+
+
+
+def test_process_long_branch_labels_clear_existing_outer_lanes() -> None:
+    raw = _load("decision-flow-v1.json")
+    raw["id"] = "pr184_outer_long_regression"
+    raw["title"] = "Outer and long branch regression"
+    raw["purpose"] = "Keep independently allocated process labels out of each other's lanes."
+    raw["intent"] = "process"
+    raw["groups"] = []
+    raw["nodes"] = [
+        {
+            "id": f"n{index}",
+            "label": f"Node {index}",
+            "kind": "action",
+            "group": None,
+            "summary": "Regression node",
+        }
+        for index in range(20)
+    ]
+    label = (
+        "Diese Verbindung beschreibt einen bewusst langen Prozessschritt "
+        "zwischen weit entfernten Knoten im Diagramm"
+    )
+    raw["edges"] = [
+        {"id": "a0", "from": "n6", "to": "n13", "label": label, "kind": "flow"},
+        {"id": "a1", "from": "n7", "to": "n12", "label": label, "kind": "flow"},
+        {"id": "z0", "from": "n0", "to": "n19", "label": label, "kind": "flow"},
+        {"id": "z1", "from": "n1", "to": "n18", "label": label, "kind": "flow"},
+    ]
+
+    root = _parse(render_native_diagram(raw))
+    boxes = _edge_label_boxes(root)
+    for outer_id in ("a0", "a1"):
+        for long_id in ("z0", "z1"):
+            assert not _boxes_overlap(boxes[outer_id], boxes[long_id])
+
+    reversed_raw = copy.deepcopy(raw)
+    reversed_raw["edges"].reverse()
+    reversed_root = _parse(render_native_diagram(reversed_raw))
+    assert boxes == _edge_label_boxes(reversed_root)
+    assert _edge_paths(root) == _edge_paths(reversed_root)
+
+
+def test_generic_non_process_self_loop_label_stays_inside_canvas() -> None:
+    raw = _load("system-landscape-v1.json")
+    raw["id"] = "pr184_self_loop_canvas_regression"
+    raw["title"] = "Generic self-loop canvas regression"
+    raw["purpose"] = "Keep a rightmost non-process self-loop label inside the SVG viewBox."
+    raw["intent"] = "architecture"
+    raw["groups"] = []
+    raw["nodes"] = [
+        {
+            "id": f"n{index}",
+            "label": f"Node {index}",
+            "kind": "system",
+            "group": None,
+            "summary": "Regression node",
+        }
+        for index in range(4)
+    ]
+    raw["edges"] = [
+        {
+            "id": "loop",
+            "from": "n3",
+            "to": "n3",
+            "label": "Breite Beziehung zur rechten Diagrammkante mit mehreren Worten",
+            "kind": "flow",
+        }
+    ]
+
+    svg = render_native_diagram(raw)
+    root = _parse(svg)
+    label_box = _edge_label_boxes(root)["loop"]
+    source_box = _node_boxes(root)["n3"]
+    _, _, canvas_width, _ = (float(value) for value in root.attrib["viewBox"].split())
+    x, _, width, _ = label_box
+
+    assert x >= 0
+    assert x + width <= canvas_width
+    assert not _boxes_overlap(label_box, source_box)
+    assert svg == render_native_diagram(copy.deepcopy(raw))
