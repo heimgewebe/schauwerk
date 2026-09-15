@@ -394,7 +394,7 @@ def test_process_layout_uses_graph_rank_and_readable_typography() -> None:
     narrative_view_box = [float(value) for value in narrative.attrib["viewBox"].split()]
     assert narrative_view_box[2] <= 1450
 
-def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use_elbows() -> None:
+def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use_curves() -> None:
     root = _parse(render_native_diagram(_load("narrative-journey-v1.json")))
     groups = {
         element.attrib["data-source-id"]: element
@@ -418,9 +418,15 @@ def test_narrative_groups_follow_their_content_height_and_cross_column_edges_use
         edge = edges[edge_id]
         path = edge.find(f"{{{SVG_NAMESPACE}}}path")
         assert path is not None
-        assert edge.attrib["data-route"] == "narrative-elbow"
-        assert " L " in path.attrib["d"]
-        assert " C " not in path.attrib["d"]
+        assert edge.attrib["data-route"] == "narrative-curve"
+        assert " C " in path.attrib["d"]
+        assert " L " not in path.attrib["d"]
+        values = [float(value) for value in re.findall(r"-?[0-9.]+", path.attrib["d"])]
+        start_x, start_y, control_x, control_y, _, _, end_x, end_y = values
+        assert abs(
+            (control_x - start_x) * (end_y - start_y)
+            - (control_y - start_y) * (end_x - start_x)
+        ) > 0.001
 
 
 def test_narrative_feedback_loop_hugs_content_and_labels_the_return_near_target() -> None:

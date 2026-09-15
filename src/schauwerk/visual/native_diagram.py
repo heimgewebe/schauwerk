@@ -1361,7 +1361,7 @@ def _edge_geometry(
         # Adjacent vertical labels remain centered on the inter-row corridor.
         label_offset_x = 0.0
     elif intent == "narrative" and source_x != target_x:
-        route = "narrative-elbow"
+        route = "narrative-curve"
         start_y = source_y + _NODE_HEIGHT / 2
         end_y = target_y + _NODE_HEIGHT / 2
         if source_x < target_x:
@@ -1373,9 +1373,8 @@ def _edge_geometry(
         channel_x = (start_x + end_x) / 2
         path = (
             f"M {start_x:.1f} {start_y:.1f} "
-            f"L {channel_x:.1f} {start_y:.1f} "
-            f"L {channel_x:.1f} {end_y:.1f} "
-            f"L {end_x:.1f} {end_y:.1f}"
+            f"C {channel_x:.1f} {start_y:.1f}, "
+            f"{channel_x:.1f} {end_y:.1f}, {end_x:.1f} {end_y:.1f}"
         )
         label_x = channel_x
         if source_y != target_y:
