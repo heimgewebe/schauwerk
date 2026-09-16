@@ -25,6 +25,16 @@ Gate 1 muss die vorhandenen semantischen Eingaben vollständig darstellen:
 - `decision-flow-v1` für einen gerichteten Entscheidungsprozess;
 - `narrative-journey-v1` für eine lesbare narrative Bewegung.
 
+### Acceptancegrenze des Spikes – Präzisierung 2026-09-15
+
+Gate 1 bewertet **exakt diese drei festen Golden-Fälle** als Renderer-Evidenz. Schema-Gültigkeit einer zusätzlichen oder synthetischen Eingabe bedeutet in diesem Spike nicht, dass jede denkbare Geometrie desselben `intent` bereits als allgemein produktionsreif geroutet werden muss. Umgekehrt ist jede Regression, die sich in einem der drei Goldens reproduziert, weiterhin ein Gate-1-Blocker.
+
+Für gruppierte `knowledge_map`-Eingaben ist eine allgemeine Routing-/Occupancy-Grenze bei langen Same-Row- und parallelen Relationen bekannt. Sie ist für Gate 1 als offenes Post-Gate-Härtungsthema klassifiziert, weil sie außerhalb der drei eingefrorenen Golden-Fälle liegt und der native Renderer in diesem Slice weder in Router noch Produkt oder Editor verdrahtet wird. Diese Grenze gilt ausdrücklich **nicht als behoben** und muss vor einer Generalisierung des nativen Pfads beziehungsweise einem Produkt-Cutover separat gehärtet werden. Die Klassifikation darf nicht verwendet werden, um einen entsprechenden Fehler in `system-landscape-v1` oder einem der beiden anderen Gate-1-Goldens zu akzeptieren.
+
+Diese Präzisierung dokumentiert die vor dem finalen Merge-Gate getroffene Scope-Entscheidung; sie erweitert weder die drei Acceptance-Fälle noch schwächt sie deren technische oder visuelle Anforderungen ab.
+
+Für Gate 1 ist Determinismus an die **exakt normalisierte Repräsentationseingabe** gebunden. `validate_representation_input` bewahrt die deklarierte Reihenfolge von Gruppen, Knoten und Kanten und bindet sie in `input_digest`; eine Permutation dieser Listen ist deshalb eine andere Source-Identität und keine alternative Serialisierung derselben digestgebundenen Eingabe. Die Renderer-Zusage lautet entsprechend: dieselbe normalisierte Eingabe erzeugt dieselben SVG-Bytes. Einzelne Reorder-Regressionstests, insbesondere für Kantenrouting, prüfen bewusst stärkere lokale Robustheit, begründen aber keine allgemeine Permutationsäquivalenz für Knoten- oder Gruppenreihenfolgen. Gate 1 führt damit weder eine neue Sortiersemantik noch eine zweite Layoutautorität ein.
+
 Jeder Fall muss alle Source-Knoten und Source-Kanten im SVG rücklesbar materialisieren. Die Prüfung umfasst außerdem deterministische Bytes, valides SVG, Text-Escaping, gruppierte Regionen, gekrümmte Beziehungen und eine vollständig lokale, inaktive Ausgabe ohne Skripte, externe Ressourcen, Links oder Laufzeitabhängigkeit.
 
 ## Experimentelles Rendererprofil
