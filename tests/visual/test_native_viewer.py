@@ -97,15 +97,29 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     app = (first_root / "app.js").read_text(encoding="utf-8")
     styles = (first_root / "styles.css").read_text(encoding="utf-8")
     assert '<svg id="nativeDiagram" class="native-diagram"' in index
+    assert f'data-input-digest="{normalized["input_digest"]}"' in index
     assert "<iframe" not in index
     assert "diagrams.net" not in index
     assert "schauwerk.native-viewer.layout.v1.${inputDigest}" in app
+    assert 'Native viewer input digest is missing or invalid' in app
+    assert 'svg.dataset.inputDigest || "unbound"' not in app
+    assert '/^[0-9a-f]{64}$/.test(inputDigest)' in app
     assert 'querySelectorAll(\'[data-source-kind="node"]\')' in app
     assert 'querySelector(\'[data-source-kind="edge"]\')' not in app
     assert 'setAttribute("d"' not in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
     assert 'gesture = { kind: "pinch"' in app
+    assert 'pointers.some((pointer) => !pointer.background)' not in app
+    assert 'if (gesture?.kind === "drag")' in app
+    assert 'const DRAG_THRESHOLD_PX = 4;' in app
+    assert (
+        'if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;'
+        in app
+    )
+    assert 'endedGesture.moved && persistOverrides()' in app
+    assert 'event.ctrlKey || event.metaKey' in app
+    assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
     assert 'event.key === "Enter" || event.key === " "' in app
     assert "touch-action: none" in styles
 
@@ -155,8 +169,13 @@ const safe = m.sanitizeOverrides({{
   bad: {{x: 'no', y: 1}},
 }});
 if (
-  safe.a.x !== 10000 || safe.a.y !== -10000 || safe.bad !== undefined
+  safe.a.x !== 10000 || safe.a.y !== -10000 || safe.bad !== undefined ||
+  Object.getPrototypeOf(safe) !== null
 ) throw new Error('override sanitization drifted');
+const sameWorking = m.updateNodeOffset(safe, 'a', 3, 4);
+if (sameWorking !== safe || m.nodeOffset(safe, 'a').x !== 3 || m.nodeOffset(safe, 'a').y !== 4) {{
+  throw new Error('working override update should be in-place and O(1)');
+}}
 const fitted = m.fitView(1000, 500, 800, 600, 20);
 if (!(
   fitted.scale > 0 &&

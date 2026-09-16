@@ -211,8 +211,8 @@ export function fitView(contentWidth, contentHeight, viewportWidth, viewportHeig
 }
 
 export function sanitizeOverrides(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  const output = {};
+  const output = Object.create(null);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return output;
   for (const [sourceId, offset] of Object.entries(value).slice(0, 10000)) {
     if (!sourceId || !offset || typeof offset !== "object" || Array.isArray(offset)) continue;
     const x = Number(offset.x);
@@ -224,15 +224,21 @@ export function sanitizeOverrides(value) {
 }
 
 export function nodeOffset(overrides, sourceId) {
-  const safe = sanitizeOverrides(overrides);
-  return safe[sourceId] ?? { x: 0, y: 0 };
+  const offset = overrides?.[sourceId];
+  if (!offset || typeof offset !== "object" || Array.isArray(offset)) return { x: 0, y: 0 };
+  const x = Number(offset.x);
+  const y = Number(offset.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return { x: 0, y: 0 };
+  return { x: boundedOffset(x), y: boundedOffset(y) };
 }
 
 export function updateNodeOffset(overrides, sourceId, x, y) {
-  const safe = sanitizeOverrides(overrides);
-  if (!sourceId) return safe;
-  safe[sourceId] = { x: boundedOffset(x), y: boundedOffset(y) };
-  return safe;
+  const working = overrides && typeof overrides === "object" && !Array.isArray(overrides)
+    ? overrides
+    : Object.create(null);
+  if (!sourceId) return working;
+  working[sourceId] = { x: boundedOffset(x), y: boundedOffset(y) };
+  return working;
 }
 """
 
@@ -262,7 +268,10 @@ if (!(viewport instanceof HTMLElement) || !(canvas instanceof HTMLElement) || !(
   throw new Error("Native viewer DOM contract is incomplete");
 }
 
-const inputDigest = svg.dataset.inputDigest || "unbound";
+const inputDigest = svg.dataset.inputDigest || "";
+if (!/^[0-9a-f]{64}$/.test(inputDigest)) {
+  throw new Error("Native viewer input digest is missing or invalid");
+}
 const STORAGE_KEY = `schauwerk.native-viewer.layout.v1.${inputDigest}`;
 const nodes = new Map();
 const baseTransforms = new Map();
@@ -271,6 +280,7 @@ let overrides = readOverrides();
 let selectedId = null;
 let gesture = null;
 const activePointers = new Map();
+const DRAG_THRESHOLD_PX = 4;
 
 function setStatus(message) { status.textContent = message; }
 
@@ -366,12 +376,24 @@ function nodeFromTarget(target) {
 
 function startPinchIfPossible() {
   const pointers = [...activePointers.values()];
-  if (pointers.length !== 2 || pointers.some((pointer) => !pointer.background)) return false;
+  if (pointers.length !== 2) return false;
   const [first, second] = pointers;
   const dx = second.x - first.x;
   const dy = second.y - first.y;
   const distance = Math.hypot(dx, dy);
   if (distance < 1) return false;
+  if (gesture?.kind === "drag") {
+    if (gesture.moved) {
+      overrides = updateNodeOffset(
+        overrides,
+        gesture.sourceId,
+        gesture.startOffset.x,
+        gesture.startOffset.y,
+      );
+      applyNodeTransform(gesture.sourceId);
+    }
+    nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
+  }
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const diagramPoint = { x: (midpoint.x - view.x) / view.scale, y: (midpoint.y - view.y) / view.scale };
   gesture = { kind: "pinch", startDistance: distance, startScale: view.scale, diagramPoint };
@@ -437,6 +459,7 @@ viewport.addEventListener("pointerdown", (event) => {
       startX: event.clientX,
       startY: event.clientY,
       startOffset,
+      moved: false,
     };
     node.classList.add("is-dragging");
     return;
@@ -470,7 +493,11 @@ viewport.addEventListener("pointermove", (event) => {
     return;
   }
   if (gesture.kind === "drag") {
-    const delta = screenDeltaToSvg(view, event.clientX - gesture.startX, event.clientY - gesture.startY);
+    const screenDx = event.clientX - gesture.startX;
+    const screenDy = event.clientY - gesture.startY;
+    if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
+    gesture.moved = true;
+    const delta = screenDeltaToSvg(view, screenDx, screenDy);
     overrides = updateNodeOffset(
       overrides,
       gesture.sourceId,
@@ -489,7 +516,9 @@ function finishPointer(event) {
 
   if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
-    if (persistOverrides()) setStatus("Layout lokal gesichert · Semantik unverändert");
+    if (endedGesture.moved && persistOverrides()) {
+      setStatus("Layout lokal gesichert · Semantik unverändert");
+    }
     gesture = null;
   } else if (endedGesture?.kind === "pan" && endedGesture.pointerId === event.pointerId) {
     gesture = null;
@@ -503,8 +532,18 @@ viewport.addEventListener("pointercancel", finishPointer);
 
 viewport.addEventListener("wheel", (event) => {
   event.preventDefault();
-  const factor = Math.exp(-event.deltaY * 0.0015);
-  zoomBy(factor, localPoint(event));
+  const modeScale = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+    ? 24
+    : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+      ? Math.max(1, viewport.clientHeight)
+      : 1;
+  if (event.ctrlKey || event.metaKey) {
+    const factor = Math.exp(-event.deltaY * modeScale * 0.0015);
+    zoomBy(factor, localPoint(event));
+    return;
+  }
+  view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);
+  applyView();
 }, { passive: false });
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));

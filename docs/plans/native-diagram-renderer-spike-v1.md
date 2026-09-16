@@ -67,10 +67,14 @@ Die v4-Renderer-Evidenz vor dieser reinen Dokumentationsaktualisierung ist an Ma
 
 Phase 2 ist ein **separater lokaler Native-Viewer**, kein Umbau des bestehenden draw.io-Editors. Der Slice besitzt genau vier Interaktionen:
 
-- Pan der Gesamtansicht;
-- Zoom per Rad, Schaltflächen und Zwei-Finger-Pinch;
+- Pan der Gesamtansicht per Pointer-Drag sowie unmodifiziertem Rad-/Trackpad-Scrollen;
+- Zoom per Schaltflächen, `Ctrl`/`Meta` + Rad-/Trackpad-Geste und Zwei-Finger-Pinch;
 - Auswahl eines Knotens über Pointer oder Tastatur;
 - Verschieben eines Knotens als abgeleiteter Layout-Overlay.
+
+Pointer-Auswahl und Drag bleiben getrennt: Ein Tap/Klick selektiert nur. Erst nach mindestens 4 CSS-Pixeln Bewegung wird daraus ein Node-Drag und nur dann darf ein Layout-Offset persistiert werden. Kommt ein zweiter Pointer hinzu, darf der Zwei-Finger-Pinch auch dann starten, wenn der erste Kontakt auf einem Knoten lag; ein bereits begonnener lokaler Drag wird dafür auf seinen Start-Offset zurückgesetzt.
+
+Die `input_digest`-Bindung ist fail-closed: Der Viewer akzeptiert am nativen SVG-Root ausschließlich einen 64-stelligen lowercase SHA-256-Digest. Fehlt er oder ist er ungültig, wird vor Bildung des `localStorage`-Schlüssels abgebrochen.
 
 Die Schichten bleiben strikt getrennt:
 
