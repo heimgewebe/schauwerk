@@ -2322,13 +2322,83 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 (natural_x, str(edge["id"]), label_width, label_height)
             )
 
+        feedback_channel_segments: list[tuple[float, float]] = []
+        if intent == "knowledge_map":
+            channel_offset = 28.0
+            for edge in model["edges"]:
+                if str(edge["kind"]) != "feedback" or edge["from"] == edge["to"]:
+                    continue
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                start_y = source[1] + _NODE_HEIGHT / 2
+                end_y = target[1] + _NODE_HEIGHT / 2
+                if source[0] > target[0]:
+                    start_x = source[0] + node_width
+                    end_x = target[0]
+                    source_channel_x = min(width - 16.0, start_x + channel_offset)
+                    target_channel_x = max(16.0, end_x - channel_offset)
+                elif source[0] < target[0]:
+                    start_x = source[0]
+                    end_x = target[0] + node_width
+                    source_channel_x = max(16.0, start_x - channel_offset)
+                    target_channel_x = min(width - 16.0, end_x + channel_offset)
+                else:
+                    start_x = source[0] + node_width
+                    source_channel_x = target_channel_x = min(
+                        width - 16.0, start_x + channel_offset
+                    )
+                feedback_channel_segments.extend(
+                    ((source_channel_x, start_y), (target_channel_x, end_y))
+                )
+
+        def clear_feedback_channels(
+            center_x: float, label_width: int, label_height: int, corridor_y: float
+        ) -> float:
+            half_width = label_width / 2
+            half_height = label_height / 2
+            adjusted_x = center_x
+            for channel_x, endpoint_y in sorted(feedback_channel_segments):
+                if corridor_y + half_height < endpoint_y:
+                    continue
+                if (
+                    adjusted_x - half_width < channel_x + 8
+                    and adjusted_x + half_width > channel_x - 8
+                ):
+                    left_x = channel_x - 8 - half_width
+                    right_x = channel_x + 8 + half_width
+                    candidates = [
+                        candidate
+                        for candidate in (left_x, right_x)
+                        if half_width + 8 <= candidate <= width - half_width - 8
+                    ]
+                    if candidates:
+                        adjusted_x = min(
+                            candidates, key=lambda candidate: abs(candidate - adjusted_x)
+                        )
+            return adjusted_x
+
         required_right = float(width)
-        for items in row_corridor_groups.values():
-            if len(items) <= 1:
+        for corridor_y, items in row_corridor_groups.items():
+            adjusted_items = []
+            for natural_x, edge_id, label_width, label_height in items:
+                adjusted_x = clear_feedback_channels(
+                    natural_x, label_width, label_height, corridor_y
+                )
+                if adjusted_x != natural_x:
+                    row_corridor_label_x[edge_id] = adjusted_x
+                adjusted_items.append(
+                    (adjusted_x, edge_id, label_width, label_height)
+                )
+            if len(adjusted_items) <= 1:
+                if adjusted_items:
+                    natural_x, _, label_width, _ = adjusted_items[0]
+                    required_right = max(
+                        required_right, natural_x + label_width / 2 + _PAGE_MARGIN
+                    )
                 continue
             previous_right: float | None = None
             for natural_x, edge_id, label_width, _ in sorted(
-                items, key=lambda item: (item[0], item[1])
+                adjusted_items, key=lambda item: (item[0], item[1])
             ):
                 packed_x = natural_x
                 if (
@@ -2355,6 +2425,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         default=0.0,
     )
     if intent == "process":
+        process_lane_ranks = _stable_lane_ranks(model)
         long_branch_ids = _process_long_branch_ids(
             model, positions, process_row_gap=process_row_gap
         )
@@ -2496,6 +2567,82 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                         cursor_y += label_height + 8
                 else:
                     unsafe_adjacent_branches.update(item[1] for item in cluster)
+                    unsafe_corridors.add(corridor)
+
+        # Short labels may be horizontally disjoint from one another while still
+        # masking a sibling branch line. Prefer the branch's own vertical lane
+        # inside the existing row gap; only fall back to the outer gutter when
+        # the gap cannot provide real clearance.
+        def adjacent_route_y(edge_id: str, corridor: tuple[int, int]) -> float:
+            count = process_adjacent_count.get(edge_id, 0)
+            slot = process_adjacent_slot.get(edge_id)
+            if slot is not None and count > 1:
+                centered_slot = slot - (count - 1) / 2
+                lane = int(centered_slot * _PROCESS_LANE_STEP)
+            else:
+                lane = (
+                    (process_lane_ranks[edge_id] % 5) - 2
+                ) * _PROCESS_LANE_STEP
+            lane_offset = max(-8.0, min(8.0, lane / 2))
+            return (corridor[0] + corridor[1]) / 2 + lane_offset
+
+        for corridor, items in corridor_groups.items():
+            corridor_center = (corridor[0] + corridor[1]) / 2
+            movable_items = [item for item in items if not item[4]]
+            for natural_x, edge_id, label_width, label_height, _ in movable_items:
+                if edge_id in process_adjacent_label_y:
+                    continue
+                edge = edges_by_id[edge_id]
+                half_width = label_width / 2
+                half_height = label_height / 2
+                label_left = natural_x - half_width
+                label_right = natural_x + half_width
+                endpoints = {str(edge["from"]), str(edge["to"])}
+                own_route_y = adjacent_route_y(edge_id, corridor)
+                lower_bound = corridor[0] + half_height + 2
+                upper_bound = corridor[1] - half_height - 2
+                masks_peer = False
+                for _, peer_id, _, _, _ in movable_items:
+                    if peer_id == edge_id:
+                        continue
+                    peer = edges_by_id[peer_id]
+                    if not endpoints.intersection(
+                        {str(peer["from"]), str(peer["to"])}
+                    ):
+                        continue
+                    peer_source = positions[str(peer["from"])]
+                    peer_target = positions[str(peer["to"])]
+                    peer_left = min(peer_source[0], peer_target[0]) + _NODE_WIDTH / 2
+                    peer_right = max(peer_source[0], peer_target[0]) + _NODE_WIDTH / 2
+                    if label_right <= peer_left or label_left >= peer_right:
+                        continue
+                    peer_route_y = adjacent_route_y(peer_id, corridor)
+                    if not (
+                        corridor_center - half_height
+                        < peer_route_y
+                        < corridor_center + half_height
+                    ):
+                        continue
+                    masks_peer = True
+                    if own_route_y < peer_route_y:
+                        upper_bound = min(
+                            upper_bound, peer_route_y - half_height - 2
+                        )
+                    elif own_route_y > peer_route_y:
+                        lower_bound = max(
+                            lower_bound, peer_route_y + half_height + 2
+                        )
+                    else:
+                        lower_bound = upper_bound + 1
+                        break
+                if not masks_peer:
+                    continue
+                if lower_bound <= upper_bound:
+                    process_adjacent_label_y[edge_id] = min(
+                        max(own_route_y, lower_bound), upper_bound
+                    )
+                else:
+                    unsafe_adjacent_branches.add(edge_id)
                     unsafe_corridors.add(corridor)
 
         if unsafe_adjacent_branches:

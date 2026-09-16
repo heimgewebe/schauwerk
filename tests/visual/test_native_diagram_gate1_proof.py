@@ -152,6 +152,64 @@ def test_system_landscape_paths_do_not_enter_unrelated_cards() -> None:
         )
 
 
+def _edge_group(root: ET.Element, edge_id: str) -> ET.Element:
+    return next(
+        edge
+        for edge in root.iter()
+        if edge.attrib.get("data-source-kind") == "edge"
+        and edge.attrib.get("data-source-id") == edge_id
+    )
+
+
+def _assert_path_clears_label(
+    root: ET.Element, path_edge_id: str, label_edge_id: str, *, clearance: float = 1.0
+) -> None:
+    path_edge = _edge_group(root, path_edge_id)
+    label_edge = _edge_group(root, label_edge_id)
+    path = path_edge.find(f"{{{SVG_NAMESPACE}}}path")
+    label = label_edge.find(f"{{{SVG_NAMESPACE}}}rect")
+    assert path is not None
+    assert label is not None
+    x, y, width, height = _rect_box(label)
+    expanded = (
+        x - clearance,
+        y - clearance,
+        width + 2 * clearance,
+        height + 2 * clearance,
+    )
+    ex, ey, ew, eh = expanded
+    for px, py in _path_points(path.attrib["d"]):
+        assert not (ex < px < ex + ew and ey < py < ey + eh), (
+            f"{path_edge_id} is masked by {label_edge_id} near {(px, py)}"
+        )
+
+
+def test_gate1_edge_labels_do_not_mask_unrelated_routes() -> None:
+    cases = {
+        "system-landscape-v1.json": (("land09", "land02"),),
+        "decision-flow-v1.json": (
+            ("flow04", "flow06"),
+            ("flow06", "flow04"),
+        ),
+    }
+    for fixture_name, pairs in cases.items():
+        raw = _load(fixture_name)
+        candidates = [copy.deepcopy(raw), copy.deepcopy(raw)]
+        candidates[1]["edges"] = list(reversed(candidates[1]["edges"]))
+        observations = []
+        for candidate in candidates:
+            root = ET.fromstring(render_native_diagram(candidate))
+            for path_edge_id, label_edge_id in pairs:
+                _assert_path_clears_label(root, path_edge_id, label_edge_id)
+            observations.append(
+                {
+                    edge_id: _rect_box(_edge_group(root, edge_id).find(f"{{{SVG_NAMESPACE}}}rect"))
+                    for _, edge_id in pairs
+                }
+            )
+        assert observations[0] == observations[1]
+
+
 def test_gate1_narrative_cubic_relations_are_exact_and_deterministic() -> None:
     raw = _load("narrative-journey-v1.json")
     rendered = render_native_diagram(raw)
