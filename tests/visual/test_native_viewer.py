@@ -124,6 +124,25 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "touch-action: none" in styles
 
 
+def test_native_viewer_title_markers_cannot_capture_svg_template_slot(
+    tmp_path: Path,
+) -> None:
+    raw = _load()
+    raw["title"] = "Marker __SCHAUWERK_NATIVE_SVG__ and __SCHAUWERK_NATIVE_TITLE__"
+    output = tmp_path / "viewer"
+
+    build_native_viewer(raw, output)
+
+    index = (output / "index.html").read_text(encoding="utf-8")
+    assert f"<title>{raw['title']}</title>" in index
+    assert f"<strong>{raw['title']}</strong>" in index
+    assert (
+        '<div class="native-canvas" id="nativeCanvas">\n'
+        '<svg id="nativeDiagram" class="native-diagram" ' in index
+    )
+    assert index.count('<svg id="nativeDiagram" class="native-diagram" ') == 1
+
+
 def test_native_viewer_canonical_svg_materializes_stable_source_ids(tmp_path: Path) -> None:
     raw = _load()
     output = tmp_path / "viewer"

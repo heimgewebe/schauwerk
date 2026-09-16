@@ -11,6 +11,7 @@ import hashlib
 import html
 import json
 import os
+import re
 import shutil
 from collections.abc import Mapping
 from functools import partial
@@ -66,11 +67,14 @@ def _inline_svg(svg: str) -> str:
 def _render_index(*, title: str, svg: str) -> str:
     if INDEX_HTML.count(_SVG_MARKER) != 1 or INDEX_HTML.count(_TITLE_MARKER) != 2:
         raise NativeViewerError("native viewer HTML template markers drifted")
-    return INDEX_HTML.replace(_TITLE_MARKER, html.escape(title)).replace(
-        _SVG_MARKER,
-        _inline_svg(svg),
-        1,
+    replacements = {
+        _TITLE_MARKER: html.escape(title),
+        _SVG_MARKER: _inline_svg(svg),
+    }
+    marker_pattern = re.compile(
+        "|".join(re.escape(marker) for marker in replacements)
     )
+    return marker_pattern.sub(lambda match: replacements[match.group(0)], INDEX_HTML)
 
 
 def _file_record(path: Path, root: Path) -> dict[str, object]:
