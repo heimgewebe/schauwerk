@@ -992,6 +992,46 @@ def _preserve_same_row_process_feedback_return(
     )
 
 
+def _midpoint(
+    first: tuple[float, float], second: tuple[float, float]
+) -> tuple[float, float]:
+    return ((first[0] + second[0]) / 2, (first[1] + second[1]) / 2)
+
+
+def _cubic_hull_intersects_box(
+    points: tuple[
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+    ],
+    box: tuple[float, float, float, float],
+    *,
+    depth: int = 0,
+) -> bool:
+    left, top, width, height = box
+    right = left + width
+    bottom = top + height
+    xs = [point[0] for point in points]
+    ys = [point[1] for point in points]
+    if max(xs) <= left or min(xs) >= right or max(ys) <= top or min(ys) >= bottom:
+        return False
+    if depth >= 12 or (max(xs) - min(xs) <= 0.5 and max(ys) - min(ys) <= 0.5):
+        return True
+    p0, p1, p2, p3 = points
+    p01 = _midpoint(p0, p1)
+    p12 = _midpoint(p1, p2)
+    p23 = _midpoint(p2, p3)
+    p012 = _midpoint(p01, p12)
+    p123 = _midpoint(p12, p23)
+    center = _midpoint(p012, p123)
+    return _cubic_hull_intersects_box(
+        (p0, p01, p012, center), box, depth=depth + 1
+    ) or _cubic_hull_intersects_box(
+        (center, p123, p23, p3), box, depth=depth + 1
+    )
+
+
 def _edge_geometry(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -1019,6 +1059,7 @@ def _edge_geometry(
     feedback_label_y: float | None = None,
     max_node_bottom: float = 0.0,
     preserve_same_row_feedback_footer: bool = True,
+    obstacle_positions: Sequence[tuple[int, int]] = (),
 ) -> tuple[str, float, float, str]:
     source_x, source_y = source
     target_x, target_y = target
@@ -1500,6 +1541,71 @@ def _edge_geometry(
         control_one = (start_x - reach, start_y + lane)
         control_two = (end_x + reach, end_y + lane)
 
+    if (
+        route == "standard"
+        and intent == "knowledge_map"
+        and source_y != target_y
+        and abs(source_y - target_y) <= _NODE_HEIGHT + non_process_row_gap
+    ):
+        upper_bottom = min(source_y, target_y) + _NODE_HEIGHT
+        lower_top = max(source_y, target_y)
+        vertical_clearance = lower_top - upper_bottom
+        default_points = (
+            (float(start_x), float(start_y)),
+            (float(control_one[0]), float(control_one[1])),
+            (float(control_two[0]), float(control_two[1])),
+            (float(end_x), float(end_y)),
+        )
+        blocking_boxes = [
+            (float(x), float(y), float(node_width), float(_NODE_HEIGHT))
+            for x, y in obstacle_positions
+            if _cubic_hull_intersects_box(
+                default_points,
+                (float(x), float(y), float(node_width), float(_NODE_HEIGHT)),
+            )
+        ]
+        if vertical_clearance >= label_height + 8 and blocking_boxes:
+            corridor_y = (upper_bottom + lower_top) / 2
+            route = "knowledge-map-card-safe"
+            if source_x < target_x:
+                # Keep the detour inside the whitespace between adjacent rows.
+                # A small inset from the card boundary leaves visible clearance
+                # for labels that legitimately occupy the same row gap.
+                clearance = 8.0
+                lower_safe_y = lower_top - clearance
+                upper_safe_y = upper_bottom + 6.0
+                blocking_left = min(box[0] for box in blocking_boxes)
+                blocking_right = max(box[0] + box[2] for box in blocking_boxes)
+                bridge_start_x = max(start_x + 52.0, blocking_left - clearance)
+                bridge_end_x = min(end_x - 52.0, blocking_right + clearance)
+                if bridge_end_x - bridge_start_x > 96.0:
+                    approach_reach = max(52.0, (bridge_start_x - start_x) * 0.42)
+                    exit_reach = max(36.0, (end_x - bridge_end_x) * 0.45)
+                    shelf_in_x = bridge_start_x + 40.0
+                    shelf_out_x = bridge_end_x - 40.0
+                    path = (
+                        f"M {start_x:.1f} {start_y:.1f} "
+                        f"C {start_x + approach_reach:.1f} {start_y:.1f}, "
+                        f"{bridge_start_x - approach_reach:.1f} {lower_safe_y:.1f}, "
+                        f"{bridge_start_x:.1f} {lower_safe_y:.1f} "
+                        f"C {bridge_start_x + 12.0:.1f} {lower_safe_y:.1f}, "
+                        f"{bridge_start_x + 24.0:.1f} {upper_safe_y:.1f}, "
+                        f"{shelf_in_x:.1f} {upper_safe_y:.1f} "
+                        f"L {shelf_out_x:.1f} {upper_safe_y:.1f} "
+                        f"C {bridge_end_x - 24.0:.1f} {upper_safe_y:.1f}, "
+                        f"{bridge_end_x - 12.0:.1f} {lower_safe_y:.1f}, "
+                        f"{bridge_end_x:.1f} {lower_safe_y:.1f} "
+                        f"C {bridge_end_x + exit_reach:.1f} {lower_safe_y:.1f}, "
+                        f"{end_x - exit_reach:.1f} {end_y:.1f}, "
+                        f"{end_x:.1f} {end_y:.1f}"
+                    )
+                    return path, (start_x + end_x) / 2, corridor_y, route
+
+            direction = 1.0 if target_y > source_y else -1.0
+            excursion = max(40.0, min(96.0, abs(end_y - start_y) * 0.34))
+            control_one = (start_x, corridor_y + direction * excursion)
+            control_two = (end_x, corridor_y - direction * excursion)
+
     control_one_x, control_one_y = control_one
     control_two_x, control_two_y = control_two
     path = (
@@ -1642,6 +1748,11 @@ def _render_edge(
         feedback_label_y=feedback_label_y,
         max_node_bottom=max_node_bottom,
         preserve_same_row_feedback_footer=preserve_same_row_feedback_footer,
+        obstacle_positions=tuple(
+            position
+            for node_id, position in positions.items()
+            if node_id not in {str(edge["from"]), str(edge["to"])}
+        ),
     )
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
     path_opacity_attribute = (

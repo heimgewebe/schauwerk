@@ -36,6 +36,122 @@ def _boxes_overlap(
     return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
 
 
+def _path_points(path: str) -> list[tuple[float, float]]:
+    tokens = re.findall(r"[MCL]|-?[0-9.]+", path)
+    points: list[tuple[float, float]] = []
+    current = (0.0, 0.0)
+    index = 0
+    while index < len(tokens):
+        command = tokens[index]
+        index += 1
+        if command == "M":
+            current = (float(tokens[index]), float(tokens[index + 1]))
+            index += 2
+            points.append(current)
+        elif command == "L":
+            target = (float(tokens[index]), float(tokens[index + 1]))
+            index += 2
+            start = current
+            points.extend(
+                (
+                    start[0] + (target[0] - start[0]) * step / 128,
+                    start[1] + (target[1] - start[1]) * step / 128,
+                )
+                for step in range(1, 129)
+            )
+            current = target
+        elif command == "C":
+            control_one = (float(tokens[index]), float(tokens[index + 1]))
+            control_two = (float(tokens[index + 2]), float(tokens[index + 3]))
+            target = (float(tokens[index + 4]), float(tokens[index + 5]))
+            index += 6
+            start = current
+            for step in range(1, 257):
+                t = step / 256
+                u = 1 - t
+                points.append(
+                    (
+                        u**3 * start[0]
+                        + 3 * u * u * t * control_one[0]
+                        + 3 * u * t * t * control_two[0]
+                        + t**3 * target[0],
+                        u**3 * start[1]
+                        + 3 * u * u * t * control_one[1]
+                        + 3 * u * t * t * control_two[1]
+                        + t**3 * target[1],
+                    )
+                )
+            current = target
+        else:
+            raise AssertionError(f"unsupported SVG path command: {command}")
+    return points
+
+
+def test_system_landscape_paths_do_not_enter_unrelated_cards() -> None:
+    raw = _load("system-landscape-v1.json")
+    rendered = render_native_diagram(raw)
+    assert rendered == render_native_diagram(copy.deepcopy(raw))
+    root = ET.fromstring(rendered)
+    source_edges = {edge["id"]: edge for edge in raw["edges"]}
+    node_boxes: dict[str, tuple[float, float, float, float]] = {}
+    for node in root.iter():
+        if node.attrib.get("data-source-kind") != "node":
+            continue
+        rect = node.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        node_boxes[node.attrib["data-source-id"]] = _rect_box(rect)
+
+    for edge in root.iter():
+        edge_id = edge.attrib.get("data-source-id")
+        if edge.attrib.get("data-source-kind") != "edge" or edge_id is None:
+            continue
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        source = source_edges[edge_id]
+        unrelated = {
+            node_id: box
+            for node_id, box in node_boxes.items()
+            if node_id not in {source["from"], source["to"]}
+        }
+        for px, py in _path_points(path.attrib["d"]):
+            assert all(
+                not (x < px < x + width and y < py < y + height)
+                for x, y, width, height in unrelated.values()
+            ), f"{edge_id} enters an unrelated card near {(px, py)}"
+
+    land08 = next(
+        edge
+        for edge in root.iter()
+        if edge.attrib.get("data-source-kind") == "edge"
+        and edge.attrib.get("data-source-id") == "land08"
+    )
+    assert land08.attrib["data-route"] == "knowledge-map-card-safe"
+
+    land08_path = land08.find(f"{{{SVG_NAMESPACE}}}path")
+    assert land08_path is not None
+    land05 = next(
+        edge
+        for edge in root.iter()
+        if edge.attrib.get("data-source-kind") == "edge"
+        and edge.attrib.get("data-source-id") == "land05"
+    )
+    land05_label = land05.find(f"{{{SVG_NAMESPACE}}}rect")
+    assert land05_label is not None
+    label_x, label_y, label_width, label_height = _rect_box(land05_label)
+    clearance = 4.0
+    expanded_label = (
+        label_x - clearance,
+        label_y - clearance,
+        label_width + 2 * clearance,
+        label_height + 2 * clearance,
+    )
+    for px, py in _path_points(land08_path.attrib["d"]):
+        x, y, width, height = expanded_label
+        assert not (x < px < x + width and y < py < y + height), (
+            f"land08 lacks visual clearance from land05 label near {(px, py)}"
+        )
+
+
 def test_gate1_narrative_cubic_relations_are_exact_and_deterministic() -> None:
     raw = _load("narrative-journey-v1.json")
     rendered = render_native_diagram(raw)
