@@ -33,6 +33,8 @@ Für gruppierte `knowledge_map`-Eingaben ist eine allgemeine Routing-/Occupancy-
 
 Diese Präzisierung dokumentiert die vor dem finalen Merge-Gate getroffene Scope-Entscheidung; sie erweitert weder die drei Acceptance-Fälle noch schwächt sie deren technische oder visuelle Anforderungen ab.
 
+Für Gate 1 ist Determinismus an die **exakt normalisierte Repräsentationseingabe** gebunden. `validate_representation_input` bewahrt die deklarierte Reihenfolge von Gruppen, Knoten und Kanten und bindet sie in `input_digest`; eine Permutation dieser Listen ist deshalb eine andere Source-Identität und keine alternative Serialisierung derselben digestgebundenen Eingabe. Die Renderer-Zusage lautet entsprechend: dieselbe normalisierte Eingabe erzeugt dieselben SVG-Bytes. Einzelne Reorder-Regressionstests, insbesondere für Kantenrouting, prüfen bewusst stärkere lokale Robustheit, begründen aber keine allgemeine Permutationsäquivalenz für Knoten- oder Gruppenreihenfolgen. Gate 1 führt damit weder eine neue Sortiersemantik noch eine zweite Layoutautorität ein.
+
 Jeder Fall muss alle Source-Knoten und Source-Kanten im SVG rücklesbar materialisieren. Die Prüfung umfasst außerdem deterministische Bytes, valides SVG, Text-Escaping, gruppierte Regionen, gekrümmte Beziehungen und eine vollständig lokale, inaktive Ausgabe ohne Skripte, externe Ressourcen, Links oder Laufzeitabhängigkeit.
 
 ## Experimentelles Rendererprofil

@@ -23,6 +23,26 @@ def _load(name: str) -> dict:
     return json.loads((GOLDEN_ROOT / name).read_text(encoding="utf-8"))
 
 
+def test_gate1_node_order_is_bound_source_identity_not_permutation_equivalence() -> None:
+    for fixture_name in GOLDEN_FILES:
+        raw = _load(fixture_name)
+        normalized = validate_representation_input(raw)
+        permuted = copy.deepcopy(raw)
+        permuted["nodes"] = list(reversed(permuted["nodes"]))
+        normalized_permuted = validate_representation_input(permuted)
+
+        assert [node["id"] for node in normalized["nodes"]] == [
+            node["id"] for node in raw["nodes"]
+        ]
+        assert [node["id"] for node in normalized_permuted["nodes"]] == [
+            node["id"] for node in permuted["nodes"]
+        ]
+        assert normalized["input_digest"] != normalized_permuted["input_digest"]
+        assert render_native_diagram(normalized) == render_native_diagram(
+            validate_representation_input(copy.deepcopy(raw))
+        )
+
+
 def _rect_box(rect: ET.Element) -> tuple[float, float, float, float]:
     return tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
 
