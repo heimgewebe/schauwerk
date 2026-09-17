@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import threading
@@ -23,12 +24,19 @@ def _chrome() -> str | None:
     return None
 
 
+def _skip_or_fail_browser(message: str) -> None:
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        pytest.fail(message)
+    pytest.skip(message)
+
+
 def test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch(
     tmp_path: Path,
 ) -> None:
     chrome = _chrome()
     if chrome is None:
-        pytest.skip("Google Chrome is unavailable for native viewer browser regression")
+        _skip_or_fail_browser("Google Chrome is unavailable for native viewer browser regression")
+        raise AssertionError("unreachable")
 
     output = tmp_path / "viewer"
     build_native_viewer(json.loads(GOLDEN.read_text(encoding="utf-8")), output)
@@ -166,7 +174,8 @@ try {
                 timeout=15,
             )
         except subprocess.TimeoutExpired:
-            pytest.skip("Google Chrome headless probe did not become usable in time")
+            _skip_or_fail_browser("Google Chrome headless probe did not become usable in time")
+            raise AssertionError("unreachable")
     finally:
         server.shutdown()
         server.server_close()
