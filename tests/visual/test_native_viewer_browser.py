@@ -129,21 +129,37 @@ try {
     throw new Error("persisted node offset is invalid");
   }
 
-  const viewportRect = viewport.getBoundingClientRect();
-  const pinchY = viewportRect.top + viewportRect.height / 2;
-  const firstX = viewportRect.left + viewportRect.width / 2 - 50;
-  const secondX = viewportRect.left + viewportRect.width / 2 + 50;
-  firePointer(viewport, "pointerdown", 21, firstX, pinchY);
-  firePointer(viewport, "pointerdown", 22, secondX, pinchY);
-  firePointer(viewport, "pointermove", 22, secondX + 80, pinchY);
+  const takeoverStartTransform = node.getAttribute("transform") || "";
+  const takeoverRect = node.getBoundingClientRect();
+  const takeoverX = (takeoverRect.left + takeoverRect.right) / 2;
+  const takeoverY = (takeoverRect.top + takeoverRect.bottom) / 2;
+  firePointer(node, "pointerdown", 21, takeoverX, takeoverY);
+  firePointer(viewport, "pointermove", 21, takeoverX + 80, takeoverY);
+  const duringDragTransform = node.getAttribute("transform") || "";
+  if (duringDragTransform === takeoverStartTransform) {
+    throw new Error("node did not move before pinch takeover");
+  }
+
+  const secondX = takeoverX + 200;
+  const secondY = takeoverY + 40;
+  firePointer(viewport, "pointerdown", 22, secondX, secondY);
+  const rollbackTransform = node.getAttribute("transform") || "";
+  if (rollbackTransform !== takeoverStartTransform) {
+    throw new Error("pinch takeover did not roll node drag back to its original offset");
+  }
+
+  firePointer(viewport, "pointermove", 22, secondX + 80, secondY);
   const afterPinch = canvas.style.transform;
-  firePointer(viewport, "pointerup", 22, secondX + 80, pinchY);
-  firePointer(viewport, "pointermove", 21, firstX + 100, pinchY + 50);
+  firePointer(viewport, "pointerup", 22, secondX + 80, secondY);
+  firePointer(viewport, "pointermove", 21, takeoverX + 180, takeoverY + 50);
   const afterRemainingPointerPan = canvas.style.transform;
   if (afterRemainingPointerPan === afterPinch) {
     throw new Error("remaining pointer did not transition from pinch to pan");
   }
-  firePointer(viewport, "pointerup", 21, firstX + 100, pinchY + 50);
+  if ((node.getAttribute("transform") || "") !== rollbackTransform) {
+    throw new Error("old node drag resumed after pinch transitioned to one-finger pan");
+  }
+  firePointer(viewport, "pointerup", 21, takeoverX + 180, takeoverY + 50);
   document.documentElement.dataset.browserRegression = "pass";
 } catch (error) {
   document.documentElement.dataset.browserRegression = "fail";
