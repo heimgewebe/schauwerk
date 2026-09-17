@@ -454,8 +454,8 @@ function startPinchIfPossible() {
       overrides = updateNodeOffset(
         overrides,
         gesture.sourceId,
-        gesture.startOffset.x,
-        gesture.startOffset.y,
+        gesture.rollbackOffset.x,
+        gesture.rollbackOffset.y,
       );
       applyNodeTransform(gesture.sourceId);
     }
@@ -531,6 +531,7 @@ viewport.addEventListener("pointerdown", (event) => {
       startX: event.clientX,
       startY: event.clientY,
       startOffset,
+      rollbackOffset: startOffset,
       moved: false,
     };
     node.classList.add("is-dragging");
