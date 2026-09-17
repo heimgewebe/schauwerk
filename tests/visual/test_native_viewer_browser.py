@@ -55,6 +55,10 @@ localStorage.setItem(
   `schauwerk.native-viewer.layout.v1.${probeSvg.dataset.inputDigest}`,
   JSON.stringify({ [probeNode.dataset.sourceId]: { x: 10000, y: 0 } }),
 );
+window.__schauwerkOriginalStorageSetItem = Storage.prototype.setItem;
+Storage.prototype.setItem = function () {
+  throw new Error("blocked for startup repair probe");
+};
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
@@ -90,6 +94,12 @@ try {
   const viewport = document.querySelector("#nativeViewport");
   const canvas = document.querySelector("#nativeCanvas");
   const svg = document.querySelector("#nativeDiagram");
+  const status = document.querySelector("#status");
+  Storage.prototype.setItem = window.__schauwerkOriginalStorageSetItem;
+  if (!status?.textContent?.includes("Speichern nicht möglich")) {
+    throw new Error("startup repair persistence failure was hidden by fit status");
+  }
+
   const node = [...svg.querySelectorAll('[data-source-kind="node"]')]
     .sort(
       (left, right) =>
@@ -162,6 +172,7 @@ try {
   firePointer(viewport, "pointerup", 21, takeoverX + 180, takeoverY + 50);
   document.documentElement.dataset.browserRegression = "pass";
 } catch (error) {
+  Storage.prototype.setItem = window.__schauwerkOriginalStorageSetItem;
   document.documentElement.dataset.browserRegression = "fail";
   document.documentElement.dataset.browserRegressionError = String(error?.message || error);
 }
