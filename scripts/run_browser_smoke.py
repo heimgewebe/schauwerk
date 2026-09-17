@@ -8,9 +8,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-BROWSER_SMOKE_TEST = (
-    "tests/visual/test_standalone_editor.py::"
-    "test_canvas_import_browser_xml_validation_when_chrome_available"
+BROWSER_SMOKE_TESTS = (
+    (
+        "tests/visual/test_standalone_editor.py::"
+        "test_canvas_import_browser_xml_validation_when_chrome_available"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch"
+    ),
 )
 MAX_ATTEMPTS = 2
 
@@ -52,7 +58,7 @@ def main() -> int:
             env = os.environ.copy()
             env["PATH"] = f"{bin_dir}{os.pathsep}{env.get('PATH', '')}"
             completed = subprocess.run(
-                [sys.executable, "-m", "pytest", BROWSER_SMOKE_TEST, "-q"],
+                [sys.executable, "-m", "pytest", *BROWSER_SMOKE_TESTS, "-q"],
                 check=False,
                 env=env,
             )
