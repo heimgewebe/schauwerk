@@ -422,11 +422,11 @@ function contentSize() {
   return { width: box.width || svg.width.baseVal.value || 1, height: box.height || svg.height.baseVal.value || 1 };
 }
 
-function fit() {
+function fit({ announce = true } = {}) {
   const content = contentSize();
   view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
   applyView();
-  setStatus("Ansicht eingepasst · Semantik unverändert");
+  if (announce) setStatus("Ansicht eingepasst · Semantik unverändert");
 }
 
 function zoomBy(factor, anchor = null) {
@@ -582,7 +582,11 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startOffset.y + delta.y,
     );
     applyNodeTransform(gesture.sourceId);
-    constrainNodeToCanvas(gesture.sourceId);
+    if (constrainNodeToCanvas(gesture.sourceId)) {
+      gesture.startX = event.clientX;
+      gesture.startY = event.clientY;
+      gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
+    }
     setStatus("Layout lokal verändert · Semantik unverändert");
   }
 });
@@ -639,7 +643,7 @@ viewport.addEventListener("wheel", (event) => {
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
-fitButton.addEventListener("click", fit);
+fitButton.addEventListener("click", () => fit());
 resetLayout.addEventListener("click", () => {
   overrides = {};
   try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* no persistence */ }
@@ -651,8 +655,9 @@ window.addEventListener("keydown", (event) => {
 });
 
 requestAnimationFrame(() => {
-  if (constrainAllNodesToCanvas()) persistOverrides();
-  fit();
+  const repaired = constrainAllNodesToCanvas();
+  const repairPersisted = !repaired || persistOverrides();
+  fit({ announce: repairPersisted });
 });
 """
 
