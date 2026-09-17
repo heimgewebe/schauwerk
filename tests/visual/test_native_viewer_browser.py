@@ -1,5 +1,4 @@
 from __future__ import annotations
-# ruff: noqa: E501
 
 import json
 import shutil
@@ -84,9 +83,13 @@ try {
   const canvas = document.querySelector("#nativeCanvas");
   const svg = document.querySelector("#nativeDiagram");
   const node = [...svg.querySelectorAll('[data-source-kind="node"]')]
-    .sort((left, right) => right.getBoundingClientRect().right - left.getBoundingClientRect().right)[0];
+    .sort(
+      (left, right) =>
+        right.getBoundingClientRect().right - left.getBoundingClientRect().right,
+    )[0];
   if (!node) throw new Error("browser probe found no node");
-  if (![...svg.querySelectorAll('[data-source-kind="node"]')].every((item) => insideSvg(item, svg))) {
+  const allNodes = [...svg.querySelectorAll('[data-source-kind="node"]')];
+  if (!allNodes.every((item) => insideSvg(item, svg))) {
     throw new Error("persisted out-of-bounds layout was not repaired on load");
   }
 
@@ -98,8 +101,12 @@ try {
   firePointer(viewport, "pointerup", 11, nodeX + 2000, nodeY);
   if (!insideSvg(node, svg)) throw new Error("dragged node escaped SVG bounds");
 
-  const storageKeys = Object.keys(localStorage).filter((key) => key.startsWith("schauwerk.native-viewer.layout.v1."));
-  if (storageKeys.length !== 1) throw new Error("dragged node layout was not persisted exactly once");
+  const storageKeys = Object.keys(localStorage).filter(
+    (key) => key.startsWith("schauwerk.native-viewer.layout.v1."),
+  );
+  if (storageKeys.length !== 1) {
+    throw new Error("dragged node layout was not persisted exactly once");
+  }
   const stored = JSON.parse(localStorage.getItem(storageKeys[0]));
   const storedOffset = stored[node.dataset.sourceId];
   if (!storedOffset || !Number.isFinite(storedOffset.x) || !Number.isFinite(storedOffset.y)) {
