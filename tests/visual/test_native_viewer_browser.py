@@ -106,8 +106,16 @@ try {
   const nodeY = (nodeRect.top + nodeRect.bottom) / 2;
   firePointer(node, "pointerdown", 11, nodeX, nodeY);
   firePointer(viewport, "pointermove", 11, nodeX + 2000, nodeY);
-  firePointer(viewport, "pointerup", 11, nodeX + 2000, nodeY);
+  const clampedRect = node.getBoundingClientRect();
   if (!insideSvg(node, svg)) throw new Error("dragged node escaped SVG bounds");
+
+  firePointer(viewport, "pointermove", 11, nodeX + 1950, nodeY);
+  const reversedRect = node.getBoundingClientRect();
+  if (!(reversedRect.left < clampedRect.left - 20)) {
+    throw new Error("clamped node stayed sticky after reversing the active drag");
+  }
+  if (!insideSvg(node, svg)) throw new Error("reversed node escaped SVG bounds");
+  firePointer(viewport, "pointerup", 11, nodeX + 1950, nodeY);
 
   const storageKeys = Object.keys(localStorage).filter(
     (key) => key.startsWith("schauwerk.native-viewer.layout.v1."),
