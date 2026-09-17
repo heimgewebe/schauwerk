@@ -281,6 +281,7 @@ let selectedId = null;
 let gesture = null;
 const activePointers = new Map();
 const DRAG_THRESHOLD_PX = 4;
+const BOUNDS_EPSILON = 0.01;
 
 function setStatus(message) { status.textContent = message; }
 
@@ -324,6 +325,72 @@ function applyNodeTransform(sourceId) {
 
 function applyAllNodeTransforms() {
   for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
+}
+
+function nodeBoundsInSvg(node) {
+  const box = node.getBBox();
+  const nodeMatrix = node.getCTM();
+  const rootMatrix = svg.getCTM();
+  if (!nodeMatrix || !rootMatrix) return null;
+  let matrix;
+  try {
+    matrix = rootMatrix.inverse().multiply(nodeMatrix);
+  } catch (_) {
+    return null;
+  }
+  const corners = [
+    [box.x, box.y],
+    [box.x + box.width, box.y],
+    [box.x, box.y + box.height],
+    [box.x + box.width, box.y + box.height],
+  ].map(([x, y]) => {
+    const point = svg.createSVGPoint();
+    point.x = x;
+    point.y = y;
+    return point.matrixTransform(matrix);
+  });
+  return {
+    minX: Math.min(...corners.map((point) => point.x)),
+    maxX: Math.max(...corners.map((point) => point.x)),
+    minY: Math.min(...corners.map((point) => point.y)),
+    maxY: Math.max(...corners.map((point) => point.y)),
+  };
+}
+
+function constrainNodeToCanvas(sourceId) {
+  const node = nodes.get(sourceId);
+  if (!node) return false;
+  const bounds = nodeBoundsInSvg(node);
+  const box = svg.viewBox.baseVal;
+  if (!bounds || !(box.width > 0) || !(box.height > 0)) return false;
+  const width = bounds.maxX - bounds.minX;
+  const height = bounds.maxY - bounds.minY;
+  if (width > box.width + BOUNDS_EPSILON || height > box.height + BOUNDS_EPSILON) return false;
+
+  let shiftX = 0;
+  let shiftY = 0;
+  if (bounds.minX < box.x - BOUNDS_EPSILON) shiftX = box.x - bounds.minX;
+  else if (bounds.maxX > box.x + box.width + BOUNDS_EPSILON) {
+    shiftX = box.x + box.width - bounds.maxX;
+  }
+  if (bounds.minY < box.y - BOUNDS_EPSILON) shiftY = box.y - bounds.minY;
+  else if (bounds.maxY > box.y + box.height + BOUNDS_EPSILON) {
+    shiftY = box.y + box.height - bounds.maxY;
+  }
+  if (Math.abs(shiftX) <= BOUNDS_EPSILON && Math.abs(shiftY) <= BOUNDS_EPSILON) return false;
+
+  const current = nodeOffset(overrides, sourceId);
+  overrides = updateNodeOffset(overrides, sourceId, current.x + shiftX, current.y + shiftY);
+  applyNodeTransform(sourceId);
+  return true;
+}
+
+function constrainAllNodesToCanvas() {
+  let changed = false;
+  for (const sourceId of nodes.keys()) {
+    changed = constrainNodeToCanvas(sourceId) || changed;
+  }
+  return changed;
 }
 
 function selectNode(sourceId, { focus = false } = {}) {
@@ -438,7 +505,12 @@ viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   const point = localPoint(event);
   const node = nodeFromTarget(event.target);
-  activePointers.set(event.pointerId, { ...point, background: node === null });
+  activePointers.set(event.pointerId, {
+    ...point,
+    clientX: event.clientX,
+    clientY: event.clientY,
+    background: node === null,
+  });
   viewport.setPointerCapture(event.pointerId);
   event.preventDefault();
 
@@ -480,7 +552,12 @@ viewport.addEventListener("pointermove", (event) => {
   if (activePointers.has(event.pointerId)) {
     const point = localPoint(event);
     const prior = activePointers.get(event.pointerId);
-    activePointers.set(event.pointerId, { ...point, background: prior.background });
+    activePointers.set(event.pointerId, {
+      ...point,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      background: prior.background,
+    });
   }
   if (gesture?.kind === "pinch") {
     updatePinch();
@@ -505,6 +582,7 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startOffset.y + delta.y,
     );
     applyNodeTransform(gesture.sourceId);
+    constrainNodeToCanvas(gesture.sourceId);
     setStatus("Layout lokal verändert · Semantik unverändert");
   }
 });
@@ -523,7 +601,20 @@ function finishPointer(event) {
   } else if (endedGesture?.kind === "pan" && endedGesture.pointerId === event.pointerId) {
     gesture = null;
   } else if (endedGesture?.kind === "pinch" && activePointers.size < 2) {
-    gesture = null;
+    const remaining = activePointers.entries().next();
+    if (!remaining.done) {
+      const [pointerId, pointer] = remaining.value;
+      gesture = {
+        kind: "pan",
+        pointerId,
+        startX: pointer.clientX,
+        startY: pointer.clientY,
+        startView: { ...view },
+      };
+      viewport.classList.add("is-panning");
+    } else {
+      gesture = null;
+    }
   }
   if (!gesture) viewport.classList.remove("is-panning");
 }
@@ -559,7 +650,10 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") selectNode(null);
 });
 
-requestAnimationFrame(fit);
+requestAnimationFrame(() => {
+  if (constrainAllNodesToCanvas()) persistOverrides();
+  fit();
+});
 """
 
 ASSETS = {
