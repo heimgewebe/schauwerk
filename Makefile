@@ -1,7 +1,7 @@
 .PHONY: python-version-check lint compile-check test browser-smoke registry-validate validate
 
 PYTHON_CANDIDATES := python3 python python3.13 python3.12 python3.11
-BROWSER_SMOKE_TEST := test_canvas_import_browser_xml_validation_when_chrome_available
+BROWSER_SMOKE_FILTER := test_canvas_import_browser_xml_validation_when_chrome_available or test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch
 ifeq ($(origin PYTHON), undefined)
 ifneq ($(wildcard .venv/bin/python),)
 PYTHON := .venv/bin/python
@@ -31,12 +31,12 @@ compile-check: python-version-check
 registry-validate: python-version-check
 	$(PYTHON) -m schauwerk.registry_validation
 
-# The DOM/Chrome smoke test is browser-runtime coverage, not Python-version coverage.
-# CI runs the Python suite without it on every supported interpreter and executes the
+# The DOM/Chrome smoke tests are browser-runtime coverage, not Python-version coverage.
+# CI runs the Python suite without them on every supported interpreter and executes the
 # smoke once on Python 3.12 with a fresh Chrome profile and one bounded retry.
 test: python-version-check
 	@if [ -n "$(CI)" ]; then \
-		$(PYTHON) -m pytest -k 'not $(BROWSER_SMOKE_TEST)' || exit $$?; \
+		$(PYTHON) -m pytest -k 'not ($(BROWSER_SMOKE_FILTER))' || exit $$?; \
 		if $(PYTHON) -c 'import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)'; then \
 			$(MAKE) browser-smoke PYTHON="$(PYTHON)"; \
 		fi; \
