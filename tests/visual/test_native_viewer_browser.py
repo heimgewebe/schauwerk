@@ -99,6 +99,9 @@ try {
   if (!status?.textContent?.includes("Speichern nicht möglich")) {
     throw new Error("startup repair persistence failure was hidden by fit status");
   }
+  if (!canvas.style.transform || !canvas.style.transform.includes("scale(")) {
+    throw new Error("startup fit did not run after repair persistence failure");
+  }
 
   const node = [...svg.querySelectorAll('[data-source-kind="node"]')]
     .sort(
