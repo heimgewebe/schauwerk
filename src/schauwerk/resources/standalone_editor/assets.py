@@ -1049,16 +1049,22 @@ async function launchNative(load) {
     const result = await response.json();
     if (loadIntent !== loadIntentGeneration) return;
     if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+    const nativeUrl = String(result?.url || "");
+    const nativePrefix = `${PUBLIC_BASE_PATH}/native/`;
+    const nativeSuffix = "/index.html";
+    const nativeToken =
+      nativeUrl.startsWith(nativePrefix) && nativeUrl.endsWith(nativeSuffix)
+        ? nativeUrl.slice(nativePrefix.length, -nativeSuffix.length)
+        : "";
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
       !/^[0-9a-f]{64}$/.test(String(result.input_digest || "")) ||
-      String(result.url || "") !==
-        `${PUBLIC_BASE_PATH}/native/${result.input_digest}/index.html`
+      !/^[0-9a-f]{32}$/.test(nativeToken)
     ) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
-    currentNativeUrl = result.url;
+    currentNativeUrl = nativeUrl;
     if (!saveNativeDraft(currentRepresentation)) {
       setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
     }

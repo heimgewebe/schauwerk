@@ -278,7 +278,7 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         response = connection.getresponse()
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 200
-        assert body["url"] == f"/schaubild/native/{body['input_digest']}/index.html"
+        assert re.fullmatch(r"/schaubild/native/[0-9a-f]{32}/index\.html", body["url"])
 
         internal_viewer_path = body["url"].removeprefix("/schaubild")
         connection.request("GET", internal_viewer_path)
@@ -290,6 +290,37 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+def test_native_product_admission_rejects_excessive_graph_cardinality() -> None:
+    too_many_nodes = _golden_representation("decision-flow-v1.json")
+    too_many_nodes["groups"] = []
+    too_many_nodes["nodes"] = [
+        {"id": f"n{index}", "label": f"Node {index}", "kind": "concept"}
+        for index in range(standalone_editor.MAX_NATIVE_NODES + 1)
+    ]
+    too_many_nodes["edges"] = []
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(too_many_nodes)
+
+    too_many_edges = _golden_representation("decision-flow-v1.json")
+    too_many_edges["groups"] = []
+    too_many_edges["nodes"] = [
+        {"id": "source", "label": "Source", "kind": "concept"},
+        {"id": "target", "label": "Target", "kind": "concept"},
+    ]
+    too_many_edges["edges"] = [
+        {
+            "id": f"e{index}",
+            "from": "source",
+            "to": "target",
+            "label": f"Edge {index}",
+            "kind": "flow",
+        }
+        for index in range(standalone_editor.MAX_NATIVE_EDGES + 1)
+    ]
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(too_many_edges)
+
 
 def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge_map() -> None:
     process = _golden_representation("decision-flow-v1.json")
@@ -327,7 +358,7 @@ def test_native_render_endpoint_rejects_non_loopback_host_before_rendering(tmp_p
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 421
         assert body == {"error": "local Schaubild server accepts loopback Host headers only"}
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
@@ -413,7 +444,7 @@ def test_native_render_endpoint_returns_422_for_lone_unicode_surrogate(tmp_path:
         assert response.status == 422
         assert isinstance(body.get("error"), str)
         assert body["error"]
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
@@ -453,7 +484,7 @@ def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
         body = json.loads(raw_body)
         assert response.status == 422
         assert "unknown fields" in body["error"]
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
@@ -461,40 +492,21 @@ def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
         thread.join(timeout=5)
 
 
-def test_native_cache_prunes_lru_by_byte_budget(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    root = tmp_path / "editor"
-    native = root / "native"
-    native.mkdir(parents=True)
-    oldest = native / ("a" * 64)
-    newest = native / ("b" * 64)
-    for directory, payload in ((oldest, b"a" * 8), (newest, b"b" * 8)):
-        directory.mkdir()
-        (directory / "payload").write_bytes(payload)
-    os.utime(oldest, ns=(1, 1))
-    os.utime(newest, ns=(2, 2))
-
-    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 12)
-    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 10)
-    standalone_editor._prune_native_cache(root, keep=newest)
-
-    assert not oldest.exists()
-    assert newest.is_dir()
-
-
-def test_native_render_endpoint_evicts_oldest_bundle_when_entry_budget_is_full(
+def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
-    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
+
+    clock = [100.0]
+    monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 1)
     monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 64 * 1024 * 1024)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
 
     handler_class = type(
-        "BoundedCacheEditorRequestHandler",
+        "GraceBoundedCacheEditorRequestHandler",
         (_EditorRequestHandler,),
         {"editor_origin": EDITOR_ORIGIN},
     )
@@ -502,41 +514,86 @@ def test_native_render_endpoint_evicts_oldest_bundle_when_entry_budget_is_full(
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    digests: list[str] = []
     try:
         connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
-        for index in range(3):
-            representation = _golden_representation("decision-flow-v1.json")
-            representation["id"] = f"golden_decision_flow_{index}"
-            representation["title"] = f"Entscheidungsfluss {index}"
-            payload = json.dumps(representation).encode("utf-8")
-            connection.request(
-                "POST",
-                NATIVE_API_PATH,
-                body=payload,
-                headers={
-                    "Content-Type": "application/json",
-                    "Content-Length": str(len(payload)),
-                },
-            )
-            response = connection.getresponse()
-            body = json.loads(response.read().decode("utf-8"))
-            assert response.status == 200
-            digest = str(body["input_digest"])
-            digests.append(digest)
-            bundle = output / "native" / digest
-            assert bundle.is_dir()
-            os.utime(bundle, ns=(index + 1, index + 1))
+
+        first = _golden_representation("decision-flow-v1.json")
+        first["id"] = "first_flow"
+        first_payload = json.dumps(first).encode("utf-8")
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=first_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(first_payload)),
+            },
+        )
+        first_response = connection.getresponse()
+        first_body = json.loads(first_response.read().decode("utf-8"))
+        assert first_response.status == 200
+        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", first_body["url"])
+        first_url = str(first_body["url"])
+
+        clock[0] = 101.0
+        second = _golden_representation("decision-flow-v1.json")
+        second["id"] = "second_flow"
+        second_payload = json.dumps(second).encode("utf-8")
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=second_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(second_payload)),
+            },
+        )
+        pinned_response = connection.getresponse()
+        pinned_body = json.loads(pinned_response.read().decode("utf-8"))
+        assert pinned_response.status == 503
+        assert "temporarily pinned" in pinned_body["error"]
+
+        connection.request("GET", first_url)
+        first_viewer = connection.getresponse()
+        assert first_viewer.status == 200
+        assert 'id="nativeViewport"' in first_viewer.read().decode("utf-8")
+
+        clock[0] = 162.0
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=second_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(second_payload)),
+            },
+        )
+        second_response = connection.getresponse()
+        second_body = json.loads(second_response.read().decode("utf-8"))
+        assert second_response.status == 200
+        assert second_body["url"] != first_url
+
+        connection.request("GET", first_url)
+        evicted_response = connection.getresponse()
+        evicted_response.read()
+        assert evicted_response.status == 404
+
+        connection.request("GET", second_body["url"])
+        second_viewer = connection.getresponse()
+        assert second_viewer.status == 200
+        assert 'id="nativeViewport"' in second_viewer.read().decode("utf-8")
         connection.close()
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
 
-    assert not (output / "native" / digests[0]).exists()
-    assert (output / "native" / digests[1]).is_dir()
-    assert (output / "native" / digests[2]).is_dir()
-    assert len(list((output / "native").iterdir())) == 2
+    cache_root = output / ".native-cache"
+    assert cache_root.is_dir()
+    entries = list(cache_root.iterdir())
+    assert len(entries) == 1
+    assert first_body["input_digest"] not in entries[0].name
+
 
 
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
@@ -565,14 +622,20 @@ def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_p
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 200
         assert body["renderer"] == NATIVE_RENDERER
-        assert re.fullmatch(r"/native/[0-9a-f]{64}/index\.html", body["url"])
+        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", body["url"])
 
         connection.request("GET", body["url"])
         viewer_response = connection.getresponse()
         viewer_html = viewer_response.read().decode("utf-8")
         assert viewer_response.status == 200
         assert "id=\"nativeViewport\"" in viewer_html
-        assert (output / "native" / body["input_digest"] / "diagram.svg").is_file()
+
+        diagram_url = body["url"].replace("index.html", "diagram.svg")
+        connection.request("GET", diagram_url)
+        diagram_response = connection.getresponse()
+        diagram_svg = diagram_response.read().decode("utf-8")
+        assert diagram_response.status == 200
+        assert "<svg" in diagram_svg
 
         blocked = json.dumps(_golden_representation("system-landscape-v1.json")).encode("utf-8")
         connection.request(

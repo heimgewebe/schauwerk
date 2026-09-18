@@ -13,8 +13,12 @@ import ipaddress
 import json
 import os
 import re
+import secrets
 import shutil
+import tempfile
 import threading
+import time
+from dataclasses import dataclass
 from functools import partial
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -30,9 +34,14 @@ MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
+MAX_NATIVE_GROUPS: Final = 32
+MAX_NATIVE_NODES: Final = 128
+MAX_NATIVE_EDGES: Final = 256
+MAX_NATIVE_ROUTING_PAIRS: Final = 65_536
 MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
+NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
@@ -83,6 +92,10 @@ _HANDOFF_BUTTON_HTML: Final = (
 
 class StandaloneEditorError(ValueError):
     """Raised when a standalone editor build violates a local safety contract."""
+
+
+class NativeCacheCapacityError(StandaloneEditorError):
+    """Raised when all bounded cache capacity is temporarily pinned."""
 
 
 def _sha256(content: bytes) -> str:
@@ -304,6 +317,21 @@ def _native_product_input(value: Any) -> dict[str, Any]:
             "knowledge_map remains on the legacy compatibility path until the "
             "general native same-row/parallel routing boundary is hardened"
         )
+    group_count = len(normalized["groups"])
+    node_count = len(normalized["nodes"])
+    edge_count = len(normalized["edges"])
+    routing_pairs = edge_count * edge_count
+    if (
+        group_count > MAX_NATIVE_GROUPS
+        or node_count > MAX_NATIVE_NODES
+        or edge_count > MAX_NATIVE_EDGES
+        or routing_pairs > MAX_NATIVE_ROUTING_PAIRS
+    ):
+        raise StandaloneEditorError(
+            "native representation exceeds product complexity limits "
+            f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
+            f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+        )
     return normalized
 
 
@@ -414,6 +442,35 @@ def build_standalone_editor(
     return manifest
 
 
+@dataclass(slots=True)
+class _NativeCacheRecord:
+    root_key: str
+    digest: str
+    token: str
+    path: Path
+    size_bytes: int
+    last_access: float
+    pinned_until: float
+
+
+_NATIVE_CACHE_LOCK = threading.RLock()
+_NATIVE_CACHE_BY_DIGEST: dict[tuple[str, str], _NativeCacheRecord] = {}
+_NATIVE_CACHE_BY_TOKEN: dict[tuple[str, str], _NativeCacheRecord] = {}
+_NATIVE_BUNDLE_FILES: Final = {
+    "app.js": "app.js",
+    "diagram.svg": "diagram.svg",
+    "index.html": "index.html",
+    "interaction.js": "interaction.js",
+    "manifest.json": "manifest.json",
+    "representation.json": "representation.json",
+    "styles.css": "styles.css",
+}
+
+
+def _native_root_key(root: Path) -> str:
+    return str(root.resolve())
+
+
 def _native_bundle_size(path: Path) -> int:
     total = 0
     for entry in path.rglob("*"):
@@ -424,61 +481,146 @@ def _native_bundle_size(path: Path) -> int:
     return total
 
 
-def _native_cache_records(root: Path) -> list[tuple[int, str, Path, int]]:
-    native_root = root / "native"
-    if not native_root.exists():
-        return []
-    if native_root.is_symlink() or not native_root.is_dir():
-        raise StandaloneEditorError("native viewer cache root is unsafe")
-    records: list[tuple[int, str, Path, int]] = []
-    for entry in native_root.iterdir():
-        if (
-            entry.is_symlink()
-            or not entry.is_dir()
-            or re.fullmatch(r"[0-9a-f]{64}", entry.name) is None
-        ):
-            raise StandaloneEditorError("native viewer cache contains an unexpected entry")
-        records.append(
-            (entry.stat().st_mtime_ns, entry.name, entry, _native_bundle_size(entry))
-        )
+def _forget_native_cache_record(record: _NativeCacheRecord, *, remove_files: bool) -> None:
+    _NATIVE_CACHE_BY_DIGEST.pop((record.root_key, record.digest), None)
+    _NATIVE_CACHE_BY_TOKEN.pop((record.root_key, record.token), None)
+    if remove_files and record.path.exists():
+        if record.path.is_symlink() or not record.path.is_dir():
+            raise StandaloneEditorError("native viewer cache record path is unsafe")
+        shutil.rmtree(record.path)
+
+
+def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
+    root_key = _native_root_key(root)
+    records: list[_NativeCacheRecord] = []
+    for key, record in list(_NATIVE_CACHE_BY_DIGEST.items()):
+        if key[0] != root_key:
+            continue
+        if record.path.is_symlink() or not record.path.is_dir():
+            _forget_native_cache_record(record, remove_files=False)
+            continue
+        records.append(record)
     return records
 
 
-def _touch_native_bundle(path: Path) -> None:
-    if path.is_dir() and not path.is_symlink():
-        os.utime(path, None, follow_symlinks=False)
+def _pin_native_cache_record(record: _NativeCacheRecord) -> None:
+    now = time.monotonic()
+    record.last_access = now
+    record.pinned_until = max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS)
 
 
 def _prune_native_cache(
     root: Path,
     *,
-    keep: Path | None,
+    keep: _NativeCacheRecord | None,
     reserve_bytes: int = 0,
+    reserve_entries: int = 0,
 ) -> None:
-    records = _native_cache_records(root)
-    total = sum(item[3] for item in records)
-    keep_resolved = keep.resolve(strict=False) if keep is not None else None
-    candidates = sorted(
-        (
-            record
-            for record in records
-            if keep_resolved is None or record[2].resolve(strict=False) != keep_resolved
-        ),
-        key=lambda item: (item[0], item[1]),
-    )
-    while candidates and (
-        len(records) > MAX_NATIVE_CACHE_ENTRIES
-        or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
-    ):
-        victim = candidates.pop(0)
-        shutil.rmtree(victim[2])
-        total -= victim[3]
-        records.remove(victim)
-    if (
-        len(records) > MAX_NATIVE_CACHE_ENTRIES
-        or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
-    ):
-        raise StandaloneEditorError("native viewer cache budget is exhausted")
+    with _NATIVE_CACHE_LOCK:
+        records = _native_cache_records(root)
+        total = sum(item.size_bytes for item in records)
+        now = time.monotonic()
+        candidates = sorted(
+            (
+                record
+                for record in records
+                if record is not keep and record.pinned_until <= now
+            ),
+            key=lambda item: (item.last_access, item.token),
+        )
+        while candidates and (
+            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
+        ):
+            victim = candidates.pop(0)
+            _forget_native_cache_record(victim, remove_files=True)
+            total -= victim.size_bytes
+            records.remove(victim)
+        if (
+            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
+        ):
+            raise NativeCacheCapacityError(
+                "native viewer cache capacity is temporarily pinned; retry later"
+            )
+
+
+def _native_cache_by_digest(root: Path, digest: str) -> _NativeCacheRecord | None:
+    with _NATIVE_CACHE_LOCK:
+        record = _NATIVE_CACHE_BY_DIGEST.get((_native_root_key(root), digest))
+        if record is None:
+            return None
+        if record.path.is_symlink() or not record.path.is_dir():
+            _forget_native_cache_record(record, remove_files=False)
+            return None
+        return record
+
+
+def _native_cache_by_token(root: Path, token: str) -> _NativeCacheRecord | None:
+    with _NATIVE_CACHE_LOCK:
+        record = _NATIVE_CACHE_BY_TOKEN.get((_native_root_key(root), token))
+        if record is None:
+            return None
+        if record.path.is_symlink() or not record.path.is_dir():
+            _forget_native_cache_record(record, remove_files=False)
+            return None
+        return record
+
+
+def _build_native_cache_record(
+    root: Path,
+    *,
+    digest: str,
+    value: dict[str, Any],
+) -> _NativeCacheRecord:
+    with _NATIVE_CACHE_LOCK:
+        existing = _native_cache_by_digest(root, digest)
+        if existing is not None:
+            _pin_native_cache_record(existing)
+            return existing
+
+        _prune_native_cache(
+            root,
+            keep=None,
+            reserve_bytes=MAX_NATIVE_BUNDLE_BYTES,
+            reserve_entries=1,
+        )
+        cache_root = root / ".native-cache"
+        if cache_root.exists() and (cache_root.is_symlink() or not cache_root.is_dir()):
+            raise StandaloneEditorError("native viewer cache root is unsafe")
+        cache_root.mkdir(mode=0o700, exist_ok=True)
+        os.chmod(cache_root, 0o700)
+
+        token = secrets.token_hex(16)
+        while (_native_root_key(root), token) in _NATIVE_CACHE_BY_TOKEN:
+            token = secrets.token_hex(16)
+        target = Path(tempfile.mkdtemp(prefix="bundle-", dir=cache_root))
+        try:
+            build_native_viewer(value, target)
+            bundle_size = _native_bundle_size(target)
+            if bundle_size > MAX_NATIVE_BUNDLE_BYTES:
+                raise StandaloneEditorError(
+                    "native viewer bundle exceeds the 16 MiB cache budget"
+                )
+        except Exception:
+            if target.exists() and target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+            raise
+
+        now = time.monotonic()
+        record = _NativeCacheRecord(
+            root_key=_native_root_key(root),
+            digest=digest,
+            token=token,
+            path=target,
+            size_bytes=bundle_size,
+            last_access=now,
+            pinned_until=now + NATIVE_CACHE_GRACE_SECONDS,
+        )
+        _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
+        _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
+        _prune_native_cache(root, keep=record)
+        return record
 
 
 class _EditorRequestHandler(SimpleHTTPRequestHandler):
@@ -486,7 +628,6 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
     editor_origin: str = EDITOR_ORIGIN
     public_base_path: str = ""
-    native_build_lock = threading.Lock()
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -539,34 +680,60 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         )
         return True
 
-    def _native_request_bundle(self) -> Path | None:
+    def _native_request_parts(self) -> tuple[str, str] | None:
         path = urlsplit(self.path).path
-        match = re.match(r"^/native/([0-9a-f]{64})(?:/|$)", path)
+        if path.startswith("/.native-cache"):
+            return ("", "")
+        match = re.fullmatch(r"/native/([0-9a-f]{32})/([^/]+)", path)
         if match is None:
             return None
-        return Path(self.directory).resolve() / "native" / match.group(1)
+        filename = _NATIVE_BUNDLE_FILES.get(match.group(2))
+        if filename is None:
+            return ("", "")
+        return match.group(1), filename
+
+    def _serve_native_bundle(self, *, head_only: bool) -> bool:
+        parts = self._native_request_parts()
+        if parts is None:
+            return False
+        token, filename = parts
+        if not token or not filename:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+        root = Path(self.directory).resolve()
+        with _NATIVE_CACHE_LOCK:
+            record = _native_cache_by_token(root, token)
+            if record is None:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return True
+            _pin_native_cache_record(record)
+            original_directory = self.directory
+            original_path = self.path
+            self.directory = str(record.path)
+            self.path = f"/{filename}"
+            try:
+                if head_only:
+                    super().do_HEAD()
+                else:
+                    super().do_GET()
+            finally:
+                self.directory = original_directory
+                self.path = original_path
+        return True
 
     def do_GET(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host():
             return
-        bundle = self._native_request_bundle()
-        if bundle is None:
-            super().do_GET()
+        if self._serve_native_bundle(head_only=False):
             return
-        with self.native_build_lock:
-            _touch_native_bundle(bundle)
-            super().do_GET()
+        super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host(write_body=False):
             return
-        bundle = self._native_request_bundle()
-        if bundle is None:
-            super().do_HEAD()
+        if self._serve_native_bundle(head_only=True):
             return
-        with self.native_build_lock:
-            _touch_native_bundle(bundle)
-            super().do_HEAD()
+        super().do_HEAD()
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path != NATIVE_API_PATH:
@@ -604,30 +771,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             normalized = _native_product_input(value)
             digest = str(normalized["input_digest"])
             root = Path(self.directory).resolve()
-            target = root / "native" / digest
-            with self.native_build_lock:
-                if not target.exists():
-                    _prune_native_cache(
-                        root,
-                        keep=None,
-                        reserve_bytes=MAX_NATIVE_BUNDLE_BYTES,
-                    )
-                    try:
-                        build_native_viewer(value, target)
-                    except Exception:
-                        if target.exists():
-                            shutil.rmtree(target)
-                        raise
-                    bundle_size = _native_bundle_size(target)
-                    if bundle_size > MAX_NATIVE_BUNDLE_BYTES:
-                        shutil.rmtree(target)
-                        raise StandaloneEditorError(
-                            "native viewer bundle exceeds the 16 MiB cache budget"
-                        )
-                elif not (target / "manifest.json").is_file():
-                    raise StandaloneEditorError("native viewer cache is incomplete")
-                _touch_native_bundle(target)
-                _prune_native_cache(root, keep=target)
+            record = _build_native_cache_record(root, digest=digest, value=value)
+            token = record.token
+        except NativeCacheCapacityError as exc:
+            self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
+            return
         except (
             UnicodeDecodeError,
             UnicodeEncodeError,
@@ -643,7 +791,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             {
                 "input_digest": digest,
                 "renderer": NATIVE_RENDERER,
-                "url": f"{self.public_base_path}/native/{digest}/index.html",
+                "url": f"{self.public_base_path}/native/{token}/index.html",
             },
         )
 

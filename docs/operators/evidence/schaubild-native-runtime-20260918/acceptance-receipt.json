@@ -17,6 +17,10 @@
     "local_oci_build_passed": true,
     "main_candidate_sbom_and_provenance_enabled": true,
     "native_bundle_size_budget_enforced": true,
+    "native_cache_capacity_returns_503_while_all_entries_pinned": true,
+    "native_cache_paths_are_server_generated_not_input_derived": true,
+    "native_graph_cardinality_and_pair_work_bounded": true,
+    "native_viewer_bundle_grace_lease_enforced": true,
     "native_viewer_cache_bounded_and_lru_evicted": true,
     "nonloopback_bind_is_explicitly_gated": true,
     "prefixed_native_render_post_passed": true,
@@ -39,7 +43,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "41eaa3c9294af954ea9e6bfec1c437aa659ab4f50260f7c20ee14e27d4ff3136",
+  "evidence_digest": "9df16760f513fde9f131b14b8c26ac66c064838c3db37efb4c69460960d51a47",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -60,9 +64,9 @@
     ".dockerignore": "b030fe153338b40297ef4da11abbf9251c6144fbab943ef7d6f46f831aafe99d",
     ".github/workflows/native-schaubild-image.yml": "97527d0aee14a90555d02cde57393479c31b3e726c390d78335ed62816c27bce",
     "Dockerfile": "e4dfcf3fcac89121fa08969b1b4a6936c5513c67277097bd6316dff69452e216",
-    "scripts/ci/smoke-native-schaubild-runtime.sh": "8bb64383f5719b48a1792eb464f7d3d2c2c6054a508e846fc96f55d763685c35",
-    "src/schauwerk/resources/standalone_editor/assets.py": "cee5f8795654c357b41c5a35c2e1f38648dfd21aa292633f76215a54c0ea4f83",
-    "src/schauwerk/visual/standalone_editor.py": "34a6509cee8a50d8d595ab3a49c0648438acd79cdc8a072e95ae2391fce3fb5e",
-    "tests/visual/test_standalone_editor.py": "21bd6bd931d8329b96f2c14e21035da84baac2aa34fedd0f1c543dfc1ddc069e"
+    "scripts/ci/smoke-native-schaubild-runtime.sh": "042c0c357ae8e73f65805ffcb4354f2c2a89b97ababc1f4d0389475605b0bad0",
+    "src/schauwerk/resources/standalone_editor/assets.py": "77bc7897923d351d4ab4b759687e18a1d63d6246a5fddd6b6bb6b02e0b25320f",
+    "src/schauwerk/visual/standalone_editor.py": "64f0004e94c1dda7ab92782c28752cdd921d6c943e6a55556c2ff8270d7b479e",
+    "tests/visual/test_standalone_editor.py": "97d165bbc0bc865747cbe9d927a20199f3147529f0eede56c23b664537ad44ad"
   }
 }

@@ -38,11 +38,12 @@ curl --fail --silent \
 
 python - "$render_out" "$viewer_path_out" <<'PY'
 import json
+import re
 import sys
 from pathlib import Path
 result = json.loads(Path(sys.argv[1]).read_text())
 assert result["renderer"] == "schauwerk-native-diagram-v1"
-assert result["url"] == f"/schaubild/native/{result['input_digest']}/index.html"
+assert re.fullmatch(r"/schaubild/native/[0-9a-f]{32}/index\.html", result["url"])
 Path(sys.argv[2]).write_text(
     result["url"].removeprefix("/schaubild"),
     encoding="utf-8",
