@@ -349,16 +349,26 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Security-Policy", _content_security_policy(self.editor_origin))
         super().end_headers()
 
-    def _send_json(self, status: HTTPStatus, payload: dict[str, object]) -> None:
-        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    def _send_json(
+        self,
+        status: HTTPStatus,
+        payload: dict[str, object],
+        *,
+        write_body: bool = True,
+    ) -> None:
+        encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True).encode("ascii")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(encoded)
+        if write_body:
+            self.wfile.write(encoded)
 
     def _has_valid_loopback_host(self) -> bool:
-        raw_host = self.headers.get("Host")
+        raw_hosts = self.headers.get_all("Host", [])
+        if len(raw_hosts) != 1:
+            return False
+        raw_host = raw_hosts[0]
         if not raw_host or raw_host != raw_host.strip():
             return False
         host = raw_host.casefold()
@@ -368,17 +378,35 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             f"127.0.0.1:{port}",
             "localhost",
             f"localhost:{port}",
+            "[::1]",
+            f"[::1]:{port}",
         }
+
+    def _reject_non_loopback_host(self, *, write_body: bool = True) -> bool:
+        if self._has_valid_loopback_host():
+            return False
+        self._send_json(
+            HTTPStatus.MISDIRECTED_REQUEST,
+            {"error": "local Schaubild server accepts loopback Host headers only"},
+            write_body=write_body,
+        )
+        return True
+
+    def do_GET(self) -> None:  # noqa: N802
+        if self._reject_non_loopback_host():
+            return
+        super().do_GET()
+
+    def do_HEAD(self) -> None:  # noqa: N802
+        if self._reject_non_loopback_host(write_body=False):
+            return
+        super().do_HEAD()
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path != NATIVE_API_PATH:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
             return
-        if not self._has_valid_loopback_host():
-            self._send_json(
-                HTTPStatus.MISDIRECTED_REQUEST,
-                {"error": "native render endpoint accepts loopback Host headers only"},
-            )
+        if self._reject_non_loopback_host():
             return
         media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
         if media_type != "application/json":

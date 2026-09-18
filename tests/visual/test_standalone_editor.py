@@ -248,8 +248,57 @@ def test_native_render_endpoint_rejects_non_loopback_host_before_rendering(tmp_p
         response = connection.getresponse()
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 421
-        assert body == {"error": "native render endpoint accepts loopback Host headers only"}
+        assert body == {"error": "local Schaubild server accepts loopback Host headers only"}
         assert not (output / "native").exists()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_artifact_get_and_head_reject_non_loopback_host(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "ArtifactHostGuardEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        rendered = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        representation_path = rendered["url"].replace("index.html", "representation.json")
+
+        connection.putrequest("GET", representation_path, skip_host=True)
+        connection.putheader("Host", "attacker.example")
+        connection.endheaders()
+        get_response = connection.getresponse()
+        get_body = json.loads(get_response.read().decode("ascii"))
+        assert get_response.status == 421
+        assert get_body == {"error": "local Schaubild server accepts loopback Host headers only"}
+
+        connection.putrequest("HEAD", representation_path, skip_host=True)
+        connection.putheader("Host", "attacker.example")
+        connection.endheaders()
+        head_response = connection.getresponse()
+        assert head_response.status == 421
+        assert int(head_response.getheader("Content-Length", "0")) > 0
+        assert head_response.read() == b""
         connection.close()
     finally:
         server.shutdown()
@@ -286,6 +335,46 @@ def test_native_render_endpoint_returns_422_for_lone_unicode_surrogate(tmp_path:
         assert response.status == 422
         assert isinstance(body.get("error"), str)
         assert body["error"]
+        assert not (output / "native").exists()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "ErrorEncodingEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        representation = _golden_representation("decision-flow-v1.json")
+        representation["\ud800"] = "unexpected"
+        payload = json.dumps(representation).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        raw_body = response.read()
+        raw_body.decode("ascii")
+        body = json.loads(raw_body)
+        assert response.status == 422
+        assert "unknown fields" in body["error"]
         assert not (output / "native").exists()
         connection.close()
     finally:
