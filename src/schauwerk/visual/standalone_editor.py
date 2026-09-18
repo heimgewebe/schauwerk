@@ -506,13 +506,42 @@ def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
     return records
 
 
-def _pin_native_cache_record(record: _NativeCacheRecord) -> None:
+def _enforce_native_pin_reserve(root: Path, *, keep: _NativeCacheRecord) -> None:
+    with _NATIVE_CACHE_LOCK:
+        now = time.monotonic()
+        pinned = [
+            record
+            for record in _native_cache_records(root)
+            if record.pinned_until > now
+        ]
+        max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
+        max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
+        pinned_bytes = sum(record.size_bytes for record in pinned)
+        candidates = sorted(
+            (record for record in pinned if record is not keep),
+            key=lambda item: (item.last_access, item.token),
+        )
+        while candidates and (
+            len(pinned) > max_pinned_entries or pinned_bytes > max_pinned_bytes
+        ):
+            victim = candidates.pop(0)
+            victim.pinned_until = now
+            pinned.remove(victim)
+            pinned_bytes -= victim.size_bytes
+        if keep in pinned and (
+            len(pinned) > max_pinned_entries or pinned_bytes > max_pinned_bytes
+        ):
+            keep.pinned_until = now
+
+
+def _pin_native_cache_record(root: Path, record: _NativeCacheRecord) -> None:
     now = time.monotonic()
     record.last_access = now
     record.pinned_until = min(
         max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
         record.max_pinned_until,
     )
+    _enforce_native_pin_reserve(root, keep=record)
 
 
 def _prune_native_cache(
@@ -588,7 +617,7 @@ def _build_native_cache_record(
             if existing.max_pinned_until <= now:
                 _forget_native_cache_record(existing, remove_files=True)
             else:
-                _pin_native_cache_record(existing)
+                _pin_native_cache_record(root, existing)
                 return existing
 
         _prune_native_cache(
@@ -638,6 +667,7 @@ def _build_native_cache_record(
         )
         _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
         _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
+        _enforce_native_pin_reserve(root, keep=record)
         _prune_native_cache(root, keep=record)
         return record
 
@@ -751,7 +781,10 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             if record is None:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return True
-            _pin_native_cache_record(record)
+            if record.max_pinned_until <= time.monotonic():
+                self.send_error(HTTPStatus.GONE)
+                return True
+            _pin_native_cache_record(root, record)
             original_directory = self.directory
             original_path = self.path
             self.directory = str(record.path)

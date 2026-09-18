@@ -561,7 +561,7 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
         thread.join(timeout=5)
 
 
-def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
+def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -570,13 +570,13 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
 
     clock = [100.0]
     monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
-    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 1)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
     monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 64 * 1024 * 1024)
     monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
     monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
 
     handler_class = type(
-        "GraceBoundedCacheEditorRequestHandler",
+        "ReserveBoundedCacheEditorRequestHandler",
         (_EditorRequestHandler,),
         {"editor_origin": EDITOR_ORIGIN},
     )
@@ -587,98 +587,94 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
     try:
         connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
 
-        first = _golden_representation("decision-flow-v1.json")
-        first["id"] = "first_flow"
-        first_payload = json.dumps(first).encode("utf-8")
-        connection.request(
-            "POST",
-            NATIVE_API_PATH,
-            body=first_payload,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(first_payload)),
-            },
-        )
-        first_response = connection.getresponse()
-        first_body = json.loads(first_response.read().decode("utf-8"))
-        assert first_response.status == 200
-        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", first_body["url"])
-        first_url = str(first_body["url"])
+        def post(representation_id: str) -> tuple[int, dict[str, object]]:
+            value = _golden_representation("decision-flow-v1.json")
+            value["id"] = representation_id
+            payload = json.dumps(value).encode("utf-8")
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            return response.status, body
 
-        clock[0] = 101.0
-        second = _golden_representation("decision-flow-v1.json")
-        second["id"] = "second_flow"
-        second_payload = json.dumps(second).encode("utf-8")
-        connection.request(
-            "POST",
-            NATIVE_API_PATH,
-            body=second_payload,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(second_payload)),
-            },
-        )
-        pinned_response = connection.getresponse()
-        pinned_body = json.loads(pinned_response.read().decode("utf-8"))
-        assert pinned_response.status == 503
-        assert "temporarily pinned" in pinned_body["error"]
+        def record_for(url: str) -> standalone_editor._NativeCacheRecord:
+            match = re.fullmatch(r"/native/([0-9a-f]{32})/index\.html", url)
+            assert match is not None
+            record = standalone_editor._native_cache_by_token(output, match.group(1))
+            assert record is not None
+            return record
+
+        first_status, first_body = post("first_flow")
+        assert first_status == 200
+        first_url = str(first_body["url"])
+        first_record = record_for(first_url)
+        assert first_record.pinned_until == 160.0
+        assert first_record.max_pinned_until == 220.0
 
         clock[0] = 150.0
         connection.request("GET", first_url)
         first_viewer = connection.getresponse()
         assert first_viewer.status == 200
         assert 'id="nativeViewport"' in first_viewer.read().decode("utf-8")
+        assert first_record.pinned_until == 210.0
 
         clock[0] = 161.0
-        connection.request(
-            "POST",
-            NATIVE_API_PATH,
-            body=second_payload,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(second_payload)),
-            },
-        )
-        renewed_response = connection.getresponse()
-        renewed_body = json.loads(renewed_response.read().decode("utf-8"))
-        assert renewed_response.status == 503
-        assert "temporarily pinned" in renewed_body["error"]
+        second_status, second_body = post("second_flow")
+        assert second_status == 200
+        assert second_body["url"] != first_url
+        assert first_record.pinned_until == 161.0
 
         clock[0] = 200.0
         connection.request("GET", first_url)
         capped_viewer = connection.getresponse()
         assert capped_viewer.status == 200
         capped_viewer.read()
+        assert first_record.pinned_until == 220.0
+
+        clock[0] = 201.0
+        third_status, third_body = post("third_flow")
+        assert third_status == 200
+        assert third_body["url"] not in {first_url, second_body["url"]}
+        assert first_record.pinned_until == 201.0
 
         clock[0] = 221.0
         connection.request("GET", first_url)
-        expired_pin_viewer = connection.getresponse()
-        assert expired_pin_viewer.status == 200
-        expired_pin_viewer.read()
+        expired_viewer = connection.getresponse()
+        expired_viewer.read()
+        assert expired_viewer.status == 410
 
-        connection.request(
-            "POST",
-            NATIVE_API_PATH,
-            body=second_payload,
-            headers={
-                "Content-Type": "application/json",
-                "Content-Length": str(len(second_payload)),
-            },
-        )
-        second_response = connection.getresponse()
-        second_body = json.loads(second_response.read().decode("utf-8"))
-        assert second_response.status == 200
-        assert second_body["url"] != first_url
+        refreshed_status, refreshed_body = post("first_flow")
+        assert refreshed_status == 200
+        refreshed_url = str(refreshed_body["url"])
+        assert refreshed_body["input_digest"] == first_body["input_digest"]
+        assert refreshed_url != first_url
 
         connection.request("GET", first_url)
-        evicted_response = connection.getresponse()
-        evicted_response.read()
-        assert evicted_response.status == 404
+        old_token_response = connection.getresponse()
+        old_token_response.read()
+        assert old_token_response.status == 404
 
-        connection.request("GET", second_body["url"])
-        second_viewer = connection.getresponse()
-        assert second_viewer.status == 200
-        assert 'id="nativeViewport"' in second_viewer.read().decode("utf-8")
+        connection.request("GET", refreshed_url)
+        refreshed_viewer = connection.getresponse()
+        assert refreshed_viewer.status == 200
+        assert 'id="nativeViewport"' in refreshed_viewer.read().decode("utf-8")
+
+        clock[0] = 222.0
+        fourth_status, fourth_body = post("fourth_flow")
+        assert fourth_status == 200
+        assert fourth_body["url"] not in {
+            first_url,
+            second_body["url"],
+            third_body["url"],
+            refreshed_url,
+        }
         connection.close()
     finally:
         server.shutdown()
@@ -687,10 +683,7 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
 
     cache_root = output / ".native-cache"
     assert cache_root.is_dir()
-    entries = list(cache_root.iterdir())
-    assert len(entries) == 1
-    assert first_body["input_digest"] not in entries[0].name
-
+    assert len(list(cache_root.iterdir())) == 2
 
 
 def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(

@@ -18,7 +18,6 @@
     "local_oci_build_passed": true,
     "main_candidate_sbom_and_provenance_enabled": true,
     "native_bundle_size_budget_enforced": true,
-    "native_cache_capacity_returns_503_while_all_entries_pinned": true,
     "native_cache_paths_are_server_generated_not_input_derived": true,
     "native_graph_cardinality_and_pair_work_bounded": true,
     "native_viewer_bundle_grace_lease_enforced": true,
@@ -36,7 +35,9 @@
     "shared_runtime_smoke_helper_syntax_valid": true,
     "workflow_triggers_on_smoke_helper_changes": true,
     "native_cache_pin_absolute_lifetime_enforced": true,
-    "expired_same_digest_bundle_refreshes_token": true
+    "expired_same_digest_bundle_refreshes_token": true,
+    "native_cache_pin_reserve_prevents_capacity_monopoly": true,
+    "expired_viewer_urls_rejected_before_serving": true
   },
   "does_not_establish": [
     "GHCR publication of the final merged commit",
@@ -47,7 +48,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "dc6ecf895c59e72c13fcbee1c760dbab73698590389b3b8dda3ce04472100a94",
+  "evidence_digest": "3326ae9c55d33fd490e5aca200b9130ed7ace969b14b20b9bb4ddffdd18da313",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -71,8 +72,8 @@
     "scripts/ci/smoke-native-schaubild-runtime.sh": "602f24f419555437e7282cf36d2eb0be142c55a549b90aca1dd6dabd13b90264",
     "src/schauwerk/resources/standalone_editor/assets.py": "77bc7897923d351d4ab4b759687e18a1d63d6246a5fddd6b6bb6b02e0b25320f",
     "src/schauwerk/visual/native_viewer.py": "2cd5f6ea9495f6b2954ee28e5f2148aae62c1b7e9cf10ed3aa88f27732385c9c",
-    "src/schauwerk/visual/standalone_editor.py": "54891cc95d0428520ac456ac858c48dee90fe4498d6058fd16cd9db0563d6431",
+    "src/schauwerk/visual/standalone_editor.py": "84f6f669a28a79199ec847a5d45df6ecb358754f8116066f5f62cf001f5844c7",
     "tests/visual/test_native_viewer.py": "5816e97ea62e560e1c8fca004be8e460d7881d9dc621e7b95fd869213315d388",
-    "tests/visual/test_standalone_editor.py": "dd94249884ed183f378cb99f7a194317d8c401952c5e32fb6b0487a1228426b0"
+    "tests/visual/test_standalone_editor.py": "4b29c9c2a2ed24cc079da2c3e630e4af123657506b88a756eb272d7c8bcda389"
   }
 }
