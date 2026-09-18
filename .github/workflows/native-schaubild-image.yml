@@ -9,6 +9,7 @@ on:
       - "README.md"
       - "src/**"
       - ".github/workflows/native-schaubild-image.yml"
+      - "scripts/ci/smoke-native-schaubild-runtime.sh"
   push:
     branches: [main]
     paths:
@@ -18,6 +19,7 @@ on:
       - "README.md"
       - "src/**"
       - ".github/workflows/native-schaubild-image.yml"
+      - "scripts/ci/smoke-native-schaubild-runtime.sh"
   workflow_dispatch:
 
 permissions:
@@ -33,16 +35,16 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
-      - name: Build exact smoke image
+      - name: Build PR smoke image
         run: |
           docker buildx build \
             --platform linux/amd64 \
             --load \
             --build-arg "VCS_REF=$GITHUB_SHA" \
-            --tag schaubild-native:tested \
+            --tag schaubild-native:smoke \
             .
 
-      - name: Smoke native runtime behind stripped /schaubild proxy contract
+      - name: Smoke PR image
         run: |
           set -euo pipefail
           docker run --detach --rm \
@@ -50,74 +52,14 @@ jobs:
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --publish 127.0.0.1:18767:8765 \
-            schaubild-native:tested \
+            schaubild-native:smoke \
             python -m schauwerk.visual.standalone_editor serve \
               --bind-host 0.0.0.0 \
               --trusted-reverse-proxy \
               --public-base-path /schaubild \
               --port 8765
           trap 'docker stop schaubild-native-smoke >/dev/null 2>&1 || true' EXIT
-
-          for _ in $(seq 1 30); do
-            if curl --fail --silent \
-              --header 'Host: 127.0.0.1:8765' \
-              http://127.0.0.1:18767/manifest.json \
-              --output /tmp/schaubild-manifest.json; then
-              break
-            fi
-            sleep 1
-          done
-
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          manifest = json.loads(Path("/tmp/schaubild-manifest.json").read_text())
-          assert manifest["schema_version"] == "schauwerk-standalone-editor-manifest.v2"
-          assert manifest["editor_engine"] == "schauwerk-native-diagram-v1"
-          assert manifest["native_renderer"]["api_path"] == "/schaubild/api/native-viewer"
-          assert manifest["native_renderer"]["public_base_path"] == "/schaubild"
-          PY
-
-          curl --fail --silent \
-            --header 'Host: 127.0.0.1:8765' \
-            --header 'Content-Type: application/json' \
-            --data-binary @docs/operators/fixtures/golden/decision-flow-v1.json \
-            http://127.0.0.1:18767/api/native-viewer \
-            --output /tmp/native-render.json
-
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          result = json.loads(Path("/tmp/native-render.json").read_text())
-          assert result["renderer"] == "schauwerk-native-diagram-v1"
-          assert result["url"] == f"/schaubild/native/{result['input_digest']}/index.html"
-          Path("/tmp/native-viewer-path").write_text(
-              result["url"].removeprefix("/schaubild"),
-              encoding="utf-8",
-          )
-          PY
-
-          curl --fail --silent \
-            --header 'Host: 127.0.0.1:8765' \
-            "http://127.0.0.1:18767$(cat /tmp/native-viewer-path)" \
-            | grep -q 'id="nativeViewport"'
-
-      - name: Export the exact tested image
-        run: |
-          set -euo pipefail
-          docker image inspect schaubild-native:tested --format '{{.Id}}' > tested-image-id.txt
-          docker save schaubild-native:tested | gzip -n -9 > schaubild-native-tested.tar.gz
-          sha256sum schaubild-native-tested.tar.gz > schaubild-native-tested.tar.gz.sha256
-
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: schaubild-native-tested-image
-          path: |
-            schaubild-native-tested.tar.gz
-            schaubild-native-tested.tar.gz.sha256
-            tested-image-id.txt
-          if-no-files-found: error
-          retention-days: 1
+          ./scripts/ci/smoke-native-schaubild-runtime.sh http://127.0.0.1:18767
 
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -130,16 +72,8 @@ jobs:
     env:
       IMAGE: ghcr.io/heimgewebe/schauwerk-schaubild
     steps:
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          name: schaubild-native-tested-image
-
-      - name: Verify and load exact tested image
-        run: |
-          set -euo pipefail
-          sha256sum --check schaubild-native-tested.tar.gz.sha256
-          gunzip --stdout schaubild-native-tested.tar.gz | docker load
-          test "$(docker image inspect schaubild-native:tested --format '{{.Id}}')" = "$(cat tested-image-id.txt)"
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
       - name: Login to GHCR
         env:
@@ -148,14 +82,59 @@ jobs:
           printf '%s' "$GHCR_TOKEN" \
             | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Publish the exact tested image
+      - name: Build and push attestable candidate exactly once
         run: |
           set -euo pipefail
-          docker tag schaubild-native:tested "$IMAGE:$GITHUB_SHA"
-          docker push "$IMAGE:$GITHUB_SHA"
-          remote_digest="$(docker image inspect "$IMAGE:$GITHUB_SHA" --format '{{index .RepoDigests 0}}')"
-          test -n "$remote_digest"
-          printf '%s\n' "$remote_digest"
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=mode=max \
+            --sbom=true \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --metadata-file candidate-metadata.json \
+            --tag "$IMAGE:candidate-$GITHUB_SHA" \
+            --push \
+            .
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          metadata = json.loads(Path("candidate-metadata.json").read_text())
+          digest = metadata.get("containerimage.digest")
+          if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+              raise SystemExit("candidate image digest missing from build metadata")
+          Path("candidate-digest.txt").write_text(digest + "\n", encoding="utf-8")
+          PY
+
+      - name: Smoke the exact pushed digest
+        run: |
+          set -euo pipefail
+          digest="$(cat candidate-digest.txt)"
+          docker run --detach --rm \
+            --name schaubild-native-publish-smoke \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --publish 127.0.0.1:18767:8765 \
+            "$IMAGE@$digest" \
+            python -m schauwerk.visual.standalone_editor serve \
+              --bind-host 0.0.0.0 \
+              --trusted-reverse-proxy \
+              --public-base-path /schaubild \
+              --port 8765
+          trap 'docker stop schaubild-native-publish-smoke >/dev/null 2>&1 || true' EXIT
+          ./scripts/ci/smoke-native-schaubild-runtime.sh http://127.0.0.1:18767
+
+      - name: Promote only the tested candidate digest
+        run: |
+          set -euo pipefail
+          candidate_digest="$(cat candidate-digest.txt)"
+          docker buildx imagetools create \
+            --tag "$IMAGE:$GITHUB_SHA" \
+            "$IMAGE@$candidate_digest"
+          final_digest="$(
+            docker buildx imagetools inspect "$IMAGE:$GITHUB_SHA" \
+              | awk '$1 == "Digest:" {print $2; exit}'
+          )"
+          test "$final_digest" = "$candidate_digest"
+          printf '%s@%s\n' "$IMAGE" "$final_digest"
 
       - name: Logout from GHCR
         if: always()
