@@ -42,6 +42,7 @@ MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
 NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
+NATIVE_CACHE_MAX_PIN_SECONDS: Final = 2 * NATIVE_CACHE_GRACE_SECONDS
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
@@ -449,8 +450,10 @@ class _NativeCacheRecord:
     token: str
     path: Path
     size_bytes: int
+    created_at: float
     last_access: float
     pinned_until: float
+    max_pinned_until: float
 
 
 _NATIVE_CACHE_LOCK = threading.RLock()
@@ -506,7 +509,10 @@ def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
 def _pin_native_cache_record(record: _NativeCacheRecord) -> None:
     now = time.monotonic()
     record.last_access = now
-    record.pinned_until = max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS)
+    record.pinned_until = min(
+        max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
+        record.max_pinned_until,
+    )
 
 
 def _prune_native_cache(
@@ -621,8 +627,10 @@ def _build_native_cache_record(
             token=token,
             path=target,
             size_bytes=bundle_size,
+            created_at=now,
             last_access=now,
             pinned_until=now + NATIVE_CACHE_GRACE_SECONDS,
+            max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
         )
         _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
         _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record

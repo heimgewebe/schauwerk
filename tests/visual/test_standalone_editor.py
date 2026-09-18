@@ -537,7 +537,7 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
             },
         )
         response = connection.getresponse()
-        body = json.loads(response.read().decode("utf-8"))
+        response.read()
         assert response.status == 200
         assert (output / ".native-cache").is_dir()
 
@@ -573,6 +573,7 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
     monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 1)
     monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 64 * 1024 * 1024)
     monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
 
     handler_class = type(
         "GraceBoundedCacheEditorRequestHandler",
@@ -622,12 +623,39 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
         assert pinned_response.status == 503
         assert "temporarily pinned" in pinned_body["error"]
 
+        clock[0] = 150.0
         connection.request("GET", first_url)
         first_viewer = connection.getresponse()
         assert first_viewer.status == 200
         assert 'id="nativeViewport"' in first_viewer.read().decode("utf-8")
 
-        clock[0] = 162.0
+        clock[0] = 161.0
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=second_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(second_payload)),
+            },
+        )
+        renewed_response = connection.getresponse()
+        renewed_body = json.loads(renewed_response.read().decode("utf-8"))
+        assert renewed_response.status == 503
+        assert "temporarily pinned" in renewed_body["error"]
+
+        clock[0] = 200.0
+        connection.request("GET", first_url)
+        capped_viewer = connection.getresponse()
+        assert capped_viewer.status == 200
+        capped_viewer.read()
+
+        clock[0] = 221.0
+        connection.request("GET", first_url)
+        expired_pin_viewer = connection.getresponse()
+        assert expired_pin_viewer.status == 200
+        expired_pin_viewer.read()
+
         connection.request(
             "POST",
             NATIVE_API_PATH,
