@@ -357,9 +357,28 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(encoded)
 
+    def _has_valid_loopback_host(self) -> bool:
+        raw_host = self.headers.get("Host")
+        if not raw_host or raw_host != raw_host.strip():
+            return False
+        host = raw_host.casefold()
+        port = int(self.server.server_address[1])
+        return host in {
+            "127.0.0.1",
+            f"127.0.0.1:{port}",
+            "localhost",
+            f"localhost:{port}",
+        }
+
     def do_POST(self) -> None:  # noqa: N802
         if self.path != NATIVE_API_PATH:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
+            return
+        if not self._has_valid_loopback_host():
+            self._send_json(
+                HTTPStatus.MISDIRECTED_REQUEST,
+                {"error": "native render endpoint accepts loopback Host headers only"},
+            )
             return
         media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
         if media_type != "application/json":
@@ -399,6 +418,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                     raise StandaloneEditorError("native viewer cache is incomplete")
         except (
             UnicodeDecodeError,
+            UnicodeEncodeError,
             json.JSONDecodeError,
             StandaloneEditorError,
             NativeViewerError,

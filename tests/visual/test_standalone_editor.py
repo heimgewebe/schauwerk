@@ -224,6 +224,76 @@ def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge
         _native_product_input(knowledge_map)
 
 
+def test_native_render_endpoint_rejects_non_loopback_host_before_rendering(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "HostGuardEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.putrequest("POST", NATIVE_API_PATH, skip_host=True)
+        connection.putheader("Host", "attacker.example")
+        connection.putheader("Content-Type", "application/json")
+        connection.putheader("Content-Length", str(len(payload)))
+        connection.endheaders(payload)
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 421
+        assert body == {"error": "native render endpoint accepts loopback Host headers only"}
+        assert not (output / "native").exists()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_render_endpoint_returns_422_for_lone_unicode_surrogate(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "UnicodeGuardEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        representation = _golden_representation("decision-flow-v1.json")
+        representation["nodes"][0]["label"] = "\ud800"
+        payload = json.dumps(representation).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 422
+        assert isinstance(body.get("error"), str)
+        assert body["error"]
+        assert not (output / "native").exists()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
