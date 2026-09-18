@@ -190,6 +190,11 @@ def _normalize_bind_host(value: str, *, trusted_reverse_proxy: bool) -> str:
     if address.version != 4:
         raise StandaloneEditorError("bind host must use IPv4 syntax")
     if address.is_loopback:
+        if address.compressed != "127.0.0.1" and not trusted_reverse_proxy:
+            raise StandaloneEditorError(
+                "direct loopback bind must use 127.0.0.1; other addresses require "
+                "--trusted-reverse-proxy"
+            )
         return address.compressed
     if not trusted_reverse_proxy:
         raise StandaloneEditorError(

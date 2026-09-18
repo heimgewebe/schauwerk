@@ -242,6 +242,9 @@ def test_public_base_path_canonicalizes_root_to_empty_prefix() -> None:
 def test_nonloopback_bind_requires_explicit_trusted_reverse_proxy() -> None:
     assert _normalize_bind_host("localhost", trusted_reverse_proxy=False) == "127.0.0.1"
     assert _normalize_bind_host("127.0.0.1", trusted_reverse_proxy=False) == "127.0.0.1"
+    with pytest.raises(StandaloneEditorError, match="direct loopback bind"):
+        _normalize_bind_host("127.0.0.2", trusted_reverse_proxy=False)
+    assert _normalize_bind_host("127.0.0.2", trusted_reverse_proxy=True) == "127.0.0.2"
     with pytest.raises(StandaloneEditorError, match="IPv4"):
         _normalize_bind_host("::1", trusted_reverse_proxy=False)
     with pytest.raises(StandaloneEditorError, match="trusted-reverse-proxy"):

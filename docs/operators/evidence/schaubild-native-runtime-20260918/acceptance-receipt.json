@@ -6,6 +6,7 @@
     "reference": "python:3.13.7-slim-bookworm"
   },
   "checks": {
+    "direct_loopback_bind_restricted_to_127_0_0_1": true,
     "exact_pushed_candidate_digest_smoked_before_final_tag": true,
     "final_commit_tag_digest_must_equal_smoked_candidate_digest": true,
     "focused_contract_tests_passed": true,
@@ -36,7 +37,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "c466cf1f0257bf8007829fd71feaec631f459b54a23cd99c69ed63e434a41c69",
+  "evidence_digest": "37681ccc911883e1c71e58d1ddd82c42d691235483c8244e262ad5b47241089f",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -59,7 +60,7 @@
     "Dockerfile": "e4dfcf3fcac89121fa08969b1b4a6936c5513c67277097bd6316dff69452e216",
     "scripts/ci/smoke-native-schaubild-runtime.sh": "8bb64383f5719b48a1792eb464f7d3d2c2c6054a508e846fc96f55d763685c35",
     "src/schauwerk/resources/standalone_editor/assets.py": "cee5f8795654c357b41c5a35c2e1f38648dfd21aa292633f76215a54c0ea4f83",
-    "src/schauwerk/visual/standalone_editor.py": "cb15273c58bd3eda77242ce8f45d4bc8b4c2b7ebce2da5f87720943c4655a8d7",
-    "tests/visual/test_standalone_editor.py": "48bf2ce628401cbb1a03a3acdef5be93afca54652a8e8c1c5d786af616ac1ff6"
+    "src/schauwerk/visual/standalone_editor.py": "b8c49e643257284d9fa121bf6e7af4dbed4b270453e698eb70b9f66e3db1cac2",
+    "tests/visual/test_standalone_editor.py": "4a79cda04dc63a848fcc543bb13bf6160700fd184d812800ee380a2b89e516cf"
   }
 }
