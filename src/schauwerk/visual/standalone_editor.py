@@ -1053,6 +1053,10 @@ def serve_standalone_editor(
         trusted_reverse_proxy=trusted_reverse_proxy,
     )
     normalized_base_path = _normalize_public_base_path(public_base_path)
+    if normalized_base_path and not trusted_reverse_proxy:
+        raise StandaloneEditorError(
+            "public base path requires --trusted-reverse-proxy serving context"
+        )
     _, custom_origin = _editor_url(normalized_origin)
 
     temporary = build_dir is None

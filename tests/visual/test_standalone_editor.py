@@ -255,6 +255,30 @@ def test_nonloopback_bind_requires_explicit_trusted_reverse_proxy() -> None:
     assert _normalize_bind_host("0.0.0.0", trusted_reverse_proxy=True) == "0.0.0.0"
 
 
+def test_prefixed_runtime_requires_trusted_reverse_proxy_before_server_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server_started = False
+
+    class UnexpectedServer:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            nonlocal server_started
+            server_started = True
+            raise AssertionError("server must not start for incompatible prefix/bind contract")
+
+    monkeypatch.setattr(standalone_editor, "_BoundedThreadingHTTPServer", UnexpectedServer)
+
+    with pytest.raises(StandaloneEditorError, match="public base path requires"):
+        standalone_editor.serve_standalone_editor(
+            port=0,
+            build_dir=tmp_path / "editor",
+            public_base_path="/schaubild",
+        )
+
+    assert server_started is False
+
+
 def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output, public_base_path="/schaubild")
