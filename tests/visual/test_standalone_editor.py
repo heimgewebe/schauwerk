@@ -728,10 +728,15 @@ def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
 
         first_retry_status, first_retry_body = post("first_flow")
         assert first_retry_status == 503
-        assert "pin capacity" in str(first_retry_body["error"])
+        assert "pin lifetime is exhausted" in str(first_retry_body["error"])
         assert second_record.pinned_until == 271.0
 
         clock[0] = 272.0
+        cooling_status, cooling_body = post("first_flow")
+        assert cooling_status == 503
+        assert "pin lifetime is exhausted" in str(cooling_body["error"])
+
+        clock[0] = 341.0
         refreshed_status, refreshed_body = post("first_flow")
         assert refreshed_status == 200
         refreshed_url = str(refreshed_body["url"])
@@ -753,7 +758,7 @@ def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
     assert len(list(cache_root.iterdir())) <= 2
 
 
-def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(
+def test_native_render_endpoint_preserves_digest_lifetime_across_token_replacement(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -787,6 +792,25 @@ def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(
 
         clock[0] = 221.0
         connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        cooldown_response = connection.getresponse()
+        cooldown_body = json.loads(cooldown_response.read().decode("utf-8"))
+        assert cooldown_response.status == 503
+        assert "pin lifetime is exhausted" in str(cooldown_body["error"])
+
+        connection.request("GET", first_url)
+        expired_response = connection.getresponse()
+        expired_response.read()
+        assert expired_response.status == 410
+
+        clock[0] = 339.0
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        still_cooling_response = connection.getresponse()
+        still_cooling_body = json.loads(still_cooling_response.read().decode("utf-8"))
+        assert still_cooling_response.status == 503
+        assert "pin lifetime is exhausted" in str(still_cooling_body["error"])
+
+        clock[0] = 341.0
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
         refreshed_response = connection.getresponse()
         refreshed_body = json.loads(refreshed_response.read().decode("utf-8"))
         assert refreshed_response.status == 200
@@ -795,9 +819,9 @@ def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(
         assert refreshed_url != first_url
 
         connection.request("GET", first_url)
-        expired_response = connection.getresponse()
-        expired_response.read()
-        assert expired_response.status == 404
+        replaced_response = connection.getresponse()
+        replaced_response.read()
+        assert replaced_response.status == 404
 
         connection.request("GET", refreshed_url)
         refreshed_viewer = connection.getresponse()

@@ -35,12 +35,13 @@
     "shared_runtime_smoke_helper_syntax_valid": true,
     "workflow_triggers_on_smoke_helper_changes": true,
     "native_cache_pin_absolute_lifetime_enforced": true,
-    "expired_same_digest_bundle_refreshes_token": true,
     "expired_viewer_urls_rejected_before_serving": true,
     "native_cache_pin_admission_preserves_active_grace_leases": true,
     "native_request_body_timeout_enforced": true,
     "native_server_worker_concurrency_bounded": true,
-    "native_request_absolute_deadline_enforced": true
+    "native_request_absolute_deadline_enforced": true,
+    "same_digest_pin_lifetime_survives_token_replacement": true,
+    "native_pin_window_history_bounded": true
   },
   "does_not_establish": [
     "GHCR publication of the final merged commit",
@@ -51,7 +52,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "8b508fcd53d316fabdba26a1a41a3b5ec2757994f9bdcf1b26655dbf9283346c",
+  "evidence_digest": "09a30551b76fbc111d3a65b87cbe23ef626648cf27f8a791b03aee40d86e933b",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -75,8 +76,8 @@
     "scripts/ci/smoke-native-schaubild-runtime.sh": "602f24f419555437e7282cf36d2eb0be142c55a549b90aca1dd6dabd13b90264",
     "src/schauwerk/resources/standalone_editor/assets.py": "77bc7897923d351d4ab4b759687e18a1d63d6246a5fddd6b6bb6b02e0b25320f",
     "src/schauwerk/visual/native_viewer.py": "2cd5f6ea9495f6b2954ee28e5f2148aae62c1b7e9cf10ed3aa88f27732385c9c",
-    "src/schauwerk/visual/standalone_editor.py": "13214863d55e898ac89676a4098409ae5784b96e47715001287ec9812cafdd98",
+    "src/schauwerk/visual/standalone_editor.py": "04c5b8432686b55b6f63e6ee06a6f2aeadb22fbd5f1d71f8dfae8bc892159f24",
     "tests/visual/test_native_viewer.py": "5816e97ea62e560e1c8fca004be8e460d7881d9dc621e7b95fd869213315d388",
-    "tests/visual/test_standalone_editor.py": "05a34f5e923c0394090e606b3f700469af90d9e437579f08f7338080eb44dc1d"
+    "tests/visual/test_standalone_editor.py": "e83ec1f68cbee654f7fa87daf8d5525bc2e95f6831a52976f3b8280c5b293e52"
   }
 }

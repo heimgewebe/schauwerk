@@ -44,6 +44,7 @@ MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
 NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
 NATIVE_CACHE_MAX_PIN_SECONDS: Final = 2 * NATIVE_CACHE_GRACE_SECONDS
+MAX_NATIVE_PIN_WINDOWS: Final = 4 * MAX_NATIVE_CACHE_ENTRIES
 NATIVE_REQUEST_TIMEOUT_SECONDS: Final = 30.0
 NATIVE_SERVER_MAX_WORKERS: Final = 32
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
@@ -459,9 +460,16 @@ class _NativeCacheRecord:
     max_pinned_until: float
 
 
+@dataclass(slots=True, frozen=True)
+class _NativePinWindow:
+    max_pinned_until: float
+    reacquire_after: float
+
+
 _NATIVE_CACHE_LOCK = threading.RLock()
 _NATIVE_CACHE_BY_DIGEST: dict[tuple[str, str], _NativeCacheRecord] = {}
 _NATIVE_CACHE_BY_TOKEN: dict[tuple[str, str], _NativeCacheRecord] = {}
+_NATIVE_PIN_WINDOWS: dict[tuple[str, str], _NativePinWindow] = {}
 _NATIVE_BUNDLE_FILES: Final = {
     "app.js": "app.js",
     "diagram.svg": "diagram.svg",
@@ -507,6 +515,38 @@ def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
             continue
         records.append(record)
     return records
+
+
+def _native_pin_window(
+    root: Path,
+    *,
+    digest: str,
+    now: float,
+) -> tuple[_NativePinWindow, bool]:
+    root_key = _native_root_key(root)
+    for key, window in list(_NATIVE_PIN_WINDOWS.items()):
+        if key[0] == root_key and window.reacquire_after <= now:
+            _NATIVE_PIN_WINDOWS.pop(key, None)
+
+    key = (root_key, digest)
+    existing = _NATIVE_PIN_WINDOWS.get(key)
+    if existing is not None:
+        if now >= existing.max_pinned_until:
+            raise NativeCacheCapacityError(
+                "native viewer digest pin lifetime is exhausted; retry after cooldown"
+            )
+        return existing, False
+
+    root_windows = sum(1 for key in _NATIVE_PIN_WINDOWS if key[0] == root_key)
+    if root_windows >= MAX_NATIVE_PIN_WINDOWS:
+        raise NativeCacheCapacityError(
+            "native viewer pin-lifetime history is temporarily full; retry later"
+        )
+    window = _NativePinWindow(
+        max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
+        reacquire_after=now + (2 * NATIVE_CACHE_MAX_PIN_SECONDS),
+    )
+    return window, True
 
 
 def _assert_native_pin_capacity(
@@ -612,13 +652,14 @@ def _build_native_cache_record(
 ) -> _NativeCacheRecord:
     with _NATIVE_CACHE_LOCK:
         existing = _native_cache_by_digest(root, digest)
+        now = time.monotonic()
+        if existing is not None and existing.max_pinned_until > now:
+            _pin_native_cache_record(root, existing)
+            return existing
+
+        pin_window, new_pin_window = _native_pin_window(root, digest=digest, now=now)
         if existing is not None:
-            now = time.monotonic()
-            if existing.max_pinned_until <= now:
-                _forget_native_cache_record(existing, remove_files=True)
-            else:
-                _pin_native_cache_record(root, existing)
-                return existing
+            _forget_native_cache_record(existing, remove_files=True)
 
         _prune_native_cache(
             root,
@@ -662,8 +703,8 @@ def _build_native_cache_record(
             size_bytes=bundle_size,
             created_at=now,
             last_access=now,
-            pinned_until=now + NATIVE_CACHE_GRACE_SECONDS,
-            max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
+            pinned_until=min(now + NATIVE_CACHE_GRACE_SECONDS, pin_window.max_pinned_until),
+            max_pinned_until=pin_window.max_pinned_until,
         )
         try:
             _assert_native_pin_capacity(root, record=record, now=now)
@@ -672,6 +713,8 @@ def _build_native_cache_record(
             if target.exists() and target.is_dir() and not target.is_symlink():
                 shutil.rmtree(target)
             raise
+        if new_pin_window:
+            _NATIVE_PIN_WINDOWS[(record.root_key, digest)] = pin_window
         _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
         _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
         _prune_native_cache(root, keep=record)
