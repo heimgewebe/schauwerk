@@ -24,7 +24,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Final
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.visual.native_viewer import NativeViewerError, build_native_viewer
@@ -572,6 +572,8 @@ def _build_native_cache_record(
     *,
     digest: str,
     value: dict[str, Any],
+    serve_binding: str,
+    public_base_path: str,
 ) -> _NativeCacheRecord:
     with _NATIVE_CACHE_LOCK:
         existing = _native_cache_by_digest(root, digest)
@@ -596,7 +598,12 @@ def _build_native_cache_record(
             token = secrets.token_hex(16)
         target = Path(tempfile.mkdtemp(prefix="bundle-", dir=cache_root))
         try:
-            build_native_viewer(value, target)
+            build_native_viewer(
+                value,
+                target,
+                serve_binding=serve_binding,
+                public_base_path=public_base_path,
+            )
             bundle_size = _native_bundle_size(target)
             if bundle_size > MAX_NATIVE_BUNDLE_BYTES:
                 raise StandaloneEditorError(
@@ -628,6 +635,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
     editor_origin: str = EDITOR_ORIGIN
     public_base_path: str = ""
+    native_serve_binding: str = "127.0.0.1-only"
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -680,9 +688,34 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         )
         return True
 
+    def _decoded_request_path(self) -> str | None:
+        raw_path = urlsplit(self.path).path
+        try:
+            decoded = unquote(raw_path, encoding="utf-8", errors="strict")
+        except UnicodeError:
+            return None
+        if "\x00" in decoded:
+            return None
+        return decoded
+
+    def _reject_private_cache_path(self, *, write_body: bool = True) -> bool:
+        decoded = self._decoded_request_path()
+        if decoded is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "request path is not canonical UTF-8"},
+                write_body=write_body,
+            )
+            return True
+        segments = [part for part in decoded.split("/") if part not in {"", ".", ".."}]
+        if ".native-cache" in segments:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+        return False
+
     def _native_request_parts(self) -> tuple[str, str] | None:
-        path = urlsplit(self.path).path
-        if path.startswith("/.native-cache"):
+        path = self._decoded_request_path()
+        if path is None:
             return ("", "")
         match = re.fullmatch(r"/native/([0-9a-f]{32})/([^/]+)", path)
         if match is None:
@@ -724,12 +757,16 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host():
             return
+        if self._reject_private_cache_path():
+            return
         if self._serve_native_bundle(head_only=False):
             return
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host(write_body=False):
+            return
+        if self._reject_private_cache_path(write_body=False):
             return
         if self._serve_native_bundle(head_only=True):
             return
@@ -771,7 +808,13 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             normalized = _native_product_input(value)
             digest = str(normalized["input_digest"])
             root = Path(self.directory).resolve()
-            record = _build_native_cache_record(root, digest=digest, value=value)
+            record = _build_native_cache_record(
+                root,
+                digest=digest,
+                value=value,
+                serve_binding=self.native_serve_binding,
+                public_base_path=self.public_base_path,
+            )
             token = record.token
         except NativeCacheCapacityError as exc:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
@@ -850,6 +893,11 @@ def serve_standalone_editor(
             {
                 "editor_origin": normalized_origin,
                 "public_base_path": normalized_base_path,
+                "native_serve_binding": (
+                    "trusted-reverse-proxy-private-ingress"
+                    if trusted_reverse_proxy
+                    else "127.0.0.1-only"
+                ),
             },
         )
         handler = partial(handler_class, directory=str(root))

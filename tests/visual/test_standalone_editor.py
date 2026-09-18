@@ -260,7 +260,11 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
     handler_class = type(
         "PrefixedEditorRequestHandler",
         (_EditorRequestHandler,),
-        {"editor_origin": EDITOR_ORIGIN, "public_base_path": "/schaubild"},
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+        },
     )
     handler = partial(handler_class, directory=str(output))
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -285,6 +289,18 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         viewer_response = connection.getresponse()
         assert viewer_response.status == 200
         assert 'id="nativeViewport"' in viewer_response.read().decode("utf-8")
+
+        internal_manifest_path = internal_viewer_path.replace("index.html", "manifest.json")
+        connection.request("GET", internal_manifest_path)
+        manifest_response = connection.getresponse()
+        manifest = json.loads(manifest_response.read().decode("utf-8"))
+        assert manifest_response.status == 200
+        assert manifest["network_boundary"]["serve_binding"] == (
+            "trusted-reverse-proxy-private-ingress"
+        )
+        assert manifest["network_boundary"]["public_base_path"] == "/schaubild"
+        assert manifest["network_boundary"]["delivery"] == "integrated-schaubild-runtime"
+        assert "production-readiness" not in manifest["does_not_establish"]
         connection.close()
     finally:
         server.shutdown()
@@ -485,6 +501,59 @@ def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
         assert response.status == 422
         assert "unknown fields" in body["error"]
         assert not (output / ".native-cache").exists()
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "PrivateCacheGuardEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        representation = _golden_representation("decision-flow-v1.json")
+        payload = json.dumps(representation).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert (output / ".native-cache").is_dir()
+
+        for private_path in (
+            "/.native-cache/",
+            "/%2enative-cache/",
+            "/%2Enative-cache/",
+            "/%2e%6eative-cache/",
+            "/../.native-cache/",
+        ):
+            connection.request("GET", private_path)
+            private_response = connection.getresponse()
+            private_body = private_response.read()
+            assert private_response.status == 404
+            assert b"bundle-" not in private_body
+            assert b"representation.json" not in private_body
         connection.close()
     finally:
         server.shutdown()

@@ -6,7 +6,8 @@ host_header="127.0.0.1:8765"
 manifest_out="$(mktemp)"
 render_out="$(mktemp)"
 viewer_path_out="$(mktemp)"
-trap 'rm -f "$manifest_out" "$render_out" "$viewer_path_out"' EXIT
+viewer_manifest_out="$(mktemp)"
+trap 'rm -f "$manifest_out" "$render_out" "$viewer_path_out" "$viewer_manifest_out"' EXIT
 
 for _ in $(seq 1 30); do
   if curl --fail --silent \
@@ -54,3 +55,22 @@ curl --fail --silent \
   --header "Host: $host_header" \
   "$base_url$(cat "$viewer_path_out")" \
   | grep -q 'id="nativeViewport"'
+
+viewer_manifest_path="$(sed 's/index\.html$/manifest.json/' "$viewer_path_out")"
+curl --fail --silent \
+  --header "Host: $host_header" \
+  "$base_url$viewer_manifest_path" \
+  --output "$viewer_manifest_out"
+
+python - "$viewer_manifest_out" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+manifest = json.loads(Path(sys.argv[1]).read_text())
+boundary = manifest["network_boundary"]
+assert boundary["serve_binding"] == "trusted-reverse-proxy-private-ingress"
+assert boundary["public_base_path"] == "/schaubild"
+assert boundary["delivery"] == "integrated-schaubild-runtime"
+assert "production-readiness" not in manifest["does_not_establish"]
+PY
