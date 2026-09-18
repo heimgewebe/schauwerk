@@ -30,6 +30,9 @@ MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
+MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
+MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
+MAX_NATIVE_CACHE_ENTRIES: Final = 32
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
@@ -411,6 +414,73 @@ def build_standalone_editor(
     return manifest
 
 
+def _native_bundle_size(path: Path) -> int:
+    total = 0
+    for entry in path.rglob("*"):
+        if entry.is_symlink():
+            raise StandaloneEditorError("native viewer cache must not contain symlinks")
+        if entry.is_file():
+            total += entry.stat().st_size
+    return total
+
+
+def _native_cache_records(root: Path) -> list[tuple[int, str, Path, int]]:
+    native_root = root / "native"
+    if not native_root.exists():
+        return []
+    if native_root.is_symlink() or not native_root.is_dir():
+        raise StandaloneEditorError("native viewer cache root is unsafe")
+    records: list[tuple[int, str, Path, int]] = []
+    for entry in native_root.iterdir():
+        if (
+            entry.is_symlink()
+            or not entry.is_dir()
+            or re.fullmatch(r"[0-9a-f]{64}", entry.name) is None
+        ):
+            raise StandaloneEditorError("native viewer cache contains an unexpected entry")
+        records.append(
+            (entry.stat().st_mtime_ns, entry.name, entry, _native_bundle_size(entry))
+        )
+    return records
+
+
+def _touch_native_bundle(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        os.utime(path, None, follow_symlinks=False)
+
+
+def _prune_native_cache(
+    root: Path,
+    *,
+    keep: Path | None,
+    reserve_bytes: int = 0,
+) -> None:
+    records = _native_cache_records(root)
+    total = sum(item[3] for item in records)
+    keep_resolved = keep.resolve(strict=False) if keep is not None else None
+    candidates = sorted(
+        (
+            record
+            for record in records
+            if keep_resolved is None or record[2].resolve(strict=False) != keep_resolved
+        ),
+        key=lambda item: (item[0], item[1]),
+    )
+    while candidates and (
+        len(records) > MAX_NATIVE_CACHE_ENTRIES
+        or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
+    ):
+        victim = candidates.pop(0)
+        shutil.rmtree(victim[2])
+        total -= victim[3]
+        records.remove(victim)
+    if (
+        len(records) > MAX_NATIVE_CACHE_ENTRIES
+        or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
+    ):
+        raise StandaloneEditorError("native viewer cache budget is exhausted")
+
+
 class _EditorRequestHandler(SimpleHTTPRequestHandler):
     """Static product handler plus one bounded same-origin native-render endpoint."""
 
@@ -469,15 +539,34 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         )
         return True
 
+    def _native_request_bundle(self) -> Path | None:
+        path = urlsplit(self.path).path
+        match = re.match(r"^/native/([0-9a-f]{64})(?:/|$)", path)
+        if match is None:
+            return None
+        return Path(self.directory).resolve() / "native" / match.group(1)
+
     def do_GET(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host():
             return
-        super().do_GET()
+        bundle = self._native_request_bundle()
+        if bundle is None:
+            super().do_GET()
+            return
+        with self.native_build_lock:
+            _touch_native_bundle(bundle)
+            super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host(write_body=False):
             return
-        super().do_HEAD()
+        bundle = self._native_request_bundle()
+        if bundle is None:
+            super().do_HEAD()
+            return
+        with self.native_build_lock:
+            _touch_native_bundle(bundle)
+            super().do_HEAD()
 
     def do_POST(self) -> None:  # noqa: N802
         if self.path != NATIVE_API_PATH:
@@ -518,9 +607,27 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             target = root / "native" / digest
             with self.native_build_lock:
                 if not target.exists():
-                    build_native_viewer(value, target)
+                    _prune_native_cache(
+                        root,
+                        keep=None,
+                        reserve_bytes=MAX_NATIVE_BUNDLE_BYTES,
+                    )
+                    try:
+                        build_native_viewer(value, target)
+                    except Exception:
+                        if target.exists():
+                            shutil.rmtree(target)
+                        raise
+                    bundle_size = _native_bundle_size(target)
+                    if bundle_size > MAX_NATIVE_BUNDLE_BYTES:
+                        shutil.rmtree(target)
+                        raise StandaloneEditorError(
+                            "native viewer bundle exceeds the 16 MiB cache budget"
+                        )
                 elif not (target / "manifest.json").is_file():
                     raise StandaloneEditorError("native viewer cache is incomplete")
+                _touch_native_bundle(target)
+                _prune_native_cache(root, keep=target)
         except (
             UnicodeDecodeError,
             UnicodeEncodeError,

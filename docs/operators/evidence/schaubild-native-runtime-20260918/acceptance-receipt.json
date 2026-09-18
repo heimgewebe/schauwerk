@@ -16,6 +16,8 @@
     "known_native_viewer_browser_harness_baseline_reproduced": true,
     "local_oci_build_passed": true,
     "main_candidate_sbom_and_provenance_enabled": true,
+    "native_bundle_size_budget_enforced": true,
+    "native_viewer_cache_bounded_and_lru_evicted": true,
     "nonloopback_bind_is_explicitly_gated": true,
     "prefixed_native_render_post_passed": true,
     "prefixed_viewer_url_passed": true,
@@ -37,7 +39,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "37681ccc911883e1c71e58d1ddd82c42d691235483c8244e262ad5b47241089f",
+  "evidence_digest": "41eaa3c9294af954ea9e6bfec1c437aa659ab4f50260f7c20ee14e27d4ff3136",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -60,7 +62,7 @@
     "Dockerfile": "e4dfcf3fcac89121fa08969b1b4a6936c5513c67277097bd6316dff69452e216",
     "scripts/ci/smoke-native-schaubild-runtime.sh": "8bb64383f5719b48a1792eb464f7d3d2c2c6054a508e846fc96f55d763685c35",
     "src/schauwerk/resources/standalone_editor/assets.py": "cee5f8795654c357b41c5a35c2e1f38648dfd21aa292633f76215a54c0ea4f83",
-    "src/schauwerk/visual/standalone_editor.py": "b8c49e643257284d9fa121bf6e7af4dbed4b270453e698eb70b9f66e3db1cac2",
-    "tests/visual/test_standalone_editor.py": "4a79cda04dc63a848fcc543bb13bf6160700fd184d812800ee380a2b89e516cf"
+    "src/schauwerk/visual/standalone_editor.py": "34a6509cee8a50d8d595ab3a49c0648438acd79cdc8a072e95ae2391fce3fb5e",
+    "tests/visual/test_standalone_editor.py": "21bd6bd931d8329b96f2c14e21035da84baac2aa34fedd0f1c543dfc1ddc069e"
   }
 }

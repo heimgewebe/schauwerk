@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+import schauwerk.visual.standalone_editor as standalone_editor
 from schauwerk.visual.standalone_editor import (
     EDITOR_ORIGIN,
     MANIFEST_SCHEMA,
@@ -458,6 +459,84 @@ def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_native_cache_prunes_lru_by_byte_budget(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "editor"
+    native = root / "native"
+    native.mkdir(parents=True)
+    oldest = native / ("a" * 64)
+    newest = native / ("b" * 64)
+    for directory, payload in ((oldest, b"a" * 8), (newest, b"b" * 8)):
+        directory.mkdir()
+        (directory / "payload").write_bytes(payload)
+    os.utime(oldest, ns=(1, 1))
+    os.utime(newest, ns=(2, 2))
+
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 12)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 10)
+    standalone_editor._prune_native_cache(root, keep=newest)
+
+    assert not oldest.exists()
+    assert newest.is_dir()
+
+
+def test_native_render_endpoint_evicts_oldest_bundle_when_entry_budget_is_full(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 64 * 1024 * 1024)
+
+    handler_class = type(
+        "BoundedCacheEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    digests: list[str] = []
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        for index in range(3):
+            representation = _golden_representation("decision-flow-v1.json")
+            representation["id"] = f"golden_decision_flow_{index}"
+            representation["title"] = f"Entscheidungsfluss {index}"
+            payload = json.dumps(representation).encode("utf-8")
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200
+            digest = str(body["input_digest"])
+            digests.append(digest)
+            bundle = output / "native" / digest
+            assert bundle.is_dir()
+            os.utime(bundle, ns=(index + 1, index + 1))
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert not (output / "native" / digests[0]).exists()
+    assert (output / "native" / digests[1]).is_dir()
+    assert (output / "native" / digests[2]).is_dir()
+    assert len(list((output / "native").iterdir())) == 2
 
 
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
