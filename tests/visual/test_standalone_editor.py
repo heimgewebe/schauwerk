@@ -7,7 +7,11 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import xml.etree.ElementTree as ET
+from functools import partial
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -15,8 +19,12 @@ import pytest
 from schauwerk.visual.standalone_editor import (
     EDITOR_ORIGIN,
     MANIFEST_SCHEMA,
+    NATIVE_API_PATH,
+    NATIVE_RENDERER,
     StandaloneEditorError,
     _content_security_policy,
+    _EditorRequestHandler,
+    _native_product_input,
     build_standalone_editor,
 )
 
@@ -38,16 +46,27 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
 
     assert manifest["schema_version"] == MANIFEST_SCHEMA
     assert manifest["editor_origin"] == EDITOR_ORIGIN
+    assert manifest["editor_engine"] == NATIVE_RENDERER
+    assert manifest["legacy_editor_engine"] == "diagrams.net-embed"
+    assert manifest["cutover_status"] == "native-primary-with-legacy-compatibility"
     assert manifest["engine_delivery"] == "remote-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "editor_runtime": EDITOR_ORIGIN,
+        "native_render_api": "same-origin-loopback-serve-only",
+        "native_viewer_external_requests_required": False,
+        "legacy_editor_runtime": EDITOR_ORIGIN,
         "public_embed_runtime": True,
         "operator_configured_editor_runtime": False,
         "offline_mode_requested": False,
         "offline_complete": False,
     }
-    assert manifest["supported_inputs"] == ["mermaid", "json-canvas-1.0", "drawio-xml"]
+    assert manifest["supported_inputs"] == [
+        "schauwerk-representation-input.v1",
+        "mermaid",
+        "json-canvas-1.0",
+        "drawio-xml",
+    ]
+    assert "general-knowledge-map-native-cutover" in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
         "canvas-import.js",
@@ -122,7 +141,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     file_input = re.search(r'<input\b[^>]*\bid="fileInput"[^>]*>', index_html)
     assert file_input is not None
     assert re.search(r"\baccept\s*=", file_input.group(0), flags=re.IGNORECASE) is None
-    assert "placeholder=\"Zum Beispiel:&#10;flowchart TD&#10;" in index_html
+    assert "schauwerk-representation-input.v1" in index_html
+    assert "Legacy leer" in index_html
+    assert "Renderer-Cutover:" in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
@@ -185,6 +206,75 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert app_js.count("config: COLLISION_SAFE_LAYOUT_CONFIG") == 1
     assert '"elk.spacing.nodeNode": "40"' not in app_js
     assert 'event.key === "Escape"' not in app_js
+
+
+def _golden_representation(name: str) -> dict:
+    path = Path(__file__).resolve().parents[2] / "docs" / "operators" / "fixtures" / "golden" / name
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge_map() -> None:
+    process = _golden_representation("decision-flow-v1.json")
+    accepted = _native_product_input(process)
+    assert accepted["intent"] == "process"
+    assert re.fullmatch(r"[0-9a-f]{64}", str(accepted["input_digest"]))
+
+    knowledge_map = _golden_representation("system-landscape-v1.json")
+    with pytest.raises(StandaloneEditorError, match="knowledge_map remains on the legacy"):
+        _native_product_input(knowledge_map)
+
+
+def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "TestConfiguredEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert body["renderer"] == NATIVE_RENDERER
+        assert re.fullmatch(r"/native/[0-9a-f]{64}/index\.html", body["url"])
+
+        connection.request("GET", body["url"])
+        viewer_response = connection.getresponse()
+        viewer_html = viewer_response.read().decode("utf-8")
+        assert viewer_response.status == 200
+        assert "id=\"nativeViewport\"" in viewer_html
+        assert (output / "native" / body["input_digest"] / "diagram.svg").is_file()
+
+        blocked = json.dumps(_golden_representation("system-landscape-v1.json")).encode("utf-8")
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=blocked,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(blocked))},
+        )
+        blocked_response = connection.getresponse()
+        blocked_body = json.loads(blocked_response.read().decode("utf-8"))
+        assert blocked_response.status == 422
+        assert "knowledge_map remains on the legacy" in blocked_body["error"]
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 @pytest.mark.parametrize(
@@ -253,7 +343,9 @@ def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     assert manifest["engine_delivery"] == "operator-configured-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "editor_runtime": "http://127.0.0.1:8878",
+        "native_render_api": "same-origin-loopback-serve-only",
+        "native_viewer_external_requests_required": False,
+        "legacy_editor_runtime": "http://127.0.0.1:8878",
         "public_embed_runtime": False,
         "operator_configured_editor_runtime": True,
         "offline_mode_requested": True,
@@ -266,9 +358,9 @@ def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     assert editor_url.startswith("http://127.0.0.1:8878/?embed=1&proto=json&configure=1")
     assert "&offline=1" in editor_url
     assert "&https=0" in editor_url
-    assert "frame-src http://127.0.0.1:8878;" in _content_security_policy(
-        str(manifest["editor_origin"])
-    )
+    policy = _content_security_policy(str(manifest["editor_origin"]))
+    assert "frame-src 'self' http://127.0.0.1:8878;" in policy
+    assert "connect-src 'self';" in policy
 
 
 def test_build_canonicalizes_ascii_hostname_case(tmp_path: Path) -> None:
@@ -404,6 +496,15 @@ const source = JSON.stringify({{
 }});
 const detected = detectInput(source);
 if (detected.kind !== 'json-canvas') throw new Error(`wrong kind: ${{detected.kind}}`);
+const nativeRepresentation = JSON.stringify({{
+  schema_version: 'schauwerk-representation-input.v1',
+  title: 'Native',
+  intent: 'process',
+  nodes: [],
+  edges: [],
+  groups: []
+}});
+if (detectInput(nativeRepresentation).kind !== 'representation') throw new Error('native representation not detected');
 const nodesOnly = JSON.stringify({{nodes: [{{id: 'solo', type: 'text', x: 0, y: 0, width: 200, height: 100, text: 'Solo'}}]}});
 if (detectInput(nodesOnly).kind !== 'json-canvas') throw new Error('nodes-only JSON Canvas rejected');
 if (!jsonCanvasToDrawioXml(nodesOnly).includes('jsonCanvasId="solo"')) throw new Error('nodes-only JSON Canvas did not convert');

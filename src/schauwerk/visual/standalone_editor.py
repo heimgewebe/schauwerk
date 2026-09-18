@@ -1,8 +1,8 @@
-"""Build and serve the bounded standalone diagram-editor product shell.
+"""Build and serve the Schaubild product shell.
 
-Schauwerk owns the small product shell and import/export boundary. The interactive
-editor remains a diagrams.net embed runtime, either the documented public origin or
-an explicitly configured origin intended for an operator-controlled self-host.
+New canonical Schauwerk representation inputs are rendered by Schauwerk's native
+renderer and interaction viewer. Mermaid, JSON Canvas and draw.io remain explicit
+compatibility inputs backed by the diagrams.net embed runtime.
 """
 
 from __future__ import annotations
@@ -14,39 +14,60 @@ import json
 import os
 import re
 import shutil
+import threading
 from functools import partial
+from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 from urllib.parse import urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
+from schauwerk.visual.native_viewer import NativeViewerError, build_native_viewer
+from schauwerk.visual.representation import RepresentationError, validate_representation_input
 
-MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v1"
+MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
+NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
+NATIVE_API_PATH: Final = "/api/native-viewer"
+MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
     "plugins=0&math=0&pwa=0&drafts=0&splash=0&suppressNewWindows=1"
 )
 AI_HANDOFF_PROMPT: Final = (
-    "Erstelle aus dem Auftrag ein editierbares Schaubild.\n\n"
-    "Wähle das Ausgabeformat passend zur Darstellung:\n"
-    "- Mermaid für Abläufe, Hierarchien, gerichtete Beziehungen, Sequenzen und "
-    "klassische Diagramme.\n"
-    "- JSON Canvas 1.0 für freie räumliche Anordnung, Gruppen, Cluster, Konzeptkarten "
-    "oder wenn Position und Nähe der Elemente wesentlich sind.\n\n"
+    "Erstelle aus dem Auftrag ein Schaubild im kanonischen Schauwerk-Repräsentationsformat.\n\n"
+    "Gib genau einen json-Codeblock aus. Das JSON muss exakt dem Schema "
+    "schauwerk-representation-input.v1 entsprechen. Auf Root-Ebene sind genau diese "
+    "Felder erforderlich: schema_version, id, title, purpose, intent, groups, nodes, "
+    "edges, requirements und requested_formats. id sowie alle Group-, Node- und Edge-IDs "
+    "müssen mit einem Kleinbuchstaben beginnen und danach nur Kleinbuchstaben, Ziffern "
+    "oder Unterstriche enthalten. nodes muss mindestens einen Knoten enthalten.\n\n"
+    "Gruppen enthalten genau id und label. Knoten benötigen id, label und kind; optional "
+    "sind group und summary. Erlaubte Knoten-kinds sind human, system, service, store, "
+    "decision, risk, action, evidence und concept. Kanten enthalten genau id, from, to, "
+    "label und kind; erlaubte Kanten-kinds sind authority, flow, evidence, feedback, risk "
+    "und association. Jede Kante muss auf vorhandene Knoten verweisen.\n\n"
+    "requirements ist ein Objekt und darf nur diese booleschen Felder enthalten: "
+    "formal_relations, free_spatial_layout, presentation, collaboration, rich_text, "
+    "structured_comparison und portable_offline. Nicht benötigte Felder können fehlen. "
+    "requested_formats ist eine Liste ohne Duplikate aus mermaid, canvas, miro_native, "
+    "table und document; für ein reines natives Schaubild darf sie leer sein.\n\n"
+    "Für den nativen Schaubild-Produktpfad sind derzeit alle schema-gültigen Intents "
+    "außer knowledge_map zugelassen. Verwende process, sequence, state, timeline oder "
+    "narrative, wenn das fachlich passt. Für eine echte freie Wissens-/Konzeptkarte "
+    "(knowledge_map) gib stattdessen genau einen gültigen JSON-Canvas-1.0-json-Codeblock "
+    "aus; dieser läuft bewusst über den Legacy-Pfad, bis die allgemeine native "
+    "Routinggrenze gehärtet ist.\n\n"
     "Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, "
     "gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen "
-    "Zusammenhänge schnell erkennbar sind.\n\n"
-    "Gib genau ein vollständiges, direkt importierbares Ergebnis aus:\n"
-    "- Mermaid als einen `mermaid`-Codeblock.\n"
-    "- JSON Canvas als einen `json`-Codeblock im gültigen JSON-Canvas-1.0-Format.\n\n"
-    "Kein Vorwort, keine Erklärung und keine zusätzliche Variante."
+    "Zusammenhänge schnell erkennbar sind. Kein Vorwort, keine Erklärung und keine "
+    "zusätzliche Variante."
 )
 _EDITOR_ORIGIN_MARKER: Final = 'const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";'
 _EDITOR_URL_MARKER: Final = 'const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";'
 _HANDOFF_BUTTON_ANCHOR: Final = (
-    '        <button class="button ghost" id="blankButton" type="button">Leer beginnen</button>'
+    '        <button class="button ghost" id="blankButton" type="button">Legacy leer</button>'
 )
 _HANDOFF_BUTTON_HTML: Final = (
     '        <button class="button ghost" id="copyAiGuideButton" type="button">'
@@ -192,9 +213,26 @@ def _content_security_policy(editor_origin: str) -> str:
     return (
         "default-src 'self'; "
         "script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
-        f"frame-src {editor_origin}; connect-src 'none'; object-src 'none'; "
+        f"frame-src 'self' {editor_origin}; connect-src 'self'; object-src 'none'; "
         "base-uri 'none'; form-action 'none'"
     )
+
+
+def _native_product_input(value: Any) -> dict[str, Any]:
+    """Validate canonical representation input and enforce the Phase-3 admission gate."""
+
+    if not isinstance(value, dict):
+        raise StandaloneEditorError("native representation input must be one JSON object")
+    try:
+        normalized = validate_representation_input(value)
+    except RepresentationError as exc:
+        raise StandaloneEditorError(f"native representation input is invalid: {exc}") from exc
+    if normalized["intent"] == "knowledge_map":
+        raise StandaloneEditorError(
+            "knowledge_map remains on the legacy compatibility path until the "
+            "general native same-row/parallel routing boundary is hardened"
+        )
+    return normalized
 
 
 def build_standalone_editor(
@@ -233,18 +271,37 @@ def build_standalone_editor(
 
     manifest: dict[str, object] = {
         "schema_version": MANIFEST_SCHEMA,
-        "editor_engine": "diagrams.net-embed",
+        "product_surface": "schaubild",
+        "cutover_status": "native-primary-with-legacy-compatibility",
+        "editor_engine": NATIVE_RENDERER,
+        "native_renderer": {
+            "renderer": NATIVE_RENDERER,
+            "viewer": "schauwerk-native-svg-phase2",
+            "runtime": "integrated-loopback-serve",
+            "api_path": NATIVE_API_PATH,
+            "admission": "schema-valid-except-knowledge-map",
+            "semantic_authority": "schauwerk-representation-input.v1",
+            "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
+        },
+        "legacy_editor_engine": "diagrams.net-embed",
         "editor_origin": normalized_origin,
         "editor_url": editor_url,
         "engine_delivery": (
             "operator-configured-browser-iframe" if custom_origin else "remote-browser-iframe"
         ),
         "local_state": "browser-localStorage",
-        "supported_inputs": ["mermaid", "json-canvas-1.0", "drawio-xml"],
+        "supported_inputs": [
+            "schauwerk-representation-input.v1",
+            "mermaid",
+            "json-canvas-1.0",
+            "drawio-xml",
+        ],
         "supported_outputs": ["drawio-xml", "png", "svg"],
         "network_boundary": {
             "shell": "local-static-files",
-            "editor_runtime": normalized_origin,
+            "native_render_api": "same-origin-loopback-serve-only",
+            "native_viewer_external_requests_required": False,
+            "legacy_editor_runtime": normalized_origin,
             "public_embed_runtime": not custom_origin,
             "operator_configured_editor_runtime": custom_origin,
             "offline_mode_requested": custom_origin,
@@ -252,15 +309,19 @@ def build_standalone_editor(
         },
         "files": written,
         "does_not_establish": [
-            "bundled-editor-runtime",
+            "native-semantic-mutation",
+            "native-edge-rerouting-after-node-drag",
+            "native-png-export",
+            "native-static-host-render-api",
+            "general-knowledge-map-native-cutover",
+            "bundled-legacy-editor-runtime",
             "static-host-security-header-enforcement",
             (
-                "operator-control-of-editor-runtime"
+                "operator-control-of-legacy-editor-runtime"
                 if custom_origin
-                else "provider-independence-of-the-spike"
+                else "provider-independence-of-legacy-compatibility"
             ),
             "lossless-json-canvas-roundtrip",
-            "production-readiness",
         ],
     }
     canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -275,9 +336,10 @@ def build_standalone_editor(
 
 
 class _EditorRequestHandler(SimpleHTTPRequestHandler):
-    """Static handler with no-store and a narrow browser security boundary."""
+    """Static product handler plus one bounded same-origin native-render endpoint."""
 
     editor_origin: str = EDITOR_ORIGIN
+    native_build_lock = threading.Lock()
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -286,6 +348,72 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Content-Security-Policy", _content_security_policy(self.editor_origin))
         super().end_headers()
+
+    def _send_json(self, status: HTTPStatus, payload: dict[str, object]) -> None:
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def do_POST(self) -> None:  # noqa: N802
+        if self.path != NATIVE_API_PATH:
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
+            return
+        media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
+        if media_type != "application/json":
+            self._send_json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                {"error": "native render endpoint requires application/json"},
+            )
+            return
+        length_header = self.headers.get("Content-Length")
+        try:
+            content_length = int(length_header) if length_header is not None else -1
+        except ValueError:
+            content_length = -1
+        if content_length < 0:
+            self._send_json(HTTPStatus.LENGTH_REQUIRED, {"error": "valid Content-Length required"})
+            return
+        if content_length > MAX_NATIVE_REQUEST_BYTES:
+            self._send_json(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {"error": "native representation exceeds 5 MB"},
+            )
+            return
+        payload = self.rfile.read(content_length)
+        if len(payload) != content_length:
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "incomplete request body"})
+            return
+        try:
+            value = json.loads(payload.decode("utf-8"))
+            normalized = _native_product_input(value)
+            digest = str(normalized["input_digest"])
+            root = Path(self.directory).resolve()
+            target = root / "native" / digest
+            with self.native_build_lock:
+                if not target.exists():
+                    build_native_viewer(value, target)
+                elif not (target / "manifest.json").is_file():
+                    raise StandaloneEditorError("native viewer cache is incomplete")
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            StandaloneEditorError,
+            NativeViewerError,
+        ) as exc:
+            self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
+            return
+
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "input_digest": digest,
+                "renderer": NATIVE_RENDERER,
+                "url": f"/native/{digest}/index.html",
+            },
+        )
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return

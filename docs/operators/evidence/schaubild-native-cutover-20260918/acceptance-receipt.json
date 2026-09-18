@@ -1,0 +1,36 @@
+{
+  "accepted_at": "2026-09-18",
+  "base_head": "084699b0eef3bce8b2b1116e62f50202e6170f0d",
+  "checks": {
+    "canonical_representation_uses_native_renderer": true,
+    "focused_contract_tests_passed": true,
+    "knowledge_map_native_cutover_fail_closed": true,
+    "legacy_mermaid_json_canvas_drawio_preserved": true,
+    "productive_provider_mutation_attempted": false,
+    "same_origin_native_render_endpoint_is_bounded": true,
+    "second_browser_renderer_introduced": false
+  },
+  "does_not_establish": [
+    "general knowledge_map native routing",
+    "native semantic editing",
+    "native edge rerouting after node drag",
+    "native PNG export",
+    "full repository validation of the final commit",
+    "post-merge production deployment"
+  ],
+  "evidence_digest": "28e801ff5ea45003ee78f91d7c29972bb3ac4670784c494c874f49fd2c6bc11f",
+  "parent_evidence": {
+    "acceptance_digest": "a8cbb2b696f0fe152018155ac0f555b95df7a1b8d5783a403e42deca369bcfb8",
+    "file_sha256": "36990ee66f27efe4204d65f5b6c6c8cc140102c03a4b018179b322a0c4f68d1d",
+    "path": "docs/operators/evidence/infrastructure-hardening-20260904/acceptance-receipt.json",
+    "schema_version": "schauwerk-infrastructure-hardening-acceptance.v1"
+  },
+  "schema_version": "schauwerk-schaubild-native-cutover.v1",
+  "scope": "schaubild-native-renderer-primary-with-legacy-compatibility",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "662ee17c9fcacc768c79089fc34a071fc0d98ddbc4ba116a6a836f16484339e5",
+    "src/schauwerk/visual/standalone_editor.py": "c90112a777e605a0dec6141b89444b5c0c985eba67a24f2f996e20128b9b573a",
+    "tests/visual/test_standalone_editor.py": "e7527aeca16c3d07c59cedc53acee4fc665bbc23d9c954891d5fb8969395fd4b",
+    "tests/visual/test_standalone_editor_ai_handoff.py": "0b64d49d61e0a07d44a8854bedd0efd5742989306e9be79bcb0fd9a41c5f4a93"
+  }
+}

@@ -1,6 +1,25 @@
 # Standalone Diagram Editor Spike v1
 
-Stand: 2026-08-25
+Stand: 2026-09-18
+
+## Status nach Native-Cutover
+
+Seit dem Phase-3-Cutover vom 18.09.2026 ist diagrams.net **nicht mehr die
+Renderer-Autorität für neue kanonische Schaubilder**. Die Schaubild-Oberfläche nimmt
+`schauwerk-representation-input.v1` als primären Eingang und rendert ihn über den
+bestehenden Python-Renderer `schauwerk-native-diagram-v1` plus lokalen Native Viewer.
+
+Der hier dokumentierte diagrams.net-Pfad bleibt erhalten als:
+
+- Import-/Bearbeitungskompatibilität für Mermaid, JSON Canvas und draw.io/XML;
+- Fallback für `knowledge_map`, bis dessen allgemeine Long-Same-Row-/Parallel-Routinggrenze
+  im nativen Renderer separat gehärtet und visuell akzeptiert ist;
+- Exportpfad für Legacy-PNG und bestehende draw.io-Projekte.
+
+Der native Pfad läuft nur über den integrierten loopback-only `serve`-Prozess, weil das
+statische Browserbundle den Python-Renderer nicht selbst ausführen kann. Der Browser
+enthält ausdrücklich keinen zweiten Renderer. Native Semantik bleibt read-only;
+Node-Drag ist nur lokaler Layout-Overlay und routet Kanten nicht neu.
 
 ## Ziel
 
