@@ -1,0 +1,139 @@
+name: native-schaubild-image
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "README.md"
+      - "src/**"
+      - ".github/workflows/native-schaubild-image.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "README.md"
+      - "src/**"
+      - ".github/workflows/native-schaubild-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build amd64 smoke image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --load \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --tag schaubild-native:smoke \
+            .
+
+      - name: Smoke native runtime behind stripped /schaubild proxy contract
+        run: |
+          set -euo pipefail
+          docker run --detach --rm \
+            --name schaubild-native-smoke \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --publish 127.0.0.1:18767:8765 \
+            schaubild-native:smoke \
+            python -m schauwerk.visual.standalone_editor serve \
+              --bind-host 0.0.0.0 \
+              --trusted-reverse-proxy \
+              --public-base-path /schaubild \
+              --port 8765
+          trap 'docker stop schaubild-native-smoke >/dev/null 2>&1 || true' EXIT
+
+          for _ in $(seq 1 30); do
+            if curl --fail --silent \
+              --header 'Host: 127.0.0.1:8765' \
+              http://127.0.0.1:18767/manifest.json \
+              --output /tmp/schaubild-manifest.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path("/tmp/schaubild-manifest.json").read_text())
+          assert manifest["schema_version"] == "schauwerk-standalone-editor-manifest.v2"
+          assert manifest["editor_engine"] == "schauwerk-native-diagram-v1"
+          assert manifest["native_renderer"]["api_path"] == "/schaubild/api/native-viewer"
+          assert manifest["native_renderer"]["public_base_path"] == "/schaubild"
+          PY
+
+          curl --fail --silent \
+            --header 'Host: 127.0.0.1:8765' \
+            --header 'Content-Type: application/json' \
+            --data-binary @docs/operators/fixtures/golden/decision-flow-v1.json \
+            http://127.0.0.1:18767/api/native-viewer \
+            --output /tmp/native-render.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("/tmp/native-render.json").read_text())
+          assert result["renderer"] == "schauwerk-native-diagram-v1"
+          assert result["url"] == f"/schaubild/native/{result['input_digest']}/index.html"
+          Path("/tmp/native-viewer-path").write_text(
+              result["url"].removeprefix("/schaubild"),
+              encoding="utf-8",
+          )
+          PY
+
+          curl --fail --silent \
+            --header 'Host: 127.0.0.1:8765' \
+            "http://127.0.0.1:18767$(cat /tmp/native-viewer-path)" \
+            | grep -q 'id="nativeViewport"'
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/heimgewebe/schauwerk-schaubild
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" \
+            | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Publish exact-commit image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=mode=max \
+            --sbom=true \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --tag "$IMAGE:$GITHUB_SHA" \
+            --push \
+            .
+
+      - name: Logout from GHCR
+        if: always()
+        run: docker logout ghcr.io || true

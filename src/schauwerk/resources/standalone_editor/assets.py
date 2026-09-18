@@ -685,7 +685,8 @@ APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, 
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
-const NATIVE_API_PATH = "/api/native-viewer";
+const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";
+const NATIVE_API_PATH = `${PUBLIC_BASE_PATH}/api/native-viewer`;
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const NATIVE_DRAFT_KEY = "schauwerk.native-schaubild.draft.v1";
 const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
@@ -1051,7 +1052,9 @@ async function launchNative(load) {
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
-      !/^\/native\/[0-9a-f]{64}\/index\.html$/.test(String(result.url || ""))
+      !/^[0-9a-f]{64}$/.test(String(result.input_digest || "")) ||
+      String(result.url || "") !==
+        `${PUBLIC_BASE_PATH}/native/${result.input_digest}/index.html`
     ) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }

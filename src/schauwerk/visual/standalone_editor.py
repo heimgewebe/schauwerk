@@ -66,6 +66,9 @@ AI_HANDOFF_PROMPT: Final = (
 )
 _EDITOR_ORIGIN_MARKER: Final = 'const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";'
 _EDITOR_URL_MARKER: Final = 'const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";'
+_PUBLIC_BASE_PATH_MARKER: Final = (
+    'const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";'
+)
 _HANDOFF_BUTTON_ANCHOR: Final = (
     '        <button class="button ghost" id="blankButton" type="button">Legacy leer</button>'
 )
@@ -148,6 +151,53 @@ def _normalize_editor_origin(value: str) -> str:
     return f"{parsed.scheme}://{netloc}"
 
 
+def _normalize_public_base_path(value: str) -> str:
+    if not isinstance(value, str) or value != value.strip():
+        raise StandaloneEditorError("public base path must be one canonical absolute path")
+    if value in {"", "/"}:
+        return ""
+    if (
+        not value.startswith("/")
+        or value.endswith("/")
+        or "//" in value
+        or "?" in value
+        or "#" in value
+        or "\\" in value
+    ):
+        raise StandaloneEditorError(
+            "public base path must be slash-prefixed without trailing slash"
+        )
+    segments = value[1:].split("/")
+    if any(
+        not segment
+        or segment in {".", ".."}
+        or re.fullmatch(r"[A-Za-z0-9._~-]+", segment) is None
+        for segment in segments
+    ):
+        raise StandaloneEditorError("public base path contains an invalid segment")
+    return value
+
+
+def _normalize_bind_host(value: str, *, trusted_reverse_proxy: bool) -> str:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise StandaloneEditorError("bind host must be one exact local address")
+    if value.casefold() == "localhost":
+        return "127.0.0.1"
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError as exc:
+        raise StandaloneEditorError("bind host must be localhost or an IP literal") from exc
+    if address.version != 4:
+        raise StandaloneEditorError("bind host must use IPv4 syntax")
+    if address.is_loopback:
+        return address.compressed
+    if not trusted_reverse_proxy:
+        raise StandaloneEditorError(
+            "non-loopback bind requires --trusted-reverse-proxy and a private ingress boundary"
+        )
+    return address.compressed
+
+
 def _editor_url(editor_origin: str) -> tuple[str, bool]:
     custom_origin = editor_origin != EDITOR_ORIGIN
     query = EMBED_QUERY
@@ -158,10 +208,19 @@ def _editor_url(editor_origin: str) -> tuple[str, bool]:
     return f"{editor_origin}/?{query}", custom_origin
 
 
-def _render_assets(*, editor_origin: str, editor_url: str) -> dict[str, str]:
+def _render_assets(
+    *,
+    editor_origin: str,
+    editor_url: str,
+    public_base_path: str,
+) -> dict[str, str]:
     rendered = dict(ASSETS)
     app_js = rendered["app.js"]
-    if app_js.count(_EDITOR_ORIGIN_MARKER) != 1 or app_js.count(_EDITOR_URL_MARKER) != 1:
+    if (
+        app_js.count(_EDITOR_ORIGIN_MARKER) != 1
+        or app_js.count(_EDITOR_URL_MARKER) != 1
+        or app_js.count(_PUBLIC_BASE_PATH_MARKER) != 1
+    ):
         raise StandaloneEditorError("standalone editor asset template has drifted")
     app_js = app_js.replace(
         _EDITOR_ORIGIN_MARKER,
@@ -171,6 +230,11 @@ def _render_assets(*, editor_origin: str, editor_url: str) -> dict[str, str]:
     app_js = app_js.replace(
         _EDITOR_URL_MARKER,
         f"const EDITOR_URL = {json.dumps(editor_url, ensure_ascii=False)};",
+        1,
+    )
+    app_js = app_js.replace(
+        _PUBLIC_BASE_PATH_MARKER,
+        f"const PUBLIC_BASE_PATH = {json.dumps(public_base_path, ensure_ascii=False)};",
         1,
     )
 
@@ -239,12 +303,18 @@ def build_standalone_editor(
     output_dir: Path,
     *,
     editor_origin: str = EDITOR_ORIGIN,
+    public_base_path: str = "",
 ) -> dict[str, object]:
     """Write a deterministic static product shell into an empty directory."""
 
     normalized_origin = _normalize_editor_origin(editor_origin)
+    normalized_base_path = _normalize_public_base_path(public_base_path)
     editor_url, custom_origin = _editor_url(normalized_origin)
-    assets = _render_assets(editor_origin=normalized_origin, editor_url=editor_url)
+    assets = _render_assets(
+        editor_origin=normalized_origin,
+        editor_url=editor_url,
+        public_base_path=normalized_base_path,
+    )
 
     output_dir = output_dir.expanduser().absolute()
     _reject_symlink_chain(output_dir)
@@ -277,8 +347,9 @@ def build_standalone_editor(
         "native_renderer": {
             "renderer": NATIVE_RENDERER,
             "viewer": "schauwerk-native-svg-phase2",
-            "runtime": "integrated-loopback-serve",
-            "api_path": NATIVE_API_PATH,
+            "runtime": "integrated-serve",
+            "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
+            "public_base_path": normalized_base_path,
             "admission": "schema-valid-except-knowledge-map",
             "semantic_authority": "schauwerk-representation-input.v1",
             "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
@@ -299,7 +370,7 @@ def build_standalone_editor(
         "supported_outputs": ["drawio-xml", "png", "svg"],
         "network_boundary": {
             "shell": "local-static-files",
-            "native_render_api": "same-origin-loopback-serve-only",
+            "native_render_api": "same-origin-integrated-serve-only",
             "native_viewer_external_requests_required": False,
             "legacy_editor_runtime": normalized_origin,
             "public_embed_runtime": not custom_origin,
@@ -339,6 +410,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
     """Static product handler plus one bounded same-origin native-render endpoint."""
 
     editor_origin: str = EDITOR_ORIGIN
+    public_base_path: str = ""
     native_build_lock = threading.Lock()
 
     def end_headers(self) -> None:
@@ -459,7 +531,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             {
                 "input_digest": digest,
                 "renderer": NATIVE_RENDERER,
-                "url": f"/native/{digest}/index.html",
+                "url": f"{self.public_base_path}/native/{digest}/index.html",
             },
         )
 
@@ -472,8 +544,16 @@ def serve_standalone_editor(
     port: int = 8765,
     build_dir: Path | None = None,
     editor_origin: str = EDITOR_ORIGIN,
+    bind_host: str = "127.0.0.1",
+    public_base_path: str = "",
+    trusted_reverse_proxy: bool = False,
 ) -> None:
-    """Serve the product shell on loopback only.
+    """Serve the product shell.
+
+    Loopback remains the default. A non-loopback bind is admitted only when the
+    caller explicitly declares a trusted private reverse-proxy boundary. The
+    container port must remain private to that proxy. The loopback Host check is
+    defense in depth and is not a substitute for an unexposed service port.
 
     A caller-supplied build directory must either be absent or empty. When no
     directory is supplied, a process-local temporary directory is created and
@@ -483,6 +563,11 @@ def serve_standalone_editor(
     if not 0 <= port <= 65535:
         raise StandaloneEditorError("port must be between 0 and 65535")
     normalized_origin = _normalize_editor_origin(editor_origin)
+    normalized_bind_host = _normalize_bind_host(
+        bind_host,
+        trusted_reverse_proxy=trusted_reverse_proxy,
+    )
+    normalized_base_path = _normalize_public_base_path(public_base_path)
     _, custom_origin = _editor_url(normalized_origin)
 
     temporary = build_dir is None
@@ -494,16 +579,26 @@ def serve_standalone_editor(
         root = build_dir.expanduser().absolute()
 
     try:
-        build_standalone_editor(root, editor_origin=normalized_origin)
+        build_standalone_editor(
+            root,
+            editor_origin=normalized_origin,
+            public_base_path=normalized_base_path,
+        )
         handler_class = type(
             "ConfiguredEditorRequestHandler",
             (_EditorRequestHandler,),
-            {"editor_origin": normalized_origin},
+            {
+                "editor_origin": normalized_origin,
+                "public_base_path": normalized_base_path,
+            },
         )
         handler = partial(handler_class, directory=str(root))
-        with ThreadingHTTPServer(("127.0.0.1", port), handler) as server:
+        with ThreadingHTTPServer((normalized_bind_host, port), handler) as server:
             actual_port = int(server.server_address[1])
-            print(f"standalone editor: http://127.0.0.1:{actual_port}/")
+            print(
+                f"standalone editor: http://{normalized_bind_host}:{actual_port}/ "
+                f"public_base_path={normalized_base_path or '/'}"
+            )
             mode = "operator-configured editor origin" if custom_origin else "public embed runtime"
             print(f"editor engine: {normalized_origin} ({mode})")
             server.serve_forever()
@@ -519,18 +614,26 @@ def _parser() -> argparse.ArgumentParser:
     build = commands.add_parser("build", help="write the static editor shell")
     build.add_argument("--output-dir", required=True, type=Path)
     build.add_argument("--editor-origin", default=EDITOR_ORIGIN)
+    build.add_argument("--public-base-path", default="")
 
-    serve = commands.add_parser("serve", help="serve the editor shell on loopback")
+    serve = commands.add_parser("serve", help="serve the editor shell")
     serve.add_argument("--port", type=int, default=8765)
     serve.add_argument("--build-dir", type=Path)
     serve.add_argument("--editor-origin", default=EDITOR_ORIGIN)
+    serve.add_argument("--bind-host", default="127.0.0.1")
+    serve.add_argument("--public-base-path", default="")
+    serve.add_argument("--trusted-reverse-proxy", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "build":
-        manifest = build_standalone_editor(args.output_dir, editor_origin=args.editor_origin)
+        manifest = build_standalone_editor(
+            args.output_dir,
+            editor_origin=args.editor_origin,
+            public_base_path=args.public_base_path,
+        )
         print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "serve":
@@ -538,6 +641,9 @@ def main(argv: list[str] | None = None) -> int:
             port=args.port,
             build_dir=args.build_dir,
             editor_origin=args.editor_origin,
+            bind_host=args.bind_host,
+            public_base_path=args.public_base_path,
+            trusted_reverse_proxy=args.trusted_reverse_proxy,
         )
         return 0
     raise AssertionError(f"unhandled command: {args.command}")

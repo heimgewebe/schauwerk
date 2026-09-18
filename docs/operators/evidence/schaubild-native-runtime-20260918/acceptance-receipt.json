@@ -1,0 +1,57 @@
+{
+  "accepted_at": "2026-09-18",
+  "base_head": "5602bf04bc288631d503c2cdfeec1cc69c8d0a07",
+  "base_image": {
+    "digest": "sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d",
+    "reference": "python:3.13.7-slim-bookworm"
+  },
+  "checks": {
+    "focused_contract_tests_passed": true,
+    "generated_browser_javascript_syntax_valid": true,
+    "ghcr_publish_workflow_declared": true,
+    "github_permissions_least_privilege": true,
+    "known_native_viewer_browser_harness_baseline_reproduced": true,
+    "local_oci_build_passed": true,
+    "nonloopback_bind_is_explicitly_gated": true,
+    "prefixed_native_render_post_passed": true,
+    "prefixed_viewer_url_passed": true,
+    "python_suite_passed_count": 1292,
+    "python_suite_without_known_browser_harness_passed": true,
+    "read_only_container_smoke_passed": true,
+    "ruff_passed": true
+  },
+  "does_not_establish": [
+    "GHCR publication of the final merged commit",
+    "Commonthing consumer integration",
+    "Commonthing production deployment",
+    "general knowledge_map native routing",
+    "native semantic editing",
+    "native PNG export",
+    "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
+  ],
+  "evidence_digest": "c73a4c7dd7ea66dba68fdbc94c1ab818baee9d80db812eeb9bde207814aaa0d3",
+  "parent_evidence": {
+    "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
+    "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
+    "path": "docs/operators/evidence/schaubild-native-cutover-20260918/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-cutover.v1"
+  },
+  "runtime_contract": {
+    "default_bind": "127.0.0.1",
+    "internal_api_path": "/api/native-viewer",
+    "nonloopback_requires": "trusted-reverse-proxy",
+    "public_api_path": "/schaubild/api/native-viewer",
+    "public_base_path": "/schaubild",
+    "renderer": "schauwerk-native-diagram-v1"
+  },
+  "schema_version": "schauwerk-schaubild-native-runtime.v1",
+  "scope": "prefix-safe-native-schaubild-runtime-container",
+  "source_bindings": {
+    ".dockerignore": "b030fe153338b40297ef4da11abbf9251c6144fbab943ef7d6f46f831aafe99d",
+    ".github/workflows/native-schaubild-image.yml": "c7d75c165c664c7fdfe8b768c1eed9cf99f9b554af562d2670c42ba956aa56c6",
+    "Dockerfile": "e4dfcf3fcac89121fa08969b1b4a6936c5513c67277097bd6316dff69452e216",
+    "src/schauwerk/resources/standalone_editor/assets.py": "cee5f8795654c357b41c5a35c2e1f38648dfd21aa292633f76215a54c0ea4f83",
+    "src/schauwerk/visual/standalone_editor.py": "cb15273c58bd3eda77242ce8f45d4bc8b4c2b7ebce2da5f87720943c4655a8d7",
+    "tests/visual/test_standalone_editor.py": "48bf2ce628401cbb1a03a3acdef5be93afca54652a8e8c1c5d786af616ac1ff6"
+  }
+}

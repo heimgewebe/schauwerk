@@ -25,6 +25,8 @@ from schauwerk.visual.standalone_editor import (
     _content_security_policy,
     _EditorRequestHandler,
     _native_product_input,
+    _normalize_bind_host,
+    _normalize_public_base_path,
     build_standalone_editor,
 )
 
@@ -52,7 +54,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert manifest["engine_delivery"] == "remote-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "native_render_api": "same-origin-loopback-serve-only",
+        "native_render_api": "same-origin-integrated-serve-only",
         "native_viewer_external_requests_required": False,
         "legacy_editor_runtime": EDITOR_ORIGIN,
         "public_embed_runtime": True,
@@ -212,6 +214,78 @@ def _golden_representation(name: str) -> dict:
     path = Path(__file__).resolve().parents[2] / "docs" / "operators" / "fixtures" / "golden" / name
     return json.loads(path.read_text(encoding="utf-8"))
 
+
+def test_public_base_path_is_bound_into_manifest_and_client_urls(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, public_base_path="/schaubild")
+
+    assert manifest["native_renderer"]["api_path"] == "/schaubild/api/native-viewer"
+    assert manifest["native_renderer"]["public_base_path"] == "/schaubild"
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "PUBLIC_BASE_PATH") == "/schaubild"
+    assert "PUBLIC_BASE_PATH}/api/native-viewer" in app_js
+    assert "PUBLIC_BASE_PATH}/native/" in app_js
+
+
+@pytest.mark.parametrize("value", ["/schaubild/", "schaubild", "/a//b", "/../x", "/a\\b", "/a?b"])
+def test_public_base_path_rejects_ambiguous_or_noncanonical_values(value: str) -> None:
+    with pytest.raises(StandaloneEditorError):
+        _normalize_public_base_path(value)
+
+
+def test_public_base_path_canonicalizes_root_to_empty_prefix() -> None:
+    assert _normalize_public_base_path("") == ""
+    assert _normalize_public_base_path("/") == ""
+    assert _normalize_public_base_path("/schaubild") == "/schaubild"
+
+
+def test_nonloopback_bind_requires_explicit_trusted_reverse_proxy() -> None:
+    assert _normalize_bind_host("localhost", trusted_reverse_proxy=False) == "127.0.0.1"
+    assert _normalize_bind_host("127.0.0.1", trusted_reverse_proxy=False) == "127.0.0.1"
+    with pytest.raises(StandaloneEditorError, match="IPv4"):
+        _normalize_bind_host("::1", trusted_reverse_proxy=False)
+    with pytest.raises(StandaloneEditorError, match="trusted-reverse-proxy"):
+        _normalize_bind_host("0.0.0.0", trusted_reverse_proxy=False)
+    assert _normalize_bind_host("0.0.0.0", trusted_reverse_proxy=True) == "0.0.0.0"
+
+
+def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output, public_base_path="/schaubild")
+
+    handler_class = type(
+        "PrefixedEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN, "public_base_path": "/schaubild"},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert body["url"] == f"/schaubild/native/{body['input_digest']}/index.html"
+
+        internal_viewer_path = body["url"].removeprefix("/schaubild")
+        connection.request("GET", internal_viewer_path)
+        viewer_response = connection.getresponse()
+        assert viewer_response.status == 200
+        assert 'id="nativeViewport"' in viewer_response.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge_map() -> None:
     process = _golden_representation("decision-flow-v1.json")
@@ -502,7 +576,7 @@ def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     assert manifest["engine_delivery"] == "operator-configured-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "native_render_api": "same-origin-loopback-serve-only",
+        "native_render_api": "same-origin-integrated-serve-only",
         "native_viewer_external_requests_required": False,
         "legacy_editor_runtime": "http://127.0.0.1:8878",
         "public_embed_runtime": False,
