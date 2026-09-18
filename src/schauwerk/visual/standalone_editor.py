@@ -15,6 +15,7 @@ import os
 import re
 import secrets
 import shutil
+import socket
 import tempfile
 import threading
 import time
@@ -43,6 +44,8 @@ MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
 NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
 NATIVE_CACHE_MAX_PIN_SECONDS: Final = 2 * NATIVE_CACHE_GRACE_SECONDS
+NATIVE_REQUEST_TIMEOUT_SECONDS: Final = 30.0
+NATIVE_SERVER_MAX_WORKERS: Final = 32
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
@@ -506,42 +509,39 @@ def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
     return records
 
 
-def _enforce_native_pin_reserve(root: Path, *, keep: _NativeCacheRecord) -> None:
+def _assert_native_pin_capacity(
+    root: Path,
+    *,
+    record: _NativeCacheRecord,
+    now: float,
+) -> None:
     with _NATIVE_CACHE_LOCK:
-        now = time.monotonic()
         pinned = [
-            record
-            for record in _native_cache_records(root)
-            if record.pinned_until > now
+            item
+            for item in _native_cache_records(root)
+            if item is not record and item.pinned_until > now
         ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
-        pinned_bytes = sum(record.size_bytes for record in pinned)
-        candidates = sorted(
-            (record for record in pinned if record is not keep),
-            key=lambda item: (item.last_access, item.token),
-        )
-        while candidates and (
-            len(pinned) > max_pinned_entries or pinned_bytes > max_pinned_bytes
+        if (
+            len(pinned) + 1 > max_pinned_entries
+            or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
         ):
-            victim = candidates.pop(0)
-            victim.pinned_until = now
-            pinned.remove(victim)
-            pinned_bytes -= victim.size_bytes
-        if keep in pinned and (
-            len(pinned) > max_pinned_entries or pinned_bytes > max_pinned_bytes
-        ):
-            keep.pinned_until = now
+            raise NativeCacheCapacityError(
+                "native viewer pin capacity is temporarily reserved; retry later"
+            )
 
 
 def _pin_native_cache_record(root: Path, record: _NativeCacheRecord) -> None:
     now = time.monotonic()
-    record.last_access = now
-    record.pinned_until = min(
+    next_pinned_until = min(
         max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
         record.max_pinned_until,
     )
-    _enforce_native_pin_reserve(root, keep=record)
+    if record.pinned_until <= now and next_pinned_until > now:
+        _assert_native_pin_capacity(root, record=record, now=now)
+    record.last_access = now
+    record.pinned_until = next_pinned_until
 
 
 def _prune_native_cache(
@@ -665,9 +665,15 @@ def _build_native_cache_record(
             pinned_until=now + NATIVE_CACHE_GRACE_SECONDS,
             max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
         )
+        try:
+            _assert_native_pin_capacity(root, record=record, now=now)
+        except NativeCacheCapacityError:
+            _forget_native_cache_record(record, remove_files=False)
+            if target.exists() and target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+            raise
         _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
         _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
-        _enforce_native_pin_reserve(root, keep=record)
         _prune_native_cache(root, keep=record)
         return record
 
@@ -678,6 +684,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
     editor_origin: str = EDITOR_ORIGIN
     public_base_path: str = ""
     native_serve_binding: str = "127.0.0.1-only"
+    request_timeout_seconds: float = NATIVE_REQUEST_TIMEOUT_SECONDS
+
+    def setup(self) -> None:
+        super().setup()
+        self.connection.settimeout(self.request_timeout_seconds)
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -784,7 +795,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             if record.max_pinned_until <= time.monotonic():
                 self.send_error(HTTPStatus.GONE)
                 return True
-            _pin_native_cache_record(root, record)
+            try:
+                _pin_native_cache_record(root, record)
+            except NativeCacheCapacityError:
+                self.send_error(HTTPStatus.SERVICE_UNAVAILABLE)
+                return True
             original_directory = self.directory
             original_path = self.path
             self.directory = str(record.path)
@@ -844,7 +859,18 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 {"error": "native representation exceeds 5 MB"},
             )
             return
-        payload = self.rfile.read(content_length)
+        try:
+            payload = self.rfile.read(content_length)
+        except TimeoutError:
+            self.close_connection = True
+            try:
+                self._send_json(
+                    HTTPStatus.REQUEST_TIMEOUT,
+                    {"error": "native render request body timed out"},
+                )
+            except OSError:
+                pass
+            return
         if len(payload) != content_length:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "incomplete request body"})
             return
@@ -885,6 +911,42 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
+
+
+class _BoundedThreadingHTTPServer(ThreadingHTTPServer):
+    """Threaded HTTP server with a hard cap on concurrent request workers."""
+
+    daemon_threads = True
+    block_on_close = False
+    max_workers: int = NATIVE_SERVER_MAX_WORKERS
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._worker_slots = threading.BoundedSemaphore(self.max_workers)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request: socket.socket, client_address: Any) -> None:
+        if not self._worker_slots.acquire(blocking=False):
+            try:
+                request.sendall(
+                    b"HTTP/1.1 503 Service Unavailable\r\n"
+                    b"Connection: close\r\n"
+                    b"Content-Length: 0\r\n\r\n"
+                )
+            except OSError:
+                pass
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self._worker_slots.release()
+            raise
+
+    def process_request_thread(self, request: socket.socket, client_address: Any) -> None:
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._worker_slots.release()
 
 
 def serve_standalone_editor(
@@ -946,7 +1008,7 @@ def serve_standalone_editor(
             },
         )
         handler = partial(handler_class, directory=str(root))
-        with ThreadingHTTPServer((normalized_bind_host, port), handler) as server:
+        with _BoundedThreadingHTTPServer((normalized_bind_host, port), handler) as server:
             actual_port = int(server.server_address[1])
             print(
                 f"standalone editor: http://{normalized_bind_host}:{actual_port}/ "

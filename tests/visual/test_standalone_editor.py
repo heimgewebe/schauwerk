@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import threading
 import xml.etree.ElementTree as ET
@@ -561,7 +562,69 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
         thread.join(timeout=5)
 
 
-def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
+def test_bounded_runtime_rejects_excess_workers_and_times_out_slow_request_body(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "TimeoutBoundedEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "request_timeout_seconds": 0.2,
+        },
+    )
+    server_class = type(
+        "SingleWorkerEditorHTTPServer",
+        (standalone_editor._BoundedThreadingHTTPServer,),
+        {"max_workers": 1},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = server_class(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    slow = socket.create_connection(("127.0.0.1", int(server.server_address[1])), timeout=5)
+    try:
+        slow.sendall(
+            b"POST /api/native-viewer HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 100\r\n"
+            b"Connection: close\r\n\r\n"
+            b"{"
+        )
+
+        excess = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        excess.request("GET", "/manifest.json")
+        excess_response = excess.getresponse()
+        excess_response.read()
+        assert excess_response.status == 503
+        excess.close()
+
+        slow_response = b""
+        while b"\r\n\r\n" not in slow_response:
+            part = slow.recv(4096)
+            if not part:
+                break
+            slow_response += part
+        assert b" 408 " in slow_response
+
+        healthy = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        healthy.request("GET", "/manifest.json")
+        healthy_response = healthy.getresponse()
+        healthy_response.read()
+        assert healthy_response.status == 200
+        healthy.close()
+    finally:
+        slow.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -576,7 +639,7 @@ def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
     monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
 
     handler_class = type(
-        "ReserveBoundedCacheEditorRequestHandler",
+        "PinAdmissionEditorRequestHandler",
         (_EditorRequestHandler,),
         {"editor_origin": EDITOR_ORIGIN},
     )
@@ -618,6 +681,12 @@ def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
         assert first_record.pinned_until == 160.0
         assert first_record.max_pinned_until == 220.0
 
+        clock[0] = 101.0
+        second_status, second_body = post("second_flow")
+        assert second_status == 503
+        assert "pin capacity" in str(second_body["error"])
+        assert first_record.pinned_until == 160.0
+
         clock[0] = 150.0
         connection.request("GET", first_url)
         first_viewer = connection.getresponse()
@@ -627,22 +696,25 @@ def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
 
         clock[0] = 161.0
         second_status, second_body = post("second_flow")
+        assert second_status == 503
+        assert "pin capacity" in str(second_body["error"])
+        assert first_record.pinned_until == 210.0
+
+        clock[0] = 211.0
+        second_status, second_body = post("second_flow")
         assert second_status == 200
-        assert second_body["url"] != first_url
-        assert first_record.pinned_until == 161.0
+        second_url = str(second_body["url"])
+        second_record = record_for(second_url)
+        assert first_record.pinned_until == 210.0
+        assert second_record.pinned_until == 271.0
 
-        clock[0] = 200.0
+        clock[0] = 212.0
         connection.request("GET", first_url)
-        capped_viewer = connection.getresponse()
-        assert capped_viewer.status == 200
-        capped_viewer.read()
-        assert first_record.pinned_until == 220.0
-
-        clock[0] = 201.0
-        third_status, third_body = post("third_flow")
-        assert third_status == 200
-        assert third_body["url"] not in {first_url, second_body["url"]}
-        assert first_record.pinned_until == 201.0
+        no_pin_response = connection.getresponse()
+        no_pin_response.read()
+        assert no_pin_response.status == 503
+        assert first_record.pinned_until == 210.0
+        assert second_record.pinned_until == 271.0
 
         clock[0] = 221.0
         connection.request("GET", first_url)
@@ -650,31 +722,22 @@ def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
         expired_viewer.read()
         assert expired_viewer.status == 410
 
+        first_retry_status, first_retry_body = post("first_flow")
+        assert first_retry_status == 503
+        assert "pin capacity" in str(first_retry_body["error"])
+        assert second_record.pinned_until == 271.0
+
+        clock[0] = 272.0
         refreshed_status, refreshed_body = post("first_flow")
         assert refreshed_status == 200
         refreshed_url = str(refreshed_body["url"])
         assert refreshed_body["input_digest"] == first_body["input_digest"]
         assert refreshed_url != first_url
 
-        connection.request("GET", first_url)
-        old_token_response = connection.getresponse()
-        old_token_response.read()
-        assert old_token_response.status == 404
-
         connection.request("GET", refreshed_url)
         refreshed_viewer = connection.getresponse()
         assert refreshed_viewer.status == 200
         assert 'id="nativeViewport"' in refreshed_viewer.read().decode("utf-8")
-
-        clock[0] = 222.0
-        fourth_status, fourth_body = post("fourth_flow")
-        assert fourth_status == 200
-        assert fourth_body["url"] not in {
-            first_url,
-            second_body["url"],
-            third_body["url"],
-            refreshed_url,
-        }
         connection.close()
     finally:
         server.shutdown()
@@ -683,7 +746,7 @@ def test_native_render_endpoint_bounds_pins_and_reserves_capacity(
 
     cache_root = output / ".native-cache"
     assert cache_root.is_dir()
-    assert len(list(cache_root.iterdir())) == 2
+    assert len(list(cache_root.iterdir())) <= 2
 
 
 def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(

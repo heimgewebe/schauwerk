@@ -27,7 +27,7 @@
     "prefixed_native_render_post_passed": true,
     "prefixed_viewer_url_passed": true,
     "publish_candidate_built_attested_and_smoked_before_final_tag": true,
-    "python_suite_passed_count": 1299,
+    "python_suite_passed_count": 1300,
     "python_suite_without_known_browser_harness_passed": true,
     "read_only_container_smoke_passed": true,
     "ruff_passed": true,
@@ -36,8 +36,10 @@
     "workflow_triggers_on_smoke_helper_changes": true,
     "native_cache_pin_absolute_lifetime_enforced": true,
     "expired_same_digest_bundle_refreshes_token": true,
-    "native_cache_pin_reserve_prevents_capacity_monopoly": true,
-    "expired_viewer_urls_rejected_before_serving": true
+    "expired_viewer_urls_rejected_before_serving": true,
+    "native_cache_pin_admission_preserves_active_grace_leases": true,
+    "native_request_body_timeout_enforced": true,
+    "native_server_worker_concurrency_bounded": true
   },
   "does_not_establish": [
     "GHCR publication of the final merged commit",
@@ -48,7 +50,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "3326ae9c55d33fd490e5aca200b9130ed7ace969b14b20b9bb4ddffdd18da313",
+  "evidence_digest": "b9a9d985075fc7681b4421cb548e57c94a1b6dcd106344bafe1ed148f40c9444",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -72,8 +74,8 @@
     "scripts/ci/smoke-native-schaubild-runtime.sh": "602f24f419555437e7282cf36d2eb0be142c55a549b90aca1dd6dabd13b90264",
     "src/schauwerk/resources/standalone_editor/assets.py": "77bc7897923d351d4ab4b759687e18a1d63d6246a5fddd6b6bb6b02e0b25320f",
     "src/schauwerk/visual/native_viewer.py": "2cd5f6ea9495f6b2954ee28e5f2148aae62c1b7e9cf10ed3aa88f27732385c9c",
-    "src/schauwerk/visual/standalone_editor.py": "84f6f669a28a79199ec847a5d45df6ecb358754f8116066f5f62cf001f5844c7",
+    "src/schauwerk/visual/standalone_editor.py": "687f455b762512cffd291b41f35cb09cce6cdd51028ea35fc875a78523a8df72",
     "tests/visual/test_native_viewer.py": "5816e97ea62e560e1c8fca004be8e460d7881d9dc621e7b95fd869213315d388",
-    "tests/visual/test_standalone_editor.py": "4b29c9c2a2ed24cc079da2c3e630e4af123657506b88a756eb272d7c8bcda389"
+    "tests/visual/test_standalone_editor.py": "35f6d735f13e174f58b79f76bf480751656dbf331330055c75653421a9cc325c"
   }
 }
