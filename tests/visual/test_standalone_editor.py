@@ -693,6 +693,67 @@ def test_native_render_endpoint_pins_bundle_then_evicts_after_grace(
 
 
 
+def test_native_render_endpoint_rebuilds_expired_same_digest_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    clock = [100.0]
+    monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
+
+    handler_class = type(
+        "ExpiredSameDigestEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        headers = {"Content-Type": "application/json", "Content-Length": str(len(payload))}
+
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        first_response = connection.getresponse()
+        first_body = json.loads(first_response.read().decode("utf-8"))
+        assert first_response.status == 200
+        first_url = str(first_body["url"])
+
+        clock[0] = 221.0
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        refreshed_response = connection.getresponse()
+        refreshed_body = json.loads(refreshed_response.read().decode("utf-8"))
+        assert refreshed_response.status == 200
+        refreshed_url = str(refreshed_body["url"])
+        assert refreshed_body["input_digest"] == first_body["input_digest"]
+        assert refreshed_url != first_url
+
+        connection.request("GET", first_url)
+        expired_response = connection.getresponse()
+        expired_response.read()
+        assert expired_response.status == 404
+
+        connection.request("GET", refreshed_url)
+        refreshed_viewer = connection.getresponse()
+        assert refreshed_viewer.status == 200
+        assert 'id="nativeViewport"' in refreshed_viewer.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    cache_root = output / ".native-cache"
+    assert cache_root.is_dir()
+    assert len(list(cache_root.iterdir())) == 1
+
+
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)

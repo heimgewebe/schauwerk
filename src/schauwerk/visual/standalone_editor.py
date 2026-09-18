@@ -584,8 +584,12 @@ def _build_native_cache_record(
     with _NATIVE_CACHE_LOCK:
         existing = _native_cache_by_digest(root, digest)
         if existing is not None:
-            _pin_native_cache_record(existing)
-            return existing
+            now = time.monotonic()
+            if existing.max_pinned_until <= now:
+                _forget_native_cache_record(existing, remove_files=True)
+            else:
+                _pin_native_cache_record(existing)
+                return existing
 
         _prune_native_cache(
             root,
