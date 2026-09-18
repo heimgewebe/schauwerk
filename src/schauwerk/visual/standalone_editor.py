@@ -467,6 +467,7 @@ class _NativePinWindow:
 
 
 _NATIVE_CACHE_LOCK = threading.RLock()
+_NATIVE_BUILD_LOCK = threading.Lock()
 _NATIVE_CACHE_BY_DIGEST: dict[tuple[str, str], _NativeCacheRecord] = {}
 _NATIVE_CACHE_BY_TOKEN: dict[tuple[str, str], _NativeCacheRecord] = {}
 _NATIVE_PIN_WINDOWS: dict[tuple[str, str], _NativePinWindow] = {}
@@ -591,6 +592,7 @@ def _prune_native_cache(
     reserve_bytes: int = 0,
     reserve_entries: int = 0,
 ) -> None:
+    victim_paths: list[Path] = []
     with _NATIVE_CACHE_LOCK:
         records = _native_cache_records(root)
         total = sum(item.size_bytes for item in records)
@@ -608,7 +610,8 @@ def _prune_native_cache(
             or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
         ):
             victim = candidates.pop(0)
-            _forget_native_cache_record(victim, remove_files=True)
+            victim_paths.append(victim.path)
+            _forget_native_cache_record(victim, remove_files=False)
             total -= victim.size_bytes
             records.remove(victim)
         if (
@@ -618,6 +621,14 @@ def _prune_native_cache(
             raise NativeCacheCapacityError(
                 "native viewer cache capacity is temporarily pinned; retry later"
             )
+
+    for victim_path in victim_paths:
+        if (
+            victim_path.exists()
+            and victim_path.is_dir()
+            and not victim_path.is_symlink()
+        ):
+            shutil.rmtree(victim_path)
 
 
 def _native_cache_by_digest(root: Path, digest: str) -> _NativeCacheRecord | None:
@@ -657,9 +668,18 @@ def _build_native_cache_record(
             _pin_native_cache_record(root, existing)
             return existing
 
-        pin_window, new_pin_window = _native_pin_window(root, digest=digest, now=now)
-        if existing is not None:
-            _forget_native_cache_record(existing, remove_files=True)
+    if not _NATIVE_BUILD_LOCK.acquire(timeout=NATIVE_REQUEST_TIMEOUT_SECONDS):
+        raise NativeCacheCapacityError(
+            "native viewer build capacity is temporarily busy; retry later"
+        )
+    try:
+        with _NATIVE_CACHE_LOCK:
+            existing = _native_cache_by_digest(root, digest)
+            now = time.monotonic()
+            if existing is not None and existing.max_pinned_until > now:
+                _pin_native_cache_record(root, existing)
+                return existing
+            pin_window, new_pin_window = _native_pin_window(root, digest=digest, now=now)
 
         _prune_native_cache(
             root,
@@ -668,15 +688,19 @@ def _build_native_cache_record(
             reserve_entries=1,
         )
         cache_root = root / ".native-cache"
-        if cache_root.exists() and (cache_root.is_symlink() or not cache_root.is_dir()):
+        if cache_root.exists() and (
+            cache_root.is_symlink() or not cache_root.is_dir()
+        ):
             raise StandaloneEditorError("native viewer cache root is unsafe")
         cache_root.mkdir(mode=0o700, exist_ok=True)
         os.chmod(cache_root, 0o700)
 
-        token = secrets.token_hex(16)
-        while (_native_root_key(root), token) in _NATIVE_CACHE_BY_TOKEN:
+        with _NATIVE_CACHE_LOCK:
             token = secrets.token_hex(16)
+            while (_native_root_key(root), token) in _NATIVE_CACHE_BY_TOKEN:
+                token = secrets.token_hex(16)
         target = Path(tempfile.mkdtemp(prefix="bundle-", dir=cache_root))
+
         try:
             build_native_viewer(
                 value,
@@ -694,31 +718,67 @@ def _build_native_cache_record(
                 shutil.rmtree(target)
             raise
 
-        now = time.monotonic()
-        record = _NativeCacheRecord(
-            root_key=_native_root_key(root),
-            digest=digest,
-            token=token,
-            path=target,
-            size_bytes=bundle_size,
-            created_at=now,
-            last_access=now,
-            pinned_until=min(now + NATIVE_CACHE_GRACE_SECONDS, pin_window.max_pinned_until),
-            max_pinned_until=pin_window.max_pinned_until,
-        )
+        stale_path: Path | None = None
+        winner: _NativeCacheRecord | None = None
         try:
-            _assert_native_pin_capacity(root, record=record, now=now)
-        except NativeCacheCapacityError:
-            _forget_native_cache_record(record, remove_files=False)
+            with _NATIVE_CACHE_LOCK:
+                now = time.monotonic()
+                if now >= pin_window.max_pinned_until:
+                    raise NativeCacheCapacityError(
+                        "native viewer digest pin lifetime expired during build"
+                    )
+                existing = _native_cache_by_digest(root, digest)
+                if existing is not None and existing.max_pinned_until > now:
+                    _pin_native_cache_record(root, existing)
+                    winner = existing
+                else:
+                    record = _NativeCacheRecord(
+                        root_key=_native_root_key(root),
+                        digest=digest,
+                        token=token,
+                        path=target,
+                        size_bytes=bundle_size,
+                        created_at=now,
+                        last_access=now,
+                        pinned_until=min(
+                            now + NATIVE_CACHE_GRACE_SECONDS,
+                            pin_window.max_pinned_until,
+                        ),
+                        max_pinned_until=pin_window.max_pinned_until,
+                    )
+                    _assert_native_pin_capacity(root, record=record, now=now)
+                    if existing is not None:
+                        stale_path = existing.path
+                        _forget_native_cache_record(existing, remove_files=False)
+                    if new_pin_window:
+                        _NATIVE_PIN_WINDOWS[(record.root_key, digest)] = pin_window
+                    _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
+                    _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
+                    winner = record
+        except Exception:
             if target.exists() and target.is_dir() and not target.is_symlink():
                 shutil.rmtree(target)
             raise
-        if new_pin_window:
-            _NATIVE_PIN_WINDOWS[(record.root_key, digest)] = pin_window
-        _NATIVE_CACHE_BY_DIGEST[(record.root_key, digest)] = record
-        _NATIVE_CACHE_BY_TOKEN[(record.root_key, token)] = record
-        _prune_native_cache(root, keep=record)
-        return record
+
+        if winner is not None and winner.path != target:
+            if target.exists() and target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+            return winner
+
+        _prune_native_cache(root, keep=winner)
+        if (
+            stale_path is not None
+            and stale_path != target
+            and stale_path.exists()
+            and stale_path.is_dir()
+            and not stale_path.is_symlink()
+        ):
+            shutil.rmtree(stale_path)
+        if winner is None:
+            raise AssertionError("native cache build did not select a winner")
+        return winner
+    finally:
+        _NATIVE_BUILD_LOCK.release()
 
 
 class _EditorRequestHandler(SimpleHTTPRequestHandler):
@@ -853,32 +913,61 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         if not token or not filename:
             self.send_error(HTTPStatus.NOT_FOUND)
             return True
+
         root = Path(self.directory).resolve()
+        status: HTTPStatus | None = None
+        handle = None
+        stat_result = None
+        content_type = "application/octet-stream"
         with _NATIVE_CACHE_LOCK:
             record = _native_cache_by_token(root, token)
             if record is None:
-                self.send_error(HTTPStatus.NOT_FOUND)
-                return True
-            if record.max_pinned_until <= time.monotonic():
-                self.send_error(HTTPStatus.GONE)
-                return True
-            try:
-                _pin_native_cache_record(root, record)
-            except NativeCacheCapacityError:
-                self.send_error(HTTPStatus.SERVICE_UNAVAILABLE)
-                return True
-            original_directory = self.directory
-            original_path = self.path
-            self.directory = str(record.path)
-            self.path = f"/{filename}"
-            try:
-                if head_only:
-                    super().do_HEAD()
+                status = HTTPStatus.NOT_FOUND
+            elif record.max_pinned_until <= time.monotonic():
+                status = HTTPStatus.GONE
+            else:
+                try:
+                    _pin_native_cache_record(root, record)
+                except NativeCacheCapacityError:
+                    status = HTTPStatus.SERVICE_UNAVAILABLE
                 else:
-                    super().do_GET()
-            finally:
-                self.directory = original_directory
-                self.path = original_path
+                    target = record.path / filename
+                    if (
+                        target.is_symlink()
+                        or not target.is_file()
+                        or target.parent != record.path
+                    ):
+                        status = HTTPStatus.NOT_FOUND
+                    else:
+                        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                        try:
+                            descriptor = os.open(target, flags)
+                            stat_result = os.fstat(descriptor)
+                            handle = os.fdopen(descriptor, "rb")
+                            content_type = self.guess_type(str(target))
+                        except OSError:
+                            status = HTTPStatus.NOT_FOUND
+
+        if status is not None:
+            self.send_error(status)
+            return True
+        if handle is None or stat_result is None:
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return True
+
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(stat_result.st_size))
+            self.send_header(
+                "Last-Modified",
+                self.date_time_string(stat_result.st_mtime),
+            )
+            self.end_headers()
+            if not head_only:
+                self.copyfile(handle, self.wfile)
+        finally:
+            handle.close()
         return True
 
     def do_GET(self) -> None:  # noqa: N802

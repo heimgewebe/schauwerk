@@ -587,6 +587,88 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
         thread.join(timeout=5)
 
 
+def test_native_build_releases_cache_lock_during_renderer_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    original_build = standalone_editor.build_native_viewer
+    lock_observations: list[bool] = []
+
+    def observed_build(*args: object, **kwargs: object) -> object:
+        acquired = standalone_editor._NATIVE_CACHE_LOCK.acquire(blocking=False)
+        lock_observations.append(acquired)
+        if acquired:
+            standalone_editor._NATIVE_CACHE_LOCK.release()
+        return original_build(*args, **kwargs)
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", observed_build)
+    record = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+    )
+
+    assert record.path.is_dir()
+    assert lock_observations == [True]
+
+
+def test_native_bundle_stream_releases_cache_lock_before_copy(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    lock_observations: list[bool] = []
+
+    class LockProbeEditorRequestHandler(_EditorRequestHandler):
+        editor_origin = EDITOR_ORIGIN
+
+        def copyfile(self, source: object, outputfile: object) -> None:
+            acquired = standalone_editor._NATIVE_CACHE_LOCK.acquire(blocking=False)
+            lock_observations.append(acquired)
+            if acquired:
+                standalone_editor._NATIVE_CACHE_LOCK.release()
+            super().copyfile(source, outputfile)
+
+    handler = partial(LockProbeEditorRequestHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        value = _golden_representation("decision-flow-v1.json")
+        payload = json.dumps(value).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+
+        connection.request("GET", str(body["url"]))
+        viewer = connection.getresponse()
+        assert viewer.status == 200
+        assert 'id="nativeViewport"' in viewer.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert lock_observations == [True]
+
+
 def test_bounded_runtime_rejects_excess_workers_and_enforces_absolute_request_deadline(
     tmp_path: Path,
 ) -> None:
