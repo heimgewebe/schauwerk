@@ -7,7 +7,6 @@
   },
   "checks": {
     "exact_pushed_candidate_digest_smoked_before_final_tag": true,
-    "exact_tested_image_promoted_to_publish_job": true,
     "final_commit_tag_digest_must_equal_smoked_candidate_digest": true,
     "focused_contract_tests_passed": true,
     "generated_browser_javascript_syntax_valid": true,
@@ -19,6 +18,7 @@
     "nonloopback_bind_is_explicitly_gated": true,
     "prefixed_native_render_post_passed": true,
     "prefixed_viewer_url_passed": true,
+    "publish_candidate_built_attested_and_smoked_before_final_tag": true,
     "python_suite_passed_count": 1292,
     "python_suite_without_known_browser_harness_passed": true,
     "read_only_container_smoke_passed": true,
@@ -36,7 +36,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "a266214443cccd65e1c18b46bc4a94a290c4b4ae86f4061246f6770e95ff2ef6",
+  "evidence_digest": "c466cf1f0257bf8007829fd71feaec631f459b54a23cd99c69ed63e434a41c69",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
