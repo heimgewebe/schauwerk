@@ -33,13 +33,13 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
-      - name: Build amd64 smoke image
+      - name: Build exact smoke image
         run: |
           docker buildx build \
             --platform linux/amd64 \
             --load \
             --build-arg "VCS_REF=$GITHUB_SHA" \
-            --tag schaubild-native:smoke \
+            --tag schaubild-native:tested \
             .
 
       - name: Smoke native runtime behind stripped /schaubild proxy contract
@@ -50,7 +50,7 @@ jobs:
             --read-only \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --publish 127.0.0.1:18767:8765 \
-            schaubild-native:smoke \
+            schaubild-native:tested \
             python -m schauwerk.visual.standalone_editor serve \
               --bind-host 0.0.0.0 \
               --trusted-reverse-proxy \
@@ -102,6 +102,23 @@ jobs:
             "http://127.0.0.1:18767$(cat /tmp/native-viewer-path)" \
             | grep -q 'id="nativeViewport"'
 
+      - name: Export the exact tested image
+        run: |
+          set -euo pipefail
+          docker image inspect schaubild-native:tested --format '{{.Id}}' > tested-image-id.txt
+          docker save schaubild-native:tested | gzip -n -9 > schaubild-native-tested.tar.gz
+          sha256sum schaubild-native-tested.tar.gz > schaubild-native-tested.tar.gz.sha256
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: schaubild-native-tested-image
+          path: |
+            schaubild-native-tested.tar.gz
+            schaubild-native-tested.tar.gz.sha256
+            tested-image-id.txt
+          if-no-files-found: error
+          retention-days: 1
+
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-smoke
@@ -113,8 +130,16 @@ jobs:
     env:
       IMAGE: ghcr.io/heimgewebe/schauwerk-schaubild
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: schaubild-native-tested-image
+
+      - name: Verify and load exact tested image
+        run: |
+          set -euo pipefail
+          sha256sum --check schaubild-native-tested.tar.gz.sha256
+          gunzip --stdout schaubild-native-tested.tar.gz | docker load
+          test "$(docker image inspect schaubild-native:tested --format '{{.Id}}')" = "$(cat tested-image-id.txt)"
 
       - name: Login to GHCR
         env:
@@ -123,16 +148,14 @@ jobs:
           printf '%s' "$GHCR_TOKEN" \
             | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
 
-      - name: Publish exact-commit image
+      - name: Publish the exact tested image
         run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --provenance=mode=max \
-            --sbom=true \
-            --build-arg "VCS_REF=$GITHUB_SHA" \
-            --tag "$IMAGE:$GITHUB_SHA" \
-            --push \
-            .
+          set -euo pipefail
+          docker tag schaubild-native:tested "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:$GITHUB_SHA"
+          remote_digest="$(docker image inspect "$IMAGE:$GITHUB_SHA" --format '{{index .RepoDigests 0}}')"
+          test -n "$remote_digest"
+          printf '%s\n' "$remote_digest"
 
       - name: Logout from GHCR
         if: always()

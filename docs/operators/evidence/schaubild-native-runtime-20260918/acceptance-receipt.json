@@ -6,6 +6,7 @@
     "reference": "python:3.13.7-slim-bookworm"
   },
   "checks": {
+    "exact_tested_image_promoted_to_publish_job": true,
     "focused_contract_tests_passed": true,
     "generated_browser_javascript_syntax_valid": true,
     "ghcr_publish_workflow_declared": true,
@@ -29,7 +30,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "c73a4c7dd7ea66dba68fdbc94c1ab818baee9d80db812eeb9bde207814aaa0d3",
+  "evidence_digest": "8d774f40b3ed15b7c223e1a8be101e1a8e74e6492eff4a083f436dd60320325f",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -48,7 +49,7 @@
   "scope": "prefix-safe-native-schaubild-runtime-container",
   "source_bindings": {
     ".dockerignore": "b030fe153338b40297ef4da11abbf9251c6144fbab943ef7d6f46f831aafe99d",
-    ".github/workflows/native-schaubild-image.yml": "c7d75c165c664c7fdfe8b768c1eed9cf99f9b554af562d2670c42ba956aa56c6",
+    ".github/workflows/native-schaubild-image.yml": "927863f433a5a7541b6a61d91302f5f6f9f60127b614ea337235ac06192fd300",
     "Dockerfile": "e4dfcf3fcac89121fa08969b1b4a6936c5513c67277097bd6316dff69452e216",
     "src/schauwerk/resources/standalone_editor/assets.py": "cee5f8795654c357b41c5a35c2e1f38648dfd21aa292633f76215a54c0ea4f83",
     "src/schauwerk/visual/standalone_editor.py": "cb15273c58bd3eda77242ce8f45d4bc8b4c2b7ebce2da5f87720943c4655a8d7",
