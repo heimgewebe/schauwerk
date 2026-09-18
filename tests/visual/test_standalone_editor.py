@@ -9,6 +9,7 @@ import shutil
 import socket
 import subprocess
 import threading
+import time
 import xml.etree.ElementTree as ET
 from functools import partial
 from http.client import HTTPConnection
@@ -562,7 +563,7 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
         thread.join(timeout=5)
 
 
-def test_bounded_runtime_rejects_excess_workers_and_times_out_slow_request_body(
+def test_bounded_runtime_rejects_excess_workers_and_enforces_absolute_request_deadline(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "editor"
@@ -603,13 +604,16 @@ def test_bounded_runtime_rejects_excess_workers_and_times_out_slow_request_body(
         assert excess_response.status == 503
         excess.close()
 
-        slow_response = b""
-        while b"\r\n\r\n" not in slow_response:
-            part = slow.recv(4096)
-            if not part:
+        started = time.monotonic()
+        for _ in range(8):
+            time.sleep(0.04)
+            try:
+                slow.sendall(b" ")
+            except OSError:
                 break
-            slow_response += part
-        assert b" 408 " in slow_response
+        assert time.monotonic() - started < 0.6
+        slow.settimeout(1)
+        assert slow.recv(4096) == b""
 
         healthy = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
         healthy.request("GET", "/manifest.json")

@@ -688,7 +688,31 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
     def setup(self) -> None:
         super().setup()
+        self._request_deadline_expired = False
         self.connection.settimeout(self.request_timeout_seconds)
+        self._request_deadline_timer = threading.Timer(
+            self.request_timeout_seconds,
+            self._expire_request_connection,
+        )
+        self._request_deadline_timer.daemon = True
+        self._request_deadline_timer.start()
+
+    def _expire_request_connection(self) -> None:
+        self._request_deadline_expired = True
+        try:
+            self.connection.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+    def finish(self) -> None:
+        timer = getattr(self, "_request_deadline_timer", None)
+        if timer is not None:
+            timer.cancel()
+        try:
+            super().finish()
+        except OSError:
+            if not getattr(self, "_request_deadline_expired", False):
+                raise
 
     def end_headers(self) -> None:
         self.send_header("Cache-Control", "no-store")
@@ -870,6 +894,14 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 )
             except OSError:
                 pass
+            return
+        except OSError:
+            if self._request_deadline_expired:
+                self.close_connection = True
+                return
+            raise
+        if self._request_deadline_expired:
+            self.close_connection = True
             return
         if len(payload) != content_length:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "incomplete request body"})
