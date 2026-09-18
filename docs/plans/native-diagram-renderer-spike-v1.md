@@ -1,6 +1,6 @@
 # Native Diagram Renderer Spike v1
 
-Stand: 2026-09-16
+Stand: 2026-09-18
 
 ## Entscheidung und Ziel
 
@@ -120,3 +120,43 @@ Erst nach diesem Readback wird entschieden, ob Phase 3 geöffnet wird. Phase 2 s
 Wenn die nativen Ausgaben der drei Golden Cases gegenüber den bisherigen Diagrammwegen nicht **sichtbar besser** sind, endet die Untersuchung nach Gate 1. Technische Deterministik und vollständige Source-ID-Coverage allein rechtfertigen weder einen neuen Editor noch den Ersatz von Mermaid oder draw.io.
 
 Nach bestandenem Gate 1 ist ausschließlich der oben definierte Phase-2-Slice zulässig. Ein Voll-Editor, React/React Flow oder eine andere Frontend-Toolchain bleiben weiterhin hinter diesem zweiten Nachweis. Phase 3 darf erst nach dem Desktop-/iPad-Readback und einer expliziten Cutover-Entscheidung geöffnet werden.
+
+## Phase 3 – Schaubild-Renderer-Cutover, entschieden 2026-09-18
+
+Nach bestandenem Desktop-/iPadOS-Readback aus Phase 2 wird der native Renderer in der
+Schaubild-Produktoberfläche zum **primären Renderer für kanonische
+`schauwerk-representation-input.v1`-Eingaben**. Der Cutover ersetzt nicht das
+Repräsentationsmodell und implementiert keinen zweiten Browser-Renderer.
+
+Der integrierte, weiterhin ausschließlich an `127.0.0.1` gebundene
+`standalone_editor serve`-Pfad stellt dazu einen begrenzten same-origin Render-Endpunkt
+bereit. Dieser validiert die Representation serverseitig, ruft den bestehenden
+`schauwerk-native-diagram-v1` über `build_native_viewer` auf und liefert anschließend
+den vorhandenen lokalen Native Viewer. Die Browser-Schicht entscheidet damit nur über
+Routing und Interaktion; die SVG-Geometrie bleibt Python-Renderer-Autorität.
+
+Der Produkt-Cutover ist bewusst **nicht** identisch mit einem vollständigen nativen
+Editor:
+
+- Semantische Mutation bleibt read-only.
+- Node-Drag bleibt ein digestgebundener, browserlokaler Layout-Overlay.
+- Kanten werden nach Node-Drag weiterhin nicht live neu geroutet.
+- Native Quelle und SVG sind exportierbar; PNG bleibt vorerst Legacy-Funktion.
+- Mermaid, JSON Canvas und bestehendes draw.io/XML bleiben als explizite
+  Kompatibilitätspfade über diagrams.net verfügbar; es gibt keine stille Migration.
+- Ein statisch gebautes Bundle allein besitzt keinen Python-Render-Endpunkt. Der native
+  Produktpfad benötigt deshalb den integrierten Loopback-`serve`-Pfad.
+
+### Knowledge-map-Gate
+
+Die bekannte allgemeine Long-Same-Row-/Parallel-Routinggrenze für `knowledge_map` ist
+durch diesen Cutover **nicht** behoben. Deshalb wird `knowledge_map` am nativen
+Produkt-Endpunkt fail-closed abgelehnt und bleibt vorerst über JSON Canvas im
+Legacy-Pfad. Damit ist der Cutover für die übrigen schema-gültigen Intents möglich,
+ohne die dokumentierte Routinggrenze als gelöst auszugeben.
+
+Die Phase-2-Viewer-Manifeste dürfen weiterhin deklarieren, dass ein isolierter
+Viewer-Build allein keine Phase-3-Acceptance beweist. Die Phase-3-Aussage entsteht erst
+durch die zusätzliche Schaubild-Integration, deren Admission-Gate, Tests und visuellen
+Readback.
+

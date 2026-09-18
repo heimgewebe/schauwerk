@@ -21,25 +21,25 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="start-card" id="startView">
       <div class="intro">
-        <p class="eyebrow">Schaubilder aus KI-Ergebnissen</p>
-        <h1>Einfügen, bearbeiten, exportieren.</h1>
-        <p class="lede">Füge Mermaid oder JSON Canvas direkt ein, öffne eine Datei oder beginne leer.</p>
+        <p class="eyebrow">Schauwerk Native · Legacy-Kompatibilität</p>
+        <h1>Einfügen, ansehen, weiterarbeiten.</h1>
+        <p class="lede">Kanonische Schauwerk-Repräsentationen laufen nativ. Mermaid, JSON Canvas und draw.io bleiben als Legacy-Import erhalten.</p>
       </div>
 
       <label class="paste-box" for="sourceInput">
         <span>KI-Ergebnis hier einfügen</span>
-        <textarea id="sourceInput" spellcheck="false" placeholder="Zum Beispiel:&#10;flowchart TD&#10;  A[Bindung] --> B[Exploration]"></textarea>
+        <textarea id="sourceInput" spellcheck="false" placeholder='Zum Beispiel:&#10;{"schema_version":"schauwerk-representation-input.v1", ...}'></textarea>
       </label>
 
       <div class="primary-actions">
         <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
         <button class="button" id="fileButton" type="button">Datei öffnen</button>
-        <button class="button ghost" id="blankButton" type="button">Leer beginnen</button>
+        <button class="button ghost" id="blankButton" type="button">Legacy leer</button>
         <input id="fileInput" type="file" hidden>
       </div>
 
       <label class="font-default-control" for="fontDefaultInput">
-        <span>Schriftstandard</span>
+        <span>Legacy-Schriftstandard</span>
         <input id="fontDefaultInput" type="number" min="8" max="72" step="1" inputmode="numeric" aria-describedby="fontDefaultHint">
         <span>px</span>
       </label>
@@ -49,9 +49,9 @@ INDEX_HTML = r"""<!doctype html>
       <p class="error" id="error" role="alert" hidden></p>
 
       <aside class="boundary-note">
-        <strong>Spike:</strong> Die kleine Oberfläche läuft lokal. Die Editor-Engine wird in dieser Testversion noch von
-        <code>embed.diagrams.net</code> geladen und benötigt daher Internet. Ein vollständig selbst gehosteter Betrieb ist
-        eine getrennte Produktionsentscheidung.
+        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen werden lokal durch
+        <code>schauwerk-native-diagram-v1</code> gerendert. Mermaid, JSON Canvas und draw.io verwenden weiterhin bewusst
+        die Legacy-Editor-Engine. <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
       </aside>
     </section>
 
@@ -320,6 +320,7 @@ function detectNormalizedInput(text) {
   if (text.startsWith("{")) {
     try {
       const value = JSON.parse(text);
+      if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
       if (isJsonCanvas(value)) return { kind: "json-canvas", text, value };
     } catch (_) {
       return { kind: "unknown", text };
@@ -342,6 +343,20 @@ export function normalizeInput(raw) {
 
 export function detectInput(raw) {
   return detectNormalizedInput(normalizeInput(raw));
+}
+
+export function isSchauwerkRepresentation(value) {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    value.schema_version === "schauwerk-representation-input.v1" &&
+    typeof value.title === "string" &&
+    typeof value.intent === "string" &&
+    Array.isArray(value.nodes) &&
+    Array.isArray(value.edges) &&
+    Array.isArray(value.groups)
+  );
 }
 
 function isCanvasNode(node) {
@@ -670,7 +685,9 @@ APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, 
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
+const NATIVE_API_PATH = "/api/native-viewer";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
+const NATIVE_DRAFT_KEY = "schauwerk.native-schaubild.draft.v1";
 const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
 const PRODUCT_DEFAULT_NODE_FONT_SIZE = 24;
 const PRODUCT_DEFAULT_EDGE_FONT_SIZE = 22;
@@ -703,6 +720,9 @@ const elements = {
 
 let pendingLoad = null;
 let currentXml = null;
+let currentRepresentation = null;
+let currentNativeUrl = null;
+let activeEngine = "legacy";
 let currentTitle = "Schaubild";
 let pendingExport = null;
 let preparedDownloadUrl = null;
@@ -722,6 +742,25 @@ function setStatus(message) { elements.status.textContent = message; }
 function setError(message) {
   elements.error.textContent = message || "";
   elements.error.hidden = !message;
+}
+
+function setEngineMode(mode) {
+  activeEngine = mode === "native" ? "native" : "legacy";
+  const native = activeEngine === "native";
+  for (const control of [
+    elements.fontDecreaseButton,
+    elements.fontPanelButton,
+    elements.fontIncreaseButton,
+    elements.fontAllButton,
+    elements.layoutButton,
+  ]) {
+    control.disabled = native;
+  }
+  const pngButton = document.querySelector('[data-export="png"]');
+  if (pngButton instanceof HTMLButtonElement) pngButton.disabled = native;
+  elements.projectButton.title = native
+    ? "Kanonische Schauwerk-Repräsentation speichern"
+    : "draw.io-Projekt speichern";
 }
 
 function safeFilename(value) {
@@ -808,6 +847,45 @@ function readDraft() {
   }
 }
 
+function saveNativeDraft(representation) {
+  if (!representation || typeof representation !== "object") return false;
+  currentRepresentation = representation;
+  try {
+    localStorage.setItem(
+      NATIVE_DRAFT_KEY,
+      JSON.stringify({ title: currentTitle, representation, savedAt: Date.now() }),
+    );
+    elements.restoreButton.hidden = false;
+    return true;
+  } catch (_) {
+    setStatus("Native Quelle geöffnet · lokaler Speicher voll");
+    return false;
+  }
+}
+
+function readNativeDraft() {
+  try {
+    const raw = localStorage.getItem(NATIVE_DRAFT_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw);
+    return value && value.representation && typeof value.representation === "object"
+      ? value
+      : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function readLatestDraft() {
+  const legacy = readDraft();
+  const native = readNativeDraft();
+  if (!legacy) return native ? { ...native, kind: "native" } : null;
+  if (!native) return { ...legacy, kind: "legacy" };
+  return Number(native.savedAt || 0) >= Number(legacy.savedAt || 0)
+    ? { ...native, kind: "native" }
+    : { ...legacy, kind: "legacy" };
+}
+
 function clearPreparedDownload() {
   if (preparedDownloadUrl !== null) {
     URL.revokeObjectURL(preparedDownloadUrl);
@@ -861,7 +939,7 @@ function showStart() {
   elements.workspace.hidden = true;
   elements.startView.hidden = false;
   setError("");
-  setStatus(currentXml ? "Entwurf lokal gesichert" : "Bereit");
+  setStatus(currentXml || currentRepresentation ? "Entwurf lokal gesichert" : "Bereit");
   elements.sourceInput.focus({ preventScroll: true });
 }
 
@@ -875,8 +953,16 @@ function prepareInput(raw, title = "Schaubild") {
   const detected = detectInput(validateInputText(raw));
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
+  currentRepresentation = null;
+  currentNativeUrl = null;
   pendingExport = null;
 
+  if (detected.kind === "representation") {
+    return {
+      nativeRepresentation: detected.value,
+      sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
+    };
+  }
   if (detected.kind === "mermaid") {
     return {
       descriptor: { format: "mermaid", data: detected.text, wrap: true },
@@ -898,7 +984,9 @@ function prepareInput(raw, title = "Schaubild") {
   if (detected.kind === "empty") {
     return { xml: emptyDrawioXml() };
   }
-  throw new Error("Format nicht erkannt. Unterstützt werden Mermaid, .canvas und draw.io/XML.");
+  throw new Error(
+    "Format nicht erkannt. Unterstützt werden Schauwerk Representation, Mermaid, .canvas und draw.io/XML.",
+  );
 }
 
 function replaceEditorFrame() {
@@ -911,21 +999,78 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
+  if (load?.nativeRepresentation) {
+    void launchNative(load);
+    return;
+  }
   invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
+  currentRepresentation = null;
+  currentNativeUrl = null;
+  setEngineMode("legacy");
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
   const sourceFormat = load?.sourceMetadata?.value;
   pendingCreationDefaults = sourceFormat === "mermaid" || sourceFormat === "json-canvas-1.0" || load?.xml === emptyDrawioXml();
   editorReady = false;
   const frame = replaceEditorFrame();
   showWorkspace();
-  setStatus("Editor wird geladen …");
+  setStatus("Legacy-Editor wird geladen …");
   requestAnimationFrame(() => {
     if (elements.frame !== frame) return;
     frame.src = EDITOR_URL;
   });
+}
+
+async function launchNative(load) {
+  const loadIntent = invalidateLoadIntents();
+  clearPreparedDownload();
+  pendingExport = null;
+  pendingLoad = null;
+  pendingInitialCollisionSafeLayout = false;
+  pendingCreationDefaults = false;
+  currentXml = null;
+  currentRepresentation = load.nativeRepresentation;
+  currentNativeUrl = null;
+  setEngineMode("native");
+  editorReady = false;
+  const frame = replaceEditorFrame();
+  showWorkspace();
+  setStatus("Nativer Renderer wird geladen …");
+
+  try {
+    const response = await fetch(NATIVE_API_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentRepresentation),
+    });
+    const result = await response.json();
+    if (loadIntent !== loadIntentGeneration) return;
+    if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+    if (
+      !result ||
+      result.renderer !== "schauwerk-native-diagram-v1" ||
+      !/^\/native\/[0-9a-f]{64}\/index\.html$/.test(String(result.url || ""))
+    ) {
+      throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
+    }
+    currentNativeUrl = result.url;
+    if (!saveNativeDraft(currentRepresentation)) {
+      setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+    }
+    editorReady = true;
+    frame.src = currentNativeUrl;
+    setStatus("Native Darstellung · Semantik read-only · Layout lokal");
+  } catch (error) {
+    if (loadIntent !== loadIntentGeneration) return;
+    editorReady = false;
+    currentNativeUrl = null;
+    elements.workspace.hidden = true;
+    elements.startView.hidden = false;
+    setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
+    setStatus("Native Darstellung abgelehnt");
+  }
 }
 
 function loadPendingIntoEditor() {
@@ -985,7 +1130,51 @@ async function openFile(file) {
   }
 }
 
+async function exportNative(format) {
+  if (!editorReady || !currentRepresentation || !currentNativeUrl) {
+    setStatus("Native Darstellung ist noch nicht bereit");
+    return;
+  }
+  clearPreparedDownload();
+  if (format === "drawio") {
+    const source = JSON.stringify(currentRepresentation, null, 2) + "\n";
+    prepareDownload(
+      new Blob([source], { type: "application/json;charset=utf-8" }),
+      safeFilename(currentTitle) + ".schauwerk.json",
+      "Quelle",
+    );
+    setStatus("Kanonische Quelle bereit");
+    return;
+  }
+  if (format === "png") {
+    setStatus("PNG ist im nativen Pfad noch nicht verfügbar");
+    return;
+  }
+  if (format !== "svg") {
+    setStatus("Native Exportart wird nicht unterstützt");
+    return;
+  }
+  const assetUrl = currentNativeUrl.replace(/index\.html$/, "diagram.svg");
+  try {
+    const response = await fetch(assetUrl, { cache: "no-store" });
+    if (!response.ok) throw new Error("SVG konnte nicht gelesen werden.");
+    const svg = await response.text();
+    prepareDownload(
+      new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
+      safeFilename(currentTitle) + ".svg",
+      "SVG",
+    );
+    setStatus("SVG bereit");
+  } catch (_) {
+    setStatus("Native SVG-Ausgabe konnte nicht vorbereitet werden");
+  }
+}
+
 function exportDiagram(format) {
+  if (activeEngine === "native") {
+    void exportNative(format);
+    return;
+  }
   if (!editorReady) {
     setStatus("Editor ist noch nicht bereit");
     return;
@@ -1128,9 +1317,16 @@ elements.blankButton.addEventListener("click", () => {
   launch({ xml: emptyDrawioXml() });
 });
 elements.restoreButton.addEventListener("click", () => {
-  const draft = readDraft();
+  const draft = readLatestDraft();
   if (!draft) return;
   currentTitle = safeFilename(draft.title || "Schaubild");
+  if (draft.kind === "native") {
+    launch({
+      nativeRepresentation: draft.representation,
+      sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
+    });
+    return;
+  }
   launch({ xml: draft.xml });
 });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
@@ -1192,7 +1388,7 @@ if (initialQuery.get("new") === "1") {
   launch({ xml: emptyDrawioXml() });
 }
 
-elements.restoreButton.hidden = !readDraft();
+elements.restoreButton.hidden = !readLatestDraft();
 """
 
 ASSETS = {

@@ -24,6 +24,7 @@ EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
 MIRO_OAUTH_EVIDENCE = ROOT / "docs/operators/evidence/miro-oauth-refresh-hardening-20260905"
+SCHAUBILD_CUTOVER_EVIDENCE = ROOT / "docs/operators/evidence/schaubild-native-cutover-20260918"
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -260,6 +261,24 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == successor_digest
     )
 
+    schaubild_successor = json.loads(
+        (SCHAUBILD_CUTOVER_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
+    )
+    assert schaubild_successor["schema_version"] == "schauwerk-schaubild-native-cutover.v1"
+    assert schaubild_successor["parent_evidence"] == {
+        "acceptance_digest": receipt["acceptance_digest"],
+        "file_sha256": hashlib.sha256(
+            (HARDENING_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": "docs/operators/evidence/infrastructure-hardening-20260904/acceptance-receipt.json",
+        "schema_version": receipt["schema_version"],
+    }
+    assert schaubild_successor["evidence_digest"] == digest_mapping(
+        schaubild_successor, "evidence_digest"
+    )
+    for name, expected in schaubild_successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -286,12 +305,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/surfaces/miro/credentials.py",
         "tests/miro/test_credentials.py",
     }
+    schaubild_superseded_files = {
+        "tests/visual/test_standalone_editor.py",
+    }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in schaubild_superseded_files:
+            assert schaubild_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {

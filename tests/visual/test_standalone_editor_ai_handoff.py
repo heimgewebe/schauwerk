@@ -19,11 +19,11 @@ def test_ai_handoff_guide_is_copyable_and_tool_agnostic(tmp_path) -> None:
     assert "navigator.clipboard.writeText(AI_HANDOFF_PROMPT)" in app_js
     assert "KI-Anleitung kopiert" in app_js
 
-    assert "Mermaid" in AI_HANDOFF_PROMPT
-    assert "JSON Canvas 1.0" in AI_HANDOFF_PROMPT
-    assert "`mermaid`-Codeblock" in AI_HANDOFF_PROMPT
-    assert "`json`-Codeblock" in AI_HANDOFF_PROMPT
-    assert "Kein Vorwort, keine Erklärung und keine zusätzliche Variante." in AI_HANDOFF_PROMPT
+    assert "schauwerk-representation-input.v1" in AI_HANDOFF_PROMPT
+    assert "knowledge_map" in AI_HANDOFF_PROMPT
+    assert "JSON-Canvas-1.0" in AI_HANDOFF_PROMPT
+    assert "json-Codeblock" in AI_HANDOFF_PROMPT
+    assert "Kein Vorwort, keine Erklärung" in AI_HANDOFF_PROMPT
 
     # The copied contract describes only the output expected from the LLM.
     # It must not prescribe where the user pastes it or add unrelated truthfulness policy.
