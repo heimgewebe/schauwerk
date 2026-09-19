@@ -324,13 +324,21 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         assert re.fullmatch(r"/schaubild/native/[0-9a-f]{32}/index\.html", body["url"])
 
         internal_viewer_path = body["url"].removeprefix("/schaubild")
-        connection.request("GET", internal_viewer_path)
+        connection.request(
+            "GET",
+            internal_viewer_path,
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
         viewer_response = connection.getresponse()
         assert viewer_response.status == 200
         assert 'id="nativeViewport"' in viewer_response.read().decode("utf-8")
 
         internal_manifest_path = internal_viewer_path.replace("index.html", "manifest.json")
-        connection.request("GET", internal_manifest_path)
+        connection.request(
+            "GET",
+            internal_manifest_path,
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
         manifest_response = connection.getresponse()
         manifest = json.loads(manifest_response.read().decode("utf-8"))
         assert manifest_response.status == 200
@@ -1047,6 +1055,64 @@ def test_native_build_admission_limits_one_client_before_renderer_work(
             admission_key="198.51.100.10",
         )
     assert renderer_called is False
+
+
+def test_cache_hit_pin_is_charged_to_current_client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "client_a_flow"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.10",
+    )
+    assert first_created is True
+    standalone_editor._abandon_native_cache_record(
+        output,
+        first_record,
+        admission_key="198.51.100.10",
+    )
+    assert first_record.pin_leases == {}
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "client_b_flow"
+    second_normalized = _native_product_input(second)
+    second_record, second_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(second_normalized["input_digest"]),
+        value=second,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.20",
+    )
+    assert second_created is True
+    assert second_record.pin_leases["198.51.100.20"] > time.monotonic()
+
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="pin capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(first_normalized["input_digest"]),
+            value=first,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key="198.51.100.20",
+        )
+
+    assert "198.51.100.20" not in first_record.pin_leases
+    assert first_record.admission_key == "198.51.100.10"
 
 
 def test_undelivered_native_record_is_unpinned_but_reusable_without_rebuild(

@@ -54,12 +54,14 @@ PY
 
 curl --fail --silent \
   --header "Host: $host_header" \
+  --header 'X-Forwarded-For: 127.0.0.1' \
   "$base_url$(cat "$viewer_path_out")" \
   | grep -q 'id="nativeViewport"'
 
 viewer_manifest_path="$(sed 's/index\.html$/manifest.json/' "$viewer_path_out")"
 curl --fail --silent \
   --header "Host: $host_header" \
+  --header 'X-Forwarded-For: 127.0.0.1' \
   "$base_url$viewer_manifest_path" \
   --output "$viewer_manifest_out"
 

@@ -27,6 +27,7 @@
     "native_build_releases_global_cache_lock": true,
     "native_bundle_size_budget_enforced": true,
     "native_bundle_stream_releases_global_cache_lock": true,
+    "native_cache_hit_pin_accounting_uses_current_client": true,
     "native_cache_paths_are_server_generated_not_input_derived": true,
     "native_cache_pin_absolute_lifetime_enforced": true,
     "native_cache_pin_admission_preserves_active_grace_leases": true,
@@ -48,7 +49,7 @@
     "prefixed_runtime_requires_trusted_reverse_proxy": true,
     "prefixed_viewer_url_passed": true,
     "publish_candidate_built_attested_and_smoked_before_final_tag": true,
-    "python_suite_passed_count": 1310,
+    "python_suite_passed_count": 1311,
     "python_suite_without_known_browser_harness_passed": true,
     "read_only_container_smoke_passed": true,
     "ruff_passed": true,
@@ -73,7 +74,7 @@
     "native PNG export",
     "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
   ],
-  "evidence_digest": "fc82036f07eefbda440ea2bfd9b66b56163249f42fd0c5acafaac218a7935c57",
+  "evidence_digest": "536a929c0e11de7964fcde0935e61c18d99b3cfbdf85dc87445be78916a64e4b",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -88,6 +89,7 @@
     "max_active_build_windows_per_client": 4,
     "max_pinned_entries_per_client": 4,
     "nonloopback_requires": "trusted-reverse-proxy",
+    "pin_lease_accounting": "current-request-client-ip",
     "public_api_path": "/schaubild/api/native-viewer",
     "public_base_path": "/schaubild",
     "renderer": "schauwerk-native-diagram-v1",
@@ -101,7 +103,7 @@
     ".dockerignore": "b030fe153338b40297ef4da11abbf9251c6144fbab943ef7d6f46f831aafe99d",
     ".github/workflows/native-schaubild-image.yml": "f0051e0d3880efaf04d895735d0431a0e38632040d8252bfa57ce00a5f26700e",
     "Dockerfile": "7d834963d9e07ac1ca64eabcdc1f602a12a8c81cc775a2dbd4a2f63c5d95aff3",
-    "scripts/ci/smoke-native-schaubild-runtime.sh": "ad667a5eba9e9b15b5bd1b9dcf359e0429e45ddae97357eb47ffec3506226c91",
+    "scripts/ci/smoke-native-schaubild-runtime.sh": "2220330c150d38179f9cb9688d3002bf8bf0a8ee07fa0578b5e2b613ebd0db88",
     "src/schauwerk/__init__.py": "19aeff3735d72649660073b5a41fe66a0938d9c9a55dd33f37bc21eb3ad792b4",
     "src/schauwerk/resources/__init__.py": "3904038292eb5678a901062059d50a82731272eb4a1832d7a8cce8e6a13bd4a6",
     "src/schauwerk/resources/native_viewer/__init__.py": "55840995b4fffe4a98e6fe506836c69384536f5a2a1eff7ea40ffbdc568af1e9",
@@ -114,8 +116,8 @@
     "src/schauwerk/visual/native_diagram.py": "1d1fee4fea98d02c24b1f468adb08c3527d2295e7825e6560cadad0782b06f9e",
     "src/schauwerk/visual/native_viewer.py": "49f715e12b0ea7c5444735233f8950c1300ac2ecc11b26ff7b09fa05915a7eec",
     "src/schauwerk/visual/representation.py": "6abcfa13f40b9995704ced142fe381d178973051653dbf7b4a0217789a4fd646",
-    "src/schauwerk/visual/standalone_editor.py": "638f2ce6999c0c6f806e311349a425707f4067195242fcf2a3d55b28436cfcee",
+    "src/schauwerk/visual/standalone_editor.py": "88c01a93306a0b8ffae85c5ae610c0d378a52a5c1875fe4ea3460aab257d7205",
     "tests/visual/test_native_viewer.py": "5816e97ea62e560e1c8fca004be8e460d7881d9dc621e7b95fd869213315d388",
-    "tests/visual/test_standalone_editor.py": "0da216506befad38123582ed1b50f2f444114a18617cb9ddd18dfbd573e9d870"
+    "tests/visual/test_standalone_editor.py": "d763c2d5c8a25f02e85a5f97812f5e4e8b1ae0516e40f8375a64288a88685dc7"
   }
 }

@@ -472,6 +472,7 @@ class _NativeCacheRecord:
     pinned_until: float
     max_pinned_until: float
     admission_key: str
+    pin_leases: dict[str, float]
 
 
 @dataclass(slots=True)
@@ -520,15 +521,27 @@ def _forget_native_cache_record(record: _NativeCacheRecord, *, remove_files: boo
         shutil.rmtree(record.path)
 
 
+def _refresh_native_record_pin_state(record: _NativeCacheRecord, *, now: float) -> None:
+    for admission_key, pinned_until in list(record.pin_leases.items()):
+        if pinned_until <= now:
+            record.pin_leases.pop(admission_key, None)
+    if record.pin_leases:
+        record.pinned_until = max(record.pin_leases.values())
+    else:
+        record.pinned_until = min(record.pinned_until, now)
+
+
 def _native_cache_records(root: Path) -> list[_NativeCacheRecord]:
     root_key = _native_root_key(root)
     records: list[_NativeCacheRecord] = []
+    now = time.monotonic()
     for key, record in list(_NATIVE_CACHE_BY_DIGEST.items()):
         if key[0] != root_key:
             continue
         if record.path.is_symlink() or not record.path.is_dir():
             _forget_native_cache_record(record, remove_files=False)
             continue
+        _refresh_native_record_pin_state(record, now=now)
         records.append(record)
     return records
 
@@ -608,7 +621,11 @@ def _assert_native_build_admission(
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is already saturated; retry later"
             )
-        client_pinned = [item for item in pinned if item.admission_key == admission_key]
+        client_pinned = [
+            item
+            for item in pinned
+            if item.pin_leases.get(admission_key, 0.0) > now
+        ]
         if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
             raise NativeCacheCapacityError(
                 "native viewer per-client pin capacity is temporarily exhausted; retry later"
@@ -633,6 +650,7 @@ def _assert_native_pin_capacity(
     root: Path,
     *,
     record: _NativeCacheRecord,
+    admission_key: str,
     now: float,
 ) -> None:
     with _NATIVE_CACHE_LOCK:
@@ -643,7 +661,11 @@ def _assert_native_pin_capacity(
         ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
-        client_pinned = [item for item in pinned if item.admission_key == record.admission_key]
+        client_pinned = [
+            item
+            for item in pinned
+            if item.pin_leases.get(admission_key, 0.0) > now
+        ]
         if (
             len(pinned) + 1 > max_pinned_entries
             or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
@@ -654,16 +676,29 @@ def _assert_native_pin_capacity(
             )
 
 
-def _pin_native_cache_record(root: Path, record: _NativeCacheRecord) -> None:
+def _pin_native_cache_record(
+    root: Path,
+    record: _NativeCacheRecord,
+    *,
+    admission_key: str,
+) -> None:
     now = time.monotonic()
+    _refresh_native_record_pin_state(record, now=now)
+    current_pinned_until = record.pin_leases.get(admission_key, 0.0)
     next_pinned_until = min(
-        max(record.pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
+        max(current_pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
         record.max_pinned_until,
     )
-    if record.pinned_until <= now and next_pinned_until > now:
-        _assert_native_pin_capacity(root, record=record, now=now)
+    if current_pinned_until <= now and next_pinned_until > now:
+        _assert_native_pin_capacity(
+            root,
+            record=record,
+            admission_key=admission_key,
+            now=now,
+        )
     record.last_access = now
-    record.pinned_until = next_pinned_until
+    record.pin_leases[admission_key] = next_pinned_until
+    record.pinned_until = max(record.pin_leases.values(), default=now)
 
 
 def _prune_native_cache(
@@ -795,19 +830,26 @@ def _run_native_viewer_build(
                 pass
 
 
-def _abandon_native_cache_record(root: Path, record: _NativeCacheRecord) -> None:
-    """Release an undelivered record without making the expensive build unreachable."""
+def _abandon_native_cache_record(
+    root: Path,
+    record: _NativeCacheRecord,
+    *,
+    admission_key: str | None = None,
+) -> None:
+    """Release only the undelivered client's lease while keeping reusable bytes."""
 
     with _NATIVE_CACHE_LOCK:
         key = (record.root_key, record.digest)
         if _NATIVE_CACHE_BY_DIGEST.get(key) is not record:
             return
         now = time.monotonic()
+        lease_key = admission_key or record.admission_key
+        record.pin_leases.pop(lease_key, None)
         record.last_access = now
-        record.pinned_until = min(record.pinned_until, now)
-        # Keep both the cache record and digest pin window. The record is now
-        # immediately evictable, while a retry for the same digest can reuse
-        # the completed bytes instead of forcing another renderer build.
+        _refresh_native_record_pin_state(record, now=now)
+        # Keep both the cache record and digest pin window. The bytes remain
+        # reusable, while another client's active lease is never revoked by
+        # this request's failed response.
 
 
 def _build_native_cache_record(
@@ -828,7 +870,7 @@ def _build_native_cache_record(
             )
         existing = _native_cache_by_digest(root, digest)
         if existing is not None and existing.max_pinned_until > now:
-            _pin_native_cache_record(root, existing)
+            _pin_native_cache_record(root, existing, admission_key=admission_key)
             return existing, False
         _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
         _assert_native_build_admission(
@@ -862,7 +904,7 @@ def _build_native_cache_record(
                 )
             existing = _native_cache_by_digest(root, digest)
             if existing is not None and existing.max_pinned_until > now:
-                _pin_native_cache_record(root, existing)
+                _pin_native_cache_record(root, existing, admission_key=admission_key)
                 return existing, False
             _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
             _assert_native_build_admission(
@@ -944,7 +986,7 @@ def _build_native_cache_record(
                     )
                 existing = _native_cache_by_digest(root, digest)
                 if existing is not None and existing.max_pinned_until > now:
-                    _pin_native_cache_record(root, existing)
+                    _pin_native_cache_record(root, existing, admission_key=admission_key)
                     winner = existing
                 else:
                     record = _NativeCacheRecord(
@@ -961,8 +1003,19 @@ def _build_native_cache_record(
                         ),
                         max_pinned_until=pin_window.max_pinned_until,
                         admission_key=admission_key,
+                        pin_leases={
+                            admission_key: min(
+                                now + NATIVE_CACHE_GRACE_SECONDS,
+                                pin_window.max_pinned_until,
+                            )
+                        },
                     )
-                    _assert_native_pin_capacity(root, record=record, now=now)
+                    _assert_native_pin_capacity(
+                        root,
+                        record=record,
+                        admission_key=admission_key,
+                        now=now,
+                    )
                     if existing is not None:
                         stale_path = existing.path
                         _forget_native_cache_record(existing, remove_files=False)
@@ -1161,6 +1214,19 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         if not token or not filename:
             self.send_error(HTTPStatus.NOT_FOUND)
             return True
+        admission_key = self._native_admission_key()
+        if admission_key is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": (
+                        "trusted reverse proxy must provide exactly one canonical "
+                        "X-Forwarded-For client IP"
+                    )
+                },
+                write_body=not head_only,
+            )
+            return True
 
         root = Path(self.directory).resolve()
         status: HTTPStatus | None = None
@@ -1175,7 +1241,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 status = HTTPStatus.GONE
             else:
                 try:
-                    _pin_native_cache_record(root, record)
+                    _pin_native_cache_record(
+                        root,
+                        record,
+                        admission_key=admission_key,
+                    )
                 except NativeCacheCapacityError:
                     status = HTTPStatus.SERVICE_UNAVAILABLE
                 else:
@@ -1339,7 +1409,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
         if self._request_deadline_is_expired():
             if created:
-                _abandon_native_cache_record(root, record)
+                _abandon_native_cache_record(
+                    root,
+                    record,
+                    admission_key=admission_key,
+                )
             self.close_connection = True
             return
         delivered = self._send_json(
@@ -1351,7 +1425,11 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             },
         )
         if not delivered and created:
-            _abandon_native_cache_record(root, record)
+            _abandon_native_cache_record(
+                root,
+                record,
+                admission_key=admission_key,
+            )
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return
