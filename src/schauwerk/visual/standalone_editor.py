@@ -402,6 +402,7 @@ def build_standalone_editor(
             "admission_scope": {
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+                "max_active_build_windows_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
                 "trusted_proxy_header": "X-Forwarded-For",
             },
             "semantic_authority": "schauwerk-representation-input.v1",
@@ -473,10 +474,11 @@ class _NativeCacheRecord:
     admission_key: str
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(slots=True)
 class _NativePinWindow:
     max_pinned_until: float
     reacquire_after: float
+    admission_keys: set[str]
 
 
 _NATIVE_CACHE_LOCK = threading.RLock()
@@ -535,6 +537,7 @@ def _native_pin_window(
     root: Path,
     *,
     digest: str,
+    admission_key: str,
     now: float,
 ) -> tuple[_NativePinWindow, bool]:
     root_key = _native_root_key(root)
@@ -549,6 +552,7 @@ def _native_pin_window(
             raise NativeCacheCapacityError(
                 "native viewer digest pin lifetime is exhausted; retry after cooldown"
             )
+        existing.admission_keys.add(admission_key)
         return existing, False
 
     root_windows = sum(1 for key in _NATIVE_PIN_WINDOWS if key[0] == root_key)
@@ -559,6 +563,7 @@ def _native_pin_window(
     window = _NativePinWindow(
         max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
         reacquire_after=now + (2 * NATIVE_CACHE_MAX_PIN_SECONDS),
+        admission_keys={admission_key},
     )
     return window, True
 
@@ -586,6 +591,7 @@ def _assert_native_digest_reacquisition_allowed(
 def _assert_native_build_admission(
     root: Path,
     *,
+    digest: str,
     admission_key: str,
     now: float,
 ) -> None:
@@ -606,6 +612,20 @@ def _assert_native_build_admission(
         if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
             raise NativeCacheCapacityError(
                 "native viewer per-client pin capacity is temporarily exhausted; retry later"
+            )
+
+        root_key = _native_root_key(root)
+        other_client_build_windows = [
+            window
+            for (window_root, window_digest), window in _NATIVE_PIN_WINDOWS.items()
+            if window_root == root_key
+            and window_digest != digest
+            and window.max_pinned_until > now
+            and admission_key in window.admission_keys
+        ]
+        if len(other_client_build_windows) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
+            raise NativeCacheCapacityError(
+                "native viewer per-client build capacity is temporarily exhausted; retry later"
             )
 
 
@@ -811,7 +831,12 @@ def _build_native_cache_record(
             _pin_native_cache_record(root, existing)
             return existing, False
         _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
-        _assert_native_build_admission(root, admission_key=admission_key, now=now)
+        _assert_native_build_admission(
+            root,
+            digest=digest,
+            admission_key=admission_key,
+            now=now,
+        )
 
     lock_timeout = NATIVE_REQUEST_TIMEOUT_SECONDS
     if deadline_monotonic is not None:
@@ -840,8 +865,18 @@ def _build_native_cache_record(
                 _pin_native_cache_record(root, existing)
                 return existing, False
             _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
-            _assert_native_build_admission(root, admission_key=admission_key, now=now)
-            pin_window, new_pin_window = _native_pin_window(root, digest=digest, now=now)
+            _assert_native_build_admission(
+                root,
+                digest=digest,
+                admission_key=admission_key,
+                now=now,
+            )
+            pin_window, new_pin_window = _native_pin_window(
+                root,
+                digest=digest,
+                admission_key=admission_key,
+                now=now,
+            )
 
         _prune_native_cache(
             root,
@@ -1272,11 +1307,14 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             value = json.loads(payload.decode("utf-8"))
             normalized = _native_product_input(value)
             digest = str(normalized["input_digest"])
+            canonical_input = {
+                key: item for key, item in normalized.items() if key != "input_digest"
+            }
             root = Path(self.directory).resolve()
             record, created = _build_native_cache_record(
                 root,
                 digest=digest,
-                value=value,
+                value=canonical_input,
                 serve_binding=self.native_serve_binding,
                 public_base_path=self.public_base_path,
                 admission_key=admission_key,

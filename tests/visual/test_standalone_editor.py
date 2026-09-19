@@ -75,6 +75,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert manifest["native_renderer"]["admission_scope"] == {
         "key": "client-ip",
         "max_pinned_entries_per_client": standalone_editor.MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+        "max_active_build_windows_per_client": (
+            standalone_editor.MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
+        ),
         "trusted_proxy_header": "X-Forwarded-For",
     }
     assert "general-knowledge-map-native-cutover" in manifest["does_not_establish"]
@@ -722,6 +725,18 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
         assert excluded not in dockerfile
 
 
+def test_runtime_workflow_applies_declared_container_hardening_to_both_smokes() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    workflow = (repo_root / ".github/workflows/native-schaubild-image.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert workflow.count("--cap-drop ALL") == 2
+    assert workflow.count("--security-opt no-new-privileges") == 2
+    assert workflow.count("--read-only") == 2
+    assert workflow.count("--tmpfs /tmp:rw,noexec,nosuid,size=64m") == 2
+
+
 def test_native_bundle_stream_releases_cache_lock_before_copy(
     tmp_path: Path,
 ) -> None:
@@ -1079,6 +1094,57 @@ def test_undelivered_native_record_is_unpinned_but_reusable_without_rebuild(
     assert retried.pinned_until > time.monotonic()
 
 
+def test_undelivered_unique_digests_still_consume_client_build_budget(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 2)
+
+    admission_key = "198.51.100.77"
+    for index in range(2):
+        value = _golden_representation("decision-flow-v1.json")
+        value["id"] = f"abandoned_flow_{index}"
+        normalized = _native_product_input(value)
+        record, created = standalone_editor._build_native_cache_record(
+            output,
+            digest=str(normalized["input_digest"]),
+            value=value,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key=admission_key,
+        )
+        assert created is True
+        standalone_editor._abandon_native_cache_record(output, record)
+        assert record.pinned_until <= time.monotonic()
+
+    renderer_called = False
+
+    def unexpected_build(*_args: object, **_kwargs: object) -> object:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("client build budget must reject before renderer work")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_build)
+    third = _golden_representation("decision-flow-v1.json")
+    third["id"] = "abandoned_flow_2"
+    third_normalized = _native_product_input(third)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="per-client build capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(third_normalized["input_digest"]),
+            value=third,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key=admission_key,
+        )
+    assert renderer_called is False
+
+
 def test_native_render_endpoint_preserves_digest_lifetime_across_token_replacement(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1157,6 +1223,64 @@ def test_native_render_endpoint_preserves_digest_lifetime_across_token_replaceme
     cache_root = output / ".native-cache"
     assert cache_root.is_dir()
     assert len(list(cache_root.iterdir())) == 1
+
+
+def test_native_render_endpoint_passes_canonical_public_input_to_renderer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(source)
+    expected = {key: item for key, item in normalized.items() if key != "input_digest"}
+    captured: list[dict[str, object]] = []
+
+    def capture_build(
+        *,
+        value: dict[str, object],
+        target: Path,
+        serve_binding: str,
+        public_base_path: str,
+        timeout_seconds: float,
+    ) -> None:
+        assert target.is_dir()
+        assert serve_binding == "127.0.0.1-only"
+        assert public_base_path == ""
+        assert timeout_seconds > 0
+        captured.append(value)
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", capture_build)
+
+    handler_class = type(
+        "CanonicalInputEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(source).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        response.read()
+        assert response.status == 200
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert captured == [expected]
+    assert "input_digest" not in captured[0]
 
 
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:

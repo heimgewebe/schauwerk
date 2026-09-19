@@ -50,6 +50,8 @@ jobs:
           docker run --detach --rm \
             --name schaubild-native-smoke \
             --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --publish 127.0.0.1:18767:8765 \
             schaubild-native:smoke \
@@ -111,6 +113,8 @@ jobs:
           docker run --detach --rm \
             --name schaubild-native-publish-smoke \
             --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
             --tmpfs /tmp:rw,noexec,nosuid,size=64m \
             --publish 127.0.0.1:18767:8765 \
             "$IMAGE@$digest" \
