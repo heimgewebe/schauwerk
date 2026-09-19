@@ -16,10 +16,15 @@ Der hier dokumentierte diagrams.net-Pfad bleibt erhalten als:
   im nativen Renderer separat gehärtet und visuell akzeptiert ist;
 - Exportpfad für Legacy-PNG und bestehende draw.io-Projekte.
 
-Der native Pfad läuft nur über den integrierten loopback-only `serve`-Prozess, weil das
-statische Browserbundle den Python-Renderer nicht selbst ausführen kann. Der Browser
-enthält ausdrücklich keinen zweiten Renderer. Native Semantik bleibt read-only;
-Node-Drag ist nur lokaler Layout-Overlay und routet Kanten nicht neu.
+Der native Pfad läuft über den integrierten `serve`-Prozess, weil das statische
+Browserbundle den Python-Renderer nicht selbst ausführen kann. Loopback bleibt der
+sichere Default. Für einen privaten Reverse-Proxy/Containerpfad muss ein Non-Loopback-
+Bind explizit mit `--trusted-reverse-proxy` freigeschaltet werden; der Service-Port darf
+dabei nicht öffentlich exponiert werden. `--public-base-path /schaubild` bindet API-
+und Viewer-URLs an denselben externen Prefix, während der Reverse Proxy diesen Prefix
+vor der internen Weiterleitung entfernt. Der Browser enthält ausdrücklich keinen
+zweiten Renderer. Native Semantik bleibt read-only; Node-Drag ist nur lokaler
+Layout-Overlay und routet Kanten nicht neu.
 
 ## Ziel
 
@@ -56,7 +61,11 @@ Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokum
 
 ## Sicherheits- und Datenschutzgrenze
 
-Der Host wird lokal ausgeliefert und bindet beim integrierten Server ausschließlich an `127.0.0.1`.
+Der Host bindet beim integrierten Server standardmäßig ausschließlich an `127.0.0.1`.
+Ein Non-Loopback-Bind ist nur mit dem expliziten `--trusted-reverse-proxy`-Schalter
+zulässig und setzt voraus, dass der Runtime-Port ausschließlich in einem privaten
+Container-/Proxy-Netz liegt. Der bestehende Host-Header-Guard bleibt zusätzliche
+Abwehrschicht, ersetzt aber diese Netzgrenze nicht.
 
 Standardmäßig ist der Editor **nicht vollständig offline**: Die interaktive Engine wird von `https://embed.diagrams.net` geladen. Diagramminhalte werden anschließend über Browser-`postMessage` an dieses cross-origin `iframe` übergeben. Die Host-Seite akzeptiert Nachrichten ausschließlich vom exakt gebundenen Editor-Origin und setzt eine enge Content-Security-Policy.
 
@@ -119,6 +128,32 @@ PYTHONPATH=src python -m schauwerk.visual.standalone_editor serve \
 ```
 
 Für einen lokalen Test-Self-Host ist HTTP nur auf Loopback erlaubt, zum Beispiel `--editor-origin http://127.0.0.1:8878`.
+
+## Runtime-Distribution für Consumer
+
+Produktive Consumer sollen den Python-Renderer nicht nachbauen und auch kein statisches
+v2-Bundle ohne Render-API ausliefern. Schauwerk veröffentlicht deshalb den integrierten
+Schaubild-Server als OCI-Image `ghcr.io/heimgewebe/schauwerk-schaubild:<commit>`.
+Das Image ist commitgebunden, basiert auf einem digestgepinnten Python-Basisimage und
+läuft als Non-Root-User. Der CI-Smoke startet es mit read-only Rootfs und einem
+beschränkten `/tmp`-tmpfs für die digestgebundenen Native-Viewer-Builds.
+
+Ein Consumer wie Commonthing soll:
+
+1. das Schauwerk-Image **per OCI-Digest** pinnen;
+2. den Container ohne öffentliches Port-Publishing im privaten Compose-Netz betreiben;
+3. `/schaubild/*` per `handle_path`/äquivalent auf Port 8765 weiterleiten und den
+   öffentlichen Prefix intern entfernen;
+4. den Upstream-`Host` explizit auf `127.0.0.1:8765` setzen, damit der Schauwerk-
+   Host-Guard unverändert fail-closed bleibt;
+5. `--bind-host 0.0.0.0 --trusted-reverse-proxy --trusted-proxy-source-cidr <proxy-cidr> --public-base-path /schaubild`
+   ausschließlich in diesem privaten Proxy-Kontext aktivieren. `<proxy-cidr>` muss
+   das kanonische IPv4-Netz des **direkten** Consumer-Proxys binden und beim
+   Deployment gegen dessen tatsächliche Peer-Adresse zurückgelesen werden; ein
+   pauschales Docker-Catch-all ist kein Produktionsnachweis.
+
+Damit bleibt Schauwerk Produzent und Renderer-Autorität; Commonthing ist nur
+digestgebundener Runtime-Consumer.
 
 ## Acceptance für den Spike
 

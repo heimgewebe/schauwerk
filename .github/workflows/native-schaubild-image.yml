@@ -1,0 +1,161 @@
+name: native-schaubild-image
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "README.md"
+      - "src/**"
+      - ".github/workflows/native-schaubild-image.yml"
+      - "scripts/ci/smoke-native-schaubild-runtime.sh"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "pyproject.toml"
+      - "README.md"
+      - "src/**"
+      - ".github/workflows/native-schaubild-image.yml"
+      - "scripts/ci/smoke-native-schaubild-runtime.sh"
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact reviewed main commit to publish"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build PR smoke image
+        run: |
+          docker buildx build \
+            --platform linux/amd64 \
+            --load \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --tag schaubild-native:smoke \
+            .
+
+      - name: Smoke PR image
+        run: |
+          set -euo pipefail
+          docker run --detach --rm \
+            --name schaubild-native-smoke \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --publish 127.0.0.1:18767:8765 \
+            schaubild-native:smoke \
+            python -m schauwerk.visual.standalone_editor serve \
+              --bind-host 0.0.0.0 \
+              --trusted-reverse-proxy \
+              --trusted-proxy-source-cidr 172.16.0.0/12 \
+              --public-base-path /schaubild \
+              --port 8765
+          trap 'docker stop schaubild-native-smoke >/dev/null 2>&1 || true' EXIT
+          ./scripts/ci/smoke-native-schaubild-runtime.sh http://127.0.0.1:18767
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: build-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/heimgewebe/schauwerk-schaubild
+      CANDIDATE_IMAGE: ghcr.io/heimgewebe/schauwerk-schaubild-candidates
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Verify exact publication authorization
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$EXPECTED_SHA" = "$GITHUB_SHA"
+
+      - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" \
+            | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push attestable candidate exactly once
+        run: |
+          set -euo pipefail
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=mode=max \
+            --sbom=true \
+            --build-arg "VCS_REF=$GITHUB_SHA" \
+            --metadata-file candidate-metadata.json \
+            --tag "$CANDIDATE_IMAGE:candidate-$GITHUB_SHA" \
+            --push \
+            .
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          metadata = json.loads(Path("candidate-metadata.json").read_text())
+          digest = metadata.get("containerimage.digest")
+          if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+              raise SystemExit("candidate image digest missing from build metadata")
+          Path("candidate-digest.txt").write_text(digest + "\n", encoding="utf-8")
+          PY
+
+      - name: Smoke the exact pushed digest
+        run: |
+          set -euo pipefail
+          digest="$(cat candidate-digest.txt)"
+          docker run --detach --rm \
+            --name schaubild-native-publish-smoke \
+            --read-only \
+            --cap-drop ALL \
+            --security-opt no-new-privileges \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --publish 127.0.0.1:18767:8765 \
+            "$CANDIDATE_IMAGE@$digest" \
+            python -m schauwerk.visual.standalone_editor serve \
+              --bind-host 0.0.0.0 \
+              --trusted-reverse-proxy \
+              --trusted-proxy-source-cidr 172.16.0.0/12 \
+              --public-base-path /schaubild \
+              --port 8765
+          trap 'docker stop schaubild-native-publish-smoke >/dev/null 2>&1 || true' EXIT
+          ./scripts/ci/smoke-native-schaubild-runtime.sh http://127.0.0.1:18767
+
+      - name: Promote only the tested candidate digest
+        run: |
+          set -euo pipefail
+          candidate_digest="$(cat candidate-digest.txt)"
+          docker buildx imagetools create \
+            --tag "$IMAGE:$GITHUB_SHA" \
+            "$CANDIDATE_IMAGE@$candidate_digest"
+          final_digest="$(
+            docker buildx imagetools inspect "$IMAGE:$GITHUB_SHA" \
+              | awk '$1 == "Digest:" {print $2; exit}'
+          )"
+          test "$final_digest" = "$candidate_digest"
+          printf '%s@%s\n' "$IMAGE" "$final_digest"
+
+      - name: Logout from GHCR
+        if: always()
+        run: docker logout ghcr.io || true

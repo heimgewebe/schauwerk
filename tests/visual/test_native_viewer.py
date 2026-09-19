@@ -36,6 +36,45 @@ def _source_ids(svg: bytes, kind: str) -> set[str]:
     }
 
 
+def test_native_viewer_manifest_binds_integrated_reverse_proxy_context(
+    tmp_path: Path,
+) -> None:
+    manifest = build_native_viewer(
+        _load(),
+        tmp_path / "integrated",
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+    )
+
+    assert manifest["network_boundary"] == {
+        "bundle": "server-managed-local-bundle",
+        "external_requests_required": False,
+        "serve_binding": "trusted-reverse-proxy-private-ingress",
+        "public_base_path": "/schaubild",
+        "delivery": "integrated-schaubild-runtime",
+    }
+    assert "production-readiness" not in manifest["does_not_establish"]
+    assert "phase-3-cutover-acceptance" not in manifest["does_not_establish"]
+    assert "consumer-deployment-readiness" in manifest["does_not_establish"]
+    assert "public-edge-acceptance" in manifest["does_not_establish"]
+
+
+def test_native_viewer_rejects_incoherent_serving_context(tmp_path: Path) -> None:
+    with pytest.raises(NativeViewerError, match="loopback"):
+        build_native_viewer(
+            _load(),
+            tmp_path / "bad-loopback",
+            serve_binding="127.0.0.1-only",
+            public_base_path="/schaubild",
+        )
+    with pytest.raises(NativeViewerError, match="unsupported"):
+        build_native_viewer(
+            _load(),
+            tmp_path / "bad-binding",
+            serve_binding="public-internet",
+        )
+
+
 def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only(
     tmp_path: Path,
 ) -> None:
@@ -62,7 +101,14 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert first["interaction_contract"]["two_pointer_pinch_zoom"] is True
     assert first["interaction_contract"]["edge_geometry_after_node_drag"] == "frozen-gate1-svg"
     assert first["interaction_contract"]["edge_rerouting"] is False
-    assert first["network_boundary"]["external_requests_required"] is False
+    assert first["network_boundary"] == {
+        "bundle": "server-managed-local-bundle",
+        "external_requests_required": False,
+        "serve_binding": "127.0.0.1-only",
+        "public_base_path": "/",
+        "delivery": "development-loopback",
+    }
+    assert "production-readiness" in first["does_not_establish"]
     assert "phase-3-cutover-acceptance" in first["does_not_establish"]
 
     normalized = validate_representation_input(raw)

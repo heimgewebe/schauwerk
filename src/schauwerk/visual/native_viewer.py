@@ -89,6 +89,9 @@ def _file_record(path: Path, root: Path) -> dict[str, object]:
 def build_native_viewer(
     source: Mapping[str, Any],
     output_dir: Path,
+    *,
+    serve_binding: str = "127.0.0.1-only",
+    public_base_path: str = "",
 ) -> dict[str, object]:
     """Build one deterministic, fully local interaction bundle.
 
@@ -96,6 +99,30 @@ def build_native_viewer(
     augmented inline copy only so browser interaction can address stable source IDs.
     Browser code never writes semantic representation bytes or renderer bytes.
     """
+
+    if serve_binding not in {
+        "127.0.0.1-only",
+        "trusted-reverse-proxy-private-ingress",
+    }:
+        raise NativeViewerError("unsupported native viewer serve binding")
+    if (
+        not isinstance(public_base_path, str)
+        or public_base_path != public_base_path.strip()
+        or ("?" in public_base_path or "#" in public_base_path)
+        or (
+            public_base_path
+            and (
+                not public_base_path.startswith("/")
+                or public_base_path.endswith("/")
+                or "//" in public_base_path
+                or "/../" in f"{public_base_path}/"
+                or "/./" in f"{public_base_path}/"
+            )
+        )
+    ):
+        raise NativeViewerError("native viewer public base path is invalid")
+    if serve_binding == "127.0.0.1-only" and public_base_path:
+        raise NativeViewerError("loopback native viewer must not declare a public base path")
 
     model = validate_representation_input(source)
     svg = render_native_diagram(model)
@@ -160,17 +187,26 @@ def build_native_viewer(
             "edge_rerouting": False,
         },
         "network_boundary": {
-            "bundle": "local-static-files",
+            "bundle": "server-managed-local-bundle",
             "external_requests_required": False,
-            "serve_binding": "127.0.0.1-only",
+            "serve_binding": serve_binding,
+            "public_base_path": public_base_path or "/",
+            "delivery": (
+                "integrated-schaubild-runtime"
+                if serve_binding == "trusted-reverse-proxy-private-ingress"
+                else "development-loopback"
+            ),
         },
         "files": files,
         "does_not_establish": [
-            "production-readiness",
+            *(
+                ["consumer-deployment-readiness", "public-edge-acceptance"]
+                if serve_binding == "trusted-reverse-proxy-private-ingress"
+                else ["production-readiness", "phase-3-cutover-acceptance"]
+            ),
             "semantic-mutation",
             "edge-rerouting-after-node-drag",
             "cross-device-layout-persistence",
-            "phase-3-cutover-acceptance",
         ],
     }
     canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -259,6 +295,8 @@ def _parser() -> argparse.ArgumentParser:
     build = commands.add_parser("build", help="write one local native viewer bundle")
     build.add_argument("--input", required=True, type=Path)
     build.add_argument("--output-dir", required=True, type=Path)
+    build.add_argument("--serve-binding", default="127.0.0.1-only")
+    build.add_argument("--public-base-path", default="")
 
     serve = commands.add_parser("serve", help="serve one local native viewer on loopback")
     serve.add_argument("--input", required=True, type=Path)
@@ -270,7 +308,12 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "build":
-        manifest = build_native_viewer(_read_representation(args.input), args.output_dir)
+        manifest = build_native_viewer(
+            _read_representation(args.input),
+            args.output_dir,
+            serve_binding=args.serve_binding,
+            public_base_path=args.public_base_path,
+        )
         print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "serve":

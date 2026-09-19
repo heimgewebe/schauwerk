@@ -2,12 +2,17 @@
 from __future__ import annotations
 
 import base64
+import io
+import ipaddress
 import json
 import os
 import re
 import shutil
+import socket
 import subprocess
+import sys
 import threading
+import time
 import xml.etree.ElementTree as ET
 from functools import partial
 from http.client import HTTPConnection
@@ -16,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+import schauwerk.visual.standalone_editor as standalone_editor
 from schauwerk.visual.standalone_editor import (
     EDITOR_ORIGIN,
     MANIFEST_SCHEMA,
@@ -25,6 +31,8 @@ from schauwerk.visual.standalone_editor import (
     _content_security_policy,
     _EditorRequestHandler,
     _native_product_input,
+    _normalize_bind_host,
+    _normalize_public_base_path,
     build_standalone_editor,
 )
 
@@ -52,7 +60,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert manifest["engine_delivery"] == "remote-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "native_render_api": "same-origin-loopback-serve-only",
+        "native_render_api": "same-origin-integrated-serve-only",
         "native_viewer_external_requests_required": False,
         "legacy_editor_runtime": EDITOR_ORIGIN,
         "public_embed_runtime": True,
@@ -66,6 +74,16 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         "json-canvas-1.0",
         "drawio-xml",
     ]
+    assert manifest["native_renderer"]["admission_scope"] == {
+        "key": "client-ip",
+        "max_pinned_entries_per_client": standalone_editor.MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+        "max_active_build_windows_per_client": (
+            standalone_editor.MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
+        ),
+        "max_client_keys_per_digest": standalone_editor.MAX_NATIVE_CLIENT_KEYS_PER_DIGEST,
+        "trusted_proxy_header": "X-Forwarded-For",
+        "trusted_proxy_source_cidr_required": True,
+    }
     assert "general-knowledge-map-native-cutover" in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
@@ -213,6 +231,216 @@ def _golden_representation(name: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def test_public_base_path_is_bound_into_manifest_and_client_urls(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    manifest = build_standalone_editor(output, public_base_path="/schaubild")
+
+    assert manifest["native_renderer"]["api_path"] == "/schaubild/api/native-viewer"
+    assert manifest["native_renderer"]["public_base_path"] == "/schaubild"
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert _js_string_constant(app_js, "PUBLIC_BASE_PATH") == "/schaubild"
+    assert "PUBLIC_BASE_PATH}/api/native-viewer" in app_js
+    assert "PUBLIC_BASE_PATH}/native/" in app_js
+
+
+@pytest.mark.parametrize("value", ["/schaubild/", "schaubild", "/a//b", "/../x", "/a\\b", "/a?b"])
+def test_public_base_path_rejects_ambiguous_or_noncanonical_values(value: str) -> None:
+    with pytest.raises(StandaloneEditorError):
+        _normalize_public_base_path(value)
+
+
+def test_public_base_path_canonicalizes_root_to_empty_prefix() -> None:
+    assert _normalize_public_base_path("") == ""
+    assert _normalize_public_base_path("/") == ""
+    assert _normalize_public_base_path("/schaubild") == "/schaubild"
+
+
+def test_nonloopback_bind_requires_explicit_trusted_reverse_proxy() -> None:
+    assert _normalize_bind_host("localhost", trusted_reverse_proxy=False) == "127.0.0.1"
+    assert _normalize_bind_host("127.0.0.1", trusted_reverse_proxy=False) == "127.0.0.1"
+    with pytest.raises(StandaloneEditorError, match="direct loopback bind"):
+        _normalize_bind_host("127.0.0.2", trusted_reverse_proxy=False)
+    assert _normalize_bind_host("127.0.0.2", trusted_reverse_proxy=True) == "127.0.0.2"
+    with pytest.raises(StandaloneEditorError, match="IPv4"):
+        _normalize_bind_host("::1", trusted_reverse_proxy=False)
+    with pytest.raises(StandaloneEditorError, match="trusted-reverse-proxy"):
+        _normalize_bind_host("0.0.0.0", trusted_reverse_proxy=False)
+    assert _normalize_bind_host("0.0.0.0", trusted_reverse_proxy=True) == "0.0.0.0"
+
+
+def test_trusted_proxy_source_cidrs_are_explicit_bounded_and_canonical() -> None:
+    networks = standalone_editor._normalize_trusted_proxy_source_cidrs(
+        ("127.0.0.0/8", "172.16.0.0/12")
+    )
+    assert [str(item) for item in networks] == ["127.0.0.0/8", "172.16.0.0/12"]
+    with pytest.raises(StandaloneEditorError, match="canonical"):
+        standalone_editor._normalize_trusted_proxy_source_cidrs(("172.17.0.1/12",))
+    with pytest.raises(StandaloneEditorError, match="unique"):
+        standalone_editor._normalize_trusted_proxy_source_cidrs(
+            ("172.16.0.0/12", "172.16.0.0/12")
+        )
+    with pytest.raises(StandaloneEditorError, match="IPv4"):
+        standalone_editor._normalize_trusted_proxy_source_cidrs(("::1/128",))
+
+
+def test_trusted_reverse_proxy_requires_source_cidr_before_server_start(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(StandaloneEditorError, match="trusted-proxy-source-cidr"):
+        standalone_editor.serve_standalone_editor(
+            port=0,
+            build_dir=tmp_path / "editor",
+            bind_host="0.0.0.0",
+            trusted_reverse_proxy=True,
+        )
+
+
+def test_prefixed_runtime_requires_trusted_reverse_proxy_before_server_start(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    server_started = False
+
+    class UnexpectedServer:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            nonlocal server_started
+            server_started = True
+            raise AssertionError("server must not start for incompatible prefix/bind contract")
+
+    monkeypatch.setattr(standalone_editor, "_BoundedThreadingHTTPServer", UnexpectedServer)
+
+    with pytest.raises(StandaloneEditorError, match="public base path requires"):
+        standalone_editor.serve_standalone_editor(
+            port=0,
+            build_dir=tmp_path / "editor",
+            public_base_path="/schaubild",
+        )
+
+    assert server_started is False
+
+
+def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output, public_base_path="/schaubild")
+
+    handler_class = type(
+        "PrefixedEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+            "trusted_proxy_networks": (ipaddress.ip_network("127.0.0.0/8"),),
+        },
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+                "X-Forwarded-For": "203.0.113.7",
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert re.fullmatch(r"/schaubild/native/[0-9a-f]{32}/index\.html", body["url"])
+
+        internal_viewer_path = body["url"].removeprefix("/schaubild")
+        connection.request(
+            "GET",
+            internal_viewer_path,
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+        viewer_response = connection.getresponse()
+        assert viewer_response.status == 200
+        assert 'id="nativeViewport"' in viewer_response.read().decode("utf-8")
+
+        internal_manifest_path = internal_viewer_path.replace("index.html", "manifest.json")
+        connection.request(
+            "GET",
+            internal_manifest_path,
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+        manifest_response = connection.getresponse()
+        manifest = json.loads(manifest_response.read().decode("utf-8"))
+        assert manifest_response.status == 200
+        assert manifest["network_boundary"]["serve_binding"] == (
+            "trusted-reverse-proxy-private-ingress"
+        )
+        assert manifest["network_boundary"]["public_base_path"] == "/schaubild"
+        assert manifest["network_boundary"]["delivery"] == "integrated-schaubild-runtime"
+        assert "production-readiness" not in manifest["does_not_establish"]
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+def test_native_product_admission_rejects_excessive_graph_cardinality() -> None:
+    too_many_nodes = _golden_representation("decision-flow-v1.json")
+    too_many_nodes["groups"] = []
+    too_many_nodes["nodes"] = [
+        {"id": f"n{index}", "label": f"Node {index}", "kind": "concept"}
+        for index in range(standalone_editor.MAX_NATIVE_NODES + 1)
+    ]
+    too_many_nodes["edges"] = []
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(too_many_nodes)
+
+    too_many_edges = _golden_representation("decision-flow-v1.json")
+    too_many_edges["groups"] = []
+    too_many_edges["nodes"] = [
+        {"id": "source", "label": "Source", "kind": "concept"},
+        {"id": "target", "label": "Target", "kind": "concept"},
+    ]
+    too_many_edges["edges"] = [
+        {
+            "id": f"e{index}",
+            "from": "source",
+            "to": "target",
+            "label": f"Edge {index}",
+            "kind": "flow",
+        }
+        for index in range(standalone_editor.MAX_NATIVE_EDGES + 1)
+    ]
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(too_many_edges)
+
+
+def test_native_product_admission_rejects_excessive_routing_pair_work() -> None:
+    value = _golden_representation("decision-flow-v1.json")
+    value["groups"] = []
+    value["nodes"] = [
+        {"id": "source", "label": "Source", "kind": "concept"},
+        {"id": "target", "label": "Target", "kind": "concept"},
+    ]
+    edge_count = 182
+    assert edge_count <= standalone_editor.MAX_NATIVE_EDGES
+    assert edge_count * edge_count > standalone_editor.MAX_NATIVE_ROUTING_PAIRS
+    value["edges"] = [
+        {
+            "id": f"e{index}",
+            "from": "source",
+            "to": "target",
+            "label": f"Edge {index}",
+            "kind": "flow",
+        }
+        for index in range(edge_count)
+    ]
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(value)
+
+
 def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge_map() -> None:
     process = _golden_representation("decision-flow-v1.json")
     accepted = _native_product_input(process)
@@ -249,7 +477,7 @@ def test_native_render_endpoint_rejects_non_loopback_host_before_rendering(tmp_p
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 421
         assert body == {"error": "local Schaubild server accepts loopback Host headers only"}
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
@@ -335,7 +563,7 @@ def test_native_render_endpoint_returns_422_for_lone_unicode_surrogate(tmp_path:
         assert response.status == 422
         assert isinstance(body.get("error"), str)
         assert body["error"]
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
@@ -375,12 +603,1121 @@ def test_native_render_endpoint_ascii_escapes_surrogate_in_validation_error(
         body = json.loads(raw_body)
         assert response.status == 422
         assert "unknown fields" in body["error"]
-        assert not (output / "native").exists()
+        assert not (output / ".native-cache").exists()
         connection.close()
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "PrivateCacheGuardEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        representation = _golden_representation("decision-flow-v1.json")
+        payload = json.dumps(representation).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        response.read()
+        assert response.status == 200
+        assert (output / ".native-cache").is_dir()
+
+        for private_path in (
+            "/.native-cache/",
+            "/%2enative-cache/",
+            "/%2Enative-cache/",
+            "/%2e%6eative-cache/",
+            "/%252enative-cache/",
+            "/foo/..%252f.native-cache/",
+            "/%252enative-cache/representation.json",
+            "/../.native-cache/",
+        ):
+            connection.request("GET", private_path)
+            private_response = connection.getresponse()
+            private_body = private_response.read()
+            assert private_response.status == 404
+            assert b"bundle-" not in private_body
+            assert b"representation.json" not in private_body
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_build_releases_cache_lock_during_renderer_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    lock_observations: list[bool] = []
+
+    def observed_subprocess_build(**_kwargs: object) -> None:
+        acquired = standalone_editor._NATIVE_CACHE_LOCK.acquire(blocking=False)
+        lock_observations.append(acquired)
+        if acquired:
+            standalone_editor._NATIVE_CACHE_LOCK.release()
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "_run_native_viewer_build",
+        observed_subprocess_build,
+    )
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key=standalone_editor._LOCAL_ADMISSION_KEY,
+        deadline_monotonic=time.monotonic() + 5,
+    )
+
+    assert created is True
+    assert record.path.is_dir()
+    assert lock_observations == [True]
+
+
+def test_native_renderer_child_failure_logs_bounded_stderr(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    target = tmp_path / "bundle"
+    target.mkdir()
+    noisy = "x" * 5000 + "TAIL_MARKER"
+
+    class FailedProcess:
+        def __init__(self) -> None:
+            self.stderr = io.BytesIO(noisy.encode("utf-8"))
+
+        def wait(self, timeout: float | None = None) -> int:
+            return 1
+
+        def kill(self) -> None:
+            raise AssertionError("nonzero renderer exit must not require a kill")
+
+    monkeypatch.setattr(
+        standalone_editor.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: FailedProcess(),
+    )
+    with pytest.raises(
+        standalone_editor.NativeViewerError,
+        match="subprocess build failed",
+    ):
+        standalone_editor._run_native_viewer_build(
+            value=_golden_representation("decision-flow-v1.json"),
+            target=target,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            timeout_seconds=5,
+        )
+
+    stderr = capsys.readouterr().err
+    assert "native viewer subprocess failed:" in stderr
+    assert "TAIL_MARKER" in stderr
+    assert len(stderr) < 4300
+
+
+def test_native_build_lock_wait_respects_absolute_request_deadline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    renderer_called = False
+
+    def unexpected_renderer(**_kwargs: object) -> None:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("renderer must not start after request deadline expires")
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", unexpected_renderer)
+    assert standalone_editor._NATIVE_BUILD_LOCK.acquire(blocking=False)
+    try:
+        deadline = time.monotonic() + 0.05
+        started = time.monotonic()
+        with pytest.raises(
+            standalone_editor.NativeRequestDeadlineError,
+            match="deadline expired while waiting",
+        ):
+            standalone_editor._build_native_cache_record(
+                output,
+                digest=str(normalized["input_digest"]),
+                value=value,
+                serve_binding="127.0.0.1-only",
+                public_base_path="",
+                admission_key="127.0.0.1",
+                deadline_monotonic=deadline,
+            )
+        assert time.monotonic() - started < 0.5
+        assert renderer_called is False
+    finally:
+        standalone_editor._NATIVE_BUILD_LOCK.release()
+
+
+def test_native_runtime_import_has_no_third_party_dependency_closure() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(repo_root / "src")
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            (
+                "import sys; "
+                "import schauwerk.visual.standalone_editor; "
+                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs'}; "
+                "loaded=sorted(blocked.intersection(sys.modules)); "
+                "assert not loaded, loaded"
+            ),
+        ],
+        cwd=repo_root,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    dockerfile = (repo_root / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "pip install" not in dockerfile
+    assert "COPY src ./src" not in dockerfile
+    assert "RUN chmod -R a=rX /app/src" in dockerfile
+    for required in (
+        "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/representation.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+    ):
+        assert required in dockerfile
+    for excluded in (
+        "src/schauwerk/surfaces",
+        "src/schauwerk/publication",
+        "src/schauwerk/fundus",
+    ):
+        assert excluded not in dockerfile
+
+
+def test_runtime_workflow_applies_declared_container_hardening_to_both_smokes() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    workflow = (repo_root / ".github/workflows/native-schaubild-image.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert workflow.count("--cap-drop ALL") == 2
+    assert workflow.count("--security-opt no-new-privileges") == 2
+    assert workflow.count("--read-only") == 2
+    assert workflow.count("--tmpfs /tmp:rw,noexec,nosuid,size=64m") == 2
+
+
+def test_runtime_publication_requires_exact_manual_dispatch_and_nonconsumer_candidate() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    workflow = (repo_root / ".github/workflows/native-schaubild-image.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "expected_sha:" in workflow
+    assert "github.event_name == 'workflow_dispatch'" in workflow
+    assert 'test "$EXPECTED_SHA" = "$GITHUB_SHA"' in workflow
+    assert "github.event_name == 'push' && github.ref == 'refs/heads/main'" not in workflow
+    assert "ghcr.io/heimgewebe/schauwerk-schaubild-candidates" in workflow
+    assert workflow.count("--trusted-proxy-source-cidr 172.16.0.0/12") == 2
+
+
+def test_consumer_plan_requires_exact_trusted_proxy_source_cidr_contract() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    plan = (repo_root / "docs/plans/standalone-diagram-editor-spike-v1.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        "--trusted-reverse-proxy --trusted-proxy-source-cidr <proxy-cidr> "
+        "--public-base-path /schaubild"
+    ) in plan
+    assert "direkten** Consumer-Proxys" in plan
+    assert "Docker-Catch-all ist kein Produktionsnachweis" in plan
+
+
+def test_native_bundle_stream_releases_cache_lock_before_copy(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    lock_observations: list[bool] = []
+
+    class LockProbeEditorRequestHandler(_EditorRequestHandler):
+        editor_origin = EDITOR_ORIGIN
+
+        def copyfile(self, source: object, outputfile: object) -> None:
+            acquired = standalone_editor._NATIVE_CACHE_LOCK.acquire(blocking=False)
+            lock_observations.append(acquired)
+            if acquired:
+                standalone_editor._NATIVE_CACHE_LOCK.release()
+            super().copyfile(source, outputfile)
+
+    handler = partial(LockProbeEditorRequestHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        value = _golden_representation("decision-flow-v1.json")
+        payload = json.dumps(value).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+
+        connection.request("GET", str(body["url"]))
+        viewer = connection.getresponse()
+        assert viewer.status == 200
+        assert 'id="nativeViewport"' in viewer.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert lock_observations == [True]
+
+
+def test_bounded_runtime_rejects_excess_workers_and_enforces_absolute_request_deadline(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "TimeoutBoundedEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "request_timeout_seconds": 0.2,
+        },
+    )
+    server_class = type(
+        "SingleWorkerEditorHTTPServer",
+        (standalone_editor._BoundedThreadingHTTPServer,),
+        {"max_workers": 1},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = server_class(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    slow = socket.create_connection(("127.0.0.1", int(server.server_address[1])), timeout=5)
+    try:
+        slow.sendall(
+            b"POST /api/native-viewer HTTP/1.1\r\n"
+            b"Host: 127.0.0.1\r\n"
+            b"Content-Type: application/json\r\n"
+            b"Content-Length: 100\r\n"
+            b"Connection: close\r\n\r\n"
+            b"{"
+        )
+
+        excess = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        excess.request("GET", "/manifest.json")
+        excess_response = excess.getresponse()
+        excess_response.read()
+        assert excess_response.status == 503
+        excess.close()
+
+        started = time.monotonic()
+        for _ in range(8):
+            time.sleep(0.04)
+            try:
+                slow.sendall(b" ")
+            except OSError:
+                break
+        assert time.monotonic() - started < 0.6
+        slow.settimeout(1)
+        assert slow.recv(4096) == b""
+
+        healthy = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        healthy.request("GET", "/manifest.json")
+        healthy_response = healthy.getresponse()
+        healthy_response.read()
+        assert healthy_response.status == 200
+        healthy.close()
+    finally:
+        slow.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    clock = [100.0]
+    monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 64 * 1024 * 1024)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
+
+    handler_class = type(
+        "PinAdmissionEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+
+        def post(representation_id: str) -> tuple[int, dict[str, object]]:
+            value = _golden_representation("decision-flow-v1.json")
+            value["id"] = representation_id
+            payload = json.dumps(value).encode("utf-8")
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            return response.status, body
+
+        def record_for(url: str) -> standalone_editor._NativeCacheRecord:
+            match = re.fullmatch(r"/native/([0-9a-f]{32})/index\.html", url)
+            assert match is not None
+            record = standalone_editor._native_cache_by_token(output, match.group(1))
+            assert record is not None
+            return record
+
+        first_status, first_body = post("first_flow")
+        assert first_status == 200
+        first_url = str(first_body["url"])
+        first_record = record_for(first_url)
+        assert first_record.pinned_until == 160.0
+        assert first_record.max_pinned_until == 220.0
+
+        original_renderer_build = standalone_editor._run_native_viewer_build
+        blocked_render_calls = 0
+
+        def reject_unnecessary_render(**_kwargs: object) -> None:
+            nonlocal blocked_render_calls
+            blocked_render_calls += 1
+            raise AssertionError("known pin saturation must reject before renderer work")
+
+        monkeypatch.setattr(
+            standalone_editor,
+            "_run_native_viewer_build",
+            reject_unnecessary_render,
+        )
+        clock[0] = 101.0
+        second_status, second_body = post("second_flow")
+        assert second_status == 503
+        assert "pin capacity" in str(second_body["error"])
+        assert first_record.pinned_until == 160.0
+        assert blocked_render_calls == 0
+        monkeypatch.setattr(
+            standalone_editor,
+            "_run_native_viewer_build",
+            original_renderer_build,
+        )
+
+        clock[0] = 150.0
+        connection.request("GET", first_url)
+        first_viewer = connection.getresponse()
+        assert first_viewer.status == 200
+        assert 'id="nativeViewport"' in first_viewer.read().decode("utf-8")
+        assert first_record.pinned_until == 210.0
+
+        clock[0] = 161.0
+        second_status, second_body = post("second_flow")
+        assert second_status == 503
+        assert "pin capacity" in str(second_body["error"])
+        assert first_record.pinned_until == 210.0
+
+        clock[0] = 211.0
+        second_status, second_body = post("second_flow")
+        assert second_status == 200
+        second_url = str(second_body["url"])
+        second_record = record_for(second_url)
+        assert first_record.pinned_until == 210.0
+        assert second_record.pinned_until == 271.0
+
+        clock[0] = 212.0
+        connection.request("GET", first_url)
+        no_pin_response = connection.getresponse()
+        no_pin_response.read()
+        assert no_pin_response.status == 503
+        assert first_record.pinned_until == 210.0
+        assert second_record.pinned_until == 271.0
+
+        clock[0] = 221.0
+        connection.request("GET", first_url)
+        expired_viewer = connection.getresponse()
+        expired_viewer.read()
+        assert expired_viewer.status == 410
+
+        first_retry_status, first_retry_body = post("first_flow")
+        assert first_retry_status == 503
+        assert "pin capacity" in str(first_retry_body["error"])
+        assert second_record.pinned_until == 271.0
+
+        clock[0] = 272.0
+        refreshed_status, refreshed_body = post("first_flow")
+        assert refreshed_status == 200
+        refreshed_url = str(refreshed_body["url"])
+        assert refreshed_body["input_digest"] == first_body["input_digest"]
+        assert refreshed_url != first_url
+
+        connection.request("GET", refreshed_url)
+        refreshed_viewer = connection.getresponse()
+        assert refreshed_viewer.status == 200
+        assert 'id="nativeViewport"' in refreshed_viewer.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    cache_root = output / ".native-cache"
+    assert cache_root.is_dir()
+    assert len(list(cache_root.iterdir())) <= 2
+
+
+def test_loopback_runtime_is_not_subject_to_shared_client_quota(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    handler_class = type(
+        "LocalQuotaEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        for index in range(5):
+            value = _golden_representation("decision-flow-v1.json")
+            value["id"] = f"local_flow_{index}"
+            payload = json.dumps(value).encode("utf-8")
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            response.read()
+            assert response.status == 200
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_digest_client_key_sets_are_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CLIENT_KEYS_PER_DIGEST", 2)
+
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    digest = str(normalized["input_digest"])
+    first, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key="198.51.100.1",
+    )
+    assert created is True
+    second, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key="198.51.100.2",
+    )
+    assert second is first
+    assert created is False
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="digest client capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=digest,
+            value=value,
+            serve_binding="trusted-reverse-proxy-private-ingress",
+            public_base_path="/schaubild",
+            admission_key="198.51.100.3",
+        )
+    assert set(first.pin_leases) == {"198.51.100.1", "198.51.100.2"}
+
+    root_key = standalone_editor._native_root_key(output)
+    window = standalone_editor._NATIVE_PIN_WINDOWS[(root_key, digest)]
+    assert window.admission_keys == {"198.51.100.1"}
+    window.admission_keys.add("198.51.100.2")
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="digest client capacity",
+    ):
+        standalone_editor._native_pin_window(
+            output,
+            digest=digest,
+            admission_key="198.51.100.3",
+            now=time.monotonic(),
+        )
+
+
+def test_failed_rebuild_does_not_consume_digest_client_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CLIENT_KEYS_PER_DIGEST", 2)
+
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    digest = str(normalized["input_digest"])
+    client_a = "198.51.100.1"
+    client_b = "198.51.100.2"
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_a,
+    )
+    assert created is True
+    root_key = standalone_editor._native_root_key(output)
+    window = standalone_editor._NATIVE_PIN_WINDOWS[(root_key, digest)]
+    assert window.admission_keys == {client_a}
+
+    standalone_editor._forget_native_cache_record(record, remove_files=True)
+    original_build = standalone_editor.build_native_viewer
+
+    def failed_build(*_args: object, **_kwargs: object) -> object:
+        raise standalone_editor.NativeViewerError("synthetic renderer failure")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", failed_build)
+    with pytest.raises(standalone_editor.NativeViewerError, match="synthetic renderer failure"):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=digest,
+            value=value,
+            serve_binding="trusted-reverse-proxy-private-ingress",
+            public_base_path="/schaubild",
+            admission_key=client_b,
+        )
+    assert window.admission_keys == {client_a}
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", original_build)
+    rebuilt, rebuilt_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_b,
+    )
+    assert rebuilt_created is True
+    assert rebuilt.admission_key == client_b
+    assert window.admission_keys == {client_a, client_b}
+
+
+def test_trusted_proxy_rejects_unallowlisted_peer_and_cross_client_capability(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output, public_base_path="/schaubild")
+    payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+
+    blocked_handler = type(
+        "BlockedProxyEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+            "trusted_proxy_networks": (ipaddress.ip_network("192.0.2.0/24"),),
+        },
+    )
+    blocked_server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(blocked_handler, directory=str(output)),
+    )
+    blocked_thread = threading.Thread(target=blocked_server.serve_forever, daemon=True)
+    blocked_thread.start()
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(blocked_server.server_address[1]), timeout=5
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+                "X-Forwarded-For": "203.0.113.1",
+            },
+        )
+        response = connection.getresponse()
+        response.read()
+        assert response.status == 400
+        connection.close()
+    finally:
+        blocked_server.shutdown()
+        blocked_server.server_close()
+        blocked_thread.join(timeout=5)
+
+    allowed_handler = type(
+        "AllowedProxyEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+            "trusted_proxy_networks": (ipaddress.ip_network("127.0.0.0/8"),),
+        },
+    )
+    allowed_server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(allowed_handler, directory=str(output)),
+    )
+    allowed_thread = threading.Thread(target=allowed_server.serve_forever, daemon=True)
+    allowed_thread.start()
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(allowed_server.server_address[1]), timeout=5
+        )
+        headers_a = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(payload)),
+            "X-Forwarded-For": "203.0.113.1",
+        }
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers_a)
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        viewer_path = str(body["url"]).removeprefix("/schaubild")
+
+        connection.request("GET", viewer_path, headers={"X-Forwarded-For": "203.0.113.2"})
+        foreign = connection.getresponse()
+        foreign.read()
+        assert foreign.status == 404
+
+        headers_b = dict(headers_a)
+        headers_b["X-Forwarded-For"] = "203.0.113.2"
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers_b)
+        cache_hit = connection.getresponse()
+        cache_hit.read()
+        assert cache_hit.status == 200
+
+        connection.request("GET", viewer_path, headers={"X-Forwarded-For": "203.0.113.2"})
+        authorized = connection.getresponse()
+        authorized.read()
+        assert authorized.status == 200
+        connection.close()
+    finally:
+        allowed_server.shutdown()
+        allowed_server.server_close()
+        allowed_thread.join(timeout=5)
+
+
+def test_native_build_admission_limits_one_client_before_renderer_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    first = _golden_representation("decision-flow-v1.json")
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.10",
+    )
+    assert first_created is True
+    assert first_record.admission_key == "198.51.100.10"
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "other_flow"
+    second_normalized = _native_product_input(second)
+    renderer_called = False
+
+    def unexpected_build(*_args: object, **_kwargs: object) -> object:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("per-client saturation must reject before renderer work")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_build)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="per-client pin capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(second_normalized["input_digest"]),
+            value=second,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key="198.51.100.10",
+        )
+    assert renderer_called is False
+
+
+def test_cache_hit_pin_is_charged_to_current_client(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "client_a_flow"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.10",
+    )
+    assert first_created is True
+    standalone_editor._abandon_native_cache_record(
+        output,
+        first_record,
+        admission_key="198.51.100.10",
+    )
+    assert first_record.pin_leases == {}
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "client_b_flow"
+    second_normalized = _native_product_input(second)
+    second_record, second_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(second_normalized["input_digest"]),
+        value=second,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.20",
+    )
+    assert second_created is True
+    assert second_record.pin_leases["198.51.100.20"] > time.monotonic()
+
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="pin capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(first_normalized["input_digest"]),
+            value=first,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key="198.51.100.20",
+        )
+
+    assert "198.51.100.20" not in first_record.pin_leases
+    assert first_record.admission_key == "198.51.100.10"
+
+
+def test_undelivered_native_record_is_unpinned_but_reusable_without_rebuild(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="127.0.0.1",
+    )
+    assert created is True
+    assert record.pinned_until > time.monotonic()
+
+    standalone_editor._abandon_native_cache_record(output, record)
+
+    assert standalone_editor._native_cache_by_digest(
+        output, str(normalized["input_digest"])
+    ) is record
+    assert standalone_editor._native_cache_by_token(output, record.token) is record
+    assert record.pinned_until <= time.monotonic()
+
+    def unexpected_rebuild(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("retry for an undelivered digest must reuse completed bytes")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_rebuild)
+    retried, retried_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="127.0.0.1",
+    )
+    assert retried is record
+    assert retried_created is False
+    assert retried.pinned_until > time.monotonic()
+
+
+def test_undelivered_unique_digests_still_consume_client_build_budget(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 2)
+
+    admission_key = "198.51.100.77"
+    for index in range(2):
+        value = _golden_representation("decision-flow-v1.json")
+        value["id"] = f"abandoned_flow_{index}"
+        normalized = _native_product_input(value)
+        record, created = standalone_editor._build_native_cache_record(
+            output,
+            digest=str(normalized["input_digest"]),
+            value=value,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key=admission_key,
+        )
+        assert created is True
+        standalone_editor._abandon_native_cache_record(output, record)
+        assert record.pinned_until <= time.monotonic()
+
+    renderer_called = False
+
+    def unexpected_build(*_args: object, **_kwargs: object) -> object:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("client build budget must reject before renderer work")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_build)
+    third = _golden_representation("decision-flow-v1.json")
+    third["id"] = "abandoned_flow_2"
+    third_normalized = _native_product_input(third)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="per-client build capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(third_normalized["input_digest"]),
+            value=third,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key=admission_key,
+        )
+    assert renderer_called is False
+
+
+def test_native_render_endpoint_allows_same_digest_after_absolute_lifetime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    clock = [100.0]
+    monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
+
+    handler_class = type(
+        "ExpiredSameDigestEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        payload = json.dumps(_golden_representation("decision-flow-v1.json")).encode("utf-8")
+        headers = {"Content-Type": "application/json", "Content-Length": str(len(payload))}
+
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        first_response = connection.getresponse()
+        first_body = json.loads(first_response.read().decode("utf-8"))
+        assert first_response.status == 200
+        first_url = str(first_body["url"])
+
+        clock[0] = 221.0
+        connection.request("GET", first_url)
+        expired_response = connection.getresponse()
+        expired_response.read()
+        assert expired_response.status == 410
+
+        connection.request("POST", NATIVE_API_PATH, body=payload, headers=headers)
+        refreshed_response = connection.getresponse()
+        refreshed_body = json.loads(refreshed_response.read().decode("utf-8"))
+        assert refreshed_response.status == 200
+        refreshed_url = str(refreshed_body["url"])
+        assert refreshed_body["input_digest"] == first_body["input_digest"]
+        assert refreshed_url != first_url
+
+        connection.request("GET", first_url)
+        replaced_response = connection.getresponse()
+        replaced_response.read()
+        assert replaced_response.status == 404
+
+        connection.request("GET", refreshed_url)
+        refreshed_viewer = connection.getresponse()
+        assert refreshed_viewer.status == 200
+        assert 'id="nativeViewport"' in refreshed_viewer.read().decode("utf-8")
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    cache_root = output / ".native-cache"
+    assert cache_root.is_dir()
+    assert len(list(cache_root.iterdir())) == 1
+
+
+def test_native_render_endpoint_passes_canonical_public_input_to_renderer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(source)
+    expected = {key: item for key, item in normalized.items() if key != "input_digest"}
+    captured: list[dict[str, object]] = []
+
+    def capture_build(
+        *,
+        value: dict[str, object],
+        target: Path,
+        serve_binding: str,
+        public_base_path: str,
+        timeout_seconds: float,
+    ) -> None:
+        assert target.is_dir()
+        assert serve_binding == "127.0.0.1-only"
+        assert public_base_path == ""
+        assert timeout_seconds > 0
+        captured.append(value)
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", capture_build)
+
+    handler_class = type(
+        "CanonicalInputEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        payload = json.dumps(source).encode("utf-8")
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        response.read()
+        assert response.status == 200
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert captured == [expected]
+    assert "input_digest" not in captured[0]
 
 
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
@@ -409,14 +1746,20 @@ def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_p
         body = json.loads(response.read().decode("utf-8"))
         assert response.status == 200
         assert body["renderer"] == NATIVE_RENDERER
-        assert re.fullmatch(r"/native/[0-9a-f]{64}/index\.html", body["url"])
+        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", body["url"])
 
         connection.request("GET", body["url"])
         viewer_response = connection.getresponse()
         viewer_html = viewer_response.read().decode("utf-8")
         assert viewer_response.status == 200
         assert "id=\"nativeViewport\"" in viewer_html
-        assert (output / "native" / body["input_digest"] / "diagram.svg").is_file()
+
+        diagram_url = body["url"].replace("index.html", "diagram.svg")
+        connection.request("GET", diagram_url)
+        diagram_response = connection.getresponse()
+        diagram_svg = diagram_response.read().decode("utf-8")
+        assert diagram_response.status == 200
+        assert "<svg" in diagram_svg
 
         blocked = json.dumps(_golden_representation("system-landscape-v1.json")).encode("utf-8")
         connection.request(
@@ -502,7 +1845,7 @@ def test_build_supports_loopback_self_hosted_editor(tmp_path: Path) -> None:
     assert manifest["engine_delivery"] == "operator-configured-browser-iframe"
     assert manifest["network_boundary"] == {
         "shell": "local-static-files",
-        "native_render_api": "same-origin-loopback-serve-only",
+        "native_render_api": "same-origin-integrated-serve-only",
         "native_viewer_external_requests_required": False,
         "legacy_editor_runtime": "http://127.0.0.1:8878",
         "public_embed_runtime": False,
