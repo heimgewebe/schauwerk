@@ -20,7 +20,6 @@
     "generated_browser_javascript_syntax_valid": true,
     "ghcr_publish_workflow_declared": true,
     "github_permissions_least_privilege": true,
-    "known_native_viewer_browser_harness_baseline_reproduced": true,
     "local_oci_build_passed": true,
     "main_candidate_sbom_and_provenance_enabled": true,
     "native_build_lock_wait_bounded_by_request_deadline": true,
@@ -41,6 +40,7 @@
     "native_request_body_timeout_enforced": true,
     "native_response_write_failure_releases_bundle_pin": true,
     "native_server_worker_concurrency_bounded": true,
+    "native_viewer_browser_smoke_passed": true,
     "native_viewer_bundle_grace_lease_enforced": true,
     "native_viewer_cache_bounded_and_lru_evicted": true,
     "native_viewer_manifest_bound_to_integrated_runtime_context": true,
@@ -50,7 +50,7 @@
     "prefixed_viewer_url_passed": true,
     "publish_candidate_built_attested_and_smoked_before_final_tag": true,
     "python_suite_passed_count": 1311,
-    "python_suite_without_known_browser_harness_passed": true,
+    "python_suite_without_browser_smokes_passed": true,
     "read_only_container_smoke_passed": true,
     "ruff_passed": true,
     "runtime_image_contains_minimal_native_source_closure": true,
@@ -71,10 +71,9 @@
     "Commonthing production deployment",
     "general knowledge_map native routing",
     "native semantic editing",
-    "native PNG export",
-    "green native-viewer Chrome dump-dom harness; the pre-existing completion-signal timing failure remains separate"
+    "native PNG export"
   ],
-  "evidence_digest": "536a929c0e11de7964fcde0935e61c18d99b3cfbdf85dc87445be78916a64e4b",
+  "evidence_digest": "78cfaacd782614bf528186efd348c522c8d10e2cbfecfafeb86b607d116e8dde",
   "parent_evidence": {
     "evidence_digest": "d3467306a42b64e66183c753682cabd2290eed3c4a9ae8c4db2927977bc0aa1b",
     "file_sha256": "c0391ce401310b6581b0fd84b7da06504250be80c1e13a9194dea55f9c11e477",
@@ -104,6 +103,7 @@
     ".github/workflows/native-schaubild-image.yml": "f0051e0d3880efaf04d895735d0431a0e38632040d8252bfa57ce00a5f26700e",
     "Dockerfile": "7d834963d9e07ac1ca64eabcdc1f602a12a8c81cc775a2dbd4a2f63c5d95aff3",
     "scripts/ci/smoke-native-schaubild-runtime.sh": "2220330c150d38179f9cb9688d3002bf8bf0a8ee07fa0578b5e2b613ebd0db88",
+    "scripts/run_browser_smoke.py": "c48678e50ca39da03298b040f9455219e2adda468e397538e9f28bfed23c96f2",
     "src/schauwerk/__init__.py": "19aeff3735d72649660073b5a41fe66a0938d9c9a55dd33f37bc21eb3ad792b4",
     "src/schauwerk/resources/__init__.py": "3904038292eb5678a901062059d50a82731272eb4a1832d7a8cce8e6a13bd4a6",
     "src/schauwerk/resources/native_viewer/__init__.py": "55840995b4fffe4a98e6fe506836c69384536f5a2a1eff7ea40ffbdc568af1e9",
@@ -118,6 +118,7 @@
     "src/schauwerk/visual/representation.py": "6abcfa13f40b9995704ced142fe381d178973051653dbf7b4a0217789a4fd646",
     "src/schauwerk/visual/standalone_editor.py": "88c01a93306a0b8ffae85c5ae610c0d378a52a5c1875fe4ea3460aab257d7205",
     "tests/visual/test_native_viewer.py": "5816e97ea62e560e1c8fca004be8e460d7881d9dc621e7b95fd869213315d388",
+    "tests/visual/test_native_viewer_browser.py": "31b163017b3deb8f16be744f020bdc67cd08249d51acfccfd1a1cb5e7d2cda12",
     "tests/visual/test_standalone_editor.py": "d763c2d5c8a25f02e85a5f97812f5e4e8b1ae0516e40f8375a64288a88685dc7"
   }
 }

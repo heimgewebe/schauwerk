@@ -62,10 +62,17 @@ Storage.prototype.setItem = function () {
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
-const waitFrames = async (count = 4) => {
-  for (let index = 0; index < count; index += 1) {
-    await new Promise(requestAnimationFrame);
+const waitForViewerReady = async (status, canvas, attempts = 80) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (
+      status?.textContent?.includes("Speichern nicht möglich") &&
+      canvas?.style?.transform?.includes("scale(")
+    ) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
   }
+  throw new Error("viewer startup readiness timed out");
 };
 const firePointer = (target, type, pointerId, clientX, clientY) => target.dispatchEvent(
   new PointerEvent(type, {
@@ -90,11 +97,11 @@ const insideSvg = (node, svg) => {
   );
 };
 try {
-  await waitFrames();
   const viewport = document.querySelector("#nativeViewport");
   const canvas = document.querySelector("#nativeCanvas");
   const svg = document.querySelector("#nativeDiagram");
   const status = document.querySelector("#status");
+  await waitForViewerReady(status, canvas);
   Storage.prototype.setItem = window.__schauwerkOriginalStorageSetItem;
   if (!status?.textContent?.includes("Speichern nicht möglich")) {
     throw new Error("startup repair persistence failure was hidden by fit status");
