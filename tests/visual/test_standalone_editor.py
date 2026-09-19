@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import ipaddress
 import json
 import os
@@ -711,14 +712,21 @@ def test_native_renderer_child_failure_logs_bounded_stderr(
     target.mkdir()
     noisy = "x" * 5000 + "TAIL_MARKER"
 
-    def failed_run(*_args: object, **_kwargs: object) -> object:
-        raise subprocess.CalledProcessError(
-            returncode=1,
-            cmd=["native-viewer"],
-            stderr=noisy,
-        )
+    class FailedProcess:
+        def __init__(self) -> None:
+            self.stderr = io.BytesIO(noisy.encode("utf-8"))
 
-    monkeypatch.setattr(standalone_editor.subprocess, "run", failed_run)
+        def wait(self, timeout: float | None = None) -> int:
+            return 1
+
+        def kill(self) -> None:
+            raise AssertionError("nonzero renderer exit must not require a kill")
+
+    monkeypatch.setattr(
+        standalone_editor.subprocess,
+        "Popen",
+        lambda *_args, **_kwargs: FailedProcess(),
+    )
     with pytest.raises(
         standalone_editor.NativeViewerError,
         match="subprocess build failed",
@@ -851,6 +859,20 @@ def test_runtime_publication_requires_exact_manual_dispatch_and_nonconsumer_cand
     assert "github.event_name == 'push' && github.ref == 'refs/heads/main'" not in workflow
     assert "ghcr.io/heimgewebe/schauwerk-schaubild-candidates" in workflow
     assert workflow.count("--trusted-proxy-source-cidr 172.16.0.0/12") == 2
+
+
+def test_consumer_plan_requires_exact_trusted_proxy_source_cidr_contract() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    plan = (repo_root / "docs/plans/standalone-diagram-editor-spike-v1.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        "--trusted-reverse-proxy --trusted-proxy-source-cidr <proxy-cidr> "
+        "--public-base-path /schaubild"
+    ) in plan
+    assert "direkten** Consumer-Proxys" in plan
+    assert "Docker-Catch-all ist kein Produktionsnachweis" in plan
 
 
 def test_native_bundle_stream_releases_cache_lock_before_copy(
@@ -1213,6 +1235,64 @@ def test_native_digest_client_key_sets_are_bounded(
             admission_key="198.51.100.3",
             now=time.monotonic(),
         )
+
+
+def test_failed_rebuild_does_not_consume_digest_client_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CLIENT_KEYS_PER_DIGEST", 2)
+
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    digest = str(normalized["input_digest"])
+    client_a = "198.51.100.1"
+    client_b = "198.51.100.2"
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_a,
+    )
+    assert created is True
+    root_key = standalone_editor._native_root_key(output)
+    window = standalone_editor._NATIVE_PIN_WINDOWS[(root_key, digest)]
+    assert window.admission_keys == {client_a}
+
+    standalone_editor._forget_native_cache_record(record, remove_files=True)
+    original_build = standalone_editor.build_native_viewer
+
+    def failed_build(*_args: object, **_kwargs: object) -> object:
+        raise standalone_editor.NativeViewerError("synthetic renderer failure")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", failed_build)
+    with pytest.raises(standalone_editor.NativeViewerError, match="synthetic renderer failure"):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=digest,
+            value=value,
+            serve_binding="trusted-reverse-proxy-private-ingress",
+            public_base_path="/schaubild",
+            admission_key=client_b,
+        )
+    assert window.admission_keys == {client_a}
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", original_build)
+    rebuilt, rebuilt_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_b,
+    )
+    assert rebuilt_created is True
+    assert rebuilt.admission_key == client_b
+    assert window.admission_keys == {client_a, client_b}
 
 
 def test_trusted_proxy_rejects_unallowlisted_peer_and_cross_client_capability(

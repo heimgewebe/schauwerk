@@ -602,12 +602,14 @@ def _native_pin_window(
             raise NativeCacheCapacityError(
                 "native viewer digest pin lifetime is exhausted; retry after cooldown"
             )
-        if _client_quota_applies(admission_key) and admission_key not in existing.admission_keys:
-            if len(existing.admission_keys) >= MAX_NATIVE_CLIENT_KEYS_PER_DIGEST:
-                raise NativeCacheCapacityError(
-                    "native viewer digest client capacity is temporarily exhausted; retry later"
-                )
-            existing.admission_keys.add(admission_key)
+        if (
+            _client_quota_applies(admission_key)
+            and admission_key not in existing.admission_keys
+            and len(existing.admission_keys) >= MAX_NATIVE_CLIENT_KEYS_PER_DIGEST
+        ):
+            raise NativeCacheCapacityError(
+                "native viewer digest client capacity is temporarily exhausted; retry later"
+            )
         return existing, False
 
     root_windows = sum(1 for key in _NATIVE_PIN_WINDOWS if key[0] == root_key)
@@ -618,7 +620,7 @@ def _native_pin_window(
     window = _NativePinWindow(
         max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
         reacquire_after=now + NATIVE_CACHE_MAX_PIN_SECONDS,
-        admission_keys=({admission_key} if _client_quota_applies(admission_key) else set()),
+        admission_keys=set(),
     )
     return window, True
 
@@ -852,40 +854,63 @@ def _run_native_viewer_build(
             json.dump(value, handle, ensure_ascii=False, separators=(",", ":"))
             handle.write("\n")
         os.chmod(input_path, 0o600)
+        stderr_tail = bytearray()
+        process = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "schauwerk.visual.native_viewer",
+                "build",
+                "--input",
+                str(input_path),
+                "--output-dir",
+                str(target),
+                "--serve-binding",
+                serve_binding,
+                "--public-base-path",
+                public_base_path,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        if process.stderr is None:
+            process.kill()
+            process.wait()
+            raise NativeViewerError("native viewer subprocess stderr pipe unavailable")
+
+        def drain_stderr() -> None:
+            while True:
+                chunk = process.stderr.read(8192)
+                if not chunk:
+                    return
+                stderr_tail.extend(chunk)
+                if len(stderr_tail) > 4096:
+                    del stderr_tail[:-4096]
+
+        stderr_reader = threading.Thread(
+            target=drain_stderr,
+            name="schauwerk-native-render-stderr",
+            daemon=True,
+        )
+        stderr_reader.start()
         try:
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "schauwerk.visual.native_viewer",
-                    "build",
-                    "--input",
-                    str(input_path),
-                    "--output-dir",
-                    str(target),
-                    "--serve-binding",
-                    serve_binding,
-                    "--public-base-path",
-                    public_base_path,
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=timeout_seconds,
-            )
+            returncode = process.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired as exc:
+            process.kill()
+            process.wait()
+            stderr_reader.join()
             raise NativeRequestDeadlineError(
                 "native render request deadline expired during renderer build"
             ) from exc
-        except subprocess.CalledProcessError as exc:
-            stderr = (exc.stderr or "").strip()
+        stderr_reader.join()
+        if returncode != 0:
+            stderr = bytes(stderr_tail).decode("utf-8", errors="replace").strip()
             if stderr:
                 print(
-                    f"native viewer subprocess failed: {stderr[-4096:]}",
+                    f"native viewer subprocess failed: {stderr}",
                     file=sys.stderr,
                 )
-            raise NativeViewerError("native viewer subprocess build failed") from exc
+            raise NativeViewerError("native viewer subprocess build failed")
     finally:
         if input_path is not None:
             try:
@@ -1080,6 +1105,19 @@ def _build_native_cache_record(
                         admission_key=admission_key,
                         now=now,
                     )
+                    if (
+                        _client_quota_applies(admission_key)
+                        and admission_key not in pin_window.admission_keys
+                    ):
+                        if (
+                            len(pin_window.admission_keys)
+                            >= MAX_NATIVE_CLIENT_KEYS_PER_DIGEST
+                        ):
+                            raise NativeCacheCapacityError(
+                                "native viewer digest client capacity is temporarily "
+                                "exhausted; retry later"
+                            )
+                        pin_window.admission_keys.add(admission_key)
                     if existing is not None:
                         stale_path = existing.path
                         _forget_native_cache_record(existing, remove_files=False)

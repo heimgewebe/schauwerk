@@ -146,8 +146,11 @@ Ein Consumer wie Commonthing soll:
    öffentlichen Prefix intern entfernen;
 4. den Upstream-`Host` explizit auf `127.0.0.1:8765` setzen, damit der Schauwerk-
    Host-Guard unverändert fail-closed bleibt;
-5. `--bind-host 0.0.0.0 --trusted-reverse-proxy --public-base-path /schaubild`
-   ausschließlich in diesem privaten Proxy-Kontext aktivieren.
+5. `--bind-host 0.0.0.0 --trusted-reverse-proxy --trusted-proxy-source-cidr <proxy-cidr> --public-base-path /schaubild`
+   ausschließlich in diesem privaten Proxy-Kontext aktivieren. `<proxy-cidr>` muss
+   das kanonische IPv4-Netz des **direkten** Consumer-Proxys binden und beim
+   Deployment gegen dessen tatsächliche Peer-Adresse zurückgelesen werden; ein
+   pauschales Docker-Catch-all ist kein Produktionsnachweis.
 
 Damit bleibt Schauwerk Produzent und Renderer-Autorität; Commonthing ist nur
 digestgebundener Runtime-Consumer.
