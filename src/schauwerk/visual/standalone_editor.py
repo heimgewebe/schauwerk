@@ -16,6 +16,8 @@ import re
 import secrets
 import shutil
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -45,6 +47,7 @@ MAX_NATIVE_CACHE_ENTRIES: Final = 32
 NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
 NATIVE_CACHE_MAX_PIN_SECONDS: Final = 2 * NATIVE_CACHE_GRACE_SECONDS
 MAX_NATIVE_PIN_WINDOWS: Final = 4 * MAX_NATIVE_CACHE_ENTRIES
+MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT: Final = 4
 NATIVE_REQUEST_TIMEOUT_SECONDS: Final = 30.0
 NATIVE_SERVER_MAX_WORKERS: Final = 32
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
@@ -101,6 +104,10 @@ class StandaloneEditorError(ValueError):
 
 class NativeCacheCapacityError(StandaloneEditorError):
     """Raised when all bounded cache capacity is temporarily pinned."""
+
+
+class NativeRequestDeadlineError(StandaloneEditorError):
+    """Raised when one native-render request has exhausted its absolute lifetime."""
 
 
 def _sha256(content: bytes) -> str:
@@ -392,6 +399,11 @@ def build_standalone_editor(
             "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
             "public_base_path": normalized_base_path,
             "admission": "schema-valid-except-knowledge-map",
+            "admission_scope": {
+                "key": "client-ip",
+                "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+                "trusted_proxy_header": "X-Forwarded-For",
+            },
             "semantic_authority": "schauwerk-representation-input.v1",
             "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
         },
@@ -458,6 +470,7 @@ class _NativeCacheRecord:
     last_access: float
     pinned_until: float
     max_pinned_until: float
+    admission_key: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -550,6 +563,52 @@ def _native_pin_window(
     return window, True
 
 
+def _assert_native_digest_reacquisition_allowed(
+    root: Path,
+    *,
+    digest: str,
+    now: float,
+) -> None:
+    """Preserve the absolute digest lifetime/cooldown before shared admission checks."""
+
+    with _NATIVE_CACHE_LOCK:
+        window = _NATIVE_PIN_WINDOWS.get((_native_root_key(root), digest))
+        if (
+            window is not None
+            and now >= window.max_pinned_until
+            and now < window.reacquire_after
+        ):
+            raise NativeCacheCapacityError(
+                "native viewer digest pin lifetime is exhausted; retry after cooldown"
+            )
+
+
+def _assert_native_build_admission(
+    root: Path,
+    *,
+    admission_key: str,
+    now: float,
+) -> None:
+    """Reject render work whose pin admission is already known to be impossible."""
+
+    with _NATIVE_CACHE_LOCK:
+        pinned = [item for item in _native_cache_records(root) if item.pinned_until > now]
+        max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
+        max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
+        if (
+            len(pinned) + 1 > max_pinned_entries
+            or sum(item.size_bytes for item in pinned) >= max_pinned_bytes
+        ):
+            raise NativeCacheCapacityError(
+                "native viewer pin capacity is already saturated; retry later"
+            )
+        client_pinned = [item for item in pinned if item.admission_key == admission_key]
+        if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
+            raise NativeCacheCapacityError(
+                "native viewer per-client pin capacity is temporarily exhausted; retry later"
+            )
+
+
 def _assert_native_pin_capacity(
     root: Path,
     *,
@@ -564,9 +623,11 @@ def _assert_native_pin_capacity(
         ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
+        client_pinned = [item for item in pinned if item.admission_key == record.admission_key]
         if (
             len(pinned) + 1 > max_pinned_entries
             or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
+            or len(client_pinned) + 1 > MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
         ):
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is temporarily reserved; retry later"
@@ -653,6 +714,82 @@ def _native_cache_by_token(root: Path, token: str) -> _NativeCacheRecord | None:
         return record
 
 
+def _run_native_viewer_build(
+    *,
+    value: dict[str, Any],
+    target: Path,
+    serve_binding: str,
+    public_base_path: str,
+    timeout_seconds: float,
+) -> None:
+    """Build in a killable child so the absolute request deadline bounds render CPU."""
+
+    if timeout_seconds <= 0:
+        raise NativeRequestDeadlineError("native render request deadline expired before build")
+    input_path: Path | None = None
+    try:
+        descriptor, raw_path = tempfile.mkstemp(
+            prefix=".native-input-",
+            suffix=".json",
+            dir=target.parent,
+            text=True,
+        )
+        input_path = Path(raw_path)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, ensure_ascii=False, separators=(",", ":"))
+            handle.write("\n")
+        os.chmod(input_path, 0o600)
+        try:
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "schauwerk.visual.native_viewer",
+                    "build",
+                    "--input",
+                    str(input_path),
+                    "--output-dir",
+                    str(target),
+                    "--serve-binding",
+                    serve_binding,
+                    "--public-base-path",
+                    public_base_path,
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=timeout_seconds,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise NativeRequestDeadlineError(
+                "native render request deadline expired during renderer build"
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise NativeViewerError("native viewer subprocess build failed") from exc
+    finally:
+        if input_path is not None:
+            try:
+                input_path.unlink()
+            except FileNotFoundError:
+                pass
+
+
+def _abandon_native_cache_record(root: Path, record: _NativeCacheRecord) -> None:
+    """Release an undelivered record without making the expensive build unreachable."""
+
+    with _NATIVE_CACHE_LOCK:
+        key = (record.root_key, record.digest)
+        if _NATIVE_CACHE_BY_DIGEST.get(key) is not record:
+            return
+        now = time.monotonic()
+        record.last_access = now
+        record.pinned_until = min(record.pinned_until, now)
+        # Keep both the cache record and digest pin window. The record is now
+        # immediately evictable, while a retry for the same digest can reuse
+        # the completed bytes instead of forcing another renderer build.
+
+
 def _build_native_cache_record(
     root: Path,
     *,
@@ -660,25 +797,50 @@ def _build_native_cache_record(
     value: dict[str, Any],
     serve_binding: str,
     public_base_path: str,
-) -> _NativeCacheRecord:
+    admission_key: str = "local",
+    deadline_monotonic: float | None = None,
+) -> tuple[_NativeCacheRecord, bool]:
     with _NATIVE_CACHE_LOCK:
-        existing = _native_cache_by_digest(root, digest)
         now = time.monotonic()
+        if deadline_monotonic is not None and now >= deadline_monotonic:
+            raise NativeRequestDeadlineError(
+                "native render request deadline expired before cache lookup"
+            )
+        existing = _native_cache_by_digest(root, digest)
         if existing is not None and existing.max_pinned_until > now:
             _pin_native_cache_record(root, existing)
-            return existing
+            return existing, False
+        _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
+        _assert_native_build_admission(root, admission_key=admission_key, now=now)
 
-    if not _NATIVE_BUILD_LOCK.acquire(timeout=NATIVE_REQUEST_TIMEOUT_SECONDS):
+    lock_timeout = NATIVE_REQUEST_TIMEOUT_SECONDS
+    if deadline_monotonic is not None:
+        lock_timeout = min(lock_timeout, max(0.0, deadline_monotonic - time.monotonic()))
+        if lock_timeout <= 0:
+            raise NativeRequestDeadlineError(
+                "native render request deadline expired before build admission"
+            )
+    if not _NATIVE_BUILD_LOCK.acquire(timeout=lock_timeout):
+        if deadline_monotonic is not None and time.monotonic() >= deadline_monotonic:
+            raise NativeRequestDeadlineError(
+                "native render request deadline expired while waiting for renderer capacity"
+            )
         raise NativeCacheCapacityError(
             "native viewer build capacity is temporarily busy; retry later"
         )
     try:
         with _NATIVE_CACHE_LOCK:
-            existing = _native_cache_by_digest(root, digest)
             now = time.monotonic()
+            if deadline_monotonic is not None and now >= deadline_monotonic:
+                raise NativeRequestDeadlineError(
+                    "native render request deadline expired before renderer build"
+                )
+            existing = _native_cache_by_digest(root, digest)
             if existing is not None and existing.max_pinned_until > now:
                 _pin_native_cache_record(root, existing)
-                return existing
+                return existing, False
+            _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
+            _assert_native_build_admission(root, admission_key=admission_key, now=now)
             pin_window, new_pin_window = _native_pin_window(root, digest=digest, now=now)
 
         _prune_native_cache(
@@ -702,12 +864,26 @@ def _build_native_cache_record(
         target = Path(tempfile.mkdtemp(prefix="bundle-", dir=cache_root))
 
         try:
-            build_native_viewer(
-                value,
-                target,
-                serve_binding=serve_binding,
-                public_base_path=public_base_path,
-            )
+            if deadline_monotonic is None:
+                build_native_viewer(
+                    value,
+                    target,
+                    serve_binding=serve_binding,
+                    public_base_path=public_base_path,
+                )
+            else:
+                remaining = deadline_monotonic - time.monotonic()
+                _run_native_viewer_build(
+                    value=value,
+                    target=target,
+                    serve_binding=serve_binding,
+                    public_base_path=public_base_path,
+                    timeout_seconds=remaining,
+                )
+                if time.monotonic() >= deadline_monotonic:
+                    raise NativeRequestDeadlineError(
+                        "native render request deadline expired after renderer build"
+                    )
             bundle_size = _native_bundle_size(target)
             if bundle_size > MAX_NATIVE_BUNDLE_BYTES:
                 raise StandaloneEditorError(
@@ -723,6 +899,10 @@ def _build_native_cache_record(
         try:
             with _NATIVE_CACHE_LOCK:
                 now = time.monotonic()
+                if deadline_monotonic is not None and now >= deadline_monotonic:
+                    raise NativeRequestDeadlineError(
+                        "native render request deadline expired before cache registration"
+                    )
                 if now >= pin_window.max_pinned_until:
                     raise NativeCacheCapacityError(
                         "native viewer digest pin lifetime expired during build"
@@ -745,6 +925,7 @@ def _build_native_cache_record(
                             pin_window.max_pinned_until,
                         ),
                         max_pinned_until=pin_window.max_pinned_until,
+                        admission_key=admission_key,
                     )
                     _assert_native_pin_capacity(root, record=record, now=now)
                     if existing is not None:
@@ -763,7 +944,7 @@ def _build_native_cache_record(
         if winner is not None and winner.path != target:
             if target.exists() and target.is_dir() and not target.is_symlink():
                 shutil.rmtree(target)
-            return winner
+            return winner, False
 
         _prune_native_cache(root, keep=winner)
         if (
@@ -776,7 +957,7 @@ def _build_native_cache_record(
             shutil.rmtree(stale_path)
         if winner is None:
             raise AssertionError("native cache build did not select a winner")
-        return winner
+        return winner, True
     finally:
         _NATIVE_BUILD_LOCK.release()
 
@@ -792,6 +973,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
     def setup(self) -> None:
         super().setup()
         self._request_deadline_expired = False
+        self._request_deadline_at = time.monotonic() + self.request_timeout_seconds
         self.connection.settimeout(self.request_timeout_seconds)
         self._request_deadline_timer = threading.Timer(
             self.request_timeout_seconds,
@@ -806,6 +988,32 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self.connection.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
+
+    def _request_deadline_is_expired(self) -> bool:
+        if self._request_deadline_expired:
+            return True
+        if time.monotonic() >= self._request_deadline_at:
+            self._request_deadline_expired = True
+            return True
+        return False
+
+    def _native_admission_key(self) -> str | None:
+        if self.native_serve_binding == "trusted-reverse-proxy-private-ingress":
+            raw_values = self.headers.get_all("X-Forwarded-For", [])
+            if len(raw_values) != 1:
+                return None
+            raw = raw_values[0]
+            if not raw or raw != raw.strip() or "," in raw:
+                return None
+            try:
+                address = ipaddress.ip_address(raw)
+            except ValueError:
+                return None
+            return address.compressed
+        try:
+            return ipaddress.ip_address(str(self.client_address[0])).compressed
+        except ValueError:
+            return None
 
     def finish(self) -> None:
         timer = getattr(self, "_request_deadline_timer", None)
@@ -831,14 +1039,19 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         payload: dict[str, object],
         *,
         write_body: bool = True,
-    ) -> None:
+    ) -> bool:
         encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True).encode("ascii")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded)))
-        self.end_headers()
-        if write_body:
-            self.wfile.write(encoded)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            if write_body:
+                self.wfile.write(encoded)
+        except OSError:
+            self.close_connection = True
+            return False
+        return True
 
     def _has_valid_loopback_host(self) -> bool:
         raw_hosts = self.headers.get_all("Host", [])
@@ -956,6 +1169,9 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             return True
 
         try:
+            if self._request_deadline_is_expired():
+                self.close_connection = True
+                return True
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(stat_result.st_size))
@@ -966,6 +1182,8 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             if not head_only:
                 self.copyfile(handle, self.wfile)
+        except OSError:
+            self.close_connection = True
         finally:
             handle.close()
         return True
@@ -993,6 +1211,18 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
             return
         if self._reject_non_loopback_host():
+            return
+        admission_key = self._native_admission_key()
+        if admission_key is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {
+                    "error": (
+                        "trusted reverse proxy must provide exactly one canonical "
+                        "X-Forwarded-For client IP"
+                    )
+                },
+            )
             return
         media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
         if media_type != "application/json":
@@ -1043,14 +1273,19 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             normalized = _native_product_input(value)
             digest = str(normalized["input_digest"])
             root = Path(self.directory).resolve()
-            record = _build_native_cache_record(
+            record, created = _build_native_cache_record(
                 root,
                 digest=digest,
                 value=value,
                 serve_binding=self.native_serve_binding,
                 public_base_path=self.public_base_path,
+                admission_key=admission_key,
+                deadline_monotonic=self._request_deadline_at,
             )
             token = record.token
+        except NativeRequestDeadlineError:
+            self.close_connection = True
+            return
         except NativeCacheCapacityError as exc:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
             return
@@ -1064,7 +1299,12 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
             return
 
-        self._send_json(
+        if self._request_deadline_is_expired():
+            if created:
+                _abandon_native_cache_record(root, record)
+            self.close_connection = True
+            return
+        delivered = self._send_json(
             HTTPStatus.OK,
             {
                 "input_digest": digest,
@@ -1072,6 +1312,8 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 "url": f"{self.public_base_path}/native/{token}/index.html",
             },
         )
+        if not delivered and created:
+            _abandon_native_cache_record(root, record)
 
     def log_message(self, format: str, *args: object) -> None:  # noqa: A002
         return

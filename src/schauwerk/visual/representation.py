@@ -15,26 +15,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
-
-from .composer_v2 import (
-    clip_text,
-    connector_object,
-    frame,
-    shape_object,
-    text_object,
-)
-from .delivery import (
-    compile_representation_native_bundle,
-    render_representation_document,
-    render_representation_table,
-)
-from .system_v2 import (
-    finalize_board_spec,
-    render_board_dsl,
-    validate_board_spec,
-)
-
 INPUT_SCHEMA = "schauwerk-representation-input.v1"
 PLAN_SCHEMA = "schauwerk-representation-plan.v1"
 PACKAGE_SCHEMA = "schauwerk-representation-package.v1"
@@ -759,6 +739,7 @@ def _frame_nodes(
     nodes: Sequence[Mapping[str, Any]],
     edges: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
+    from .composer_v2 import clip_text, connector_object, shape_object, text_object
     """Lay out a readable four-node relation strip without inventing semantics.
 
     Miro positions connector captions independently of node geometry. Relation
@@ -876,6 +857,9 @@ def _frame_nodes(
     return result
 
 def render_miro_board(model: Mapping[str, Any], plan: Mapping[str, Any]) -> dict[str, Any]:
+    from .composer_v2 import frame, shape_object
+    from .system_v2 import finalize_board_spec
+
     normalized = (
         _validate_representation_model(model)
         if "input_digest" in model
@@ -1243,6 +1227,10 @@ def _compile_representation_package_into(
             }
         )
     if "miro_native" in plan["selected_formats"]:
+        from schauwerk.surfaces.miro.execution_plan import compile_miro_execution_plan
+
+        from .system_v2 import render_board_dsl, validate_board_spec
+
         execution_plan = compile_miro_execution_plan(model, plan)
         artifacts.append(
             {
@@ -1281,6 +1269,8 @@ def _compile_representation_package_into(
             }
         )
     if "document" in plan["selected_formats"]:
+        from .delivery import render_representation_document
+
         document_source = render_representation_document(model)
         artifacts.append(
             {
@@ -1290,6 +1280,8 @@ def _compile_representation_package_into(
             }
         )
     if "table" in plan["selected_formats"]:
+        from .delivery import render_representation_table
+
         artifacts.append(
             {
                 "role": "node_table",
@@ -1302,6 +1294,8 @@ def _compile_representation_package_into(
                 ),
             }
         )
+
+    from .delivery import compile_representation_native_bundle
 
     native_bundle = compile_representation_native_bundle(
         model,

@@ -6,13 +6,34 @@ LABEL org.opencontainers.image.source="https://github.com/heimgewebe/schauwerk" 
       org.opencontainers.image.title="Schauwerk Schaubild native runtime"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/src
 
 WORKDIR /app
-COPY pyproject.toml README.md ./
-COPY src ./src
-RUN python -m pip install --no-cache-dir . \
+RUN mkdir -p \
+      /app/src/schauwerk/visual \
+      /app/src/schauwerk/resources/native_viewer \
+      /app/src/schauwerk/resources/standalone_editor \
     && useradd --create-home --uid 10001 --shell /usr/sbin/nologin schauwerk
+
+COPY src/schauwerk/__init__.py /app/src/schauwerk/__init__.py
+COPY src/schauwerk/visual/__init__.py \
+     src/schauwerk/visual/grammar.py \
+     src/schauwerk/visual/miro_dsl.py \
+     src/schauwerk/visual/representation.py \
+     src/schauwerk/visual/native_diagram.py \
+     src/schauwerk/visual/native_viewer.py \
+     src/schauwerk/visual/standalone_editor.py \
+     /app/src/schauwerk/visual/
+COPY src/schauwerk/resources/__init__.py /app/src/schauwerk/resources/__init__.py
+COPY src/schauwerk/resources/native_viewer/__init__.py \
+     src/schauwerk/resources/native_viewer/assets.py \
+     /app/src/schauwerk/resources/native_viewer/
+COPY src/schauwerk/resources/standalone_editor/__init__.py \
+     src/schauwerk/resources/standalone_editor/assets.py \
+     /app/src/schauwerk/resources/standalone_editor/
+
+RUN chmod -R a=rX /app/src
 
 USER 10001:10001
 EXPOSE 8765

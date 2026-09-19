@@ -8,6 +8,7 @@ import re
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -71,6 +72,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         "json-canvas-1.0",
         "drawio-xml",
     ]
+    assert manifest["native_renderer"]["admission_scope"] == {
+        "key": "client-ip",
+        "max_pinned_entries_per_client": standalone_editor.MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+        "trusted_proxy_header": "X-Forwarded-For",
+    }
     assert "general-knowledge-map-native-cutover" in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
@@ -303,7 +309,11 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
             "POST",
             NATIVE_API_PATH,
             body=payload,
-            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+                "X-Forwarded-For": "203.0.113.7",
+            },
         )
         response = connection.getresponse()
         body = json.loads(response.read().decode("utf-8"))
@@ -572,6 +582,9 @@ def test_native_static_fallback_never_exposes_private_cache_via_encoded_path(
             "/%2enative-cache/",
             "/%2Enative-cache/",
             "/%2e%6eative-cache/",
+            "/%252enative-cache/",
+            "/foo/..%252f.native-cache/",
+            "/%252enative-cache/representation.json",
             "/../.native-cache/",
         ):
             connection.request("GET", private_path)
@@ -606,7 +619,7 @@ def test_native_build_releases_cache_lock_during_renderer_work(
         return original_build(*args, **kwargs)
 
     monkeypatch.setattr(standalone_editor, "build_native_viewer", observed_build)
-    record = standalone_editor._build_native_cache_record(
+    record, created = standalone_editor._build_native_cache_record(
         output,
         digest=str(normalized["input_digest"]),
         value=value,
@@ -614,8 +627,99 @@ def test_native_build_releases_cache_lock_during_renderer_work(
         public_base_path="",
     )
 
+    assert created is True
     assert record.path.is_dir()
     assert lock_observations == [True]
+
+
+def test_native_build_lock_wait_respects_absolute_request_deadline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    renderer_called = False
+
+    def unexpected_renderer(**_kwargs: object) -> None:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("renderer must not start after request deadline expires")
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", unexpected_renderer)
+    assert standalone_editor._NATIVE_BUILD_LOCK.acquire(blocking=False)
+    try:
+        deadline = time.monotonic() + 0.05
+        started = time.monotonic()
+        with pytest.raises(
+            standalone_editor.NativeRequestDeadlineError,
+            match="deadline expired while waiting",
+        ):
+            standalone_editor._build_native_cache_record(
+                output,
+                digest=str(normalized["input_digest"]),
+                value=value,
+                serve_binding="127.0.0.1-only",
+                public_base_path="",
+                admission_key="127.0.0.1",
+                deadline_monotonic=deadline,
+            )
+        assert time.monotonic() - started < 0.5
+        assert renderer_called is False
+    finally:
+        standalone_editor._NATIVE_BUILD_LOCK.release()
+
+
+def test_native_runtime_import_has_no_third_party_dependency_closure() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(repo_root / "src")
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-S",
+            "-c",
+            (
+                "import sys; "
+                "import schauwerk.visual.standalone_editor; "
+                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs'}; "
+                "loaded=sorted(blocked.intersection(sys.modules)); "
+                "assert not loaded, loaded"
+            ),
+        ],
+        cwd=repo_root,
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert completed.returncode == 0, completed.stderr
+
+
+def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    dockerfile = (repo_root / "Dockerfile").read_text(encoding="utf-8")
+
+    assert "pip install" not in dockerfile
+    assert "COPY src ./src" not in dockerfile
+    assert "RUN chmod -R a=rX /app/src" in dockerfile
+    for required in (
+        "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/representation.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+    ):
+        assert required in dockerfile
+    for excluded in (
+        "src/schauwerk/surfaces",
+        "src/schauwerk/publication",
+        "src/schauwerk/fundus",
+    ):
+        assert excluded not in dockerfile
 
 
 def test_native_bundle_stream_releases_cache_lock_before_copy(
@@ -791,11 +895,30 @@ def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
         assert first_record.pinned_until == 160.0
         assert first_record.max_pinned_until == 220.0
 
+        original_renderer_build = standalone_editor._run_native_viewer_build
+        blocked_render_calls = 0
+
+        def reject_unnecessary_render(**_kwargs: object) -> None:
+            nonlocal blocked_render_calls
+            blocked_render_calls += 1
+            raise AssertionError("known pin saturation must reject before renderer work")
+
+        monkeypatch.setattr(
+            standalone_editor,
+            "_run_native_viewer_build",
+            reject_unnecessary_render,
+        )
         clock[0] = 101.0
         second_status, second_body = post("second_flow")
         assert second_status == 503
         assert "pin capacity" in str(second_body["error"])
         assert first_record.pinned_until == 160.0
+        assert blocked_render_calls == 0
+        monkeypatch.setattr(
+            standalone_editor,
+            "_run_native_viewer_build",
+            original_renderer_build,
+        )
 
         clock[0] = 150.0
         connection.request("GET", first_url)
@@ -862,6 +985,98 @@ def test_native_render_endpoint_preserves_active_grace_when_pin_reserve_is_full(
     cache_root = output / ".native-cache"
     assert cache_root.is_dir()
     assert len(list(cache_root.iterdir())) <= 2
+
+
+def test_native_build_admission_limits_one_client_before_renderer_work(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    first = _golden_representation("decision-flow-v1.json")
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="198.51.100.10",
+    )
+    assert first_created is True
+    assert first_record.admission_key == "198.51.100.10"
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "other_flow"
+    second_normalized = _native_product_input(second)
+    renderer_called = False
+
+    def unexpected_build(*_args: object, **_kwargs: object) -> object:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("per-client saturation must reject before renderer work")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_build)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="per-client pin capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(second_normalized["input_digest"]),
+            value=second,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key="198.51.100.10",
+        )
+    assert renderer_called is False
+
+
+def test_undelivered_native_record_is_unpinned_but_reusable_without_rebuild(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="127.0.0.1",
+    )
+    assert created is True
+    assert record.pinned_until > time.monotonic()
+
+    standalone_editor._abandon_native_cache_record(output, record)
+
+    assert standalone_editor._native_cache_by_digest(
+        output, str(normalized["input_digest"])
+    ) is record
+    assert standalone_editor._native_cache_by_token(output, record.token) is record
+    assert record.pinned_until <= time.monotonic()
+
+    def unexpected_rebuild(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("retry for an undelivered digest must reuse completed bytes")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_rebuild)
+    retried, retried_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+        admission_key="127.0.0.1",
+    )
+    assert retried is record
+    assert retried_created is False
+    assert retried.pinned_until > time.monotonic()
 
 
 def test_native_render_endpoint_preserves_digest_lifetime_across_token_replacement(

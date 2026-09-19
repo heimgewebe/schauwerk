@@ -295,6 +295,8 @@ def _parser() -> argparse.ArgumentParser:
     build = commands.add_parser("build", help="write one local native viewer bundle")
     build.add_argument("--input", required=True, type=Path)
     build.add_argument("--output-dir", required=True, type=Path)
+    build.add_argument("--serve-binding", default="127.0.0.1-only")
+    build.add_argument("--public-base-path", default="")
 
     serve = commands.add_parser("serve", help="serve one local native viewer on loopback")
     serve.add_argument("--input", required=True, type=Path)
@@ -306,7 +308,12 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "build":
-        manifest = build_native_viewer(_read_representation(args.input), args.output_dir)
+        manifest = build_native_viewer(
+            _read_representation(args.input),
+            args.output_dir,
+            serve_binding=args.serve_binding,
+            public_base_path=args.public_base_path,
+        )
         print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     if args.command == "serve":

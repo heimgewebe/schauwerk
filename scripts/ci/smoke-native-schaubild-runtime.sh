@@ -32,6 +32,7 @@ PY
 
 curl --fail --silent \
   --header "Host: $host_header" \
+  --header 'X-Forwarded-For: 127.0.0.1' \
   --header 'Content-Type: application/json' \
   --data-binary @docs/operators/fixtures/golden/decision-flow-v1.json \
   "$base_url/api/native-viewer" \
