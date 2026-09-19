@@ -62,6 +62,7 @@ Storage.prototype.setItem = function () {
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
+// Timers are deliberate: Chrome --dump-dom virtual time can starve rAF-only waits.
 const waitForViewerReady = async (status, canvas, attempts = 80) => {
   for (let index = 0; index < attempts; index += 1) {
     if (
@@ -209,7 +210,7 @@ try {
                     "--disable-dev-shm-usage",
                     "--no-sandbox",
                     "--run-all-compositor-stages-before-draw",
-                    "--virtual-time-budget=4000",
+                    "--virtual-time-budget=8000",
                     "--dump-dom",
                     f"http://127.0.0.1:{port}/",
                 ],

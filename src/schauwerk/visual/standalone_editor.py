@@ -40,7 +40,7 @@ MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
 MAX_NATIVE_GROUPS: Final = 32
 MAX_NATIVE_NODES: Final = 128
 MAX_NATIVE_EDGES: Final = 256
-MAX_NATIVE_ROUTING_PAIRS: Final = 65_536
+MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
 MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
@@ -48,6 +48,9 @@ NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
 NATIVE_CACHE_MAX_PIN_SECONDS: Final = 2 * NATIVE_CACHE_GRACE_SECONDS
 MAX_NATIVE_PIN_WINDOWS: Final = 4 * MAX_NATIVE_CACHE_ENTRIES
 MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT: Final = 4
+MAX_NATIVE_CLIENT_KEYS_PER_DIGEST: Final = 32
+MAX_TRUSTED_PROXY_SOURCE_CIDRS: Final = 8
+_LOCAL_ADMISSION_KEY: Final = "local"
 NATIVE_REQUEST_TIMEOUT_SECONDS: Final = 30.0
 NATIVE_SERVER_MAX_WORKERS: Final = 32
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
@@ -204,6 +207,38 @@ def _normalize_public_base_path(value: str) -> str:
     ):
         raise StandaloneEditorError("public base path contains an invalid segment")
     return value
+
+
+def _normalize_trusted_proxy_source_cidrs(
+    values: tuple[str, ...],
+) -> tuple[ipaddress.IPv4Network, ...]:
+    if len(values) > MAX_TRUSTED_PROXY_SOURCE_CIDRS:
+        raise StandaloneEditorError(
+            f"at most {MAX_TRUSTED_PROXY_SOURCE_CIDRS} trusted proxy source CIDRs are allowed"
+        )
+    networks: list[ipaddress.IPv4Network] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str) or not value or value != value.strip():
+            raise StandaloneEditorError("trusted proxy source CIDR must be canonical IPv4 CIDR")
+        try:
+            network = ipaddress.ip_network(value, strict=True)
+        except ValueError as exc:
+            raise StandaloneEditorError(
+                "trusted proxy source CIDR must be canonical IPv4 CIDR"
+            ) from exc
+        if not isinstance(network, ipaddress.IPv4Network):
+            raise StandaloneEditorError("trusted proxy source CIDR must use IPv4")
+        canonical = str(network)
+        if canonical in seen:
+            raise StandaloneEditorError("trusted proxy source CIDRs must be unique")
+        seen.add(canonical)
+        networks.append(network)
+    return tuple(networks)
+
+
+def _client_quota_applies(admission_key: str) -> bool:
+    return admission_key != _LOCAL_ADMISSION_KEY
 
 
 def _normalize_bind_host(value: str, *, trusted_reverse_proxy: bool) -> str:
@@ -403,7 +438,9 @@ def build_standalone_editor(
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
                 "max_active_build_windows_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
+                "max_client_keys_per_digest": MAX_NATIVE_CLIENT_KEYS_PER_DIGEST,
                 "trusted_proxy_header": "X-Forwarded-For",
+                "trusted_proxy_source_cidr_required": True,
             },
             "semantic_authority": "schauwerk-representation-input.v1",
             "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
@@ -565,7 +602,12 @@ def _native_pin_window(
             raise NativeCacheCapacityError(
                 "native viewer digest pin lifetime is exhausted; retry after cooldown"
             )
-        existing.admission_keys.add(admission_key)
+        if _client_quota_applies(admission_key) and admission_key not in existing.admission_keys:
+            if len(existing.admission_keys) >= MAX_NATIVE_CLIENT_KEYS_PER_DIGEST:
+                raise NativeCacheCapacityError(
+                    "native viewer digest client capacity is temporarily exhausted; retry later"
+                )
+            existing.admission_keys.add(admission_key)
         return existing, False
 
     root_windows = sum(1 for key in _NATIVE_PIN_WINDOWS if key[0] == root_key)
@@ -575,8 +617,8 @@ def _native_pin_window(
         )
     window = _NativePinWindow(
         max_pinned_until=now + NATIVE_CACHE_MAX_PIN_SECONDS,
-        reacquire_after=now + (2 * NATIVE_CACHE_MAX_PIN_SECONDS),
-        admission_keys={admission_key},
+        reacquire_after=now + NATIVE_CACHE_MAX_PIN_SECONDS,
+        admission_keys=({admission_key} if _client_quota_applies(admission_key) else set()),
     )
     return window, True
 
@@ -621,29 +663,30 @@ def _assert_native_build_admission(
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is already saturated; retry later"
             )
-        client_pinned = [
-            item
-            for item in pinned
-            if item.pin_leases.get(admission_key, 0.0) > now
-        ]
-        if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
-            raise NativeCacheCapacityError(
-                "native viewer per-client pin capacity is temporarily exhausted; retry later"
-            )
+        if _client_quota_applies(admission_key):
+            client_pinned = [
+                item
+                for item in pinned
+                if item.pin_leases.get(admission_key, 0.0) > now
+            ]
+            if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
+                raise NativeCacheCapacityError(
+                    "native viewer per-client pin capacity is temporarily exhausted; retry later"
+                )
 
-        root_key = _native_root_key(root)
-        other_client_build_windows = [
-            window
-            for (window_root, window_digest), window in _NATIVE_PIN_WINDOWS.items()
-            if window_root == root_key
-            and window_digest != digest
-            and window.max_pinned_until > now
-            and admission_key in window.admission_keys
-        ]
-        if len(other_client_build_windows) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
-            raise NativeCacheCapacityError(
-                "native viewer per-client build capacity is temporarily exhausted; retry later"
-            )
+            root_key = _native_root_key(root)
+            other_client_build_windows = [
+                window
+                for (window_root, window_digest), window in _NATIVE_PIN_WINDOWS.items()
+                if window_root == root_key
+                and window_digest != digest
+                and window.max_pinned_until > now
+                and admission_key in window.admission_keys
+            ]
+            if len(other_client_build_windows) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
+                raise NativeCacheCapacityError(
+                    "native viewer per-client build capacity is temporarily exhausted; retry later"
+                )
 
 
 def _assert_native_pin_capacity(
@@ -661,15 +704,22 @@ def _assert_native_pin_capacity(
         ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
-        client_pinned = [
-            item
-            for item in pinned
-            if item.pin_leases.get(admission_key, 0.0) > now
-        ]
+        client_pinned = (
+            [
+                item
+                for item in pinned
+                if item.pin_leases.get(admission_key, 0.0) > now
+            ]
+            if _client_quota_applies(admission_key)
+            else []
+        )
         if (
             len(pinned) + 1 > max_pinned_entries
             or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
-            or len(client_pinned) + 1 > MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
+            or (
+                _client_quota_applies(admission_key)
+                and len(client_pinned) + 1 > MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
+            )
         ):
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is temporarily reserved; retry later"
@@ -685,6 +735,14 @@ def _pin_native_cache_record(
     now = time.monotonic()
     _refresh_native_record_pin_state(record, now=now)
     current_pinned_until = record.pin_leases.get(admission_key, 0.0)
+    if (
+        admission_key not in record.pin_leases
+        and _client_quota_applies(admission_key)
+        and len(record.pin_leases) >= MAX_NATIVE_CLIENT_KEYS_PER_DIGEST
+    ):
+        raise NativeCacheCapacityError(
+            "native viewer digest client capacity is temporarily exhausted; retry later"
+        )
     next_pinned_until = min(
         max(current_pinned_until, now + NATIVE_CACHE_GRACE_SECONDS),
         record.max_pinned_until,
@@ -821,6 +879,12 @@ def _run_native_viewer_build(
                 "native render request deadline expired during renderer build"
             ) from exc
         except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or "").strip()
+            if stderr:
+                print(
+                    f"native viewer subprocess failed: {stderr[-4096:]}",
+                    file=sys.stderr,
+                )
             raise NativeViewerError("native viewer subprocess build failed") from exc
     finally:
         if input_path is not None:
@@ -1056,6 +1120,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
     editor_origin: str = EDITOR_ORIGIN
     public_base_path: str = ""
     native_serve_binding: str = "127.0.0.1-only"
+    trusted_proxy_networks: tuple[ipaddress.IPv4Network, ...] = ()
     request_timeout_seconds: float = NATIVE_REQUEST_TIMEOUT_SECONDS
 
     def setup(self) -> None:
@@ -1087,6 +1152,14 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
 
     def _native_admission_key(self) -> str | None:
         if self.native_serve_binding == "trusted-reverse-proxy-private-ingress":
+            try:
+                peer = ipaddress.ip_address(str(self.client_address[0]))
+            except ValueError:
+                return None
+            if not isinstance(peer, ipaddress.IPv4Address) or not any(
+                peer in network for network in self.trusted_proxy_networks
+            ):
+                return None
             raw_values = self.headers.get_all("X-Forwarded-For", [])
             if len(raw_values) != 1:
                 return None
@@ -1098,10 +1171,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             except ValueError:
                 return None
             return address.compressed
-        try:
-            return ipaddress.ip_address(str(self.client_address[0])).compressed
-        except ValueError:
-            return None
+        return _LOCAL_ADMISSION_KEY
 
     def finish(self) -> None:
         timer = getattr(self, "_request_deadline_timer", None)
@@ -1220,8 +1290,8 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 HTTPStatus.BAD_REQUEST,
                 {
                     "error": (
-                        "trusted reverse proxy must provide exactly one canonical "
-                        "X-Forwarded-For client IP"
+                        "trusted reverse proxy source must be allowlisted and provide "
+                        "exactly one canonical X-Forwarded-For client IP"
                     )
                 },
                 write_body=not head_only,
@@ -1240,31 +1310,39 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             elif record.max_pinned_until <= time.monotonic():
                 status = HTTPStatus.GONE
             else:
-                try:
-                    _pin_native_cache_record(
-                        root,
-                        record,
-                        admission_key=admission_key,
-                    )
-                except NativeCacheCapacityError:
-                    status = HTTPStatus.SERVICE_UNAVAILABLE
+                now = time.monotonic()
+                _refresh_native_record_pin_state(record, now=now)
+                if (
+                    admission_key != record.admission_key
+                    and admission_key not in record.pin_leases
+                ):
+                    status = HTTPStatus.NOT_FOUND
                 else:
-                    target = record.path / filename
-                    if (
-                        target.is_symlink()
-                        or not target.is_file()
-                        or target.parent != record.path
-                    ):
-                        status = HTTPStatus.NOT_FOUND
+                    try:
+                        _pin_native_cache_record(
+                            root,
+                            record,
+                            admission_key=admission_key,
+                        )
+                    except NativeCacheCapacityError:
+                        status = HTTPStatus.SERVICE_UNAVAILABLE
                     else:
-                        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-                        try:
-                            descriptor = os.open(target, flags)
-                            stat_result = os.fstat(descriptor)
-                            handle = os.fdopen(descriptor, "rb")
-                            content_type = self.guess_type(str(target))
-                        except OSError:
+                        target = record.path / filename
+                        if (
+                            target.is_symlink()
+                            or not target.is_file()
+                            or target.parent != record.path
+                        ):
                             status = HTTPStatus.NOT_FOUND
+                        else:
+                            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                            try:
+                                descriptor = os.open(target, flags)
+                                stat_result = os.fstat(descriptor)
+                                handle = os.fdopen(descriptor, "rb")
+                                content_type = self.guess_type(str(target))
+                            except OSError:
+                                status = HTTPStatus.NOT_FOUND
 
         if status is not None:
             self.send_error(status)
@@ -1479,6 +1557,7 @@ def serve_standalone_editor(
     bind_host: str = "127.0.0.1",
     public_base_path: str = "",
     trusted_reverse_proxy: bool = False,
+    trusted_proxy_source_cidrs: tuple[str, ...] = (),
 ) -> None:
     """Serve the product shell.
 
@@ -1500,6 +1579,17 @@ def serve_standalone_editor(
         trusted_reverse_proxy=trusted_reverse_proxy,
     )
     normalized_base_path = _normalize_public_base_path(public_base_path)
+    trusted_proxy_networks = _normalize_trusted_proxy_source_cidrs(
+        trusted_proxy_source_cidrs
+    )
+    if trusted_reverse_proxy and not trusted_proxy_networks:
+        raise StandaloneEditorError(
+            "--trusted-reverse-proxy requires at least one --trusted-proxy-source-cidr"
+        )
+    if not trusted_reverse_proxy and trusted_proxy_networks:
+        raise StandaloneEditorError(
+            "--trusted-proxy-source-cidr requires --trusted-reverse-proxy"
+        )
     if normalized_base_path and not trusted_reverse_proxy:
         raise StandaloneEditorError(
             "public base path requires --trusted-reverse-proxy serving context"
@@ -1508,8 +1598,6 @@ def serve_standalone_editor(
 
     temporary = build_dir is None
     if temporary:
-        import tempfile
-
         root = Path(tempfile.mkdtemp(prefix="schauwerk-editor-"))
     else:
         root = build_dir.expanduser().absolute()
@@ -1531,6 +1619,7 @@ def serve_standalone_editor(
                     if trusted_reverse_proxy
                     else "127.0.0.1-only"
                 ),
+                "trusted_proxy_networks": trusted_proxy_networks,
             },
         )
         handler = partial(handler_class, directory=str(root))
@@ -1564,6 +1653,12 @@ def _parser() -> argparse.ArgumentParser:
     serve.add_argument("--bind-host", default="127.0.0.1")
     serve.add_argument("--public-base-path", default="")
     serve.add_argument("--trusted-reverse-proxy", action="store_true")
+    serve.add_argument(
+        "--trusted-proxy-source-cidr",
+        action="append",
+        default=[],
+        help="canonical IPv4 CIDR allowed to supply trusted proxy headers; repeatable",
+    )
     return parser
 
 
@@ -1585,6 +1680,7 @@ def main(argv: list[str] | None = None) -> int:
             bind_host=args.bind_host,
             public_base_path=args.public_base_path,
             trusted_reverse_proxy=args.trusted_reverse_proxy,
+            trusted_proxy_source_cidrs=tuple(args.trusted_proxy_source_cidr),
         )
         return 0
     raise AssertionError(f"unhandled command: {args.command}")

@@ -38,6 +38,16 @@ curl --fail --silent \
   "$base_url/api/native-viewer" \
   --output "$render_out"
 
+prefixed_status="$(
+  curl --silent --output /dev/null --write-out '%{http_code}' \
+    --header "Host: $host_header" \
+    --header 'X-Forwarded-For: 127.0.0.1' \
+    --header 'Content-Type: application/json' \
+    --data-binary @docs/operators/fixtures/golden/decision-flow-v1.json \
+    "$base_url/schaubild/api/native-viewer"
+)"
+test "$prefixed_status" = "404"
+
 python - "$render_out" "$viewer_path_out" <<'PY'
 import json
 import re

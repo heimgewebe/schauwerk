@@ -739,7 +739,6 @@ def _frame_nodes(
     nodes: Sequence[Mapping[str, Any]],
     edges: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    from .composer_v2 import clip_text, connector_object, shape_object, text_object
     """Lay out a readable four-node relation strip without inventing semantics.
 
     Miro positions connector captions independently of node geometry. Relation
@@ -748,6 +747,8 @@ def _frame_nodes(
     ids live in a disjoint namespace so decorative objects cannot impersonate
     source coverage.
     """
+
+    from .composer_v2 import clip_text, connector_object, shape_object, text_object
 
     result: list[dict[str, Any]] = []
     selected = list(nodes[:4])
