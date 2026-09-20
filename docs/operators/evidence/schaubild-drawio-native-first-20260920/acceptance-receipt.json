@@ -32,6 +32,7 @@
     "ruff_changed_scope_passed": true,
     "runtime_image_includes_drawio_import": true,
     "standard_compressed_drawio_import_passed": true,
+    "unlabelled_edges_rejected_without_invented_semantics": true,
     "unsupported_or_unsafe_drawio_fails_closed": true
   },
   "does_not_establish": [
@@ -44,8 +45,8 @@
     "Commonthing consumer integration",
     "Commonthing production deployment"
   ],
-  "evidence_digest": "e96c73ef66d8ffc39649793cdc7aa8dc8f07e3b0ce044af1ffe4a1e096226315",
-  "functional_head": "93e6117165ad4095e502a47f546e72b4f3be2303",
+  "evidence_digest": "28c23f599e231edb182d4fe6a89eca032114c9691347640d9334e6cf901dea7c",
+  "functional_head": "e8c866e97b46fe2af105d0b1df8c15daf4c03347",
   "parent_evidence": {
     "evidence_digest": "c61abe8fa124c82b37ffaf292b893b6d371ab46af4d77e4205e0a26b9c1b6cb9",
     "file_sha256": "53d0404a6c64128df1109b26e0d085b07923b77af98317344d670e599187e5dd",
@@ -56,11 +57,11 @@
   "scope": "drawio-native-first-with-explicit-legacy-fallback",
   "source_bindings": {
     "Dockerfile": "6686ae2cc882c9686eb6707334b0ab9cb3f83c8376c9670924725ca3eb34059c",
-    "docs/plans/standalone-diagram-editor-spike-v1.md": "616ccb17ec2f512b3e2d27245340e79c4d338597c62577463630b3ce219af380",
+    "docs/plans/standalone-diagram-editor-spike-v1.md": "61251e842113e4ec2489ae3965ec7dbebc555d1bc191a0dcd7ba18fc74ae34e9",
     "src/schauwerk/resources/standalone_editor/assets.py": "9ddbff954aa8bc08ed656ff76d6be35a520a562d8a3150bdedbfdaef7645c857",
-    "src/schauwerk/visual/drawio_import.py": "34a56cc84b726694e41429d908ccd468378c421847cea036a61ad72cddebf823",
-    "src/schauwerk/visual/standalone_editor.py": "69f467fac6ccc24c641be6476f3d9d675d9d1e2e5489259a17b7cc6255774db6",
-    "tests/visual/test_drawio_import.py": "cc194b05b362ff6b9bff4ff5f20cb803fcf9d0dc0d2c8efd85aebba497a3a9aa",
+    "src/schauwerk/visual/drawio_import.py": "4aaefafa7773e5ed46cb2960ef1f44abc0a7bcd74ed2bad661b15f27d1c6196e",
+    "src/schauwerk/visual/standalone_editor.py": "8bb73833a019c8b8ee0601d4d6dd64611a9830576ec5255e1509ff8c2042b9db",
+    "tests/visual/test_drawio_import.py": "b487417916830fa1eb6f165dfaf3c4d29a8cd5952b4d3dbba33afd70b5ea21ba",
     "tests/visual/test_standalone_editor.py": "9303f03cd3289b5593e948ec270bf28d8c5c1d09b830e413ae63c9c92764d88d",
     "tests/visual/test_standalone_editor_defaults.py": "d67d89fdf4b87b0f92665c47644e72bc84eda3c3e233781d7b350bf0305e04bd"
   }
