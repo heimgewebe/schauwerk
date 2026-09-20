@@ -305,6 +305,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         runtime_successor, "evidence_digest"
     )
     drawio_native_superseded_files = {
+        "Dockerfile",
         "docs/plans/standalone-diagram-editor-spike-v1.md",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/standalone_editor.py",
