@@ -1,6 +1,6 @@
 # Standalone Diagram Editor Spike v1
 
-Stand: 2026-09-18
+Stand: 2026-09-20
 
 ## Status nach Native-Cutover
 
@@ -9,12 +9,22 @@ Renderer-Autorität für neue kanonische Schaubilder**. Die Schaubild-Oberfläch
 `schauwerk-representation-input.v1` als primären Eingang und rendert ihn über den
 bestehenden Python-Renderer `schauwerk-native-diagram-v1` plus lokalen Native Viewer.
 
-Der hier dokumentierte diagrams.net-Pfad bleibt erhalten als:
+Der diagrams.net-Pfad bleibt nur als explizite Kompatibilitätsgrenze erhalten:
 
-- Import-/Bearbeitungskompatibilität für Mermaid, JSON Canvas und draw.io/XML;
+- Bearbeitungskompatibilität für Mermaid und JSON Canvas;
+- ausdrücklich gewählter Legacy-Fallback für draw.io/XML, das den begrenzten nativen
+  Importvertrag nicht beweisbar erfüllt;
 - Fallback für `knowledge_map`, bis dessen allgemeine Long-Same-Row-/Parallel-Routinggrenze
   im nativen Renderer separat gehärtet und visuell akzeptiert ist;
-- Exportpfad für Legacy-PNG und bestehende draw.io-Projekte.
+- Legacy-PNG-/SVG-Export und vollständige draw.io-Bearbeitung, wenn der Nutzer diesen
+  Kompatibilitätspfad bewusst öffnet.
+
+Seit dem Native-first-Schritt vom 20.09.2026 wird bestehendes draw.io/XML nicht mehr
+automatisch an diagrams.net übergeben. Ein einseitiger, begrenzter `mxGraphModel`-
+Graph wird serverseitig in `schauwerk-representation-input.v1` normalisiert und
+durch `schauwerk-native-diagram-v1` dargestellt. Das unveränderte XML bleibt lokal
+als Original erhalten. Nicht importierbare Struktur führt fail-closed zu einer
+sichtbaren Option `Legacy bearbeiten`; es gibt keinen stillen Auto-Fallback.
 
 Der native Pfad läuft über den integrierten `serve`-Prozess, weil das statische
 Browserbundle den Python-Renderer nicht selbst ausführen kann. Loopback bleibt der
@@ -45,11 +55,18 @@ Der Nutzer soll:
 
 Schauwerk besitzt bereits ein normalisiertes Repräsentationsmodell sowie Mermaid- und JSON-Canvas-Ausgaben. Der Spike ergänzt deshalb **keinen eigenen Renderer und kein zweites Diagrammdatenmodell**.
 
-Die Produktschicht ist eine kleine statische Host-Anwendung. Sie nutzt den dokumentierten diagrams.net-Embed-Vertrag über ein cross-origin `iframe` und `postMessage`:
+Die Produktschicht ist eine kleine statische Host-Anwendung. Der Primärpfad nutzt den
+integrierten, same-origin Native-Render-Endpunkt. Nur der explizite Kompatibilitätspfad
+nutzt den dokumentierten diagrams.net-Embed-Vertrag über ein cross-origin `iframe`
+und `postMessage`:
 
-- Mermaid wird als `descriptor.format = "mermaid"` mit `wrap = true` geladen und dadurch in native editierbare draw.io-Shapes übersetzt;
-- JSON Canvas wird clientseitig in ein minimales `mxGraphModel` übersetzt;
-- draw.io/XML wird direkt geladen;
+- kanonische Schauwerk-Repräsentationen gehen direkt an den Native-Renderer;
+- unterstütztes draw.io/XML wird als typisierter `schauwerk-native-import-request.v1`
+  an denselben Native-Endpunkt geschickt;
+- Mermaid wird im Legacy-Pfad als `descriptor.format = "mermaid"` mit `wrap = true`
+  geladen und dadurch in editierbare draw.io-Shapes übersetzt;
+- JSON Canvas wird für den Legacy-Pfad clientseitig in ein minimales `mxGraphModel`
+  übersetzt;
 - der Standalone-Host priorisiert Text vor maximaler Gesamtübersicht: Produktdefault sind 24 px für Knoten und 22 px für Kantenbeschriftungen. Der niedrigere 18/16-px-Konverter-Fallback bleibt als interne Kompatibilitätsgrenze für direkte Helper-Aufrufe bestehen; die Produktoberfläche übergibt für neue/importierte Diagramme explizit 24/22 px. Der Nutzer kann den Knoten-Schriftstandard vor dem Öffnen frei zwischen 8 und 72 px setzen; Kanten folgen mit derselben 2-px-Differenz. Neu erzeugte sowie aus Mermaid oder JSON Canvas erzeugte Knoten sind standardmäßig linksbündig. Diese Erzeugungsdefaults werden nur für neue bzw. importierte Diagramme an die Editor-Engine übergeben; beim Öffnen bestehenden draw.io/XMLs und lokal gesicherter Entwürfe werden weder implizite Ausrichtung noch implizite Schriftgrößen durch Schauwerk-Defaults überschrieben. Die lokal gespeicherte Schriftpräferenz bleibt autoritativ für spätere neue/importierte Elemente. Für bestehende Elemente nutzt Schauwerk ausschließlich dokumentierte `invokeAction`-Aufrufe auf die native draw.io-Auswahl: `A−`/`A+` verkleinern bzw. vergrößern, `Schrift` öffnet das native Format-Panel für exakte Werte, und `Alle` wählt das gesamte Diagramm und öffnet dasselbe Panel. Manuelle Formatierung bleibt damit autoritativ;
 - `fit` bleibt für den Erstüberblick aktiv, aber ein gemeldeter Initialzoom unter 65 % wird begrenzt per dokumentierter `zoomIn`-Aktion angehoben;
 - Autosave-/Save-Ereignisse liefern XML an die Host-Anwendung zurück;
@@ -67,7 +84,13 @@ zulässig und setzt voraus, dass der Runtime-Port ausschließlich in einem priva
 Container-/Proxy-Netz liegt. Der bestehende Host-Header-Guard bleibt zusätzliche
 Abwehrschicht, ersetzt aber diese Netzgrenze nicht.
 
-Standardmäßig ist der Editor **nicht vollständig offline**: Die interaktive Engine wird von `https://embed.diagrams.net` geladen. Diagramminhalte werden anschließend über Browser-`postMessage` an dieses cross-origin `iframe` übergeben. Die Host-Seite akzeptiert Nachrichten ausschließlich vom exakt gebundenen Editor-Origin und setzt eine enge Content-Security-Policy.
+Der Native-first-Pfad benötigt für einen erzeugten Viewer keine externen Requests.
+Erst wenn der Nutzer den Legacy-Kompatibilitätspfad ausdrücklich öffnet, ist der Editor
+**nicht vollständig offline**: Die interaktive Engine wird standardmäßig von
+`https://embed.diagrams.net` geladen. Diagramminhalte werden dann über
+Browser-`postMessage` an dieses cross-origin `iframe` übergeben. Die Host-Seite
+akzeptiert Nachrichten ausschließlich vom exakt gebundenen Editor-Origin und setzt eine
+enge Content-Security-Policy.
 
 Self-Hosting des Kernpfads wurde am 25.08.2026 separat mit dem offiziellen `jgraph/drawio`-Image und demselben Embed-Vertrag auf Loopback belegt: `configure → init → load → Bearbeitung → autosave → SVG/XML-Export` funktionierte mit `offline=1&https=0`, während im Browser alle nicht-lokalen HTTP(S)-Ziele blockiert waren. Der Produktpfad kann deshalb denselben Host gegen einen eigenen draw.io-Origin binden; dafür ist kein Fork und kein zweiter Grafikeditor nötig.
 
@@ -81,6 +104,30 @@ Daraus folgt ausdrücklich nicht:
 - dass die aktuelle Engine dauerhaft gesetzt ist.
 
 Der Host behandelt Exportantworten auch vom erlaubten Editor-Origin weiterhin als untrusted: unerwartete Formate, URI-Typen, Kodierungen, XML-Wurzeln und übergroße Antworten werden verworfen. Der Produktpfad bindet sich für Bildexporte bewusst an die aktuell dokumentierte base64-Daten-URI-Form und soll bei einem zukünftigen Providerformatwechsel fail-closed reagieren.
+
+## draw.io Native-Import v1
+
+Der Native-first-Import akzeptiert genau einen begrenzten draw.io-Graphen. Unterstützt
+werden ein direktes `mxGraphModel` sowie ein `mxfile` mit genau einer
+`diagram`-Seite, sowohl unkomprimiert als auch im üblichen URI-kodierten,
+Raw-DEFLATE-/Base64-Format.
+
+Der Import bewahrt die für den nativen Schauwerk-Graphen benötigte Semantik:
+
+- beschriftete Vertex-Zellen werden zu Knoten;
+- direkte `value`-Labels und `object`-/`UserObject`-Labels werden als Text gelesen;
+- Kanten bewahren Quelle, Ziel und ein vorhandenes Label;
+- einfache Shape-Hinweise werden auf die vorhandenen Schauwerk-Knotenarten abgebildet;
+- unbeschriftete, unverbundene Dekoration darf entfallen;
+- unbeschriftete Kanten, verbundene unbeschriftete Knoten, unbekannte Kantenendpunkte,
+  mehrere Seiten, DTD/Entities und überschrittene Größen-/Komplexitätsbudgets werden
+  fail-closed abgelehnt.
+
+Nicht behauptet werden ein verlustfreier draw.io-Roundtrip, die Bewahrung exakter
+Koordinaten, Styles, HTML-Formatierung, Containersemantik oder Spezial-Shapes. Deshalb
+bleibt das ursprüngliche XML unverändert erhalten. Für solche Anforderungen muss der
+Nutzer `Legacy bearbeiten` ausdrücklich wählen. Dieser Knopf ist eine bewusste
+Kompatibilitätsentscheidung und keine zweite automatische Renderer-Autorität.
 
 ## JSON-Canvas-Import v1
 

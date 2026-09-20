@@ -168,7 +168,15 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
-    assert "return { xml: validateDiagramXml(detected.text) };" in app_js
+    assert 'if (detected.kind === "drawio")' in app_js
+    assert 'schema_version: NATIVE_IMPORT_SCHEMA' in app_js
+    assert 'format: "drawio-xml"' in app_js
+    assert "legacyXml: xml" in app_js
+    assert "function launchLegacy(load)" in app_js
+    assert 'elements.legacyEditButton.addEventListener("click"' in app_js
+    assert 'elements.legacyFallbackButton.addEventListener("click"' in app_js
+    assert 'id="legacyEditButton"' in index_html
+    assert 'id="legacyFallbackButton"' in index_html
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "previous.replaceWith(frame);" in app_js
@@ -450,6 +458,103 @@ def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge
     knowledge_map = _golden_representation("system-landscape-v1.json")
     with pytest.raises(StandaloneEditorError, match="knowledge_map remains on the legacy"):
         _native_product_input(knowledge_map)
+
+
+def test_native_product_admission_imports_bounded_drawio_request() -> None:
+    source = """<mxGraphModel><root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="ali" value="Fallbeispiel: Ali" vertex="1" parent="1"><mxGeometry/></mxCell>
+    <mxCell id="resources" value="5. Ressourcen" vertex="1" parent="1"><mxGeometry/></mxCell>
+    <mxCell id="edge" value="verfügt über" edge="1" parent="1" source="ali" target="resources"><mxGeometry relative="1" as="geometry"/></mxCell>
+    </root></mxGraphModel>"""
+    accepted = _native_product_input(
+        {
+            "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+            "format": "drawio-xml",
+            "source": source,
+            "title": "Fallbeispiel_Ali_Uebersicht.drawio",
+        }
+    )
+
+    assert accepted["schema_version"] == "schauwerk-representation-input.v1"
+    assert accepted["title"] == "Fallbeispiel_Ali_Uebersicht.drawio"
+    assert accepted["intent"] == "process"
+    assert [node["label"] for node in accepted["nodes"]] == [
+        "Fallbeispiel: Ali",
+        "5. Ressourcen",
+    ]
+    assert accepted["edges"][0]["label"] == "verfügt über"
+    assert re.fullmatch(r"[0-9a-f]{64}", str(accepted["input_digest"]))
+
+
+def test_native_product_admission_rejects_unsupported_drawio_without_guessing() -> None:
+    source = """<mxfile>
+    <diagram name="Seite-1"><mxGraphModel><root><mxCell id="0"/></root></mxGraphModel></diagram>
+    <diagram name="Seite-2"><mxGraphModel><root><mxCell id="0"/></root></mxGraphModel></diagram>
+    </mxfile>"""
+    with pytest.raises(StandaloneEditorError, match="exactly one diagram page"):
+        _native_product_input(
+            {
+                "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+                "format": "drawio-xml",
+                "source": source,
+            }
+        )
+
+
+def test_native_render_endpoint_accepts_drawio_import_request(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = """<mxGraphModel><root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <mxCell id="a" value="Ali" vertex="1" parent="1"><mxGeometry/></mxCell>
+    <mxCell id="b" value="Ressourcen" vertex="1" parent="1"><mxGeometry/></mxCell>
+    <mxCell id="e" value="nutzen" edge="1" parent="1" source="a" target="b"><mxGeometry relative="1" as="geometry"/></mxCell>
+    </root></mxGraphModel>"""
+    payload = json.dumps(
+        {
+            "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+            "format": "drawio-xml",
+            "source": source,
+            "title": "Ali.drawio",
+        }
+    ).encode("utf-8")
+
+    handler_class = type(
+        "DrawioImportEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(payload))},
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert body["renderer"] == NATIVE_RENDERER
+        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", body["url"])
+
+        connection.request("GET", body["url"])
+        viewer_response = connection.getresponse()
+        viewer_html = viewer_response.read().decode("utf-8")
+        assert viewer_response.status == 200
+        assert 'id="nativeViewport"' in viewer_html
+        assert "Ali.drawio" in viewer_html
+        assert "Ressourcen" in viewer_html
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
 
 
 def test_native_render_endpoint_rejects_non_loopback_host_before_rendering(tmp_path: Path) -> None:
@@ -820,6 +925,7 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
     assert "RUN chmod -R a=rX /app/src" in dockerfile
     for required in (
         "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/representation.py",

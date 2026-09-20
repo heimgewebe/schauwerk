@@ -1,8 +1,9 @@
 """Build and serve the Schaubild product shell.
 
-New canonical Schauwerk representation inputs are rendered by Schauwerk's native
-renderer and interaction viewer. Mermaid, JSON Canvas and draw.io remain explicit
-compatibility inputs backed by the diagrams.net embed runtime.
+Canonical Schauwerk representation inputs and the bounded draw.io native-import
+subset are rendered by Schauwerk's native renderer and interaction viewer. Mermaid,
+JSON Canvas and explicitly chosen legacy draw.io editing remain compatibility inputs
+backed by the diagrams.net embed runtime.
 """
 
 from __future__ import annotations
@@ -30,12 +31,14 @@ from typing import Any, Final
 from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
+from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
 from schauwerk.visual.native_viewer import NativeViewerError, build_native_viewer
 from schauwerk.visual.representation import RepresentationError, validate_representation_input
 
 MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
+NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
 MAX_NATIVE_GROUPS: Final = 32
 MAX_NATIVE_NODES: Final = 128
@@ -351,12 +354,34 @@ def _content_security_policy(editor_origin: str) -> str:
 
 
 def _native_product_input(value: Any) -> dict[str, Any]:
-    """Validate canonical representation input and enforce the Phase-3 admission gate."""
+    """Normalize one canonical representation or bounded native import request."""
 
     if not isinstance(value, dict):
         raise StandaloneEditorError("native representation input must be one JSON object")
+
+    candidate: Any = value
+    if value.get("schema_version") == NATIVE_IMPORT_SCHEMA:
+        allowed = {"schema_version", "format", "source", "title"}
+        unknown = sorted(set(value) - allowed)
+        if unknown:
+            raise StandaloneEditorError(
+                "native import request contains unknown fields: " + ", ".join(unknown)
+            )
+        if value.get("format") != "drawio-xml":
+            raise StandaloneEditorError("native import request format must be drawio-xml")
+        source = value.get("source")
+        if not isinstance(source, str):
+            raise StandaloneEditorError("native draw.io import source must be text")
+        title = value.get("title")
+        if title is not None and not isinstance(title, str):
+            raise StandaloneEditorError("native draw.io import title must be text")
+        try:
+            candidate = drawio_xml_to_representation(source, title=title)
+        except DrawioImportError as exc:
+            raise StandaloneEditorError(f"native draw.io import is unsupported: {exc}") from exc
+
     try:
-        normalized = validate_representation_input(value)
+        normalized = validate_representation_input(candidate)
     except RepresentationError as exc:
         raise StandaloneEditorError(f"native representation input is invalid: {exc}") from exc
     if normalized["intent"] == "knowledge_map":
@@ -433,7 +458,7 @@ def build_standalone_editor(
             "runtime": "integrated-serve",
             "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
             "public_base_path": normalized_base_path,
-            "admission": "schema-valid-except-knowledge-map",
+            "admission": "representation-or-bounded-drawio-except-knowledge-map",
             "admission_scope": {
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
@@ -443,6 +468,7 @@ def build_standalone_editor(
                 "trusted_proxy_source_cidr_required": True,
             },
             "semantic_authority": "schauwerk-representation-input.v1",
+            "supported_inputs": ["schauwerk-representation-input.v1", "drawio-xml"],
             "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
         },
         "legacy_editor_engine": "diagrams.net-embed",
@@ -484,6 +510,8 @@ def build_standalone_editor(
                 else "provider-independence-of-legacy-compatibility"
             ),
             "lossless-json-canvas-roundtrip",
+            "lossless-drawio-roundtrip",
+            "drawio-visual-style-preservation",
         ],
     }
     canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))

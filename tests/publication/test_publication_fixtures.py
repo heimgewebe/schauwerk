@@ -26,6 +26,9 @@ CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-
 MIRO_OAUTH_EVIDENCE = ROOT / "docs/operators/evidence/miro-oauth-refresh-hardening-20260905"
 SCHAUBILD_CUTOVER_EVIDENCE = ROOT / "docs/operators/evidence/schaubild-native-cutover-20260918"
 SCHAUBILD_RUNTIME_EVIDENCE = ROOT / "docs/operators/evidence/schaubild-native-runtime-20260918"
+SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-drawio-native-first-20260920"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -301,7 +304,35 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert runtime_successor["evidence_digest"] == digest_mapping(
         runtime_successor, "evidence_digest"
     )
+    drawio_native_superseded_files = {
+        "Dockerfile",
+        "docs/plans/standalone-diagram-editor-spike-v1.md",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     for name, expected in runtime_successor["source_bindings"].items():
+        if name not in drawio_native_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+
+    drawio_successor = json.loads(
+        (SCHAUBILD_DRAWIO_NATIVE_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert drawio_successor["schema_version"] == "schauwerk-schaubild-drawio-native-first.v1"
+    assert drawio_successor["parent_evidence"] == {
+        "evidence_digest": runtime_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_RUNTIME_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": "docs/operators/evidence/schaubild-native-runtime-20260918/acceptance-receipt.json",
+        "schema_version": runtime_successor["schema_version"],
+    }
+    assert drawio_successor["evidence_digest"] == digest_mapping(
+        drawio_successor, "evidence_digest"
+    )
+    for name, expected in drawio_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
     oauth_successor = json.loads(
@@ -340,7 +371,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
         elif name in schaubild_superseded_files:
-            assert runtime_successor["source_bindings"][name] == current
+            assert drawio_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {

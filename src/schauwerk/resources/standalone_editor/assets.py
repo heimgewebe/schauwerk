@@ -21,9 +21,9 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="start-card" id="startView">
       <div class="intro">
-        <p class="eyebrow">Schauwerk Native · Legacy-Kompatibilität</p>
+        <p class="eyebrow">Schauwerk Native · Native-first</p>
         <h1>Einfügen, ansehen, weiterarbeiten.</h1>
-        <p class="lede">Kanonische Schauwerk-Repräsentationen laufen nativ. Mermaid, JSON Canvas und draw.io bleiben als Legacy-Import erhalten.</p>
+        <p class="lede">Kanonische Schauwerk-Repräsentationen und unterstützte draw.io-Graphen laufen nativ. Legacy-Bearbeitung bleibt nur als bewusster Kompatibilitätsweg erhalten.</p>
       </div>
 
       <label class="paste-box" for="sourceInput">
@@ -35,6 +35,7 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
         <button class="button" id="fileButton" type="button">Datei öffnen</button>
         <button class="button ghost" id="blankButton" type="button">Legacy leer</button>
+        <button class="button ghost" id="legacyFallbackButton" type="button" hidden>Legacy bearbeiten</button>
         <input id="fileInput" type="file" hidden>
       </div>
 
@@ -49,9 +50,10 @@ INDEX_HTML = r"""<!doctype html>
       <p class="error" id="error" role="alert" hidden></p>
 
       <aside class="boundary-note">
-        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen werden lokal durch
-        <code>schauwerk-native-diagram-v1</code> gerendert. Mermaid, JSON Canvas und draw.io verwenden weiterhin bewusst
-        die Legacy-Editor-Engine. <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
+        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen und der begrenzte, semantisch
+        importierbare draw.io-Graphpfad werden durch <code>schauwerk-native-diagram-v1</code> gerendert.
+        Nicht verlustarm importierbares draw.io sowie weitere Kompatibilitätsformate öffnen den Legacy-Editor nur
+        nach ausdrücklicher Nutzerwahl. <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
       </aside>
     </section>
 
@@ -67,6 +69,7 @@ INDEX_HTML = r"""<!doctype html>
           <button class="button compact" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alle</button>
         </div>
         <button class="button compact" id="layoutButton" type="button">Aufräumen</button>
+        <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Legacy bearbeiten</button>
         <button class="button compact" id="projectButton" type="button">Projekt</button>
         <button class="button compact" data-export="png" type="button">PNG</button>
         <button class="button compact" data-export="svg" type="button">SVG</button>
@@ -687,6 +690,7 @@ const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";
 const NATIVE_API_PATH = `${PUBLIC_BASE_PATH}/api/native-viewer`;
+const NATIVE_IMPORT_SCHEMA = "schauwerk-native-import-request.v1";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const NATIVE_DRAFT_KEY = "schauwerk.native-schaubild.draft.v1";
 const FONT_PREFERENCE_KEY = "schauwerk.standalone-editor.font-size.v1";
@@ -701,6 +705,7 @@ const elements = {
   fileButton: document.querySelector("#fileButton"),
   fileInput: document.querySelector("#fileInput"),
   blankButton: document.querySelector("#blankButton"),
+  legacyFallbackButton: document.querySelector("#legacyFallbackButton"),
   restoreButton: document.querySelector("#restoreButton"),
   error: document.querySelector("#error"),
   frame: document.querySelector("#editorFrame"),
@@ -709,6 +714,7 @@ const elements = {
   homeLink: document.querySelector("#homeLink"),
   backButton: document.querySelector("#backButton"),
   layoutButton: document.querySelector("#layoutButton"),
+  legacyEditButton: document.querySelector("#legacyEditButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
   fullscreenButton: document.querySelector("#fullscreenButton"),
@@ -722,6 +728,8 @@ const elements = {
 let pendingLoad = null;
 let currentXml = null;
 let currentRepresentation = null;
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
 let currentNativeUrl = null;
 let activeEngine = "legacy";
 let currentTitle = "Schaubild";
@@ -760,8 +768,9 @@ function setEngineMode(mode) {
   const pngButton = document.querySelector('[data-export="png"]');
   if (pngButton instanceof HTMLButtonElement) pngButton.disabled = native;
   elements.projectButton.title = native
-    ? "Kanonische Schauwerk-Repräsentation speichern"
+    ? (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
     : "draw.io-Projekt speichern";
+  elements.legacyEditButton.hidden = !(native && currentLegacyXml);
 }
 
 function safeFilename(value) {
@@ -935,6 +944,9 @@ function showStart() {
   pendingCreationDefaults = false;
   pendingExport = null;
   editorReady = false;
+  currentLegacyXml = null;
+  pendingLegacyFallback = null;
+  elements.legacyFallbackButton.hidden = true;
   replaceEditorFrame();
   clearPreparedDownload();
   elements.workspace.hidden = true;
@@ -980,7 +992,17 @@ function prepareInput(raw, title = "Schaubild") {
     };
   }
   if (detected.kind === "drawio") {
-    return { xml: validateDiagramXml(detected.text) };
+    const xml = validateDiagramXml(detected.text);
+    return {
+      nativeImport: {
+        schema_version: NATIVE_IMPORT_SCHEMA,
+        format: "drawio-xml",
+        source: xml,
+        title: currentTitle,
+      },
+      legacyXml: xml,
+      sourceMetadata: { key: "schauwerkImportFormat", value: "drawio-xml" },
+    };
   }
   if (detected.kind === "empty") {
     return { xml: emptyDrawioXml() };
@@ -1000,15 +1022,22 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
-  if (load?.nativeRepresentation) {
+  if (load?.nativeRepresentation || load?.nativeImport) {
     void launchNative(load);
     return;
   }
+  launchLegacy(load);
+}
+
+function launchLegacy(load) {
   invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = load;
   currentRepresentation = null;
+  currentLegacyXml = typeof load?.xml === "string" ? load.xml : null;
+  pendingLegacyFallback = null;
+  elements.legacyFallbackButton.hidden = true;
   currentNativeUrl = null;
   setEngineMode("legacy");
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
@@ -1032,7 +1061,10 @@ async function launchNative(load) {
   pendingInitialCollisionSafeLayout = false;
   pendingCreationDefaults = false;
   currentXml = null;
-  currentRepresentation = load.nativeRepresentation;
+  currentRepresentation = load.nativeRepresentation || null;
+  currentLegacyXml = typeof load.legacyXml === "string" ? load.legacyXml : null;
+  pendingLegacyFallback = null;
+  elements.legacyFallbackButton.hidden = true;
   currentNativeUrl = null;
   setEngineMode("native");
   editorReady = false;
@@ -1044,7 +1076,7 @@ async function launchNative(load) {
     const response = await fetch(NATIVE_API_PATH, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(currentRepresentation),
+      body: JSON.stringify(currentRepresentation || load.nativeImport),
     });
     const result = await response.json();
     if (loadIntent !== loadIntentGeneration) return;
@@ -1065,20 +1097,39 @@ async function launchNative(load) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
     currentNativeUrl = nativeUrl;
-    if (!saveNativeDraft(currentRepresentation)) {
-      setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+    if (currentRepresentation) {
+      if (!saveNativeDraft(currentRepresentation)) {
+        setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+      }
+    } else if (currentLegacyXml && !saveDraft(currentLegacyXml)) {
+      setStatus("Nativer draw.io-Import bereit · Original lokal nicht speicherbar");
     }
     editorReady = true;
     frame.src = currentNativeUrl;
-    setStatus("Native Darstellung · Semantik read-only · Layout lokal");
+    setEngineMode("native");
+    setStatus(currentLegacyXml
+      ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
+      : "Native Darstellung · Semantik read-only · Layout lokal");
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
     editorReady = false;
     currentNativeUrl = null;
+    const fallbackXml = currentLegacyXml;
+    currentLegacyXml = null;
     elements.workspace.hidden = true;
     elements.startView.hidden = false;
-    setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
-    setStatus("Native Darstellung abgelehnt");
+    if (fallbackXml) {
+      pendingLegacyFallback = fallbackXml;
+      elements.legacyFallbackButton.hidden = false;
+      setError(
+        (error instanceof Error ? error.message : "Nativer draw.io-Import wurde abgelehnt.")
+        + " Das Original wurde nicht verändert. Legacy-Bearbeitung kann ausdrücklich geöffnet werden."
+      );
+      setStatus("Nativer draw.io-Import abgelehnt · Legacy verfügbar");
+    } else {
+      setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
+      setStatus("Native Darstellung abgelehnt");
+    }
   }
 }
 
@@ -1140,12 +1191,21 @@ async function openFile(file) {
 }
 
 async function exportNative(format) {
-  if (!editorReady || !currentRepresentation || !currentNativeUrl) {
+  if (!editorReady || (!currentRepresentation && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Native Darstellung ist noch nicht bereit");
     return;
   }
   clearPreparedDownload();
   if (format === "drawio") {
+    if (currentLegacyXml) {
+      prepareDownload(
+        new Blob([currentLegacyXml], { type: "application/xml;charset=utf-8" }),
+        safeFilename(currentTitle) + ".drawio",
+        "Originalprojekt",
+      );
+      setStatus("Unverändertes draw.io-Original bereit");
+      return;
+    }
     const source = JSON.stringify(currentRepresentation, null, 2) + "\n";
     prepareDownload(
       new Blob([source], { type: "application/json;charset=utf-8" }),
@@ -1328,15 +1388,30 @@ elements.blankButton.addEventListener("click", () => {
 elements.restoreButton.addEventListener("click", () => {
   const draft = readLatestDraft();
   if (!draft) return;
-  currentTitle = safeFilename(draft.title || "Schaubild");
   if (draft.kind === "native") {
+    currentTitle = safeFilename(draft.title || "Schaubild");
     launch({
       nativeRepresentation: draft.representation,
       sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
     });
     return;
   }
-  launch({ xml: draft.xml });
+  try {
+    launch(prepareInput(draft.xml, draft.title || "Schaubild"));
+  } catch (error) {
+    setError(error instanceof Error ? error.message : "Lokaler Entwurf konnte nicht geöffnet werden.");
+  }
+});
+elements.legacyEditButton.addEventListener("click", () => {
+  if (!currentLegacyXml) return;
+  launchLegacy({ xml: currentLegacyXml });
+});
+elements.legacyFallbackButton.addEventListener("click", () => {
+  if (!pendingLegacyFallback) return;
+  const xml = pendingLegacyFallback;
+  pendingLegacyFallback = null;
+  elements.legacyFallbackButton.hidden = true;
+  launchLegacy({ xml });
 });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
 elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);

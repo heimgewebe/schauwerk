@@ -1,0 +1,70 @@
+{
+  "accepted_at": "2026-09-20",
+  "browser_acceptance": {
+    "native_viewer_reached_from_drawio_host_path": true,
+    "observed_controls": [
+      "Verkleinern",
+      "Vergrößern",
+      "Einpassen",
+      "Layout zurücksetzen"
+    ],
+    "observed_nodes": [
+      "Fallbeispiel: Ali",
+      "5. Ressourcen"
+    ],
+    "profile": "provider-operator",
+    "viewer_audit_outcome_sha256": "0423278a25074a4850dd49b071f7e3d9e9a1614a98d372398154acada885fbd0"
+  },
+  "checks": {
+    "ambiguous_deflate_boundaries_rejected": true,
+    "bounded_drawio_graph_import_passed": true,
+    "drawio_routes_native_before_legacy": true,
+    "duplicate_mxcell_ids_rejected": true,
+    "explicit_legacy_edit_escape_hatch_present": true,
+    "focused_editor_and_import_tests_passed": true,
+    "generated_app_js_module_syntax_passed": true,
+    "hardened_container_runtime_smoke_passed": true,
+    "historical_runtime_acceptance_left_immutable": true,
+    "managed_browser_ali_native_acceptance_passed": true,
+    "native_import_http_post_and_viewer_get_passed": true,
+    "nested_or_container_vertex_semantics_rejected": true,
+    "object_wrapper_ids_preserved_as_semantic_identity": true,
+    "original_drawio_xml_preserved_for_legacy_and_export": true,
+    "ruff_changed_scope_passed": true,
+    "runtime_image_includes_drawio_import": true,
+    "semantic_cells_without_cell_or_wrapper_id_rejected": true,
+    "standard_compressed_drawio_import_passed": true,
+    "unlabelled_edges_rejected_without_invented_semantics": true,
+    "unsupported_or_unsafe_drawio_fails_closed": true
+  },
+  "does_not_establish": [
+    "lossless draw.io roundtrip",
+    "draw.io exact geometry or style preservation",
+    "general multi-page draw.io native import",
+    "native semantic editing",
+    "removal of the explicit diagrams.net legacy compatibility path",
+    "GHCR publication of this revision",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
+  "functional_head": "cd4b31a38b85021b2879649f2d673be8d5c513ec",
+  "parent_evidence": {
+    "evidence_digest": "c61abe8fa124c82b37ffaf292b893b6d371ab46af4d77e4205e0a26b9c1b6cb9",
+    "file_sha256": "53d0404a6c64128df1109b26e0d085b07923b77af98317344d670e599187e5dd",
+    "path": "docs/operators/evidence/schaubild-native-runtime-20260918/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-runtime.v1"
+  },
+  "schema_version": "schauwerk-schaubild-drawio-native-first.v1",
+  "scope": "drawio-native-first-with-explicit-legacy-fallback",
+  "source_bindings": {
+    "Dockerfile": "6686ae2cc882c9686eb6707334b0ab9cb3f83c8376c9670924725ca3eb34059c",
+    "docs/plans/standalone-diagram-editor-spike-v1.md": "61251e842113e4ec2489ae3965ec7dbebc555d1bc191a0dcd7ba18fc74ae34e9",
+    "src/schauwerk/resources/standalone_editor/assets.py": "9ddbff954aa8bc08ed656ff76d6be35a520a562d8a3150bdedbfdaef7645c857",
+    "src/schauwerk/visual/drawio_import.py": "508943ce9d215b54dc85fcf4610e33a0bbcfbfb3ba96d5b090ec7b9d7e1755c4",
+    "src/schauwerk/visual/standalone_editor.py": "8bb73833a019c8b8ee0601d4d6dd64611a9830576ec5255e1509ff8c2042b9db",
+    "tests/visual/test_drawio_import.py": "38b1620702ff05d37deca2dd4cf1df53ef09860c5ac7b6c2253a5352125f445f",
+    "tests/visual/test_standalone_editor.py": "9303f03cd3289b5593e948ec270bf28d8c5c1d09b830e413ae63c9c92764d88d",
+    "tests/visual/test_standalone_editor_defaults.py": "d67d89fdf4b87b0f92665c47644e72bc84eda3c3e233781d7b350bf0305e04bd"
+  }
+}

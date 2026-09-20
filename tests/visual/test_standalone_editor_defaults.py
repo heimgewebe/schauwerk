@@ -34,13 +34,16 @@ def test_editor_defaults_to_24px_and_left_aligned_text(tmp_path: Path) -> None:
     )
 
 
-def test_existing_drawio_and_drafts_do_not_receive_creation_defaults(tmp_path: Path) -> None:
+def test_existing_drawio_and_drafts_route_native_before_explicit_legacy(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
     app_js = (output / "app.js").read_text(encoding="utf-8")
 
     assert 'if (detected.kind === "drawio")' in app_js
-    assert "return { xml: validateDiagramXml(detected.text) };" in app_js
-    assert "launch({ xml: draft.xml });" in app_js
+    assert 'schema_version: NATIVE_IMPORT_SCHEMA' in app_js
+    assert 'format: "drawio-xml"' in app_js
+    assert "legacyXml: xml" in app_js
+    assert 'launch(prepareInput(draft.xml, draft.title || "Schaubild"));' in app_js
+    assert "function launchLegacy(load)" in app_js
     assert "pendingCreationDefaults = false;" in app_js
     assert "if (pendingCreationDefaults)" in app_js
