@@ -1,8 +1,9 @@
 """Build and serve the Schaubild product shell.
 
-New canonical Schauwerk representation inputs are rendered by Schauwerk's native
-renderer and interaction viewer. Mermaid, JSON Canvas and draw.io remain explicit
-compatibility inputs backed by the diagrams.net embed runtime.
+Canonical Schauwerk representation inputs and the bounded draw.io native-import
+subset are rendered by Schauwerk's native renderer and interaction viewer. Mermaid,
+JSON Canvas and explicitly chosen legacy draw.io editing remain compatibility inputs
+backed by the diagrams.net embed runtime.
 """
 
 from __future__ import annotations

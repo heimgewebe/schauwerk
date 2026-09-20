@@ -162,7 +162,9 @@ def _node_text(raw: object) -> tuple[str, str] | None:
 def _edge_label(raw: object) -> str:
     label = " ".join(_plain_text(raw).split())
     if not label:
-        return "Verbindung"
+        raise DrawioImportError(
+            "draw.io graph contains an edge without semantic text"
+        )
     if len(label) > 120:
         raise DrawioImportError("draw.io edge label exceeds native representation limits")
     return label

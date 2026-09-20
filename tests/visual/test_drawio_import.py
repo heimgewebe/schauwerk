@@ -140,6 +140,13 @@ def test_decorative_unconnected_unlabelled_vertex_is_ignored() -> None:
     assert len(imported["nodes"]) == 2
 
 
+def test_rejects_unlabelled_edge_without_inventing_semantics() -> None:
+    source = MODEL.replace('value="verfügt über"', 'value=""')
+
+    with pytest.raises(DrawioImportError, match="edge without semantic text"):
+        drawio_xml_to_representation(source)
+
+
 def test_rejects_duplicate_mxcell_ids() -> None:
     duplicate = (
         '<mxCell id="resources" value="Doppelte Ressource" vertex="1" parent="1">'

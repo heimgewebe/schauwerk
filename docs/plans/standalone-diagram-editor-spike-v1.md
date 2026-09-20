@@ -116,12 +116,12 @@ Der Import bewahrt die für den nativen Schauwerk-Graphen benötigte Semantik:
 
 - beschriftete Vertex-Zellen werden zu Knoten;
 - direkte `value`-Labels und `object`-/`UserObject`-Labels werden als Text gelesen;
-- Kanten bewahren Quelle, Ziel und Label;
+- Kanten bewahren Quelle, Ziel und ein vorhandenes Label;
 - einfache Shape-Hinweise werden auf die vorhandenen Schauwerk-Knotenarten abgebildet;
 - unbeschriftete, unverbundene Dekoration darf entfallen;
-- verbundene unbeschriftete Knoten, unbekannte Kantenendpunkte, mehrere Seiten,
-  DTD/Entities und überschrittene Größen-/Komplexitätsbudgets werden fail-closed
-  abgelehnt.
+- unbeschriftete Kanten, verbundene unbeschriftete Knoten, unbekannte Kantenendpunkte,
+  mehrere Seiten, DTD/Entities und überschrittene Größen-/Komplexitätsbudgets werden
+  fail-closed abgelehnt.
 
 Nicht behauptet werden ein verlustfreier draw.io-Roundtrip, die Bewahrung exakter
 Koordinaten, Styles, HTML-Formatierung, Containersemantik oder Spezial-Shapes. Deshalb
