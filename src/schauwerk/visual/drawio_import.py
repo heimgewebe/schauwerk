@@ -221,6 +221,18 @@ def _cell_label(cell: ET.Element, parent_by_id: dict[int, ET.Element]) -> object
     return ""
 
 
+def _cell_identity(cell: ET.Element, parent_by_id: dict[int, ET.Element]) -> str | None:
+    cell_id = cell.get("id")
+    if cell_id:
+        return cell_id
+    parent = parent_by_id.get(id(cell))
+    if parent is not None and _local_name(parent.tag) in {"object", "UserObject"}:
+        wrapper_id = parent.get("id")
+        if wrapper_id:
+            return wrapper_id
+    return None
+
+
 def drawio_xml_to_representation(source: str, *, title: str | None = None) -> dict[str, Any]:
     """Convert one bounded draw.io graph page into the native semantic model.
 
@@ -243,8 +255,13 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
     edge_cells: list[ET.Element] = []
     seen_cell_ids: set[str] = set()
     for cell in cells:
-        cell_id = cell.get("id")
+        semantic_cell = cell.get("vertex") == "1" or cell.get("edge") == "1"
+        cell_id = _cell_identity(cell, parent_by_id)
         if not cell_id:
+            if semantic_cell:
+                raise DrawioImportError(
+                    "draw.io semantic mxCell requires an id on the cell or its object wrapper"
+                )
             continue
         if cell_id in seen_cell_ids:
             raise DrawioImportError(f"draw.io graph contains duplicate mxCell id: {cell_id}")
@@ -309,7 +326,7 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
         raise DrawioImportError("draw.io graph has no importable semantic nodes")
 
     edges: list[dict[str, str]] = []
-    for index, cell in enumerate(edge_cells):
+    for cell in edge_cells:
         source_id = cell.get("source")
         target_id = cell.get("target")
         if source_id is None and target_id is None:
@@ -318,7 +335,9 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
             raise DrawioImportError(
                 "draw.io edge references an unsupported or non-semantic vertex"
             )
-        original_id = cell.get("id") or f"edge-{index}"
+        original_id = _cell_identity(cell, parent_by_id)
+        if original_id is None:
+            raise DrawioImportError("draw.io semantic edge identity unexpectedly missing")
         edges.append(
             {
                 "id": _stable_id("edge", original_id),

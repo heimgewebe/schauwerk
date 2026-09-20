@@ -114,12 +114,12 @@ def test_rejects_compressed_diagram_with_trailing_payload_after_deflate_stream()
         drawio_xml_to_representation(source)
 
 
-def test_imports_object_wrapped_cell_label_and_shape_kind() -> None:
+def test_imports_object_wrapped_cell_label_shape_and_wrapper_identity() -> None:
     source = """<mxGraphModel><root>
     <mxCell id="0"/>
     <mxCell id="1" parent="0"/>
-    <object label="Entscheidung">
-      <mxCell id="d" style="rhombus;html=1;" vertex="1" parent="1">
+    <object id="d" label="Entscheidung">
+      <mxCell style="rhombus;html=1;" vertex="1" parent="1">
         <mxGeometry/>
       </mxCell>
     </object>
@@ -130,6 +130,25 @@ def test_imports_object_wrapped_cell_label_and_shape_kind() -> None:
     assert imported["nodes"][0]["kind"] == "decision"
 
 
+def test_object_wrapper_ids_are_used_for_edge_endpoints() -> None:
+    source = """<mxGraphModel><root>
+    <mxCell id="0"/><mxCell id="1" parent="0"/>
+    <object id="a" label="Ali">
+      <mxCell vertex="1" parent="1"><mxGeometry/></mxCell>
+    </object>
+    <object id="b" label="Ressourcen">
+      <mxCell vertex="1" parent="1"><mxGeometry/></mxCell>
+    </object>
+    <mxCell id="e" value="nutzt" edge="1" parent="1" source="a" target="b">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    </root></mxGraphModel>"""
+
+    imported = drawio_xml_to_representation(source)
+    assert [node["label"] for node in imported["nodes"]] == ["Ali", "Ressourcen"]
+    assert imported["edges"][0]["label"] == "nutzt"
+
+
 def test_decorative_unconnected_unlabelled_vertex_is_ignored() -> None:
     decoration = (
         '<mxCell id="decoration" value="" vertex="1" parent="1">'
@@ -138,6 +157,28 @@ def test_decorative_unconnected_unlabelled_vertex_is_ignored() -> None:
     source = MODEL.replace('<mxCell\n  id="relation"', decoration + '<mxCell\n  id="relation"')
     imported = drawio_xml_to_representation(source)
     assert len(imported["nodes"]) == 2
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        """<mxGraphModel><root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell value="Ali" vertex="1" parent="1"><mxGeometry/></mxCell>
+        </root></mxGraphModel>""",
+        """<mxGraphModel><root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="a" value="Ali" vertex="1" parent="1"><mxGeometry/></mxCell>
+        <mxCell id="b" value="Ressourcen" vertex="1" parent="1"><mxGeometry/></mxCell>
+        <mxCell value="nutzt" edge="1" parent="1" source="a" target="b">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        </root></mxGraphModel>""",
+    ],
+)
+def test_rejects_semantic_cell_without_cell_or_wrapper_id(source: str) -> None:
+    with pytest.raises(DrawioImportError, match="semantic mxCell requires an id"):
+        drawio_xml_to_representation(source)
 
 
 def test_rejects_unlabelled_edge_without_inventing_semantics() -> None:
