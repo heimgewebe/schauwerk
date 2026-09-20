@@ -100,6 +100,20 @@ def test_imports_standard_compressed_single_page_mxfile() -> None:
     validate_representation_input(imported)
 
 
+def test_rejects_compressed_diagram_with_trailing_payload_after_deflate_stream() -> None:
+    encoded = urllib.parse.quote(MODEL, safe="~()*!.'").encode("ascii")
+    compressor = zlib.compressobj(level=9, wbits=-15)
+    payload = compressor.compress(encoded) + compressor.flush() + b"trailing"
+    source = (
+        '<mxfile><diagram name="Ali">'
+        + base64.b64encode(payload).decode("ascii")
+        + "</diagram></mxfile>"
+    )
+
+    with pytest.raises(DrawioImportError, match="ambiguous DEFLATE boundary"):
+        drawio_xml_to_representation(source)
+
+
 def test_imports_object_wrapped_cell_label_and_shape_kind() -> None:
     source = """<mxGraphModel><root>
     <mxCell id="0"/>
@@ -124,6 +138,38 @@ def test_decorative_unconnected_unlabelled_vertex_is_ignored() -> None:
     source = MODEL.replace('<mxCell\n  id="relation"', decoration + '<mxCell\n  id="relation"')
     imported = drawio_xml_to_representation(source)
     assert len(imported["nodes"]) == 2
+
+
+def test_rejects_duplicate_mxcell_ids() -> None:
+    duplicate = (
+        '<mxCell id="resources" value="Doppelte Ressource" vertex="1" parent="1">'
+        "<mxGeometry/></mxCell>"
+    )
+    source = MODEL.replace("</root>", duplicate + "</root>")
+
+    with pytest.raises(DrawioImportError, match="duplicate mxCell id: resources"):
+        drawio_xml_to_representation(source)
+
+
+@pytest.mark.parametrize(
+    "container_source",
+    [
+        """<mxGraphModel><root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="group" value="Gruppe" vertex="1" parent="1"><mxGeometry/></mxCell>
+        <mxCell id="child" value="Kind" vertex="1" parent="group"><mxGeometry/></mxCell>
+        </root></mxGraphModel>""",
+        """<mxGraphModel><root>
+        <mxCell id="0"/><mxCell id="1" parent="0"/>
+        <mxCell id="lane" value="Swimlane" style="swimlane;" vertex="1" parent="1">
+          <mxGeometry/>
+        </mxCell>
+        </root></mxGraphModel>""",
+    ],
+)
+def test_rejects_nested_or_container_vertex_semantics(container_source: str) -> None:
+    with pytest.raises(DrawioImportError, match="nested/container semantics"):
+        drawio_xml_to_representation(container_source)
 
 
 @pytest.mark.parametrize(

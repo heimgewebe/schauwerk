@@ -86,6 +86,8 @@ def _inflate_diagram_payload(payload: str) -> str:
         raise DrawioImportError("draw.io compressed diagram cannot be inflated") from exc
     if len(inflated) > MAX_DRAWIO_SOURCE_BYTES:
         raise DrawioImportError("draw.io inflated diagram exceeds 5 MiB")
+    if not decoder.eof or decoder.unused_data:
+        raise DrawioImportError("draw.io compressed diagram has an ambiguous DEFLATE boundary")
     try:
         encoded_xml = inflated.decode("ascii")
         xml_bytes = urllib.parse.unquote_to_bytes(encoded_xml)
@@ -237,10 +239,14 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
 
     vertex_cells: dict[str, ET.Element] = {}
     edge_cells: list[ET.Element] = []
+    seen_cell_ids: set[str] = set()
     for cell in cells:
         cell_id = cell.get("id")
         if not cell_id:
             continue
+        if cell_id in seen_cell_ids:
+            raise DrawioImportError(f"draw.io graph contains duplicate mxCell id: {cell_id}")
+        seen_cell_ids.add(cell_id)
         if cell.get("vertex") == "1":
             vertex_cells[cell_id] = cell
         elif cell.get("edge") == "1":
@@ -248,6 +254,22 @@ def drawio_xml_to_representation(source: str, *, title: str | None = None) -> di
 
     if len(vertex_cells) > MAX_DRAWIO_NODES or len(edge_cells) > MAX_DRAWIO_EDGES:
         raise DrawioImportError("draw.io graph exceeds native import complexity limits")
+
+    for source_id, cell in vertex_cells.items():
+        parent_id = cell.get("parent")
+        style = _style_map(cell.get("style"))
+        shape = style.get("shape", "")
+        uses_container_semantics = (
+            parent_id in vertex_cells
+            or style.get("container") == "1"
+            or "swimlane" in style
+            or "swimlane" in shape
+        )
+        if uses_container_semantics:
+            raise DrawioImportError(
+                f"draw.io vertex {source_id} uses nested/container semantics "
+                "outside the native import subset"
+            )
 
     connected_ids: set[str] = set()
     for edge in edge_cells:

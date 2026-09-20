@@ -925,6 +925,7 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
     assert "RUN chmod -R a=rX /app/src" in dockerfile
     for required in (
         "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/representation.py",
