@@ -1,0 +1,62 @@
+{
+  "accepted_at": "2026-09-20",
+  "browser_acceptance": {
+    "audit_outcome_sha256": "ab4450556361ef5e119d420a50686a7b6387a69b9d3493d6a9da4edb79af7cd4",
+    "explicit_legacy_action_observed": true,
+    "legacy_default_editor_observed": false,
+    "observed_controls": [
+      "Verkleinern",
+      "Vergrößern",
+      "Einpassen",
+      "Layout zurücksetzen"
+    ],
+    "observed_nodes": [
+      "Fallbeispiel: Ali",
+      "5. Ressourcen"
+    ],
+    "profile": "provider-operator"
+  },
+  "checks": {
+    "bounded_drawio_graph_import_passed": true,
+    "drawio_routes_native_before_legacy": true,
+    "explicit_legacy_edit_escape_hatch_present": true,
+    "focused_editor_and_import_tests_passed": true,
+    "generated_app_js_module_syntax_passed": true,
+    "historical_runtime_acceptance_left_immutable": true,
+    "managed_browser_ali_native_acceptance_passed": true,
+    "native_import_http_post_and_viewer_get_passed": true,
+    "original_drawio_xml_preserved_for_legacy_and_export": true,
+    "ruff_changed_scope_passed": true,
+    "standard_compressed_drawio_import_passed": true,
+    "unsupported_or_unsafe_drawio_fails_closed": true
+  },
+  "does_not_establish": [
+    "lossless draw.io roundtrip",
+    "draw.io exact geometry or style preservation",
+    "general multi-page draw.io native import",
+    "native semantic editing",
+    "removal of the explicit diagrams.net legacy compatibility path",
+    "GHCR publication of this revision",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "90e885ede0b3473d64d02d8f05d65f01e2569bda8154ac49cdaf289ffb903778",
+  "functional_head": "d3d1c198d68967855c4a9b14bc827239de3b24eb",
+  "parent_evidence": {
+    "evidence_digest": "c61abe8fa124c82b37ffaf292b893b6d371ab46af4d77e4205e0a26b9c1b6cb9",
+    "file_sha256": "53d0404a6c64128df1109b26e0d085b07923b77af98317344d670e599187e5dd",
+    "path": "docs/operators/evidence/schaubild-native-runtime-20260918/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-runtime.v1"
+  },
+  "schema_version": "schauwerk-schaubild-drawio-native-first.v1",
+  "scope": "drawio-native-first-with-explicit-legacy-fallback",
+  "source_bindings": {
+    "docs/plans/standalone-diagram-editor-spike-v1.md": "616ccb17ec2f512b3e2d27245340e79c4d338597c62577463630b3ce219af380",
+    "src/schauwerk/resources/standalone_editor/assets.py": "9ddbff954aa8bc08ed656ff76d6be35a520a562d8a3150bdedbfdaef7645c857",
+    "src/schauwerk/visual/drawio_import.py": "c31ac7930a845e08f14e407ce0ebd6ed27833fb140ec81531779515751051f24",
+    "src/schauwerk/visual/standalone_editor.py": "69f467fac6ccc24c641be6476f3d9d675d9d1e2e5489259a17b7cc6255774db6",
+    "tests/visual/test_drawio_import.py": "a705bbf15c438e4172940bd77b72c834280918e47f415aaf167147cd7177ed17",
+    "tests/visual/test_standalone_editor.py": "5531cb03b854fbc8ef11a26b8b8884d4c743a3cc546019e285f33c5da2695654",
+    "tests/visual/test_standalone_editor_defaults.py": "d67d89fdf4b87b0f92665c47644e72bc84eda3c3e233781d7b350bf0305e04bd"
+  }
+}
