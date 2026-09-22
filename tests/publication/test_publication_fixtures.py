@@ -361,7 +361,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "e4d77f96387e535c797f127884fb2b25fee0dce9"
+    assert editor_successor["functional_head"] == "82580f61a45df554be8bbe77e859fcec2d3afe7c"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
