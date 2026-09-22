@@ -336,4 +336,3 @@ def normalize_editing_document(document: Mapping[str, Any]) -> dict[str, Any]:
     normalized["input_digest"] = source_digest
     normalized["source_digest"] = source_digest
     return normalized
-
