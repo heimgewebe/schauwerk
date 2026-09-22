@@ -1066,7 +1066,17 @@ function launchLegacy(load) {
   });
 }
 
+function nativeTokenFromUrl(value) {
+  const nativeUrl = String(value || "");
+  const prefix = `${PUBLIC_BASE_PATH}/native/`;
+  const suffix = "/index.html";
+  if (!nativeUrl.startsWith(prefix) || !nativeUrl.endsWith(suffix)) return "";
+  const token = nativeUrl.slice(prefix.length, -suffix.length);
+  return /^[0-9a-f]{32}$/.test(token) ? token : "";
+}
+
 async function launchNative(load) {
+  const supersedeToken = nativeTokenFromUrl(currentNativeUrl);
   const loadIntent = invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
@@ -1088,21 +1098,18 @@ async function launchNative(load) {
   setStatus("Nativer Renderer wird geladen …");
 
   try {
+    const headers = { "Content-Type": "application/json" };
+    if (supersedeToken) headers["X-Schauwerk-Native-Supersede"] = supersedeToken;
     const response = await fetch(NATIVE_API_PATH, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(currentRepresentation || currentNativeDocument || load.nativeImport),
     });
     const result = await response.json();
     if (loadIntent !== loadIntentGeneration) return;
     if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
     const nativeUrl = String(result?.url || "");
-    const nativePrefix = `${PUBLIC_BASE_PATH}/native/`;
-    const nativeSuffix = "/index.html";
-    const nativeToken =
-      nativeUrl.startsWith(nativePrefix) && nativeUrl.endsWith(nativeSuffix)
-        ? nativeUrl.slice(nativePrefix.length, -nativeSuffix.length)
-        : "";
+    const nativeToken = nativeTokenFromUrl(nativeUrl);
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
@@ -1211,6 +1218,26 @@ async function openFile(file) {
   }
 }
 
+function serializeNativeFrameSvg() {
+  try {
+    const svg = elements.frame.contentDocument?.querySelector("#nativeDiagram");
+    if (
+      !svg ||
+      svg.namespaceURI !== "http://www.w3.org/2000/svg" ||
+      svg.localName !== "svg"
+    ) {
+      return null;
+    }
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + new XMLSerializer().serializeToString(clone)
+      + "\n";
+  } catch (_) {
+    return null;
+  }
+}
+
 async function exportNative(format) {
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Native Darstellung ist noch nicht bereit");
@@ -1252,6 +1279,20 @@ async function exportNative(format) {
   }
   if (format !== "svg") {
     setStatus("Native Exportart wird nicht unterstützt");
+    return;
+  }
+  if (currentNativeCanvas) {
+    const liveSvg = serializeNativeFrameSvg();
+    if (liveSvg === null) {
+      setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
+      return;
+    }
+    prepareDownload(
+      new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" }),
+      safeFilename(currentTitle) + ".svg",
+      "SVG",
+    );
+    setStatus("SVG aus aktuellem Canvas-Dokument bereit");
     return;
   }
   const assetUrl = currentNativeUrl.replace(/index\.html$/, "diagram.svg");

@@ -109,6 +109,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert helper_js.count("fontSize=${fontSize}") >= 2
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
+    assert 'headers["X-Schauwerk-Native-Supersede"] = supersedeToken' in app_js
+    assert 'querySelector("#nativeDiagram")' in app_js
+    assert "SVG aus aktuellem Canvas-Dokument bereit" in app_js
+    assert "Aktuelle SVG-Ausgabe konnte nicht gelesen werden" in app_js
     assert "maxFitScale: 1" in app_js
     assert re.search(
         r'^import \{[^}]*\bREADABILITY_ZOOM_FACTOR\b[^}]*\} from "\./canvas-import\.js";$',
@@ -928,6 +932,7 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
         "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/representation.py",
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
@@ -1499,6 +1504,129 @@ def test_trusted_proxy_rejects_unallowlisted_peer_and_cross_client_capability(
         allowed_server.shutdown()
         allowed_server.server_close()
         allowed_thread.join(timeout=5)
+
+
+
+
+def test_trusted_proxy_native_supersede_allows_sequential_rebuilds(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output, public_base_path="/schaubild")
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    handler_class = type(
+        "SupersedeProxyEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+            "trusted_proxy_networks": (ipaddress.ip_network("127.0.0.0/8"),),
+        },
+    )
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(handler_class, directory=str(output)),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    client = "203.0.113.77"
+    previous_token = ""
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(server.server_address[1]), timeout=5
+        )
+        for index in range(6):
+            value = _golden_representation("decision-flow-v1.json")
+            value["id"] = f"supersede_flow_{index}"
+            payload = json.dumps(value).encode("utf-8")
+            headers = {
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+                "X-Forwarded-For": client,
+            }
+            if previous_token:
+                headers[standalone_editor.NATIVE_SUPERSEDE_HEADER] = previous_token
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers=headers,
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200, body
+            match = re.search(r"/native/([0-9a-f]{32})/index\.html$", str(body["url"]))
+            assert match is not None
+            token = match.group(1)
+            if previous_token:
+                previous = standalone_editor._native_cache_by_token(output, previous_token)
+                if previous is not None:
+                    assert previous.pin_leases.get(client, 0.0) <= time.monotonic()
+            previous_token = token
+
+            pinned = [
+                record
+                for record in standalone_editor._native_cache_records(output)
+                if record.pin_leases.get(client, 0.0) > time.monotonic()
+            ]
+            assert len(pinned) == 1
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_native_supersede_cannot_release_foreign_client_and_old_bundle_can_repin(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    client_a = "198.51.100.10"
+    client_b = "198.51.100.20"
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(normalized["input_digest"]),
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_a,
+    )
+    assert created is True
+
+    assert (
+        standalone_editor._release_native_superseded_lease(
+            output,
+            token=record.token,
+            admission_key=client_b,
+            next_digest="f" * 64,
+        )
+        is False
+    )
+    assert record.pin_leases[client_a] > time.monotonic()
+
+    assert (
+        standalone_editor._release_native_superseded_lease(
+            output,
+            token=record.token,
+            admission_key=client_a,
+            next_digest="f" * 64,
+        )
+        is True
+    )
+    assert record.pin_leases.get(client_a, 0.0) <= time.monotonic()
+
+    standalone_editor._pin_native_cache_record(
+        output,
+        record,
+        admission_key=client_a,
+    )
+    assert record.pin_leases[client_a] > time.monotonic()
 
 
 def test_native_build_admission_limits_one_client_before_renderer_work(

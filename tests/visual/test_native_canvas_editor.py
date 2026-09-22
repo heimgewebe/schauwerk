@@ -144,6 +144,8 @@ def test_standalone_shell_routes_json_canvas_to_native_document_not_drawio(
     assert "jsonCanvasToDrawioXml" not in canvas_branch
     assert "native-document-change" in app_js
     assert "native-document-rebuild" in app_js
+    assert "X-Schauwerk-Native-Supersede" in app_js
+    assert "serializeNativeFrameSvg" in app_js
     assert 'safeFilename(currentTitle) + ".canvas"' in app_js
     assert "json-canvas-1.0" in manifest["native_renderer"]["supported_inputs"]
     assert "json-canvas-1.0" in manifest["native_renderer"]["supported_outputs"]

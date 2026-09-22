@@ -45,6 +45,7 @@ MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
 NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
+NATIVE_SUPERSEDE_HEADER: Final = "X-Schauwerk-Native-Supersede"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
 MAX_NATIVE_GROUPS: Final = 32
 MAX_NATIVE_NODES: Final = 128
@@ -1047,6 +1048,37 @@ def _abandon_native_cache_record(
         # this request's failed response.
 
 
+def _release_native_superseded_lease(
+    root: Path,
+    *,
+    token: str,
+    admission_key: str,
+    next_digest: str,
+) -> bool:
+    if not token:
+        return False
+    with _NATIVE_CACHE_LOCK:
+        record = _native_cache_by_token(root, token)
+        if record is None or record.digest == next_digest:
+            return False
+        now = time.monotonic()
+        _refresh_native_record_pin_state(record, now=now)
+        if record.max_pinned_until <= now:
+            return False
+        if (
+            admission_key != record.admission_key
+            and record.pin_leases.get(admission_key, 0.0) <= now
+        ):
+            return False
+        record.pin_leases.pop(admission_key, None)
+        record.last_access = now
+        _refresh_native_record_pin_state(record, now=now)
+        window = _NATIVE_PIN_WINDOWS.get((_native_root_key(root), record.digest))
+        if window is not None:
+            window.admission_keys.discard(admission_key)
+        return True
+
+
 def _build_native_cache_record(
     root: Path,
     *,
@@ -1551,6 +1583,13 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 },
             )
             return
+        supersede_token = self.headers.get(NATIVE_SUPERSEDE_HEADER, "").strip()
+        if supersede_token and re.fullmatch(r"[0-9a-f]{32}", supersede_token) is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "invalid native supersede token"},
+            )
+            return
         media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
         if media_type != "application/json":
             self._send_json(
@@ -1612,6 +1651,12 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 }
             )
             root = Path(self.directory).resolve()
+            _release_native_superseded_lease(
+                root,
+                token=supersede_token,
+                admission_key=admission_key,
+                next_digest=cache_digest,
+            )
             record, created = _build_native_cache_record(
                 root,
                 digest=cache_digest,
