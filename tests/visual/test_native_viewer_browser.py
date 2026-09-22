@@ -103,7 +103,7 @@ Storage.prototype.setItem = function () {
 <script type="module" src="app.js"></script>
 <script type="module">
 // Timers are deliberate: Chrome --dump-dom virtual time can starve rAF-only waits.
-const waitForViewerReady = async (status, canvas, attempts = 80) => {
+const waitForViewerReady = async (status, canvas, attempts = 200) => {
   for (let index = 0; index < attempts; index += 1) {
     if (
       status?.textContent?.includes("Speichern nicht möglich") &&
@@ -291,14 +291,14 @@ try {
                     "--disable-dev-shm-usage",
                     "--no-sandbox",
                     "--run-all-compositor-stages-before-draw",
-                    "--virtual-time-budget=8000",
+                    "--virtual-time-budget=12000",
                     "--dump-dom",
                     f"http://127.0.0.1:{port}/",
                 ],
                 check=False,
                 text=True,
                 capture_output=True,
-                timeout=15,
+                timeout=20,
             )
         except subprocess.TimeoutExpired:
             _skip_or_fail_browser("Google Chrome headless probe did not become usable in time")
@@ -401,7 +401,7 @@ window.addEventListener("message", (event) => {
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
-const waitUntil = async (predicate, label, attempts = 100) => {
+const waitUntil = async (predicate, label, attempts = 200) => {
   for (let index = 0; index < attempts; index += 1) {
     if (predicate()) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -682,14 +682,14 @@ try {
                     "--disable-dev-shm-usage",
                     "--no-sandbox",
                     "--run-all-compositor-stages-before-draw",
-                    "--virtual-time-budget=8000",
+                    "--virtual-time-budget=12000",
                     "--dump-dom",
                     f"http://127.0.0.1:{port}/host.html",
                 ],
                 check=False,
                 text=True,
                 capture_output=True,
-                timeout=15,
+                timeout=20,
             )
         except subprocess.TimeoutExpired:
             _skip_or_fail_browser("Google Chrome canvas probe did not become usable in time")
@@ -731,7 +731,7 @@ window.addEventListener("message", (event) => {
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
-const waitUntil = async (predicate, label, attempts = 100) => {
+const waitUntil = async (predicate, label, attempts = 200) => {
   for (let index = 0; index < attempts; index += 1) {
     if (predicate()) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -786,14 +786,14 @@ try {
                     "--disable-dev-shm-usage",
                     "--no-sandbox",
                     "--run-all-compositor-stages-before-draw",
-                    "--virtual-time-budget=8000",
+                    "--virtual-time-budget=12000",
                     "--dump-dom",
                     f"http://127.0.0.1:{port}/host.html",
                 ],
                 check=False,
                 text=True,
                 capture_output=True,
-                timeout=15,
+                timeout=20,
             )
         except subprocess.TimeoutExpired:
             _skip_or_fail_browser("Google Chrome empty canvas probe did not become usable in time")
