@@ -742,6 +742,27 @@ function nodeBoundsInSvg(node) {
   };
 }
 
+function mergeSvgBounds(left, right) {
+  if (!left) return right;
+  if (!right) return left;
+  return {
+    minX: Math.min(left.minX, right.minX),
+    maxX: Math.max(left.maxX, right.maxX),
+    minY: Math.min(left.minY, right.minY),
+    maxY: Math.max(left.maxY, right.maxY),
+  };
+}
+
+function incidentEdgeBoundsInSvg(sourceId) {
+  let combined = null;
+  for (const edgeId of incidentEdges.get(sourceId) || []) {
+    const edgeState = edges.get(edgeId);
+    const bounds = edgeState?.element ? nodeBoundsInSvg(edgeState.element) : null;
+    if (bounds) combined = mergeSvgBounds(combined, bounds);
+  }
+  return combined;
+}
+
 function liveBounds(sourceId) {
   const node = nodes.get(sourceId);
   const bounds = node ? nodeBoundsInSvg(node) : null;
@@ -801,16 +822,7 @@ function updateIncidentEdges(sourceId) {
   for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
 }
 
-function constrainNodeToCanvas(sourceId) {
-  const node = nodes.get(sourceId);
-  if (!node) return false;
-  const bounds = nodeBoundsInSvg(node);
-  const box = svg.viewBox.baseVal;
-  if (!bounds || !(box.width > 0) || !(box.height > 0)) return false;
-  const width = bounds.maxX - bounds.minX;
-  const height = bounds.maxY - bounds.minY;
-  if (width > box.width + BOUNDS_EPSILON || height > box.height + BOUNDS_EPSILON) return false;
-
+function constrainBoundsOffset(sourceId, bounds, box) {
   let shiftX = 0;
   let shiftY = 0;
   if (bounds.minX < box.x - BOUNDS_EPSILON) shiftX = box.x - bounds.minX;
@@ -827,6 +839,47 @@ function constrainNodeToCanvas(sourceId) {
   overrides = updateNodeOffset(overrides, sourceId, current.x + shiftX, current.y + shiftY);
   applyNodeTransform(sourceId);
   return true;
+}
+
+function constrainNodeToCanvas(sourceId) {
+  const node = nodes.get(sourceId);
+  if (!node) return false;
+  const box = svg.viewBox.baseVal;
+  if (!(box.width > 0) || !(box.height > 0)) return false;
+
+  let nodeBounds = nodeBoundsInSvg(node);
+  if (!nodeBounds) return false;
+  const nodeWidth = nodeBounds.maxX - nodeBounds.minX;
+  const nodeHeight = nodeBounds.maxY - nodeBounds.minY;
+  if (
+    nodeWidth > box.width + BOUNDS_EPSILON ||
+    nodeHeight > box.height + BOUNDS_EPSILON
+  ) {
+    return false;
+  }
+
+  let changed = constrainBoundsOffset(sourceId, nodeBounds, box);
+  if (changed) nodeBounds = nodeBoundsInSvg(node) || nodeBounds;
+
+  const incidentBounds = incidentEdgeBoundsInSvg(sourceId);
+  const combined = mergeSvgBounds(nodeBounds, incidentBounds);
+  if (!combined) return changed;
+  const width = combined.maxX - combined.minX;
+  const height = combined.maxY - combined.minY;
+  if (width > box.width + BOUNDS_EPSILON || height > box.height + BOUNDS_EPSILON) {
+    const current = nodeOffset(overrides, sourceId);
+    if (
+      Math.abs(current.x) > BOUNDS_EPSILON ||
+      Math.abs(current.y) > BOUNDS_EPSILON
+    ) {
+      overrides = updateNodeOffset(overrides, sourceId, 0, 0);
+      applyNodeTransform(sourceId);
+      return true;
+    }
+    return changed;
+  }
+
+  return constrainBoundsOffset(sourceId, combined, box) || changed;
 }
 
 function constrainAllNodesToCanvas() {

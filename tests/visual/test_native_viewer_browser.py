@@ -195,6 +195,10 @@ try {
   firePointer(viewport, "pointermove", 11, nodeX - 2000, nodeY);
   const clampedRect = node.getBoundingClientRect();
   if (!insideSvg(node, svg)) throw new Error("dragged node escaped SVG bounds");
+  if (!insideSvg(edgePath, svg)) throw new Error("dragged incident edge escaped SVG bounds");
+  if (!insideSvg(edgeLabelRect, svg)) {
+    throw new Error("dragged incident edge label escaped SVG bounds");
+  }
   if ((edgePath.getAttribute("d") || "") === baseEdgePath) {
     throw new Error("incident edge path did not update during node drag");
   }
@@ -211,6 +215,10 @@ try {
     throw new Error("clamped node stayed sticky after reversing the active drag");
   }
   if (!insideSvg(node, svg)) throw new Error("reversed node escaped SVG bounds");
+  if (!insideSvg(edgePath, svg)) throw new Error("reversed incident edge escaped SVG bounds");
+  if (!insideSvg(edgeLabelRect, svg)) {
+    throw new Error("reversed incident edge label escaped SVG bounds");
+  }
   firePointer(viewport, "pointerup", 11, nodeX - 1950, nodeY);
 
   const storageKeys = Object.keys(localStorage).filter(

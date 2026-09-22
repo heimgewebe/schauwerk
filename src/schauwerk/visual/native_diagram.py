@@ -3458,6 +3458,45 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
     lines.append("</defs>")
 
+    def append_canvas_node(node: Mapping[str, Any]) -> None:
+        node_type = str(node["type"])
+        raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
+        fill, stroke = _canvas_color(raw.get("color"))
+        if node_type == "group":
+            fill = "#f8fafc"
+        x = int(node["x"])
+        y = int(node["y"])
+        width = int(node["width"])
+        height = int(node["height"])
+        label = str(node.get("label", ""))
+        lines.append(
+            f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
+            f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
+            f'data-canvas-type="{_canvas_xml(node_type)}">'
+        )
+        lines.append(f"<title>{_canvas_xml(label)}</title>")
+        dash = ' stroke-dasharray="8 6"' if node_type == "group" else ""
+        fill_opacity = "0.28" if node_type == "group" else "1"
+        lines.append(
+            f'<rect x="{x}" y="{y}" width="{width}" height="{height}" rx="12" '
+            f'fill="{fill}" fill-opacity="{fill_opacity}" stroke="{stroke}" '
+            f'stroke-width="1.8"{dash}/>'
+        )
+        text_x = x + 14
+        text_y = y + 28
+        for line_index, line in enumerate(_canvas_wrap(label, width - 28, height - 24)):
+            weight = "700" if line_index == 0 or node_type == "group" else "500"
+            lines.append(
+                f'<text data-node-label="true" x="{text_x}" '
+                f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
+                f'font-size="16" font-weight="{weight}" fill="#172033">{_canvas_xml(line)}</text>'
+            )
+        lines.append("</g>")
+
+    for node in nodes:
+        if str(node["type"]) == "group":
+            append_canvas_node(node)
+
     for (
         index,
         edge,
@@ -3519,39 +3558,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         lines.append("</g>")
 
     for node in nodes:
-        node_type = str(node["type"])
-        raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
-        fill, stroke = _canvas_color(raw.get("color"))
-        if node_type == "group":
-            fill = "#f8fafc"
-        x = int(node["x"])
-        y = int(node["y"])
-        width = int(node["width"])
-        height = int(node["height"])
-        label = str(node.get("label", ""))
-        lines.append(
-            f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
-            f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
-            f'data-canvas-type="{_canvas_xml(node_type)}">'
-        )
-        lines.append(f"<title>{_canvas_xml(label)}</title>")
-        dash = ' stroke-dasharray="8 6"' if node_type == "group" else ""
-        fill_opacity = "0.28" if node_type == "group" else "1"
-        lines.append(
-            f'<rect x="{x}" y="{y}" width="{width}" height="{height}" rx="12" '
-            f'fill="{fill}" fill-opacity="{fill_opacity}" stroke="{stroke}" '
-            f'stroke-width="1.8"{dash}/>'
-        )
-        text_x = x + 14
-        text_y = y + 28
-        for line_index, line in enumerate(_canvas_wrap(label, width - 28, height - 24)):
-            weight = "700" if line_index == 0 or node_type == "group" else "500"
-            lines.append(
-                f'<text data-node-label="true" x="{text_x}" '
-                f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
-                f'font-size="16" font-weight="{weight}" fill="#172033">{_canvas_xml(line)}</text>'
-            )
-        lines.append("</g>")
+        if str(node["type"]) != "group":
+            append_canvas_node(node)
 
     lines.append("</svg>")
     return "\n".join(lines) + "\n"

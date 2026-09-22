@@ -378,6 +378,58 @@ def test_native_document_viewbox_contains_outward_routed_edge_controls() -> None
 
 
 
+
+def test_native_document_groups_render_below_edges_and_ordinary_nodes() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "group",
+                "type": "group",
+                "x": -40,
+                "y": -40,
+                "width": 520,
+                "height": 220,
+                "label": "Bereich",
+            },
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 300,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "e",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": "A nach B",
+            }
+        ],
+    }
+    svg = render_native_editing_document(
+        json_canvas_to_editing_document(source, title="Layering")
+    )
+
+    group_index = svg.index('id="native-node-group"')
+    edge_index = svg.index('id="native-edge-e"')
+    node_index = svg.index('id="native-node-a"')
+    assert group_index < edge_index < node_index
+
+
+
 def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
     source = {
         "nodes": [
