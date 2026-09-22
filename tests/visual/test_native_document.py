@@ -183,6 +183,27 @@ def test_native_document_renderer_uses_canvas_bounds_and_edge_endpoints() -> Non
     assert path.attrib["marker-end"] == "url(#canvas-arrow-0)"
     assert edge.attrib["data-route"] == "canvas-cubic"
 
+
+
+def test_native_document_source_arrow_uses_start_aware_marker_direction() -> None:
+    source = copy.deepcopy(_canvas())
+    source["edges"][0]["fromEnd"] = "arrow"
+    source["edges"][0]["toEnd"] = "none"
+    document = json_canvas_to_editing_document(source, title="Source arrow")
+    root = ET.fromstring(render_native_editing_document(document))
+
+    marker = next(root.iter(f"{SVG_NS}marker"))
+    assert marker.attrib["orient"] == "auto-start-reverse"
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "e1"
+    )
+    path = next(child for child in edge if child.tag == f"{SVG_NS}path")
+    assert path.attrib["marker-start"] == "url(#canvas-arrow-0)"
+    assert "marker-end" not in path.attrib
+
+
 def test_empty_json_canvas_roundtrips_and_renders_editable_workspace() -> None:
     document = json_canvas_to_editing_document({}, title="Leer")
     assert editing_document_to_json_canvas(document) == {}

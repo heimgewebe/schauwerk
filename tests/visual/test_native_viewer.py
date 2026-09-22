@@ -172,7 +172,9 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         'if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;'
         in app
     )
-    assert "if (documentMode)" in app
+    assert "const documentEditorHosted = documentMode && window.parent !== window;" in app
+    assert "if (documentEditorHosted)" in app
+    assert "Dokumentansicht · Bearbeiten im Schaubild-Host" in app
     assert "else if (persistOverrides())" in app
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app

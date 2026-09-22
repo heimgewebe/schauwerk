@@ -547,6 +547,7 @@ if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
   throw new Error("Native viewer embedded model is incomplete");
 }
 const documentMode = sourceModel.schema_version === "schauwerk-native-editing-document.v1";
+const documentEditorHosted = documentMode && window.parent !== window;
 
 const inputDigest = svg.dataset.inputDigest || "";
 if (!/^[0-9a-f]{64}$/.test(inputDigest)) {
@@ -669,7 +670,7 @@ function canvasFromDocument(document) {
 }
 
 function publishDocumentState(eventName = "native-document-change", document = documentSnapshot()) {
-  if (!documentMode || !document) return;
+  if (!documentEditorHosted || !document) return;
   const canvasState = canvasFromDocument(document);
   if (!canvasState) return;
   window.parent.postMessage(
@@ -679,7 +680,7 @@ function publishDocumentState(eventName = "native-document-change", document = d
 }
 
 function rebuildDocument(document) {
-  if (!documentMode || !document) return;
+  if (!documentEditorHosted || !document) return;
   sourceModel = document;
   overrides = Object.create(null);
   publishDocumentState("native-document-rebuild", document);
@@ -1039,7 +1040,7 @@ viewport.addEventListener("pointerdown", (event) => {
 
   if (node) {
     const sourceId = node.dataset.sourceId;
-    if (documentMode && edgeReattach && sourceId) {
+    if (documentEditorHosted && edgeReattach && sourceId) {
       const document = documentSnapshot();
       const edgeItem = document.edges.find(
         (item) => String(item.id) === edgeReattach.edgeId,
@@ -1056,7 +1057,7 @@ viewport.addEventListener("pointerdown", (event) => {
       rebuildDocument(document);
       return;
     }
-    if (documentMode && edgeCreateSource && sourceId && sourceId !== edgeCreateSource) {
+    if (documentEditorHosted && edgeCreateSource && sourceId) {
       const document = documentSnapshot();
       const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
       document.edges.push({
@@ -1161,9 +1162,11 @@ function finishPointer(event) {
   if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
     if (endedGesture.moved) {
-      if (documentMode) {
+      if (documentEditorHosted) {
         publishDocumentState();
         setStatus("Dokumentposition geändert · Kanten live geroutet");
+      } else if (documentMode) {
+        setStatus("Layout lokal verändert · Dokument unverändert");
       } else if (persistOverrides()) {
         setStatus("Layout lokal gesichert · Semantik unverändert");
       }
@@ -1209,7 +1212,7 @@ viewport.addEventListener("wheel", (event) => {
 }, { passive: false });
 
 function openTextEditor() {
-  if (!documentMode || !(textDialog instanceof HTMLDialogElement) || !(textInput instanceof HTMLTextAreaElement)) return;
+  if (!documentEditorHosted || !(textDialog instanceof HTMLDialogElement) || !(textInput instanceof HTMLTextAreaElement)) return;
   const document = documentSnapshot();
   const item = selectedId
     ? document.nodes.find((node) => String(node.id) === selectedId)
@@ -1225,7 +1228,7 @@ function openTextEditor() {
 }
 
 function deleteSelection() {
-  if (!documentMode) return;
+  if (!documentEditorHosted) return;
   const document = documentSnapshot();
   if (selectedId) {
     document.nodes = document.nodes.filter((node) => String(node.id) !== selectedId);
@@ -1242,7 +1245,7 @@ function deleteSelection() {
   rebuildDocument(document);
 }
 
-if (documentMode) {
+if (documentEditorHosted) {
   for (const control of [
     addNodeButton,
     addEdgeButton,
@@ -1329,6 +1332,9 @@ if (documentMode) {
       openTextEditor();
     });
   }
+} else if (documentMode) {
+  if (interactionHint) interactionHint.textContent = "Pan · Zoom · Auswahl · Layout lokal";
+  if (authorityHint) authorityHint.textContent = "Dokumentansicht · Bearbeiten im Schaubild-Host";
 }
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));
@@ -1340,9 +1346,11 @@ resetLayout.addEventListener("click", () => {
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* no persistence */ }
   }
   applyAllNodeTransforms();
-  if (documentMode) {
+  if (documentEditorHosted) {
     publishDocumentState();
     setStatus("Dokumentlayout auf geladene Geometrie zurückgesetzt");
+  } else if (documentMode) {
+    setStatus("Lokales Layout zurückgesetzt · Dokument unverändert");
   } else {
     setStatus("Lokales Layout zurückgesetzt · Semantik unverändert");
   }
@@ -1355,7 +1363,7 @@ requestAnimationFrame(() => {
   const repaired = constrainAllNodesToCanvas();
   const repairPersisted = !repaired || persistOverrides();
   fit({ announce: repairPersisted });
-  if (documentMode) publishDocumentState();
+  if (documentEditorHosted) publishDocumentState();
 });
 """
 

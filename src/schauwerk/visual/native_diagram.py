@@ -591,7 +591,8 @@ def _marker_definitions() -> list[str]:
         lines.extend(
             (
                 f'<marker id="native-arrow-{kind}" viewBox="0 0 8 8" refX="7" refY="4" '
-                'markerWidth="6" markerHeight="6" orient="auto" markerUnits="strokeWidth">',
+                'markerWidth="6" markerHeight="6" orient="auto" '
+                'markerUnits="strokeWidth">',
                 f'<path d="M 0 0 L 8 4 L 0 8 L 2 4 Z" fill="{color}"/>',
                 "</marker>",
             )
@@ -3373,7 +3374,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             [
                 (
                     f'<marker id="canvas-arrow-{index}" viewBox="0 0 8 8" refX="7" refY="4" '
-                    'markerWidth="6" markerHeight="6" orient="auto" markerUnits="strokeWidth">'
+                    'markerWidth="6" markerHeight="6" orient="auto-start-reverse" '
+                    'markerUnits="strokeWidth">'
                 ),
                 f'<path d="M 0 0 L 8 4 L 0 8 L 2 4 Z" fill="{stroke}"/>',
                 "</marker>",

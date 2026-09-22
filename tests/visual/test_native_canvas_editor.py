@@ -203,6 +203,12 @@ def test_integrated_native_canvas_endpoint_preserves_layout_and_serves_editing_c
         viewer_app_response = connection.getresponse()
         viewer_app = viewer_app_response.read().decode("utf-8")
         assert viewer_app_response.status == 200
+        assert (
+            "const documentEditorHosted = documentMode && window.parent !== window;"
+            in viewer_app
+        )
+        assert "if (documentEditorHosted) {" in viewer_app
+        assert "Dokumentansicht · Bearbeiten im Schaubild-Host" in viewer_app
         assert 'reattachSourceButton?.addEventListener("click"' in viewer_app
         assert 'reattachTargetButton?.addEventListener("click"' in viewer_app
 
@@ -265,6 +271,65 @@ def test_integrated_native_canvas_endpoint_preserves_layout_and_serves_editing_c
         assert diagram_response.status == 200
         assert 'data-document-mode="json-canvas"' in diagram_svg
         assert 'x="-120" y="120" width="240" height="130"' in diagram_svg
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+
+
+def test_integrated_native_canvas_cache_identity_includes_title(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "NativeCanvasTitleCacheRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(handler_class, directory=str(output)),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(server.server_address[1]), timeout=5
+        )
+        results: list[dict] = []
+        for title in ("Erste.canvas", "Zweite.canvas"):
+            request = _request()
+            request["title"] = title
+            payload = json.dumps(request, ensure_ascii=False).encode("utf-8")
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            result = json.loads(response.read().decode("utf-8"))
+            assert response.status == 200
+            results.append(result)
+
+        assert results[0]["input_digest"] == results[1]["input_digest"]
+        assert results[0]["url"] != results[1]["url"]
+
+        for result, expected_title in zip(
+            results, ("Erste.canvas", "Zweite.canvas"), strict=True
+        ):
+            connection.request("GET", result["url"])
+            response = connection.getresponse()
+            html = response.read().decode("utf-8")
+            assert response.status == 200
+            assert f"<title>{expected_title}</title>" in html
+            assert f"<strong>{expected_title}</strong>" in html
         connection.close()
     finally:
         server.shutdown()

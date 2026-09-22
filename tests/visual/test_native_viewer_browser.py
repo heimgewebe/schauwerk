@@ -31,6 +31,45 @@ def _skip_or_fail_browser(message: str) -> None:
     pytest.skip(message)
 
 
+
+
+def _write_document_probe_host(output: Path) -> None:
+    (output / "host.html").write_text(
+        r"""<!doctype html>
+<html>
+<body>
+<iframe id="viewer" src="index.html"></iframe>
+<script>
+const frame = document.querySelector("#viewer");
+window.addEventListener("message", (event) => {
+  if (event.source !== frame.contentWindow || event.origin !== window.location.origin) return;
+  if (
+    event.data?.event === "native-document-change" ||
+    event.data?.event === "native-document-rebuild"
+  ) {
+    frame.contentWindow.postMessage(event.data, window.location.origin);
+  }
+});
+window.setInterval(() => {
+  const child = frame.contentDocument?.documentElement;
+  if (!child) return;
+  for (const key of [
+    "canvasBrowserRegression",
+    "canvasBrowserRegressionError",
+    "emptyCanvasBrowserRegression",
+    "emptyCanvasBrowserRegressionError",
+  ]) {
+    if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
+  }
+}, 20);
+</script>
+</body>
+</html>
+""",
+        encoding="utf-8",
+    )
+
+
 def test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch(
     tmp_path: Path,
 ) -> None:
@@ -464,6 +503,9 @@ try {
   ) {
     throw new Error("canvas text editor controls missing");
   }
+  if (editButton.hidden) {
+    throw new Error("hosted canvas text editor control remained hidden");
+  }
   editButton.click();
   await waitUntil(() => textDialog.open, "canvas text editor did not open");
   const rebuildsBeforeEmptyText = window.__nativeDocumentMessages.filter(
@@ -536,11 +578,35 @@ try {
   firePointer(node, "pointerdown", 41, x, y);
   firePointer(viewport, "pointerup", 41, x, y);
   const addEdgeButton = document.querySelector("#addEdge");
+  if (!(addEdgeButton instanceof HTMLButtonElement) || addEdgeButton.hidden) {
+    throw new Error("hosted canvas add-edge control missing");
+  }
+  const rebuildsBeforeSelfLoop = window.__nativeDocumentMessages.filter(
+    (message) => message.event === "native-document-rebuild",
+  ).length;
+  addEdgeButton.click();
+  firePointer(node, "pointerdown", 42, x, y);
+  await waitUntil(
+    () =>
+      window.__nativeDocumentMessages.filter(
+        (message) => message.event === "native-document-rebuild",
+      ).length > rebuildsBeforeSelfLoop,
+    "self-loop add-edge did not rebuild document",
+  );
+  const selfLoopRebuild = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  if (!selfLoopRebuild?.document?.edges?.some((item) => item.from === "a" && item.to === "a")) {
+    throw new Error("self-loop edge was not created");
+  }
+
+  firePointer(node, "pointerdown", 43, x, y);
+  firePointer(viewport, "pointerup", 43, x, y);
   const edgeIdTarget = svg.querySelector(
     '[data-source-kind="node"][data-source-id="edge_1"]',
   );
-  if (!(addEdgeButton instanceof HTMLButtonElement) || !(edgeIdTarget instanceof SVGGElement)) {
-    throw new Error("canvas add-edge controls or target missing");
+  if (!(edgeIdTarget instanceof SVGGElement)) {
+    throw new Error("canvas add-edge target missing");
   }
   const rebuildsBeforeAddEdge = window.__nativeDocumentMessages.filter(
     (message) => message.event === "native-document-rebuild",
@@ -550,7 +616,7 @@ try {
   firePointer(
     edgeIdTarget,
     "pointerdown",
-    42,
+    44,
     (targetRect.left + targetRect.right) / 2,
     (targetRect.top + targetRect.bottom) / 2,
   );
@@ -593,6 +659,7 @@ try {
 </script>
 """
     index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+    _write_document_probe_host(output)
 
     class QuietCanvasHandler(SimpleHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002
@@ -617,7 +684,7 @@ try {
                     "--run-all-compositor-stages-before-draw",
                     "--virtual-time-budget=8000",
                     "--dump-dom",
-                    f"http://127.0.0.1:{port}/",
+                    f"http://127.0.0.1:{port}/host.html",
                 ],
                 check=False,
                 text=True,
@@ -696,6 +763,7 @@ try {
 </script>
 """
     index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+    _write_document_probe_host(output)
 
     class QuietEmptyCanvasHandler(SimpleHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002
@@ -720,7 +788,7 @@ try {
                     "--run-all-compositor-stages-before-draw",
                     "--virtual-time-budget=8000",
                     "--dump-dom",
-                    f"http://127.0.0.1:{port}/",
+                    f"http://127.0.0.1:{port}/host.html",
                 ],
                 check=False,
                 text=True,

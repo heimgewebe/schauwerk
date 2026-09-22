@@ -457,6 +457,23 @@ def _native_product_input(value: Any) -> dict[str, Any]:
     return normalized
 
 
+def _native_render_cache_digest(normalized: dict[str, Any]) -> str:
+    semantic_digest = str(
+        normalized.get("input_digest") or normalized.get("source_digest") or ""
+    )
+    if re.fullmatch(r"[0-9a-f]{64}", semantic_digest) is None:
+        raise StandaloneEditorError("native input digest is missing or invalid")
+    if normalized.get("schema_version") != NATIVE_DOCUMENT_SCHEMA:
+        return semantic_digest
+    canonical = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return _sha256(canonical)
+
+
 def build_standalone_editor(
     output_dir: Path,
     *,
@@ -1584,8 +1601,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             digest = str(
                 normalized.get("input_digest") or normalized.get("source_digest") or ""
             )
-            if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
-                raise StandaloneEditorError("native input digest is missing or invalid")
+            cache_digest = _native_render_cache_digest(normalized)
             canonical_input = (
                 normalized
                 if normalized.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
@@ -1598,7 +1614,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             root = Path(self.directory).resolve()
             record, created = _build_native_cache_record(
                 root,
-                digest=digest,
+                digest=cache_digest,
                 value=canonical_input,
                 serve_binding=self.native_serve_binding,
                 public_base_path=self.public_base_path,
