@@ -29,6 +29,9 @@ SCHAUBILD_RUNTIME_EVIDENCE = ROOT / "docs/operators/evidence/schaubild-native-ru
 SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-drawio-native-first-20260920"
 )
+SCHAUBILD_NATIVE_EDITOR_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-editor-20260922"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -304,13 +307,28 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert runtime_successor["evidence_digest"] == digest_mapping(
         runtime_successor, "evidence_digest"
     )
+    editor_superseded_files = {
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/native_document.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     drawio_native_superseded_files = {
         "Dockerfile",
         "docs/plans/standalone-diagram-editor-spike-v1.md",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_standalone_editor.py",
-    }
+    } | editor_superseded_files
     for name, expected in runtime_successor["source_bindings"].items():
         if name not in drawio_native_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -333,7 +351,34 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         drawio_successor, "evidence_digest"
     )
     for name, expected in drawio_successor["source_bindings"].items():
+        if name not in editor_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+
+    editor_successor = json.loads(
+        (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
+    assert editor_successor["functional_head"] == "df599e04a41242ac4eb1339f47466dce92b1310f"
+    assert editor_successor["parent_evidence"] == {
+        "evidence_digest": drawio_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_DRAWIO_NATIVE_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-drawio-native-first-20260920/acceptance-receipt.json"
+        ),
+        "schema_version": drawio_successor["schema_version"],
+    }
+    assert editor_successor["evidence_digest"] == digest_mapping(
+        editor_successor, "evidence_digest"
+    )
+    assert set(editor_successor["source_bindings"]) == editor_superseded_files
+    for name, expected in editor_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert editor_successor["checks"]["browser_smoke_passed_count"] == 4
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -371,7 +416,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
         elif name in schaubild_superseded_files:
-            assert drawio_successor["source_bindings"][name] == current
+            assert editor_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {

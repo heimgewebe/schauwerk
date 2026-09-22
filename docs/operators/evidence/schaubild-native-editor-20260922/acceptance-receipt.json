@@ -1,0 +1,58 @@
+{
+  "accepted_at": "2026-09-22",
+  "checks": {
+    "absent_group_label_preserved": true,
+    "absent_optional_arrays_preserved": true,
+    "add_delete_nodes_and_edges_passed": true,
+    "browser_canvas_document_editing_passed": true,
+    "browser_smoke_passed_count": 4,
+    "compile_check_passed": true,
+    "diff_check_passed": true,
+    "edge_endpoint_reattach_passed": true,
+    "explicit_default_edge_ends_preserved": true,
+    "focused_editor_renderer_regression_passed": true,
+    "global_node_edge_id_namespace_enforced": true,
+    "historical_acceptance_left_immutable": true,
+    "incident_edges_and_labels_follow_drag_live": true,
+    "json_canvas_roundtrip_geometry_ids_order_and_extensions_preserved": true,
+    "native_document_xml_control_chars_sanitized": true,
+    "pre_acceptance_full_suite_only_failed_successor_binding": true,
+    "registry_validation_passed": true,
+    "representation_path_regression_passed": true,
+    "ruff_passed": true,
+    "text_edit_including_empty_text_passed": true
+  },
+  "does_not_establish": [
+    "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
+    "graphical style editing beyond supported document operations",
+    "GHCR publication of this revision",
+    "Commonthing consumer integration",
+    "Commonthing production deployment",
+    "native PNG export"
+  ],
+  "evidence_digest": "8e3caec2b55936a66816e456b1eb7852c831d259259901dc635abc6270a03e08",
+  "functional_head": "df599e04a41242ac4eb1339f47466dce92b1310f",
+  "parent_evidence": {
+    "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
+    "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
+    "path": "docs/operators/evidence/schaubild-drawio-native-first-20260920/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-drawio-native-first.v1"
+  },
+  "schema_version": "schauwerk-schaubild-native-editor.v1",
+  "scope": "json-canvas-native-document-editing",
+  "source_bindings": {
+    "Makefile": "b784f2cf38cf9a18ca7c096f348b2843fe3d25ead01fac6dbb40f0c4cd72d48c",
+    "scripts/run_browser_smoke.py": "32bcef2541b6c11ac46b356560a03885a68ed6d75f691575a256383a20f76c7b",
+    "src/schauwerk/resources/native_viewer/assets.py": "54c8068be7cc8e5f50a08eb278410a1c56154ef3649f10573ed4690eb7393f15",
+    "src/schauwerk/resources/standalone_editor/assets.py": "38a147534eb11cc50e54cab350bf9cf808f3dfb5e903177334e33ac9f5d768c8",
+    "src/schauwerk/visual/native_diagram.py": "b74e915985493645a57e80898e0194f3b3b50e6aae98886520cf94643d81e608",
+    "src/schauwerk/visual/native_document.py": "4597e64d319db05adea967d47faf77b77a916fe87c1e8eb26b26193c78072cef",
+    "src/schauwerk/visual/native_viewer.py": "5696c063c84509b829fe863edc4717d3d4efa8095b14fc146cfb7a7d9adf157a",
+    "src/schauwerk/visual/standalone_editor.py": "eb30472452b133b14b3298bed749a2d7f96990a7af602e9447112631bcef7d67",
+    "tests/visual/test_native_canvas_editor.py": "858954c2a39c1f8ff318812e29170406d6c99df0a835aad1ab5a5d671a340192",
+    "tests/visual/test_native_document.py": "34636ae03c20e62b1a07afb8cca174ab1daa9411194be361872eb48ca289aee1",
+    "tests/visual/test_native_viewer.py": "e0a46495834c16c8cdcb7bfa95fdc803ed75408547883ced7414785053bad0ed",
+    "tests/visual/test_native_viewer_browser.py": "6f7b4ce7aead189b13c557ab0dc786d69d68def622a28abd4b6f61ee04ba1110",
+    "tests/visual/test_standalone_editor.py": "b496a18b65f9bdb14509c3f405a6842dd516c6066c53803dd1ed3b996353ae4f"
+  }
+}
