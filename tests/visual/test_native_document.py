@@ -250,6 +250,134 @@ def test_json_canvas_roundtrip_preserves_absent_group_label_and_explicit_default
     assert editing_document_to_json_canvas(document) == source
 
 
+
+def test_native_document_reciprocal_edges_use_distinct_physical_lanes() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 360,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {"id": "ab", "fromNode": "a", "toNode": "b", "label": "hin"},
+            {"id": "ba", "fromNode": "b", "toNode": "a", "label": "zurück"},
+        ],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Reciprocal")
+        )
+    )
+    edge_groups = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-kind") == "edge"
+    }
+    labels = {}
+    paths = {}
+    for edge_id, group in edge_groups.items():
+        labels[edge_id] = next(
+            child for child in group if child.tag == f"{SVG_NS}text"
+        )
+        paths[edge_id] = next(
+            child for child in group if child.tag == f"{SVG_NS}path"
+        )
+    assert paths["ab"].attrib["d"] != paths["ba"].attrib["d"]
+    assert labels["ab"].attrib["y"] != labels["ba"].attrib["y"]
+
+
+def test_native_document_parallel_self_loops_use_distinct_routes() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            }
+        ],
+        "edges": [
+            {"id": f"loop-{index}", "fromNode": "a", "toNode": "a", "label": str(index)}
+            for index in range(4)
+        ],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Loops")
+        )
+    )
+    paths = [
+        next(child for child in group if child.tag == f"{SVG_NS}path").attrib["d"]
+        for group in root.iter(f"{SVG_NS}g")
+        if group.attrib.get("data-source-kind") == "edge"
+    ]
+    assert len(set(paths)) == 4
+
+
+def test_native_document_viewbox_contains_outward_routed_edge_controls() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 100,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 300,
+                "y": 0,
+                "width": 100,
+                "height": 100,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "outward",
+                "fromNode": "a",
+                "fromSide": "left",
+                "toNode": "b",
+                "toSide": "right",
+                "label": "outward route",
+            }
+        ],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Bounds")
+        )
+    )
+    view_x, _view_y, view_width, _view_height = map(
+        float, root.attrib["viewBox"].split()
+    )
+    assert view_x <= -140.0
+    assert view_x + view_width >= 540.0
+
+
+
 def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
     source = {
         "nodes": [

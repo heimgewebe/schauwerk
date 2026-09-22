@@ -1062,7 +1062,7 @@ def _edge_geometry(
     max_node_bottom: float = 0.0,
     preserve_same_row_feedback_footer: bool = True,
     obstacle_positions: Sequence[tuple[int, int]] = (),
-) -> tuple[str, float, float, str]:
+) -> tuple[str, float, float, str, tuple[float, float, float, float]]:
     source_x, source_y = source
     target_x, target_y = target
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
@@ -3282,7 +3282,14 @@ def _canvas_edge_geometry(
         )
         label_x = (start[0] + 3 * c1[0] + 3 * c2[0] + end[0]) / 8 + 18
         label_y = (start[1] + 3 * c1[1] + 3 * c2[1] + end[1]) / 8
-        return path, label_x, label_y, "canvas-self-loop"
+        points = (start, c1, c2, end)
+        bounds = (
+            min(point[0] for point in points),
+            min(point[1] for point in points),
+            max(point[0] for point in points),
+            max(point[1] for point in points),
+        )
+        return path, label_x, label_y, "canvas-self-loop", bounds
 
     sx, sy, sv = _canvas_anchor(source, edge.get("from_side"), toward=target_center)
     tx, ty, tv = _canvas_anchor(target, edge.get("to_side"), toward=source_center)
@@ -3304,7 +3311,14 @@ def _canvas_edge_geometry(
     )
     label_x = (sx + 3 * c1[0] + 3 * c2[0] + tx) / 8
     label_y = (sy + 3 * c1[1] + 3 * c2[1] + ty) / 8
-    return path, label_x, label_y, "canvas-cubic"
+    points = ((sx, sy), c1, c2, (tx, ty))
+    bounds = (
+        min(point[0] for point in points),
+        min(point[1] for point in points),
+        max(point[0] for point in points),
+        max(point[1] for point in points),
+    )
+    return path, label_x, label_y, "canvas-cubic", bounds
 
 
 def _canvas_wrap(value: str, width_px: int, height_px: int) -> list[str]:
@@ -3339,16 +3353,77 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         raise NativeDocumentError("native editing document edges are invalid")
 
     node_by_id = {str(node["id"]): node for node in nodes}
+
+    pair_counts: dict[tuple[str, str], int] = {}
+    pair_slots: dict[tuple[str, str], int] = {}
+    for edge in edges:
+        key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+        pair_counts[key] = pair_counts.get(key, 0) + 1
+
+    edge_layouts = []
+    for index, edge in enumerate(edges):
+        source_id = str(edge["from"])
+        target_id = str(edge["to"])
+        source = node_by_id[source_id]
+        target = node_by_id[target_id]
+        key = tuple(sorted((source_id, target_id)))
+        slot = pair_slots.get(key, 0)
+        pair_slots[key] = slot + 1
+        if source_id == target_id:
+            lane = slot * 18.0
+        else:
+            lane = (slot - (pair_counts[key] - 1) / 2) * 18.0
+            if source_id > target_id:
+                lane = -lane
+        path, label_x, label_y, route, edge_bounds = _canvas_edge_geometry(
+            source, target, edge, lane=lane
+        )
+        label = str(edge.get("label", ""))
+        label_width = max(42, min(260, len(label) * 8 + 20))
+        label_height = 28
+        edge_layouts.append(
+            (
+                index,
+                edge,
+                lane,
+                path,
+                label_x,
+                label_y,
+                route,
+                edge_bounds,
+                label,
+                label_width,
+                label_height,
+            )
+        )
+
     margin = 88
     if nodes:
-        min_x = min(int(node["x"]) for node in nodes)
-        min_y = min(int(node["y"]) for node in nodes)
-        max_x = max(int(node["x"]) + int(node["width"]) for node in nodes)
-        max_y = max(int(node["y"]) + int(node["height"]) for node in nodes)
-        view_x = min_x - margin
-        view_y = min_y - margin
-        view_width = max(1, max_x - min_x + 2 * margin)
-        view_height = max(1, max_y - min_y + 2 * margin)
+        min_x = min(float(node["x"]) for node in nodes)
+        min_y = min(float(node["y"]) for node in nodes)
+        max_x = max(float(node["x"]) + float(node["width"]) for node in nodes)
+        max_y = max(float(node["y"]) + float(node["height"]) for node in nodes)
+        for layout in edge_layouts:
+            edge_bounds = layout[7]
+            min_x = min(min_x, edge_bounds[0])
+            min_y = min(min_y, edge_bounds[1])
+            max_x = max(max_x, edge_bounds[2])
+            max_y = max(max_y, edge_bounds[3])
+            if layout[8]:
+                label_x = layout[4]
+                label_y = layout[5]
+                label_width = layout[9]
+                label_height = layout[10]
+                min_x = min(min_x, label_x - label_width / 2)
+                min_y = min(min_y, label_y - label_height / 2)
+                max_x = max(max_x, label_x + label_width / 2)
+                max_y = max(max_y, label_y + label_height / 2)
+        view_x = math.floor(min_x - margin)
+        view_y = math.floor(min_y - margin)
+        view_right = math.ceil(max_x + margin)
+        view_bottom = math.ceil(max_y + margin)
+        view_width = max(1, view_right - view_x)
+        view_height = max(1, view_bottom - view_y)
     else:
         view_x = 0
         view_y = 0
@@ -3383,26 +3458,20 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
     lines.append("</defs>")
 
-    pair_counts: dict[tuple[str, str], int] = {}
-    pair_slots: dict[tuple[str, str], int] = {}
-    for edge in edges:
-        key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
-        pair_counts[key] = pair_counts.get(key, 0) + 1
-
-    for index, edge in enumerate(edges):
-        source = node_by_id[str(edge["from"])]
-        target = node_by_id[str(edge["to"])]
-        key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
-        slot = pair_slots.get(key, 0)
-        pair_slots[key] = slot + 1
-        lane = (slot - (pair_counts[key] - 1) / 2) * 18.0
-        path, label_x, label_y, route = _canvas_edge_geometry(
-            source, target, edge, lane=lane
-        )
+    for (
+        index,
+        edge,
+        lane,
+        path,
+        label_x,
+        label_y,
+        route,
+        _edge_bounds,
+        label,
+        label_width,
+        label_height,
+    ) in edge_layouts:
         _, stroke = _canvas_color(edge.get("source", {}).get("color"))
-        label = str(edge.get("label", ""))
-        label_width = max(42, min(260, len(label) * 8 + 20))
-        label_height = 28
         marker_start = (
             f' marker-start="url(#canvas-arrow-{index})"'
             if edge.get("from_end") == "arrow"

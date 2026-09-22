@@ -223,7 +223,7 @@ def test_native_viewer_interaction_math_is_browser_independent(tmp_path: Path) -
     module_url = json.dumps(
         "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
     )
-    python_canvas_path, _, _, python_canvas_route = _canvas_edge_geometry(
+    python_canvas_path, _, _, python_canvas_route, _ = _canvas_edge_geometry(
         {"id": "source", "x": 0, "y": 0, "width": 100, "height": 60},
         {"id": "target", "x": 300, "y": 100, "width": 120, "height": 80},
         {"id": "edge", "from_side": None, "to_side": None},

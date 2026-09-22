@@ -109,7 +109,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert helper_js.count("fontSize=${fontSize}") >= 2
     assert "event.origin !== EDITOR_ORIGIN" in app_js
     assert "event.source !== elements.frame.contentWindow" in app_js
-    assert 'headers["X-Schauwerk-Native-Supersede"] = supersedeToken' in app_js
+    assert 'headers["X-Schauwerk-Native-Supersede"] = nativeSupersedeToken' in app_js
     assert 'querySelector("#nativeDiagram")' in app_js
     assert "SVG aus aktuellem Canvas-Dokument bereit" in app_js
     assert "Aktuelle SVG-Ausgabe konnte nicht gelesen werden" in app_js
@@ -187,6 +187,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "elements.frame = frame;" in app_js
     assert "if (elements.frame !== frame) return;" in app_js
     assert "let loadIntentGeneration = 0;" in app_js
+    assert "let nativeLaunchTail = Promise.resolve();" in app_js
+    assert 'let nativeSupersedeToken = "";' in app_js
     assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
@@ -204,6 +206,23 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     launch_end = app_js.index("function loadPendingIntoEditor()", launch_start)
     launch_source = app_js[launch_start:launch_end]
     assert "invalidateLoadIntents();" in launch_source
+    native_start = launch_source.index("async function launchNative(load)")
+    native_source = launch_source[native_start:]
+    assert "const previousLaunch = nativeLaunchTail;" in native_source
+    assert "await previousLaunch;" in native_source
+    assert native_source.index("await previousLaunch;") < native_source.index(
+        "const response = await fetch(NATIVE_API_PATH"
+    )
+    assert native_source.index(
+        "if (loadIntent !== loadIntentGeneration) return;"
+    ) < native_source.index("const response = await fetch(NATIVE_API_PATH")
+    token_update = native_source.index("nativeSupersedeToken = nativeToken;")
+    stale_after_response = native_source.index(
+        "if (loadIntent !== loadIntentGeneration) return;",
+        token_update,
+    )
+    assert token_update < stale_after_response
+    assert "releaseLaunchTurn();" in native_source
     assert 'pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";' in launch_source
     assert "function toggleEditorFullscreen()" in app_js
     assert "const active = !editorFocusActive;" in app_js

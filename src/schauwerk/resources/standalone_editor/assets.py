@@ -740,6 +740,8 @@ let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "";
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
@@ -1076,8 +1078,8 @@ function nativeTokenFromUrl(value) {
 }
 
 async function launchNative(load) {
-  const supersedeToken = nativeTokenFromUrl(currentNativeUrl);
   const loadIntent = invalidateLoadIntents();
+  const requestValue = load.nativeRepresentation || load.nativeDocument || load.nativeImport;
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = null;
@@ -1097,19 +1099,33 @@ async function launchNative(load) {
   showWorkspace();
   setStatus("Nativer Renderer wird geladen …");
 
+  const previousLaunch = nativeLaunchTail;
+  let releaseLaunchTurn = () => {};
+  nativeLaunchTail = new Promise((resolve) => {
+    releaseLaunchTurn = resolve;
+  });
+
   try {
+    await previousLaunch;
+    if (loadIntent !== loadIntentGeneration) return;
+
     const headers = { "Content-Type": "application/json" };
-    if (supersedeToken) headers["X-Schauwerk-Native-Supersede"] = supersedeToken;
+    if (nativeSupersedeToken) {
+      headers["X-Schauwerk-Native-Supersede"] = nativeSupersedeToken;
+    }
     const response = await fetch(NATIVE_API_PATH, {
       method: "POST",
       headers,
-      body: JSON.stringify(currentRepresentation || currentNativeDocument || load.nativeImport),
+      body: JSON.stringify(requestValue),
     });
     const result = await response.json();
-    if (loadIntent !== loadIntentGeneration) return;
-    if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
     const nativeUrl = String(result?.url || "");
     const nativeToken = nativeTokenFromUrl(nativeUrl);
+    if (response.ok && nativeToken) {
+      nativeSupersedeToken = nativeToken;
+    }
+    if (loadIntent !== loadIntentGeneration) return;
+    if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
@@ -1158,6 +1174,8 @@ async function launchNative(load) {
       setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
       setStatus("Native Darstellung abgelehnt");
     }
+  } finally {
+    releaseLaunchTurn();
   }
 }
 
