@@ -1,7 +1,8 @@
-"""Build and serve the local Phase-2 native SVG interaction proof.
+"""Build and serve the local native SVG viewer/editor bundle.
 
-The semantic representation and canonical Gate-1 SVG remain immutable inputs.
-Interactive node positions are a browser-local, input-digest-bound layout overlay.
+Representation input remains immutable and uses a browser-local layout overlay.
+JSON Canvas is normalized into a document-backed editing model; both modes render
+through the authoritative native_diagram renderer family.
 """
 
 from __future__ import annotations
@@ -21,13 +22,20 @@ from typing import Any, Final
 
 from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
-from .native_diagram import render_native_diagram
+from .native_diagram import render_native_diagram, render_native_editing_document
+from .native_document import (
+    NATIVE_DOCUMENT_SCHEMA,
+    NativeDocumentError,
+    editing_document_to_json_canvas,
+    json_canvas_to_editing_document,
+)
 from .representation import validate_representation_input
 
 MANIFEST_SCHEMA: Final = "schauwerk-native-viewer-manifest.v1"
 MAX_INPUT_BYTES: Final = 5 * 1024 * 1024
 _TITLE_MARKER: Final = "__SCHAUWERK_NATIVE_TITLE__"
 _SVG_MARKER: Final = "__SCHAUWERK_NATIVE_SVG__"
+_MODEL_MARKER: Final = "__SCHAUWERK_NATIVE_MODEL__"
 
 
 class NativeViewerError(ValueError):
@@ -64,12 +72,25 @@ def _inline_svg(svg: str) -> str:
     )
 
 
-def _render_index(*, title: str, svg: str) -> str:
-    if INDEX_HTML.count(_SVG_MARKER) != 1 or INDEX_HTML.count(_TITLE_MARKER) != 2:
+def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
+    if (
+        INDEX_HTML.count(_SVG_MARKER) != 1
+        or INDEX_HTML.count(_TITLE_MARKER) != 2
+        or INDEX_HTML.count(_MODEL_MARKER) != 1
+    ):
         raise NativeViewerError("native viewer HTML template markers drifted")
+    embedded_model = json.dumps(
+        model, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    embedded_model = (
+        embedded_model.replace("&", r"\u0026")
+        .replace("<", r"\u003c")
+        .replace(">", r"\u003e")
+    )
     replacements = {
         _TITLE_MARKER: html.escape(title),
         _SVG_MARKER: _inline_svg(svg),
+        _MODEL_MARKER: embedded_model,
     }
     marker_pattern = re.compile(
         "|".join(re.escape(marker) for marker in replacements)
@@ -124,11 +145,26 @@ def build_native_viewer(
     if serve_binding == "127.0.0.1-only" and public_base_path:
         raise NativeViewerError("loopback native viewer must not declare a public base path")
 
-    model = validate_representation_input(source)
-    svg = render_native_diagram(model)
+    document_mode = source.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+    if document_mode:
+        try:
+            canvas = editing_document_to_json_canvas(source)
+            model = json_canvas_to_editing_document(
+                canvas, title=str(source.get("title") or "Schaubild")
+            )
+            svg = render_native_editing_document(model)
+        except NativeDocumentError as exc:
+            raise NativeViewerError(f"native editing document is invalid: {exc}") from exc
+        semantic_filename = "document.json"
+        semantic_mode = "editable-document"
+    else:
+        model = validate_representation_input(source)
+        svg = render_native_diagram(model)
+        semantic_filename = "representation.json"
+        semantic_mode = "read-only"
     svg_payload = svg.encode("utf-8")
-    representation_payload = _canonical_json(model)
-    index_payload = _render_index(title=str(model["title"]), svg=svg).encode("utf-8")
+    semantic_payload = _canonical_json(model)
+    index_payload = _render_index(title=str(model["title"]), svg=svg, model=model).encode("utf-8")
 
     root = output_dir.expanduser().absolute()
     _reject_symlink_chain(root)
@@ -144,7 +180,7 @@ def build_native_viewer(
         "diagram.svg": svg_payload,
         "index.html": index_payload,
         "interaction.js": ASSETS["interaction.js"].encode("utf-8"),
-        "representation.json": representation_payload,
+        semantic_filename: semantic_payload,
         "styles.css": ASSETS["styles.css"].encode("utf-8"),
     }
     for filename, payload in sorted(payloads.items()):
@@ -154,15 +190,16 @@ def build_native_viewer(
 
     files = [_file_record(root / name, root) for name in sorted(payloads)]
     diagram_sha256 = _sha256(svg_payload)
-    representation_sha256 = _sha256(representation_payload)
+    semantic_sha256 = _sha256(semantic_payload)
     manifest: dict[str, object] = {
         "schema_version": MANIFEST_SCHEMA,
         "viewer": "schauwerk-native-svg-phase2",
-        "input_digest": str(model["input_digest"]),
+        "input_digest": str(model.get("input_digest") or model.get("source_digest")),
         "semantic_authority": {
-            "artifact": "representation.json",
-            "sha256": representation_sha256,
-            "mode": "read-only",
+            "artifact": semantic_filename,
+            "sha256": semantic_sha256,
+            "mode": semantic_mode,
+            "source_format": model.get("source_format", "schauwerk-representation-input.v1"),
         },
         "renderer_authority": {
             "artifact": "diagram.svg",
@@ -171,20 +208,23 @@ def build_native_viewer(
             "bytes_modified_by_viewer": False,
         },
         "layout_overlay": {
-            "authority": "browser-local-only",
-            "storage": "localStorage",
-            "binding": "input_digest",
-            "semantic_writeback": False,
+            "authority": "document-state" if document_mode else "browser-local-only",
+            "storage": (
+                "document-memory+parent-state" if document_mode else "localStorage"
+            ),
+            "binding": "source_digest" if document_mode else "input_digest",
+            "semantic_writeback": document_mode,
             "cross_device_persistence": False,
         },
-        "interactions": ["pan", "zoom", "selection", "node-drag"],
+        "interactions": ["pan", "zoom", "selection", "node-drag", "live-edge-rerouting"],
         "interaction_contract": {
             "mouse_pointer_events": True,
             "touch_pointer_events": True,
             "two_pointer_pinch_zoom": True,
             "keyboard_node_selection": True,
-            "edge_geometry_after_node_drag": "frozen-gate1-svg",
-            "edge_rerouting": False,
+            "edge_geometry_after_node_drag": "live-route-preserving-overlay",
+            "edge_rerouting": True,
+            "routing_authority": "native-diagram-canonical+browser-live-deformation",
         },
         "network_boundary": {
             "bundle": "server-managed-local-bundle",
@@ -204,8 +244,7 @@ def build_native_viewer(
                 if serve_binding == "trusted-reverse-proxy-private-ingress"
                 else ["production-readiness", "phase-3-cutover-acceptance"]
             ),
-            "semantic-mutation",
-            "edge-rerouting-after-node-drag",
+            *([] if document_mode else ["semantic-mutation", "document-backed-editing"]),
             "cross-device-layout-persistence",
         ],
     }

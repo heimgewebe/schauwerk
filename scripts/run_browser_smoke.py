@@ -17,6 +17,14 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch"
     ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_document_browser_drag_updates_edge_and_document_state"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_document_browser_preserves_absent_empty_arrays"
+    ),
 )
 MAX_ATTEMPTS = 2
 

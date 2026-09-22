@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from schauwerk.visual.native_document import json_canvas_to_editing_document
 from schauwerk.visual.native_viewer import build_native_viewer
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -111,12 +112,38 @@ try {
     throw new Error("startup fit did not run after repair persistence failure");
   }
 
+  const embeddedModel = JSON.parse(document.querySelector("#nativeModel")?.textContent || "{}");
+  const connectedIds = new Set(
+    (embeddedModel.edges || []).flatMap((edge) => [String(edge.from), String(edge.to)]),
+  );
   const node = [...svg.querySelectorAll('[data-source-kind="node"]')]
+    .filter((item) => connectedIds.has(String(item.dataset.sourceId || "")))
     .sort(
       (left, right) =>
         right.getBoundingClientRect().right - left.getBoundingClientRect().right,
     )[0];
-  if (!node) throw new Error("browser probe found no node");
+  if (!node) throw new Error("browser probe found no connected node");
+  const edgeModel = (embeddedModel.edges || []).find(
+    (item) =>
+      String(item.from) === node.dataset.sourceId ||
+      String(item.to) === node.dataset.sourceId,
+  );
+  const incidentEdge = edgeModel
+    ? [...svg.querySelectorAll('[data-source-kind="edge"]')].find(
+        (item) => item.dataset.sourceId === String(edgeModel.id),
+      )
+    : null;
+  const edgePath = incidentEdge
+    ? [...incidentEdge.children].find((item) => item instanceof SVGPathElement)
+    : null;
+  const edgeLabelRect = incidentEdge
+    ? [...incidentEdge.children].find((item) => item instanceof SVGRectElement)
+    : null;
+  if (!(edgePath instanceof SVGPathElement) || !(edgeLabelRect instanceof SVGRectElement)) {
+    throw new Error("browser probe found no incident edge geometry");
+  }
+  const baseEdgePath = edgePath.getAttribute("d") || "";
+  const baseMarkerEnd = edgePath.getAttribute("marker-end") || "";
   const allNodes = [...svg.querySelectorAll('[data-source-kind="node"]')];
   if (!allNodes.every((item) => insideSvg(item, svg))) {
     throw new Error("persisted out-of-bounds layout was not repaired on load");
@@ -126,17 +153,26 @@ try {
   const nodeX = (nodeRect.left + nodeRect.right) / 2;
   const nodeY = (nodeRect.top + nodeRect.bottom) / 2;
   firePointer(node, "pointerdown", 11, nodeX, nodeY);
-  firePointer(viewport, "pointermove", 11, nodeX + 2000, nodeY);
+  firePointer(viewport, "pointermove", 11, nodeX - 2000, nodeY);
   const clampedRect = node.getBoundingClientRect();
   if (!insideSvg(node, svg)) throw new Error("dragged node escaped SVG bounds");
+  if ((edgePath.getAttribute("d") || "") === baseEdgePath) {
+    throw new Error("incident edge path did not update during node drag");
+  }
+  if ((edgePath.getAttribute("marker-end") || "") !== baseMarkerEnd) {
+    throw new Error("incident edge arrow marker binding changed during node drag");
+  }
+  if (!(edgeLabelRect.getAttribute("transform") || "").includes("translate(")) {
+    throw new Error("incident edge label did not move during node drag");
+  }
 
-  firePointer(viewport, "pointermove", 11, nodeX + 1950, nodeY);
+  firePointer(viewport, "pointermove", 11, nodeX - 1950, nodeY);
   const reversedRect = node.getBoundingClientRect();
-  if (!(reversedRect.left < clampedRect.left - 20)) {
+  if (!(reversedRect.left > clampedRect.left + 20)) {
     throw new Error("clamped node stayed sticky after reversing the active drag");
   }
   if (!insideSvg(node, svg)) throw new Error("reversed node escaped SVG bounds");
-  firePointer(viewport, "pointerup", 11, nodeX + 1950, nodeY);
+  firePointer(viewport, "pointerup", 11, nodeX - 1950, nodeY);
 
   const storageKeys = Object.keys(localStorage).filter(
     (key) => key.startsWith("schauwerk.native-viewer.layout.v1."),
@@ -151,6 +187,7 @@ try {
   }
 
   const takeoverStartTransform = node.getAttribute("transform") || "";
+  const takeoverStartEdgePath = edgePath.getAttribute("d") || "";
   const takeoverRect = node.getBoundingClientRect();
   const takeoverX = (takeoverRect.left + takeoverRect.right) / 2;
   const takeoverY = (takeoverRect.top + takeoverRect.bottom) / 2;
@@ -167,6 +204,9 @@ try {
   const rollbackTransform = node.getAttribute("transform") || "";
   if (rollbackTransform !== takeoverStartTransform) {
     throw new Error("pinch takeover did not roll node drag back to its original offset");
+  }
+  if ((edgePath.getAttribute("d") || "") !== takeoverStartEdgePath) {
+    throw new Error("pinch takeover did not roll incident edge geometry back");
   }
 
   firePointer(viewport, "pointermove", 22, secondX + 80, secondY);
@@ -206,6 +246,8 @@ try {
                 [
                     chrome,
                     "--headless=new",
+                    f"--user-data-dir={tmp_path / 'chrome-profile'}",
+                    "--no-first-run",
                     "--disable-gpu",
                     "--disable-dev-shm-usage",
                     "--no-sandbox",
@@ -230,3 +272,473 @@ try {
     assert completed.returncode == 0, completed.stderr
     assert 'data-browser-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-browser-regression="fail"' not in completed.stdout, completed.stdout
+
+
+def test_native_canvas_document_browser_drag_updates_edge_and_document_state(
+    tmp_path: Path,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for native canvas browser regression")
+        raise AssertionError("unreachable")
+
+    canvas_source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 40,
+                "y": 60,
+                "width": 180,
+                "height": 100,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 420,
+                "y": 160,
+                "width": 200,
+                "height": 110,
+                "text": "B",
+            },
+            {
+                "id": "edge_1",
+                "type": "text",
+                "x": 700,
+                "y": 260,
+                "width": 180,
+                "height": 100,
+                "text": "Ziel",
+            },
+            {
+                "id": "group",
+                "type": "group",
+                "x": 10,
+                "y": 20,
+                "width": 900,
+                "height": 380,
+            },
+        ],
+        "edges": [
+            {
+                "id": "e",
+                "fromNode": "a",
+                "fromSide": "right",
+                "fromEnd": "none",
+                "toNode": "b",
+                "toSide": "left",
+                "toEnd": "arrow",
+                "label": "A nach B",
+            },
+            {
+                "id": "node_1",
+                "fromNode": "a",
+                "toNode": "b",
+            },
+        ],
+    }
+    document = json_canvas_to_editing_document(canvas_source, title="Canvas Browser Probe")
+    output = tmp_path / "canvas-viewer"
+    build_native_viewer(document, output)
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    browser_probe = r"""
+<script>
+Element.prototype.setPointerCapture = function () {};
+Element.prototype.releasePointerCapture = function () {};
+window.__nativeDocumentMessages = [];
+window.addEventListener("message", (event) => {
+  if (
+    event.data?.event === "native-document-change" ||
+    event.data?.event === "native-document-rebuild"
+  ) {
+    window.__nativeDocumentMessages.push(event.data);
+  }
+});
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 100) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(label);
+};
+const firePointer = (target, type, pointerId, clientX, clientY) => target.dispatchEvent(
+  new PointerEvent(type, {
+    bubbles: true,
+    pointerId,
+    pointerType: "touch",
+    clientX,
+    clientY,
+    button: 0,
+    buttons: type === "pointerup" ? 0 : 1,
+    isPrimary: true,
+  }),
+);
+try {
+  const viewport = document.querySelector("#nativeViewport");
+  const canvas = document.querySelector("#nativeCanvas");
+  const svg = document.querySelector("#nativeDiagram");
+  await waitUntil(
+    () =>
+      canvas?.style?.transform?.includes("scale(") &&
+      window.__nativeDocumentMessages.length > 0,
+    "canvas viewer startup readiness timed out",
+  );
+  window.__nativeDocumentMessages.length = 0;
+
+  const node = svg.querySelector('[data-source-kind="node"][data-source-id="a"]');
+  const edge = svg.querySelector('[data-source-kind="edge"][data-source-id="e"]');
+  const edgePath = edge ? [...edge.children].find((item) => item instanceof SVGPathElement) : null;
+  const edgeLabelRect = edge
+    ? [...edge.children].find((item) => item instanceof SVGRectElement)
+    : null;
+  if (
+    !(node instanceof SVGGElement) ||
+    !(edgePath instanceof SVGPathElement) ||
+    !(edgeLabelRect instanceof SVGRectElement)
+  ) {
+    throw new Error("canvas browser probe DOM contract missing");
+  }
+
+  const basePath = edgePath.getAttribute("d") || "";
+  const baseMarker = edgePath.getAttribute("marker-end") || "";
+  const rect = node.getBoundingClientRect();
+  const x = (rect.left + rect.right) / 2;
+  const y = (rect.top + rect.bottom) / 2;
+  firePointer(node, "pointerdown", 31, x, y);
+  firePointer(viewport, "pointermove", 31, x + 120, y + 45);
+
+  if ((edgePath.getAttribute("d") || "") === basePath) {
+    throw new Error("canvas incident edge path did not update during drag");
+  }
+  if ((edgePath.getAttribute("marker-end") || "") !== baseMarker) {
+    throw new Error("canvas edge marker binding changed during drag");
+  }
+  if (!(edgeLabelRect.getAttribute("transform") || "").includes("translate(")) {
+    throw new Error("canvas edge label did not follow drag");
+  }
+
+  firePointer(viewport, "pointerup", 31, x + 120, y + 45);
+  await waitUntil(
+    () => window.__nativeDocumentMessages.length > 0,
+    "canvas document change message was not published",
+  );
+  const latest = window.__nativeDocumentMessages.at(-1);
+  const movedNode = latest?.document?.nodes?.find((item) => item.id === "a");
+  const movedCanvasNode = latest?.canvas?.nodes?.find((item) => item.id === "a");
+  if (!movedNode || !movedCanvasNode || movedNode.x === 40 || movedCanvasNode.x !== movedNode.x) {
+    throw new Error("canvas document state did not capture dragged geometry");
+  }
+  const explicitEdge = latest?.canvas?.edges?.find((item) => item.id === "e");
+  if (
+    !explicitEdge ||
+    !Object.prototype.hasOwnProperty.call(explicitEdge, "fromEnd") ||
+    explicitEdge.fromEnd !== "none" ||
+    !Object.prototype.hasOwnProperty.call(explicitEdge, "toEnd") ||
+    explicitEdge.toEnd !== "arrow"
+  ) {
+    throw new Error("explicit default edge ends were not preserved");
+  }
+  const groupNode = latest?.canvas?.nodes?.find((item) => item.id === "group");
+  if (!groupNode || Object.prototype.hasOwnProperty.call(groupNode, "label")) {
+    throw new Error("absent group label was materialized");
+  }
+
+  const editButton = document.querySelector("#editText");
+  const textDialog = document.querySelector("#textDialog");
+  const textInput = document.querySelector("#textInput");
+  const saveText = document.querySelector("#saveText");
+  const status = document.querySelector("#status");
+  if (
+    !(editButton instanceof HTMLButtonElement) ||
+    !(textDialog instanceof HTMLDialogElement) ||
+    !(textInput instanceof HTMLTextAreaElement) ||
+    !(saveText instanceof HTMLButtonElement)
+  ) {
+    throw new Error("canvas text editor controls missing");
+  }
+  editButton.click();
+  await waitUntil(() => textDialog.open, "canvas text editor did not open");
+  const rebuildsBeforeEmptyText = window.__nativeDocumentMessages.filter(
+    (message) => message.event === "native-document-rebuild",
+  ).length;
+  textInput.value = "";
+  saveText.click();
+  await waitUntil(
+    () =>
+      window.__nativeDocumentMessages.filter(
+        (message) => message.event === "native-document-rebuild",
+      ).length > rebuildsBeforeEmptyText,
+    "empty text edit did not rebuild document",
+  );
+  const emptyTextRebuild = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  const emptyTextNode = emptyTextRebuild?.canvas?.nodes?.find((item) => item.id === "a");
+  if (!emptyTextNode || emptyTextNode.text !== "") {
+    throw new Error("valid empty text was not projected to canvas");
+  }
+  editButton.click();
+  await waitUntil(() => textDialog.open, "canvas text editor did not reopen");
+  textInput.value = "Quelle geändert";
+  saveText.click();
+  await waitUntil(
+    () =>
+      window.__nativeDocumentMessages.filter(
+        (message) => message.event === "native-document-rebuild",
+      ).length > rebuildsBeforeEmptyText + 1,
+    "valid text edit did not rebuild document",
+  );
+  const textRebuild = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  const editedNode = textRebuild?.canvas?.nodes?.find((item) => item.id === "a");
+  if (!editedNode || editedNode.text !== "Quelle geändert") {
+    throw new Error("valid text edit was not projected to canvas");
+  }
+
+  const addNodeButton = document.querySelector("#addNode");
+  if (!(addNodeButton instanceof HTMLButtonElement)) {
+    throw new Error("canvas add-node control missing");
+  }
+  const rebuildsBeforeAddNode = window.__nativeDocumentMessages.filter(
+    (message) => message.event === "native-document-rebuild",
+  ).length;
+  addNodeButton.click();
+  await waitUntil(
+    () =>
+      window.__nativeDocumentMessages.filter(
+        (message) => message.event === "native-document-rebuild",
+      ).length > rebuildsBeforeAddNode,
+    "add-node did not rebuild document",
+  );
+  const addNodeRebuild = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  if (addNodeRebuild?.document?.nodes?.some((item) => item.id === "node_1")) {
+    throw new Error("new node collided with existing edge id");
+  }
+  let allIds = [
+    ...(addNodeRebuild?.document?.nodes || []).map((item) => item.id),
+    ...(addNodeRebuild?.document?.edges || []).map((item) => item.id),
+  ];
+  if (new Set(allIds).size !== allIds.length) {
+    throw new Error("add-node produced duplicate global ids");
+  }
+
+  firePointer(node, "pointerdown", 41, x, y);
+  firePointer(viewport, "pointerup", 41, x, y);
+  const addEdgeButton = document.querySelector("#addEdge");
+  const edgeIdTarget = svg.querySelector(
+    '[data-source-kind="node"][data-source-id="edge_1"]',
+  );
+  if (!(addEdgeButton instanceof HTMLButtonElement) || !(edgeIdTarget instanceof SVGGElement)) {
+    throw new Error("canvas add-edge controls or target missing");
+  }
+  const rebuildsBeforeAddEdge = window.__nativeDocumentMessages.filter(
+    (message) => message.event === "native-document-rebuild",
+  ).length;
+  addEdgeButton.click();
+  const targetRect = edgeIdTarget.getBoundingClientRect();
+  firePointer(
+    edgeIdTarget,
+    "pointerdown",
+    42,
+    (targetRect.left + targetRect.right) / 2,
+    (targetRect.top + targetRect.bottom) / 2,
+  );
+  await waitUntil(
+    () =>
+      window.__nativeDocumentMessages.filter(
+        (message) => message.event === "native-document-rebuild",
+      ).length > rebuildsBeforeAddEdge,
+    "add-edge did not rebuild document",
+  );
+  const addEdgeRebuild = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  const addedEdge = addEdgeRebuild?.document?.edges?.find(
+    (item) => item.from === "a" && item.to === "edge_1",
+  );
+  if (!addedEdge || addedEdge.id === "edge_1") {
+    throw new Error("new edge collided with existing node id");
+  }
+  allIds = [
+    ...(addEdgeRebuild?.document?.nodes || []).map((item) => item.id),
+    ...(addEdgeRebuild?.document?.edges || []).map((item) => item.id),
+  ];
+  if (new Set(allIds).size !== allIds.length) {
+    throw new Error("add-edge produced duplicate global ids");
+  }
+
+  if (
+    Object.keys(localStorage).some((key) =>
+      key.startsWith("schauwerk.native-viewer.layout.v1."),
+    )
+  ) {
+    throw new Error("document-backed canvas drag leaked into local layout storage");
+  }
+  document.documentElement.dataset.canvasBrowserRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.canvasBrowserRegression = "fail";
+  document.documentElement.dataset.canvasBrowserRegressionError = String(error?.message || error);
+}
+</script>
+"""
+    index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+
+    class QuietCanvasHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietCanvasHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    f"--user-data-dir={tmp_path / 'canvas-chrome-profile'}",
+                    "--no-first-run",
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--run-all-compositor-stages-before-draw",
+                    "--virtual-time-budget=8000",
+                    "--dump-dom",
+                    f"http://127.0.0.1:{port}/",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=15,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser("Google Chrome canvas probe did not become usable in time")
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-canvas-browser-regression="pass"' in completed.stdout, completed.stdout
+    assert 'data-canvas-browser-regression="fail"' not in completed.stdout, completed.stdout
+
+
+def test_native_canvas_document_browser_preserves_absent_empty_arrays(
+    tmp_path: Path,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for empty canvas browser regression")
+        raise AssertionError("unreachable")
+
+    document = json_canvas_to_editing_document({}, title="Empty Canvas Browser Probe")
+    output = tmp_path / "empty-canvas-viewer"
+    build_native_viewer(document, output)
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    browser_probe = r"""
+<script>
+window.__nativeEmptyMessages = [];
+window.addEventListener("message", (event) => {
+  if (event.data?.event === "native-document-change") {
+    window.__nativeEmptyMessages.push(event.data);
+  }
+});
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 100) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(label);
+};
+try {
+  await waitUntil(
+    () => window.__nativeEmptyMessages.length > 0,
+    "empty canvas startup message timed out",
+  );
+  const latest = window.__nativeEmptyMessages.at(-1);
+  if (!latest?.canvas || typeof latest.canvas !== "object") {
+    throw new Error("empty canvas message missing");
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(latest.canvas, "nodes") ||
+    Object.prototype.hasOwnProperty.call(latest.canvas, "edges")
+  ) {
+    throw new Error("empty canvas materialized optional nodes or edges");
+  }
+  document.documentElement.dataset.emptyCanvasBrowserRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.emptyCanvasBrowserRegression = "fail";
+  document.documentElement.dataset.emptyCanvasBrowserRegressionError = String(
+    error?.message || error,
+  );
+}
+</script>
+"""
+    index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+
+    class QuietEmptyCanvasHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietEmptyCanvasHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    f"--user-data-dir={tmp_path / 'empty-canvas-chrome-profile'}",
+                    "--no-first-run",
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--run-all-compositor-stages-before-draw",
+                    "--virtual-time-budget=8000",
+                    "--dump-dom",
+                    f"http://127.0.0.1:{port}/",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=15,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser("Google Chrome empty canvas probe did not become usable in time")
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert (
+        'data-empty-canvas-browser-regression="pass"' in completed.stdout
+    ), completed.stdout
+    assert (
+        'data-empty-canvas-browser-regression="fail"' not in completed.stdout
+    ), completed.stdout

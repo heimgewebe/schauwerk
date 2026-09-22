@@ -728,6 +728,8 @@ const elements = {
 let pendingLoad = null;
 let currentXml = null;
 let currentRepresentation = null;
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
 let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = null;
@@ -768,7 +770,11 @@ function setEngineMode(mode) {
   const pngButton = document.querySelector('[data-export="png"]');
   if (pngButton instanceof HTMLButtonElement) pngButton.disabled = native;
   elements.projectButton.title = native
-    ? (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
+    ? (
+        currentNativeCanvas
+          ? "JSON Canvas speichern"
+          : (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
+      )
     : "draw.io-Projekt speichern";
   elements.legacyEditButton.hidden = !(native && currentLegacyXml);
 }
@@ -967,6 +973,8 @@ function prepareInput(raw, title = "Schaubild") {
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   currentRepresentation = null;
+  currentNativeDocument = null;
+  currentNativeCanvas = null;
   currentNativeUrl = null;
   pendingExport = null;
 
@@ -984,10 +992,13 @@ function prepareInput(raw, title = "Schaubild") {
   }
   if (detected.kind === "json-canvas") {
     return {
-      xml: jsonCanvasToDrawioXml(detected.value, {
-        nodeFontSize: preferredNodeFontSize,
-        edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
-      }),
+      nativeImport: {
+        schema_version: NATIVE_IMPORT_SCHEMA,
+        format: "json-canvas-1.0",
+        source: detected.value,
+        title: currentTitle,
+      },
+      nativeCanvas: detected.value,
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
@@ -1035,6 +1046,8 @@ function launchLegacy(load) {
   pendingExport = null;
   pendingLoad = load;
   currentRepresentation = null;
+  currentNativeDocument = null;
+  currentNativeCanvas = null;
   currentLegacyXml = typeof load?.xml === "string" ? load.xml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
@@ -1062,6 +1075,8 @@ async function launchNative(load) {
   pendingCreationDefaults = false;
   currentXml = null;
   currentRepresentation = load.nativeRepresentation || null;
+  currentNativeDocument = load.nativeDocument || null;
+  currentNativeCanvas = load.nativeCanvas || null;
   currentLegacyXml = typeof load.legacyXml === "string" ? load.legacyXml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
@@ -1076,7 +1091,7 @@ async function launchNative(load) {
     const response = await fetch(NATIVE_API_PATH, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(currentRepresentation || load.nativeImport),
+      body: JSON.stringify(currentRepresentation || currentNativeDocument || load.nativeImport),
     });
     const result = await response.json();
     if (loadIntent !== loadIntentGeneration) return;
@@ -1107,9 +1122,15 @@ async function launchNative(load) {
     editorReady = true;
     frame.src = currentNativeUrl;
     setEngineMode("native");
-    setStatus(currentLegacyXml
-      ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
-      : "Native Darstellung · Semantik read-only · Layout lokal");
+    setStatus(
+      currentNativeCanvas
+        ? "Native JSON-Canvas-Bearbeitung · Dokumentzustand aktiv"
+        : (
+            currentLegacyXml
+              ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
+              : "Native Darstellung · Semantik read-only · Layout lokal"
+          )
+    );
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
     editorReady = false;
@@ -1191,12 +1212,22 @@ async function openFile(file) {
 }
 
 async function exportNative(format) {
-  if (!editorReady || (!currentRepresentation && !currentLegacyXml) || !currentNativeUrl) {
+  if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Native Darstellung ist noch nicht bereit");
     return;
   }
   clearPreparedDownload();
   if (format === "drawio") {
+    if (currentNativeCanvas) {
+      const source = JSON.stringify(currentNativeCanvas, null, 2) + "\n";
+      prepareDownload(
+        new Blob([source], { type: "application/json;charset=utf-8" }),
+        safeFilename(currentTitle) + ".canvas",
+        "JSON Canvas",
+      );
+      setStatus("Bearbeitete .canvas-Datei bereit");
+      return;
+    }
     if (currentLegacyXml) {
       prepareDownload(
         new Blob([currentLegacyXml], { type: "application/xml;charset=utf-8" }),
@@ -1268,9 +1299,46 @@ function exportDiagram(format) {
 }
 
 window.addEventListener("message", (event) => {
-  if (event.origin !== EDITOR_ORIGIN || event.source !== elements.frame.contentWindow) return;
+  if (event.source !== elements.frame.contentWindow) return;
   const message = parseMessage(event.data);
   if (!message) return;
+
+  if (event.origin === window.location.origin) {
+    if (message.event === "native-document-change") {
+      if (
+        message.document &&
+        message.document.schema_version === "schauwerk-native-editing-document.v1" &&
+        message.canvas &&
+        typeof message.canvas === "object"
+      ) {
+        currentNativeDocument = message.document;
+        currentNativeCanvas = message.canvas;
+        setEngineMode("native");
+        setStatus("Native Änderung im Dokumentzustand gesichert");
+      }
+      return;
+    }
+    if (message.event === "native-document-rebuild") {
+      if (
+        message.document &&
+        message.document.schema_version === "schauwerk-native-editing-document.v1" &&
+        message.canvas &&
+        typeof message.canvas === "object"
+      ) {
+        currentNativeDocument = message.document;
+        currentNativeCanvas = message.canvas;
+        void launchNative({
+          nativeDocument: currentNativeDocument,
+          nativeCanvas: currentNativeCanvas,
+          sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+        });
+      }
+      return;
+    }
+    return;
+  }
+
+  if (event.origin !== EDITOR_ORIGIN) return;
 
   if (message.event === "configure") {
     const config = {

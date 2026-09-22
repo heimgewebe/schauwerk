@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from schauwerk.visual.native_diagram import render_native_diagram
+from schauwerk.visual.native_diagram import _canvas_edge_geometry, render_native_diagram
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
@@ -97,10 +97,18 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         "semantic_writeback": False,
         "cross_device_persistence": False,
     }
-    assert first["interactions"] == ["pan", "zoom", "selection", "node-drag"]
+    assert first["interactions"] == [
+        "pan",
+        "zoom",
+        "selection",
+        "node-drag",
+        "live-edge-rerouting",
+    ]
+    assert first["interaction_contract"]["edge_rerouting"] is True
+    assert first["interaction_contract"]["edge_geometry_after_node_drag"] == (
+        "live-route-preserving-overlay"
+    )
     assert first["interaction_contract"]["two_pointer_pinch_zoom"] is True
-    assert first["interaction_contract"]["edge_geometry_after_node_drag"] == "frozen-gate1-svg"
-    assert first["interaction_contract"]["edge_rerouting"] is False
     assert first["network_boundary"] == {
         "bundle": "server-managed-local-bundle",
         "external_requests_required": False,
@@ -152,7 +160,8 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert '/^[0-9a-f]{64}$/.test(inputDigest)' in app
     assert 'querySelectorAll(\'[data-source-kind="node"]\')' in app
     assert 'querySelector(\'[data-source-kind="edge"]\')' not in app
-    assert 'setAttribute("d"' not in app
+    assert 'edgeState.path.setAttribute("d"' in app
+    assert "function updateIncidentEdges(sourceId)" in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
     assert 'gesture = { kind: "pinch"' in app
@@ -163,7 +172,8 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         'if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;'
         in app
     )
-    assert 'endedGesture.moved && persistOverrides()' in app
+    assert "if (documentMode)" in app
+    assert "else if (persistOverrides())" in app
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
     assert 'event.key === "Enter" || event.key === " "' in app
@@ -211,6 +221,15 @@ def test_native_viewer_interaction_math_is_browser_independent(tmp_path: Path) -
     module_url = json.dumps(
         "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
     )
+    python_canvas_path, _, _, python_canvas_route = _canvas_edge_geometry(
+        {"id": "source", "x": 0, "y": 0, "width": 100, "height": 60},
+        {"id": "target", "x": 300, "y": 100, "width": 120, "height": 80},
+        {"id": "edge", "from_side": None, "to_side": None},
+        lane=18.0,
+    )
+    assert python_canvas_route == "canvas-cubic"
+    python_canvas_path_json = json.dumps(python_canvas_path)
+
     script = f"""
 const m = await import({module_url});
 const view = {{x: 10, y: 20, scale: 2}};
@@ -240,6 +259,30 @@ if (
 const sameWorking = m.updateNodeOffset(safe, 'a', 3, 4);
 if (sameWorking !== safe || m.nodeOffset(safe, 'a').x !== 3 || m.nodeOffset(safe, 'a').y !== 4) {{
   throw new Error('working override update should be in-place and O(1)');
+}}
+const canvasCubic = m.liveEdgeGeometry(
+  {{x: 0, y: 0, width: 100, height: 60}},
+  {{x: 300, y: 100, width: 120, height: 80}},
+  {{route: 'canvas-cubic', lane: 0, fromSide: 'right', toSide: 'left'}}
+);
+if (canvasCubic.path !== 'M 100.0 30.0 C 179.9 30.0, 220.1 140.0, 300.0 140.0') {{
+  throw new Error(`canvas cubic parity drift: ${{canvasCubic.path}}`);
+}}
+const canvasDefaultLane = m.liveEdgeGeometry(
+  {{x: 0, y: 0, width: 100, height: 60}},
+  {{x: 300, y: 100, width: 120, height: 80}},
+  {{route: 'canvas-cubic', lane: 18}}
+);
+if (canvasDefaultLane.path !== {python_canvas_path_json}) {{
+  throw new Error('canvas cubic Python/JS parity drift: ' + canvasDefaultLane.path);
+}}
+const canvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 18, selfLoop: true}}
+);
+if (canvasLoop.path !== 'M 120.0 58.0 C 204.0 12.0, 204.0 128.0, 120.0 87.6') {{
+  throw new Error(`canvas self-loop parity drift: ${{canvasLoop.path}}`);
 }}
 const fitted = m.fitView(1000, 500, 800, 600, 20);
 if (!(

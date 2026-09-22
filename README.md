@@ -75,19 +75,24 @@ make validate
 
 Neue kanonische Schaubilder mit `schauwerk-representation-input.v1` werden im
 integrierten Schaubild-`serve`-Pfad durch `schauwerk-native-diagram-v1` gerendert und
-im lokalen Native Viewer angezeigt. Mermaid, JSON Canvas und draw.io/XML bleiben als
-Legacy-Kompatibilität verfügbar. `knowledge_map` bleibt vorerst bewusst im
-JSON-Canvas-/Legacy-Pfad, bis die bekannte allgemeine Same-Row-/Parallel-Routinggrenze
-des nativen Renderers gehärtet ist.
+im lokalen Native Viewer angezeigt. JSON Canvas 1.0 wird direkt als dokumentgebundener
+Native-Editor geöffnet; explizite Knoten-Geometrie, IDs, Reihenfolge und unterstützte
+Erweiterungsfelder bleiben beim `.canvas`-Roundtrip erhalten. Mermaid und ausdrücklich
+gewählte draw.io/XML-Kompatibilität bleiben Legacy-Pfade. Der
+Representation-`knowledge_map`-Cutover bleibt separat ausstehend, bis die bekannte
+allgemeine Same-Row-/Parallel-Routinggrenze des semantischen Renderers gehärtet ist.
 
 ```bash
 PYTHONPATH=src python -m schauwerk.visual.standalone_editor serve --port 8765
 ```
 
-Der native Browserpfad verändert die semantische Representation nicht. Pan, Zoom,
-Selection und Node-Drag arbeiten auf der Darstellung; Drag-Offsets bleiben lokal und
-Kanten werden danach noch nicht neu geroutet. Native Quelle und SVG können exportiert
-werden; PNG bleibt vorerst Legacy-Funktion.
+Für Representation bleibt die Semantik read-only; Pan, Zoom, Selection und Node-Drag
+arbeiten auf einem lokalen Layout-Overlay. Verbundene Kanten und Beschriftungen werden
+während des Drags live neu geführt. Im JSON-Canvas-Dokumentmodus sind Knoten und Kanten
+zusätzlich bearbeitbar, erstellbar, löschbar und an andere Endpunkte umhängbar; Drag und
+Strukturänderungen aktualisieren den dokumentgebundenen Zustand und können wieder als
+`.canvas` exportiert werden. Native SVG-Ausgabe bleibt verfügbar; PNG bleibt vorerst
+Legacy-Funktion.
 
 ## Asset-Fundus
 

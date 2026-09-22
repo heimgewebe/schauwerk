@@ -26,6 +26,12 @@ INDEX_HTML = r"""<!doctype html>
         <button id="zoomIn" type="button" aria-label="Vergrößern">+</button>
         <button id="fitView" type="button">Einpassen</button>
         <button id="resetLayout" type="button">Layout zurücksetzen</button>
+        <button id="addNode" class="document-only" type="button" hidden>Knoten +</button>
+        <button id="addEdge" class="document-only" type="button" hidden>Kante +</button>
+        <button id="editText" class="document-only" type="button" hidden>Text</button>
+        <button id="reattachSource" class="document-only" type="button" hidden>Start ändern</button>
+        <button id="reattachTarget" class="document-only" type="button" hidden>Ziel ändern</button>
+        <button id="deleteSelection" class="document-only" type="button" hidden>Löschen</button>
       </div>
     </header>
     <section class="viewer-stage" id="nativeViewport" aria-label="Interaktives Schaubild">
@@ -34,11 +40,22 @@ __SCHAUWERK_NATIVE_SVG__
       </div>
     </section>
     <footer class="viewer-foot">
-      <span id="selectionStatus">Kein Knoten ausgewählt</span>
-      <span>Pan · Zoom · Auswahl · Knoten verschieben</span>
-      <span>Layout lokal · Source read-only</span>
+      <span id="selectionStatus">Keine Auswahl</span>
+      <span id="interactionHint">Pan · Zoom · Auswahl · Knoten verschieben</span>
+      <span id="authorityHint">Layout lokal · Source read-only</span>
     </footer>
   </main>
+  <dialog id="textDialog" class="text-dialog">
+    <form method="dialog">
+      <label for="textInput">Text</label>
+      <textarea id="textInput" rows="5"></textarea>
+      <div class="dialog-actions">
+        <button id="cancelText" value="cancel" type="submit">Abbrechen</button>
+        <button id="saveText" value="default" type="button">Übernehmen</button>
+      </div>
+    </form>
+  </dialog>
+  <script id="nativeModel" type="application/json">__SCHAUWERK_NATIVE_MODEL__</script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
@@ -111,6 +128,30 @@ button:focus-visible { outline: 3px solid rgba(56, 89, 199, 0.32); outline-offse
   stroke-width: 4px !important;
   filter: drop-shadow(0 0 5px rgba(56, 89, 199, 0.45));
 }
+.native-diagram [data-source-kind="edge"] { cursor: pointer; }
+.native-diagram [data-source-kind="edge"].is-selected > path {
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 4px rgba(56, 89, 199, 0.48));
+}
+.text-dialog {
+  width: min(560px, calc(100vw - 28px));
+  border: 1px solid #c8d1df;
+  border-radius: 14px;
+  padding: 18px;
+}
+.text-dialog::backdrop { background: rgba(15, 23, 42, 0.38); }
+.text-dialog form { display: grid; gap: 12px; }
+.text-dialog label { font-weight: 750; }
+.text-dialog textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  font: inherit;
+  border: 1px solid #c8d1df;
+  border-radius: 10px;
+  padding: 10px;
+}
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .viewer-foot {
   min-height: 38px;
   padding: 7px max(12px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
@@ -240,11 +281,225 @@ export function updateNodeOffset(overrides, sourceId, x, y) {
   working[sourceId] = { x: boundedOffset(x), y: boundedOffset(y) };
   return working;
 }
+
+function normalizedBounds(value) {
+  const x = finite(value?.x);
+  const y = finite(value?.y);
+  const width = Math.max(1, finite(value?.width, 1));
+  const height = Math.max(1, finite(value?.height, 1));
+  return {
+    x,
+    y,
+    width,
+    height,
+    left: x,
+    right: x + width,
+    top: y,
+    bottom: y + height,
+    cx: x + width / 2,
+    cy: y + height / 2,
+  };
+}
+
+function sideAnchor(bounds, side, toward) {
+  if (side === "left") return { x: bounds.left, y: bounds.cy };
+  if (side === "right") return { x: bounds.right, y: bounds.cy };
+  if (side === "top") return { x: bounds.cx, y: bounds.top };
+  if (side === "bottom") return { x: bounds.cx, y: bounds.bottom };
+  const dx = toward.cx - bounds.cx;
+  const dy = toward.cy - bounds.cy;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? { x: bounds.right, y: bounds.cy }
+      : { x: bounds.left, y: bounds.cy };
+  }
+  return dy >= 0
+    ? { x: bounds.cx, y: bounds.bottom }
+    : { x: bounds.cx, y: bounds.top };
+}
+
+function canvasAnchor(bounds, side, toward) {
+  const chosen = side || (() => {
+    const dx = toward.cx - bounds.cx;
+    const dy = toward.cy - bounds.cy;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left";
+    return dy >= 0 ? "bottom" : "top";
+  })();
+  if (chosen === "left") return { x: bounds.left, y: bounds.cy, vx: -1, vy: 0 };
+  if (chosen === "right") return { x: bounds.right, y: bounds.cy, vx: 1, vy: 0 };
+  if (chosen === "top") return { x: bounds.cx, y: bounds.top, vx: 0, vy: -1 };
+  return { x: bounds.cx, y: bounds.bottom, vx: 0, vy: 1 };
+}
+
+function anchorPair(source, target) {
+  const dx = target.cx - source.cx;
+  const dy = target.cy - source.cy;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    return dx >= 0
+      ? [{ x: source.right, y: source.cy }, { x: target.left, y: target.cy }, "horizontal"]
+      : [{ x: source.left, y: source.cy }, { x: target.right, y: target.cy }, "horizontal"];
+  }
+  return dy >= 0
+    ? [{ x: source.cx, y: source.bottom }, { x: target.cx, y: target.top }, "vertical"]
+    : [{ x: source.cx, y: source.top }, { x: target.cx, y: target.bottom }, "vertical"];
+}
+
+function cubicPoint(start, c1, c2, end) {
+  return {
+    x: (start.x + 3 * c1.x + 3 * c2.x + end.x) / 8,
+    y: (start.y + 3 * c1.y + 3 * c2.y + end.y) / 8,
+  };
+}
+
+export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
+  const source = normalizedBounds(sourceBounds);
+  const target = normalizedBounds(targetBounds);
+  const route = typeof options.route === "string" ? options.route : "standard";
+  const kind = typeof options.kind === "string" ? options.kind : "flow";
+  const lane = finite(options.lane);
+  const canvasWidth = Math.max(1, finite(options.canvasWidth, 1));
+  const canvasHeight = Math.max(1, finite(options.canvasHeight, 1));
+  const selfLoop = Boolean(options.selfLoop);
+
+  if (selfLoop && route === "canvas-self-loop") {
+    const reach = 66 + Math.abs(lane);
+    const start = { x: source.right, y: source.y + source.height * 0.35 };
+    const end = { x: source.right, y: source.y + source.height * 0.72 };
+    const c1 = { x: start.x + reach, y: source.y - 18 };
+    const c2 = { x: end.x + reach, y: source.bottom + 18 };
+    const label = cubicPoint(start, c1, c2, end);
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: label.x + 18,
+      labelY: label.y,
+    };
+  }
+
+  if (selfLoop) {
+    const reach = 66 + Math.min(120, Math.abs(lane));
+    const start = { x: source.right, y: source.y + source.height * 0.35 };
+    const end = { x: source.right, y: source.y + source.height * 0.72 };
+    const controlX = Math.min(canvasWidth - 8, source.right + reach);
+    const c1 = { x: controlX, y: source.y - 18 - Math.abs(lane) * 0.12 };
+    const c2 = { x: controlX, y: source.bottom + 18 + Math.abs(lane) * 0.12 };
+    const label = cubicPoint(start, c1, c2, end);
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: Math.min(canvasWidth - 12, label.x + 18),
+      labelY: label.y,
+    };
+  }
+
+  if (kind === "feedback" || route === "feedback-return") {
+    const start = { x: source.cx, y: source.bottom };
+    const end = { x: target.cx, y: target.bottom };
+    const requestedBaseline = Math.max(source.bottom, target.bottom) + 34 + Math.abs(lane);
+    const baseline = Math.max(
+      Math.max(source.bottom, target.bottom) + 12,
+      Math.min(canvasHeight - 12, requestedBaseline),
+    );
+    const bend = 24;
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${start.x.toFixed(1)} ${(start.y + bend).toFixed(1)}, ${start.x.toFixed(1)} ${baseline.toFixed(1)}, ${start.x.toFixed(1)} ${baseline.toFixed(1)} L ${end.x.toFixed(1)} ${baseline.toFixed(1)} C ${end.x.toFixed(1)} ${baseline.toFixed(1)}, ${end.x.toFixed(1)} ${(end.y + bend).toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: (start.x + end.x) / 2,
+      labelY: baseline,
+    };
+  }
+
+  if (route === "process-row-gutter") {
+    const start = { x: source.cx, y: source.top };
+    const end = { x: target.cx, y: target.top };
+    const railY = Math.max(12, Math.min(source.top, target.top) - 30 - Math.abs(lane));
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${start.x.toFixed(1)} ${railY.toFixed(1)}, ${start.x.toFixed(1)} ${railY.toFixed(1)}, ${start.x.toFixed(1)} ${railY.toFixed(1)} L ${end.x.toFixed(1)} ${railY.toFixed(1)} C ${end.x.toFixed(1)} ${railY.toFixed(1)}, ${end.x.toFixed(1)} ${railY.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: (start.x + end.x) / 2,
+      labelY: railY,
+    };
+  }
+
+  if (route === "vertical") {
+    const down = target.cy >= source.cy;
+    const start = { x: source.cx, y: down ? source.bottom : source.top };
+    const end = { x: target.cx, y: down ? target.top : target.bottom };
+    const midY = (start.y + end.y) / 2;
+    const laneX = (start.x + end.x) / 2 + lane;
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${start.x.toFixed(1)} ${midY.toFixed(1)}, ${laneX.toFixed(1)} ${midY.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: laneX + 12,
+      labelY: midY,
+    };
+  }
+
+  if (route === "narrative-parallel") {
+    const leftToRight = target.cx >= source.cx;
+    const start = { x: leftToRight ? source.right : source.left, y: source.cy };
+    const end = { x: leftToRight ? target.left : target.right, y: target.cy };
+    const lift = 42 + Math.abs(lane);
+    const railY = Math.max(12, Math.min(source.top, target.top) - lift);
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${start.x.toFixed(1)} ${railY.toFixed(1)}, ${end.x.toFixed(1)} ${railY.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: (start.x + end.x) / 2,
+      labelY: railY,
+    };
+  }
+
+  if (route === "canvas-cubic") {
+    const start = canvasAnchor(source, options.fromSide, target);
+    const end = canvasAnchor(target, options.toSide, source);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const distance = Math.max(42, Math.min(160, Math.hypot(dx, dy) * 0.35));
+    let c1 = { x: start.x + start.vx * distance, y: start.y + start.vy * distance };
+    let c2 = { x: end.x + end.vx * distance, y: end.y + end.vy * distance };
+    if (lane) {
+      const magnitude = Math.max(1, Math.hypot(dx, dy));
+      const nx = -dy / magnitude;
+      const ny = dx / magnitude;
+      c1 = { x: c1.x + nx * lane, y: c1.y + ny * lane };
+      c2 = { x: c2.x + nx * lane, y: c2.y + ny * lane };
+    }
+    const label = cubicPoint(start, c1, c2, end);
+    return {
+      path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+      labelX: label.x,
+      labelY: label.y,
+    };
+  }
+
+  const explicitSides = options.fromSide || options.toSide;
+  const start = explicitSides
+    ? sideAnchor(source, options.fromSide, target)
+    : anchorPair(source, target)[0];
+  const end = explicitSides
+    ? sideAnchor(target, options.toSide, source)
+    : anchorPair(source, target)[1];
+  const axis = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y)
+    ? "horizontal"
+    : "vertical";
+  let c1;
+  let c2;
+  if (axis === "horizontal") {
+    const midX = (start.x + end.x) / 2;
+    c1 = { x: midX, y: start.y + lane };
+    c2 = { x: midX, y: end.y + lane };
+  } else {
+    const midY = (start.y + end.y) / 2;
+    c1 = { x: start.x + lane, y: midY };
+    c2 = { x: end.x + lane, y: midY };
+  }
+  const label = cubicPoint(start, c1, c2, end);
+  return {
+    path: `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} C ${c1.x.toFixed(1)} ${c1.y.toFixed(1)}, ${c2.x.toFixed(1)} ${c2.y.toFixed(1)}, ${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+    labelX: label.x,
+    labelY: label.y,
+  };
+}
 """
 
 APP_JS = r"""import {
   clampScale,
   fitView,
+  liveEdgeGeometry,
   nodeOffset,
   panBy,
   sanitizeOverrides,
@@ -263,10 +518,35 @@ const zoomIn = document.querySelector("#zoomIn");
 const zoomOut = document.querySelector("#zoomOut");
 const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
+const addNodeButton = document.querySelector("#addNode");
+const addEdgeButton = document.querySelector("#addEdge");
+const editTextButton = document.querySelector("#editText");
+const reattachSourceButton = document.querySelector("#reattachSource");
+const reattachTargetButton = document.querySelector("#reattachTarget");
+const deleteSelectionButton = document.querySelector("#deleteSelection");
+const interactionHint = document.querySelector("#interactionHint");
+const authorityHint = document.querySelector("#authorityHint");
+const textDialog = document.querySelector("#textDialog");
+const textInput = document.querySelector("#textInput");
+const saveTextButton = document.querySelector("#saveText");
+const modelElement = document.querySelector("#nativeModel");
 
 if (!(viewport instanceof HTMLElement) || !(canvas instanceof HTMLElement) || !(svg instanceof SVGSVGElement)) {
   throw new Error("Native viewer DOM contract is incomplete");
 }
+if (!(modelElement instanceof HTMLScriptElement)) {
+  throw new Error("Native viewer model contract is incomplete");
+}
+let sourceModel;
+try {
+  sourceModel = JSON.parse(modelElement.textContent || "{}");
+} catch (_) {
+  throw new Error("Native viewer embedded model is invalid");
+}
+if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
+  throw new Error("Native viewer embedded model is incomplete");
+}
+const documentMode = sourceModel.schema_version === "schauwerk-native-editing-document.v1";
 
 const inputDigest = svg.dataset.inputDigest || "";
 if (!/^[0-9a-f]{64}$/.test(inputDigest)) {
@@ -275,9 +555,15 @@ if (!/^[0-9a-f]{64}$/.test(inputDigest)) {
 const STORAGE_KEY = `schauwerk.native-viewer.layout.v1.${inputDigest}`;
 const nodes = new Map();
 const baseTransforms = new Map();
+const edges = new Map();
+const incidentEdges = new Map();
 let view = { x: 0, y: 0, scale: 1 };
-let overrides = readOverrides();
+let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
+let selectedEdgeId = null;
+let edgeCreateSource = null;
+let edgeReattach = null;
+let textEditTarget = null;
 let gesture = null;
 const activePointers = new Map();
 const DRAG_THRESHOLD_PX = 4;
@@ -294,6 +580,7 @@ function readOverrides() {
 }
 
 function persistOverrides() {
+  if (documentMode) return true;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeOverrides(overrides)));
     return true;
@@ -301,6 +588,101 @@ function persistOverrides() {
     setStatus("Layout lokal verändert · Speichern nicht möglich · Semantik unverändert");
     return false;
   }
+}
+
+function cloneJson(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function uniqueId(prefix, values) {
+  const existing = new Set(values.map((item) => String(item.id || "")));
+  let index = 1;
+  while (existing.has(`${prefix}${index}`)) index += 1;
+  return `${prefix}${index}`;
+}
+
+function documentSnapshot() {
+  if (!documentMode) return null;
+  const snapshot = cloneJson(sourceModel);
+  for (const node of snapshot.nodes) {
+    const offset = nodeOffset(overrides, String(node.id));
+    node.x = Math.round(Number(node.x) + offset.x);
+    node.y = Math.round(Number(node.y) + offset.y);
+  }
+  return snapshot;
+}
+
+function canvasFromDocument(document) {
+  if (!document || document.schema_version !== "schauwerk-native-editing-document.v1") return null;
+  const source = document.source || {};
+  const canvas = cloneJson(source);
+  const outputNodes = document.nodes.map((item) => {
+    const node = cloneJson(item.source || {});
+    node.id = String(item.id);
+    node.type = String(item.type || node.type || "text");
+    node.x = Math.round(Number(item.x));
+    node.y = Math.round(Number(item.y));
+    node.width = Math.max(1, Math.round(Number(item.width)));
+    node.height = Math.max(1, Math.round(Number(item.height)));
+    const label = String(item.label ?? "");
+    if (node.type === "text") node.text = label;
+    else if (node.type === "group") {
+      if (label || Object.prototype.hasOwnProperty.call(node, "label")) node.label = label;
+      else delete node.label;
+    } else if (node.type === "file") node.file = label;
+    else if (node.type === "link") node.url = label;
+    return node;
+  });
+  const outputEdges = document.edges.map((item) => {
+    const edge = cloneJson(item.source || {});
+    edge.id = String(item.id);
+    edge.fromNode = String(item.from);
+    edge.toNode = String(item.to);
+    const label = String(item.label ?? "");
+    if (label || Object.prototype.hasOwnProperty.call(edge, "label")) edge.label = label;
+    else delete edge.label;
+    for (const [internal, external, defaultValue] of [
+      ["from_side", "fromSide", null],
+      ["to_side", "toSide", null],
+      ["from_end", "fromEnd", "none"],
+      ["to_end", "toEnd", "arrow"],
+    ]) {
+      const value = item[internal];
+      const hadExternal = Object.prototype.hasOwnProperty.call(edge, external);
+      if (value === null || value === undefined) delete edge[external];
+      else if (value === defaultValue && !hadExternal) delete edge[external];
+      else edge[external] = value;
+    }
+    return edge;
+  });
+  if (outputNodes.length || Object.prototype.hasOwnProperty.call(source, "nodes")) {
+    canvas.nodes = outputNodes;
+  } else {
+    delete canvas.nodes;
+  }
+  if (outputEdges.length || Object.prototype.hasOwnProperty.call(source, "edges")) {
+    canvas.edges = outputEdges;
+  } else {
+    delete canvas.edges;
+  }
+  return canvas;
+}
+
+function publishDocumentState(eventName = "native-document-change", document = documentSnapshot()) {
+  if (!documentMode || !document) return;
+  const canvasState = canvasFromDocument(document);
+  if (!canvasState) return;
+  window.parent.postMessage(
+    { event: eventName, document, canvas: canvasState },
+    window.location.origin,
+  );
+}
+
+function rebuildDocument(document) {
+  if (!documentMode || !document) return;
+  sourceModel = document;
+  overrides = Object.create(null);
+  publishDocumentState("native-document-rebuild", document);
 }
 
 function applyView() {
@@ -317,10 +699,12 @@ function applyNodeTransform(sourceId) {
   if (offset.x === 0 && offset.y === 0) {
     if (base) node.setAttribute("transform", base);
     else node.removeAttribute("transform");
+    updateIncidentEdges(sourceId);
     return;
   }
   const translated = `translate(${offset.x} ${offset.y})`;
   node.setAttribute("transform", base ? `${translated} ${base}` : translated);
+  updateIncidentEdges(sourceId);
 }
 
 function applyAllNodeTransforms() {
@@ -355,6 +739,65 @@ function nodeBoundsInSvg(node) {
     minY: Math.min(...corners.map((point) => point.y)),
     maxY: Math.max(...corners.map((point) => point.y)),
   };
+}
+
+function liveBounds(sourceId) {
+  const node = nodes.get(sourceId);
+  const bounds = node ? nodeBoundsInSvg(node) : null;
+  if (!bounds) return null;
+  return {
+    x: bounds.minX,
+    y: bounds.minY,
+    width: bounds.maxX - bounds.minX,
+    height: bounds.maxY - bounds.minY,
+  };
+}
+
+function addIncidentEdge(sourceId, edgeId) {
+  if (!incidentEdges.has(sourceId)) incidentEdges.set(sourceId, new Set());
+  incidentEdges.get(sourceId).add(edgeId);
+}
+
+function resetEdgeLabel(edgeState) {
+  for (const element of edgeState.labelElements) element.removeAttribute("transform");
+  edgeState.clipRect?.removeAttribute("transform");
+}
+
+function updateEdgeGeometry(edgeId) {
+  const edgeState = edges.get(edgeId);
+  if (!edgeState) return;
+  const fromOffset = nodeOffset(overrides, edgeState.from);
+  const toOffset = nodeOffset(overrides, edgeState.to);
+  if (
+    fromOffset.x === 0 && fromOffset.y === 0 &&
+    toOffset.x === 0 && toOffset.y === 0
+  ) {
+    edgeState.path.setAttribute("d", edgeState.basePath);
+    resetEdgeLabel(edgeState);
+    return;
+  }
+  const sourceBounds = liveBounds(edgeState.from);
+  const targetBounds = liveBounds(edgeState.to);
+  if (!sourceBounds || !targetBounds) return;
+  const box = svg.viewBox.baseVal;
+  const geometry = liveEdgeGeometry(sourceBounds, targetBounds, {
+    route: edgeState.route,
+    kind: edgeState.kind,
+    lane: edgeState.lane,
+    canvasWidth: box.width || svg.width.baseVal.value || 1,
+    canvasHeight: box.height || svg.height.baseVal.value || 1,
+    selfLoop: edgeState.from === edgeState.to,
+    fromSide: edgeState.fromSide,
+    toSide: edgeState.toSide,
+  });
+  edgeState.path.setAttribute("d", geometry.path);
+  const translated = `translate(${geometry.labelX - edgeState.baseLabelX} ${geometry.labelY - edgeState.baseLabelY})`;
+  for (const element of edgeState.labelElements) element.setAttribute("transform", translated);
+  edgeState.clipRect?.setAttribute("transform", translated);
+}
+
+function updateIncidentEdges(sourceId) {
+  for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
 }
 
 function constrainNodeToCanvas(sourceId) {
@@ -393,23 +836,51 @@ function constrainAllNodesToCanvas() {
   return changed;
 }
 
+function selectEdge(edgeId) {
+  if (selectedEdgeId && edges.has(selectedEdgeId)) {
+    edges.get(selectedEdgeId).element?.classList.remove("is-selected");
+  }
+  selectedEdgeId = edgeId && edges.has(edgeId) ? edgeId : null;
+  if (selectedEdgeId) {
+    selectedId = null;
+    for (const node of nodes.values()) {
+      node.classList.remove("is-selected");
+      node.setAttribute("aria-selected", "false");
+    }
+    const edgeState = edges.get(selectedEdgeId);
+    edgeState.element?.classList.add("is-selected");
+    const label = edgeState.element?.querySelector("title")?.textContent?.trim() || selectedEdgeId;
+    selectionStatus.textContent = `Kante: ${label || selectedEdgeId}`;
+  }
+}
+
 function selectNode(sourceId, { focus = false } = {}) {
   if (selectedId && nodes.has(selectedId)) {
     const previous = nodes.get(selectedId);
     previous.classList.remove("is-selected");
     previous.setAttribute("aria-selected", "false");
   }
+  if (selectedEdgeId && edges.has(selectedEdgeId)) {
+    edges.get(selectedEdgeId).element?.classList.remove("is-selected");
+  }
+  selectedEdgeId = null;
   selectedId = sourceId && nodes.has(sourceId) ? sourceId : null;
   if (!selectedId) {
-    selectionStatus.textContent = "Kein Knoten ausgewählt";
+    selectionStatus.textContent = "Keine Auswahl";
     return;
   }
   const node = nodes.get(selectedId);
   node.classList.add("is-selected");
   node.setAttribute("aria-selected", "true");
   const label = node.querySelector("title")?.textContent?.trim() || selectedId;
-  selectionStatus.textContent = `Auswahl: ${label}`;
+  selectionStatus.textContent = `Knoten: ${label}`;
   if (focus) node.focus({ preventScroll: true });
+}
+
+function edgeFromTarget(target) {
+  if (!(target instanceof Element)) return null;
+  const candidate = target.closest('[data-source-kind="edge"]');
+  return candidate instanceof SVGGElement && svg.contains(candidate) ? candidate : null;
 }
 
 function localPoint(event) {
@@ -499,12 +970,58 @@ for (const node of svg.querySelectorAll('[data-source-kind="node"]')) {
     }
   });
 }
+
+const edgeById = new Map(
+  sourceModel.edges
+    .filter((edge) => edge && typeof edge.id === "string")
+    .map((edge) => [edge.id, edge]),
+);
+const laneStep = svg.dataset.intent === "process" ? 14 : 8;
+const laneRank = new Map(
+  [...edgeById.keys()].sort().map((edgeId, index) => [edgeId, ((index % 5) - 2) * laneStep]),
+);
+for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
+  if (!(edgeGroup instanceof SVGGElement)) continue;
+  const edgeId = edgeGroup.dataset.sourceId;
+  const model = edgeId ? edgeById.get(edgeId) : null;
+  const path = [...edgeGroup.children].find((child) => child instanceof SVGPathElement);
+  const labelRect = [...edgeGroup.children].find((child) => child instanceof SVGRectElement);
+  if (!edgeId || !model || !(path instanceof SVGPathElement) || !(labelRect instanceof SVGRectElement)) continue;
+  const baseLabelX = Number(labelRect.getAttribute("x")) + Number(labelRect.getAttribute("width")) / 2;
+  const baseLabelY = Number(labelRect.getAttribute("y")) + Number(labelRect.getAttribute("height")) / 2;
+  if (!Number.isFinite(baseLabelX) || !Number.isFinite(baseLabelY)) continue;
+  const labelElements = [...edgeGroup.children].filter(
+    (child) => child instanceof SVGRectElement || child instanceof SVGTextElement,
+  );
+  const clipRect = edgeGroup.querySelector("clipPath > rect");
+  edges.set(edgeId, {
+    element: edgeGroup,
+    from: String(model.from),
+    to: String(model.to),
+    kind: edgeGroup.dataset.kind || String(model.kind || "flow"),
+    route: edgeGroup.dataset.route || "standard",
+    lane: Number.isFinite(Number(edgeGroup.dataset.lane))
+      ? Number(edgeGroup.dataset.lane)
+      : (laneRank.get(edgeId) || 0),
+    fromSide: model.from_side || null,
+    toSide: model.to_side || null,
+    path,
+    basePath: path.getAttribute("d") || "",
+    baseLabelX,
+    baseLabelY,
+    labelElements,
+    clipRect: clipRect instanceof SVGRectElement ? clipRect : null,
+  });
+  addIncidentEdge(String(model.from), edgeId);
+  addIncidentEdge(String(model.to), edgeId);
+}
 applyAllNodeTransforms();
 
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   const point = localPoint(event);
   const node = nodeFromTarget(event.target);
+  const edge = node ? null : edgeFromTarget(event.target);
   activePointers.set(event.pointerId, {
     ...point,
     clientX: event.clientX,
@@ -522,6 +1039,43 @@ viewport.addEventListener("pointerdown", (event) => {
 
   if (node) {
     const sourceId = node.dataset.sourceId;
+    if (documentMode && edgeReattach && sourceId) {
+      const document = documentSnapshot();
+      const edgeItem = document.edges.find(
+        (item) => String(item.id) === edgeReattach.edgeId,
+      );
+      if (edgeItem) {
+        edgeItem[edgeReattach.endpoint] = sourceId;
+        edgeItem.source = cloneJson(edgeItem.source || {});
+        if (edgeReattach.endpoint === "from") edgeItem.source.fromNode = sourceId;
+        else edgeItem.source.toNode = sourceId;
+      }
+      edgeReattach = null;
+      activePointers.delete(event.pointerId);
+      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      rebuildDocument(document);
+      return;
+    }
+    if (documentMode && edgeCreateSource && sourceId && sourceId !== edgeCreateSource) {
+      const document = documentSnapshot();
+      const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
+      document.edges.push({
+        id: edgeId,
+        from: edgeCreateSource,
+        to: sourceId,
+        label: "",
+        from_side: null,
+        to_side: null,
+        from_end: "none",
+        to_end: "arrow",
+        source: {},
+      });
+      edgeCreateSource = null;
+      activePointers.delete(event.pointerId);
+      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      rebuildDocument(document);
+      return;
+    }
     selectNode(sourceId);
     const startOffset = nodeOffset(overrides, sourceId);
     gesture = {
@@ -538,6 +1092,13 @@ viewport.addEventListener("pointerdown", (event) => {
     return;
   }
 
+  if (edge) {
+    selectEdge(edge.dataset.sourceId || null);
+    activePointers.delete(event.pointerId);
+    try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
+    gesture = null;
+    return;
+  }
   selectNode(null);
   gesture = {
     kind: "pan",
@@ -588,7 +1149,7 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
     }
-    setStatus("Layout lokal verändert · Semantik unverändert");
+    setStatus("Layout lokal verändert · Kanten live geroutet · Semantik unverändert");
   }
 });
 
@@ -599,8 +1160,13 @@ function finishPointer(event) {
 
   if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
-    if (endedGesture.moved && persistOverrides()) {
-      setStatus("Layout lokal gesichert · Semantik unverändert");
+    if (endedGesture.moved) {
+      if (documentMode) {
+        publishDocumentState();
+        setStatus("Dokumentposition geändert · Kanten live geroutet");
+      } else if (persistOverrides()) {
+        setStatus("Layout lokal gesichert · Semantik unverändert");
+      }
     }
     gesture = null;
   } else if (endedGesture?.kind === "pan" && endedGesture.pointerId === event.pointerId) {
@@ -642,14 +1208,144 @@ viewport.addEventListener("wheel", (event) => {
   applyView();
 }, { passive: false });
 
+function openTextEditor() {
+  if (!documentMode || !(textDialog instanceof HTMLDialogElement) || !(textInput instanceof HTMLTextAreaElement)) return;
+  const document = documentSnapshot();
+  const item = selectedId
+    ? document.nodes.find((node) => String(node.id) === selectedId)
+    : document.edges.find((edge) => String(edge.id) === selectedEdgeId);
+  if (!item) return;
+  textEditTarget = selectedId
+    ? { kind: "node", id: selectedId }
+    : { kind: "edge", id: selectedEdgeId };
+  textInput.value = String(item.label ?? "");
+  textDialog.showModal();
+  textInput.focus();
+  textInput.select();
+}
+
+function deleteSelection() {
+  if (!documentMode) return;
+  const document = documentSnapshot();
+  if (selectedId) {
+    document.nodes = document.nodes.filter((node) => String(node.id) !== selectedId);
+    document.edges = document.edges.filter(
+      (edge) => String(edge.from) !== selectedId && String(edge.to) !== selectedId,
+    );
+  } else if (selectedEdgeId) {
+    document.edges = document.edges.filter((edge) => String(edge.id) !== selectedEdgeId);
+  } else {
+    return;
+  }
+  selectedId = null;
+  selectedEdgeId = null;
+  rebuildDocument(document);
+}
+
+if (documentMode) {
+  for (const control of [
+    addNodeButton,
+    addEdgeButton,
+    editTextButton,
+    reattachSourceButton,
+    reattachTargetButton,
+    deleteSelectionButton,
+  ]) {
+    if (control instanceof HTMLButtonElement) control.hidden = false;
+  }
+  if (interactionHint) interactionHint.textContent = "Pan · Zoom · Drag · Text · Knoten/Kanten";
+  if (authorityHint) authorityHint.textContent = "Dokumentzustand · .canvas speicherbar";
+  addNodeButton?.addEventListener("click", () => {
+    const document = documentSnapshot();
+    const id = uniqueId("node_", [...document.nodes, ...document.edges]);
+    const box = svg.viewBox.baseVal;
+    document.nodes.push({
+      id,
+      type: "text",
+      x: Math.round(box.x + box.width / 2 - 130),
+      y: Math.round(box.y + box.height / 2 - 70),
+      width: 260,
+      height: 140,
+      label: "Neuer Knoten",
+      source: { id, type: "text", text: "Neuer Knoten" },
+    });
+    rebuildDocument(document);
+  });
+  addEdgeButton?.addEventListener("click", () => {
+    if (!selectedId) {
+      setStatus("Für eine neue Kante zuerst einen Startknoten auswählen");
+      return;
+    }
+    edgeCreateSource = selectedId;
+    setStatus("Zielknoten für die neue Kante auswählen");
+  });
+  editTextButton?.addEventListener("click", openTextEditor);
+  const beginReattach = (endpoint) => {
+    if (!selectedEdgeId) {
+      setStatus("Zum Umhängen zuerst eine Kante auswählen");
+      return;
+    }
+    edgeCreateSource = null;
+    edgeReattach = { edgeId: selectedEdgeId, endpoint };
+    setStatus(
+      endpoint === "from"
+        ? "Neuen Startknoten für die Kante auswählen"
+        : "Neuen Zielknoten für die Kante auswählen"
+    );
+  };
+  reattachSourceButton?.addEventListener("click", () => beginReattach("from"));
+  reattachTargetButton?.addEventListener("click", () => beginReattach("to"));
+  deleteSelectionButton?.addEventListener("click", deleteSelection);
+  saveTextButton?.addEventListener("click", () => {
+    if (!textEditTarget || !(textInput instanceof HTMLTextAreaElement)) return;
+    const document = documentSnapshot();
+    const collection = textEditTarget.kind === "node" ? document.nodes : document.edges;
+    const item = collection.find((entry) => String(entry.id) === textEditTarget.id);
+    if (!item) return;
+    if (
+      textEditTarget.kind === "node" &&
+      ["file", "link"].includes(String(item.type)) &&
+      textInput.value === ""
+    ) {
+      setStatus("Datei- und Linkknoten dürfen nicht leer sein");
+      return;
+    }
+    item.label = textInput.value;
+    textEditTarget = null;
+    textDialog?.close();
+    rebuildDocument(document);
+  });
+  for (const node of nodes.values()) {
+    node.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      selectNode(node.dataset.sourceId || null);
+      openTextEditor();
+    });
+  }
+  for (const edgeState of edges.values()) {
+    edgeState.element?.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      selectEdge(edgeState.element.dataset.sourceId || null);
+      openTextEditor();
+    });
+  }
+}
+
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
 resetLayout.addEventListener("click", () => {
   overrides = {};
-  try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* no persistence */ }
+  if (!documentMode) {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* no persistence */ }
+  }
   applyAllNodeTransforms();
-  setStatus("Lokales Layout zurückgesetzt · Semantik unverändert");
+  if (documentMode) {
+    publishDocumentState();
+    setStatus("Dokumentlayout auf geladene Geometrie zurückgesetzt");
+  } else {
+    setStatus("Lokales Layout zurückgesetzt · Semantik unverändert");
+  }
 });
 window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") selectNode(null);
@@ -659,6 +1355,7 @@ requestAnimationFrame(() => {
   const repaired = constrainAllNodesToCanvas();
   const repairPersisted = !repaired || persistOverrides();
   fit({ announce: repairPersisted });
+  if (documentMode) publishDocumentState();
 });
 """
 

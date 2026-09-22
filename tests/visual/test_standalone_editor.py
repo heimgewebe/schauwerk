@@ -84,7 +84,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         "trusted_proxy_header": "X-Forwarded-For",
         "trusted_proxy_source_cidr_required": True,
     }
-    assert "general-knowledge-map-native-cutover" in manifest["does_not_establish"]
+    assert "representation-knowledge-map-native-cutover" in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
         "canvas-import.js",

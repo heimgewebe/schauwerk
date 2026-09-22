@@ -1,8 +1,8 @@
 """Build and serve the Schaubild product shell.
 
-Canonical Schauwerk representation inputs and the bounded draw.io native-import
-subset are rendered by Schauwerk's native renderer and interaction viewer. Mermaid,
-JSON Canvas and explicitly chosen legacy draw.io editing remain compatibility inputs
+Canonical Schauwerk representation inputs, JSON Canvas documents and the bounded
+draw.io native-import subset are rendered by Schauwerk's native renderer/viewer.
+Mermaid and explicitly chosen legacy draw.io editing remain compatibility inputs
 backed by the diagrams.net embed runtime.
 """
 
@@ -32,6 +32,12 @@ from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
+from schauwerk.visual.native_document import (
+    NATIVE_DOCUMENT_SCHEMA,
+    NativeDocumentError,
+    json_canvas_to_editing_document,
+    normalize_editing_document,
+)
 from schauwerk.visual.native_viewer import NativeViewerError, build_native_viewer
 from schauwerk.visual.representation import RepresentationError, validate_representation_input
 
@@ -83,8 +89,8 @@ AI_HANDOFF_PROMPT: Final = (
     "außer knowledge_map zugelassen. Verwende process, sequence, state, timeline oder "
     "narrative, wenn das fachlich passt. Für eine echte freie Wissens-/Konzeptkarte "
     "(knowledge_map) gib stattdessen genau einen gültigen JSON-Canvas-1.0-json-Codeblock "
-    "aus; dieser läuft bewusst über den Legacy-Pfad, bis die allgemeine native "
-    "Routinggrenze gehärtet ist.\n\n"
+    "aus; JSON Canvas wird im nativen dokumentgebundenen Editor geöffnet und behält "
+    "seine explizite Geometrie für den Roundtrip.\n\n"
     "Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, "
     "gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen "
     "Zusammenhänge schnell erkennbar sind. Kein Vorwort, keine Erklärung und keine "
@@ -367,18 +373,62 @@ def _native_product_input(value: Any) -> dict[str, Any]:
             raise StandaloneEditorError(
                 "native import request contains unknown fields: " + ", ".join(unknown)
             )
-        if value.get("format") != "drawio-xml":
-            raise StandaloneEditorError("native import request format must be drawio-xml")
-        source = value.get("source")
-        if not isinstance(source, str):
-            raise StandaloneEditorError("native draw.io import source must be text")
+        source_format = value.get("format")
         title = value.get("title")
         if title is not None and not isinstance(title, str):
-            raise StandaloneEditorError("native draw.io import title must be text")
+            raise StandaloneEditorError("native import title must be text")
+        if source_format == "drawio-xml":
+            source = value.get("source")
+            if not isinstance(source, str):
+                raise StandaloneEditorError("native draw.io import source must be text")
+            try:
+                candidate = drawio_xml_to_representation(source, title=title)
+            except DrawioImportError as exc:
+                raise StandaloneEditorError(
+                    f"native draw.io import is unsupported: {exc}"
+                ) from exc
+        elif source_format == "json-canvas-1.0":
+            try:
+                candidate = json_canvas_to_editing_document(
+                    value.get("source"), title=title or "Schaubild"
+                )
+            except NativeDocumentError as exc:
+                raise StandaloneEditorError(
+                    f"native JSON Canvas import is invalid: {exc}"
+                ) from exc
+        else:
+            raise StandaloneEditorError(
+                "native import request format must be drawio-xml or json-canvas-1.0"
+            )
+
+    if (
+        isinstance(candidate, dict)
+        and candidate.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+    ):
         try:
-            candidate = drawio_xml_to_representation(source, title=title)
-        except DrawioImportError as exc:
-            raise StandaloneEditorError(f"native draw.io import is unsupported: {exc}") from exc
+            candidate = normalize_editing_document(candidate)
+        except NativeDocumentError as exc:
+            raise StandaloneEditorError(
+                f"native JSON Canvas editing document is invalid: {exc}"
+            ) from exc
+        node_count = len(candidate.get("nodes", []))
+        edge_count = len(candidate.get("edges", []))
+        group_count = sum(
+            1 for node in candidate.get("nodes", []) if node.get("type") == "group"
+        )
+        routing_pairs = edge_count * edge_count
+        if (
+            group_count > MAX_NATIVE_GROUPS
+            or node_count > MAX_NATIVE_NODES
+            or edge_count > MAX_NATIVE_EDGES
+            or routing_pairs > MAX_NATIVE_ROUTING_PAIRS
+        ):
+            raise StandaloneEditorError(
+                "native JSON Canvas document exceeds product complexity limits "
+                f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
+                f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+            )
+        return candidate
 
     try:
         normalized = validate_representation_input(candidate)
@@ -458,7 +508,7 @@ def build_standalone_editor(
             "runtime": "integrated-serve",
             "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
             "public_base_path": normalized_base_path,
-            "admission": "representation-or-bounded-drawio-except-knowledge-map",
+            "admission": "representation-except-knowledge-map-or-bounded-native-import",
             "admission_scope": {
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
@@ -467,9 +517,21 @@ def build_standalone_editor(
                 "trusted_proxy_header": "X-Forwarded-For",
                 "trusted_proxy_source_cidr_required": True,
             },
-            "semantic_authority": "schauwerk-representation-input.v1",
-            "supported_inputs": ["schauwerk-representation-input.v1", "drawio-xml"],
-            "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
+            "semantic_authority": "representation-or-json-canvas-document",
+            "semantic_authorities": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+            ],
+            "supported_inputs": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+                "drawio-xml",
+            ],
+            "supported_outputs": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+                "svg",
+            ],
         },
         "legacy_editor_engine": "diagrams.net-embed",
         "editor_origin": normalized_origin,
@@ -484,7 +546,7 @@ def build_standalone_editor(
             "json-canvas-1.0",
             "drawio-xml",
         ],
-        "supported_outputs": ["drawio-xml", "png", "svg"],
+        "supported_outputs": ["drawio-xml", "json-canvas-1.0", "png", "svg"],
         "network_boundary": {
             "shell": "local-static-files",
             "native_render_api": "same-origin-integrated-serve-only",
@@ -497,11 +559,10 @@ def build_standalone_editor(
         },
         "files": written,
         "does_not_establish": [
-            "native-semantic-mutation",
-            "native-edge-rerouting-after-node-drag",
+            "representation-source-writeback",
             "native-png-export",
             "native-static-host-render-api",
-            "general-knowledge-map-native-cutover",
+            "representation-knowledge-map-native-cutover",
             "bundled-legacy-editor-runtime",
             "static-host-security-header-enforcement",
             (
@@ -509,7 +570,6 @@ def build_standalone_editor(
                 if custom_origin
                 else "provider-independence-of-legacy-compatibility"
             ),
-            "lossless-json-canvas-roundtrip",
             "lossless-drawio-roundtrip",
             "drawio-visual-style-preservation",
         ],
@@ -559,6 +619,7 @@ _NATIVE_BUNDLE_FILES: Final = {
     "interaction.js": "interaction.js",
     "manifest.json": "manifest.json",
     "representation.json": "representation.json",
+    "document.json": "document.json",
     "styles.css": "styles.css",
 }
 
@@ -1520,10 +1581,20 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
         try:
             value = json.loads(payload.decode("utf-8"))
             normalized = _native_product_input(value)
-            digest = str(normalized["input_digest"])
-            canonical_input = {
-                key: item for key, item in normalized.items() if key != "input_digest"
-            }
+            digest = str(
+                normalized.get("input_digest") or normalized.get("source_digest") or ""
+            )
+            if re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                raise StandaloneEditorError("native input digest is missing or invalid")
+            canonical_input = (
+                normalized
+                if normalized.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+                else {
+                    key: item
+                    for key, item in normalized.items()
+                    if key != "input_digest"
+                }
+            )
             root = Path(self.directory).resolve()
             record, created = _build_native_cache_record(
                 root,
@@ -1546,6 +1617,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             UnicodeEncodeError,
             json.JSONDecodeError,
             StandaloneEditorError,
+            NativeDocumentError,
             NativeViewerError,
         ) as exc:
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})

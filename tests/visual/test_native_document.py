@@ -1,0 +1,252 @@
+from __future__ import annotations
+
+import copy
+import xml.etree.ElementTree as ET
+
+import pytest
+
+from schauwerk.visual.native_diagram import render_native_editing_document
+from schauwerk.visual.native_document import (
+    NativeDocumentError,
+    editing_document_to_json_canvas,
+    json_canvas_to_editing_document,
+    validate_json_canvas,
+)
+
+SVG_NS = "{http://www.w3.org/2000/svg}"
+
+
+def _canvas() -> dict:
+    return {
+        "customTopLevel": {"kept": True},
+        "nodes": [
+            {
+                "id": "gruppe",
+                "type": "group",
+                "x": -120,
+                "y": 20,
+                "width": 720,
+                "height": 420,
+                "label": "Bereich",
+                "customNode": "keep",
+            },
+            {
+                "id": "a",
+                "type": "text",
+                "x": -60,
+                "y": 100,
+                "width": 220,
+                "height": 120,
+                "text": "Äpfel & Öl",
+                "color": "5",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 280,
+                "y": 150,
+                "width": 260,
+                "height": 140,
+                "text": "Ziel",
+            },
+        ],
+        "edges": [
+            {
+                "id": "e1",
+                "fromNode": "a",
+                "fromSide": "right",
+                "toNode": "b",
+                "toSide": "left",
+                "toEnd": "arrow",
+                "label": "führt zu",
+                "customEdge": 7,
+            }
+        ],
+    }
+
+
+def test_json_canvas_roundtrip_preserves_geometry_ids_order_and_extensions() -> None:
+    source = _canvas()
+    document = json_canvas_to_editing_document(source, title="Probe")
+
+    geometry = [
+        (node["x"], node["y"], node["width"], node["height"])
+        for node in document["nodes"]
+    ]
+    assert geometry == [
+        (-120, 20, 720, 420),
+        (-60, 100, 220, 120),
+        (280, 150, 260, 140),
+    ]
+    assert editing_document_to_json_canvas(document) == source
+
+
+def test_editing_document_projects_geometry_text_and_edges_back_to_canvas() -> None:
+    document = json_canvas_to_editing_document(_canvas(), title="Probe")
+    by_id = {node["id"]: node for node in document["nodes"]}
+    by_id["a"]["x"] += 41
+    by_id["a"]["y"] -= 17
+    by_id["a"]["label"] = "Geändert – 東京"
+    document["edges"][0]["label"] = "neu"
+    document["edges"].append(
+        {
+            "id": "e2",
+            "from": "b",
+            "to": "a",
+            "label": "zurück",
+            "from_side": None,
+            "to_side": None,
+            "from_end": "none",
+            "to_end": "arrow",
+            "source": {},
+        }
+    )
+
+    output = editing_document_to_json_canvas(document)
+    output_by_id = {node["id"]: node for node in output["nodes"]}
+    assert output_by_id["a"]["x"] == -19
+    assert output_by_id["a"]["y"] == 83
+    assert output_by_id["a"]["text"] == "Geändert – 東京"
+    assert output_by_id["gruppe"]["customNode"] == "keep"
+    assert output["edges"][0]["customEdge"] == 7
+    assert output["edges"][1] == {
+        "id": "e2",
+        "fromNode": "b",
+        "toNode": "a",
+        "label": "zurück",
+    }
+
+
+@pytest.mark.parametrize(
+    ("mutator", "message"),
+    [
+        (
+            lambda value: value["nodes"].append(
+                {
+                    "id": "a",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 10,
+                    "height": 10,
+                    "text": "dup",
+                }
+            ),
+            "duplicate",
+        ),
+        (
+            lambda value: value["edges"][0].update({"toNode": "missing"}),
+            "unknown node",
+        ),
+        (
+            lambda value: value["nodes"][1].update({"type": "video"}),
+            "unsupported",
+        ),
+        (
+            lambda value: value["nodes"][1].update({"width": 0}),
+            "between 1",
+        ),
+    ],
+)
+def test_json_canvas_fails_closed_for_invalid_core(mutator, message: str) -> None:
+    value = copy.deepcopy(_canvas())
+    mutator(value)
+    with pytest.raises(NativeDocumentError, match=message):
+        validate_json_canvas(value)
+
+
+def test_native_document_renderer_uses_canvas_bounds_and_edge_endpoints() -> None:
+    document = json_canvas_to_editing_document(_canvas(), title="Probe")
+    svg = render_native_editing_document(document)
+    root = ET.fromstring(svg)
+
+    assert root.attrib["data-document-mode"] == "json-canvas"
+    assert root.attrib["data-renderer"] == "schauwerk-native-diagram-v1"
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-kind") == "node"
+    }
+    rect = next(child for child in nodes["a"] if child.tag == f"{SVG_NS}rect")
+    assert rect.attrib["x"] == "-60"
+    assert rect.attrib["y"] == "100"
+    assert rect.attrib["width"] == "220"
+    assert rect.attrib["height"] == "120"
+
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "e1"
+    )
+    path = next(child for child in edge if child.tag == f"{SVG_NS}path")
+    assert path.attrib["d"].startswith("M 160.0 160.0 C ")
+    assert path.attrib["marker-end"] == "url(#canvas-arrow-0)"
+    assert edge.attrib["data-route"] == "canvas-cubic"
+
+def test_empty_json_canvas_roundtrips_and_renders_editable_workspace() -> None:
+    document = json_canvas_to_editing_document({}, title="Leer")
+    assert editing_document_to_json_canvas(document) == {}
+    svg = render_native_editing_document(document)
+    root = ET.fromstring(svg)
+    assert root.attrib["data-document-mode"] == "json-canvas"
+    assert root.attrib["viewBox"] == "0 0 1200 800"
+
+
+def test_json_canvas_roundtrip_preserves_absent_group_label_and_explicit_default_ends() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "group",
+                "type": "group",
+                "x": 0,
+                "y": 0,
+                "width": 320,
+                "height": 220,
+            },
+            {
+                "id": "a",
+                "type": "text",
+                "x": 40,
+                "y": 50,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+        ],
+        "edges": [
+            {
+                "id": "loop",
+                "fromNode": "a",
+                "toNode": "a",
+                "fromEnd": "none",
+                "toEnd": "arrow",
+            }
+        ],
+    }
+
+    document = json_canvas_to_editing_document(source, title="Preservation")
+    assert document["nodes"][0]["label"] == ""
+    assert editing_document_to_json_canvas(document) == source
+
+
+def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "hostile",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 260,
+                "height": 120,
+                "text": "</text><script>alert(1)</script>\x01",
+            }
+        ]
+    }
+    document = json_canvas_to_editing_document(source, title="XML")
+    svg = render_native_editing_document(document)
+    root = ET.fromstring(svg)
+
+    assert list(root.iter(f"{SVG_NS}script")) == []
+    assert "<script>" not in svg
+    assert "\ufffd" in svg
