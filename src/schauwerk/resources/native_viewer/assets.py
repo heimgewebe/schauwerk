@@ -1409,7 +1409,12 @@ resetLayout.addEventListener("click", () => {
   }
 });
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") selectNode(null);
+  if (event.key !== "Escape") return;
+  const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach);
+  edgeCreateSource = null;
+  edgeReattach = null;
+  selectNode(null);
+  if (pendingEdgeOperation) setStatus("Kantenaktion abgebrochen");
 });
 
 requestAnimationFrame(() => {

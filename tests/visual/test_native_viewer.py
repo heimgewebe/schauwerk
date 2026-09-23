@@ -179,6 +179,11 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
     assert 'event.key === "Enter" || event.key === " "' in app
+    assert 'if (event.key !== "Escape") return;' in app
+    escape_handler = app[app.index('window.addEventListener("keydown"') :]
+    assert "edgeCreateSource = null;" in escape_handler
+    assert "edgeReattach = null;" in escape_handler
+    assert "Kantenaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
 
 

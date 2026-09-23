@@ -503,6 +503,53 @@ def test_native_document_long_edge_label_is_clipped_to_reserved_box() -> None:
 
 
 
+
+def test_native_document_node_labels_are_clipped_to_node_box() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "wide",
+                "type": "text",
+                "x": 20,
+                "y": 30,
+                "width": 1000,
+                "height": 100,
+                "text": "W" * 500,
+            }
+        ]
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Wide node label")
+        )
+    )
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "wide"
+    )
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+    assert texts
+    assert all(
+        item.attrib["clip-path"] == "url(#canvas-node-label-0)"
+        for item in texts
+    )
+    clip = next(node.iter(f"{SVG_NS}clipPath"))
+    clip_rect = next(clip.iter(f"{SVG_NS}rect"))
+    assert clip_rect.attrib == {
+        "x": "20",
+        "y": "30",
+        "width": "1000",
+        "height": "100",
+    }
+
+
+
 def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
     source = {
         "nodes": [

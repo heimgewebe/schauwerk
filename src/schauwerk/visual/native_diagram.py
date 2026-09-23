@@ -3458,7 +3458,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
     lines.append("</defs>")
 
-    def append_canvas_node(node: Mapping[str, Any]) -> None:
+    def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3475,6 +3475,12 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'data-canvas-type="{_canvas_xml(node_type)}">'
         )
         lines.append(f"<title>{_canvas_xml(label)}</title>")
+        label_clip_id = f"canvas-node-label-{node_index}"
+        lines.append(
+            f'<defs><clipPath id="{label_clip_id}">'
+            f'<rect x="{x}" y="{y}" width="{width}" height="{height}"/>'
+            "</clipPath></defs>"
+        )
         dash = ' stroke-dasharray="8 6"' if node_type == "group" else ""
         fill_opacity = "0.28" if node_type == "group" else "1"
         lines.append(
@@ -3489,13 +3495,14 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             lines.append(
                 f'<text data-node-label="true" x="{text_x}" '
                 f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
-                f'font-size="16" font-weight="{weight}" fill="#172033">{_canvas_xml(line)}</text>'
+                f'font-size="16" font-weight="{weight}" fill="#172033" '
+                f'clip-path="url(#{label_clip_id})">{_canvas_xml(line)}</text>'
             )
         lines.append("</g>")
 
-    for node in nodes:
+    for node_index, node in enumerate(nodes):
         if str(node["type"]) == "group":
-            append_canvas_node(node)
+            append_canvas_node(node, node_index)
 
     for (
         index,
@@ -3564,9 +3571,9 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             )
         lines.append("</g>")
 
-    for node in nodes:
+    for node_index, node in enumerate(nodes):
         if str(node["type"]) != "group":
-            append_canvas_node(node)
+            append_canvas_node(node, node_index)
 
     lines.append("</svg>")
     return "\n".join(lines) + "\n"
