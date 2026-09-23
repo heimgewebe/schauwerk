@@ -361,7 +361,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "be3d4d0a14ae1e46b4b862c56b9e4c40d91c36a6"
+    assert editor_successor["functional_head"] == "79ffdd035cf4451274bc785fb5459aff3e499472"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -384,6 +384,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         editor_successor["checks"]["canvas_node_labels_clipped_to_node_bounds"] is True
     )
     assert editor_successor["checks"]["edge_operations_cancel_on_escape"] is True
+    assert editor_successor["checks"]["canvas_self_loops_honor_explicit_sides"] is True
+    assert (
+        editor_successor["checks"]["native_rebuild_preserves_active_frame_until_success"]
+        is True
+    )
+    assert editor_successor["checks"]["stale_canvas_svg_export_fails_closed"] is True
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")

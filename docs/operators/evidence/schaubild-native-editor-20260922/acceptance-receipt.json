@@ -9,6 +9,7 @@
     "canvas_edge_labels_clipped_to_reserved_box": true,
     "canvas_groups_render_below_edges_and_nodes": true,
     "canvas_node_labels_clipped_to_node_bounds": true,
+    "canvas_self_loops_honor_explicit_sides": true,
     "canvas_svg_export_uses_live_document_svg": true,
     "compile_check_passed": true,
     "diff_check_passed": true,
@@ -26,6 +27,7 @@
     "native_cache_identity_binds_output_metadata": true,
     "native_document_xml_control_chars_sanitized": true,
     "native_launches_serialized_and_stale_tokens_superseded": true,
+    "native_rebuild_preserves_active_frame_until_success": true,
     "native_runtime_image_smoke_passed": true,
     "parallel_self_loops_use_distinct_routes": true,
     "pre_acceptance_full_suite_only_failed_successor_binding": true,
@@ -37,6 +39,7 @@
     "self_loop_edge_creation_passed": true,
     "shellless_viewer_structural_controls_hidden": true,
     "source_arrow_marker_direction_passed": true,
+    "stale_canvas_svg_export_fails_closed": true,
     "superseded_native_bundle_lease_released_per_client": true,
     "text_edit_including_empty_text_passed": true,
     "xml_incompatible_canvas_ids_rejected": true
@@ -49,8 +52,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "cd7099d69c12181c128739c1015b9c7d859f3f50edec362d63018ebcfe1e62bd",
-  "functional_head": "be3d4d0a14ae1e46b4b862c56b9e4c40d91c36a6",
+  "evidence_digest": "3b9d9c02c73be37dc36018a517f4538208e6be85dcaac77e1ebaaa7203b664f7",
+  "functional_head": "79ffdd035cf4451274bc785fb5459aff3e499472",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -63,16 +66,16 @@
     "Dockerfile": "6d4029480f506977b69b0f16097a74749b63fe44127bd7e44df8f19a5e88a7f2",
     "Makefile": "b784f2cf38cf9a18ca7c096f348b2843fe3d25ead01fac6dbb40f0c4cd72d48c",
     "scripts/run_browser_smoke.py": "32bcef2541b6c11ac46b356560a03885a68ed6d75f691575a256383a20f76c7b",
-    "src/schauwerk/resources/native_viewer/assets.py": "910992cab1db6d3e57ece2abc40ff0d6c1f3ab5f9881f47b9310383f4270205a",
-    "src/schauwerk/resources/standalone_editor/assets.py": "47d4ad7cbb1cd91ac77430a6d5abea61df86576d60585d87cec87a9402d199a7",
-    "src/schauwerk/visual/native_diagram.py": "9a5a76ff5640a7c5e31efb83a01356380701a40256a7139c5e873f5c53adf0ac",
+    "src/schauwerk/resources/native_viewer/assets.py": "6e429ce20f5b853d6269c31bdfe71dc2e0bcf0c0ec0ec0303593bd3b22477fb5",
+    "src/schauwerk/resources/standalone_editor/assets.py": "c2dda55944e4d2e36916ee1e60abe9d3268f7cc4060ea953be05390d0cb067d6",
+    "src/schauwerk/visual/native_diagram.py": "0b9dde91f46de97cf8d47bdd25599cc006211b47241cb404f3818c8d29cf2c8f",
     "src/schauwerk/visual/native_document.py": "7c0696b996eff46a94f5a9af3f2e35e1bb194fd5135d5f573ed32b0411cc8f9f",
     "src/schauwerk/visual/native_viewer.py": "5696c063c84509b829fe863edc4717d3d4efa8095b14fc146cfb7a7d9adf157a",
     "src/schauwerk/visual/standalone_editor.py": "5ac0d15f4f6ba57f0b1810fa9e9fe5597220f767df318e5e86629502a903189b",
     "tests/visual/test_native_canvas_editor.py": "31db625d596750b932b4314c3fe951510263faee68ebd5d6264428942f30b125",
-    "tests/visual/test_native_document.py": "9b032e7e366db8d0cf36ff488e6a82becfe92f350e0612c5affda0e2e15dce2c",
-    "tests/visual/test_native_viewer.py": "ae7280d4e7cf0f896a30794f52628f9f38fb495187e950f27e772aaa9b5b1d89",
+    "tests/visual/test_native_document.py": "c0eb62833268a509523c217e0ae2886ec7da34a3b4ae583f012967a781227f25",
+    "tests/visual/test_native_viewer.py": "6eac91deeed1160f5931efa50c8fb71413f7cb0a5f179f9249c71c83057a2bc9",
     "tests/visual/test_native_viewer_browser.py": "d2b63de86b950bdd8d1af2eb61c09bda86bc00a306059125d3fcc2b552965c90",
-    "tests/visual/test_standalone_editor.py": "c3a8c5a210094807acfbab04e7410045c013a9b79d90ff41a58a77df7d6cf975"
+    "tests/visual/test_standalone_editor.py": "b3379a47609e2ac298dc1b2aad739a23a21f71a8dd7385e2e577f3cde4a6f55d"
   }
 }
