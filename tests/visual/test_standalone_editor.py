@@ -182,7 +182,6 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'elements.legacyFallbackButton.addEventListener("click"' in app_js
     assert 'id="legacyEditButton"' in index_html
     assert 'id="legacyFallbackButton"' in index_html
-    assert 'id="nativeRetryButton"' in index_html
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "frame.inert = false;" in app_js
@@ -215,9 +214,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "options.preserveActiveFrame && editorReady && currentNativeUrl" in native_source
     assert "frame.inert = true;" in native_source
     assert "currentNativeUrl = activeNativeUrl;" in native_source
-    assert "Bestehende Ansicht bleibt sichtbar und gesperrt" in native_source
-    assert "async function retryNativeCanvasRender()" in native_source
-    assert "elements.nativeRetryButton.hidden = false;" in native_source
+    assert "Bestehende Ansicht bleibt sichtbar und weiter bearbeitbar" in native_source
+    assert "activeFrame.inert = false;" in native_source
     assert "{ preserveActiveFrame: true }" in app_js
     assert "const previousLaunch = nativeLaunchTail;" in native_source
     assert "await previousLaunch;" in native_source
@@ -329,7 +327,6 @@ const replacementFrame = {
 const elements = {
   frame: oldFrame,
   legacyFallbackButton: {hidden: true},
-  nativeRetryButton: {hidden: true},
 };
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -369,7 +366,9 @@ await launchNative(
 );
 if (replaceCalls !== 0) throw new Error("active frame replaced before successful render");
 if (elements.frame !== oldFrame) throw new Error("active frame identity changed after render failure");
-if (!oldFrame.inert || !oldFrame.blurred) throw new Error("stale frame remained interactive");
+if (oldFrame.inert || !oldFrame.blurred) {
+  throw new Error("preserved frame was not re-enabled after render failure");
+}
 if (currentNativeUrl !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html") {
   throw new Error("active native URL was lost after render failure");
 }
@@ -381,20 +380,19 @@ if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
 if (!errorText.includes(".canvas-Export enthält den aktuellen Dokumentzustand")) {
   throw new Error("render failure did not preserve an export recovery path");
 }
-if (!errorText.includes("Neu rendern") || !statusText.includes("Neu rendern")) {
-  throw new Error("render failure did not offer an explicit retry path");
-}
-if (elements.nativeRetryButton.hidden) {
-  throw new Error("render retry control stayed hidden after failure");
+if (!errorText.includes("weiter bearbeitbar") || !statusText.includes("bleibt bearbeitbar")) {
+  throw new Error("render failure did not restore editor interactivity");
 }
 
+const successfulDocument = {version: 3};
+const successfulCanvas = {version: 3};
 const successfulUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
 globalThis.fetch = async (_url, options) => {
   if (
     options.headers["X-Schauwerk-Native-Supersede"]
     !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   ) {
-    throw new Error("supersede token drifted before successful retry");
+    throw new Error("supersede token drifted before successful rebuild");
   }
   return {
     ok: true,
@@ -407,7 +405,10 @@ globalThis.fetch = async (_url, options) => {
     },
   };
 };
-await retryNativeCanvasRender();
+await launchNative(
+  {nativeDocument: successfulDocument, nativeCanvas: successfulCanvas},
+  {preserveActiveFrame: true},
+);
 if (replaceCalls !== 1 || workspaceCalls !== 1) {
   throw new Error("replacement frame was not swapped exactly once after success");
 }
@@ -418,11 +419,8 @@ if (nativeCanvasRenderStale) throw new Error("successful rebuild left SVG marked
 if (currentNativeUrl !== successfulUrl || !editorReady) {
   throw new Error("successful rebuild did not become authoritative");
 }
-if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
-  throw new Error("successful retry did not render the latest retained document state");
-}
-if (!elements.nativeRetryButton.hidden) {
-  throw new Error("successful retry did not hide the retry control");
+if (currentNativeCanvas.version !== 3 || currentNativeDocument.version !== 3) {
+  throw new Error("successful rebuild lost latest document state");
 }
 if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
   throw new Error("successful rebuild did not advance supersede token");
