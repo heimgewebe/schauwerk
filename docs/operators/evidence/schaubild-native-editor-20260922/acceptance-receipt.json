@@ -14,6 +14,7 @@
     "compile_check_passed": true,
     "diff_check_passed": true,
     "docker_runtime_closure_includes_native_document": true,
+    "document_node_bounds_ignore_clipped_label_bbox": true,
     "edge_endpoint_reattach_passed": true,
     "edge_operations_cancel_on_escape": true,
     "explicit_default_edge_ends_preserved": true,
@@ -52,8 +53,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "3b9d9c02c73be37dc36018a517f4538208e6be85dcaac77e1ebaaa7203b664f7",
-  "functional_head": "79ffdd035cf4451274bc785fb5459aff3e499472",
+  "evidence_digest": "51d17411d97403ef1bbdd4b6b50ba67ed372352cd093c24fce10a0102de53a99",
+  "functional_head": "c02b06daa6108b07aad432207582f27cdedafdfb",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -66,7 +67,7 @@
     "Dockerfile": "6d4029480f506977b69b0f16097a74749b63fe44127bd7e44df8f19a5e88a7f2",
     "Makefile": "b784f2cf38cf9a18ca7c096f348b2843fe3d25ead01fac6dbb40f0c4cd72d48c",
     "scripts/run_browser_smoke.py": "32bcef2541b6c11ac46b356560a03885a68ed6d75f691575a256383a20f76c7b",
-    "src/schauwerk/resources/native_viewer/assets.py": "6e429ce20f5b853d6269c31bdfe71dc2e0bcf0c0ec0ec0303593bd3b22477fb5",
+    "src/schauwerk/resources/native_viewer/assets.py": "4db79bb097281a7913b89dbc18ef19b771a5163cf37cd13f4043b9033171b100",
     "src/schauwerk/resources/standalone_editor/assets.py": "c2dda55944e4d2e36916ee1e60abe9d3268f7cc4060ea953be05390d0cb067d6",
     "src/schauwerk/visual/native_diagram.py": "0b9dde91f46de97cf8d47bdd25599cc006211b47241cb404f3818c8d29cf2c8f",
     "src/schauwerk/visual/native_document.py": "7c0696b996eff46a94f5a9af3f2e35e1bb194fd5135d5f573ed32b0411cc8f9f",
@@ -74,7 +75,7 @@
     "src/schauwerk/visual/standalone_editor.py": "5ac0d15f4f6ba57f0b1810fa9e9fe5597220f767df318e5e86629502a903189b",
     "tests/visual/test_native_canvas_editor.py": "31db625d596750b932b4314c3fe951510263faee68ebd5d6264428942f30b125",
     "tests/visual/test_native_document.py": "c0eb62833268a509523c217e0ae2886ec7da34a3b4ae583f012967a781227f25",
-    "tests/visual/test_native_viewer.py": "6eac91deeed1160f5931efa50c8fb71413f7cb0a5f179f9249c71c83057a2bc9",
+    "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
     "tests/visual/test_native_viewer_browser.py": "d2b63de86b950bdd8d1af2eb61c09bda86bc00a306059125d3fcc2b552965c90",
     "tests/visual/test_standalone_editor.py": "b3379a47609e2ac298dc1b2aad739a23a21f71a8dd7385e2e577f3cde4a6f55d"
   }
