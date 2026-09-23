@@ -759,7 +759,13 @@ function applyAllNodeTransforms() {
 }
 
 function nodeBoundsInSvg(node) {
-  const box = node.getBBox();
+  const geometryElement = (
+    documentMode &&
+    node.dataset.sourceKind === "node"
+      ? Array.from(node.children).find((child) => child instanceof SVGRectElement)
+      : null
+  );
+  const box = (geometryElement || node).getBBox();
   const nodeMatrix = node.getCTM();
   const rootMatrix = svg.getCTM();
   if (!nodeMatrix || !rootMatrix) return null;

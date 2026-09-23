@@ -187,6 +187,64 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "touch-action: none" in styles
 
 
+def test_native_viewer_document_bounds_use_node_rect_not_clipped_label_bbox(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is unavailable")
+
+    output = tmp_path / "viewer"
+    build_native_viewer(_load(), output)
+    app = (output / "app.js").read_text(encoding="utf-8")
+    start = app.index("function nodeBoundsInSvg(node) {")
+    end = app.index("\n}\n\nfunction mergeSvgBounds", start) + 2
+    node_bounds_source = app[start:end]
+
+    script = f"""
+class SVGRectElement {{}}
+globalThis.SVGRectElement = SVGRectElement;
+const identity = {{
+  inverse() {{ return this; }},
+  multiply() {{ return this; }},
+}};
+const svg = {{
+  getCTM() {{ return identity; }},
+  createSVGPoint() {{
+    return {{
+      x: 0,
+      y: 0,
+      matrixTransform() {{ return {{x: this.x, y: this.y}}; }},
+    }};
+  }},
+}};
+const documentMode = true;
+{node_bounds_source}
+const rect = new SVGRectElement();
+rect.getBBox = () => ({{x: 20, y: 30, width: 100, height: 80}});
+const group = {{
+  dataset: {{sourceKind: "node"}},
+  children: [rect],
+  getBBox: () => ({{x: 20, y: 30, width: 180, height: 80}}),
+  getCTM: () => identity,
+}};
+const bounds = nodeBoundsInSvg(group);
+if (!bounds) throw new Error("node bounds missing");
+if (bounds.maxX - bounds.minX !== 100 || bounds.maxY - bounds.minY !== 80) {{
+  throw new Error(
+    "clipped label group bbox leaked into document node geometry: "
+      + JSON.stringify(bounds)
+  );
+}}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_viewer_title_markers_cannot_capture_svg_template_slot(
     tmp_path: Path,
 ) -> None:
