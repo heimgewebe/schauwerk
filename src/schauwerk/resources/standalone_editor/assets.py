@@ -1248,6 +1248,7 @@ function serializeNativeFrameSvg() {
     }
     const clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.removeAttribute("data-input-digest");
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
       + new XMLSerializer().serializeToString(clone)
       + "\n";

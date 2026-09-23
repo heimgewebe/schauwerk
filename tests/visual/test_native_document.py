@@ -430,6 +430,79 @@ def test_native_document_groups_render_below_edges_and_ordinary_nodes() -> None:
 
 
 
+
+def test_json_canvas_rejects_ids_that_would_collapse_in_xml() -> None:
+    for invalid_id in ("same\x01", "same\x02"):
+        source = {
+            "nodes": [
+                {
+                    "id": invalid_id,
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 120,
+                    "height": 80,
+                    "text": "invalid id",
+                }
+            ]
+        }
+        with pytest.raises(NativeDocumentError, match="XML 1.0-compatible"):
+            validate_json_canvas(source)
+
+
+def test_native_document_long_edge_label_is_clipped_to_reserved_box() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 360,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "long",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": "X" * 500,
+            }
+        ],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Long label")
+        )
+    )
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "long"
+    )
+    text = next(child for child in edge if child.tag == f"{SVG_NS}text")
+    visible_rect = next(child for child in edge if child.tag == f"{SVG_NS}rect")
+    clip = next(edge.iter(f"{SVG_NS}clipPath"))
+    clip_rect = next(clip.iter(f"{SVG_NS}rect"))
+
+    assert text.attrib["clip-path"].startswith("url(#canvas-edge-label-")
+    assert float(visible_rect.attrib["width"]) == 260.0
+    assert clip_rect.attrib["width"] == visible_rect.attrib["width"]
+    assert clip_rect.attrib["height"] == visible_rect.attrib["height"]
+
+
+
 def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
     source = {
         "nodes": [

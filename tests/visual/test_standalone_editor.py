@@ -111,6 +111,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert 'headers["X-Schauwerk-Native-Supersede"] = nativeSupersedeToken' in app_js
     assert 'querySelector("#nativeDiagram")' in app_js
+    assert 'clone.removeAttribute("data-input-digest")' in app_js
     assert "SVG aus aktuellem Canvas-Dokument bereit" in app_js
     assert "Aktuelle SVG-Ausgabe konnte nicht gelesen werden" in app_js
     assert "maxFitScale: 1" in app_js

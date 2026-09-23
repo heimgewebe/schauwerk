@@ -72,6 +72,23 @@ def _required_text(value: Mapping[str, Any], field: str, *, context: str) -> str
     return candidate
 
 
+def _xml_10_compatible(value: str) -> bool:
+    return all(
+        ord(character) in {0x09, 0x0A, 0x0D}
+        or 0x20 <= ord(character) <= 0xD7FF
+        or 0xE000 <= ord(character) <= 0xFFFD
+        or 0x10000 <= ord(character) <= 0x10FFFF
+        for character in value
+    )
+
+
+def _required_id(value: Mapping[str, Any], field: str, *, context: str) -> str:
+    candidate = _required_text(value, field, context=context)
+    if not _xml_10_compatible(candidate):
+        raise NativeDocumentError(f"{context}.{field} must be XML 1.0-compatible text")
+    return candidate
+
+
 def _optional_text(value: Mapping[str, Any], field: str, *, context: str) -> None:
     if field in value and not isinstance(value[field], str):
         raise NativeDocumentError(f"{context}.{field} must be text")
@@ -101,7 +118,7 @@ def validate_json_canvas(value: Any) -> dict[str, Any]:
         context = f"nodes[{index}]"
         if not isinstance(node, dict):
             raise NativeDocumentError(f"{context} must be an object")
-        node_id = _required_text(node, "id", context=context)
+        node_id = _required_id(node, "id", context=context)
         if node_id in all_ids:
             raise NativeDocumentError(f"duplicate JSON Canvas id: {node_id}")
         all_ids.add(node_id)
@@ -138,7 +155,7 @@ def validate_json_canvas(value: Any) -> dict[str, Any]:
         context = f"edges[{index}]"
         if not isinstance(edge, dict):
             raise NativeDocumentError(f"{context} must be an object")
-        edge_id = _required_text(edge, "id", context=context)
+        edge_id = _required_id(edge, "id", context=context)
         if edge_id in all_ids:
             raise NativeDocumentError(f"duplicate JSON Canvas id: {edge_id}")
         all_ids.add(edge_id)

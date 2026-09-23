@@ -3536,8 +3536,15 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             ]
         )
         if label:
+            clip_id = f"canvas-edge-label-{index}"
             lines.extend(
                 [
+                    (
+                        f'<defs><clipPath id="{clip_id}">'
+                        f'<rect x="{label_x - label_width / 2:.1f}" '
+                        f'y="{label_y - label_height / 2:.1f}" width="{label_width}" '
+                        f'height="{label_height}"/></clipPath></defs>'
+                    ),
                     (
                         f'<rect x="{label_x - label_width / 2:.1f}" '
                         f'y="{label_y - label_height / 2:.1f}" width="{label_width}" '
@@ -3546,8 +3553,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                     (
                         f'<text x="{label_x:.1f}" y="{label_y + 5:.1f}" '
                         f'text-anchor="middle" font-family="Inter, sans-serif" '
-                        f'font-size="14" font-weight="600" fill="{stroke}">'
-                        f'{_canvas_xml(label)}</text>'
+                        f'font-size="14" font-weight="600" fill="{stroke}" '
+                        f'clip-path="url(#{clip_id})">{_canvas_xml(label)}</text>'
                     ),
                 ]
             )
