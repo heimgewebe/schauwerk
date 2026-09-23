@@ -44,8 +44,8 @@
     "superseded_native_bundle_lease_released_per_client": true,
     "text_edit_including_empty_text_passed": true,
     "xml_incompatible_canvas_ids_rejected": true,
-    "failed_native_rebuild_offers_latest_state_retry": true,
-    "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped": true
+    "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped": true,
+    "failed_native_rebuild_restores_editor_interactivity": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -55,8 +55,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "6040622f0ffa8a85f0794200fce7103896c6d9f55e33348ceffa0af4b11aeafc",
-  "functional_head": "e58de6bd2d8b14128d98c11b849ecf91d16f877e",
+  "evidence_digest": "c9f198ad919454c60e24d457978bec6e263062d52d47d26d7a76d39983e4a71d",
+  "functional_head": "568a1a1e41b23648e7b20925001d40f4ac3f165e",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -70,7 +70,7 @@
     "Makefile": "b784f2cf38cf9a18ca7c096f348b2843fe3d25ead01fac6dbb40f0c4cd72d48c",
     "scripts/run_browser_smoke.py": "32bcef2541b6c11ac46b356560a03885a68ed6d75f691575a256383a20f76c7b",
     "src/schauwerk/resources/native_viewer/assets.py": "4db79bb097281a7913b89dbc18ef19b771a5163cf37cd13f4043b9033171b100",
-    "src/schauwerk/resources/standalone_editor/assets.py": "01bc34252b4be477b0480249b3010144dcbb55b777cf79e985ff0c3581e1c091",
+    "src/schauwerk/resources/standalone_editor/assets.py": "e67a60aa38eb4a0f1f2ce66d095dc0f8c4b3c144053fcf3a975a921cc27bb0f8",
     "src/schauwerk/visual/native_diagram.py": "0b9dde91f46de97cf8d47bdd25599cc006211b47241cb404f3818c8d29cf2c8f",
     "src/schauwerk/visual/native_document.py": "0899aea0bbf5e9b76568c317e40e85a5054c8ec3f8050907d7c90699f210c0d1",
     "src/schauwerk/visual/native_viewer.py": "5696c063c84509b829fe863edc4717d3d4efa8095b14fc146cfb7a7d9adf157a",
@@ -79,6 +79,6 @@
     "tests/visual/test_native_document.py": "abccf20aeff1f1884c687136860a80173b2791d05f38cf6a8dd3c6009c15673b",
     "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
     "tests/visual/test_native_viewer_browser.py": "d2b63de86b950bdd8d1af2eb61c09bda86bc00a306059125d3fcc2b552965c90",
-    "tests/visual/test_standalone_editor.py": "3b4e24a4217896bdf8b98020170ebca44479324e193ccfdfe55ee6a4dd606745"
+    "tests/visual/test_standalone_editor.py": "73f459891e8a0d948bebcbacb19803ea53718875f79524c6c039bccff7ab0413"
   }
 }
