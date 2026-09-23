@@ -742,6 +742,7 @@ let editorFocusActive = false;
 let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
+let nativeCanvasRenderStale = false;
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
@@ -952,6 +953,7 @@ function showStart() {
   pendingCreationDefaults = false;
   pendingExport = null;
   editorReady = false;
+  nativeCanvasRenderStale = false;
   currentLegacyXml = null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
@@ -978,6 +980,7 @@ function prepareInput(raw, title = "Schaubild") {
   currentNativeDocument = null;
   currentNativeCanvas = null;
   currentNativeUrl = null;
+  nativeCanvasRenderStale = false;
   pendingExport = null;
 
   if (detected.kind === "representation") {
@@ -1028,6 +1031,7 @@ function prepareInput(raw, title = "Schaubild") {
 function replaceEditorFrame() {
   const previous = elements.frame;
   const frame = previous.cloneNode(false);
+  frame.inert = false;
   frame.removeAttribute("src");
   previous.replaceWith(frame);
   elements.frame = frame;
@@ -1054,6 +1058,7 @@ function launchLegacy(load) {
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
   currentNativeUrl = null;
+  nativeCanvasRenderStale = false;
   setEngineMode("legacy");
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
   const sourceFormat = load?.sourceMetadata?.value;
@@ -1077,8 +1082,13 @@ function nativeTokenFromUrl(value) {
   return /^[0-9a-f]{32}$/.test(token) ? token : "";
 }
 
-async function launchNative(load) {
+async function launchNative(load, options = {}) {
   const loadIntent = invalidateLoadIntents();
+  const preserveActiveFrame = Boolean(
+    options.preserveActiveFrame && editorReady && currentNativeUrl,
+  );
+  const activeFrame = elements.frame;
+  const activeNativeUrl = currentNativeUrl;
   const requestValue = load.nativeRepresentation || load.nativeDocument || load.nativeImport;
   clearPreparedDownload();
   pendingExport = null;
@@ -1092,12 +1102,28 @@ async function launchNative(load) {
   currentLegacyXml = typeof load.legacyXml === "string" ? load.legacyXml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
-  currentNativeUrl = null;
+  if (!preserveActiveFrame) {
+    currentNativeUrl = null;
+    nativeCanvasRenderStale = false;
+  } else {
+    nativeCanvasRenderStale = true;
+  }
   setEngineMode("native");
-  editorReady = false;
-  const frame = replaceEditorFrame();
-  showWorkspace();
-  setStatus("Nativer Renderer wird geladen …");
+  if (!preserveActiveFrame) editorReady = false;
+  let frame = elements.frame;
+  if (preserveActiveFrame) {
+    frame.inert = true;
+    frame.blur();
+    setError("");
+  } else {
+    frame = replaceEditorFrame();
+    showWorkspace();
+  }
+  setStatus(
+    preserveActiveFrame
+      ? "Native Änderung wird gerendert …"
+      : "Nativer Renderer wird geladen …",
+  );
 
   const previousLaunch = nativeLaunchTail;
   let releaseLaunchTurn = () => {};
@@ -1135,6 +1161,7 @@ async function launchNative(load) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
     currentNativeUrl = nativeUrl;
+    nativeCanvasRenderStale = false;
     if (currentRepresentation) {
       if (!saveNativeDraft(currentRepresentation)) {
         setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
@@ -1143,6 +1170,10 @@ async function launchNative(load) {
       setStatus("Nativer draw.io-Import bereit · Original lokal nicht speicherbar");
     }
     editorReady = true;
+    if (preserveActiveFrame) {
+      frame = replaceEditorFrame();
+      showWorkspace();
+    }
     frame.src = currentNativeUrl;
     setEngineMode("native");
     setStatus(
@@ -1156,6 +1187,18 @@ async function launchNative(load) {
     );
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
+    if (preserveActiveFrame) {
+      currentNativeUrl = activeNativeUrl;
+      nativeCanvasRenderStale = true;
+      editorReady = true;
+      if (elements.frame === activeFrame) activeFrame.inert = true;
+      setError(
+        (error instanceof Error ? error.message : "Native Änderung konnte nicht gerendert werden.")
+        + " Bestehende Ansicht bleibt sichtbar; .canvas-Export enthält den aktuellen Dokumentzustand.",
+      );
+      setStatus("Native Änderung nicht neu gerendert · bestehende Ansicht bleibt sichtbar");
+      return;
+    }
     editorReady = false;
     currentNativeUrl = null;
     const fallbackXml = currentLegacyXml;
@@ -1301,6 +1344,12 @@ async function exportNative(format) {
     return;
   }
   if (currentNativeCanvas) {
+    if (nativeCanvasRenderStale) {
+      setStatus(
+        "Aktuelle SVG-Ausgabe ist nach Renderfehler nicht synchron · .canvas bleibt verfügbar",
+      );
+      return;
+    }
     const liveSvg = serializeNativeFrameSvg();
     if (liveSvg === null) {
       setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
@@ -1391,7 +1440,7 @@ window.addEventListener("message", (event) => {
           nativeDocument: currentNativeDocument,
           nativeCanvas: currentNativeCanvas,
           sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
-        });
+        }, { preserveActiveFrame: true });
       }
       return;
     }

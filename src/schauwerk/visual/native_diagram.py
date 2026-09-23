@@ -3270,18 +3270,66 @@ def _canvas_edge_geometry(
         y = float(source["y"])
         width = float(source["width"])
         height = float(source["height"])
-        start = (x + width, y + height * 0.35)
-        end = (x + width, y + height * 0.72)
         reach = 66.0 + abs(lane)
-        c1 = (start[0] + reach, y - 18.0)
-        c2 = (end[0] + reach, y + height + 18.0)
+        from_side = edge.get("from_side")
+        to_side = edge.get("to_side")
+        if from_side is None and to_side is None:
+            start = (x + width, y + height * 0.35)
+            end = (x + width, y + height * 0.72)
+            c1 = (start[0] + reach, y - 18.0)
+            c2 = (end[0] + reach, y + height + 18.0)
+            label_offset_x = 18.0
+            label_offset_y = 0.0
+        else:
+            def loop_anchor(
+                side: str | None, fraction: float
+            ) -> tuple[float, float, tuple[float, float]]:
+                chosen = side or "right"
+                points = {
+                    "left": (x, y + height * fraction, (-1.0, 0.0)),
+                    "right": (x + width, y + height * fraction, (1.0, 0.0)),
+                    "top": (x + width * fraction, y, (0.0, -1.0)),
+                    "bottom": (x + width * fraction, y + height, (0.0, 1.0)),
+                }
+                return points[chosen]
+
+            sx, sy, source_vector = loop_anchor(from_side, 0.35)
+            tx, ty, target_vector = loop_anchor(to_side, 0.72)
+            start = (sx, sy)
+            end = (tx, ty)
+            c1 = (
+                sx + source_vector[0] * reach,
+                sy + source_vector[1] * reach,
+            )
+            c2 = (
+                tx + target_vector[0] * reach,
+                ty + target_vector[1] * reach,
+            )
+            chosen_from = from_side or "right"
+            chosen_to = to_side or "right"
+            if {chosen_from, chosen_to} == {"top", "bottom"}:
+                outside_bias = reach + width / 2
+                c1 = (c1[0] + outside_bias, c1[1])
+                c2 = (c2[0] + outside_bias, c2[1])
+            elif {chosen_from, chosen_to} == {"left", "right"}:
+                outside_bias = reach + height / 2
+                c1 = (c1[0], c1[1] - outside_bias)
+                c2 = (c2[0], c2[1] - outside_bias)
+            label_offset_x = 9.0 * (source_vector[0] + target_vector[0])
+            label_offset_y = 9.0 * (source_vector[1] + target_vector[1])
         path = (
             f"M {start[0]:.1f} {start[1]:.1f} "
             f"C {c1[0]:.1f} {c1[1]:.1f}, {c2[0]:.1f} {c2[1]:.1f}, "
             f"{end[0]:.1f} {end[1]:.1f}"
         )
-        label_x = (start[0] + 3 * c1[0] + 3 * c2[0] + end[0]) / 8 + 18
-        label_y = (start[1] + 3 * c1[1] + 3 * c2[1] + end[1]) / 8
+        label_x = (
+            (start[0] + 3 * c1[0] + 3 * c2[0] + end[0]) / 8
+            + label_offset_x
+        )
+        label_y = (
+            (start[1] + 3 * c1[1] + 3 * c2[1] + end[1]) / 8
+            + label_offset_y
+        )
         points = (start, c1, c2, end)
         bounds = (
             min(point[0] for point in points),

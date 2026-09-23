@@ -332,6 +332,46 @@ def test_native_document_parallel_self_loops_use_distinct_routes() -> None:
     assert len(set(paths)) == 4
 
 
+def test_native_document_self_loop_honors_explicit_endpoint_sides() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 20,
+                "y": 30,
+                "width": 100,
+                "height": 80,
+                "text": "A",
+            }
+        ],
+        "edges": [
+            {
+                "id": "loop",
+                "fromNode": "a",
+                "toNode": "a",
+                "fromSide": "top",
+                "toSide": "left",
+            }
+        ],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Explicit loop sides")
+        )
+    )
+    edge_group = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "loop"
+    )
+    path = next(child for child in edge_group if child.tag == f"{SVG_NS}path")
+    assert edge_group.attrib["data-route"] == "canvas-self-loop"
+    assert path.attrib["d"] == (
+        "M 55.0 30.0 C 55.0 -36.0, -46.0 87.6, 20.0 87.6"
+    )
+
+
 def test_native_document_viewbox_contains_outward_routed_edge_controls() -> None:
     source = {
         "nodes": [

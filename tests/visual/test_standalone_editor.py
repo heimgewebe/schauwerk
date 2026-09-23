@@ -184,12 +184,14 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'id="legacyFallbackButton"' in index_html
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
+    assert "frame.inert = false;" in app_js
     assert "previous.replaceWith(frame);" in app_js
     assert "elements.frame = frame;" in app_js
     assert "if (elements.frame !== frame) return;" in app_js
     assert "let loadIntentGeneration = 0;" in app_js
     assert "let nativeLaunchTail = Promise.resolve();" in app_js
     assert 'let nativeSupersedeToken = "";' in app_js
+    assert "let nativeCanvasRenderStale = false;" in app_js
     assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
@@ -207,8 +209,13 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     launch_end = app_js.index("function loadPendingIntoEditor()", launch_start)
     launch_source = app_js[launch_start:launch_end]
     assert "invalidateLoadIntents();" in launch_source
-    native_start = launch_source.index("async function launchNative(load)")
+    native_start = launch_source.index("async function launchNative(load, options = {})")
     native_source = launch_source[native_start:]
+    assert "options.preserveActiveFrame && editorReady && currentNativeUrl" in native_source
+    assert "frame.inert = true;" in native_source
+    assert "currentNativeUrl = activeNativeUrl;" in native_source
+    assert "Bestehende Ansicht bleibt sichtbar" in native_source
+    assert "{ preserveActiveFrame: true }" in app_js
     assert "const previousLaunch = nativeLaunchTail;" in native_source
     assert "await previousLaunch;" in native_source
     assert native_source.index("await previousLaunch;") < native_source.index(
@@ -223,6 +230,17 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         token_update,
     )
     assert token_update < stale_after_response
+    success_url = native_source.index("currentNativeUrl = nativeUrl;")
+    preserved_swap = native_source.index("frame = replaceEditorFrame();", success_url)
+    assert success_url < preserved_swap
+    export_start = app_js.index("async function exportNative(format)")
+    export_end = app_js.index("function exportDiagram(format)", export_start)
+    export_source = app_js[export_start:export_end]
+    canvas_export = export_source.index('if (format === "drawio")')
+    stale_svg_guard = export_source.index("if (nativeCanvasRenderStale)")
+    live_svg = export_source.index("serializeNativeFrameSvg()")
+    assert canvas_export < stale_svg_guard < live_svg
+    assert ".canvas bleibt verfügbar" in export_source
     assert "releaseLaunchTurn();" in native_source
     assert 'pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";' in launch_source
     assert "function toggleEditorFullscreen()" in app_js
@@ -256,6 +274,161 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert app_js.count("config: COLLISION_SAFE_LAYOUT_CONFIG") == 1
     assert '"elk.spacing.nodeNode": "40"' not in app_js
     assert 'event.key === "Escape"' not in app_js
+
+
+def test_native_document_rebuild_preserves_active_frame_across_render_failure(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    native_start = app_js.index("function nativeTokenFromUrl")
+    native_end = app_js.index("function loadPendingIntoEditor()", native_start)
+    native_source = app_js[native_start:native_end]
+
+    script = r"""
+const PUBLIC_BASE_PATH = "";
+const NATIVE_API_PATH = "/api/native-viewer";
+let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+let nativeCanvasRenderStale = false;
+let pendingExport = null;
+let pendingLoad = null;
+let pendingInitialCollisionSafeLayout = false;
+let pendingCreationDefaults = false;
+let currentXml = null;
+let currentRepresentation = null;
+let currentNativeDocument = {version: 1};
+let currentNativeCanvas = {version: 1};
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let editorReady = true;
+let statusText = "";
+let errorText = "";
+let replaceCalls = 0;
+let workspaceCalls = 0;
+const oldFrame = {
+  inert: false,
+  blurred: false,
+  blur() { this.blurred = true; },
+};
+const replacementFrame = {
+  inert: false,
+  src: "",
+  blur() {},
+};
+const elements = {
+  frame: oldFrame,
+  legacyFallbackButton: {hidden: true},
+};
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
+function clearPreparedDownload() {}
+function setEngineMode() {}
+function setStatus(value) { statusText = String(value); }
+function setError(value) { errorText = String(value); }
+function showWorkspace() { workspaceCalls += 1; }
+function replaceEditorFrame() {
+  replaceCalls += 1;
+  replacementFrame.inert = false;
+  elements.frame = replacementFrame;
+  return replacementFrame;
+}
+function saveNativeDraft() { return true; }
+function saveDraft() { return true; }
+""" + native_source + r"""
+const failedDocument = {version: 2};
+const failedCanvas = {version: 2};
+globalThis.fetch = async (_url, options) => {
+  if (
+    options.headers["X-Schauwerk-Native-Supersede"]
+    !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ) {
+    throw new Error("missing supersede token on failed rebuild");
+  }
+  return {
+    ok: false,
+    async json() { return {error: "synthetic rebuild failure"}; },
+  };
+};
+await launchNative(
+  {nativeDocument: failedDocument, nativeCanvas: failedCanvas},
+  {preserveActiveFrame: true},
+);
+if (replaceCalls !== 0) throw new Error("active frame replaced before successful render");
+if (elements.frame !== oldFrame) throw new Error("active frame identity changed after render failure");
+if (!oldFrame.inert || !oldFrame.blurred) throw new Error("stale frame remained interactive");
+if (currentNativeUrl !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html") {
+  throw new Error("active native URL was lost after render failure");
+}
+if (!editorReady) throw new Error("canvas export readiness was lost after render failure");
+if (!nativeCanvasRenderStale) throw new Error("stale SVG state was not recorded");
+if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
+  throw new Error("latest document state was not retained after render failure");
+}
+if (!errorText.includes(".canvas-Export enthält den aktuellen Dokumentzustand")) {
+  throw new Error("render failure did not preserve an export recovery path");
+}
+if (!statusText.includes("bestehende Ansicht bleibt sichtbar")) {
+  throw new Error("render failure status does not describe preserved frame");
+}
+
+const successfulDocument = {version: 3};
+const successfulCanvas = {version: 3};
+const successfulUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
+globalThis.fetch = async (_url, options) => {
+  if (
+    options.headers["X-Schauwerk-Native-Supersede"]
+    !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ) {
+    throw new Error("supersede token drifted before successful retry");
+  }
+  return {
+    ok: true,
+    async json() {
+      return {
+        url: successfulUrl,
+        renderer: "schauwerk-native-diagram-v1",
+        input_digest: "c".repeat(64),
+      };
+    },
+  };
+};
+await launchNative(
+  {nativeDocument: successfulDocument, nativeCanvas: successfulCanvas},
+  {preserveActiveFrame: true},
+);
+if (replaceCalls !== 1 || workspaceCalls !== 1) {
+  throw new Error("replacement frame was not swapped exactly once after success");
+}
+if (elements.frame !== replacementFrame || replacementFrame.src !== successfulUrl) {
+  throw new Error("successful rebuild did not activate replacement frame");
+}
+if (nativeCanvasRenderStale) throw new Error("successful rebuild left SVG marked stale");
+if (currentNativeUrl !== successfulUrl || !editorReady) {
+  throw new Error("successful rebuild did not become authoritative");
+}
+if (currentNativeCanvas.version !== 3 || currentNativeDocument.version !== 3) {
+  throw new Error("successful rebuild lost latest document state");
+}
+if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
+  throw new Error("successful rebuild did not advance supersede token");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
 
 
 def _golden_representation(name: str) -> dict:

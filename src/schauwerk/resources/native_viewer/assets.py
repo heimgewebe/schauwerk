@@ -363,6 +363,52 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 
   if (selfLoop && route === "canvas-self-loop") {
     const reach = 66 + Math.abs(lane);
+    const fromSide = options.fromSide || null;
+    const toSide = options.toSide || null;
+    if (fromSide || toSide) {
+      const loopAnchor = (side, fraction) => {
+        const chosen = side || "right";
+        if (chosen === "left") {
+          return { x: source.left, y: source.y + source.height * fraction, vx: -1, vy: 0 };
+        }
+        if (chosen === "right") {
+          return { x: source.right, y: source.y + source.height * fraction, vx: 1, vy: 0 };
+        }
+        if (chosen === "top") {
+          return { x: source.x + source.width * fraction, y: source.top, vx: 0, vy: -1 };
+        }
+        return { x: source.x + source.width * fraction, y: source.bottom, vx: 0, vy: 1 };
+      };
+      const start = loopAnchor(fromSide, 0.35);
+      const end = loopAnchor(toSide, 0.72);
+      let c1 = {
+        x: start.x + start.vx * reach,
+        y: start.y + start.vy * reach,
+      };
+      let c2 = {
+        x: end.x + end.vx * reach,
+        y: end.y + end.vy * reach,
+      };
+      const sidePair = new Set([fromSide || "right", toSide || "right"]);
+      if (sidePair.has("top") && sidePair.has("bottom")) {
+        const outsideBias = reach + source.width / 2;
+        c1 = { x: c1.x + outsideBias, y: c1.y };
+        c2 = { x: c2.x + outsideBias, y: c2.y };
+      } else if (sidePair.has("left") && sidePair.has("right")) {
+        const outsideBias = reach + source.height / 2;
+        c1 = { x: c1.x, y: c1.y - outsideBias };
+        c2 = { x: c2.x, y: c2.y - outsideBias };
+      }
+      const label = cubicPoint(start, c1, c2, end);
+      return {
+        path: "M " + start.x.toFixed(1) + " " + start.y.toFixed(1)
+          + " C " + c1.x.toFixed(1) + " " + c1.y.toFixed(1)
+          + ", " + c2.x.toFixed(1) + " " + c2.y.toFixed(1)
+          + ", " + end.x.toFixed(1) + " " + end.y.toFixed(1),
+        labelX: label.x + 9 * (start.vx + end.vx),
+        labelY: label.y + 9 * (start.vy + end.vy),
+      };
+    }
     const start = { x: source.right, y: source.y + source.height * 0.35 };
     const end = { x: source.right, y: source.y + source.height * 0.72 };
     const c1 = { x: start.x + reach, y: source.y - 18 };

@@ -236,6 +236,29 @@ def test_native_viewer_interaction_math_is_browser_independent(tmp_path: Path) -
     )
     assert python_canvas_route == "canvas-cubic"
     python_canvas_path_json = json.dumps(python_canvas_path)
+    python_explicit_loop_path, _, _, explicit_loop_route, _ = _canvas_edge_geometry(
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"from_side": "top", "to_side": "left"},
+        lane=0,
+    )
+    assert explicit_loop_route == "canvas-self-loop"
+    python_explicit_loop_path_json = json.dumps(python_explicit_loop_path)
+    (
+        python_opposite_loop_path,
+        opposite_label_x,
+        _opposite_label_y,
+        opposite_loop_route,
+        _opposite_bounds,
+    ) = _canvas_edge_geometry(
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"from_side": "top", "to_side": "bottom"},
+        lane=0,
+    )
+    assert opposite_loop_route == "canvas-self-loop"
+    assert opposite_label_x > 120
+    python_opposite_loop_path_json = json.dumps(python_opposite_loop_path)
 
     script = f"""
 const m = await import({module_url});
@@ -290,6 +313,25 @@ const canvasLoop = m.liveEdgeGeometry(
 );
 if (canvasLoop.path !== 'M 120.0 58.0 C 204.0 12.0, 204.0 128.0, 120.0 87.6') {{
   throw new Error(`canvas self-loop parity drift: ${{canvasLoop.path}}`);
+}}
+const explicitCanvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 0, selfLoop: true, fromSide: 'top', toSide: 'left'}}
+);
+if (explicitCanvasLoop.path !== {python_explicit_loop_path_json}) {{
+  throw new Error('explicit canvas self-loop Python/JS parity drift: ' + explicitCanvasLoop.path);
+}}
+const oppositeCanvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 0, selfLoop: true, fromSide: 'top', toSide: 'bottom'}}
+);
+if (oppositeCanvasLoop.path !== {python_opposite_loop_path_json}) {{
+  throw new Error('opposite canvas self-loop Python/JS parity drift: ' + oppositeCanvasLoop.path);
+}}
+if (!(oppositeCanvasLoop.labelX > 120)) {{
+  throw new Error('opposite canvas self-loop label fell back inside the node');
 }}
 const fitted = m.fitView(1000, 500, 800, 600, 20);
 if (!(
