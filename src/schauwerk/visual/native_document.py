@@ -141,14 +141,9 @@ def validate_json_canvas(value: Any) -> dict[str, Any]:
             _required_text(node, "url", context=context)
         elif node_type == "group":
             _optional_text(node, "label", context=context)
-            _optional_text(node, "background", context=context)
-            if "backgroundStyle" in node and node["backgroundStyle"] not in {
-                "cover",
-                "ratio",
-                "repeat",
-            }:
+            if "background" in node or "backgroundStyle" in node:
                 raise NativeDocumentError(
-                    f"{context}.backgroundStyle must be cover, ratio, or repeat"
+                    f"{context} group backgrounds are not supported by the native editor"
                 )
 
     for index, edge in enumerate(normalized_edges):

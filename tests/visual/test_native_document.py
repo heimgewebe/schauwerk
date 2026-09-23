@@ -65,6 +65,39 @@ def _canvas() -> dict:
     }
 
 
+@pytest.mark.parametrize(
+    "background_fields",
+    [
+        {"background": "assets/background.png"},
+        {"background": "assets/background.png", "backgroundStyle": "cover"},
+        {"backgroundStyle": "repeat"},
+    ],
+)
+def test_json_canvas_rejects_group_backgrounds_instead_of_silently_dropping_them(
+    background_fields: dict[str, str],
+) -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "group",
+                "type": "group",
+                "x": 0,
+                "y": 0,
+                "width": 320,
+                "height": 220,
+                **background_fields,
+            }
+        ],
+        "edges": [],
+    }
+
+    with pytest.raises(
+        NativeDocumentError,
+        match="group backgrounds are not supported by the native editor",
+    ):
+        json_canvas_to_editing_document(source, title="Unsupported background")
+
+
 def test_json_canvas_roundtrip_preserves_geometry_ids_order_and_extensions() -> None:
     source = _canvas()
     document = json_canvas_to_editing_document(source, title="Probe")
