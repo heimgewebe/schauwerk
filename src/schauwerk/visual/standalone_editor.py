@@ -758,6 +758,7 @@ def _assert_native_build_admission(
     digest: str,
     admission_key: str,
     now: float,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> None:
     """Reject render work whose pin admission is already known to be impossible."""
 
@@ -776,7 +777,8 @@ def _assert_native_build_admission(
             client_pinned = [
                 item
                 for item in pinned
-                if item.pin_leases.get(admission_key, 0.0) > now
+                if item is not superseded_record
+                and item.pin_leases.get(admission_key, 0.0) > now
             ]
             if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
                 raise NativeCacheCapacityError(
@@ -789,6 +791,10 @@ def _assert_native_build_admission(
                 for (window_root, window_digest), window in _NATIVE_PIN_WINDOWS.items()
                 if window_root == root_key
                 and window_digest != digest
+                and (
+                    superseded_record is None
+                    or window_digest != superseded_record.digest
+                )
                 and window.max_pinned_until > now
                 and admission_key in window.admission_keys
             ]
@@ -804,6 +810,7 @@ def _assert_native_pin_capacity(
     record: _NativeCacheRecord,
     admission_key: str,
     now: float,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> None:
     with _NATIVE_CACHE_LOCK:
         pinned = [
@@ -817,7 +824,8 @@ def _assert_native_pin_capacity(
             [
                 item
                 for item in pinned
-                if item.pin_leases.get(admission_key, 0.0) > now
+                if item is not superseded_record
+                and item.pin_leases.get(admission_key, 0.0) > now
             ]
             if _client_quota_applies(admission_key)
             else []
@@ -840,6 +848,7 @@ def _pin_native_cache_record(
     record: _NativeCacheRecord,
     *,
     admission_key: str,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> None:
     now = time.monotonic()
     _refresh_native_record_pin_state(record, now=now)
@@ -862,6 +871,7 @@ def _pin_native_cache_record(
             record=record,
             admission_key=admission_key,
             now=now,
+            superseded_record=superseded_record,
         )
     record.last_access = now
     record.pin_leases[admission_key] = next_pinned_until
@@ -1048,6 +1058,32 @@ def _abandon_native_cache_record(
         # this request's failed response.
 
 
+def _native_superseded_record(
+    root: Path,
+    *,
+    token: str,
+    admission_key: str,
+    next_digest: str,
+    now: float | None = None,
+) -> _NativeCacheRecord | None:
+    if not token:
+        return None
+    with _NATIVE_CACHE_LOCK:
+        record = _native_cache_by_token(root, token)
+        if record is None or record.digest == next_digest:
+            return None
+        current = time.monotonic() if now is None else now
+        _refresh_native_record_pin_state(record, now=current)
+        if record.max_pinned_until <= current:
+            return None
+        if (
+            admission_key != record.admission_key
+            and record.pin_leases.get(admission_key, 0.0) <= current
+        ):
+            return None
+        return record
+
+
 def _release_native_superseded_lease(
     root: Path,
     *,
@@ -1055,20 +1091,16 @@ def _release_native_superseded_lease(
     admission_key: str,
     next_digest: str,
 ) -> bool:
-    if not token:
-        return False
     with _NATIVE_CACHE_LOCK:
-        record = _native_cache_by_token(root, token)
-        if record is None or record.digest == next_digest:
-            return False
         now = time.monotonic()
-        _refresh_native_record_pin_state(record, now=now)
-        if record.max_pinned_until <= now:
-            return False
-        if (
-            admission_key != record.admission_key
-            and record.pin_leases.get(admission_key, 0.0) <= now
-        ):
+        record = _native_superseded_record(
+            root,
+            token=token,
+            admission_key=admission_key,
+            next_digest=next_digest,
+            now=now,
+        )
+        if record is None:
             return False
         record.pin_leases.pop(admission_key, None)
         record.last_access = now
@@ -1088,6 +1120,7 @@ def _build_native_cache_record(
     public_base_path: str,
     admission_key: str = "local",
     deadline_monotonic: float | None = None,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> tuple[_NativeCacheRecord, bool]:
     with _NATIVE_CACHE_LOCK:
         now = time.monotonic()
@@ -1097,7 +1130,12 @@ def _build_native_cache_record(
             )
         existing = _native_cache_by_digest(root, digest)
         if existing is not None and existing.max_pinned_until > now:
-            _pin_native_cache_record(root, existing, admission_key=admission_key)
+            _pin_native_cache_record(
+                root,
+                existing,
+                admission_key=admission_key,
+                superseded_record=superseded_record,
+            )
             return existing, False
         _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
         _assert_native_build_admission(
@@ -1105,6 +1143,7 @@ def _build_native_cache_record(
             digest=digest,
             admission_key=admission_key,
             now=now,
+            superseded_record=superseded_record,
         )
 
     lock_timeout = NATIVE_REQUEST_TIMEOUT_SECONDS
@@ -1131,7 +1170,12 @@ def _build_native_cache_record(
                 )
             existing = _native_cache_by_digest(root, digest)
             if existing is not None and existing.max_pinned_until > now:
-                _pin_native_cache_record(root, existing, admission_key=admission_key)
+                _pin_native_cache_record(
+                    root,
+                    existing,
+                    admission_key=admission_key,
+                    superseded_record=superseded_record,
+                )
                 return existing, False
             _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
             _assert_native_build_admission(
@@ -1139,6 +1183,7 @@ def _build_native_cache_record(
                 digest=digest,
                 admission_key=admission_key,
                 now=now,
+                superseded_record=superseded_record,
             )
             pin_window, new_pin_window = _native_pin_window(
                 root,
@@ -1213,7 +1258,12 @@ def _build_native_cache_record(
                     )
                 existing = _native_cache_by_digest(root, digest)
                 if existing is not None and existing.max_pinned_until > now:
-                    _pin_native_cache_record(root, existing, admission_key=admission_key)
+                    _pin_native_cache_record(
+                        root,
+                        existing,
+                        admission_key=admission_key,
+                        superseded_record=superseded_record,
+                    )
                     winner = existing
                 else:
                     record = _NativeCacheRecord(
@@ -1242,6 +1292,7 @@ def _build_native_cache_record(
                         record=record,
                         admission_key=admission_key,
                         now=now,
+                        superseded_record=superseded_record,
                     )
                     if (
                         _client_quota_applies(admission_key)
@@ -1651,7 +1702,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 }
             )
             root = Path(self.directory).resolve()
-            _release_native_superseded_lease(
+            superseded_record = _native_superseded_record(
                 root,
                 token=supersede_token,
                 admission_key=admission_key,
@@ -1665,12 +1716,13 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 public_base_path=self.public_base_path,
                 admission_key=admission_key,
                 deadline_monotonic=self._request_deadline_at,
+                superseded_record=superseded_record,
             )
             token = record.token
         except NativeRequestDeadlineError:
             self.close_connection = True
             return
-        except NativeCacheCapacityError as exc:
+        except (NativeCacheCapacityError, NativeViewerError) as exc:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
             return
         except (
@@ -1679,7 +1731,6 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             json.JSONDecodeError,
             StandaloneEditorError,
             NativeDocumentError,
-            NativeViewerError,
         ) as exc:
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
             return
@@ -1701,7 +1752,14 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 "url": f"{self.public_base_path}/native/{token}/index.html",
             },
         )
-        if not delivered and created:
+        if delivered:
+            _release_native_superseded_lease(
+                root,
+                token=supersede_token,
+                admission_key=admission_key,
+                next_digest=cache_digest,
+            )
+        elif created:
             _abandon_native_cache_record(
                 root,
                 record,

@@ -2153,6 +2153,75 @@ def test_trusted_proxy_native_supersede_allows_sequential_rebuilds(
         thread.join(timeout=5)
 
 
+def test_trusted_proxy_native_supersede_preserves_live_bundle_on_renderer_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "renderer-failure-editor"
+    build_standalone_editor(output, public_base_path="/schaubild")
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT", 1)
+
+    client = "203.0.113.77"
+    first = _golden_representation("decision-flow-v1.json")
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert first_created is True
+    assert first_record.pin_leases[client] > time.monotonic()
+
+    def failed_build(**_kwargs: object) -> None:
+        raise standalone_editor.NativeViewerError("synthetic renderer failure")
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", failed_build)
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "supersede_renderer_failure"
+    second_payload = json.dumps(second).encode("utf-8")
+
+    handler = object.__new__(_EditorRequestHandler)
+    handler.path = NATIVE_API_PATH
+    handler.headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(second_payload)),
+        standalone_editor.NATIVE_SUPERSEDE_HEADER: first_record.token,
+    }
+    handler.rfile = io.BytesIO(second_payload)
+    handler.directory = str(output)
+    handler.native_serve_binding = "trusted-reverse-proxy-private-ingress"
+    handler.public_base_path = "/schaubild"
+    handler._request_deadline_expired = False
+    handler._request_deadline_at = time.monotonic() + 5
+    handler.close_connection = False
+    monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+    monkeypatch.setattr(handler, "_native_admission_key", lambda: client)
+    responses: list[tuple[HTTPStatus, dict[str, object]]] = []
+
+    def capture_json(
+        status: HTTPStatus,
+        payload: dict[str, object],
+        *,
+        write_body: bool = True,
+    ) -> bool:
+        del write_body
+        responses.append((status, payload))
+        return True
+
+    monkeypatch.setattr(handler, "_send_json", capture_json)
+    handler.do_POST()
+
+    assert responses
+    status, body = responses[-1]
+    assert status == HTTPStatus.SERVICE_UNAVAILABLE, body
+    assert "synthetic renderer failure" in str(body["error"])
+    assert first_record.pin_leases.get(client, 0.0) > time.monotonic()
+    assert standalone_editor._native_cache_by_token(output, first_record.token) is first_record
+
+
 def test_native_supersede_cannot_release_foreign_client_and_old_bundle_can_repin(
     tmp_path: Path,
 ) -> None:

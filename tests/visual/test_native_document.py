@@ -218,6 +218,10 @@ def test_editing_document_projects_geometry_text_and_edges_back_to_canvas() -> N
             lambda value: value["nodes"][1].update({"width": 0}),
             "between 1",
         ),
+        (
+            lambda value: value["nodes"][1].update({"x": 10.5}),
+            "must be an integer",
+        ),
     ],
 )
 def test_json_canvas_fails_closed_for_invalid_core(mutator, message: str) -> None:
