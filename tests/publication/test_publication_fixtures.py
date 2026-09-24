@@ -361,7 +361,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "568a1a1e41b23648e7b20925001d40f4ac3f165e"
+    assert editor_successor["functional_head"] == "1694afb40a9db37d7fdd11dd54b7f843dc20f546"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -379,7 +379,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
-    assert editor_successor["checks"]["browser_smoke_passed_count"] == 4
+    assert editor_successor["checks"]["browser_smoke_passed_count"] == 5
     assert (
         editor_successor["checks"]["canvas_node_labels_clipped_to_node_bounds"] is True
     )
@@ -395,12 +395,18 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         is True
     )
     assert (
-        editor_successor["checks"]["failed_native_rebuild_restores_editor_interactivity"]
+        editor_successor["checks"]["failed_native_rebuild_preserves_latest_state_with_explicit_retry"]
         is True
     )
     assert (
         editor_successor["checks"][
             "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_markdown_display_normalized_without_roundtrip_loss"
         ]
         is True
     )

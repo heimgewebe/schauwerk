@@ -5,7 +5,7 @@
     "absent_optional_arrays_preserved": true,
     "add_delete_nodes_and_edges_passed": true,
     "browser_canvas_document_editing_passed": true,
-    "browser_smoke_passed_count": 4,
+    "browser_smoke_passed_count": 5,
     "canvas_edge_labels_clipped_to_reserved_box": true,
     "canvas_groups_render_below_edges_and_nodes": true,
     "canvas_node_labels_clipped_to_node_bounds": true,
@@ -45,7 +45,8 @@
     "text_edit_including_empty_text_passed": true,
     "xml_incompatible_canvas_ids_rejected": true,
     "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped": true,
-    "failed_native_rebuild_restores_editor_interactivity": true
+    "failed_native_rebuild_preserves_latest_state_with_explicit_retry": true,
+    "json_canvas_markdown_display_normalized_without_roundtrip_loss": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -55,8 +56,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "c9f198ad919454c60e24d457978bec6e263062d52d47d26d7a76d39983e4a71d",
-  "functional_head": "568a1a1e41b23648e7b20925001d40f4ac3f165e",
+  "evidence_digest": "f128589730f7c2d1e45dce4d570bb966b0f1214f6fade3f0dad896ffeb41abab",
+  "functional_head": "1694afb40a9db37d7fdd11dd54b7f843dc20f546",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -67,18 +68,18 @@
   "scope": "json-canvas-native-document-editing",
   "source_bindings": {
     "Dockerfile": "6d4029480f506977b69b0f16097a74749b63fe44127bd7e44df8f19a5e88a7f2",
-    "Makefile": "b784f2cf38cf9a18ca7c096f348b2843fe3d25ead01fac6dbb40f0c4cd72d48c",
-    "scripts/run_browser_smoke.py": "32bcef2541b6c11ac46b356560a03885a68ed6d75f691575a256383a20f76c7b",
+    "Makefile": "807680b55fd9ac84868505651e268bf4917a2fa8e482ac28adaa1b9e2393276d",
+    "scripts/run_browser_smoke.py": "40e4cf9ee19d9e78ca14642f90423847be6def3c26fc5fb80f6f5e21035fec13",
     "src/schauwerk/resources/native_viewer/assets.py": "4db79bb097281a7913b89dbc18ef19b771a5163cf37cd13f4043b9033171b100",
-    "src/schauwerk/resources/standalone_editor/assets.py": "e67a60aa38eb4a0f1f2ce66d095dc0f8c4b3c144053fcf3a975a921cc27bb0f8",
-    "src/schauwerk/visual/native_diagram.py": "0b9dde91f46de97cf8d47bdd25599cc006211b47241cb404f3818c8d29cf2c8f",
+    "src/schauwerk/resources/standalone_editor/assets.py": "01bc34252b4be477b0480249b3010144dcbb55b777cf79e985ff0c3581e1c091",
+    "src/schauwerk/visual/native_diagram.py": "8b8ace796a9a2cc4a398d362ce1af2650880ae3101932e7557575d811e964c9e",
     "src/schauwerk/visual/native_document.py": "0899aea0bbf5e9b76568c317e40e85a5054c8ec3f8050907d7c90699f210c0d1",
     "src/schauwerk/visual/native_viewer.py": "5696c063c84509b829fe863edc4717d3d4efa8095b14fc146cfb7a7d9adf157a",
     "src/schauwerk/visual/standalone_editor.py": "5ac0d15f4f6ba57f0b1810fa9e9fe5597220f767df318e5e86629502a903189b",
     "tests/visual/test_native_canvas_editor.py": "31db625d596750b932b4314c3fe951510263faee68ebd5d6264428942f30b125",
-    "tests/visual/test_native_document.py": "abccf20aeff1f1884c687136860a80173b2791d05f38cf6a8dd3c6009c15673b",
+    "tests/visual/test_native_document.py": "2cbdbc3d2a275b8c4c5d10aa2647c443ffd5f0422bae0ac7bc930f89b81f0f08",
     "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
     "tests/visual/test_native_viewer_browser.py": "d2b63de86b950bdd8d1af2eb61c09bda86bc00a306059125d3fcc2b552965c90",
-    "tests/visual/test_standalone_editor.py": "73f459891e8a0d948bebcbacb19803ea53718875f79524c6c039bccff7ab0413"
+    "tests/visual/test_standalone_editor.py": "5ef13c2a81e078b9d5b9da58f904500a2ea4e7be94928d8176ad216a6ffc4304"
   }
 }
