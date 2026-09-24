@@ -838,8 +838,13 @@ function incidentEdgeBoundsInSvg(sourceId) {
   let combined = null;
   for (const edgeId of incidentEdges.get(sourceId) || []) {
     const edgeState = edges.get(edgeId);
-    const bounds = edgeState?.element ? nodeBoundsInSvg(edgeState.element) : null;
-    if (bounds) combined = mergeSvgBounds(combined, bounds);
+    if (!edgeState) continue;
+    const pathBounds = nodeBoundsInSvg(edgeState.path);
+    const labelBounds = edgeState.labelRect
+      ? nodeBoundsInSvg(edgeState.labelRect)
+      : null;
+    combined = mergeSvgBounds(combined, pathBounds);
+    combined = mergeSvgBounds(combined, labelBounds);
   }
   return combined;
 }
@@ -1145,6 +1150,7 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     baseLabelX,
     baseLabelY,
     labelElements,
+    labelRect,
     clipRect: clipRect instanceof SVGRectElement ? clipRect : null,
   });
   addIncidentEdge(String(model.from), edgeId);

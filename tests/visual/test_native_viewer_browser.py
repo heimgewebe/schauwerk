@@ -381,7 +381,7 @@ def test_native_canvas_document_browser_drag_updates_edge_and_document_state(
                 "toNode": "b",
                 "toSide": "left",
                 "toEnd": "arrow",
-                "label": "A nach B",
+                "label": "W" * 600,
             },
             {
                 "id": "node_1",
