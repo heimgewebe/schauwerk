@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "5af63fc9481f6256803b263655f582bf4e7567a3"
+    assert editor_successor["functional_head"] == "b11b9c2b305fd704fa65699f7a734b230babcd8e"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -381,7 +381,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
-    assert editor_successor["checks"]["browser_smoke_passed_count"] == 5
+    assert editor_successor["checks"]["browser_smoke_passed_count"] == 6
     assert (
         editor_successor["checks"]["canvas_node_labels_clipped_to_node_bounds"] is True
     )
@@ -414,6 +414,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert editor_successor["checks"]["drawio_xml_entity_expansion_hardened"] is True
     assert editor_successor["checks"]["drawio_xml_namespace_shape_preserved"] is True
+    assert (
+        editor_successor["checks"]["native_product_limits_block_mutation_before_rebuild"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["permanent_native_rebuild_rejection_restores_last_valid_state"]
+        is True
+    )
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
