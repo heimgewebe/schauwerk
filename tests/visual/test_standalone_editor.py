@@ -604,12 +604,44 @@ try {
       {id: "ab", fromNode: "a", toNode: "b", toEnd: "arrow"},
     ],
   };
+  let initialNativeReadyFrame = null;
+  const onInitialNativeReady = (event) => {
+    const frame = document.querySelector("#editorFrame");
+    const message = event.data;
+    if (
+      event.origin !== window.location.origin ||
+      event.source !== frame?.contentWindow ||
+      !message ||
+      typeof message !== "object" ||
+      message.event !== "native-document-change" ||
+      message.document?.schema_version !== "schauwerk-native-editing-document.v1" ||
+      !message.canvas ||
+      typeof message.canvas !== "object"
+    ) {
+      return;
+    }
+    const nodeIds = new Set(
+      Array.isArray(message.canvas.nodes)
+        ? message.canvas.nodes.map((node) => node?.id)
+        : []
+    );
+    if (!nodeIds.has("a") || !nodeIds.has("b")) return;
+    initialNativeReadyFrame = frame;
+  };
+  window.addEventListener("message", onInitialNativeReady);
   document.querySelector("#sourceInput").value = JSON.stringify(source);
   document.querySelector("#openPasteButton").click();
+
+  await waitUntil(
+    () => initialNativeReadyFrame !== null,
+    "initial native viewer did not publish ready state",
+  );
+  window.removeEventListener("message", onInitialNativeReady);
 
   await waitUntil(() => {
     const frame = document.querySelector("#editorFrame");
     return (
+      frame === initialNativeReadyFrame &&
       frame?.src?.includes("/native/") &&
       frame.contentDocument?.querySelector('[data-source-id="a"]') &&
       frame.contentDocument?.querySelector("#deleteSelection")
