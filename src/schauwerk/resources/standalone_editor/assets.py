@@ -314,10 +314,14 @@ export function readabilityZoomStepCount(scale) {
   );
 }
 
-const FULL_INPUT_FENCE = /^```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
-const INLINE_INPUT_FENCE = /```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
+const FULL_INPUT_FENCE = /^```(mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
+const INLINE_INPUT_FENCE = /```(mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
 
-function detectNormalizedInput(text) {
+function explicitCanvasFence(label) {
+  return /^(?:jsoncanvas|json-canvas|\.?canvas)$/i.test(String(label || ""));
+}
+
+function detectNormalizedInput(text, options = {}) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
@@ -325,7 +329,7 @@ function detectNormalizedInput(text) {
     try {
       const value = JSON.parse(text);
       if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
-      if (isJsonCanvas(value)) return { kind: "json-canvas", text, value };
+      if (isJsonCanvas(value, { allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas) })) return { kind: "json-canvas", text, value };
     } catch (_) {
       return { kind: "unknown", text };
     }
@@ -333,20 +337,41 @@ function detectNormalizedInput(text) {
   return { kind: "unknown", text };
 }
 
-export function normalizeInput(raw) {
-  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
+function normalizeInputContext(raw) {
+  const text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
   const fenced = text.match(FULL_INPUT_FENCE);
-  if (fenced) return fenced[1].trim();
+  if (fenced) {
+    return {
+      text: fenced[2].trim(),
+      allowExtensionOnlyCanvas: explicitCanvasFence(fenced[1]),
+    };
+  }
 
   const recognizedFences = [...text.matchAll(INLINE_INPUT_FENCE)]
-    .map((match) => match[1].trim())
-    .filter((candidate) => detectNormalizedInput(candidate).kind !== "unknown");
-  if (recognizedFences.length === 1) text = recognizedFences[0];
-  return text;
+    .map((match) => {
+      const candidate = match[2].trim();
+      const allowExtensionOnlyCanvas = explicitCanvasFence(match[1]);
+      const detected = detectNormalizedInput(candidate, { allowExtensionOnlyCanvas });
+      return detected.kind === "unknown"
+        ? null
+        : { text: candidate, allowExtensionOnlyCanvas };
+    })
+    .filter(Boolean);
+  if (recognizedFences.length === 1) return recognizedFences[0];
+  return { text, allowExtensionOnlyCanvas: false };
 }
 
-export function detectInput(raw) {
-  return detectNormalizedInput(normalizeInput(raw));
+export function normalizeInput(raw) {
+  return normalizeInputContext(raw).text;
+}
+
+export function detectInput(raw, options = {}) {
+  const normalized = normalizeInputContext(raw);
+  return detectNormalizedInput(normalized.text, {
+    allowExtensionOnlyCanvas: Boolean(
+      options.allowExtensionOnlyCanvas || normalized.allowExtensionOnlyCanvas
+    ),
+  });
 }
 
 export function isSchauwerkRepresentation(value) {
@@ -396,11 +421,11 @@ function isCanvasEdge(edge) {
   );
 }
 
-export function isJsonCanvas(value) {
+export function isJsonCanvas(value, options = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
-  if (!hasNodes && !hasEdges) return true;
+  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0 || Boolean(options.allowExtensionOnly);
   if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
   if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
   return true;
@@ -976,7 +1001,9 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
-  const detected = detectInput(validateInputText(raw));
+  const detected = detectInput(validateInputText(raw), {
+    allowExtensionOnlyCanvas: /\.canvas$/i.test(String(title)),
+  });
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   currentRepresentation = null;

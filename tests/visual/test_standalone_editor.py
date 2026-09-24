@@ -177,6 +177,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'if (detected.kind === "drawio")' in app_js
     assert 'schema_version: NATIVE_IMPORT_SCHEMA' in app_js
     assert 'format: "drawio-xml"' in app_js
+    assert r"allowExtensionOnlyCanvas: /\.canvas$/i.test(String(title))" in app_js
     assert "legacyXml: xml" in app_js
     assert "function launchLegacy(load)" in app_js
     assert 'elements.legacyEditButton.addEventListener("click"' in app_js
@@ -2789,9 +2790,11 @@ if (detectInput(edgesOnly).kind !== 'json-canvas') throw new Error('edges-only J
 if (!jsonCanvasToDrawioXml(edgesOnly).includes('<mxGraphModel')) throw new Error('edges-only JSON Canvas did not convert');
 if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canvas rejected');
 const extensionOnly = JSON.stringify({{customTopLevel: {{kept: true}}}});
-const detectedExtensionOnly = detectInput(extensionOnly);
-if (detectedExtensionOnly.kind !== 'json-canvas') throw new Error('extension-only empty JSON Canvas rejected');
-if (detectedExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
+if (detectInput(extensionOnly).kind !== 'unknown') throw new Error('extension-only arbitrary JSON was auto-detected without Canvas context');
+const explicitExtensionOnly = detectInput(extensionOnly, {{allowExtensionOnlyCanvas: true}});
+if (explicitExtensionOnly.kind !== 'json-canvas') throw new Error('extension-only JSON Canvas rejected with explicit context');
+if (explicitExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
+if (detectInput(JSON.stringify({{theme: 'dark'}})).kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');
 for (const foreignNode of [
@@ -2803,10 +2806,17 @@ for (const foreignNode of [
   if (detectInput(JSON.stringify({{nodes: [foreignNode]}})).kind !== 'unknown') throw new Error('invalid typed Canvas node accepted');
 }}
 const fence = '`'.repeat(3);
+const explicitExtensionFence = fence + 'canvas\\n' + extensionOnly + '\\n' + fence;
+const detectedExtensionFence = detectInput(explicitExtensionFence);
+if (detectedExtensionFence.kind !== 'json-canvas') throw new Error('extension-only Canvas fence rejected');
+if (detectedExtensionFence.value?.customTopLevel?.kept !== true) throw new Error('Canvas-fenced extension data was not preserved');
+const genericExtensionFence = fence + 'json\\n' + extensionOnly + '\\n' + fence;
+if (detectInput(genericExtensionFence).kind !== 'unknown') throw new Error('generic JSON fence granted Canvas extension context');
 for (const inlineCanvas of [
   fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
   fence + '.canvas\\n' + nodesOnly + '\\n' + fence,
   'Hier ist das Schaubild:\\n\\n' + fence + 'json-canvas\\n' + nodesOnly + '\\n' + fence + '\\n\\nDu kannst es bearbeiten.',
+  'Hinweis:\\n' + fence + 'json\\n' + extensionOnly + '\\n' + fence + '\\nSchaubild:\\n' + fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
   'Schaubild:\\r\\n' + fence + '.canvas\\r\\n' + nodesOnly + '\\r\\n' + fence,
 ]) {{
   if (detectInput(inlineCanvas).kind !== 'json-canvas') throw new Error(`inline JSON Canvas rejected: ${{inlineCanvas}}`);
