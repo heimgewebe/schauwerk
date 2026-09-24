@@ -314,11 +314,13 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_native_canvas_editor.py",
         "tests/visual/test_native_document.py",
+        "tests/visual/test_drawio_import.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_standalone_editor.py",
@@ -361,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "1694afb40a9db37d7fdd11dd54b7f843dc20f546"
+    assert editor_successor["functional_head"] == "5af63fc9481f6256803b263655f582bf4e7567a3"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -410,6 +412,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ]
         is True
     )
+    assert editor_successor["checks"]["drawio_xml_entity_expansion_hardened"] is True
+    assert editor_successor["checks"]["drawio_xml_namespace_shape_preserved"] is True
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")

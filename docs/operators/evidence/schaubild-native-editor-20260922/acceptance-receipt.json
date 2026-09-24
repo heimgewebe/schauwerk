@@ -46,7 +46,9 @@
     "xml_incompatible_canvas_ids_rejected": true,
     "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped": true,
     "failed_native_rebuild_preserves_latest_state_with_explicit_retry": true,
-    "json_canvas_markdown_display_normalized_without_roundtrip_loss": true
+    "json_canvas_markdown_display_normalized_without_roundtrip_loss": true,
+    "drawio_xml_entity_expansion_hardened": true,
+    "drawio_xml_namespace_shape_preserved": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -56,8 +58,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "f128589730f7c2d1e45dce4d570bb966b0f1214f6fade3f0dad896ffeb41abab",
-  "functional_head": "1694afb40a9db37d7fdd11dd54b7f843dc20f546",
+  "evidence_digest": "4b47255684ccb5ddaa04e3188b3b7995dda883d4191a7f5fd70f365688bca0f0",
+  "functional_head": "5af63fc9481f6256803b263655f582bf4e7567a3",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -79,7 +81,9 @@
     "tests/visual/test_native_canvas_editor.py": "31db625d596750b932b4314c3fe951510263faee68ebd5d6264428942f30b125",
     "tests/visual/test_native_document.py": "2cbdbc3d2a275b8c4c5d10aa2647c443ffd5f0422bae0ac7bc930f89b81f0f08",
     "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
-    "tests/visual/test_native_viewer_browser.py": "d2b63de86b950bdd8d1af2eb61c09bda86bc00a306059125d3fcc2b552965c90",
-    "tests/visual/test_standalone_editor.py": "5ef13c2a81e078b9d5b9da58f904500a2ea4e7be94928d8176ad216a6ffc4304"
+    "tests/visual/test_native_viewer_browser.py": "0de3d95862a47908b7f5d9105f83eff736684a523242345aba40208cee596457",
+    "tests/visual/test_standalone_editor.py": "5ef13c2a81e078b9d5b9da58f904500a2ea4e7be94928d8176ad216a6ffc4304",
+    "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
+    "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
   }
 }
