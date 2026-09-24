@@ -8,10 +8,16 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import get_type_hints
 
 import pytest
 
-from schauwerk.visual.native_diagram import _canvas_edge_geometry, render_native_diagram
+from schauwerk.visual.native_diagram import (
+    _canvas_color,
+    _canvas_edge_geometry,
+    _edge_geometry,
+    render_native_diagram,
+)
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
@@ -34,6 +40,29 @@ def _source_ids(svg: bytes, kind: str) -> set[str]:
         for element in root.iter()
         if element.attrib.get("data-source-kind") == kind
     }
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["#0x1234", "#+12345", "#-12345", "#1_2345", "# 12345", "#12345 "],
+)
+def test_canvas_color_rejects_noncanonical_hex(value: str) -> None:
+    assert _canvas_color(value) == ("#ffffff", "#64748b")
+
+
+def test_canvas_color_accepts_canonical_hex_case_insensitively() -> None:
+    assert _canvas_color("#A1B2C3") == ("#ffffff", "#a1b2c3")
+
+
+def test_native_geometry_return_annotations_match_runtime_shapes() -> None:
+    assert get_type_hints(_edge_geometry)["return"] == tuple[str, float, float, str]
+    assert get_type_hints(_canvas_edge_geometry)["return"] == tuple[
+        str,
+        float,
+        float,
+        str,
+        tuple[float, float, float, float],
+    ]
 
 
 def test_native_viewer_manifest_binds_integrated_reverse_proxy_context(

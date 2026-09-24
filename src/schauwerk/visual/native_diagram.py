@@ -1063,7 +1063,7 @@ def _edge_geometry(
     max_node_bottom: float = 0.0,
     preserve_same_row_feedback_footer: bool = True,
     obstacle_positions: Sequence[tuple[int, int]] = (),
-) -> tuple[str, float, float, str, tuple[float, float, float, float]]:
+) -> tuple[str, float, float, str]:
     source_x, source_y = source
     target_x, target_y = target
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
@@ -3212,13 +3212,8 @@ def _canvas_color(value: Any) -> tuple[str, str]:
     text = str(value) if value is not None else ""
     if text in _CANVAS_PALETTE:
         return _CANVAS_PALETTE[text]
-    if len(text) == 7 and text.startswith("#"):
-        try:
-            int(text[1:], 16)
-        except ValueError:
-            pass
-        else:
-            return "#ffffff", text.lower()
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", text):
+        return "#ffffff", text.lower()
     return "#ffffff", "#64748b"
 
 
@@ -3257,7 +3252,7 @@ def _canvas_edge_geometry(
     edge: Mapping[str, Any],
     *,
     lane: float,
-) -> tuple[str, float, float, str]:
+) -> tuple[str, float, float, str, tuple[float, float, float, float]]:
     source_center = (
         float(source["x"]) + float(source["width"]) / 2,
         float(source["y"]) + float(source["height"]) / 2,
