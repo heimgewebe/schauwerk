@@ -6,6 +6,7 @@ import zlib
 
 import pytest
 
+import schauwerk.visual.drawio_import as drawio_import
 from schauwerk.visual.drawio_import import (
     DrawioImportError,
     drawio_xml_to_representation,
@@ -257,6 +258,36 @@ def test_unsupported_or_unsafe_drawio_fails_closed(
 ) -> None:
     with pytest.raises(DrawioImportError, match=message):
         drawio_xml_to_representation(source)
+
+
+def test_parser_boundary_rejects_entity_expansion_without_text_prefilter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(drawio_import, "_reject_unsafe_xml_text", lambda _text: None)
+    source = """<!DOCTYPE mxGraphModel [
+      <!ENTITY a "1234567890">
+      <!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">
+      <!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;">
+    ]>
+    <mxGraphModel><root><mxCell id="0" value="&c;"/></root></mxGraphModel>"""
+
+    with pytest.raises(DrawioImportError, match="DTD/entity"):
+        drawio_import._parse_xml(source)
+
+
+def test_parser_boundary_preserves_elementtree_namespace_shape() -> None:
+    root = drawio_import._parse_xml(
+        '<mxGraphModel xmlns="urn:mx" xmlns:x="urn:x" x:flag="yes">'
+        '<root><mxCell id="0"/></root></mxGraphModel>'
+    )
+
+    assert root.tag == "{urn:mx}mxGraphModel"
+    assert root.attrib == {"{urn:x}flag": "yes"}
+    child = list(root)[0]
+    assert child.tag == "{urn:mx}root"
+    grandchild = list(child)[0]
+    assert grandchild.tag == "{urn:mx}mxCell"
+    assert grandchild.attrib == {"id": "0"}
 
 
 def test_import_is_deterministic_for_same_source() -> None:

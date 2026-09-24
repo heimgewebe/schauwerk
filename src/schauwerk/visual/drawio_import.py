@@ -7,6 +7,7 @@ import hashlib
 import html
 import urllib.parse
 import xml.etree.ElementTree as ET
+import xml.parsers.expat as expat
 import zlib
 from html.parser import HTMLParser
 from typing import Any
@@ -56,9 +57,32 @@ def _parse_xml(text: str) -> ET.Element:
     if len(encoded) > MAX_DRAWIO_SOURCE_BYTES:
         raise DrawioImportError("draw.io source exceeds 5 MiB")
     _reject_unsafe_xml_text(text)
+
+    builder = ET.TreeBuilder()
+    parser = expat.ParserCreate(namespace_separator="}")
+
+    def expanded_name(name: str) -> str:
+        return f"{{{name}" if "}" in name else name
+
+    def reject_entity_semantics(*_args: object) -> None:
+        raise DrawioImportError("draw.io import rejects DTD/entity declarations")
+
+    parser.StartElementHandler = lambda name, attrs: builder.start(
+        expanded_name(name),
+        {expanded_name(key): value for key, value in attrs.items()},
+    )
+    parser.EndElementHandler = lambda name: builder.end(expanded_name(name))
+    parser.CharacterDataHandler = builder.data
+    parser.StartDoctypeDeclHandler = reject_entity_semantics
+    parser.EntityDeclHandler = reject_entity_semantics
+    parser.ExternalEntityRefHandler = reject_entity_semantics
+    parser.SkippedEntityHandler = reject_entity_semantics
+    parser.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
+
     try:
-        root = ET.fromstring(text)
-    except ET.ParseError as exc:
+        parser.Parse(text, True)
+        root = builder.close()
+    except expat.ExpatError as exc:
         raise DrawioImportError(f"draw.io XML is invalid: {exc}") from exc
     if sum(1 for _ in root.iter()) > MAX_DRAWIO_XML_ELEMENTS:
         raise DrawioImportError("draw.io XML exceeds the bounded element budget")

@@ -38,7 +38,7 @@ def _write_document_probe_host(output: Path) -> None:
         r"""<!doctype html>
 <html>
 <body>
-<iframe id="viewer" src="index.html"></iframe>
+<iframe id="viewer"></iframe>
 <script>
 const frame = document.querySelector("#viewer");
 window.addEventListener("message", (event) => {
@@ -62,6 +62,9 @@ window.setInterval(() => {
     if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
   }
 }, 20);
+// Install the message listener before navigation so the viewer's initial
+// requestAnimationFrame publication cannot outrun the parent harness.
+frame.src = "index.html";
 </script>
 </body>
 </html>
