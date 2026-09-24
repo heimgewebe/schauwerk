@@ -1,7 +1,7 @@
 .PHONY: python-version-check lint compile-check test browser-smoke registry-validate validate
 
 PYTHON_CANDIDATES := python3 python python3.13 python3.12 python3.11
-BROWSER_SMOKE_FILTER := test_canvas_import_browser_xml_validation_when_chrome_available or test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch or test_native_canvas_document_browser_drag_updates_edge_and_document_state or test_native_canvas_document_browser_preserves_absent_empty_arrays
+BROWSER_SMOKE_FILTER := test_canvas_import_browser_xml_validation_when_chrome_available or test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry or test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch or test_native_canvas_document_browser_drag_updates_edge_and_document_state or test_native_canvas_document_browser_preserves_absent_empty_arrays
 ifeq ($(origin PYTHON), undefined)
 ifneq ($(wildcard .venv/bin/python),)
 PYTHON := .venv/bin/python

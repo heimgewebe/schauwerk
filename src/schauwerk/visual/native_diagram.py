@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 import textwrap
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -3369,6 +3370,18 @@ def _canvas_edge_geometry(
     return path, label_x, label_y, "canvas-cubic", bounds
 
 
+
+def _canvas_plain_markdown(value: str) -> str:
+    """Normalize the bounded Markdown subset already used by the legacy Canvas path."""
+
+    text = re.sub(r"^#{1,6}\s+", "", str(value), flags=re.MULTILINE)
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"__([^_]+)__", r"\1", text)
+    text = re.sub(r"\x60([^\x60]+)\x60", r"\1", text)
+    return text.strip()
+
+
 def _canvas_wrap(value: str, width_px: int, height_px: int) -> list[str]:
     chars = max(4, width_px // 8)
     line_count = max(1, min(10, height_px // 20))
@@ -3517,12 +3530,13 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         width = int(node["width"])
         height = int(node["height"])
         label = str(node.get("label", ""))
+        display_label = _canvas_plain_markdown(label) if node_type == "text" else label
         lines.append(
             f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
             f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
             f'data-canvas-type="{_canvas_xml(node_type)}">'
         )
-        lines.append(f"<title>{_canvas_xml(label)}</title>")
+        lines.append(f"<title>{_canvas_xml(display_label)}</title>")
         label_clip_id = f"canvas-node-label-{node_index}"
         lines.append(
             f'<defs><clipPath id="{label_clip_id}">'
@@ -3538,7 +3552,9 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
         text_x = x + 14
         text_y = y + 28
-        for line_index, line in enumerate(_canvas_wrap(label, width - 28, height - 24)):
+        for line_index, line in enumerate(
+            _canvas_wrap(display_label, width - 28, height - 24)
+        ):
             weight = "700" if line_index == 0 or node_type == "group" else "500"
             lines.append(
                 f'<text data-node-label="true" x="{text_x}" '

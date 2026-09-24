@@ -98,6 +98,45 @@ def test_json_canvas_rejects_group_backgrounds_instead_of_silently_dropping_them
         json_canvas_to_editing_document(source, title="Unsupported background")
 
 
+def test_json_canvas_markdown_is_normalized_for_display_without_roundtrip_loss() -> None:
+    markdown = "# Heading\n[OpenAI](https://openai.com) **bold** __strong__ \x60code\x60"
+    source = {
+        "nodes": [
+            {
+                "id": "markdown",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 420,
+                "height": 180,
+                "text": markdown,
+            }
+        ],
+        "edges": [],
+    }
+
+    document = json_canvas_to_editing_document(source, title="Markdown")
+    assert document["nodes"][0]["label"] == markdown
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    rendered_text = "\n".join(
+        (element.text or "")
+        for element in root.findall(f".//{SVG_NS}text")
+        if element.attrib.get("data-node-label") == "true"
+    )
+    assert "Heading" in rendered_text
+    assert "OpenAI" in rendered_text
+    assert "bold" in rendered_text
+    assert "strong" in rendered_text
+    assert "code" in rendered_text
+    assert "# Heading" not in rendered_text
+    assert "[OpenAI](https://openai.com)" not in rendered_text
+    assert "**bold**" not in rendered_text
+    assert "__strong__" not in rendered_text
+    assert "\x60code\x60" not in rendered_text
+
+
 def test_json_canvas_roundtrip_preserves_geometry_ids_order_and_extensions() -> None:
     source = _canvas()
     document = json_canvas_to_editing_document(source, title="Probe")

@@ -15,6 +15,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from functools import partial
+from http import HTTPStatus
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -182,6 +183,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'elements.legacyFallbackButton.addEventListener("click"' in app_js
     assert 'id="legacyEditButton"' in index_html
     assert 'id="legacyFallbackButton"' in index_html
+    assert 'id="nativeRetryButton"' in index_html
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "frame.inert = false;" in app_js
@@ -214,8 +216,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "options.preserveActiveFrame && editorReady && currentNativeUrl" in native_source
     assert "frame.inert = true;" in native_source
     assert "currentNativeUrl = activeNativeUrl;" in native_source
-    assert "Bestehende Ansicht bleibt sichtbar und weiter bearbeitbar" in native_source
-    assert "activeFrame.inert = false;" in native_source
+    assert "Bestehende Ansicht bleibt sichtbar und gesperrt" in native_source
+    assert "async function retryNativeCanvasRender()" in native_source
+    assert "elements.nativeRetryButton.hidden = false;" in native_source
     assert "{ preserveActiveFrame: true }" in app_js
     assert "const previousLaunch = nativeLaunchTail;" in native_source
     assert "await previousLaunch;" in native_source
@@ -327,6 +330,7 @@ const replacementFrame = {
 const elements = {
   frame: oldFrame,
   legacyFallbackButton: {hidden: true},
+  nativeRetryButton: {hidden: true},
 };
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -366,9 +370,7 @@ await launchNative(
 );
 if (replaceCalls !== 0) throw new Error("active frame replaced before successful render");
 if (elements.frame !== oldFrame) throw new Error("active frame identity changed after render failure");
-if (oldFrame.inert || !oldFrame.blurred) {
-  throw new Error("preserved frame was not re-enabled after render failure");
-}
+if (!oldFrame.inert || !oldFrame.blurred) throw new Error("stale frame remained interactive");
 if (currentNativeUrl !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html") {
   throw new Error("active native URL was lost after render failure");
 }
@@ -380,19 +382,20 @@ if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
 if (!errorText.includes(".canvas-Export enthält den aktuellen Dokumentzustand")) {
   throw new Error("render failure did not preserve an export recovery path");
 }
-if (!errorText.includes("weiter bearbeitbar") || !statusText.includes("bleibt bearbeitbar")) {
-  throw new Error("render failure did not restore editor interactivity");
+if (!errorText.includes("Neu rendern") || !statusText.includes("Neu rendern")) {
+  throw new Error("render failure did not offer an explicit retry path");
+}
+if (elements.nativeRetryButton.hidden) {
+  throw new Error("render retry control stayed hidden after failure");
 }
 
-const successfulDocument = {version: 3};
-const successfulCanvas = {version: 3};
 const successfulUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
 globalThis.fetch = async (_url, options) => {
   if (
     options.headers["X-Schauwerk-Native-Supersede"]
     !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   ) {
-    throw new Error("supersede token drifted before successful rebuild");
+    throw new Error("supersede token drifted before successful retry");
   }
   return {
     ok: true,
@@ -405,10 +408,7 @@ globalThis.fetch = async (_url, options) => {
     },
   };
 };
-await launchNative(
-  {nativeDocument: successfulDocument, nativeCanvas: successfulCanvas},
-  {preserveActiveFrame: true},
-);
+await retryNativeCanvasRender();
 if (replaceCalls !== 1 || workspaceCalls !== 1) {
   throw new Error("replacement frame was not swapped exactly once after success");
 }
@@ -419,8 +419,11 @@ if (nativeCanvasRenderStale) throw new Error("successful rebuild left SVG marked
 if (currentNativeUrl !== successfulUrl || !editorReady) {
   throw new Error("successful rebuild did not become authoritative");
 }
-if (currentNativeCanvas.version !== 3 || currentNativeDocument.version !== 3) {
-  throw new Error("successful rebuild lost latest document state");
+if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
+  throw new Error("successful retry did not render the latest retained document state");
+}
+if (!elements.nativeRetryButton.hidden) {
+  throw new Error("successful retry did not hide the retry control");
 }
 if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
   throw new Error("successful rebuild did not advance supersede token");
@@ -432,6 +435,216 @@ if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
         text=True,
         capture_output=True,
     )
+
+
+def test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry(
+    tmp_path: Path,
+) -> None:
+    chrome = (
+        shutil.which("google-chrome")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+    )
+    if chrome is None:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome/Chromium is required in CI for native rebuild recovery")
+        pytest.skip("Chrome/Chromium is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    probe_js = r"""
+const waitUntil = async (predicate, label, attempts = 500) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(label);
+};
+
+try {
+  const source = {
+    nodes: [
+      {id: "a", type: "text", x: 0, y: 0, width: 220, height: 120, text: "A"},
+      {id: "b", type: "text", x: 320, y: 0, width: 220, height: 120, text: "B"},
+    ],
+    edges: [
+      {id: "ab", fromNode: "a", toNode: "b", toEnd: "arrow"},
+    ],
+  };
+  document.querySelector("#sourceInput").value = JSON.stringify(source);
+  document.querySelector("#openPasteButton").click();
+
+  await waitUntil(() => {
+    const frame = document.querySelector("#editorFrame");
+    return (
+      frame?.src?.includes("/native/") &&
+      frame.contentDocument?.querySelector('[data-source-id="a"]') &&
+      frame.contentDocument?.querySelector("#deleteSelection")
+    );
+  }, "initial native frame did not become ready");
+
+  const firstFrame = document.querySelector("#editorFrame");
+  const viewer = firstFrame.contentDocument;
+  const nodeA = viewer.querySelector('[data-source-id="a"]');
+  nodeA.dispatchEvent(new MouseEvent("dblclick", {
+    bubbles: true,
+    cancelable: true,
+    view: firstFrame.contentWindow,
+  }));
+  await waitUntil(
+    () => nodeA.classList.contains("is-selected"),
+    "node selection did not become active",
+  );
+  const dialog = viewer.querySelector("#textDialog");
+  if (dialog?.open) dialog.close();
+  viewer.querySelector("#deleteSelection").click();
+
+  await waitUntil(() => {
+    const retry = document.querySelector("#nativeRetryButton");
+    return (
+      document.querySelector("#editorFrame") === firstFrame &&
+      firstFrame.inert === true &&
+      retry &&
+      retry.hidden === false
+    );
+  }, "failed rebuild did not preserve an inert frame with retry");
+
+  if (!firstFrame.contentDocument.querySelector('[data-source-id="a"]')) {
+    throw new Error("stale frame DOM unexpectedly changed generation");
+  }
+  if (!document.querySelector("#error").textContent.includes(
+    ".canvas-Export enthält den aktuellen Dokumentzustand"
+  )) {
+    throw new Error("failed rebuild lost the latest document export contract");
+  }
+
+  document.querySelector("#nativeRetryButton").click();
+
+  await waitUntil(() => {
+    const current = document.querySelector("#editorFrame");
+    return (
+      current !== firstFrame &&
+      current?.src?.includes("/native/") &&
+      current.contentDocument?.querySelector("#nativeDiagram")
+    );
+  }, "successful retry did not swap in a fresh native frame");
+
+  const recoveredFrame = document.querySelector("#editorFrame");
+  if (recoveredFrame.inert) {
+    throw new Error("successful retry left the replacement frame inert");
+  }
+  if (recoveredFrame.contentDocument.querySelector('[data-source-id="a"]')) {
+    throw new Error("successful retry did not render the retained deletion");
+  }
+  if (!recoveredFrame.contentDocument.querySelector('[data-source-id="b"]')) {
+    throw new Error("successful retry lost the surviving node");
+  }
+  if (!document.querySelector("#nativeRetryButton").hidden) {
+    throw new Error("successful retry left the retry control visible");
+  }
+
+  document.documentElement.dataset.rebuildRecoveryBrowserRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.rebuildRecoveryBrowserRegression = "fail";
+  document.documentElement.dataset.rebuildRecoveryBrowserRegressionError = String(
+    error?.message || error
+  );
+}
+"""
+    (output / "rebuild-recovery-browser.js").write_text(probe_js, encoding="utf-8")
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    assert index.count("</body>") == 1
+    index_path.write_text(
+        index.replace(
+            "</body>",
+            '<script type="module" src="rebuild-recovery-browser.js"></script></body>',
+        ),
+        encoding="utf-8",
+    )
+
+    class FailSecondNativeRenderHandler(_EditorRequestHandler):
+        editor_origin = EDITOR_ORIGIN
+        post_count = 0
+        failed_payload: dict[str, object] | None = None
+
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+        def do_POST(self) -> None:  # noqa: N802
+            cls = type(self)
+            if self.path == NATIVE_API_PATH:
+                cls.post_count += 1
+                if cls.post_count == 2:
+                    raw_length = self.headers.get("Content-Length", "0")
+                    length = int(raw_length)
+                    payload = self.rfile.read(length)
+                    cls.failed_payload = json.loads(payload.decode("utf-8"))
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "synthetic rebuild failure"},
+                    )
+                    return
+            super().do_POST()
+
+    handler = partial(FailSecondNativeRenderHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+
+    chrome_env = dict(os.environ)
+    local_profile_args: list[str] = []
+    if not os.environ.get("CI"):
+        chrome_env.update(
+            {
+                "HOME": str(tmp_path / "home"),
+                "XDG_CONFIG_HOME": str(tmp_path / "xdg-config"),
+                "XDG_CACHE_HOME": str(tmp_path / "xdg-cache"),
+            }
+        )
+        local_profile_args = [f"--user-data-dir={tmp_path / 'chrome-profile'}"]
+
+    try:
+        completed = subprocess.run(
+            [
+                chrome,
+                "--headless=new",
+                *local_profile_args,
+                "--no-first-run",
+                "--disable-gpu",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=18000",
+                "--dump-dom",
+                f"http://127.0.0.1:{port}/",
+            ],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            env=chrome_env,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert (
+        'data-rebuild-recovery-browser-regression="pass"' in completed.stdout
+    ), completed.stdout
+    assert (
+        'data-rebuild-recovery-browser-regression="fail"' not in completed.stdout
+    ), completed.stdout
+    assert FailSecondNativeRenderHandler.post_count >= 3
+    failed_payload = FailSecondNativeRenderHandler.failed_payload
+    assert isinstance(failed_payload, dict)
+    failed_nodes = failed_payload.get("nodes")
+    assert isinstance(failed_nodes, list)
+    assert {str(node["id"]) for node in failed_nodes if isinstance(node, dict)} == {"b"}
 
 
 def _golden_representation(name: str) -> dict:

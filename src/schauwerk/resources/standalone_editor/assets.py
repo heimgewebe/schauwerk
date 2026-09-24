@@ -70,6 +70,7 @@ INDEX_HTML = r"""<!doctype html>
         </div>
         <button class="button compact" id="layoutButton" type="button">Aufräumen</button>
         <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Legacy bearbeiten</button>
+        <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
         <button class="button compact" id="projectButton" type="button">Projekt</button>
         <button class="button compact" data-export="png" type="button">PNG</button>
         <button class="button compact" data-export="svg" type="button">SVG</button>
@@ -715,6 +716,7 @@ const elements = {
   backButton: document.querySelector("#backButton"),
   layoutButton: document.querySelector("#layoutButton"),
   legacyEditButton: document.querySelector("#legacyEditButton"),
+  nativeRetryButton: document.querySelector("#nativeRetryButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
   fullscreenButton: document.querySelector("#fullscreenButton"),
@@ -957,6 +959,7 @@ function showStart() {
   currentLegacyXml = null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
+  elements.nativeRetryButton.hidden = true;
   replaceEditorFrame();
   clearPreparedDownload();
   elements.workspace.hidden = true;
@@ -1057,6 +1060,7 @@ function launchLegacy(load) {
   currentLegacyXml = typeof load?.xml === "string" ? load.xml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
+  elements.nativeRetryButton.hidden = true;
   currentNativeUrl = null;
   nativeCanvasRenderStale = false;
   setEngineMode("legacy");
@@ -1102,6 +1106,7 @@ async function launchNative(load, options = {}) {
   currentLegacyXml = typeof load.legacyXml === "string" ? load.legacyXml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
+  elements.nativeRetryButton.hidden = true;
   if (!preserveActiveFrame) {
     currentNativeUrl = null;
     nativeCanvasRenderStale = false;
@@ -1191,12 +1196,13 @@ async function launchNative(load, options = {}) {
       currentNativeUrl = activeNativeUrl;
       nativeCanvasRenderStale = true;
       editorReady = true;
-      if (elements.frame === activeFrame) activeFrame.inert = false;
+      if (elements.frame === activeFrame) activeFrame.inert = true;
+      elements.nativeRetryButton.hidden = false;
       setError(
         (error instanceof Error ? error.message : "Native Änderung konnte nicht gerendert werden.")
-        + " Bestehende Ansicht bleibt sichtbar und weiter bearbeitbar; .canvas-Export enthält den aktuellen Dokumentzustand.",
+        + " Bestehende Ansicht bleibt sichtbar und gesperrt; .canvas-Export enthält den aktuellen Dokumentzustand. Mit „Neu rendern“ erneut versuchen.",
       );
-      setStatus("Native Änderung nicht neu gerendert · bestehende Ansicht bleibt bearbeitbar");
+      setStatus("Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen");
       return;
     }
     editorReady = false;
@@ -1220,6 +1226,26 @@ async function launchNative(load, options = {}) {
   } finally {
     releaseLaunchTurn();
   }
+}
+
+async function retryNativeCanvasRender() {
+  if (
+    !nativeCanvasRenderStale ||
+    !editorReady ||
+    !currentNativeDocument ||
+    !currentNativeCanvas ||
+    !currentNativeUrl
+  ) {
+    elements.nativeRetryButton.hidden = true;
+    setStatus("Keine fehlgeschlagene native Änderung zum erneuten Rendern");
+    return;
+  }
+  elements.nativeRetryButton.hidden = true;
+  await launchNative({
+    nativeDocument: currentNativeDocument,
+    nativeCanvas: currentNativeCanvas,
+    sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+  }, { preserveActiveFrame: true });
 }
 
 function loadPendingIntoEditor() {
@@ -1590,6 +1616,7 @@ elements.legacyFallbackButton.addEventListener("click", () => {
   elements.legacyFallbackButton.hidden = true;
   launchLegacy({ xml });
 });
+elements.nativeRetryButton.addEventListener("click", () => { void retryNativeCanvasRender(); });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
 elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);
 elements.fontDecreaseButton.addEventListener("click", () => {
