@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "0c67586116546f5c96781bd8c16ae79abc7c1c97"
+    assert editor_successor["functional_head"] == "37cc3758cdcee0d737c676c2182c4601e84338bf"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -383,6 +383,20 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 6
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
+    assert (
+        editor_successor["checks"]["json_canvas_core_geometry_requires_integer_numbers"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["failed_superseding_native_rebuild_preserves_active_bundle"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_renderer_failure_is_retryable_service_unavailable"
+        ]
+        is True
+    )
     assert (
         editor_successor["checks"]["native_recovery_browser_waits_for_viewer_ready_signal"]
         is True
