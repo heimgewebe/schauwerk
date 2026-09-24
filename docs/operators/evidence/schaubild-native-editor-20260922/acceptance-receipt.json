@@ -54,7 +54,8 @@
     "extension_only_json_canvas_detected_and_preserved": true,
     "canvas_ids_reject_xml_attribute_normalized_whitespace": true,
     "extension_only_json_canvas_requires_explicit_canvas_context": true,
-    "native_recovery_browser_waits_for_viewer_ready_signal": true
+    "native_recovery_browser_waits_for_viewer_ready_signal": true,
+    "clipped_edge_labels_do_not_block_node_drag": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -64,8 +65,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "a7c0fae150be5f4f28a12dcba3d7d50bbde48d8559836e1f078cd25bab069575",
-  "functional_head": "8a286a257f3231e28ccca1f50ac070950d8f7ce9",
+  "evidence_digest": "db2df7c911300299cf8284d5ee5c5dd60eb08e009771bf7a3cb801f01e79260f",
+  "functional_head": "0c67586116546f5c96781bd8c16ae79abc7c1c97",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -78,7 +79,7 @@
     "Dockerfile": "6d4029480f506977b69b0f16097a74749b63fe44127bd7e44df8f19a5e88a7f2",
     "Makefile": "8d2150c9fa271f0cbe740f0668e948b393e181136f6d7110626308e525984d7c",
     "scripts/run_browser_smoke.py": "32eb8e8910dedca279fc3b6a6ec82dbf8254ff3f16e0aabf52fc02d4b0f49207",
-    "src/schauwerk/resources/native_viewer/assets.py": "4bae1fb5404ad6c5a9bc6971fbdbcc580a2d3e44cd2548ecfd1bd41284a2dc72",
+    "src/schauwerk/resources/native_viewer/assets.py": "da80b146c90d0224162cfb6a3ffd115995f1b644bdfe22da49bf9039d9d316e0",
     "src/schauwerk/resources/standalone_editor/assets.py": "c17650508f2478735181e28d36ccb6b461963e45ab81d6006e753c5c24678c8c",
     "src/schauwerk/visual/native_diagram.py": "8b8ace796a9a2cc4a398d362ce1af2650880ae3101932e7557575d811e964c9e",
     "src/schauwerk/visual/native_document.py": "993373ebfc5f84b8e3e3e213b13d5647033c6511d999cfad5f5dc547d93d47b9",
@@ -87,7 +88,7 @@
     "tests/visual/test_native_canvas_editor.py": "31db625d596750b932b4314c3fe951510263faee68ebd5d6264428942f30b125",
     "tests/visual/test_native_document.py": "c718ea6a4a611f43e643e4bdafda917109948a14edb9af0efc02ab890863048c",
     "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
-    "tests/visual/test_native_viewer_browser.py": "9a8b90791623b9725a297e0ac75f549614bec2b312d047ed1233339711b26fa4",
+    "tests/visual/test_native_viewer_browser.py": "a2cd4885a661ede69cec8ec6f55fa4063050c9ed1cdc0e2e9bbec3149ce4a669",
     "tests/visual/test_standalone_editor.py": "f6cf29b9a03d9ab79088634a5cab391c284b7f644498c0082a551ff1dafeaa39",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
