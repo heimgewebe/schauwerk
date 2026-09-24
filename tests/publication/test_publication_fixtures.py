@@ -383,6 +383,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 6
     assert (
+        editor_successor["checks"]["native_recovery_browser_waits_for_viewer_ready_signal"]
+        is True
+    )
+    assert (
         editor_successor["checks"]["canvas_node_labels_clipped_to_node_bounds"] is True
     )
     assert editor_successor["checks"]["edge_operations_cancel_on_escape"] is True

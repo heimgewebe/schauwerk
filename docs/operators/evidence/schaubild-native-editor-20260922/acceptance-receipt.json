@@ -53,7 +53,8 @@
     "permanent_native_rebuild_rejection_restores_last_valid_state": true,
     "extension_only_json_canvas_detected_and_preserved": true,
     "canvas_ids_reject_xml_attribute_normalized_whitespace": true,
-    "extension_only_json_canvas_requires_explicit_canvas_context": true
+    "extension_only_json_canvas_requires_explicit_canvas_context": true,
+    "native_recovery_browser_waits_for_viewer_ready_signal": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -63,7 +64,7 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "37c8e6b36c6629055768539d9e1a31a7a3092932e57234c98db62ffd228473ed",
+  "evidence_digest": "a7c0fae150be5f4f28a12dcba3d7d50bbde48d8559836e1f078cd25bab069575",
   "functional_head": "8a286a257f3231e28ccca1f50ac070950d8f7ce9",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
@@ -87,7 +88,7 @@
     "tests/visual/test_native_document.py": "c718ea6a4a611f43e643e4bdafda917109948a14edb9af0efc02ab890863048c",
     "tests/visual/test_native_viewer.py": "c53df05f381041ab09626795c1f8d1d6e9c8f08733198d5cdd178928e893441e",
     "tests/visual/test_native_viewer_browser.py": "9a8b90791623b9725a297e0ac75f549614bec2b312d047ed1233339711b26fa4",
-    "tests/visual/test_standalone_editor.py": "91f8be0ce4f644583f55331c90d8b544e504e2ce3f8f0251601adeb6aad9e60f",
+    "tests/visual/test_standalone_editor.py": "f6cf29b9a03d9ab79088634a5cab391c284b7f644498c0082a551ff1dafeaa39",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
   }
