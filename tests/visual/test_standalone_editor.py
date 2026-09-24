@@ -1997,8 +1997,7 @@ def test_trusted_proxy_rejects_unallowlisted_peer_and_cross_client_capability(
         },
     )
     blocked_server = ThreadingHTTPServer(
-        ("127.0.0.1", 0),
-        partial(blocked_handler, directory=str(output)),
+        ("127.0.0.1", 0),        partial(blocked_handler, directory=str(output)),
     )
     blocked_thread = threading.Thread(target=blocked_server.serve_forever, daemon=True)
     blocked_thread.start()
@@ -2151,6 +2150,146 @@ def test_trusted_proxy_native_supersede_allows_sequential_rebuilds(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("limit_mode", ["entries", "bytes"])
+def test_native_supersede_projects_exclusive_lease_from_global_capacity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    limit_mode: str,
+) -> None:
+    output = tmp_path / f"exclusive-global-{limit_mode}"
+    build_standalone_editor(output)
+
+    client = "203.0.113.77"
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_aaaa"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert first_created is True
+
+    if limit_mode == "entries":
+        monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
+        monkeypatch.setattr(
+            standalone_editor,
+            "MAX_NATIVE_CACHE_BYTES",
+            64 * 1024 * 1024,
+        )
+    else:
+        monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 32)
+        monkeypatch.setattr(
+            standalone_editor,
+            "MAX_NATIVE_CACHE_BYTES",
+            first_record.size_bytes + standalone_editor.MAX_NATIVE_BUNDLE_BYTES,
+        )
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "flow_bbbb"
+    second_normalized = _native_product_input(second)
+    second_record, second_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(second_normalized["input_digest"]),
+        value=second,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+        superseded_record=first_record,
+    )
+
+    assert second_created is True
+    assert first_record.pin_leases[client] > time.monotonic()
+    assert second_record.pin_leases[client] > time.monotonic()
+    assert (
+        standalone_editor._release_native_superseded_lease(
+            output,
+            token=first_record.token,
+            admission_key=client,
+            next_digest=second_record.digest,
+        )
+        is True
+    )
+    assert first_record.pin_leases.get(client, 0.0) <= time.monotonic()
+
+
+@pytest.mark.parametrize("limit_mode", ["entries", "bytes"])
+def test_native_supersede_keeps_shared_record_in_global_capacity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    limit_mode: str,
+) -> None:
+    output = tmp_path / f"shared-global-{limit_mode}"
+    build_standalone_editor(output)
+
+    client_a = "203.0.113.77"
+    client_b = "203.0.113.88"
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_aaaa"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_a,
+    )
+    assert first_created is True
+    standalone_editor._pin_native_cache_record(
+        output,
+        first_record,
+        admission_key=client_b,
+    )
+
+    if limit_mode == "entries":
+        monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 2)
+        monkeypatch.setattr(
+            standalone_editor,
+            "MAX_NATIVE_CACHE_BYTES",
+            64 * 1024 * 1024,
+        )
+    else:
+        monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 32)
+        monkeypatch.setattr(
+            standalone_editor,
+            "MAX_NATIVE_CACHE_BYTES",
+            first_record.size_bytes + standalone_editor.MAX_NATIVE_BUNDLE_BYTES,
+        )
+
+    second = _golden_representation("decision-flow-v1.json")
+    second["id"] = "flow_bbbb"
+    second_normalized = _native_product_input(second)
+    renderer_called = False
+
+    def unexpected_build(*_args: object, **_kwargs: object) -> object:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("shared superseded bundle must still consume global capacity")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", unexpected_build)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="pin capacity",
+    ):
+        standalone_editor._build_native_cache_record(
+            output,
+            digest=str(second_normalized["input_digest"]),
+            value=second,
+            serve_binding="trusted-reverse-proxy-private-ingress",
+            public_base_path="/schaubild",
+            admission_key=client_a,
+            superseded_record=first_record,
+        )
+
+    assert renderer_called is False
+    assert first_record.pin_leases[client_a] > time.monotonic()
+    assert first_record.pin_leases[client_b] > time.monotonic()
 
 
 def test_trusted_proxy_native_supersede_preserves_live_bundle_on_renderer_failure(

@@ -752,6 +752,23 @@ def _assert_native_digest_reacquisition_allowed(
             )
 
 
+def _superseded_record_releases_global_pin(
+    record: _NativeCacheRecord | None,
+    *,
+    admission_key: str,
+    now: float,
+) -> bool:
+    """Project only an exclusive live supersede lease out of global pin accounting."""
+
+    if record is None:
+        return False
+    _refresh_native_record_pin_state(record, now=now)
+    return (
+        record.pin_leases.get(admission_key, 0.0) > now
+        and len(record.pin_leases) == 1
+    )
+
+
 def _assert_native_build_admission(
     root: Path,
     *,
@@ -764,11 +781,23 @@ def _assert_native_build_admission(
 
     with _NATIVE_CACHE_LOCK:
         pinned = [item for item in _native_cache_records(root) if item.pinned_until > now]
+        projected_global_release = (
+            superseded_record
+            if _superseded_record_releases_global_pin(
+                superseded_record,
+                admission_key=admission_key,
+                now=now,
+            )
+            else None
+        )
+        global_pinned = [
+            item for item in pinned if item is not projected_global_release
+        ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
         if (
-            len(pinned) + 1 > max_pinned_entries
-            or sum(item.size_bytes for item in pinned) >= max_pinned_bytes
+            len(global_pinned) + 1 > max_pinned_entries
+            or sum(item.size_bytes for item in global_pinned) >= max_pinned_bytes
         ):
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is already saturated; retry later"
@@ -818,6 +847,18 @@ def _assert_native_pin_capacity(
             for item in _native_cache_records(root)
             if item is not record and item.pinned_until > now
         ]
+        projected_global_release = (
+            superseded_record
+            if _superseded_record_releases_global_pin(
+                superseded_record,
+                admission_key=admission_key,
+                now=now,
+            )
+            else None
+        )
+        global_pinned = [
+            item for item in pinned if item is not projected_global_release
+        ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
         client_pinned = (
@@ -831,8 +872,11 @@ def _assert_native_pin_capacity(
             else []
         )
         if (
-            len(pinned) + 1 > max_pinned_entries
-            or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
+            len(global_pinned) + 1 > max_pinned_entries
+            or (
+                sum(item.size_bytes for item in global_pinned) + record.size_bytes
+                > max_pinned_bytes
+            )
             or (
                 _client_quota_applies(admission_key)
                 and len(client_pinned) + 1 > MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
