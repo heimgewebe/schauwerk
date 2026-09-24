@@ -562,6 +562,45 @@ def test_json_canvas_rejects_ids_that_would_collapse_in_xml() -> None:
             validate_json_canvas(source)
 
 
+@pytest.mark.parametrize(
+    ("invalid_id", "normalized_peer"),
+    [
+        ("a\tb", "a b"),
+        ("a\nb", "a b"),
+        ("a\rb", "a b"),
+    ],
+)
+def test_json_canvas_rejects_ids_that_xml_attributes_would_normalize_together(
+    invalid_id: str,
+    normalized_peer: str,
+) -> None:
+    source = {
+        "nodes": [
+            {
+                "id": invalid_id,
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "normalized",
+            },
+            {
+                "id": normalized_peer,
+                "type": "text",
+                "x": 180,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "peer",
+            },
+        ]
+    }
+
+    with pytest.raises(NativeDocumentError, match="attribute-stable"):
+        validate_json_canvas(source)
+
+
 def test_native_document_long_edge_label_is_clipped_to_reserved_box() -> None:
     source = {
         "nodes": [

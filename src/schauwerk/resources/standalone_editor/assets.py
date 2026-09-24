@@ -400,7 +400,7 @@ export function isJsonCanvas(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
-  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0;
+  if (!hasNodes && !hasEdges) return true;
   if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
   if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
   return true;

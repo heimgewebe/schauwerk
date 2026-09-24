@@ -92,8 +92,12 @@ def _xml_10_compatible(value: str) -> bool:
 
 def _required_id(value: Mapping[str, Any], field: str, *, context: str) -> str:
     candidate = _required_text(value, field, context=context)
-    if not _xml_10_compatible(candidate):
-        raise NativeDocumentError(f"{context}.{field} must be XML 1.0-compatible text")
+    if not _xml_10_compatible(candidate) or any(
+        character in candidate for character in "\t\n\r"
+    ):
+        raise NativeDocumentError(
+            f"{context}.{field} must be XML 1.0-compatible, attribute-stable text"
+        )
     return candidate
 
 

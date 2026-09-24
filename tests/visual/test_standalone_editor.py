@@ -2788,7 +2788,10 @@ const edgesOnly = JSON.stringify({{edges: []}});
 if (detectInput(edgesOnly).kind !== 'json-canvas') throw new Error('edges-only JSON Canvas rejected');
 if (!jsonCanvasToDrawioXml(edgesOnly).includes('<mxGraphModel')) throw new Error('edges-only JSON Canvas did not convert');
 if (detectInput('{{}}').kind !== 'json-canvas') throw new Error('empty JSON Canvas rejected');
-if (detectInput('{{"unrelated":true}}').kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
+const extensionOnly = JSON.stringify({{customTopLevel: {{kept: true}}}});
+const detectedExtensionOnly = detectInput(extensionOnly);
+if (detectedExtensionOnly.kind !== 'json-canvas') throw new Error('extension-only empty JSON Canvas rejected');
+if (detectedExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
 if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');
 for (const foreignNode of [
@@ -2804,7 +2807,6 @@ for (const inlineCanvas of [
   fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
   fence + '.canvas\\n' + nodesOnly + '\\n' + fence,
   'Hier ist das Schaubild:\\n\\n' + fence + 'json-canvas\\n' + nodesOnly + '\\n' + fence + '\\n\\nDu kannst es bearbeiten.',
-  'Hinweis:\\n' + fence + 'json\\n{{"unrelated":true}}\\n' + fence + '\\nSchaubild:\\n' + fence + 'canvas\\n' + nodesOnly + '\\n' + fence,
   'Schaubild:\\r\\n' + fence + '.canvas\\r\\n' + nodesOnly + '\\r\\n' + fence,
 ]) {{
   if (detectInput(inlineCanvas).kind !== 'json-canvas') throw new Error(`inline JSON Canvas rejected: ${{inlineCanvas}}`);
