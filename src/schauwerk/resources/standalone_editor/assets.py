@@ -1093,6 +1093,10 @@ async function launchNative(load, options = {}) {
   );
   const activeFrame = elements.frame;
   const activeNativeUrl = currentNativeUrl;
+  const activeRepresentation = currentRepresentation;
+  const activeNativeDocument = currentNativeDocument;
+  const activeNativeCanvas = currentNativeCanvas;
+  const activeLegacyXml = currentLegacyXml;
   const requestValue = load.nativeRepresentation || load.nativeDocument || load.nativeImport;
   clearPreparedDownload();
   pendingExport = null;
@@ -1156,7 +1160,11 @@ async function launchNative(load, options = {}) {
       nativeSupersedeToken = nativeToken;
     }
     if (loadIntent !== loadIntentGeneration) return;
-    if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+    if (!response.ok) {
+      const renderError = new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+      renderError.nativeStatus = response.status;
+      throw renderError;
+    }
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
@@ -1192,6 +1200,32 @@ async function launchNative(load, options = {}) {
     );
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
+    const nativeStatus = Number(error?.nativeStatus || 0);
+    const permanentCandidateRejection = (
+      preserveActiveFrame && (nativeStatus === 413 || nativeStatus === 422)
+    );
+    if (permanentCandidateRejection) {
+      currentRepresentation = activeRepresentation;
+      currentNativeDocument = activeNativeDocument;
+      currentNativeCanvas = activeNativeCanvas;
+      currentLegacyXml = activeLegacyXml;
+      currentNativeUrl = activeNativeUrl;
+      nativeCanvasRenderStale = false;
+      editorReady = true;
+      elements.nativeRetryButton.hidden = true;
+      if (elements.frame === activeFrame) {
+        frame = replaceEditorFrame();
+        showWorkspace();
+        frame.src = activeNativeUrl;
+      }
+      setEngineMode("native");
+      setError(
+        (error instanceof Error ? error.message : "Native Änderung wurde abgelehnt.")
+        + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+      );
+      setStatus("Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt");
+      return;
+    }
     if (preserveActiveFrame) {
       currentNativeUrl = activeNativeUrl;
       nativeCanvasRenderStale = true;
@@ -1460,11 +1494,9 @@ window.addEventListener("message", (event) => {
         message.canvas &&
         typeof message.canvas === "object"
       ) {
-        currentNativeDocument = message.document;
-        currentNativeCanvas = message.canvas;
         void launchNative({
-          nativeDocument: currentNativeDocument,
-          nativeCanvas: currentNativeCanvas,
+          nativeDocument: message.document,
+          nativeCanvas: message.canvas,
           sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
         }, { preserveActiveFrame: true });
       }

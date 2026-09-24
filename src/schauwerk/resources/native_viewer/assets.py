@@ -55,6 +55,7 @@ __SCHAUWERK_NATIVE_SVG__
       </div>
     </form>
   </dialog>
+  <script id="nativeLimits" type="application/json">__SCHAUWERK_NATIVE_LIMITS__</script>
   <script id="nativeModel" type="application/json">__SCHAUWERK_NATIVE_MODEL__</script>
   <script type="module" src="app.js"></script>
 </body>
@@ -575,19 +576,27 @@ const authorityHint = document.querySelector("#authorityHint");
 const textDialog = document.querySelector("#textDialog");
 const textInput = document.querySelector("#textInput");
 const saveTextButton = document.querySelector("#saveText");
+const limitsElement = document.querySelector("#nativeLimits");
 const modelElement = document.querySelector("#nativeModel");
 
 if (!(viewport instanceof HTMLElement) || !(canvas instanceof HTMLElement) || !(svg instanceof SVGSVGElement)) {
   throw new Error("Native viewer DOM contract is incomplete");
 }
-if (!(modelElement instanceof HTMLScriptElement)) {
+if (!(limitsElement instanceof HTMLScriptElement) || !(modelElement instanceof HTMLScriptElement)) {
   throw new Error("Native viewer model contract is incomplete");
 }
+let editingLimits;
 let sourceModel;
 try {
+  editingLimits = JSON.parse(limitsElement.textContent || "{}");
   sourceModel = JSON.parse(modelElement.textContent || "{}");
 } catch (_) {
   throw new Error("Native viewer embedded model is invalid");
+}
+for (const key of ["max_edges", "max_groups", "max_nodes", "max_routing_pairs"]) {
+  if (!Number.isInteger(editingLimits?.[key]) || editingLimits[key] < 1) {
+    throw new Error("Native viewer product-limit contract is incomplete");
+  }
 }
 if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
   throw new Error("Native viewer embedded model is incomplete");
@@ -646,6 +655,26 @@ function uniqueId(prefix, values) {
   let index = 1;
   while (existing.has(`${prefix}${index}`)) index += 1;
   return `${prefix}${index}`;
+}
+
+function documentMutationWithinProductLimits(document, { addNodes = 0, addEdges = 0 } = {}) {
+  const nodeCount = document.nodes.length + addNodes;
+  const edgeCount = document.edges.length + addEdges;
+  if (nodeCount > editingLimits.max_nodes) {
+    setStatus(`Produktgrenze erreicht · maximal ${editingLimits.max_nodes} Knoten`);
+    return false;
+  }
+  if (
+    edgeCount > editingLimits.max_edges ||
+    edgeCount * edgeCount > editingLimits.max_routing_pairs
+  ) {
+    setStatus(
+      `Produktgrenze erreicht · maximal ${editingLimits.max_edges} Kanten ` +
+      `und ${editingLimits.max_routing_pairs} Routing-Paare`
+    );
+    return false;
+  }
+  return true;
 }
 
 function documentSnapshot() {
@@ -1164,6 +1193,12 @@ viewport.addEventListener("pointerdown", (event) => {
     }
     if (documentEditorHosted && edgeCreateSource && sourceId) {
       const document = documentSnapshot();
+      if (!documentMutationWithinProductLimits(document, { addEdges: 1 })) {
+        edgeCreateSource = null;
+        activePointers.delete(event.pointerId);
+        try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* no rebuild */ }
+        return;
+      }
       const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
       document.edges.push({
         id: edgeId,
@@ -1365,6 +1400,7 @@ if (documentEditorHosted) {
   if (authorityHint) authorityHint.textContent = "Dokumentzustand · .canvas speicherbar";
   addNodeButton?.addEventListener("click", () => {
     const document = documentSnapshot();
+    if (!documentMutationWithinProductLimits(document, { addNodes: 1 })) return;
     const id = uniqueId("node_", [...document.nodes, ...document.edges]);
     const box = svg.viewBox.baseVal;
     document.nodes.push({

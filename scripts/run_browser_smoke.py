@@ -29,6 +29,10 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_document_browser_preserves_absent_empty_arrays"
     ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_browser_blocks_node_creation_past_product_limit"
+    ),
 )
 MAX_ATTEMPTS = 2
 

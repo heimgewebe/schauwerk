@@ -33,6 +33,10 @@ from urllib.parse import unquote, urlsplit
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
 from schauwerk.visual.native_document import (
+    MAX_NATIVE_EDGES,
+    MAX_NATIVE_GROUPS,
+    MAX_NATIVE_NODES,
+    MAX_NATIVE_ROUTING_PAIRS,
     NATIVE_DOCUMENT_SCHEMA,
     NativeDocumentError,
     json_canvas_to_editing_document,
@@ -47,10 +51,6 @@ NATIVE_API_PATH: Final = "/api/native-viewer"
 NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
 NATIVE_SUPERSEDE_HEADER: Final = "X-Schauwerk-Native-Supersede"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
-MAX_NATIVE_GROUPS: Final = 32
-MAX_NATIVE_NODES: Final = 128
-MAX_NATIVE_EDGES: Final = 256
-MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
 MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32

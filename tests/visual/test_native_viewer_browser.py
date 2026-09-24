@@ -56,6 +56,8 @@ window.setInterval(() => {
   for (const key of [
     "canvasBrowserRegression",
     "canvasBrowserRegressionError",
+    "limitBrowserRegression",
+    "limitBrowserRegressionError",
     "emptyCanvasBrowserRegression",
     "emptyCanvasBrowserRegressionError",
   ]) {
@@ -713,6 +715,189 @@ try {
     assert completed.returncode == 0, completed.stderr
     assert 'data-canvas-browser-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-canvas-browser-regression="fail"' not in completed.stdout, completed.stdout
+
+
+
+def test_native_canvas_browser_blocks_node_creation_past_product_limit(
+    tmp_path: Path,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for canvas limit regression")
+        raise AssertionError("unreachable")
+
+    canvas_source = {
+        "nodes": [
+            {
+                "id": f"node-{index}",
+                "type": "text",
+                "x": (index % 16) * 150,
+                "y": (index // 16) * 100,
+                "width": 120,
+                "height": 70,
+                "text": f"Node {index}",
+            }
+            for index in range(128)
+        ]
+    }
+    document = json_canvas_to_editing_document(
+        canvas_source,
+        title="Canvas Limit Browser Probe",
+    )
+    output = tmp_path / "canvas-limit-viewer"
+    build_native_viewer(document, output)
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    browser_probe = r"""
+<script>
+Element.prototype.setPointerCapture = function () {};
+Element.prototype.releasePointerCapture = function () {};
+window.__nativeLimitMessages = [];
+window.addEventListener("message", (event) => {
+  if (
+    event.data?.event === "native-document-change" ||
+    event.data?.event === "native-document-rebuild"
+  ) {
+    window.__nativeLimitMessages.push(event.data);
+  }
+});
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 200) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(label);
+};
+try {
+  const svg = document.querySelector("#nativeDiagram");
+  await waitUntil(
+    () =>
+      svg?.querySelectorAll('[data-source-kind="node"]').length === 128 &&
+      window.__nativeLimitMessages.length > 0,
+    "limit probe startup timed out",
+  );
+  window.__nativeLimitMessages.length = 0;
+
+  const addNode = document.querySelector("#addNode");
+  const status = document.querySelector("#status");
+  const deleteSelection = document.querySelector("#deleteSelection");
+  if (
+    !(addNode instanceof HTMLButtonElement) ||
+    !(deleteSelection instanceof HTMLButtonElement) ||
+    !(status instanceof HTMLElement)
+  ) {
+    throw new Error("limit probe controls missing");
+  }
+
+  addNode.click();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const blockedRebuilds = window.__nativeLimitMessages.filter(
+    (message) => message.event === "native-document-rebuild",
+  );
+  if (blockedRebuilds.length !== 0) {
+    throw new Error("129th node escaped the product-limit precheck");
+  }
+  if (!status.textContent.includes("maximal 128 Knoten")) {
+    throw new Error("node limit was not explained in the viewer status");
+  }
+  if (svg.querySelectorAll('[data-source-kind="node"]').length !== 128) {
+    throw new Error("blocked node creation mutated the visible generation");
+  }
+
+  const survivor = svg.querySelector(
+    '[data-source-kind="node"][data-source-id="node-0"]',
+  );
+  if (!(survivor instanceof SVGGElement)) {
+    throw new Error("existing node missing after blocked creation");
+  }
+  survivor.dispatchEvent(new MouseEvent("dblclick", {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+  }));
+  const dialog = document.querySelector("#textDialog");
+  if (dialog?.open) dialog.close();
+  deleteSelection.click();
+
+  await waitUntil(
+    () =>
+      window.__nativeLimitMessages.some(
+        (message) =>
+          message.event === "native-document-rebuild" &&
+          message.document?.nodes?.length === 127 &&
+          message.canvas?.nodes?.length === 127,
+      ),
+    "valid deletion was not available after blocked node creation",
+  );
+  const validRebuild = window.__nativeLimitMessages
+    .filter((message) => message.event === "native-document-rebuild")
+    .at(-1);
+  if (
+    validRebuild.document.nodes.some((item) => item.id === "node-0") ||
+    validRebuild.canvas.nodes.some((item) => item.id === "node-0")
+  ) {
+    throw new Error("valid post-limit deletion did not reach document/canvas state");
+  }
+
+  document.documentElement.dataset.limitBrowserRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.limitBrowserRegression = "fail";
+  document.documentElement.dataset.limitBrowserRegressionError = String(
+    error?.message || error,
+  );
+}
+</script>
+"""
+    index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+    _write_document_probe_host(output)
+
+    class QuietLimitHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietLimitHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    f"--user-data-dir={tmp_path / 'canvas-limit-chrome-profile'}",
+                    "--no-first-run",
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--run-all-compositor-stages-before-draw",
+                    "--virtual-time-budget=12000",
+                    "--dump-dom",
+                    f"http://127.0.0.1:{port}/host.html",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser("Google Chrome canvas limit probe timed out")
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-limit-browser-regression="pass"' in completed.stdout, completed.stdout
+    assert 'data-limit-browser-regression="fail"' not in completed.stdout, completed.stdout
 
 
 def test_native_canvas_document_browser_preserves_absent_empty_arrays(

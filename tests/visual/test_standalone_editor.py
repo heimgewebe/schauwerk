@@ -437,6 +437,137 @@ if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
     )
 
 
+
+def test_native_rebuild_422_discards_candidate_and_restores_last_valid_state(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    native_start = app_js.index("function nativeTokenFromUrl")
+    native_end = app_js.index("function loadPendingIntoEditor()", native_start)
+    native_source = app_js[native_start:native_end]
+
+    script = r"""
+const PUBLIC_BASE_PATH = "";
+const NATIVE_API_PATH = "/api/native-viewer";
+let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+let nativeCanvasRenderStale = false;
+let pendingExport = null;
+let pendingLoad = null;
+let pendingInitialCollisionSafeLayout = false;
+let pendingCreationDefaults = false;
+let currentXml = null;
+let currentRepresentation = null;
+let currentNativeDocument = {version: 1};
+let currentNativeCanvas = {version: 1};
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let editorReady = true;
+let statusText = "";
+let errorText = "";
+let replaceCalls = 0;
+let workspaceCalls = 0;
+const oldFrame = {
+  inert: false,
+  blurred: false,
+  blur() { this.blurred = true; },
+};
+const replacementFrame = {
+  inert: false,
+  src: "",
+  blur() {},
+};
+const elements = {
+  frame: oldFrame,
+  legacyFallbackButton: {hidden: true},
+  nativeRetryButton: {hidden: true},
+};
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
+function clearPreparedDownload() {}
+function setEngineMode() {}
+function setStatus(value) { statusText = String(value); }
+function setError(value) { errorText = String(value); }
+function showWorkspace() { workspaceCalls += 1; }
+function replaceEditorFrame() {
+  replaceCalls += 1;
+  replacementFrame.inert = false;
+  elements.frame = replacementFrame;
+  return replacementFrame;
+}
+function saveNativeDraft() { return true; }
+function saveDraft() { return true; }
+""" + native_source + r"""
+const rejectedDocument = {version: 2};
+const rejectedCanvas = {version: 2};
+globalThis.fetch = async (_url, options) => {
+  if (
+    options.headers["X-Schauwerk-Native-Supersede"]
+    !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ) {
+    throw new Error("missing supersede token on rejected rebuild");
+  }
+  return {
+    ok: false,
+    status: 422,
+    async json() {
+      return {error: "native JSON Canvas document exceeds product complexity limits"};
+    },
+  };
+};
+await launchNative(
+  {nativeDocument: rejectedDocument, nativeCanvas: rejectedCanvas},
+  {preserveActiveFrame: true},
+);
+if (replaceCalls !== 1 || workspaceCalls !== 1) {
+  throw new Error("permanent rejection did not restore the last valid frame exactly once");
+}
+if (elements.frame !== replacementFrame) {
+  throw new Error("permanent rejection did not replace the candidate-inconsistent frame");
+}
+if (replacementFrame.src !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html") {
+  throw new Error("permanent rejection did not reload the last valid native URL");
+}
+if (currentNativeDocument.version !== 1 || currentNativeCanvas.version !== 1) {
+  throw new Error("permanent rejection retained the rejected candidate state");
+}
+if (nativeCanvasRenderStale) {
+  throw new Error("restored valid state remained marked stale");
+}
+if (!editorReady) {
+  throw new Error("restored valid state lost editor readiness");
+}
+if (!elements.nativeRetryButton.hidden) {
+  throw new Error("permanent rejection incorrectly offered retry of the rejected candidate");
+}
+if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
+  throw new Error("permanent rejection did not explain candidate rollback");
+}
+if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
+  throw new Error("permanent rejection did not report restored valid state");
+}
+if (nativeSupersedeToken !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
+  throw new Error("permanent rejection advanced the supersede token");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry(
     tmp_path: Path,
 ) -> None:

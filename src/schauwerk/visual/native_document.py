@@ -15,6 +15,10 @@ from typing import Any, Final
 
 __all__ = [
     "NATIVE_DOCUMENT_SCHEMA",
+    "MAX_NATIVE_GROUPS",
+    "MAX_NATIVE_NODES",
+    "MAX_NATIVE_EDGES",
+    "MAX_NATIVE_ROUTING_PAIRS",
     "NativeDocumentError",
     "editing_document_to_json_canvas",
     "json_canvas_to_editing_document",
@@ -24,6 +28,10 @@ __all__ = [
 
 NATIVE_DOCUMENT_SCHEMA: Final = "schauwerk-native-editing-document.v1"
 JSON_CANVAS_FORMAT: Final = "json-canvas-1.0"
+MAX_NATIVE_GROUPS: Final = 32
+MAX_NATIVE_NODES: Final = 128
+MAX_NATIVE_EDGES: Final = 256
+MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
 _ALLOWED_NODE_TYPES: Final = frozenset({"text", "file", "link", "group"})
 _ALLOWED_SIDES: Final = frozenset({"top", "right", "bottom", "left"})
 _ALLOWED_ENDS: Final = frozenset({"none", "arrow"})

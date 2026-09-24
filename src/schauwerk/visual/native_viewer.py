@@ -24,6 +24,10 @@ from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
 from .native_diagram import render_native_diagram, render_native_editing_document
 from .native_document import (
+    MAX_NATIVE_EDGES,
+    MAX_NATIVE_GROUPS,
+    MAX_NATIVE_NODES,
+    MAX_NATIVE_ROUTING_PAIRS,
     NATIVE_DOCUMENT_SCHEMA,
     NativeDocumentError,
     editing_document_to_json_canvas,
@@ -36,6 +40,7 @@ MAX_INPUT_BYTES: Final = 5 * 1024 * 1024
 _TITLE_MARKER: Final = "__SCHAUWERK_NATIVE_TITLE__"
 _SVG_MARKER: Final = "__SCHAUWERK_NATIVE_SVG__"
 _MODEL_MARKER: Final = "__SCHAUWERK_NATIVE_MODEL__"
+_LIMITS_MARKER: Final = "__SCHAUWERK_NATIVE_LIMITS__"
 
 
 class NativeViewerError(ValueError):
@@ -77,6 +82,7 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
         INDEX_HTML.count(_SVG_MARKER) != 1
         or INDEX_HTML.count(_TITLE_MARKER) != 2
         or INDEX_HTML.count(_MODEL_MARKER) != 1
+        or INDEX_HTML.count(_LIMITS_MARKER) != 1
     ):
         raise NativeViewerError("native viewer HTML template markers drifted")
     embedded_model = json.dumps(
@@ -87,10 +93,21 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
         .replace("<", r"\u003c")
         .replace(">", r"\u003e")
     )
+    embedded_limits = json.dumps(
+        {
+            "max_edges": MAX_NATIVE_EDGES,
+            "max_groups": MAX_NATIVE_GROUPS,
+            "max_nodes": MAX_NATIVE_NODES,
+            "max_routing_pairs": MAX_NATIVE_ROUTING_PAIRS,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     replacements = {
         _TITLE_MARKER: html.escape(title),
         _SVG_MARKER: _inline_svg(svg),
         _MODEL_MARKER: embedded_model,
+        _LIMITS_MARKER: embedded_limits,
     }
     marker_pattern = re.compile(
         "|".join(re.escape(marker) for marker in replacements)
