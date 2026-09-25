@@ -450,7 +450,7 @@ def test_json_canvas_native_rejection_exposes_legacy_fallback(
     build_standalone_editor(output)
     app_js = (output / "app.js").read_text(encoding="utf-8")
     assert "jsonCanvasToDrawioXml" in app_js.splitlines()[0]
-    assert "legacyXml: jsonCanvasToDrawioXml(detected.value" in app_js
+    assert "fallbackXml = jsonCanvasToDrawioXml(currentNativeCanvas" in app_js
 
     native_start = app_js.index("function nativeTokenFromUrl")
     native_end = app_js.index("function loadPendingIntoEditor()", native_start)
@@ -477,6 +477,14 @@ let currentNativeUrl = null;
 let editorReady = false;
 let statusText = "";
 let errorText = "";
+const legacyXml = "<mxGraphModel><root/></mxGraphModel>";
+let legacyConverterCalls = 0;
+const preferredNodeFontSize = 24;
+function edgeFontSizeFor() { return 22; }
+function jsonCanvasToDrawioXml() {
+  legacyConverterCalls += 1;
+  return legacyXml;
+}
 const replacementFrame = {inert: false, src: "", blur() {}};
 const elements = {
   frame: replacementFrame,
@@ -504,7 +512,6 @@ function replaceEditorFrame() {
 function saveNativeDraft() { return true; }
 function saveDraft() { return true; }
 """ + native_source + r"""
-const legacyXml = "<mxGraphModel><root/></mxGraphModel>";
 const canvas = {
   nodes: [{
     id: "g",
@@ -518,13 +525,18 @@ const canvas = {
   }],
   edges: [],
 };
-globalThis.fetch = async () => ({
-  ok: false,
-  status: 422,
-  async json() {
-    return {error: "group backgrounds are not supported by the native editor"};
-  },
-});
+globalThis.fetch = async () => {
+  if (legacyConverterCalls !== 0) {
+    throw new Error("legacy converter ran before native rejection");
+  }
+  return {
+    ok: false,
+    status: 422,
+    async json() {
+      return {error: "group backgrounds are not supported by the native editor"};
+    },
+  };
+};
 await launchNative({
   nativeImport: {
     schema_version: "schauwerk-native-import-request.v1",
@@ -533,8 +545,10 @@ await launchNative({
     title: "fallback",
   },
   nativeCanvas: canvas,
-  legacyXml,
 });
+if (legacyConverterCalls !== 1) {
+  throw new Error("native rejection did not invoke the legacy converter exactly once");
+}
 if (pendingLegacyFallback !== legacyXml) {
   throw new Error("native JSON Canvas rejection did not retain legacy fallback XML");
 }

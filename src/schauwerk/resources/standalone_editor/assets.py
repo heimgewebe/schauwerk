@@ -1034,10 +1034,6 @@ function prepareInput(raw, title = "Schaubild") {
         title: currentTitle,
       },
       nativeCanvas: detected.value,
-      legacyXml: jsonCanvasToDrawioXml(detected.value, {
-        nodeFontSize: preferredNodeFontSize,
-        edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
-      }),
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
@@ -1298,7 +1294,17 @@ async function launchNative(load, options = {}) {
     } else {
       editorReady = false;
       currentNativeUrl = null;
-      const fallbackXml = currentLegacyXml;
+      let fallbackXml = currentLegacyXml;
+      if (!fallbackXml && currentNativeCanvas) {
+        try {
+          fallbackXml = jsonCanvasToDrawioXml(currentNativeCanvas, {
+            nodeFontSize: preferredNodeFontSize,
+            edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
+          });
+        } catch (_) {
+          fallbackXml = null;
+        }
+      }
       currentLegacyXml = null;
       elements.workspace.hidden = true;
       elements.startView.hidden = false;
