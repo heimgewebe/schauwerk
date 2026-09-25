@@ -371,8 +371,8 @@ def _assert_native_canvas_product_limits(value: Any) -> None:
 
     if not isinstance(value, dict):
         return
-    nodes = value.get("nodes")
-    edges = value.get("edges")
+    nodes = value.get("nodes", [])
+    edges = value.get("edges", [])
     if not isinstance(nodes, list) or not isinstance(edges, list):
         return
     node_count = len(nodes)

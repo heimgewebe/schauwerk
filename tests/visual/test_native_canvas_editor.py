@@ -411,3 +411,41 @@ def test_json_canvas_product_count_gate_runs_before_expensive_conversion(
     with pytest.raises(StandaloneEditorError, match="product complexity limits"):
         _native_product_input(_request(source))
     assert conversion_called is False
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        {
+            "nodes": [
+                {"id": f"node-{index}", "type": "text"}
+                for index in range(standalone_editor.MAX_NATIVE_NODES + 1)
+            ]
+        },
+        {
+            "edges": [
+                {"id": f"edge-{index}"}
+                for index in range(standalone_editor.MAX_NATIVE_EDGES + 1)
+            ]
+        },
+    ],
+)
+def test_json_canvas_product_count_gate_treats_omitted_arrays_as_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    source: dict[str, object],
+) -> None:
+    conversion_called = False
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> dict:
+        nonlocal conversion_called
+        conversion_called = True
+        raise AssertionError("over-limit canvas must reject before conversion")
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "json_canvas_to_editing_document",
+        unexpected_conversion,
+    )
+    with pytest.raises(StandaloneEditorError, match="product complexity limits"):
+        _native_product_input(_request(source))
+    assert conversion_called is False
