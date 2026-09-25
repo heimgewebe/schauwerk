@@ -789,11 +789,20 @@ const waitUntil = async (predicate, label, attempts = 200) => {
 };
 try {
   const svg = document.querySelector("#nativeDiagram");
+  // Chrome --dump-dom virtual time can starve the viewer's one-shot initial
+  // requestAnimationFrame publication. Reuse the real hosted reset control
+  // after app.js installed its handler to synchronously republish the same
+  // authoritative document state before exercising the product-limit path.
+  const resetLayoutButton = document.querySelector("#resetLayout");
+  if (!(resetLayoutButton instanceof HTMLButtonElement)) {
+    throw new Error("limit probe reset control missing");
+  }
+  resetLayoutButton.click();
   await waitUntil(
     () =>
       svg?.querySelectorAll('[data-source-kind="node"]').length === 128 &&
       window.__nativeLimitMessages.length > 0,
-    "limit probe startup timed out",
+    "limit probe deterministic startup timed out",
   );
   window.__nativeLimitMessages.length = 0;
 
