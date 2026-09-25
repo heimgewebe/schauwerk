@@ -74,7 +74,8 @@
     "normalized_json_canvas_overflow_rejected_before_renderer_spawn": true,
     "json_canvas_product_counts_rejected_before_expensive_conversion": true,
     "terminal_supersede_history_reuses_capacity_without_raising_limit": true,
-    "undelivered_cache_hit_releases_consumer_acquisition": true
+    "undelivered_cache_hit_releases_consumer_acquisition": true,
+    "json_canvas_product_counts_include_omitted_optional_arrays": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -84,8 +85,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "65973e285320aa09133cfb43a9af1f330dc96a3822c933e402020a7d874133e6",
-  "functional_head": "59b0b2b8382d4d059bfc48cb250b5f48d15910d9",
+  "evidence_digest": "b125f6f370da6604d4d093c0bed403aae038f2a67ff7886abb58245dbd07ba82",
+  "functional_head": "eef6a2a5c19274cccce4914ab165a8d19686d287",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -103,8 +104,8 @@
     "src/schauwerk/visual/native_diagram.py": "9cddf5dc60df32faedd4514457049e19336b7767dc8bcbfddf3c7d4b35ded4c4",
     "src/schauwerk/visual/native_document.py": "993373ebfc5f84b8e3e3e213b13d5647033c6511d999cfad5f5dc547d93d47b9",
     "src/schauwerk/visual/native_viewer.py": "79105562c1da214379b8f6450c4dc50cfa68751168951f70b16d0447f2e91a0f",
-    "src/schauwerk/visual/standalone_editor.py": "4e649621d1088b545f4cd2b12e6b1941f843f105496e993c993780a8d174372d",
-    "tests/visual/test_native_canvas_editor.py": "6e8f493a03f15ad692698e3427d3b16d50db935ff8240d058b52a8a69738a4b7",
+    "src/schauwerk/visual/standalone_editor.py": "c31e373af7ee4b55ac69db8dfb0ac1746a9a855bcd9be8932e65127457c27fb1",
+    "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
     "tests/visual/test_native_document.py": "97a49fd9069ef3818caab7768d0c79338e53ed17c49e854ba0c6b6b2501ffd91",
     "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
     "tests/visual/test_native_viewer_browser.py": "a2cd4885a661ede69cec8ec6f55fa4063050c9ed1cdc0e2e9bbec3149ce4a669",
