@@ -589,6 +589,10 @@ let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
+function nativeCanvasSnapshot(canvas) {
+  return canvas ? JSON.stringify(canvas) : null;
+}
 let pendingExport = null;
 let pendingLoad = null;
 let pendingInitialCollisionSafeLayout = false;
@@ -776,6 +780,10 @@ let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
 let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
+function nativeCanvasSnapshot(canvas) {
+  return canvas ? JSON.stringify(canvas) : null;
+}
 let pendingExport = null;
 let pendingLoad = null;
 let pendingInitialCollisionSafeLayout = false;
@@ -908,6 +916,10 @@ let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
+function nativeCanvasSnapshot(canvas) {
+  return canvas ? JSON.stringify(canvas) : null;
+}
 let pendingExport = null;
 let pendingLoad = null;
 let pendingInitialCollisionSafeLayout = false;
