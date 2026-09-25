@@ -281,6 +281,104 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'event.key === "Escape"' not in app_js
 
 
+
+def test_native_canvas_document_change_persists_restoreable_native_draft(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    draft_start = app_js.index("function saveDraft(")
+    draft_end = app_js.index("function clearPreparedDownload()", draft_start)
+    draft_source = app_js[draft_start:draft_end]
+
+    assert "const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);" in app_js
+    assert '"Native Änderung aktiv · lokales Speichern nicht möglich"' in app_js
+    assert "if (draft.nativeDocument && draft.nativeCanvas)" in app_js
+    assert "nativeDocument: draft.nativeDocument" in app_js
+    assert "nativeCanvas: draft.nativeCanvas" in app_js
+    assert 'value: "json-canvas-1.0"' in app_js
+
+    script = r"""
+const DRAFT_KEY = "legacy";
+const NATIVE_DRAFT_KEY = "native";
+let currentXml = null;
+let currentRepresentation = null;
+let currentTitle = "Native Canvas";
+let statusText = "";
+const elements = {restoreButton: {hidden: true}};
+function setStatus(value) { statusText = String(value); }
+const store = new Map();
+globalThis.localStorage = {
+  setItem(key, value) { store.set(String(key), String(value)); },
+  getItem(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
+};
+let now = 1000;
+Date.now = () => now;
+""" + draft_source + r"""
+if (!saveDraft("<mxGraphModel/>")) throw new Error("legacy draft setup failed");
+now = 1001;
+const nativeDocument = {
+  schema_version: "schauwerk-native-editing-document.v1",
+  source_digest: "a".repeat(64),
+  documentExtension: {keep: true},
+};
+const nativeCanvas = {
+  nodes: [{id: "n", type: "text", x: 17, y: 23, width: 100, height: 50, text: "edited"}],
+  edges: [],
+  canvasExtension: {keep: true},
+};
+if (!saveNativeCanvasDraft(nativeDocument, nativeCanvas)) {
+  throw new Error("native canvas draft was not persisted");
+}
+const stored = JSON.parse(store.get(NATIVE_DRAFT_KEY));
+if (stored.nativeDocument.documentExtension.keep !== true) {
+  throw new Error("native document extension was lost from persisted draft");
+}
+if (stored.nativeCanvas.canvasExtension.keep !== true || stored.nativeCanvas.nodes[0].x !== 17) {
+  throw new Error("edited JSON Canvas state was lost from persisted draft");
+}
+const latest = readLatestDraft();
+if (!latest || latest.kind !== "native") {
+  throw new Error("newer native canvas draft did not outrank legacy fallback draft");
+}
+if (latest.nativeDocument !== undefined && latest.nativeDocument.documentExtension.keep !== true) {
+  throw new Error("native document identity was not restored from the draft");
+}
+if (latest.nativeCanvas.nodes[0].text !== "edited") {
+  throw new Error("native canvas draft did not round-trip through readLatestDraft");
+}
+now = 1002;
+store.set(
+  NATIVE_DRAFT_KEY,
+  JSON.stringify({
+    title: "Representation",
+    representation: {schema_version: "schauwerk-representation-input.v1"},
+    savedAt: now,
+  }),
+);
+const representationDraft = readNativeDraft();
+if (!representationDraft?.representation) {
+  throw new Error("existing representation draft compatibility regressed");
+}
+globalThis.localStorage.setItem = () => { throw new Error("quota"); };
+if (saveNativeCanvasDraft(nativeDocument, nativeCanvas)) {
+  throw new Error("native canvas draft save did not fail closed on storage error");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
+
 def test_native_document_rebuild_preserves_active_frame_across_render_failure(
     tmp_path: Path,
 ) -> None:
@@ -349,6 +447,7 @@ function replaceEditorFrame() {
   return replacementFrame;
 }
 function saveNativeDraft() { return true; }
+function saveNativeCanvasDraft() { return true; }
 function saveDraft() { return true; }
 """ + native_source + r"""
 const failedDocument = {version: 2};
@@ -510,6 +609,7 @@ function replaceEditorFrame() {
   return replacementFrame;
 }
 function saveNativeDraft() { return true; }
+function saveNativeCanvasDraft() { return true; }
 function saveDraft() { return true; }
 """ + native_source + r"""
 const canvas = {
@@ -642,6 +742,7 @@ function replaceEditorFrame() {
   return replacementFrame;
 }
 function saveNativeDraft() { return true; }
+function saveNativeCanvasDraft() { return true; }
 function saveDraft() { return true; }
 """ + native_source + r"""
 const rejectedDocument = {version: 3};

@@ -909,14 +909,50 @@ function saveNativeDraft(representation) {
   }
 }
 
+function saveNativeCanvasDraft(nativeDocument, nativeCanvas) {
+  if (
+    !nativeDocument
+    || nativeDocument.schema_version !== "schauwerk-native-editing-document.v1"
+    || !nativeCanvas
+    || typeof nativeCanvas !== "object"
+    || Array.isArray(nativeCanvas)
+  ) {
+    return false;
+  }
+  try {
+    localStorage.setItem(
+      NATIVE_DRAFT_KEY,
+      JSON.stringify({
+        title: currentTitle,
+        nativeDocument,
+        nativeCanvas,
+        savedAt: Date.now(),
+      }),
+    );
+    elements.restoreButton.hidden = false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function readNativeDraft() {
   try {
     const raw = localStorage.getItem(NATIVE_DRAFT_KEY);
     if (!raw) return null;
     const value = JSON.parse(raw);
-    return value && value.representation && typeof value.representation === "object"
-      ? value
-      : null;
+    if (!value || typeof value !== "object") return null;
+    if (value.representation && typeof value.representation === "object") return value;
+    if (
+      value.nativeDocument
+      && value.nativeDocument.schema_version === "schauwerk-native-editing-document.v1"
+      && value.nativeCanvas
+      && typeof value.nativeCanvas === "object"
+      && !Array.isArray(value.nativeCanvas)
+    ) {
+      return value;
+    }
+    return null;
   } catch (_) {
     return null;
   }
@@ -1207,6 +1243,10 @@ async function launchNative(load, options = {}) {
     if (currentRepresentation) {
       if (!saveNativeDraft(currentRepresentation)) {
         setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+      }
+    } else if (currentNativeDocument && currentNativeCanvas) {
+      if (!saveNativeCanvasDraft(currentNativeDocument, currentNativeCanvas)) {
+        setStatus("Native Canvas-Darstellung bereit · Dokument lokal nicht speicherbar");
       }
     } else if (currentLegacyXml && !saveDraft(currentLegacyXml)) {
       setStatus("Nativer draw.io-Import bereit · Original lokal nicht speicherbar");
@@ -1562,8 +1602,13 @@ window.addEventListener("message", (event) => {
       ) {
         currentNativeDocument = message.document;
         currentNativeCanvas = message.canvas;
+        const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);
         setEngineMode("native");
-        setStatus("Native Änderung im Dokumentzustand gesichert");
+        setStatus(
+          draftSaved
+            ? "Native Änderung im Dokumentzustand gesichert"
+            : "Native Änderung aktiv · lokales Speichern nicht möglich",
+        );
       }
       return;
     }
@@ -1705,6 +1750,14 @@ elements.restoreButton.addEventListener("click", () => {
   if (!draft) return;
   if (draft.kind === "native") {
     currentTitle = safeFilename(draft.title || "Schaubild");
+    if (draft.nativeDocument && draft.nativeCanvas) {
+      launch({
+        nativeDocument: draft.nativeDocument,
+        nativeCanvas: draft.nativeCanvas,
+        sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+      });
+      return;
+    }
     launch({
       nativeRepresentation: draft.representation,
       sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
