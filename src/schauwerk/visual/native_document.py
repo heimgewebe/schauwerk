@@ -37,6 +37,7 @@ _ALLOWED_SIDES: Final = frozenset({"top", "right", "bottom", "left"})
 _ALLOWED_ENDS: Final = frozenset({"none", "arrow"})
 _MAX_ABS_COORDINATE: Final = 10_000_000
 _MAX_DIMENSION: Final = 1_000_000
+_MAX_JAVASCRIPT_SAFE_INTEGER: Final = (1 << 53) - 1
 
 
 class NativeDocumentError(ValueError):
@@ -106,11 +107,30 @@ def _optional_text(value: Mapping[str, Any], field: str, *, context: str) -> Non
         raise NativeDocumentError(f"{context}.{field} must be text")
 
 
+def _assert_javascript_safe_integers(value: Any) -> None:
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, bool) or item is None or isinstance(item, (str, float)):
+            continue
+        if isinstance(item, int):
+            if abs(item) > _MAX_JAVASCRIPT_SAFE_INTEGER:
+                raise NativeDocumentError(
+                    "JSON Canvas integers must fit the JavaScript safe-integer range"
+                )
+            continue
+        if isinstance(item, Mapping):
+            pending.extend(item.values())
+        elif isinstance(item, list):
+            pending.extend(item)
+
+
 def validate_json_canvas(value: Any) -> dict[str, Any]:
     """Validate the supported JSON Canvas 1.0 core without discarding extensions."""
 
     if not isinstance(value, Mapping):
         raise NativeDocumentError("JSON Canvas input must be one object")
+    _assert_javascript_safe_integers(value)
     nodes_value = value.get("nodes", [])
     edges_value = value.get("edges", [])
     if not isinstance(nodes_value, list) or not isinstance(edges_value, list):

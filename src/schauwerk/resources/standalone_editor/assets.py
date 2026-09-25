@@ -321,6 +321,27 @@ function explicitCanvasFence(label) {
   return /^(?:jsoncanvas|json-canvas|\.?canvas)$/i.test(String(label || ""));
 }
 
+function jsonCanvasIntegersAreRoundtripSafe(value) {
+  const pending = [value];
+  const seen = new WeakSet();
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (typeof item === "number") {
+      if (Number.isInteger(item) && !Number.isSafeInteger(item)) return false;
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    if (Array.isArray(item)) {
+      for (const child of item) pending.push(child);
+      continue;
+    }
+    for (const child of Object.values(item)) pending.push(child);
+  }
+  return true;
+}
+
 function detectNormalizedInput(text, options = {}) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
@@ -423,6 +444,7 @@ function isCanvasEdge(edge) {
 
 export function isJsonCanvas(value, options = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (!jsonCanvasIntegersAreRoundtripSafe(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
   if (!hasNodes && !hasEdges) return Object.keys(value).length === 0 || Boolean(options.allowExtensionOnly);

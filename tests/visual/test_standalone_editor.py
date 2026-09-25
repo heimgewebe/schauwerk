@@ -3881,6 +3881,12 @@ if (detectInput(extensionOnly).kind !== 'unknown') throw new Error('extension-on
 const explicitExtensionOnly = detectInput(extensionOnly, {{allowExtensionOnlyCanvas: true}});
 if (explicitExtensionOnly.kind !== 'json-canvas') throw new Error('extension-only JSON Canvas rejected with explicit context');
 if (explicitExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
+const unsafeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740993}}}}';
+if (detectInput(unsafeIntegerCanvas).kind !== 'unknown') throw new Error('unsafe JSON integer Canvas was accepted after numeric rounding');
+const safeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740991}}}}';
+const safeIntegerDetected = detectInput(safeIntegerCanvas);
+if (safeIntegerDetected.kind !== 'json-canvas') throw new Error('maximum safe JSON integer Canvas was rejected');
+if (safeIntegerDetected.value?.plugin?.revision !== Number.MAX_SAFE_INTEGER) throw new Error('maximum safe JSON integer changed value');
 if (detectInput(JSON.stringify({{theme: 'dark'}})).kind !== 'unknown') throw new Error('arbitrary JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{id: 'a'}}], links: [{{source: 'a', target: 'a'}}]}})).kind !== 'unknown') throw new Error('foreign nodes JSON misdetected as JSON Canvas');
 if (detectInput(JSON.stringify({{nodes: [{{name: 'x'}}]}})).kind !== 'unknown') throw new Error('malformed nodes JSON misdetected as JSON Canvas');

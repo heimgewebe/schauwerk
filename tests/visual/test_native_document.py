@@ -153,6 +153,23 @@ def test_json_canvas_roundtrip_preserves_geometry_ids_order_and_extensions() -> 
     assert editing_document_to_json_canvas(document) == source
 
 
+@pytest.mark.parametrize("unsafe_integer", [1 << 53, -(1 << 53)])
+def test_json_canvas_rejects_unsafe_extension_integers_before_roundtrip(
+    unsafe_integer: int,
+) -> None:
+    source = _canvas()
+    source["customTopLevel"] = {"nested": [{"revision": unsafe_integer}]}
+
+    with pytest.raises(NativeDocumentError, match="JavaScript safe-integer range"):
+        validate_json_canvas(source)
+
+    source["customTopLevel"]["nested"][0]["revision"] = (1 << 53) - 1
+    assert (
+        validate_json_canvas(source)["customTopLevel"]["nested"][0]["revision"]
+        == (1 << 53) - 1
+    )
+
+
 def test_editing_document_projects_geometry_text_and_edges_back_to_canvas() -> None:
     document = json_canvas_to_editing_document(_canvas(), title="Probe")
     by_id = {node["id"]: node for node in document["nodes"]}
