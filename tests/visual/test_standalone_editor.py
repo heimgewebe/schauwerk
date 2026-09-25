@@ -112,7 +112,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.source !== elements.frame.contentWindow" in app_js
     assert 'headers["X-Schauwerk-Native-Supersede"] = nativeSupersedeToken' in app_js
     assert 'querySelector("#nativeDiagram")' in app_js
-    assert 'clone.removeAttribute("data-input-digest")' in app_js
+    assert 'if (stripInputDigest) clone.removeAttribute("data-input-digest")' in app_js
     assert "SVG aus aktuellem Canvas-Dokument bereit" in app_js
     assert "Aktuelle SVG-Ausgabe konnte nicht gelesen werden" in app_js
     assert "maxFitScale: 1" in app_js
@@ -236,16 +236,24 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     )
     assert token_update < stale_after_response
     success_url = native_source.index("currentNativeUrl = nativeUrl;")
+    snapshot_bind = native_source.index(
+        "renderedNativeCanvasSnapshot = nativeCanvasSnapshot(currentNativeCanvas);",
+        success_url,
+    )
     preserved_swap = native_source.index("frame = replaceEditorFrame();", success_url)
-    assert success_url < preserved_swap
+    assert success_url < snapshot_bind < preserved_swap
     export_start = app_js.index("async function exportNative(format)")
     export_end = app_js.index("function exportDiagram(format)", export_start)
     export_source = app_js[export_start:export_end]
     canvas_export = export_source.index('if (format === "drawio")')
     stale_svg_guard = export_source.index("if (currentNativeCanvas && nativeCanvasRenderStale)")
-    live_svg = export_source.index("serializeNativeFrameSvg()")
+    live_svg = export_source.index("serializeNativeFrameSvg({")
+    digest_sync = export_source.index(
+        "stripInputDigest: nativeCanvasDiffersFromRendered(currentNativeCanvas)",
+        live_svg,
+    )
     asset_fallback = export_source.index("const assetUrl =", live_svg)
-    assert canvas_export < stale_svg_guard < live_svg < asset_fallback
+    assert canvas_export < stale_svg_guard < live_svg < digest_sync < asset_fallback
     assert ".canvas bleibt verfügbar" in export_source
     assert "SVG aus aktueller nativer Darstellung bereit" in export_source
     assert "releaseLaunchTurn();" in native_source
@@ -284,6 +292,78 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
 
 
 
+def test_native_svg_serializer_preserves_synchronized_digest_and_strips_stale_canvas_digest(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    serialize_start = app_js.index("function nativeCanvasSnapshot(")
+    serialize_end = app_js.index("async function exportNative(format)", serialize_start)
+    serialize_source = app_js[serialize_start:serialize_end]
+
+    script = r"""
+const makeSvg = () => ({
+  namespaceURI: "http://www.w3.org/2000/svg",
+  localName: "svg",
+  attrs: new Map([["data-input-digest", "a".repeat(64)]]),
+  cloneNode() {
+    return {
+      attrs: new Map(this.attrs),
+      setAttribute(name, value) { this.attrs.set(name, String(value)); },
+      removeAttribute(name) { this.attrs.delete(name); },
+    };
+  },
+});
+let sourceSvg = makeSvg();
+let renderedNativeCanvasSnapshot = JSON.stringify({nodes: [{id: "a"}]});
+const elements = {
+  frame: {
+    contentDocument: {
+      querySelector(selector) {
+        return selector === "#nativeDiagram" ? sourceSvg : null;
+      },
+    },
+  },
+};
+globalThis.XMLSerializer = class {
+  serializeToString(node) {
+    const digest = node.attrs.get("data-input-digest");
+    const digestAttr = digest ? ' data-input-digest="' + digest + '"' : "";
+    return "<svg" + digestAttr + "></svg>";
+  }
+};
+""" + serialize_source + r"""
+if (nativeCanvasDiffersFromRendered({nodes: [{id: "a"}]})) {
+  throw new Error("unchanged Canvas was marked digest-stale");
+}
+if (!nativeCanvasDiffersFromRendered({nodes: [{id: "b"}]})) {
+  throw new Error("changed Canvas was not marked digest-stale");
+}
+if (nativeCanvasDiffersFromRendered(null)) {
+  throw new Error("non-Canvas export was marked digest-stale");
+}
+const synchronized = serializeNativeFrameSvg();
+if (!synchronized?.includes('data-input-digest="' + "a".repeat(64) + '"')) {
+  throw new Error("synchronized native SVG lost its source digest");
+}
+const staleCanvas = serializeNativeFrameSvg({stripInputDigest: true});
+if (staleCanvas?.includes("data-input-digest=")) {
+  throw new Error("stale live Canvas SVG retained an obsolete source digest");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_svg_export_prefers_loaded_frame_and_keeps_server_fallback(
     tmp_path: Path,
 ) -> None:
@@ -311,10 +391,15 @@ let liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="live"></svg>';
 let statusText = "";
 let prepared = null;
 let fetchCalls = 0;
+let stripInputDigestSeen = null;
 function clearPreparedDownload() {}
 function setStatus(value) { statusText = String(value); }
 function safeFilename() { return "representation"; }
-function serializeNativeFrameSvg() { return liveSvgValue; }
+function nativeCanvasDiffersFromRendered(canvas) { return Boolean(canvas?.dirty); }
+function serializeNativeFrameSvg(options = {}) {
+  stripInputDigestSeen = Boolean(options.stripInputDigest);
+  return liveSvgValue;
+}
 function prepareDownload(blob, filename, label) {
   prepared = {blob, filename, label};
 }
@@ -334,9 +419,27 @@ if (!(await prepared.blob.text()).includes('id="live"')) {
 if (!statusText.includes("aktueller nativer Darstellung")) {
   throw new Error("live native SVG export status missing");
 }
+if (stripInputDigestSeen) {
+  throw new Error("synchronized Representation export requested digest stripping");
+}
 
 prepared = null;
 statusText = "";
+currentRepresentation = null;
+currentNativeCanvas = {dirty: true};
+liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="dirty"></svg>';
+await exportNative("svg");
+if (!stripInputDigestSeen) {
+  throw new Error("live-modified Canvas export did not request digest stripping");
+}
+if (!(await prepared.blob.text()).includes('id="dirty"')) {
+  throw new Error("live-modified Canvas SVG bytes were not exported");
+}
+
+prepared = null;
+statusText = "";
+currentNativeCanvas = null;
+currentRepresentation = {schema_version: "schauwerk-representation-input.v1"};
 liveSvgValue = null;
 globalThis.fetch = async (url, options) => {
   fetchCalls += 1;

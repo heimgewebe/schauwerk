@@ -770,6 +770,7 @@ let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
 let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
@@ -1017,6 +1018,7 @@ function showStart() {
   pendingExport = null;
   editorReady = false;
   nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   currentLegacyXml = null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
@@ -1047,6 +1049,7 @@ function prepareInput(raw, title = "Schaubild") {
   currentNativeCanvas = null;
   currentNativeUrl = null;
   nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   pendingExport = null;
 
   if (detected.kind === "representation") {
@@ -1126,6 +1129,7 @@ function launchLegacy(load) {
   elements.nativeRetryButton.hidden = true;
   currentNativeUrl = null;
   nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   setEngineMode("legacy");
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
   const sourceFormat = load?.sourceMetadata?.value;
@@ -1240,6 +1244,7 @@ async function launchNative(load, options = {}) {
     }
     currentNativeUrl = nativeUrl;
     nativeCanvasRenderStale = false;
+    renderedNativeCanvasSnapshot = nativeCanvasSnapshot(currentNativeCanvas);
     if (currentRepresentation) {
       if (!saveNativeDraft(currentRepresentation)) {
         setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
@@ -1485,7 +1490,26 @@ async function openFile(file) {
   }
 }
 
-function serializeNativeFrameSvg() {
+function nativeCanvasSnapshot(canvas) {
+  if (!canvas || typeof canvas !== "object" || Array.isArray(canvas)) return null;
+  try {
+    return JSON.stringify(canvas);
+  } catch (_) {
+    return null;
+  }
+}
+
+function nativeCanvasDiffersFromRendered(canvas) {
+  if (!canvas) return false;
+  const snapshot = nativeCanvasSnapshot(canvas);
+  return (
+    renderedNativeCanvasSnapshot === null
+    || snapshot === null
+    || snapshot !== renderedNativeCanvasSnapshot
+  );
+}
+
+function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
   try {
     const svg = elements.frame.contentDocument?.querySelector("#nativeDiagram");
     if (
@@ -1497,7 +1521,7 @@ function serializeNativeFrameSvg() {
     }
     const clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    clone.removeAttribute("data-input-digest");
+    if (stripInputDigest) clone.removeAttribute("data-input-digest");
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
       + new XMLSerializer().serializeToString(clone)
       + "\n";
@@ -1555,7 +1579,9 @@ async function exportNative(format) {
     );
     return;
   }
-  const liveSvg = serializeNativeFrameSvg();
+  const liveSvg = serializeNativeFrameSvg({
+    stripInputDigest: nativeCanvasDiffersFromRendered(currentNativeCanvas),
+  });
   if (liveSvg !== null) {
     prepareDownload(
       new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" }),
