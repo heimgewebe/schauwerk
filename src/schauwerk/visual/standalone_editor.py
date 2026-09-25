@@ -699,6 +699,7 @@ def _refresh_native_record_pin_state(record: _NativeCacheRecord, *, now: float) 
     for admission_key, pinned_until in list(record.pin_leases.items()):
         if pinned_until <= now:
             record.pin_leases.pop(admission_key, None)
+            record.consumer_counts.pop(admission_key, None)
     if record.max_pinned_until <= now:
         record.consumer_counts.clear()
     if record.pin_leases:

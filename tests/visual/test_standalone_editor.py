@@ -3799,6 +3799,60 @@ def test_same_ip_supersede_releases_only_one_native_consumer(
     assert window.terminally_released is True
 
 
+def test_expired_native_client_lease_drops_stale_consumer_before_reacquire(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "expired-client-lease"
+    build_standalone_editor(output)
+    client = "198.51.100.10"
+    clock = [100.0]
+    monkeypatch.setattr(standalone_editor.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_GRACE_SECONDS", 60.0)
+    monkeypatch.setattr(standalone_editor, "NATIVE_CACHE_MAX_PIN_SECONDS", 120.0)
+
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    digest = str(normalized["input_digest"])
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert created is True
+    assert record.pin_leases == {client: 160.0}
+    assert record.consumer_counts == {client: 1}
+    assert record.max_pinned_until == 220.0
+
+    clock[0] = 161.0
+    same_record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert same_record is record
+    assert created is False
+    assert record.pin_leases == {client: 220.0}
+    assert record.consumer_counts == {client: 1}
+
+    assert standalone_editor._release_native_superseded_lease(
+        output,
+        token=record.token,
+        admission_key=client,
+        next_digest="f" * 64,
+    )
+    assert record.consumer_counts == {}
+    assert record.pin_leases.get(client, 0.0) <= clock[0]
+    root_key = standalone_editor._native_root_key(output)
+    assert standalone_editor._NATIVE_PIN_WINDOWS[(root_key, digest)].terminally_released is True
+
+
 def test_terminal_supersede_history_does_not_block_129th_normal_edit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
