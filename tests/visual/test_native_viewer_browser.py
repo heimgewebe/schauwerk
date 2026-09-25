@@ -437,11 +437,24 @@ try {
   const viewport = document.querySelector("#nativeViewport");
   const canvas = document.querySelector("#nativeCanvas");
   const svg = document.querySelector("#nativeDiagram");
+  const fitViewButton = document.querySelector("#fitView");
+  const resetLayoutButton = document.querySelector("#resetLayout");
+  if (
+    !(fitViewButton instanceof HTMLButtonElement) ||
+    !(resetLayoutButton instanceof HTMLButtonElement)
+  ) {
+    throw new Error("canvas readiness controls missing");
+  }
+  // Chrome --dump-dom virtual time can starve the viewer's initial rAF.
+  // Exercise the real controls after app.js installed its handlers so both
+  // view initialization and document publication have deterministic signals.
+  fitViewButton.click();
+  resetLayoutButton.click();
   await waitUntil(
     () =>
       canvas?.style?.transform?.includes("scale(") &&
       window.__nativeDocumentMessages.length > 0,
-    "canvas viewer startup readiness timed out",
+    "canvas viewer deterministic readiness timed out",
   );
   window.__nativeDocumentMessages.length = 0;
 
