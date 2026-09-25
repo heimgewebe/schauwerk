@@ -2390,6 +2390,12 @@ def test_trusted_proxy_native_supersede_allows_sequential_rebuilds(
             if previous_token:
                 previous = standalone_editor._native_cache_by_token(output, previous_token)
                 if previous is not None:
+                    release_deadline = time.monotonic() + 1.0
+                    while (
+                        previous.pin_leases.get(client, 0.0) > time.monotonic()
+                        and time.monotonic() < release_deadline
+                    ):
+                        time.sleep(0.001)
                     assert previous.pin_leases.get(client, 0.0) <= time.monotonic()
             previous_token = token
 
