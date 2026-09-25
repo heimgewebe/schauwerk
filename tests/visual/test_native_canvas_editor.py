@@ -128,7 +128,7 @@ def test_native_product_input_rejects_unsupported_canvas_node_type() -> None:
         _native_product_input(_request(source))
 
 
-def test_standalone_shell_routes_json_canvas_to_native_document_not_drawio(
+def test_standalone_shell_routes_json_canvas_native_primary_with_legacy_rejection_fallback(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "editor"
@@ -141,7 +141,9 @@ def test_standalone_shell_routes_json_canvas_to_native_document_not_drawio(
 
     assert 'format: "json-canvas-1.0"' in canvas_branch
     assert "nativeCanvas: detected.value" in canvas_branch
-    assert "jsonCanvasToDrawioXml" not in canvas_branch
+    assert "legacyXml: jsonCanvasToDrawioXml(detected.value" in canvas_branch
+    assert canvas_branch.index("nativeImport:") < canvas_branch.index("legacyXml:")
+    assert "return {\n      xml:" not in canvas_branch
     assert "native-document-change" in app_js
     assert "native-document-rebuild" in app_js
     assert "X-Schauwerk-Native-Supersede" in app_js
