@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "66f097be30fc039fe6745024b512e5ae5e4b077b"
+    assert editor_successor["functional_head"] == "46edbabcf1c89e97a0e74b2ea9abfe264bbda424"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -445,6 +445,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         editor_successor["checks"][
             "native_canvas_document_change_persists_restoreable_native_draft"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "supersede_release_assertion_waits_for_post_delivery_cleanup"
         ]
         is True
     )

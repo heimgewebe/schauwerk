@@ -67,7 +67,8 @@
     "canvas_hex_colors_require_canonical_rrggbb": true,
     "permanent_native_rejection_rerenders_last_live_valid_state": true,
     "json_canvas_native_primary_with_lazy_legacy_rejection_fallback": true,
-    "native_canvas_document_change_persists_restoreable_native_draft": true
+    "native_canvas_document_change_persists_restoreable_native_draft": true,
+    "supersede_release_assertion_waits_for_post_delivery_cleanup": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -77,8 +78,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "a2391ac6ef276f7df6d5ab7c31658a2d8cc6957000cad557147fc32fcc02b825",
-  "functional_head": "66f097be30fc039fe6745024b512e5ae5e4b077b",
+  "evidence_digest": "438eb8b7a7763f2e68e3f687355b8b42b3af254c713b0a88475d11dab3d87620",
+  "functional_head": "46edbabcf1c89e97a0e74b2ea9abfe264bbda424",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -101,7 +102,7 @@
     "tests/visual/test_native_document.py": "97a49fd9069ef3818caab7768d0c79338e53ed17c49e854ba0c6b6b2501ffd91",
     "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
     "tests/visual/test_native_viewer_browser.py": "a2cd4885a661ede69cec8ec6f55fa4063050c9ed1cdc0e2e9bbec3149ce4a669",
-    "tests/visual/test_standalone_editor.py": "fb4f8c682db079f52511bc740fb24148df0ac878e902adf0e52956d2ad81a0d0",
+    "tests/visual/test_standalone_editor.py": "33cafc1efac5e4634b7d380db045c06dd1081fc2e3d5ffe9e6744b7cfb8a63a4",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
   }
