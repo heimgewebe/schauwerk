@@ -1493,7 +1493,12 @@ async function openFile(file) {
 function nativeCanvasSnapshot(canvas) {
   if (!canvas || typeof canvas !== "object" || Array.isArray(canvas)) return null;
   try {
-    return JSON.stringify(canvas);
+    return JSON.stringify(canvas, (_key, value) => {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+      return Object.fromEntries(
+        Object.keys(value).sort().map((key) => [key, value[key]]),
+      );
+    });
   } catch (_) {
     return null;
   }

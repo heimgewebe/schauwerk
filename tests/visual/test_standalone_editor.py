@@ -320,7 +320,7 @@ const makeSvg = () => ({
   },
 });
 let sourceSvg = makeSvg();
-let renderedNativeCanvasSnapshot = JSON.stringify({nodes: [{id: "a"}]});
+let renderedNativeCanvasSnapshot = null;
 const elements = {
   frame: {
     contentDocument: {
@@ -338,10 +338,20 @@ globalThis.XMLSerializer = class {
   }
 };
 """ + serialize_source + r"""
-if (nativeCanvasDiffersFromRendered({nodes: [{id: "a"}]})) {
-  throw new Error("unchanged Canvas was marked digest-stale");
+renderedNativeCanvasSnapshot = nativeCanvasSnapshot({
+  edges: [],
+  nodes: [{id: "a", type: "text"}],
+});
+if (nativeCanvasDiffersFromRendered({
+  nodes: [{type: "text", id: "a"}],
+  edges: [],
+})) {
+  throw new Error("key-reordered unchanged Canvas was marked digest-stale");
 }
-if (!nativeCanvasDiffersFromRendered({nodes: [{id: "b"}]})) {
+if (!nativeCanvasDiffersFromRendered({
+  nodes: [{type: "text", id: "b"}],
+  edges: [],
+})) {
   throw new Error("changed Canvas was not marked digest-stale");
 }
 if (nativeCanvasDiffersFromRendered(null)) {
@@ -1500,6 +1510,44 @@ def test_native_product_admission_rejects_excessive_graph_cardinality() -> None:
     ]
     with pytest.raises(StandaloneEditorError, match="complexity limits"):
         _native_product_input(too_many_edges)
+
+
+def test_native_product_admission_rejects_oversized_embedded_canvas_before_normalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_DOCUMENT_SCHEMA,
+        "source_format": "json-canvas-1.0",
+        "title": "Oversized source",
+        "input_digest": "a" * 64,
+        "source_digest": "a" * 64,
+        "source": {
+            "nodes": [
+                {"id": f"source-{index}", "type": "text"}
+                for index in range(standalone_editor.MAX_NATIVE_NODES + 1)
+            ],
+            "edges": [],
+        },
+        "nodes": [],
+        "edges": [],
+    }
+
+    normalization_called = False
+
+    def unexpected_normalization(_value: object) -> dict[str, object]:
+        nonlocal normalization_called
+        normalization_called = True
+        raise AssertionError("oversized embedded source must fail before normalization")
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "normalize_editing_document",
+        unexpected_normalization,
+    )
+
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(value)
+    assert normalization_called is False
 
 
 def test_native_product_admission_rejects_excessive_routing_pair_work() -> None:

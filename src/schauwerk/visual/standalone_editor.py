@@ -377,18 +377,23 @@ def _assert_native_canvas_product_limits(value: Any) -> None:
         return
     node_count = len(nodes)
     edge_count = len(edges)
+    routing_pairs = edge_count * edge_count
+    if (
+        node_count > MAX_NATIVE_NODES
+        or edge_count > MAX_NATIVE_EDGES
+        or routing_pairs > MAX_NATIVE_ROUTING_PAIRS
+    ):
+        raise StandaloneEditorError(
+            "native JSON Canvas document exceeds product complexity limits "
+            f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
+            f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+        )
     group_count = sum(
         1
         for node in nodes
         if isinstance(node, dict) and node.get("type") == "group"
     )
-    routing_pairs = edge_count * edge_count
-    if (
-        group_count > MAX_NATIVE_GROUPS
-        or node_count > MAX_NATIVE_NODES
-        or edge_count > MAX_NATIVE_EDGES
-        or routing_pairs > MAX_NATIVE_ROUTING_PAIRS
-    ):
+    if group_count > MAX_NATIVE_GROUPS:
         raise StandaloneEditorError(
             "native JSON Canvas document exceeds product complexity limits "
             f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
@@ -450,6 +455,7 @@ def _native_product_input(value: Any) -> dict[str, Any]:
         and candidate.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
     ):
         _assert_native_canvas_product_limits(candidate)
+        _assert_native_canvas_product_limits(candidate.get("source"))
         try:
             candidate = normalize_editing_document(candidate)
         except NativeDocumentError as exc:
