@@ -439,7 +439,127 @@ if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
 
 
 
-def test_native_rebuild_422_discards_candidate_and_restores_last_valid_state(
+def test_json_canvas_native_rejection_exposes_legacy_fallback(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    assert "jsonCanvasToDrawioXml" in app_js.splitlines()[0]
+    assert "legacyXml: jsonCanvasToDrawioXml(detected.value" in app_js
+
+    native_start = app_js.index("function nativeTokenFromUrl")
+    native_end = app_js.index("function loadPendingIntoEditor()", native_start)
+    native_source = app_js[native_start:native_end]
+
+    script = r"""
+const PUBLIC_BASE_PATH = "";
+const NATIVE_API_PATH = "/api/native-viewer";
+let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "";
+let nativeCanvasRenderStale = false;
+let pendingExport = null;
+let pendingLoad = null;
+let pendingInitialCollisionSafeLayout = false;
+let pendingCreationDefaults = false;
+let currentXml = null;
+let currentRepresentation = null;
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
+let currentNativeUrl = null;
+let editorReady = false;
+let statusText = "";
+let errorText = "";
+const replacementFrame = {inert: false, src: "", blur() {}};
+const elements = {
+  frame: replacementFrame,
+  workspace: {hidden: true},
+  startView: {hidden: false},
+  legacyFallbackButton: {hidden: true},
+  nativeRetryButton: {hidden: true},
+};
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
+function clearPreparedDownload() {}
+function setEngineMode() {}
+function setStatus(value) { statusText = String(value); }
+function setError(value) { errorText = String(value); }
+function showWorkspace() {
+  elements.startView.hidden = true;
+  elements.workspace.hidden = false;
+}
+function replaceEditorFrame() {
+  elements.frame = replacementFrame;
+  return replacementFrame;
+}
+function saveNativeDraft() { return true; }
+function saveDraft() { return true; }
+""" + native_source + r"""
+const legacyXml = "<mxGraphModel><root/></mxGraphModel>";
+const canvas = {
+  nodes: [{
+    id: "g",
+    type: "group",
+    x: 0,
+    y: 0,
+    width: 400,
+    height: 240,
+    label: "Group",
+    background: "image.png",
+  }],
+  edges: [],
+};
+globalThis.fetch = async () => ({
+  ok: false,
+  status: 422,
+  async json() {
+    return {error: "group backgrounds are not supported by the native editor"};
+  },
+});
+await launchNative({
+  nativeImport: {
+    schema_version: "schauwerk-native-import-request.v1",
+    format: "json-canvas-1.0",
+    source: canvas,
+    title: "fallback",
+  },
+  nativeCanvas: canvas,
+  legacyXml,
+});
+if (pendingLegacyFallback !== legacyXml) {
+  throw new Error("native JSON Canvas rejection did not retain legacy fallback XML");
+}
+if (elements.legacyFallbackButton.hidden) {
+  throw new Error("native JSON Canvas rejection did not expose the legacy fallback control");
+}
+if (!elements.workspace.hidden || elements.startView.hidden) {
+  throw new Error("native JSON Canvas rejection did not return to the recoverable start view");
+}
+if (!errorText.includes("Das Original wurde nicht verändert")) {
+  throw new Error("native JSON Canvas rejection did not explain source preservation");
+}
+if (!statusText.includes("Nativer Import abgelehnt") || !statusText.includes("Legacy verfügbar")) {
+  throw new Error("native JSON Canvas rejection did not report generic legacy availability");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
+def test_native_rebuild_422_rerenders_last_live_valid_state(
     tmp_path: Path,
 ) -> None:
     node = shutil.which("node")
@@ -466,8 +586,9 @@ let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let currentXml = null;
 let currentRepresentation = null;
-let currentNativeDocument = {version: 1};
-let currentNativeCanvas = {version: 1};
+// Version 1 is the persisted bundle URL, while version 2 is a later live drag.
+let currentNativeDocument = {version: 2};
+let currentNativeCanvas = {version: 2};
 let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
@@ -509,20 +630,38 @@ function replaceEditorFrame() {
 function saveNativeDraft() { return true; }
 function saveDraft() { return true; }
 """ + native_source + r"""
-const rejectedDocument = {version: 2};
-const rejectedCanvas = {version: 2};
+const rejectedDocument = {version: 3};
+const rejectedCanvas = {version: 3};
+const successfulUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
+let fetchCalls = 0;
+const sentVersions = [];
 globalThis.fetch = async (_url, options) => {
+  fetchCalls += 1;
   if (
     options.headers["X-Schauwerk-Native-Supersede"]
     !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   ) {
-    throw new Error("missing supersede token on rejected rebuild");
+    throw new Error("supersede token drifted during rejection recovery");
+  }
+  sentVersions.push(JSON.parse(options.body).version);
+  if (fetchCalls === 1) {
+    return {
+      ok: false,
+      status: 422,
+      async json() {
+        return {error: "native JSON Canvas document exceeds product complexity limits"};
+      },
+    };
   }
   return {
-    ok: false,
-    status: 422,
+    ok: true,
+    status: 200,
     async json() {
-      return {error: "native JSON Canvas document exceeds product complexity limits"};
+      return {
+        url: successfulUrl,
+        renderer: "schauwerk-native-diagram-v1",
+        input_digest: "c".repeat(64),
+      };
     },
   };
 };
@@ -530,35 +669,35 @@ await launchNative(
   {nativeDocument: rejectedDocument, nativeCanvas: rejectedCanvas},
   {preserveActiveFrame: true},
 );
+if (fetchCalls !== 2 || sentVersions.join(",") !== "3,2") {
+  throw new Error("permanent rejection did not re-render exactly the pre-candidate live state");
+}
 if (replaceCalls !== 1 || workspaceCalls !== 1) {
-  throw new Error("permanent rejection did not restore the last valid frame exactly once");
+  throw new Error("recovery did not swap in exactly one fresh valid frame");
 }
-if (elements.frame !== replacementFrame) {
-  throw new Error("permanent rejection did not replace the candidate-inconsistent frame");
+if (elements.frame !== replacementFrame || replacementFrame.src !== successfulUrl) {
+  throw new Error("recovery did not activate the re-rendered live-valid bundle");
 }
-if (replacementFrame.src !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html") {
-  throw new Error("permanent rejection did not reload the last valid native URL");
-}
-if (currentNativeDocument.version !== 1 || currentNativeCanvas.version !== 1) {
-  throw new Error("permanent rejection retained the rejected candidate state");
+if (currentNativeDocument.version !== 2 || currentNativeCanvas.version !== 2) {
+  throw new Error("permanent rejection did not retain the live-valid dragged state");
 }
 if (nativeCanvasRenderStale) {
-  throw new Error("restored valid state remained marked stale");
+  throw new Error("successful permanent-rejection recovery remained marked stale");
 }
 if (!editorReady) {
-  throw new Error("restored valid state lost editor readiness");
+  throw new Error("successful permanent-rejection recovery lost editor readiness");
 }
 if (!elements.nativeRetryButton.hidden) {
-  throw new Error("permanent rejection incorrectly offered retry of the rejected candidate");
+  throw new Error("successful permanent-rejection recovery exposed a retry control");
 }
 if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
   throw new Error("permanent rejection did not explain candidate rollback");
 }
 if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
-  throw new Error("permanent rejection did not report restored valid state");
+  throw new Error("permanent rejection did not report the restored live-valid state");
 }
-if (nativeSupersedeToken !== "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
-  throw new Error("permanent rejection advanced the supersede token");
+if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
+  throw new Error("successful recovery did not advance the supersede token");
 }
 """
     subprocess.run(

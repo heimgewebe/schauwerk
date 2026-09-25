@@ -710,7 +710,7 @@ export function jsonCanvasToDrawioXml(source, options = {}) {
 }
 """
 
-APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
+APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
@@ -1034,6 +1034,10 @@ function prepareInput(raw, title = "Schaubild") {
         title: currentTitle,
       },
       nativeCanvas: detected.value,
+      legacyXml: jsonCanvasToDrawioXml(detected.value, {
+        nodeFontSize: preferredNodeFontSize,
+        edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
+      }),
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
@@ -1163,6 +1167,8 @@ async function launchNative(load, options = {}) {
 
   const previousLaunch = nativeLaunchTail;
   let releaseLaunchTurn = () => {};
+  let permanentRecovery = null;
+  let permanentRejectionMessage = "";
   nativeLaunchTail = new Promise((resolve) => {
     releaseLaunchTurn = resolve;
   });
@@ -1229,7 +1235,9 @@ async function launchNative(load, options = {}) {
     if (loadIntent !== loadIntentGeneration) return;
     const nativeStatus = Number(error?.nativeStatus || 0);
     const permanentCandidateRejection = (
-      preserveActiveFrame && (nativeStatus === 413 || nativeStatus === 422)
+      preserveActiveFrame
+      && !options.recoveryAttempt
+      && (nativeStatus === 413 || nativeStatus === 422)
     );
     if (permanentCandidateRejection) {
       currentRepresentation = activeRepresentation;
@@ -1237,23 +1245,45 @@ async function launchNative(load, options = {}) {
       currentNativeCanvas = activeNativeCanvas;
       currentLegacyXml = activeLegacyXml;
       currentNativeUrl = activeNativeUrl;
-      nativeCanvasRenderStale = false;
+      nativeCanvasRenderStale = true;
       editorReady = true;
       elements.nativeRetryButton.hidden = true;
-      if (elements.frame === activeFrame) {
-        frame = replaceEditorFrame();
-        showWorkspace();
-        frame.src = activeNativeUrl;
-      }
-      setEngineMode("native");
-      setError(
-        (error instanceof Error ? error.message : "Native Änderung wurde abgelehnt.")
-        + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+      if (elements.frame === activeFrame) activeFrame.inert = true;
+      permanentRejectionMessage = (
+        error instanceof Error ? error.message : "Native Änderung wurde abgelehnt."
       );
-      setStatus("Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt");
-      return;
-    }
-    if (preserveActiveFrame) {
+      if (activeNativeDocument && activeNativeCanvas && activeNativeUrl) {
+        permanentRecovery = {
+          nativeDocument: activeNativeDocument,
+          nativeCanvas: activeNativeCanvas,
+          sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+        };
+        setEngineMode("native");
+        setError(
+          permanentRejectionMessage
+          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand wird neu gerendert.",
+        );
+        setStatus(
+          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wird wiederhergestellt",
+        );
+      } else {
+        nativeCanvasRenderStale = false;
+        if (elements.frame === activeFrame) {
+          frame = replaceEditorFrame();
+          showWorkspace();
+          frame.src = activeNativeUrl;
+        }
+        setEngineMode("native");
+        setError(
+          permanentRejectionMessage
+          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+        );
+        setStatus(
+          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt",
+        );
+        return;
+      }
+    } else if (preserveActiveFrame) {
       currentNativeUrl = activeNativeUrl;
       nativeCanvasRenderStale = true;
       editorReady = true;
@@ -1265,27 +1295,44 @@ async function launchNative(load, options = {}) {
       );
       setStatus("Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen");
       return;
-    }
-    editorReady = false;
-    currentNativeUrl = null;
-    const fallbackXml = currentLegacyXml;
-    currentLegacyXml = null;
-    elements.workspace.hidden = true;
-    elements.startView.hidden = false;
-    if (fallbackXml) {
-      pendingLegacyFallback = fallbackXml;
-      elements.legacyFallbackButton.hidden = false;
-      setError(
-        (error instanceof Error ? error.message : "Nativer draw.io-Import wurde abgelehnt.")
-        + " Das Original wurde nicht verändert. Legacy-Bearbeitung kann ausdrücklich geöffnet werden."
-      );
-      setStatus("Nativer draw.io-Import abgelehnt · Legacy verfügbar");
     } else {
-      setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
-      setStatus("Native Darstellung abgelehnt");
+      editorReady = false;
+      currentNativeUrl = null;
+      const fallbackXml = currentLegacyXml;
+      currentLegacyXml = null;
+      elements.workspace.hidden = true;
+      elements.startView.hidden = false;
+      if (fallbackXml) {
+        pendingLegacyFallback = fallbackXml;
+        elements.legacyFallbackButton.hidden = false;
+        setError(
+          (error instanceof Error ? error.message : "Nativer Import wurde abgelehnt.")
+          + " Das Original wurde nicht verändert. Legacy-Bearbeitung kann ausdrücklich geöffnet werden."
+        );
+        setStatus("Nativer Import abgelehnt · Legacy verfügbar");
+      } else {
+        setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
+        setStatus("Native Darstellung abgelehnt");
+      }
     }
   } finally {
     releaseLaunchTurn();
+  }
+
+  if (permanentRecovery) {
+    await launchNative(
+      permanentRecovery,
+      { preserveActiveFrame: true, recoveryAttempt: true },
+    );
+    if (!nativeCanvasRenderStale && editorReady) {
+      setError(
+        permanentRejectionMessage
+        + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+      );
+      setStatus(
+        "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt",
+      );
+    }
   }
 }
 
