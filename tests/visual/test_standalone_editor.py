@@ -2724,6 +2724,126 @@ def test_native_supersede_projects_exclusive_lease_from_global_capacity(
     assert first_record.pin_leases.get(client, 0.0) <= time.monotonic()
 
 
+def test_native_supersede_projection_carries_through_prune_byte_reservation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "exclusive-prune-bytes"
+    build_standalone_editor(output)
+
+    client = "203.0.113.77"
+    other_client = "203.0.113.88"
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_superseded"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert first_created is True
+
+    other = _golden_representation("decision-flow-v1.json")
+    other["id"] = "flow_other"
+    other_normalized = _native_product_input(other)
+    other_record, other_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(other_normalized["input_digest"]),
+        value=other,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=other_client,
+    )
+    assert other_created is True
+
+    first_record.size_bytes = 2 * 1024 * 1024
+    other_record.size_bytes = 15 * 1024 * 1024
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 32)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 32 * 1024 * 1024)
+
+    replacement = _golden_representation("decision-flow-v1.json")
+    replacement["id"] = "flow_replacement"
+    replacement_normalized = _native_product_input(replacement)
+    replacement_record, replacement_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(replacement_normalized["input_digest"]),
+        value=replacement,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+        superseded_record=first_record,
+    )
+
+    assert replacement_created is True
+    assert replacement_record is not first_record
+    assert first_record.pin_leases.get(client, 0.0) > time.monotonic()
+    assert other_record.pin_leases.get(other_client, 0.0) > time.monotonic()
+    assert replacement_record.pin_leases.get(client, 0.0) > time.monotonic()
+
+
+def test_native_prune_revalidates_supersede_projection_after_foreign_repin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "prune-revalidate-supersede"
+    build_standalone_editor(output)
+    client_a = "203.0.113.77"
+    client_b = "203.0.113.88"
+    other_client = "203.0.113.99"
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_superseded"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client_a,
+    )
+    assert first_created is True
+
+    other = _golden_representation("decision-flow-v1.json")
+    other["id"] = "flow_other"
+    other_normalized = _native_product_input(other)
+    other_record, other_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(other_normalized["input_digest"]),
+        value=other,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=other_client,
+    )
+    assert other_created is True
+
+    standalone_editor._pin_native_cache_record(
+        output,
+        first_record,
+        admission_key=client_b,
+    )
+    first_record.size_bytes = 2 * 1024 * 1024
+    other_record.size_bytes = 15 * 1024 * 1024
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 32)
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_BYTES", 32 * 1024 * 1024)
+    with pytest.raises(
+        standalone_editor.NativeCacheCapacityError,
+        match="temporarily pinned",
+    ):
+        standalone_editor._prune_native_cache(
+            output,
+            keep=None,
+            reserve_bytes=standalone_editor.MAX_NATIVE_BUNDLE_BYTES,
+            reserve_entries=1,
+            superseded_record=first_record,
+            admission_key=client_a,
+        )
+
+
 @pytest.mark.parametrize("limit_mode", ["entries", "bytes"])
 def test_native_supersede_keeps_shared_record_in_global_capacity(
     tmp_path: Path,

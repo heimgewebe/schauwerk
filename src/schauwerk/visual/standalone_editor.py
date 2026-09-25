@@ -1022,31 +1022,48 @@ def _prune_native_cache(
     keep: _NativeCacheRecord | None,
     reserve_bytes: int = 0,
     reserve_entries: int = 0,
+    superseded_record: _NativeCacheRecord | None = None,
+    admission_key: str | None = None,
 ) -> None:
     victim_paths: list[Path] = []
     with _NATIVE_CACHE_LOCK:
         records = _native_cache_records(root)
-        total = sum(item.size_bytes for item in records)
         now = time.monotonic()
+        projected_global_release = (
+            superseded_record
+            if (
+                admission_key is not None
+                and _superseded_record_releases_global_pin(
+                    superseded_record,
+                    admission_key=admission_key,
+                    now=now,
+                )
+            )
+            else None
+        )
+        capacity_records = [
+            record for record in records if record is not projected_global_release
+        ]
+        total = sum(item.size_bytes for item in capacity_records)
         candidates = sorted(
             (
                 record
-                for record in records
+                for record in capacity_records
                 if record is not keep and record.pinned_until <= now
             ),
             key=lambda item: (item.last_access, item.token),
         )
         while candidates and (
-            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            len(capacity_records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
             or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
         ):
             victim = candidates.pop(0)
             victim_paths.append(victim.path)
             _forget_native_cache_record(victim, remove_files=False)
             total -= victim.size_bytes
-            records.remove(victim)
+            capacity_records.remove(victim)
         if (
-            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            len(capacity_records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
             or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
         ):
             raise NativeCacheCapacityError(
@@ -1377,6 +1394,8 @@ def _build_native_cache_record(
             keep=None,
             reserve_bytes=MAX_NATIVE_BUNDLE_BYTES,
             reserve_entries=1,
+            superseded_record=superseded_record,
+            admission_key=admission_key,
         )
         cache_root = root / ".native-cache"
         if cache_root.exists() and (
