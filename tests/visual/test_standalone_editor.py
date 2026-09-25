@@ -1012,6 +1012,7 @@ try {
     const frame = document.querySelector("#editorFrame");
     if (
       !frame?.src?.includes("/native/") ||
+      frame.contentDocument?.readyState !== "complete" ||
       !frame.contentDocument?.querySelector('[data-source-id="a"]') ||
       !frame.contentDocument?.querySelector("#deleteSelection") ||
       !frame.contentDocument?.querySelector("#resetLayout")
