@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "42d580340e3bbb68ea1a50fbf02abcf87c1cd398"
+    assert editor_successor["functional_head"] == "e8d487f5a190c1a8686c607235239fa275525e08"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -457,6 +457,18 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert (
         editor_successor["checks"]["live_modified_canvas_svg_strips_stale_digest"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "supersede_projection_carries_through_prune_capacity"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "prune_revalidates_supersede_projection_after_foreign_repin"
+        ]
         is True
     )
     assert editor_successor["checks"]["ci_equivalent_validate_passed"] is True
