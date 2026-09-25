@@ -79,7 +79,8 @@
     "empty_canvas_browser_state_republish_deterministic": true,
     "hosted_canvas_browser_readiness_deterministic": true,
     "native_svg_export_prefers_loaded_frame_after_bundle_expiry": true,
-    "hosted_viewer_waits_for_script_ready_before_state_republish": true
+    "hosted_viewer_waits_for_script_ready_before_state_republish": true,
+    "canvas_limit_browser_state_republish_deterministic": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -89,8 +90,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "bbcf24de9c3bbc6d12b84cbdb30914b83b2d739a6ecf6cb996894716f41cb6ce",
-  "functional_head": "2f15b847eb32cbbed62887cb6cee60ee2e975b2b",
+  "evidence_digest": "7ad7e2dc781f2cee3bf66e933c198acc6db700fc06c3f90aa55fb589beb38911",
+  "functional_head": "c4a390f6338e3d4c19fb86e279b1ed15100d1aca",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -112,7 +113,7 @@
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
     "tests/visual/test_native_document.py": "97a49fd9069ef3818caab7768d0c79338e53ed17c49e854ba0c6b6b2501ffd91",
     "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
-    "tests/visual/test_native_viewer_browser.py": "91925652728a14bebb6f62c901b4f0594f4fce8daf6393aeec2e52bed68e860d",
+    "tests/visual/test_native_viewer_browser.py": "c7c399cda16e29d189346ccaff103c163758e2f1e9e7c21bddccf59df56d83d0",
     "tests/visual/test_standalone_editor.py": "b838d31c1c715692876f056c932238e5b453f77e938b0f107611638e43273ea5",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
