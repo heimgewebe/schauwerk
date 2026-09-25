@@ -1325,11 +1325,37 @@ async function launchNative(load, options = {}) {
       editorReady = true;
       if (elements.frame === activeFrame) activeFrame.inert = true;
       elements.nativeRetryButton.hidden = false;
+      let nativeCanvasDraftSaved = null;
+      if (currentNativeDocument && currentNativeCanvas) {
+        nativeCanvasDraftSaved = saveNativeCanvasDraft(
+          currentNativeDocument,
+          currentNativeCanvas,
+        );
+      }
+      const draftErrorSuffix = (
+        nativeCanvasDraftSaved === true
+          ? " Der aktuelle Dokumentzustand wurde zusätzlich lokal als Entwurf gesichert."
+          : (
+              nativeCanvasDraftSaved === false
+                ? " Der aktuelle Dokumentzustand konnte nicht lokal als Entwurf gespeichert werden."
+                : ""
+            )
+      );
+      const draftStatusSuffix = (
+        nativeCanvasDraftSaved === true
+          ? " · Entwurf lokal gesichert"
+          : (nativeCanvasDraftSaved === false ? " · Entwurf lokal nicht speicherbar" : "")
+      );
       setError(
         (error instanceof Error ? error.message : "Native Änderung konnte nicht gerendert werden.")
-        + " Bestehende Ansicht bleibt sichtbar und gesperrt; .canvas-Export enthält den aktuellen Dokumentzustand. Mit „Neu rendern“ erneut versuchen.",
+        + " Bestehende Ansicht bleibt sichtbar und gesperrt; .canvas-Export enthält den aktuellen Dokumentzustand."
+        + draftErrorSuffix
+        + " Mit „Neu rendern“ erneut versuchen.",
       );
-      setStatus("Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen");
+      setStatus(
+        "Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen"
+        + draftStatusSuffix,
+      );
       return;
     } else {
       editorReady = false;

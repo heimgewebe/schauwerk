@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import schauwerk.visual.standalone_editor as standalone_editor
 from schauwerk.visual.native_document import (
     NATIVE_DOCUMENT_SCHEMA,
     editing_document_to_json_canvas,
@@ -383,3 +384,30 @@ def test_integrated_native_canvas_endpoint_fails_closed_for_unknown_reference(
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_json_canvas_product_count_gate_runs_before_expensive_conversion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = {
+        "nodes": [
+            {"id": f"node-{index}", "type": "text"}
+            for index in range(standalone_editor.MAX_NATIVE_NODES + 1)
+        ],
+        "edges": [],
+    }
+    conversion_called = False
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> dict:
+        nonlocal conversion_called
+        conversion_called = True
+        raise AssertionError("over-limit canvas must reject before conversion")
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "json_canvas_to_editing_document",
+        unexpected_conversion,
+    )
+    with pytest.raises(StandaloneEditorError, match="product complexity limits"):
+        _native_product_input(_request(source))
+    assert conversion_called is False

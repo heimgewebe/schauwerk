@@ -416,6 +416,8 @@ let statusText = "";
 let errorText = "";
 let replaceCalls = 0;
 let workspaceCalls = 0;
+let nativeCanvasDraftSaveSucceeds = false;
+const nativeCanvasDraftSaves = [];
 const oldFrame = {
   inert: false,
   blurred: false,
@@ -447,7 +449,13 @@ function replaceEditorFrame() {
   return replacementFrame;
 }
 function saveNativeDraft() { return true; }
-function saveNativeCanvasDraft() { return true; }
+function saveNativeCanvasDraft(documentValue, canvasValue) {
+  nativeCanvasDraftSaves.push({
+    documentVersion: documentValue?.version,
+    canvasVersion: canvasValue?.version,
+  });
+  return nativeCanvasDraftSaveSucceeds;
+}
 function saveDraft() { return true; }
 """ + native_source + r"""
 const failedDocument = {version: 2};
@@ -479,6 +487,19 @@ if (!nativeCanvasRenderStale) throw new Error("stale SVG state was not recorded"
 if (currentNativeCanvas.version !== 2 || currentNativeDocument.version !== 2) {
   throw new Error("latest document state was not retained after render failure");
 }
+if (
+  nativeCanvasDraftSaves.length !== 1
+  || nativeCanvasDraftSaves[0].documentVersion !== 2
+  || nativeCanvasDraftSaves[0].canvasVersion !== 2
+) {
+  throw new Error("transient rebuild candidate was not persisted as a native canvas draft");
+}
+if (!errorText.includes("konnte nicht lokal als Entwurf gespeichert werden")) {
+  throw new Error("transient draft storage failure was not reported truthfully");
+}
+if (!statusText.includes("Entwurf lokal nicht speicherbar")) {
+  throw new Error("transient draft storage failure was missing from status");
+}
 if (!errorText.includes(".canvas-Export enthält den aktuellen Dokumentzustand")) {
   throw new Error("render failure did not preserve an export recovery path");
 }
@@ -489,6 +510,7 @@ if (elements.nativeRetryButton.hidden) {
   throw new Error("render retry control stayed hidden after failure");
 }
 
+nativeCanvasDraftSaveSucceeds = true;
 const successfulUrl = "/native/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/index.html";
 globalThis.fetch = async (_url, options) => {
   if (
@@ -527,6 +549,9 @@ if (!elements.nativeRetryButton.hidden) {
 }
 if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
   throw new Error("successful rebuild did not advance supersede token");
+}
+if (nativeCanvasDraftSaves.length !== 2) {
+  throw new Error("successful retry did not persist the retained candidate exactly once more");
 }
 """
     subprocess.run(
@@ -711,6 +736,7 @@ let statusText = "";
 let errorText = "";
 let replaceCalls = 0;
 let workspaceCalls = 0;
+const nativeCanvasDraftVersions = [];
 const oldFrame = {
   inert: false,
   blurred: false,
@@ -742,7 +768,10 @@ function replaceEditorFrame() {
   return replacementFrame;
 }
 function saveNativeDraft() { return true; }
-function saveNativeCanvasDraft() { return true; }
+function saveNativeCanvasDraft(documentValue) {
+  nativeCanvasDraftVersions.push(documentValue?.version);
+  return true;
+}
 function saveDraft() { return true; }
 """ + native_source + r"""
 const rejectedDocument = {version: 3};
@@ -813,6 +842,12 @@ if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt"))
 }
 if (nativeSupersedeToken !== "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb") {
   throw new Error("successful recovery did not advance the supersede token");
+}
+if (nativeCanvasDraftVersions.includes(3)) {
+  throw new Error("permanently rejected candidate was persisted as a native canvas draft");
+}
+if (nativeCanvasDraftVersions.join(",") !== "2") {
+  throw new Error("permanent rejection recovery did not persist exactly the restored live-valid state");
 }
 """
     subprocess.run(
@@ -3594,3 +3629,334 @@ document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
     )
     assert completed.returncode == 0, completed.stderr
     assert '<pre id="result">PASS</pre>' in completed.stdout
+
+
+def test_same_ip_supersede_releases_only_one_native_consumer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "same-ip-consumers"
+    build_standalone_editor(output)
+    client = "203.0.113.77"
+    value = _golden_representation("decision-flow-v1.json")
+    normalized = _native_product_input(value)
+    digest = str(normalized["input_digest"])
+
+    record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert created is True
+    same_record, created = standalone_editor._build_native_cache_record(
+        output,
+        digest=digest,
+        value=value,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert same_record is record
+    assert created is False
+    assert record.consumer_counts == {client: 2}
+
+    standalone_editor._pin_native_cache_record(
+        output,
+        record,
+        admission_key=client,
+        acquire_consumer=False,
+    )
+    assert record.consumer_counts == {client: 2}
+
+    assert standalone_editor._release_native_superseded_lease(
+        output,
+        token=record.token,
+        admission_key=client,
+        next_digest="f" * 64,
+    )
+    assert record.consumer_counts == {client: 1}
+    assert record.pin_leases.get(client, 0.0) > time.monotonic()
+    root_key = standalone_editor._native_root_key(output)
+    window = standalone_editor._NATIVE_PIN_WINDOWS[(root_key, digest)]
+    assert window.terminally_released is False
+
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 1)
+    with pytest.raises(standalone_editor.NativeCacheCapacityError, match="temporarily pinned"):
+        standalone_editor._prune_native_cache(
+            output,
+            keep=None,
+            reserve_entries=1,
+        )
+    assert standalone_editor._native_cache_by_token(output, record.token) is record
+
+    assert standalone_editor._release_native_superseded_lease(
+        output,
+        token=record.token,
+        admission_key=client,
+        next_digest="e" * 64,
+    )
+    assert record.consumer_counts == {}
+    assert record.pin_leases.get(client, 0.0) <= time.monotonic()
+    assert window.terminally_released is True
+
+
+def test_terminal_supersede_history_does_not_block_129th_normal_edit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "pin-window-history"
+    build_standalone_editor(output)
+
+    def fake_build(
+        _value: dict[str, object],
+        target: Path,
+        **_kwargs: object,
+    ) -> None:
+        (target / "index.html").write_text("ok", encoding="utf-8")
+
+    monkeypatch.setattr(standalone_editor, "build_native_viewer", fake_build)
+    previous = None
+    for index in range(standalone_editor.MAX_NATIVE_PIN_WINDOWS + 1):
+        value = _golden_representation("decision-flow-v1.json")
+        value["id"] = f"history_flow_{index}"
+        normalized = _native_product_input(value)
+        digest = str(normalized["input_digest"])
+        record, created = standalone_editor._build_native_cache_record(
+            output,
+            digest=digest,
+            value=value,
+            serve_binding="127.0.0.1-only",
+            public_base_path="",
+            admission_key=standalone_editor._LOCAL_ADMISSION_KEY,
+            superseded_record=previous,
+        )
+        assert created is True
+        if previous is not None:
+            assert standalone_editor._release_native_superseded_lease(
+                output,
+                token=previous.token,
+                admission_key=standalone_editor._LOCAL_ADMISSION_KEY,
+                next_digest=digest,
+            )
+        previous = record
+
+    root_key = standalone_editor._native_root_key(output)
+    root_windows = [
+        window
+        for (window_root, _digest), window in standalone_editor._NATIVE_PIN_WINDOWS.items()
+        if window_root == root_key
+    ]
+    assert len(root_windows) <= standalone_editor.MAX_NATIVE_PIN_WINDOWS
+    assert previous is not None
+    assert previous.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
+
+
+def test_normalized_json_canvas_overflow_is_422_before_renderer_spawn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "normalized-overflow"
+    build_standalone_editor(output)
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Probe.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "big",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 320,
+                    "height": 180,
+                    "text": "x" * 1_800_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert len(payload) < standalone_editor.MAX_NATIVE_REQUEST_BYTES
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        > standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    renderer_called = False
+
+    def unexpected_renderer(**_kwargs: object) -> None:
+        nonlocal renderer_called
+        renderer_called = True
+        raise AssertionError("deterministic oversized normalized input must not spawn renderer")
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", unexpected_renderer)
+    handler = object.__new__(_EditorRequestHandler)
+    handler.path = NATIVE_API_PATH
+    handler.headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(payload)),
+    }
+    handler.rfile = io.BytesIO(payload)
+    handler.directory = str(output)
+    handler.native_serve_binding = "127.0.0.1-only"
+    handler.public_base_path = ""
+    handler._request_deadline_expired = False
+    handler._request_deadline_at = time.monotonic() + 5
+    handler.close_connection = False
+    monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+    monkeypatch.setattr(
+        handler,
+        "_native_admission_key",
+        lambda: standalone_editor._LOCAL_ADMISSION_KEY,
+    )
+    responses: list[tuple[HTTPStatus, dict[str, object]]] = []
+
+    def capture_json(
+        status: HTTPStatus,
+        body: dict[str, object],
+        *,
+        write_body: bool = True,
+    ) -> bool:
+        del write_body
+        responses.append((status, body))
+        return True
+
+    monkeypatch.setattr(handler, "_send_json", capture_json)
+    handler.do_POST()
+
+    assert responses
+    status, body = responses[-1]
+    assert status == HTTPStatus.UNPROCESSABLE_ENTITY, body
+    assert "exceeds 5 MB after normalization" in str(body["error"])
+    assert renderer_called is False
+
+
+def test_undelivered_cache_hit_releases_its_consumer_acquisition(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "undelivered-cache-hit"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    payload = json.dumps(value).encode("utf-8")
+
+    handler = object.__new__(_EditorRequestHandler)
+    handler.path = NATIVE_API_PATH
+    handler.headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(payload)),
+    }
+    handler.directory = str(output)
+    handler.native_serve_binding = "127.0.0.1-only"
+    handler.public_base_path = ""
+    handler.close_connection = False
+    monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+    monkeypatch.setattr(
+        handler,
+        "_native_admission_key",
+        lambda: standalone_editor._LOCAL_ADMISSION_KEY,
+    )
+    monkeypatch.setattr(handler, "_send_json", lambda *_args, **_kwargs: False)
+
+    for _attempt in range(2):
+        handler.rfile = io.BytesIO(payload)
+        handler._request_deadline_expired = False
+        handler._request_deadline_at = time.monotonic() + 5
+        handler.do_POST()
+        records = standalone_editor._native_cache_records(output)
+        assert len(records) == 1
+        assert records[0].consumer_counts == {}
+        assert records[0].pin_leases == {}
+
+
+def test_same_digest_supersede_does_not_leak_native_consumer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "same-digest-supersede"
+    build_standalone_editor(output)
+    value = _golden_representation("decision-flow-v1.json")
+    payload = json.dumps(value).encode("utf-8")
+
+    def fake_renderer(
+        *,
+        value: dict[str, object],
+        target: Path,
+        serve_binding: str,
+        public_base_path: str,
+        timeout_seconds: float,
+    ) -> None:
+        del value, serve_binding, public_base_path, timeout_seconds
+        (target / "index.html").write_text("ok", encoding="utf-8")
+
+    monkeypatch.setattr(standalone_editor, "_run_native_viewer_build", fake_renderer)
+
+    def post(supersede_token: str = "") -> dict[str, object]:
+        handler = object.__new__(_EditorRequestHandler)
+        handler.path = NATIVE_API_PATH
+        headers = {
+            "Content-Type": "application/json",
+            "Content-Length": str(len(payload)),
+        }
+        if supersede_token:
+            headers[standalone_editor.NATIVE_SUPERSEDE_HEADER] = supersede_token
+        handler.headers = headers
+        handler.rfile = io.BytesIO(payload)
+        handler.directory = str(output)
+        handler.native_serve_binding = "127.0.0.1-only"
+        handler.public_base_path = ""
+        handler._request_deadline_expired = False
+        handler._request_deadline_at = time.monotonic() + 5
+        handler.close_connection = False
+        monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+        monkeypatch.setattr(
+            handler,
+            "_native_admission_key",
+            lambda: standalone_editor._LOCAL_ADMISSION_KEY,
+        )
+        responses: list[tuple[HTTPStatus, dict[str, object]]] = []
+
+        def capture_json(
+            status: HTTPStatus,
+            body: dict[str, object],
+            *,
+            write_body: bool = True,
+        ) -> bool:
+            del write_body
+            responses.append((status, body))
+            return True
+
+        monkeypatch.setattr(handler, "_send_json", capture_json)
+        handler.do_POST()
+        assert responses
+        status, body = responses[-1]
+        assert status == HTTPStatus.OK, body
+        return body
+
+    first = post()
+    token = str(first["url"]).split("/native/", 1)[1].split("/", 1)[0]
+    record = standalone_editor._native_cache_by_token(output, token)
+    assert record is not None
+    assert record.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
+
+    second = post(token)
+    assert second["url"] == first["url"]
+    assert record.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
+
+    # A fully released old token may legitimately reacquire the same digest:
+    # the sole new consumer must not be mistaken for a duplicate.
+    assert standalone_editor._release_native_superseded_lease(
+        output,
+        token=token,
+        admission_key=standalone_editor._LOCAL_ADMISSION_KEY,
+        next_digest="f" * 64,
+    )
+    assert record.consumer_counts == {}
+    third = post(token)
+    assert third["url"] == first["url"]
+    assert record.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
