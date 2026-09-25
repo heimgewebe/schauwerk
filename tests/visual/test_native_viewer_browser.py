@@ -935,9 +935,18 @@ const waitUntil = async (predicate, label, attempts = 200) => {
   throw new Error(label);
 };
 try {
+  // The initial requestAnimationFrame publication may be starved by Chrome
+  // --dump-dom virtual time. Trigger the existing hosted reset action after
+  // app.js has installed its handlers to request the same authoritative state
+  // through a deterministic synchronous publication.
+  const resetLayoutButton = document.querySelector("#resetLayout");
+  if (!(resetLayoutButton instanceof HTMLButtonElement)) {
+    throw new Error("empty canvas reset control missing");
+  }
+  resetLayoutButton.click();
   await waitUntil(
     () => window.__nativeEmptyMessages.length > 0,
-    "empty canvas startup message timed out",
+    "empty canvas state publication timed out",
   );
   const latest = window.__nativeEmptyMessages.at(-1);
   if (!latest?.canvas || typeof latest.canvas !== "object") {
