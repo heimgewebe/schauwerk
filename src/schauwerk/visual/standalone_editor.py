@@ -1525,7 +1525,12 @@ def _build_native_cache_record(
                 shutil.rmtree(target)
             return winner, False
 
-        _prune_native_cache(root, keep=winner)
+        _prune_native_cache(
+            root,
+            keep=winner,
+            superseded_record=superseded_record,
+            admission_key=admission_key,
+        )
         if (
             stale_path is not None
             and stale_path != target

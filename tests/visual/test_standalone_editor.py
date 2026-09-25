@@ -2785,6 +2785,67 @@ def test_native_supersede_projection_carries_through_prune_byte_reservation(
     assert replacement_record.pin_leases.get(client, 0.0) > time.monotonic()
 
 
+def test_native_supersede_projection_reaches_post_build_prune(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "post-build-prune-projection"
+    build_standalone_editor(output)
+    client = "203.0.113.77"
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_superseded"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert first_created is True
+
+    original_prune = standalone_editor._prune_native_cache
+    prune_calls: list[
+        tuple[
+            standalone_editor._NativeCacheRecord | None,
+            standalone_editor._NativeCacheRecord | None,
+            str | None,
+        ]
+    ] = []
+
+    def observed_prune(root: Path, **kwargs: object) -> None:
+        original_prune(root, **kwargs)
+        prune_calls.append(
+            (
+                kwargs.get("keep"),
+                kwargs.get("superseded_record"),
+                kwargs.get("admission_key"),
+            )
+        )
+
+    monkeypatch.setattr(standalone_editor, "_prune_native_cache", observed_prune)
+
+    replacement = _golden_representation("decision-flow-v1.json")
+    replacement["id"] = "flow_replacement"
+    replacement_normalized = _native_product_input(replacement)
+    replacement_record, replacement_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(replacement_normalized["input_digest"]),
+        value=replacement,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+        superseded_record=first_record,
+    )
+
+    assert replacement_created is True
+    assert len(prune_calls) == 2
+    assert prune_calls[0] == (None, first_record, client)
+    assert prune_calls[1] == (replacement_record, first_record, client)
+
+
 def test_native_prune_revalidates_supersede_projection_after_foreign_repin(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
