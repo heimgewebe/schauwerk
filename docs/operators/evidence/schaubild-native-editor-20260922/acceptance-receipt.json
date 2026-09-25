@@ -75,7 +75,9 @@
     "json_canvas_product_counts_rejected_before_expensive_conversion": true,
     "terminal_supersede_history_reuses_capacity_without_raising_limit": true,
     "undelivered_cache_hit_releases_consumer_acquisition": true,
-    "json_canvas_product_counts_include_omitted_optional_arrays": true
+    "json_canvas_product_counts_include_omitted_optional_arrays": true,
+    "empty_canvas_browser_state_republish_deterministic": true,
+    "hosted_canvas_browser_readiness_deterministic": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -85,8 +87,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "b125f6f370da6604d4d093c0bed403aae038f2a67ff7886abb58245dbd07ba82",
-  "functional_head": "eef6a2a5c19274cccce4914ab165a8d19686d287",
+  "evidence_digest": "3e43c1653a49518a81489a7ec77679f5f9fd45d82619340a7d309d7c2e76c31c",
+  "functional_head": "c22fab3c2826cf17b5b0e22a22732b1b65cb487b",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -108,7 +110,7 @@
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
     "tests/visual/test_native_document.py": "97a49fd9069ef3818caab7768d0c79338e53ed17c49e854ba0c6b6b2501ffd91",
     "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
-    "tests/visual/test_native_viewer_browser.py": "a2cd4885a661ede69cec8ec6f55fa4063050c9ed1cdc0e2e9bbec3149ce4a669",
+    "tests/visual/test_native_viewer_browser.py": "91925652728a14bebb6f62c901b4f0594f4fce8daf6393aeec2e52bed68e860d",
     "tests/visual/test_standalone_editor.py": "0b7379aef166d9f947028487196d01e84cc7e5201ac06aa22f9caad15d15117b",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
