@@ -1964,9 +1964,13 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 admission_key=admission_key,
                 next_digest=cache_digest,
             )
-            if (
-                not superseded_released
-                and not created
+            if superseded_released:
+                _prune_native_cache(
+                    root,
+                    keep=record,
+                )
+            elif (
+                not created
                 and supersede_token == token
             ):
                 _release_redundant_native_consumer(

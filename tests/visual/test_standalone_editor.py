@@ -2846,6 +2846,118 @@ def test_native_supersede_projection_reaches_post_build_prune(
     assert prune_calls[1] == (replacement_record, first_record, client)
 
 
+def test_successful_native_supersede_prunes_released_projection_after_delivery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "post-delivery-supersede-prune"
+    build_standalone_editor(output, public_base_path="/schaubild")
+    client = "203.0.113.77"
+    other_client = "203.0.113.88"
+
+    first = _golden_representation("decision-flow-v1.json")
+    first["id"] = "flow_superseded"
+    first_normalized = _native_product_input(first)
+    first_record, first_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(first_normalized["input_digest"]),
+        value=first,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=client,
+    )
+    assert first_created is True
+
+    other = _golden_representation("decision-flow-v1.json")
+    other["id"] = "flow_other"
+    other_normalized = _native_product_input(other)
+    other_record, other_created = standalone_editor._build_native_cache_record(
+        output,
+        digest=str(other_normalized["input_digest"]),
+        value=other,
+        serve_binding="trusted-reverse-proxy-private-ingress",
+        public_base_path="/schaubild",
+        admission_key=other_client,
+    )
+    assert other_created is True
+    standalone_editor._abandon_native_cache_record(
+        output,
+        other_record,
+        admission_key=other_client,
+    )
+    assert other_record.pin_leases == {}
+    assert other_record.consumer_counts == {}
+
+    first_record.size_bytes = 16 * 1024 * 1024
+    other_record.size_bytes = 15 * 1024 * 1024
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_CACHE_ENTRIES", 32)
+    monkeypatch.setattr(
+        standalone_editor,
+        "MAX_NATIVE_CACHE_BYTES",
+        32 * 1024 * 1024,
+    )
+    monkeypatch.setattr(
+        standalone_editor,
+        "_native_bundle_size",
+        lambda _path: 16 * 1024 * 1024,
+    )
+
+    handler_class = type(
+        "PostDeliverySupersedePruneHandler",
+        (_EditorRequestHandler,),
+        {
+            "editor_origin": EDITOR_ORIGIN,
+            "public_base_path": "/schaubild",
+            "native_serve_binding": "trusted-reverse-proxy-private-ingress",
+            "trusted_proxy_networks": (ipaddress.ip_network("127.0.0.0/8"),),
+        },
+    )
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(handler_class, directory=str(output)),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        replacement = _golden_representation("decision-flow-v1.json")
+        replacement["id"] = "flow_replacement"
+        payload = json.dumps(replacement).encode("utf-8")
+        connection = HTTPConnection(
+            "127.0.0.1",
+            int(server.server_address[1]),
+            timeout=5,
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+                "X-Forwarded-For": client,
+                standalone_editor.NATIVE_SUPERSEDE_HEADER: first_record.token,
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200, body
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    records = standalone_editor._native_cache_records(output)
+    assert sum(record.size_bytes for record in records) <= standalone_editor.MAX_NATIVE_CACHE_BYTES
+    assert len(records) == 2
+    assert sum(
+        record is candidate
+        for record in records
+        for candidate in (first_record, other_record)
+    ) == 1
+    assert first_record.path.exists() != other_record.path.exists()
+
+
 def test_native_prune_revalidates_supersede_projection_after_foreign_repin(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
