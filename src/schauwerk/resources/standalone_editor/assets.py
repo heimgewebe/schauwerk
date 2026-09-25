@@ -1549,24 +1549,28 @@ async function exportNative(format) {
     setStatus("Native Exportart wird nicht unterstützt");
     return;
   }
-  if (currentNativeCanvas) {
-    if (nativeCanvasRenderStale) {
-      setStatus(
-        "Aktuelle SVG-Ausgabe ist nach Renderfehler nicht synchron · .canvas bleibt verfügbar",
-      );
-      return;
-    }
-    const liveSvg = serializeNativeFrameSvg();
-    if (liveSvg === null) {
-      setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
-      return;
-    }
+  if (currentNativeCanvas && nativeCanvasRenderStale) {
+    setStatus(
+      "Aktuelle SVG-Ausgabe ist nach Renderfehler nicht synchron · .canvas bleibt verfügbar",
+    );
+    return;
+  }
+  const liveSvg = serializeNativeFrameSvg();
+  if (liveSvg !== null) {
     prepareDownload(
       new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" }),
       safeFilename(currentTitle) + ".svg",
       "SVG",
     );
-    setStatus("SVG aus aktuellem Canvas-Dokument bereit");
+    setStatus(
+      currentNativeCanvas
+        ? "SVG aus aktuellem Canvas-Dokument bereit"
+        : "SVG aus aktueller nativer Darstellung bereit",
+    );
+    return;
+  }
+  if (currentNativeCanvas) {
+    setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
     return;
   }
   const assetUrl = currentNativeUrl.replace(/index\.html$/, "diagram.svg");

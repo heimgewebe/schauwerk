@@ -242,10 +242,12 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     export_end = app_js.index("function exportDiagram(format)", export_start)
     export_source = app_js[export_start:export_end]
     canvas_export = export_source.index('if (format === "drawio")')
-    stale_svg_guard = export_source.index("if (nativeCanvasRenderStale)")
+    stale_svg_guard = export_source.index("if (currentNativeCanvas && nativeCanvasRenderStale)")
     live_svg = export_source.index("serializeNativeFrameSvg()")
-    assert canvas_export < stale_svg_guard < live_svg
+    asset_fallback = export_source.index("const assetUrl =", live_svg)
+    assert canvas_export < stale_svg_guard < live_svg < asset_fallback
     assert ".canvas bleibt verfügbar" in export_source
+    assert "SVG aus aktueller nativer Darstellung bereit" in export_source
     assert "releaseLaunchTurn();" in native_source
     assert 'pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";' in launch_source
     assert "function toggleEditorFullscreen()" in app_js
@@ -280,6 +282,90 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert '"elk.spacing.nodeNode": "40"' not in app_js
     assert 'event.key === "Escape"' not in app_js
 
+
+
+def test_native_svg_export_prefers_loaded_frame_and_keeps_server_fallback(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    export_start = app_js.index("async function exportNative(format)")
+    export_end = app_js.index("function exportDiagram(format)", export_start)
+    export_source = app_js[export_start:export_end]
+
+    script = r"""
+let editorReady = true;
+let currentRepresentation = {schema_version: "schauwerk-representation-input.v1"};
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
+let currentLegacyXml = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let nativeCanvasRenderStale = false;
+let currentTitle = "Representation";
+let liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="live"></svg>';
+let statusText = "";
+let prepared = null;
+let fetchCalls = 0;
+function clearPreparedDownload() {}
+function setStatus(value) { statusText = String(value); }
+function safeFilename() { return "representation"; }
+function serializeNativeFrameSvg() { return liveSvgValue; }
+function prepareDownload(blob, filename, label) {
+  prepared = {blob, filename, label};
+}
+globalThis.fetch = async () => {
+  fetchCalls += 1;
+  throw new Error("live-frame export must not refetch the native bundle");
+};
+""" + export_source + r"""
+await exportNative("svg");
+if (fetchCalls !== 0) throw new Error("live native SVG export refetched the bundle");
+if (!prepared || prepared.filename !== "representation.svg" || prepared.label !== "SVG") {
+  throw new Error("live native SVG export was not prepared");
+}
+if (!(await prepared.blob.text()).includes('id="live"')) {
+  throw new Error("live native SVG bytes were not exported");
+}
+if (!statusText.includes("aktueller nativer Darstellung")) {
+  throw new Error("live native SVG export status missing");
+}
+
+prepared = null;
+statusText = "";
+liveSvgValue = null;
+globalThis.fetch = async (url, options) => {
+  fetchCalls += 1;
+  if (url !== "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/diagram.svg") {
+    throw new Error("unexpected fallback URL: " + url);
+  }
+  if (options?.cache !== "no-store") {
+    throw new Error("fallback fetch lost no-store policy");
+  }
+  return {
+    ok: true,
+    async text() {
+      return '<svg xmlns="http://www.w3.org/2000/svg" id="fallback"></svg>';
+    },
+  };
+};
+await exportNative("svg");
+if (fetchCalls !== 1) throw new Error("unreadable frame did not use server fallback exactly once");
+if (!prepared || !(await prepared.blob.text()).includes('id="fallback"')) {
+  throw new Error("server SVG fallback was not prepared");
+}
+if (statusText !== "SVG bereit") throw new Error("server SVG fallback status drifted");
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
 
 
 def test_native_canvas_document_change_persists_restoreable_native_draft(
@@ -921,21 +1007,30 @@ try {
   document.querySelector("#sourceInput").value = JSON.stringify(source);
   document.querySelector("#openPasteButton").click();
 
-  await waitUntil(
-    () => initialNativeReadyFrame !== null,
-    "initial native viewer did not publish ready state",
-  );
-  window.removeEventListener("message", onInitialNativeReady);
-
+  let loadedNativeFrame = null;
   await waitUntil(() => {
     const frame = document.querySelector("#editorFrame");
-    return (
-      frame === initialNativeReadyFrame &&
-      frame?.src?.includes("/native/") &&
-      frame.contentDocument?.querySelector('[data-source-id="a"]') &&
-      frame.contentDocument?.querySelector("#deleteSelection")
-    );
+    if (
+      !frame?.src?.includes("/native/") ||
+      !frame.contentDocument?.querySelector('[data-source-id="a"]') ||
+      !frame.contentDocument?.querySelector("#deleteSelection") ||
+      !frame.contentDocument?.querySelector("#resetLayout")
+    ) {
+      return false;
+    }
+    loadedNativeFrame = frame;
+    return true;
   }, "initial native frame did not become ready");
+
+  // Chrome --dump-dom virtual time can starve the viewer's one-shot initial
+  // requestAnimationFrame publication. Ask the already-loaded real viewer to
+  // republish its authoritative document state through an existing control.
+  loadedNativeFrame.contentDocument.querySelector("#resetLayout").click();
+  await waitUntil(
+    () => initialNativeReadyFrame === loadedNativeFrame,
+    "initial native viewer did not publish deterministic ready state",
+  );
+  window.removeEventListener("message", onInitialNativeReady);
 
   const firstFrame = document.querySelector("#editorFrame");
   const viewer = firstFrame.contentDocument;
