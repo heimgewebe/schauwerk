@@ -78,7 +78,8 @@
     "json_canvas_product_counts_include_omitted_optional_arrays": true,
     "empty_canvas_browser_state_republish_deterministic": true,
     "hosted_canvas_browser_readiness_deterministic": true,
-    "native_svg_export_prefers_loaded_frame_after_bundle_expiry": true
+    "native_svg_export_prefers_loaded_frame_after_bundle_expiry": true,
+    "hosted_viewer_waits_for_script_ready_before_state_republish": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -88,8 +89,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "e0e3a42833ef020341fca2f97de84b3b5cf12595b828b46a3b5f98dd944f006d",
-  "functional_head": "39d04d147492f2021f94f9327c12ecad2a06cf44",
+  "evidence_digest": "bbcf24de9c3bbc6d12b84cbdb30914b83b2d739a6ecf6cb996894716f41cb6ce",
+  "functional_head": "2f15b847eb32cbbed62887cb6cee60ee2e975b2b",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -112,7 +113,7 @@
     "tests/visual/test_native_document.py": "97a49fd9069ef3818caab7768d0c79338e53ed17c49e854ba0c6b6b2501ffd91",
     "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
     "tests/visual/test_native_viewer_browser.py": "91925652728a14bebb6f62c901b4f0594f4fce8daf6393aeec2e52bed68e860d",
-    "tests/visual/test_standalone_editor.py": "6775a7534b9dbd4f08230b776c64b7fd8e6f48c45f561059795897351efdd03e",
+    "tests/visual/test_standalone_editor.py": "b838d31c1c715692876f056c932238e5b453f77e938b0f107611638e43273ea5",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
   }
