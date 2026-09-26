@@ -593,7 +593,7 @@ try {
 } catch (_) {
   throw new Error("Native viewer embedded model is invalid");
 }
-for (const key of ["max_edges", "max_groups", "max_nodes", "max_routing_pairs"]) {
+for (const key of ["max_abs_coordinate", "max_edges", "max_groups", "max_nodes", "max_routing_pairs"]) {
   if (!Number.isInteger(editingLimits?.[key]) || editingLimits[key] < 1) {
     throw new Error("Native viewer product-limit contract is incomplete");
   }
@@ -677,6 +677,39 @@ function documentMutationWithinProductLimits(document, { addNodes = 0, addEdges 
   return true;
 }
 
+function boundedDocumentOffset(sourceId, x, y) {
+  if (!documentMode) return { x, y };
+  const sourceNode = sourceModel.nodes.find(
+    (item) => String(item.id) === String(sourceId),
+  );
+  if (!sourceNode) return { x: 0, y: 0 };
+  const limit = editingLimits.max_abs_coordinate;
+  const baseX = Number(sourceNode.x);
+  const baseY = Number(sourceNode.y);
+  return {
+    x: Math.max(-limit - baseX, Math.min(limit - baseX, x)),
+    y: Math.max(-limit - baseY, Math.min(limit - baseY, y)),
+  };
+}
+
+function setNodeOffset(sourceId, x, y) {
+  const bounded = boundedDocumentOffset(sourceId, x, y);
+  overrides = updateNodeOffset(overrides, sourceId, bounded.x, bounded.y);
+}
+
+function boundedDocumentState(document) {
+  if (!document || document.schema_version !== "schauwerk-native-editing-document.v1") {
+    return document;
+  }
+  const bounded = cloneJson(document);
+  const limit = editingLimits.max_abs_coordinate;
+  for (const node of bounded.nodes) {
+    node.x = Math.max(-limit, Math.min(limit, Math.round(Number(node.x))));
+    node.y = Math.max(-limit, Math.min(limit, Math.round(Number(node.y))));
+  }
+  return bounded;
+}
+
 function documentSnapshot() {
   if (!documentMode) return null;
   const snapshot = cloneJson(sourceModel);
@@ -685,7 +718,7 @@ function documentSnapshot() {
     node.x = Math.round(Number(node.x) + offset.x);
     node.y = Math.round(Number(node.y) + offset.y);
   }
-  return snapshot;
+  return boundedDocumentState(snapshot);
 }
 
 function canvasFromDocument(document) {
@@ -746,19 +779,20 @@ function canvasFromDocument(document) {
 
 function publishDocumentState(eventName = "native-document-change", document = documentSnapshot()) {
   if (!documentEditorHosted || !document) return;
-  const canvasState = canvasFromDocument(document);
+  const boundedDocument = boundedDocumentState(document);
+  const canvasState = canvasFromDocument(boundedDocument);
   if (!canvasState) return;
   window.parent.postMessage(
-    { event: eventName, document, canvas: canvasState },
+    { event: eventName, document: boundedDocument, canvas: canvasState },
     window.location.origin,
   );
 }
 
 function rebuildDocument(document) {
   if (!documentEditorHosted || !document) return;
-  sourceModel = document;
+  sourceModel = boundedDocumentState(document);
   overrides = Object.create(null);
-  publishDocumentState("native-document-rebuild", document);
+  publishDocumentState("native-document-rebuild", sourceModel);
 }
 
 function applyView() {
@@ -922,7 +956,7 @@ function constrainBoundsOffset(sourceId, bounds, box) {
   if (Math.abs(shiftX) <= BOUNDS_EPSILON && Math.abs(shiftY) <= BOUNDS_EPSILON) return false;
 
   const current = nodeOffset(overrides, sourceId);
-  overrides = updateNodeOffset(overrides, sourceId, current.x + shiftX, current.y + shiftY);
+  setNodeOffset(sourceId, current.x + shiftX, current.y + shiftY);
   applyNodeTransform(sourceId);
   return true;
 }
@@ -958,7 +992,7 @@ function constrainNodeToCanvas(sourceId) {
       Math.abs(current.x) > BOUNDS_EPSILON ||
       Math.abs(current.y) > BOUNDS_EPSILON
     ) {
-      overrides = updateNodeOffset(overrides, sourceId, 0, 0);
+      setNodeOffset(sourceId, 0, 0);
       applyNodeTransform(sourceId);
       return true;
     }
@@ -1062,8 +1096,7 @@ function startPinchIfPossible() {
   if (distance < 1) return false;
   if (gesture?.kind === "drag") {
     if (gesture.moved) {
-      overrides = updateNodeOffset(
-        overrides,
+      setNodeOffset(
         gesture.sourceId,
         gesture.rollbackOffset.x,
         gesture.rollbackOffset.y,
@@ -1284,8 +1317,7 @@ viewport.addEventListener("pointermove", (event) => {
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
     gesture.moved = true;
     const delta = screenDeltaToSvg(view, screenDx, screenDy);
-    overrides = updateNodeOffset(
-      overrides,
+    setNodeOffset(
       gesture.sourceId,
       gesture.startOffset.x + delta.x,
       gesture.startOffset.y + delta.y,

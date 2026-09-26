@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 from collections.abc import Mapping
 from typing import Any, Final
 
@@ -19,6 +20,7 @@ __all__ = [
     "MAX_NATIVE_NODES",
     "MAX_NATIVE_EDGES",
     "MAX_NATIVE_ROUTING_PAIRS",
+    "MAX_NATIVE_ABS_COORDINATE",
     "NativeDocumentError",
     "editing_document_to_json_canvas",
     "json_canvas_to_editing_document",
@@ -35,7 +37,7 @@ MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
 _ALLOWED_NODE_TYPES: Final = frozenset({"text", "file", "link", "group"})
 _ALLOWED_SIDES: Final = frozenset({"top", "right", "bottom", "left"})
 _ALLOWED_ENDS: Final = frozenset({"none", "arrow"})
-_MAX_ABS_COORDINATE: Final = 10_000_000
+MAX_NATIVE_ABS_COORDINATE: Final = 10_000_000
 _MAX_DIMENSION: Final = 1_000_000
 _MAX_JAVASCRIPT_SAFE_INTEGER: Final = (1 << 53) - 1
 
@@ -62,7 +64,7 @@ def _integer(value: Any, *, field: str) -> int:
 
 def _geometry_integer(value: Any, *, field: str) -> int:
     parsed = _integer(value, field=field)
-    if abs(parsed) > _MAX_ABS_COORDINATE:
+    if abs(parsed) > MAX_NATIVE_ABS_COORDINATE:
         raise NativeDocumentError(f"{field} exceeds the coordinate budget")
     return parsed
 
@@ -111,7 +113,15 @@ def _assert_javascript_safe_integers(value: Any) -> None:
     pending = [value]
     while pending:
         item = pending.pop()
-        if isinstance(item, bool) or item is None or isinstance(item, (str, float)):
+        if isinstance(item, bool) or item is None or isinstance(item, str):
+            continue
+        if isinstance(item, float):
+            if not math.isfinite(item):
+                raise NativeDocumentError("JSON Canvas numbers must be finite")
+            if item.is_integer() and abs(item) > _MAX_JAVASCRIPT_SAFE_INTEGER:
+                raise NativeDocumentError(
+                    "JSON Canvas integers must fit the JavaScript safe-integer range"
+                )
             continue
         if isinstance(item, int):
             if abs(item) > _MAX_JAVASCRIPT_SAFE_INTEGER:

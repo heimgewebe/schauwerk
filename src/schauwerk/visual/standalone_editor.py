@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import ipaddress
 import json
+import math
 import os
 import re
 import secrets
@@ -399,6 +400,82 @@ def _assert_native_canvas_product_limits(value: Any) -> None:
             f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
             f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
         )
+
+
+def _canonical_json_number_token(token: str) -> str | None:
+    match = re.fullmatch(
+        r"(-?)(0|[1-9]\d*)(?:\.(\d+))?(?:[eE]([+-]?\d+))?",
+        token,
+    )
+    if match is None:
+        return None
+    fraction = match.group(3) or ""
+    raw_exponent = match.group(4) or "0"
+    exponent_digits = raw_exponent.lstrip("+-").lstrip("0") or "0"
+    if len(exponent_digits) > 6:
+        return None
+    exponent_sign = -1 if raw_exponent.startswith("-") else 1
+    exponent = exponent_sign * int(exponent_digits) - len(fraction)
+    digits = f"{match.group(2)}{fraction}".lstrip("0")
+    sign = "-" if match.group(1) == "-" else "+"
+    if not digits:
+        return f"{sign}0"
+    trimmed_digits = digits.rstrip("0")
+    exponent += len(digits) - len(trimmed_digits)
+    return f"{sign}{trimmed_digits}e{exponent}"
+
+
+def _assert_javascript_roundtrip_number_token(token: str) -> None:
+    canonical = _canonical_json_number_token(token)
+    if canonical is None:
+        raise StandaloneEditorError(
+            "JSON Canvas numeric token cannot be proven JavaScript-roundtrip safe"
+        )
+    try:
+        parsed = float(token)
+    except ValueError as exc:
+        raise StandaloneEditorError(
+            "JSON Canvas numeric token cannot be parsed as a JavaScript number"
+        ) from exc
+    if not math.isfinite(parsed):
+        raise StandaloneEditorError(
+            "JSON Canvas numeric token exceeds the finite JavaScript number range"
+        )
+    serialized = "0" if parsed == 0.0 else repr(parsed)
+    if _canonical_json_number_token(serialized) != canonical:
+        raise StandaloneEditorError(
+            "JSON Canvas numeric token would change during JavaScript roundtrip"
+        )
+
+
+def _assert_json_canvas_request_number_tokens(payload_text: str, value: Any) -> None:
+    is_canvas_import = (
+        isinstance(value, dict)
+        and value.get("schema_version") == NATIVE_IMPORT_SCHEMA
+        and value.get("format") == "json-canvas-1.0"
+    )
+    is_editing_document = (
+        isinstance(value, dict)
+        and value.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+    )
+    if not (is_canvas_import or is_editing_document):
+        return
+
+    def validate_number(token: str) -> int:
+        _assert_javascript_roundtrip_number_token(token)
+        return 0
+
+    def reject_constant(token: str) -> None:
+        raise StandaloneEditorError(
+            f"JSON Canvas numeric constant is not standard finite JSON: {token}"
+        )
+
+    json.loads(
+        payload_text,
+        parse_int=validate_number,
+        parse_float=validate_number,
+        parse_constant=reject_constant,
+    )
 
 
 def _native_viewer_input_size(value: dict[str, Any]) -> int:
@@ -1898,7 +1975,9 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "incomplete request body"})
             return
         try:
-            value = json.loads(payload.decode("utf-8"))
+            payload_text = payload.decode("utf-8")
+            value = json.loads(payload_text)
+            _assert_json_canvas_request_number_tokens(payload_text, value)
             normalized = _native_product_input(value)
             digest = str(
                 normalized.get("input_digest") or normalized.get("source_digest") or ""

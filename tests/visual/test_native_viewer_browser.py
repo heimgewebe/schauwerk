@@ -11,7 +11,10 @@ from pathlib import Path
 
 import pytest
 
-from schauwerk.visual.native_document import json_canvas_to_editing_document
+from schauwerk.visual.native_document import (
+    MAX_NATIVE_ABS_COORDINATE,
+    json_canvas_to_editing_document,
+)
 from schauwerk.visual.native_viewer import build_native_viewer
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -60,6 +63,8 @@ window.setInterval(() => {
     "limitBrowserRegressionError",
     "emptyCanvasBrowserRegression",
     "emptyCanvasBrowserRegressionError",
+    "coordinateBrowserRegression",
+    "coordinateBrowserRegressionError",
   ]) {
     if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
   }
@@ -729,6 +734,181 @@ try {
     assert 'data-canvas-browser-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-canvas-browser-regression="fail"' not in completed.stdout, completed.stdout
 
+
+
+def test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget(
+    tmp_path: Path,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for canvas coordinate regression")
+        raise AssertionError("unreachable")
+
+    canvas_source = {
+        "nodes": [
+            {
+                "id": "boundary",
+                "type": "text",
+                "x": MAX_NATIVE_ABS_COORDINATE,
+                "y": MAX_NATIVE_ABS_COORDINATE,
+                "width": 180,
+                "height": 90,
+                "text": "Boundary",
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(canvas_source)
+    output = tmp_path / "canvas-coordinate-viewer"
+    build_native_viewer(
+        document,
+        output,
+        serve_binding="127.0.0.1-only",
+        public_base_path="",
+    )
+
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert app_tag in index
+    browser_probe = r"""
+<script>
+Element.prototype.setPointerCapture = function () {};
+Element.prototype.releasePointerCapture = function () {};
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+window.__nativeDocumentMessages = [];
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (
+    event.data?.event === "native-document-change" ||
+    event.data?.event === "native-document-rebuild"
+  ) {
+    window.__nativeDocumentMessages.push(event.data);
+  }
+});
+const waitUntil = async (predicate, label) => {
+  const deadline = performance.now() + 6000;
+  while (performance.now() < deadline) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+const firePointer = (target, type, pointerId, clientX, clientY) => {
+  target.dispatchEvent(new PointerEvent(type, {
+    pointerId,
+    clientX,
+    clientY,
+    bubbles: true,
+    cancelable: true,
+    pointerType: "mouse",
+    buttons: type === "pointerup" ? 0 : 1,
+  }));
+};
+try {
+  await waitUntil(
+    () =>
+      document.querySelector('[data-source-kind="node"][data-source-id="boundary"]') &&
+      document.querySelector("#nativeCanvas")?.style?.transform?.includes("scale(") &&
+      window.__nativeDocumentMessages.length > 0,
+    "boundary viewer did not become interaction-ready",
+  );
+  const node = document.querySelector(
+    '[data-source-kind="node"][data-source-id="boundary"]',
+  );
+  const viewport = document.querySelector("#nativeViewport");
+  if (!(node instanceof SVGGElement) || !(viewport instanceof HTMLElement)) {
+    throw new Error("coordinate regression controls missing");
+  }
+  const limits = JSON.parse(document.querySelector("#nativeLimits")?.textContent || "{}");
+  const limit = limits.max_abs_coordinate;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error("coordinate budget was not embedded");
+  }
+
+  window.__nativeDocumentMessages.length = 0;
+  const rect = node.getBoundingClientRect();
+  const x = (rect.left + rect.right) / 2;
+  const y = (rect.top + rect.bottom) / 2;
+  firePointer(node, "pointerdown", 71, x, y);
+  firePointer(viewport, "pointermove", 71, x + 40, y + 40);
+  firePointer(viewport, "pointerup", 71, x + 40, y + 40);
+  await waitUntil(
+    () => window.__nativeDocumentMessages.some(
+      (message) => message.event === "native-document-change",
+    ),
+    "coordinate drag did not publish document state",
+  );
+  const latest = window.__nativeDocumentMessages
+    .filter((message) => message.event === "native-document-change")
+    .at(-1);
+  const documentNode = latest?.document?.nodes?.find((item) => item.id === "boundary");
+  const canvasNode = latest?.canvas?.nodes?.find((item) => item.id === "boundary");
+  if (
+    !documentNode ||
+    !canvasNode ||
+    documentNode.x !== limit ||
+    documentNode.y !== limit ||
+    canvasNode.x !== limit ||
+    canvasNode.y !== limit
+  ) {
+    throw new Error("drag published coordinates outside the accepted document range");
+  }
+  document.documentElement.dataset.coordinateBrowserRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.coordinateBrowserRegression = "fail";
+  document.documentElement.dataset.coordinateBrowserRegressionError = String(
+    error?.message || error,
+  );
+}
+</script>
+"""
+    index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+    _write_document_probe_host(output)
+
+    class QuietCoordinateHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietCoordinateHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    f"--user-data-dir={tmp_path / 'coordinate-chrome-profile'}",
+                    "--no-first-run",
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--run-all-compositor-stages-before-draw",
+                    "--virtual-time-budget=8000",
+                    "--dump-dom",
+                    f"http://127.0.0.1:{port}/host.html",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser("Google Chrome coordinate probe did not become usable in time")
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-coordinate-browser-regression="pass"' in completed.stdout, completed.stdout
+    assert 'data-coordinate-browser-regression="fail"' not in completed.stdout, completed.stdout
 
 
 def test_native_canvas_browser_blocks_node_creation_past_product_limit(

@@ -33,6 +33,10 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_browser_blocks_node_creation_past_product_limit"
     ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
+    ),
 )
 MAX_ATTEMPTS = 2
 

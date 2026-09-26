@@ -24,6 +24,7 @@ from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
 from .native_diagram import render_native_diagram, render_native_editing_document
 from .native_document import (
+    MAX_NATIVE_ABS_COORDINATE,
     MAX_NATIVE_EDGES,
     MAX_NATIVE_GROUPS,
     MAX_NATIVE_NODES,
@@ -95,6 +96,7 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
     )
     embedded_limits = json.dumps(
         {
+            "max_abs_coordinate": MAX_NATIVE_ABS_COORDINATE,
             "max_edges": MAX_NATIVE_EDGES,
             "max_groups": MAX_NATIVE_GROUPS,
             "max_nodes": MAX_NATIVE_NODES,

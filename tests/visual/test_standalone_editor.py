@@ -3582,6 +3582,70 @@ def test_native_render_endpoint_passes_canonical_public_input_to_renderer(
     assert "input_digest" not in captured[0]
 
 
+def test_native_render_endpoint_rejects_lossy_json_canvas_number_tokens(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "CanvasNumberFidelityEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        for token, expected_error in (
+            ("9007199254740990.5", "would change during JavaScript roundtrip"),
+            ("1e400", "finite JavaScript number range"),
+        ):
+            payload = (
+                '{"schema_version":"schauwerk-native-import-request.v1",'
+                '"format":"json-canvas-1.0","source":{"nodes":[],"edges":[],'
+                '"plugin":{"revision":__TOKEN__}}}'
+            ).replace("__TOKEN__", token).encode()
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            assert response.status == 422
+            assert expected_error in body["error"]
+
+        safe_payload = (
+            b'{"schema_version":"schauwerk-native-import-request.v1",'
+            b'"format":"json-canvas-1.0","source":{"nodes":[],"edges":[],'
+            b'"plugin":{"revision":0.1,"numericText":"9007199254740990.5"}}}'
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=safe_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(safe_payload)),
+            },
+        )
+        safe_response = connection.getresponse()
+        safe_body = json.loads(safe_response.read().decode("utf-8"))
+        assert safe_response.status == 200, safe_body
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
@@ -3883,6 +3947,16 @@ if (explicitExtensionOnly.kind !== 'json-canvas') throw new Error('extension-onl
 if (explicitExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
 const unsafeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740993}}}}';
 if (detectInput(unsafeIntegerCanvas).kind !== 'unknown') throw new Error('unsafe JSON integer Canvas was accepted after numeric rounding');
+const roundedFractionCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740990.5}}}}';
+if (detectInput(roundedFractionCanvas).kind !== 'unknown') throw new Error('rounded JSON fraction Canvas was accepted after numeric rounding');
+const overflowingExponentCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":1e400}}}}';
+if (detectInput(overflowingExponentCanvas).kind !== 'unknown') throw new Error('overflowing JSON exponent Canvas was accepted');
+const safeFractionCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":0.1}}}}';
+const safeFractionDetected = detectInput(safeFractionCanvas);
+if (safeFractionDetected.kind !== 'json-canvas') throw new Error('roundtrip-stable JSON fraction Canvas was rejected');
+if (safeFractionDetected.value?.plugin?.revision !== 0.1) throw new Error('roundtrip-stable JSON fraction changed value');
+const numericStringCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":"9007199254740990.5"}}}}';
+if (detectInput(numericStringCanvas).kind !== 'json-canvas') throw new Error('numeric text was mistaken for a JSON number token');
 const safeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740991}}}}';
 const safeIntegerDetected = detectInput(safeIntegerCanvas);
 if (safeIntegerDetected.kind !== 'json-canvas') throw new Error('maximum safe JSON integer Canvas was rejected');

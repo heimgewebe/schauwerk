@@ -321,12 +321,13 @@ function explicitCanvasFence(label) {
   return /^(?:jsoncanvas|json-canvas|\.?canvas)$/i.test(String(label || ""));
 }
 
-function jsonCanvasIntegersAreRoundtripSafe(value) {
+function jsonCanvasNumbersRemainSafe(value) {
   const pending = [value];
   const seen = new WeakSet();
   while (pending.length > 0) {
     const item = pending.pop();
     if (typeof item === "number") {
+      if (!Number.isFinite(item)) return false;
       if (Number.isInteger(item) && !Number.isSafeInteger(item)) return false;
       continue;
     }
@@ -342,6 +343,70 @@ function jsonCanvasIntegersAreRoundtripSafe(value) {
   return true;
 }
 
+function canonicalJsonNumberToken(token) {
+  const match = String(token).match(
+    /^(-?)(0|[1-9]\d*)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/,
+  );
+  if (!match) return null;
+  const fraction = match[3] || "";
+  const rawExponent = match[4] || "0";
+  const exponentSign = rawExponent.startsWith("-") ? -1 : 1;
+  const exponentDigits = rawExponent.replace(/^[+-]?0*/, "") || "0";
+  if (exponentDigits.length > 6) return null;
+  let exponent = exponentSign * Number(exponentDigits) - fraction.length;
+  let digits = `${match[2]}${fraction}`.replace(/^0+/, "");
+  const sign = match[1] === "-" ? "-" : "+";
+  if (!digits) return `${sign}0`;
+  const trimmedDigits = digits.replace(/0+$/, "");
+  exponent += digits.length - trimmedDigits.length;
+  digits = trimmedDigits;
+  return `${sign}${digits}e${exponent}`;
+}
+
+function jsonCanvasNumberTokensRoundtripSafely(text) {
+  let inString = false;
+  let escaped = false;
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      index += 1;
+      continue;
+    }
+    if (character === "-" || (character >= "0" && character <= "9")) {
+      const match = text.slice(index).match(
+        /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/,
+      );
+      if (!match) {
+        index += 1;
+        continue;
+      }
+      const token = match[0];
+      const parsed = Number(token);
+      if (!Number.isFinite(parsed)) return false;
+      const serialized = JSON.stringify(parsed);
+      if (
+        canonicalJsonNumberToken(token) === null ||
+        canonicalJsonNumberToken(serialized) !== canonicalJsonNumberToken(token)
+      ) {
+        return false;
+      }
+      index += token.length;
+      continue;
+    }
+    index += 1;
+  }
+  return true;
+}
+
 function detectNormalizedInput(text, options = {}) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
@@ -350,7 +415,12 @@ function detectNormalizedInput(text, options = {}) {
     try {
       const value = JSON.parse(text);
       if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
-      if (isJsonCanvas(value, { allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas) })) return { kind: "json-canvas", text, value };
+      if (
+        isJsonCanvas(value, { allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas) }) &&
+        jsonCanvasNumberTokensRoundtripSafely(text)
+      ) {
+        return { kind: "json-canvas", text, value };
+      }
     } catch (_) {
       return { kind: "unknown", text };
     }
@@ -444,7 +514,7 @@ function isCanvasEdge(edge) {
 
 export function isJsonCanvas(value, options = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (!jsonCanvasIntegersAreRoundtripSafe(value)) return false;
+  if (!jsonCanvasNumbersRemainSafe(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
   if (!hasNodes && !hasEdges) return Object.keys(value).length === 0 || Boolean(options.allowExtensionOnly);

@@ -170,6 +170,29 @@ def test_json_canvas_rejects_unsafe_extension_integers_before_roundtrip(
     )
 
 
+@pytest.mark.parametrize(
+    ("unsafe_number", "message"),
+    [
+        (float(1 << 53), "safe-integer range"),
+        (-float(1 << 53), "safe-integer range"),
+        (float("inf"), "must be finite"),
+        (float("-inf"), "must be finite"),
+    ],
+)
+def test_json_canvas_rejects_unsafe_extension_float_numbers(
+    unsafe_number: float,
+    message: str,
+) -> None:
+    source = _canvas()
+    source["customTopLevel"] = {"nested": [{"revision": unsafe_number}]}
+
+    with pytest.raises(NativeDocumentError, match=message):
+        validate_json_canvas(source)
+
+    source["customTopLevel"]["nested"][0]["revision"] = 0.1
+    assert validate_json_canvas(source)["customTopLevel"]["nested"][0]["revision"] == 0.1
+
+
 def test_editing_document_projects_geometry_text_and_edges_back_to_canvas() -> None:
     document = json_canvas_to_editing_document(_canvas(), title="Probe")
     by_id = {node["id"]: node for node in document["nodes"]}
