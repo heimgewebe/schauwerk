@@ -50,10 +50,11 @@ INDEX_HTML = r"""<!doctype html>
       <p class="error" id="error" role="alert" hidden></p>
 
       <aside class="boundary-note">
-        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen und der begrenzte, semantisch
-        importierbare draw.io-Graphpfad werden durch <code>schauwerk-native-diagram-v1</code> gerendert.
-        Nicht verlustarm importierbares draw.io sowie weitere Kompatibilitätsformate öffnen den Legacy-Editor nur
-        nach ausdrücklicher Nutzerwahl. <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
+        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen, <code>.canvas</code>/JSON Canvas
+        und der begrenzte, semantisch importierbare draw.io-Graphpfad werden durch
+        <code>schauwerk-native-diagram-v1</code> gerendert. Nicht verlustarm importierbares draw.io sowie weitere
+        Kompatibilitätsformate öffnen den Legacy-Editor nur nach ausdrücklicher Nutzerwahl.
+        <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
       </aside>
     </section>
 
@@ -528,13 +529,37 @@ function detectNormalizedInput(text, options = {}) {
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
   if (text.startsWith("{")) {
     try {
-      if (!jsonObjectMembersAreUnique(text)) return { kind: "unknown", text };
+      const uniqueMembers = jsonObjectMembersAreUnique(text);
       const value = JSON.parse(text);
-      if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
+      if (isSchauwerkRepresentation(value)) {
+        return uniqueMembers ? { kind: "representation", text, value } : { kind: "unknown", text };
+      }
       if (
-        isJsonCanvas(value, { allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas) }) &&
-        jsonCanvasNumberTokensRoundtripSafely(text)
+        hasSupportedJsonCanvasShape(value, {
+          allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas),
+        })
       ) {
+        if (!uniqueMembers) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: doppelte Objektschlüssel sind nicht zulässig.",
+          };
+        }
+        if (!jsonCanvasNumbersRemainSafe(value)) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: Zahlen müssen im sicheren JavaScript-Zahlenbereich liegen.",
+          };
+        }
+        if (!jsonCanvasNumberTokensRoundtripSafely(text)) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: ein Zahlenliteral würde sich beim JavaScript-Roundtrip verändern.",
+          };
+        }
         return { kind: "json-canvas", text, value };
       }
     } catch (_) {
@@ -628,15 +653,18 @@ function isCanvasEdge(edge) {
   );
 }
 
-export function isJsonCanvas(value, options = {}) {
+function hasSupportedJsonCanvasShape(value, options = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (!jsonCanvasNumbersRemainSafe(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
   if (!hasNodes && !hasEdges) return Object.keys(value).length === 0 || Boolean(options.allowExtensionOnly);
   if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
   if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
   return true;
+}
+
+export function isJsonCanvas(value, options = {}) {
+  return hasSupportedJsonCanvasShape(value, options) && jsonCanvasNumbersRemainSafe(value);
 }
 
 export const MAX_INPUT_BYTES = 5 * 1024 * 1024;
@@ -1284,6 +1312,9 @@ function prepareInput(raw, title = "Schaubild") {
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
+  if (detected.kind === "json-canvas-rejected") {
+    throw new Error(detected.reason);
+  }
   if (detected.kind === "drawio") {
     const xml = validateDiagramXml(detected.text);
     return {
@@ -1793,7 +1824,9 @@ async function exportNative(format) {
     return;
   }
   const liveSvg = serializeNativeFrameSvg({
-    stripInputDigest: nativeCanvasDiffersFromRendered(currentNativeCanvas),
+    stripInputDigest: currentNativeCanvas
+      ? nativeCanvasDiffersFromRendered(currentNativeCanvas)
+      : true,
   });
   if (liveSvg !== null) {
     prepareDownload(

@@ -169,6 +169,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "schauwerk-representation-input.v1" in index_html
     assert "Legacy leer" in index_html
     assert "Renderer-Cutover:" in index_html
+    assert "<code>.canvas</code>/JSON Canvas" in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
@@ -249,12 +250,12 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     canvas_export = export_source.index('if (format === "drawio")')
     stale_svg_guard = export_source.index("if (currentNativeCanvas && nativeCanvasRenderStale)")
     live_svg = export_source.index("serializeNativeFrameSvg({")
-    digest_sync = export_source.index(
-        "stripInputDigest: nativeCanvasDiffersFromRendered(currentNativeCanvas)",
-        live_svg,
-    )
+    digest_policy = export_source.index("stripInputDigest: currentNativeCanvas", live_svg)
     asset_fallback = export_source.index("const assetUrl =", live_svg)
-    assert canvas_export < stale_svg_guard < live_svg < digest_sync < asset_fallback
+    digest_policy_source = export_source[digest_policy:asset_fallback]
+    assert "nativeCanvasDiffersFromRendered(currentNativeCanvas)" in digest_policy_source
+    assert ": true," in digest_policy_source
+    assert canvas_export < stale_svg_guard < live_svg < digest_policy < asset_fallback
     assert ".canvas bleibt verfügbar" in export_source
     assert "SVG aus aktueller nativer Darstellung bereit" in export_source
     assert "releaseLaunchTurn();" in native_source
@@ -430,15 +431,29 @@ if (!(await prepared.blob.text()).includes('id="live"')) {
 if (!statusText.includes("aktueller nativer Darstellung")) {
   throw new Error("live native SVG export status missing");
 }
-if (stripInputDigestSeen) {
-  throw new Error("synchronized Representation export requested digest stripping");
+if (!stripInputDigestSeen) {
+  throw new Error("non-document live Representation export retained canonical digest authority");
 }
 
 prepared = null;
 statusText = "";
 currentRepresentation = null;
+currentNativeCanvas = {dirty: false};
+liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="synchronized"></svg>';
+stripInputDigestSeen = null;
+await exportNative("svg");
+if (stripInputDigestSeen) {
+  throw new Error("synchronized document-backed Canvas export requested digest stripping");
+}
+if (!(await prepared.blob.text()).includes('id="synchronized"')) {
+  throw new Error("synchronized Canvas SVG bytes were not exported");
+}
+
+prepared = null;
+statusText = "";
 currentNativeCanvas = {dirty: true};
 liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="dirty"></svg>';
+stripInputDigestSeen = null;
 await exportNative("svg");
 if (!stripInputDigestSeen) {
   throw new Error("live-modified Canvas export did not request digest stripping");
@@ -463,14 +478,18 @@ globalThis.fetch = async (url, options) => {
   return {
     ok: true,
     async text() {
-      return '<svg xmlns="http://www.w3.org/2000/svg" id="fallback"></svg>';
+      return '<svg xmlns="http://www.w3.org/2000/svg" id="fallback" data-input-digest="' + "a".repeat(64) + '"></svg>';
     },
   };
 };
 await exportNative("svg");
 if (fetchCalls !== 1) throw new Error("unreadable frame did not use server fallback exactly once");
-if (!prepared || !(await prepared.blob.text()).includes('id="fallback"')) {
+const fallbackSvg = prepared ? await prepared.blob.text() : "";
+if (!prepared || !fallbackSvg.includes('id="fallback"')) {
   throw new Error("server SVG fallback was not prepared");
+}
+if (!fallbackSvg.includes('data-input-digest="' + "a".repeat(64) + '"')) {
+  throw new Error("unchanged server SVG fallback lost its canonical input digest");
 }
 if (statusText !== "SVG bereit") throw new Error("server SVG fallback status drifted");
 """
@@ -4037,12 +4056,28 @@ if (detectInput(extensionOnly).kind !== 'unknown') throw new Error('extension-on
 const explicitExtensionOnly = detectInput(extensionOnly, {{allowExtensionOnlyCanvas: true}});
 if (explicitExtensionOnly.kind !== 'json-canvas') throw new Error('extension-only JSON Canvas rejected with explicit context');
 if (explicitExtensionOnly.value?.customTopLevel?.kept !== true) throw new Error('extension-only JSON Canvas data was not preserved');
-const unsafeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740993}}}}';
-if (detectInput(unsafeIntegerCanvas).kind !== 'unknown') throw new Error('unsafe JSON integer Canvas was accepted after numeric rounding');
+const expectRejectedCanvas = (raw, reasonFragment) => {{
+  const result = detectInput(raw);
+  if (result.kind !== 'json-canvas-rejected') {{
+    throw new Error('recognized lossy JSON Canvas did not preserve rejected classification: ' + result.kind);
+  }}
+  if (!String(result.reason || '').includes(reasonFragment)) {{
+    throw new Error('rejected JSON Canvas lost specific reason: ' + String(result.reason || ''));
+  }}
+  return result;
+}};
+const unsafeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740992}}}}';
+expectRejectedCanvas(unsafeIntegerCanvas, 'sicheren JavaScript-Zahlenbereich');
+const roundedUnsafeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740993}}}}';
+expectRejectedCanvas(roundedUnsafeIntegerCanvas, 'sicheren JavaScript-Zahlenbereich');
 const roundedFractionCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740990.5}}}}';
-if (detectInput(roundedFractionCanvas).kind !== 'unknown') throw new Error('rounded JSON fraction Canvas was accepted after numeric rounding');
+expectRejectedCanvas(roundedFractionCanvas, 'Zahlenliteral');
 const overflowingExponentCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":1e400}}}}';
-if (detectInput(overflowingExponentCanvas).kind !== 'unknown') throw new Error('overflowing JSON exponent Canvas was accepted');
+expectRejectedCanvas(overflowingExponentCanvas, 'sicheren JavaScript-Zahlenbereich');
+const negativeZeroCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":-0}}}}';
+expectRejectedCanvas(negativeZeroCanvas, 'Zahlenliteral');
+const negativeZeroFractionCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":-0.0}}}}';
+expectRejectedCanvas(negativeZeroFractionCanvas, 'Zahlenliteral');
 const safeFractionCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":0.1}}}}';
 const safeFractionDetected = detectInput(safeFractionCanvas);
 if (safeFractionDetected.kind !== 'json-canvas') throw new Error('roundtrip-stable JSON fraction Canvas was rejected');
@@ -4050,9 +4085,9 @@ if (safeFractionDetected.value?.plugin?.revision !== 0.1) throw new Error('round
 const numericStringCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":"9007199254740990.5"}}}}';
 if (detectInput(numericStringCanvas).kind !== 'json-canvas') throw new Error('numeric text was mistaken for a JSON number token');
 const duplicateExtensionCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"mode\":\"keep\",\"mode\":\"drop\"}}}}';
-if (detectInput(duplicateExtensionCanvas).kind !== 'unknown') throw new Error('duplicate JSON object member was accepted');
+expectRejectedCanvas(duplicateExtensionCanvas, 'doppelte Objektschlüssel');
 const escapedDuplicateExtensionCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"mode\":\"keep\",\"m' + String.fromCharCode(92) + 'u006fde\":\"drop\"}}}}';
-if (detectInput(escapedDuplicateExtensionCanvas).kind !== 'unknown') throw new Error('escape-equivalent duplicate JSON object member was accepted');
+expectRejectedCanvas(escapedDuplicateExtensionCanvas, 'doppelte Objektschlüssel');
 const repeatedMemberAcrossObjectsCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"left\":{{\"mode\":\"keep\"}},\"right\":{{\"mode\":\"drop\"}}}}}}';
 if (detectInput(repeatedMemberAcrossObjectsCanvas).kind !== 'json-canvas') throw new Error('object-local duplicate detection rejected sibling member names');
 const duplicateLookingTextCanvas = JSON.stringify({{nodes: [], edges: [], plugin: {{note: '{{\"mode\":\"keep\",\"mode\":\"drop\"}}'}}}});
@@ -4281,7 +4316,7 @@ def test_canvas_import_browser_xml_validation_when_chrome_available(tmp_path: Pa
     harness = output / "xml-validation-test.html"
     harness.write_text(
         """<!doctype html><meta charset=\"utf-8\"><pre id=\"result\">pending</pre><script type=\"module\">
-import { validateDiagramXml } from './canvas-import.js';
+import { detectInput, validateDiagramXml } from './canvas-import.js';
 const valid = [
   '<mxfile><diagram/></mxfile>',
   '<mxGraphModel><root/></mxGraphModel>',
@@ -4302,6 +4337,22 @@ for (const value of invalid) {
   try { validateDiagramXml(value); } catch (_) { rejected = true; }
   if (!rejected) ok = false;
 }
+const fidelityRejections = [
+  ['{"nodes":[],"edges":[],"plugin":{"revision":9007199254740992}}', 'sicheren JavaScript-Zahlenbereich'],
+  ['{"nodes":[],"edges":[],"plugin":{"revision":9007199254740990.5}}', 'Zahlenliteral'],
+  ['{"nodes":[],"edges":[],"plugin":{"revision":1e400}}', 'sicheren JavaScript-Zahlenbereich'],
+  ['{"nodes":[],"edges":[],"plugin":{"revision":-0}}', 'Zahlenliteral'],
+  ['{"nodes":[],"edges":[],"plugin":{"revision":-0.0}}', 'Zahlenliteral'],
+  ['{"nodes":[],"edges":[],"plugin":{"mode":"keep","mode":"drop"}}', 'doppelte Objektschlüssel'],
+  ['{"nodes":[],"edges":[],"plugin":{"mode":"keep","m\\u006fde":"drop"}}', 'doppelte Objektschlüssel'],
+];
+for (const [raw, reason] of fidelityRejections) {
+  const detected = detectInput(raw);
+  if (detected.kind !== 'json-canvas-rejected' || !String(detected.reason || '').includes(reason)) {
+    ok = false;
+  }
+}
+if (detectInput('{"theme":"dark"}').kind !== 'unknown') ok = false;
 document.querySelector('#result').textContent = ok ? 'PASS' : 'FAIL';
 </script>""",
         encoding="utf-8",
