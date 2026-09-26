@@ -315,6 +315,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/drawio_import.py",
+        "src/schauwerk/visual/json_fidelity.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/standalone_editor.py",
@@ -363,7 +364,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "30e842ee326acb31f3beb13075dffdd924fba322"
+    assert editor_successor["functional_head"] == "56622d7c094b8793ec0b168dd7148e160c1582c3"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -526,6 +527,18 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         editor_successor["checks"][
             "json_canvas_duplicate_member_keys_compare_decoded_object_locally"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_viewer_cli_rejects_lossy_json_before_document_authority"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "shared_json_fidelity_guards_preserve_standalone_contract"
         ]
         is True
     )

@@ -95,7 +95,9 @@
     "direct_native_api_rejects_lossy_canvas_numeric_tokens": true,
     "native_canvas_drag_coordinates_stay_within_document_budget": true,
     "json_canvas_duplicate_members_rejected_before_authority": true,
-    "json_canvas_duplicate_member_keys_compare_decoded_object_locally": true
+    "json_canvas_duplicate_member_keys_compare_decoded_object_locally": true,
+    "native_viewer_cli_rejects_lossy_json_before_document_authority": true,
+    "shared_json_fidelity_guards_preserve_standalone_contract": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -105,8 +107,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "2f6e288d090f3a733165b0202b2f1b75404a2c59fca568f03a5614d0191caf43",
-  "functional_head": "30e842ee326acb31f3beb13075dffdd924fba322",
+  "evidence_digest": "377194877d321c8d8ec1720a6b4e5c11ef46a53b0a5103ae2f2154049fbb6157",
+  "functional_head": "56622d7c094b8793ec0b168dd7148e160c1582c3",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -123,14 +125,15 @@
     "src/schauwerk/resources/standalone_editor/assets.py": "deb1d39c6a4b15a9584a550fe306c270ca2d1e1926c4a785aad65e205b146b91",
     "src/schauwerk/visual/native_diagram.py": "9cddf5dc60df32faedd4514457049e19336b7767dc8bcbfddf3c7d4b35ded4c4",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
-    "src/schauwerk/visual/native_viewer.py": "7caa1bf481850d2f8d013fb94abdb315a1635f7fccbfb3fdd203461c082cf1d2",
-    "src/schauwerk/visual/standalone_editor.py": "5aa1da0c7876fb8c2037db58098d32445efa8386dc01175c61c7379abea3e650",
+    "src/schauwerk/visual/native_viewer.py": "64e73e3fe55b6445d26675fb633b4fe7718e74e8f13b6a628cd98cb2d98278ce",
+    "src/schauwerk/visual/standalone_editor.py": "e49050de3e4ecd9fa2f8859967ff45f0e65b0a45efe9a76f34c6b49d39a3b35e",
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
     "tests/visual/test_native_document.py": "319a7ad50e7079cb5c72292b0b3e3482a4c921ac6dac9bd90c4d256e86970f84",
-    "tests/visual/test_native_viewer.py": "86132ef16a8636e28fd388f39ce598f5828fb5794cdefe145a8aa6d7f45dddc4",
+    "tests/visual/test_native_viewer.py": "4624026c3238d8cf938d78b1a6228b0130a9a497d15b8ee252f1f5c3b0453dba",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
     "tests/visual/test_standalone_editor.py": "19e44709b1e8b8d619e9939980766c8fc4805ca506512fc6982a1bccc83e7518",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
-    "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0"
+    "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0",
+    "src/schauwerk/visual/json_fidelity.py": "119b0888dc99f3f8b450c37a63ba35eaec8cacefd5e501ee6739c457d9980a1c"
   }
 }
