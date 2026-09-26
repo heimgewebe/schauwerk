@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "66b4b964aae1cb1bacea433ce2d93faf2ff3df32"
+    assert editor_successor["functional_head"] == "30e842ee326acb31f3beb13075dffdd924fba322"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -514,6 +514,18 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         editor_successor["checks"][
             "native_canvas_drag_coordinates_stay_within_document_budget"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_duplicate_members_rejected_before_authority"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_duplicate_member_keys_compare_decoded_object_locally"
         ]
         is True
     )
