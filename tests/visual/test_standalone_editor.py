@@ -1,6 +1,7 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import ast
 import base64
 import io
 import ipaddress
@@ -2044,6 +2045,28 @@ def test_native_runtime_import_has_no_third_party_dependency_closure() -> None:
 def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     dockerfile = (repo_root / "Dockerfile").read_text(encoding="utf-8")
+    visual_dir = repo_root / "src/schauwerk/visual"
+    direct_visual_dependencies: set[str] = set()
+    for entrypoint in ("standalone_editor.py", "native_viewer.py"):
+        tree = ast.parse((visual_dir / entrypoint).read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom) or not node.module:
+                continue
+            module = ""
+            if node.level == 1:
+                module = node.module
+            elif node.level == 0 and node.module.startswith("schauwerk.visual."):
+                module = node.module.removeprefix("schauwerk.visual.")
+            if (
+                module
+                and "." not in module
+                and (visual_dir / f"{module}.py").is_file()
+            ):
+                direct_visual_dependencies.add(module)
+
+    assert direct_visual_dependencies
+    for module in sorted(direct_visual_dependencies):
+        assert f"src/schauwerk/visual/{module}.py" in dockerfile
 
     assert "pip install" not in dockerfile
     assert "COPY src ./src" not in dockerfile

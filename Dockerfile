@@ -22,6 +22,7 @@ COPY src/schauwerk/visual/__init__.py \
      src/schauwerk/visual/miro_dsl.py \
      src/schauwerk/visual/representation.py \
      src/schauwerk/visual/drawio_import.py \
+     src/schauwerk/visual/json_fidelity.py \
      src/schauwerk/visual/native_diagram.py \
      src/schauwerk/visual/native_document.py \
      src/schauwerk/visual/native_viewer.py \
