@@ -363,7 +363,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "9518c07d893439e7491a7f4320e1bf5649376eac"
+    assert editor_successor["functional_head"] == "66b4b964aae1cb1bacea433ce2d93faf2ff3df32"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -381,7 +381,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
-    assert editor_successor["checks"]["browser_smoke_passed_count"] == 6
+    assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
     assert (
         editor_successor["checks"]["json_canvas_core_geometry_requires_integer_numbers"]
@@ -496,6 +496,24 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         editor_successor["checks"][
             "json_canvas_unsafe_integers_rejected_before_roundtrip"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_numeric_tokens_preserve_javascript_roundtrip_fidelity"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "direct_native_api_rejects_lossy_canvas_numeric_tokens"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_canvas_drag_coordinates_stay_within_document_budget"
         ]
         is True
     )
