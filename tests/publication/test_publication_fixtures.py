@@ -364,7 +364,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "ea022bfa39b62b709199e421880513021aad4bc3"
+    assert editor_successor["functional_head"] == "192ab30e80d20cabc18c542bd132d8c318905b38"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -679,6 +679,22 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert (
         editor_successor["checks"]["canvas_ids_reject_xml_attribute_normalized_whitespace"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "non_document_live_svg_strips_canonical_input_digest"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_fidelity_rejections_preserve_specific_browser_reason"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["native_cutover_boundary_declares_json_canvas"]
         is True
     )
 

@@ -98,7 +98,10 @@
     "json_canvas_duplicate_member_keys_compare_decoded_object_locally": true,
     "native_viewer_cli_rejects_lossy_json_before_document_authority": true,
     "shared_json_fidelity_guards_preserve_standalone_contract": true,
-    "docker_runtime_closure_includes_shared_json_fidelity": true
+    "docker_runtime_closure_includes_shared_json_fidelity": true,
+    "non_document_live_svg_strips_canonical_input_digest": true,
+    "json_canvas_fidelity_rejections_preserve_specific_browser_reason": true,
+    "native_cutover_boundary_declares_json_canvas": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -108,8 +111,8 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "5c41e3b2abbceaaa7b682fdd551b090b59612bdbe290153ca72f9f82bf73184f",
-  "functional_head": "ea022bfa39b62b709199e421880513021aad4bc3",
+  "evidence_digest": "59a8fc0f651cb8b14527b3e49cb7c55a8a756bc6b69b3de8edc30e10a72db3ac",
+  "functional_head": "192ab30e80d20cabc18c542bd132d8c318905b38",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
     "file_sha256": "aa6af9c0d799af610c8af92a403ddb2103bce482a2833452466e99250ee77196",
@@ -123,7 +126,7 @@
     "Makefile": "81e920cef874514328b267412cefcc6b1ff9f6546296600216fcdaf6a4385692",
     "scripts/run_browser_smoke.py": "3ac127a4b8fca674d525406544de1c0378354b29ed77281f33be208ff08a9673",
     "src/schauwerk/resources/native_viewer/assets.py": "d0c5c0d8f88861ca3ac48984aed16fc0720d41b32395a5a8e990133c283ba458",
-    "src/schauwerk/resources/standalone_editor/assets.py": "deb1d39c6a4b15a9584a550fe306c270ca2d1e1926c4a785aad65e205b146b91",
+    "src/schauwerk/resources/standalone_editor/assets.py": "44b27d689f8edb1229675cc92f0a2da6ecdbc005370c564b6404f9d49c1343f6",
     "src/schauwerk/visual/native_diagram.py": "9cddf5dc60df32faedd4514457049e19336b7767dc8bcbfddf3c7d4b35ded4c4",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
     "src/schauwerk/visual/native_viewer.py": "64e73e3fe55b6445d26675fb633b4fe7718e74e8f13b6a628cd98cb2d98278ce",
@@ -132,7 +135,7 @@
     "tests/visual/test_native_document.py": "319a7ad50e7079cb5c72292b0b3e3482a4c921ac6dac9bd90c4d256e86970f84",
     "tests/visual/test_native_viewer.py": "4624026c3238d8cf938d78b1a6228b0130a9a497d15b8ee252f1f5c3b0453dba",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
-    "tests/visual/test_standalone_editor.py": "9765c48346cb7867fae78b896e225cb9648bbba6c343e511014e320b66d88698",
+    "tests/visual/test_standalone_editor.py": "06ce957580195cd5da1c15d9a68eaea455a272296f5dba8a03abdc6ac2aa7786",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
     "tests/visual/test_drawio_import.py": "e67055af75d07dc6a64252fae78027cd40ff9c3afd55d1e87f4add65e2d4c4f0",
     "src/schauwerk/visual/json_fidelity.py": "119b0888dc99f3f8b450c37a63ba35eaec8cacefd5e501ee6739c457d9980a1c"
