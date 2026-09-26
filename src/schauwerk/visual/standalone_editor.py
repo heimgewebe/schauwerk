@@ -1,8 +1,8 @@
 """Build and serve the Schaubild product shell.
 
-Canonical Schauwerk representation inputs and the bounded draw.io native-import
-subset are rendered by Schauwerk's native renderer and interaction viewer. Mermaid,
-JSON Canvas and explicitly chosen legacy draw.io editing remain compatibility inputs
+Canonical Schauwerk representation inputs, JSON Canvas documents and the bounded
+draw.io native-import subset are rendered by Schauwerk's native renderer/viewer.
+Mermaid and explicitly chosen legacy draw.io editing remain compatibility inputs
 backed by the diagrams.net embed runtime.
 """
 
@@ -32,18 +32,36 @@ from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
-from schauwerk.visual.native_viewer import NativeViewerError, build_native_viewer
+from schauwerk.visual.json_fidelity import (
+    JsonFidelityError,
+    assert_javascript_roundtrip_json_numbers,
+    parse_json_with_unique_object_members,
+)
+from schauwerk.visual.native_document import (
+    MAX_NATIVE_EDGES,
+    MAX_NATIVE_GROUPS,
+    MAX_NATIVE_NODES,
+    MAX_NATIVE_ROUTING_PAIRS,
+    NATIVE_DOCUMENT_SCHEMA,
+    NativeDocumentError,
+    json_canvas_to_editing_document,
+    normalize_editing_document,
+)
+from schauwerk.visual.native_viewer import (
+    MAX_INPUT_BYTES as MAX_NATIVE_VIEWER_INPUT_BYTES,
+)
+from schauwerk.visual.native_viewer import (
+    NativeViewerError,
+    build_native_viewer,
+)
 from schauwerk.visual.representation import RepresentationError, validate_representation_input
 
 MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
 NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
+NATIVE_SUPERSEDE_HEADER: Final = "X-Schauwerk-Native-Supersede"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
-MAX_NATIVE_GROUPS: Final = 32
-MAX_NATIVE_NODES: Final = 128
-MAX_NATIVE_EDGES: Final = 256
-MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
 MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
@@ -83,8 +101,8 @@ AI_HANDOFF_PROMPT: Final = (
     "außer knowledge_map zugelassen. Verwende process, sequence, state, timeline oder "
     "narrative, wenn das fachlich passt. Für eine echte freie Wissens-/Konzeptkarte "
     "(knowledge_map) gib stattdessen genau einen gültigen JSON-Canvas-1.0-json-Codeblock "
-    "aus; dieser läuft bewusst über den Legacy-Pfad, bis die allgemeine native "
-    "Routinggrenze gehärtet ist.\n\n"
+    "aus; JSON Canvas wird im nativen dokumentgebundenen Editor geöffnet und behält "
+    "seine explizite Geometrie für den Roundtrip.\n\n"
     "Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, "
     "gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen "
     "Zusammenhänge schnell erkennbar sind. Kein Vorwort, keine Erklärung und keine "
@@ -353,6 +371,64 @@ def _content_security_policy(editor_origin: str) -> str:
     )
 
 
+def _assert_native_canvas_product_limits(value: Any) -> None:
+    """Reject structurally obvious JSON Canvas overages before expensive normalization."""
+
+    if not isinstance(value, dict):
+        return
+    nodes = value.get("nodes", [])
+    edges = value.get("edges", [])
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        return
+    node_count = len(nodes)
+    edge_count = len(edges)
+    routing_pairs = edge_count * edge_count
+    if (
+        node_count > MAX_NATIVE_NODES
+        or edge_count > MAX_NATIVE_EDGES
+        or routing_pairs > MAX_NATIVE_ROUTING_PAIRS
+    ):
+        raise StandaloneEditorError(
+            "native JSON Canvas document exceeds product complexity limits "
+            f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
+            f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+        )
+    group_count = sum(
+        1
+        for node in nodes
+        if isinstance(node, dict) and node.get("type") == "group"
+    )
+    if group_count > MAX_NATIVE_GROUPS:
+        raise StandaloneEditorError(
+            "native JSON Canvas document exceeds product complexity limits "
+            f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
+            f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+        )
+
+
+def _assert_json_canvas_request_number_tokens(payload_text: str, value: Any) -> None:
+    is_canvas_import = (
+        isinstance(value, dict)
+        and value.get("schema_version") == NATIVE_IMPORT_SCHEMA
+        and value.get("format") == "json-canvas-1.0"
+    )
+    is_editing_document = (
+        isinstance(value, dict)
+        and value.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+    )
+    if not (is_canvas_import or is_editing_document):
+        return
+    try:
+        assert_javascript_roundtrip_json_numbers(payload_text)
+    except JsonFidelityError as exc:
+        raise StandaloneEditorError(f"JSON Canvas {exc}") from exc
+
+
+def _native_viewer_input_size(value: dict[str, Any]) -> int:
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return len(encoded) + 1
+
+
 def _native_product_input(value: Any) -> dict[str, Any]:
     """Normalize one canonical representation or bounded native import request."""
 
@@ -367,18 +443,50 @@ def _native_product_input(value: Any) -> dict[str, Any]:
             raise StandaloneEditorError(
                 "native import request contains unknown fields: " + ", ".join(unknown)
             )
-        if value.get("format") != "drawio-xml":
-            raise StandaloneEditorError("native import request format must be drawio-xml")
-        source = value.get("source")
-        if not isinstance(source, str):
-            raise StandaloneEditorError("native draw.io import source must be text")
+        source_format = value.get("format")
         title = value.get("title")
         if title is not None and not isinstance(title, str):
-            raise StandaloneEditorError("native draw.io import title must be text")
+            raise StandaloneEditorError("native import title must be text")
+        if source_format == "drawio-xml":
+            source = value.get("source")
+            if not isinstance(source, str):
+                raise StandaloneEditorError("native draw.io import source must be text")
+            try:
+                candidate = drawio_xml_to_representation(source, title=title)
+            except DrawioImportError as exc:
+                raise StandaloneEditorError(
+                    f"native draw.io import is unsupported: {exc}"
+                ) from exc
+        elif source_format == "json-canvas-1.0":
+            source = value.get("source")
+            _assert_native_canvas_product_limits(source)
+            try:
+                candidate = json_canvas_to_editing_document(
+                    source, title=title or "Schaubild"
+                )
+            except NativeDocumentError as exc:
+                raise StandaloneEditorError(
+                    f"native JSON Canvas import is invalid: {exc}"
+                ) from exc
+        else:
+            raise StandaloneEditorError(
+                "native import request format must be drawio-xml or json-canvas-1.0"
+            )
+
+    if (
+        isinstance(candidate, dict)
+        and candidate.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+    ):
+        _assert_native_canvas_product_limits(candidate)
+        _assert_native_canvas_product_limits(candidate.get("source"))
         try:
-            candidate = drawio_xml_to_representation(source, title=title)
-        except DrawioImportError as exc:
-            raise StandaloneEditorError(f"native draw.io import is unsupported: {exc}") from exc
+            candidate = normalize_editing_document(candidate)
+        except NativeDocumentError as exc:
+            raise StandaloneEditorError(
+                f"native JSON Canvas editing document is invalid: {exc}"
+            ) from exc
+        _assert_native_canvas_product_limits(candidate)
+        return candidate
 
     try:
         normalized = validate_representation_input(candidate)
@@ -405,6 +513,23 @@ def _native_product_input(value: Any) -> dict[str, Any]:
             f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
         )
     return normalized
+
+
+def _native_render_cache_digest(normalized: dict[str, Any]) -> str:
+    semantic_digest = str(
+        normalized.get("input_digest") or normalized.get("source_digest") or ""
+    )
+    if re.fullmatch(r"[0-9a-f]{64}", semantic_digest) is None:
+        raise StandaloneEditorError("native input digest is missing or invalid")
+    if normalized.get("schema_version") != NATIVE_DOCUMENT_SCHEMA:
+        return semantic_digest
+    canonical = json.dumps(
+        normalized,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return _sha256(canonical)
 
 
 def build_standalone_editor(
@@ -458,7 +583,7 @@ def build_standalone_editor(
             "runtime": "integrated-serve",
             "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
             "public_base_path": normalized_base_path,
-            "admission": "representation-or-bounded-drawio-except-knowledge-map",
+            "admission": "representation-except-knowledge-map-or-bounded-native-import",
             "admission_scope": {
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
@@ -467,9 +592,21 @@ def build_standalone_editor(
                 "trusted_proxy_header": "X-Forwarded-For",
                 "trusted_proxy_source_cidr_required": True,
             },
-            "semantic_authority": "schauwerk-representation-input.v1",
-            "supported_inputs": ["schauwerk-representation-input.v1", "drawio-xml"],
-            "supported_outputs": ["schauwerk-representation-input.v1", "svg"],
+            "semantic_authority": "representation-or-json-canvas-document",
+            "semantic_authorities": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+            ],
+            "supported_inputs": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+                "drawio-xml",
+            ],
+            "supported_outputs": [
+                "schauwerk-representation-input.v1",
+                "json-canvas-1.0",
+                "svg",
+            ],
         },
         "legacy_editor_engine": "diagrams.net-embed",
         "editor_origin": normalized_origin,
@@ -484,7 +621,7 @@ def build_standalone_editor(
             "json-canvas-1.0",
             "drawio-xml",
         ],
-        "supported_outputs": ["drawio-xml", "png", "svg"],
+        "supported_outputs": ["drawio-xml", "json-canvas-1.0", "png", "svg"],
         "network_boundary": {
             "shell": "local-static-files",
             "native_render_api": "same-origin-integrated-serve-only",
@@ -497,11 +634,10 @@ def build_standalone_editor(
         },
         "files": written,
         "does_not_establish": [
-            "native-semantic-mutation",
-            "native-edge-rerouting-after-node-drag",
+            "representation-source-writeback",
             "native-png-export",
             "native-static-host-render-api",
-            "general-knowledge-map-native-cutover",
+            "representation-knowledge-map-native-cutover",
             "bundled-legacy-editor-runtime",
             "static-host-security-header-enforcement",
             (
@@ -509,7 +645,6 @@ def build_standalone_editor(
                 if custom_origin
                 else "provider-independence-of-legacy-compatibility"
             ),
-            "lossless-json-canvas-roundtrip",
             "lossless-drawio-roundtrip",
             "drawio-visual-style-preservation",
         ],
@@ -538,6 +673,7 @@ class _NativeCacheRecord:
     max_pinned_until: float
     admission_key: str
     pin_leases: dict[str, float]
+    consumer_counts: dict[str, int]
 
 
 @dataclass(slots=True)
@@ -545,6 +681,7 @@ class _NativePinWindow:
     max_pinned_until: float
     reacquire_after: float
     admission_keys: set[str]
+    terminally_released: bool = False
 
 
 _NATIVE_CACHE_LOCK = threading.RLock()
@@ -559,6 +696,7 @@ _NATIVE_BUNDLE_FILES: Final = {
     "interaction.js": "interaction.js",
     "manifest.json": "manifest.json",
     "representation.json": "representation.json",
+    "document.json": "document.json",
     "styles.css": "styles.css",
 }
 
@@ -590,6 +728,9 @@ def _refresh_native_record_pin_state(record: _NativeCacheRecord, *, now: float) 
     for admission_key, pinned_until in list(record.pin_leases.items()):
         if pinned_until <= now:
             record.pin_leases.pop(admission_key, None)
+            record.consumer_counts.pop(admission_key, None)
+    if record.max_pinned_until <= now:
+        record.consumer_counts.clear()
     if record.pin_leases:
         record.pinned_until = max(record.pin_leases.values())
     else:
@@ -638,10 +779,27 @@ def _native_pin_window(
             raise NativeCacheCapacityError(
                 "native viewer digest client capacity is temporarily exhausted; retry later"
             )
+        existing.terminally_released = False
         return existing, False
 
-    root_windows = sum(1 for key in _NATIVE_PIN_WINDOWS if key[0] == root_key)
-    if root_windows >= MAX_NATIVE_PIN_WINDOWS:
+    root_window_keys = [
+        window_key for window_key in _NATIVE_PIN_WINDOWS if window_key[0] == root_key
+    ]
+    if len(root_window_keys) >= MAX_NATIVE_PIN_WINDOWS:
+        released_keys = sorted(
+            (
+                window_key
+                for window_key in root_window_keys
+                if _NATIVE_PIN_WINDOWS[window_key].terminally_released
+            ),
+            key=lambda window_key: _NATIVE_PIN_WINDOWS[window_key].max_pinned_until,
+        )
+        for released_key in released_keys:
+            if len(root_window_keys) < MAX_NATIVE_PIN_WINDOWS:
+                break
+            _NATIVE_PIN_WINDOWS.pop(released_key, None)
+            root_window_keys.remove(released_key)
+    if len(root_window_keys) >= MAX_NATIVE_PIN_WINDOWS:
         raise NativeCacheCapacityError(
             "native viewer pin-lifetime history is temporarily full; retry later"
         )
@@ -673,31 +831,89 @@ def _assert_native_digest_reacquisition_allowed(
             )
 
 
+def _superseded_record_releases_client_pin(
+    record: _NativeCacheRecord | None,
+    *,
+    admission_key: str,
+    now: float,
+) -> bool:
+    """Return whether one supersede releases this client's last live consumer."""
+
+    if record is None:
+        return False
+    _refresh_native_record_pin_state(record, now=now)
+    return (
+        record.pin_leases.get(admission_key, 0.0) > now
+        and record.consumer_counts.get(admission_key, 0) == 1
+    )
+
+
+def _superseded_record_releases_global_pin(
+    record: _NativeCacheRecord | None,
+    *,
+    admission_key: str,
+    now: float,
+) -> bool:
+    """Project only an exclusive live supersede lease out of global pin accounting."""
+
+    if not _superseded_record_releases_client_pin(
+        record,
+        admission_key=admission_key,
+        now=now,
+    ):
+        return False
+    assert record is not None
+    return len(record.pin_leases) == 1
+
+
 def _assert_native_build_admission(
     root: Path,
     *,
     digest: str,
     admission_key: str,
     now: float,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> None:
     """Reject render work whose pin admission is already known to be impossible."""
 
     with _NATIVE_CACHE_LOCK:
         pinned = [item for item in _native_cache_records(root) if item.pinned_until > now]
+        projected_global_release = (
+            superseded_record
+            if _superseded_record_releases_global_pin(
+                superseded_record,
+                admission_key=admission_key,
+                now=now,
+            )
+            else None
+        )
+        global_pinned = [
+            item for item in pinned if item is not projected_global_release
+        ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
         if (
-            len(pinned) + 1 > max_pinned_entries
-            or sum(item.size_bytes for item in pinned) >= max_pinned_bytes
+            len(global_pinned) + 1 > max_pinned_entries
+            or sum(item.size_bytes for item in global_pinned) >= max_pinned_bytes
         ):
             raise NativeCacheCapacityError(
                 "native viewer pin capacity is already saturated; retry later"
             )
         if _client_quota_applies(admission_key):
+            projected_client_release = (
+                superseded_record
+                if _superseded_record_releases_client_pin(
+                    superseded_record,
+                    admission_key=admission_key,
+                    now=now,
+                )
+                else None
+            )
             client_pinned = [
                 item
                 for item in pinned
-                if item.pin_leases.get(admission_key, 0.0) > now
+                if item is not projected_client_release
+                and item.pin_leases.get(admission_key, 0.0) > now
             ]
             if len(client_pinned) >= MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT:
                 raise NativeCacheCapacityError(
@@ -710,6 +926,10 @@ def _assert_native_build_admission(
                 for (window_root, window_digest), window in _NATIVE_PIN_WINDOWS.items()
                 if window_root == root_key
                 and window_digest != digest
+                and (
+                    superseded_record is None
+                    or window_digest != superseded_record.digest
+                )
                 and window.max_pinned_until > now
                 and admission_key in window.admission_keys
             ]
@@ -725,6 +945,7 @@ def _assert_native_pin_capacity(
     record: _NativeCacheRecord,
     admission_key: str,
     now: float,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> None:
     with _NATIVE_CACHE_LOCK:
         pinned = [
@@ -732,20 +953,45 @@ def _assert_native_pin_capacity(
             for item in _native_cache_records(root)
             if item is not record and item.pinned_until > now
         ]
+        projected_global_release = (
+            superseded_record
+            if _superseded_record_releases_global_pin(
+                superseded_record,
+                admission_key=admission_key,
+                now=now,
+            )
+            else None
+        )
+        global_pinned = [
+            item for item in pinned if item is not projected_global_release
+        ]
         max_pinned_entries = max(0, MAX_NATIVE_CACHE_ENTRIES - 1)
         max_pinned_bytes = max(0, MAX_NATIVE_CACHE_BYTES - MAX_NATIVE_BUNDLE_BYTES)
+        projected_client_release = (
+            superseded_record
+            if _superseded_record_releases_client_pin(
+                superseded_record,
+                admission_key=admission_key,
+                now=now,
+            )
+            else None
+        )
         client_pinned = (
             [
                 item
                 for item in pinned
-                if item.pin_leases.get(admission_key, 0.0) > now
+                if item is not projected_client_release
+                and item.pin_leases.get(admission_key, 0.0) > now
             ]
             if _client_quota_applies(admission_key)
             else []
         )
         if (
-            len(pinned) + 1 > max_pinned_entries
-            or sum(item.size_bytes for item in pinned) + record.size_bytes > max_pinned_bytes
+            len(global_pinned) + 1 > max_pinned_entries
+            or (
+                sum(item.size_bytes for item in global_pinned) + record.size_bytes
+                > max_pinned_bytes
+            )
             or (
                 _client_quota_applies(admission_key)
                 and len(client_pinned) + 1 > MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT
@@ -761,6 +1007,8 @@ def _pin_native_cache_record(
     record: _NativeCacheRecord,
     *,
     admission_key: str,
+    superseded_record: _NativeCacheRecord | None = None,
+    acquire_consumer: bool = True,
 ) -> None:
     now = time.monotonic()
     _refresh_native_record_pin_state(record, now=now)
@@ -783,9 +1031,17 @@ def _pin_native_cache_record(
             record=record,
             admission_key=admission_key,
             now=now,
+            superseded_record=superseded_record,
         )
     record.last_access = now
     record.pin_leases[admission_key] = next_pinned_until
+    if acquire_consumer:
+        record.consumer_counts[admission_key] = (
+            record.consumer_counts.get(admission_key, 0) + 1
+        )
+        window = _NATIVE_PIN_WINDOWS.get((record.root_key, record.digest))
+        if window is not None:
+            window.terminally_released = False
     record.pinned_until = max(record.pin_leases.values(), default=now)
 
 
@@ -795,31 +1051,48 @@ def _prune_native_cache(
     keep: _NativeCacheRecord | None,
     reserve_bytes: int = 0,
     reserve_entries: int = 0,
+    superseded_record: _NativeCacheRecord | None = None,
+    admission_key: str | None = None,
 ) -> None:
     victim_paths: list[Path] = []
     with _NATIVE_CACHE_LOCK:
         records = _native_cache_records(root)
-        total = sum(item.size_bytes for item in records)
         now = time.monotonic()
+        projected_global_release = (
+            superseded_record
+            if (
+                admission_key is not None
+                and _superseded_record_releases_global_pin(
+                    superseded_record,
+                    admission_key=admission_key,
+                    now=now,
+                )
+            )
+            else None
+        )
+        capacity_records = [
+            record for record in records if record is not projected_global_release
+        ]
+        total = sum(item.size_bytes for item in capacity_records)
         candidates = sorted(
             (
                 record
-                for record in records
+                for record in capacity_records
                 if record is not keep and record.pinned_until <= now
             ),
             key=lambda item: (item.last_access, item.token),
         )
         while candidates and (
-            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            len(capacity_records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
             or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
         ):
             victim = candidates.pop(0)
             victim_paths.append(victim.path)
             _forget_native_cache_record(victim, remove_files=False)
             total -= victim.size_bytes
-            records.remove(victim)
+            capacity_records.remove(victim)
         if (
-            len(records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
+            len(capacity_records) + reserve_entries > MAX_NATIVE_CACHE_ENTRIES
             or total + reserve_bytes > MAX_NATIVE_CACHE_BYTES
         ):
             raise NativeCacheCapacityError(
@@ -961,12 +1234,103 @@ def _abandon_native_cache_record(
             return
         now = time.monotonic()
         lease_key = admission_key or record.admission_key
-        record.pin_leases.pop(lease_key, None)
+        consumer_count = record.consumer_counts.get(lease_key, 0)
+        if consumer_count <= 1:
+            record.consumer_counts.pop(lease_key, None)
+            record.pin_leases.pop(lease_key, None)
+        else:
+            record.consumer_counts[lease_key] = consumer_count - 1
         record.last_access = now
         _refresh_native_record_pin_state(record, now=now)
         # Keep both the cache record and digest pin window. The bytes remain
         # reusable, while another client's active lease is never revoked by
         # this request's failed response.
+
+
+def _native_superseded_record(
+    root: Path,
+    *,
+    token: str,
+    admission_key: str,
+    next_digest: str,
+    now: float | None = None,
+) -> _NativeCacheRecord | None:
+    if not token:
+        return None
+    with _NATIVE_CACHE_LOCK:
+        record = _native_cache_by_token(root, token)
+        if record is None or record.digest == next_digest:
+            return None
+        current = time.monotonic() if now is None else now
+        _refresh_native_record_pin_state(record, now=current)
+        if record.max_pinned_until <= current:
+            return None
+        if (
+            admission_key != record.admission_key
+            and record.pin_leases.get(admission_key, 0.0) <= current
+        ):
+            return None
+        return record
+
+
+def _release_redundant_native_consumer(
+    root: Path,
+    record: _NativeCacheRecord,
+    *,
+    admission_key: str,
+) -> bool:
+    """Undo only a duplicate same-token POST acquisition, never a sole reacquire."""
+
+    with _NATIVE_CACHE_LOCK:
+        key = (record.root_key, record.digest)
+        if _NATIVE_CACHE_BY_DIGEST.get(key) is not record:
+            return False
+        now = time.monotonic()
+        _refresh_native_record_pin_state(record, now=now)
+        consumer_count = record.consumer_counts.get(admission_key, 0)
+        if (
+            consumer_count <= 1
+            or record.pin_leases.get(admission_key, 0.0) <= now
+        ):
+            return False
+        record.consumer_counts[admission_key] = consumer_count - 1
+        record.last_access = now
+        return True
+
+
+def _release_native_superseded_lease(
+    root: Path,
+    *,
+    token: str,
+    admission_key: str,
+    next_digest: str,
+) -> bool:
+    with _NATIVE_CACHE_LOCK:
+        now = time.monotonic()
+        record = _native_superseded_record(
+            root,
+            token=token,
+            admission_key=admission_key,
+            next_digest=next_digest,
+            now=now,
+        )
+        if record is None:
+            return False
+        consumer_count = record.consumer_counts.get(admission_key, 0)
+        if consumer_count <= 1:
+            record.consumer_counts.pop(admission_key, None)
+            record.pin_leases.pop(admission_key, None)
+        else:
+            record.consumer_counts[admission_key] = consumer_count - 1
+        record.last_access = now
+        _refresh_native_record_pin_state(record, now=now)
+        window_key = (_native_root_key(root), record.digest)
+        window = _NATIVE_PIN_WINDOWS.get(window_key)
+        if window is not None and admission_key not in record.consumer_counts:
+            window.admission_keys.discard(admission_key)
+            if not record.consumer_counts:
+                window.terminally_released = True
+        return True
 
 
 def _build_native_cache_record(
@@ -978,7 +1342,12 @@ def _build_native_cache_record(
     public_base_path: str,
     admission_key: str = "local",
     deadline_monotonic: float | None = None,
+    superseded_record: _NativeCacheRecord | None = None,
 ) -> tuple[_NativeCacheRecord, bool]:
+    if _native_viewer_input_size(value) > MAX_NATIVE_VIEWER_INPUT_BYTES:
+        raise StandaloneEditorError(
+            "native viewer input exceeds 5 MB after normalization"
+        )
     with _NATIVE_CACHE_LOCK:
         now = time.monotonic()
         if deadline_monotonic is not None and now >= deadline_monotonic:
@@ -987,7 +1356,12 @@ def _build_native_cache_record(
             )
         existing = _native_cache_by_digest(root, digest)
         if existing is not None and existing.max_pinned_until > now:
-            _pin_native_cache_record(root, existing, admission_key=admission_key)
+            _pin_native_cache_record(
+                root,
+                existing,
+                admission_key=admission_key,
+                superseded_record=superseded_record,
+            )
             return existing, False
         _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
         _assert_native_build_admission(
@@ -995,6 +1369,7 @@ def _build_native_cache_record(
             digest=digest,
             admission_key=admission_key,
             now=now,
+            superseded_record=superseded_record,
         )
 
     lock_timeout = NATIVE_REQUEST_TIMEOUT_SECONDS
@@ -1021,7 +1396,12 @@ def _build_native_cache_record(
                 )
             existing = _native_cache_by_digest(root, digest)
             if existing is not None and existing.max_pinned_until > now:
-                _pin_native_cache_record(root, existing, admission_key=admission_key)
+                _pin_native_cache_record(
+                    root,
+                    existing,
+                    admission_key=admission_key,
+                    superseded_record=superseded_record,
+                )
                 return existing, False
             _assert_native_digest_reacquisition_allowed(root, digest=digest, now=now)
             _assert_native_build_admission(
@@ -1029,6 +1409,7 @@ def _build_native_cache_record(
                 digest=digest,
                 admission_key=admission_key,
                 now=now,
+                superseded_record=superseded_record,
             )
             pin_window, new_pin_window = _native_pin_window(
                 root,
@@ -1042,6 +1423,8 @@ def _build_native_cache_record(
             keep=None,
             reserve_bytes=MAX_NATIVE_BUNDLE_BYTES,
             reserve_entries=1,
+            superseded_record=superseded_record,
+            admission_key=admission_key,
         )
         cache_root = root / ".native-cache"
         if cache_root.exists() and (
@@ -1103,7 +1486,12 @@ def _build_native_cache_record(
                     )
                 existing = _native_cache_by_digest(root, digest)
                 if existing is not None and existing.max_pinned_until > now:
-                    _pin_native_cache_record(root, existing, admission_key=admission_key)
+                    _pin_native_cache_record(
+                        root,
+                        existing,
+                        admission_key=admission_key,
+                        superseded_record=superseded_record,
+                    )
                     winner = existing
                 else:
                     record = _NativeCacheRecord(
@@ -1126,12 +1514,14 @@ def _build_native_cache_record(
                                 pin_window.max_pinned_until,
                             )
                         },
+                        consumer_counts={admission_key: 1},
                     )
                     _assert_native_pin_capacity(
                         root,
                         record=record,
                         admission_key=admission_key,
                         now=now,
+                        superseded_record=superseded_record,
                     )
                     if (
                         _client_quota_applies(admission_key)
@@ -1164,7 +1554,12 @@ def _build_native_cache_record(
                 shutil.rmtree(target)
             return winner, False
 
-        _prune_native_cache(root, keep=winner)
+        _prune_native_cache(
+            root,
+            keep=winner,
+            superseded_record=superseded_record,
+            admission_key=admission_key,
+        )
         if (
             stale_path is not None
             and stale_path != target
@@ -1389,6 +1784,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                             root,
                             record,
                             admission_key=admission_key,
+                            acquire_consumer=False,
                         )
                     except NativeCacheCapacityError:
                         status = HTTPStatus.SERVICE_UNAVAILABLE
@@ -1473,6 +1869,13 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 },
             )
             return
+        supersede_token = self.headers.get(NATIVE_SUPERSEDE_HEADER, "").strip()
+        if supersede_token and re.fullmatch(r"[0-9a-f]{32}", supersede_token) is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "invalid native supersede token"},
+            )
+            return
         media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
         if media_type != "application/json":
             self._send_json(
@@ -1518,27 +1921,48 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "incomplete request body"})
             return
         try:
-            value = json.loads(payload.decode("utf-8"))
+            payload_text = payload.decode("utf-8")
+            try:
+                value = parse_json_with_unique_object_members(payload_text)
+            except JsonFidelityError as exc:
+                raise StandaloneEditorError(f"native JSON request {exc}") from exc
+            _assert_json_canvas_request_number_tokens(payload_text, value)
             normalized = _native_product_input(value)
-            digest = str(normalized["input_digest"])
-            canonical_input = {
-                key: item for key, item in normalized.items() if key != "input_digest"
-            }
+            digest = str(
+                normalized.get("input_digest") or normalized.get("source_digest") or ""
+            )
+            cache_digest = _native_render_cache_digest(normalized)
+            canonical_input = (
+                normalized
+                if normalized.get("schema_version") == NATIVE_DOCUMENT_SCHEMA
+                else {
+                    key: item
+                    for key, item in normalized.items()
+                    if key != "input_digest"
+                }
+            )
             root = Path(self.directory).resolve()
+            superseded_record = _native_superseded_record(
+                root,
+                token=supersede_token,
+                admission_key=admission_key,
+                next_digest=cache_digest,
+            )
             record, created = _build_native_cache_record(
                 root,
-                digest=digest,
+                digest=cache_digest,
                 value=canonical_input,
                 serve_binding=self.native_serve_binding,
                 public_base_path=self.public_base_path,
                 admission_key=admission_key,
                 deadline_monotonic=self._request_deadline_at,
+                superseded_record=superseded_record,
             )
             token = record.token
         except NativeRequestDeadlineError:
             self.close_connection = True
             return
-        except NativeCacheCapacityError as exc:
+        except (NativeCacheCapacityError, NativeViewerError) as exc:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})
             return
         except (
@@ -1546,18 +1970,17 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             UnicodeEncodeError,
             json.JSONDecodeError,
             StandaloneEditorError,
-            NativeViewerError,
+            NativeDocumentError,
         ) as exc:
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
             return
 
         if self._request_deadline_is_expired():
-            if created:
-                _abandon_native_cache_record(
-                    root,
-                    record,
-                    admission_key=admission_key,
-                )
+            _abandon_native_cache_record(
+                root,
+                record,
+                admission_key=admission_key,
+            )
             self.close_connection = True
             return
         delivered = self._send_json(
@@ -1568,7 +1991,28 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 "url": f"{self.public_base_path}/native/{token}/index.html",
             },
         )
-        if not delivered and created:
+        if delivered:
+            superseded_released = _release_native_superseded_lease(
+                root,
+                token=supersede_token,
+                admission_key=admission_key,
+                next_digest=cache_digest,
+            )
+            if superseded_released:
+                _prune_native_cache(
+                    root,
+                    keep=record,
+                )
+            elif (
+                not created
+                and supersede_token == token
+            ):
+                _release_redundant_native_consumer(
+                    root,
+                    record,
+                    admission_key=admission_key,
+                )
+        else:
             _abandon_native_cache_record(
                 root,
                 record,

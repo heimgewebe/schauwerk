@@ -29,6 +29,9 @@ SCHAUBILD_RUNTIME_EVIDENCE = ROOT / "docs/operators/evidence/schaubild-native-ru
 SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-drawio-native-first-20260920"
 )
+SCHAUBILD_NATIVE_EDITOR_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-editor-20260922"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -304,13 +307,32 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert runtime_successor["evidence_digest"] == digest_mapping(
         runtime_successor, "evidence_digest"
     )
+    editor_superseded_files = {
+        "Dockerfile",
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/drawio_import.py",
+        "src/schauwerk/visual/json_fidelity.py",
+        "src/schauwerk/visual/native_document.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_drawio_import.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     drawio_native_superseded_files = {
         "Dockerfile",
         "docs/plans/standalone-diagram-editor-spike-v1.md",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_standalone_editor.py",
-    }
+    } | editor_superseded_files
     for name, expected in runtime_successor["source_bindings"].items():
         if name not in drawio_native_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -333,7 +355,348 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         drawio_successor, "evidence_digest"
     )
     for name, expected in drawio_successor["source_bindings"].items():
+        if name not in editor_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+
+    editor_successor = json.loads(
+        (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
+    assert editor_successor["functional_head"] == "192ab30e80d20cabc18c542bd132d8c318905b38"
+    assert editor_successor["parent_evidence"] == {
+        "evidence_digest": drawio_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_DRAWIO_NATIVE_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-drawio-native-first-20260920/acceptance-receipt.json"
+        ),
+        "schema_version": drawio_successor["schema_version"],
+    }
+    assert editor_successor["evidence_digest"] == digest_mapping(
+        editor_successor, "evidence_digest"
+    )
+    assert set(editor_successor["source_bindings"]) == editor_superseded_files
+    for name, expected in editor_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
+    assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
+    assert (
+        editor_successor["checks"]["json_canvas_core_geometry_requires_integer_numbers"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["failed_superseding_native_rebuild_preserves_active_bundle"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_renderer_failure_is_retryable_service_unavailable"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "exclusive_supersede_projects_global_entry_and_byte_capacity"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "shared_supersede_retains_global_entry_and_byte_capacity_charge"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["pre_acceptance_successor_binding_failure_reproduced"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "browser_startup_flake_cleared_by_isolated_and_official_smoke"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["empty_canvas_browser_state_republish_deterministic"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["hosted_canvas_browser_readiness_deterministic"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_svg_export_prefers_loaded_frame_after_bundle_expiry"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "hosted_viewer_waits_for_script_ready_before_state_republish"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "canvas_limit_browser_state_republish_deterministic"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "expired_native_client_lease_drops_stale_consumer_before_reacquire"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["synchronized_svg_preserves_source_digest"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["live_modified_canvas_svg_strips_stale_digest"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "supersede_projection_carries_through_prune_capacity"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "prune_revalidates_supersede_projection_after_foreign_repin"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["supersede_projection_reaches_post_build_prune"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "successful_supersede_prunes_released_projection_after_delivery"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "canonical_canvas_snapshot_ignores_object_key_order"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "embedded_canvas_source_limits_rejected_before_normalization"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_unsafe_integers_rejected_before_roundtrip"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_numeric_tokens_preserve_javascript_roundtrip_fidelity"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "direct_native_api_rejects_lossy_canvas_numeric_tokens"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_canvas_drag_coordinates_stay_within_document_budget"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_duplicate_members_rejected_before_authority"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_duplicate_member_keys_compare_decoded_object_locally"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_viewer_cli_rejects_lossy_json_before_document_authority"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "shared_json_fidelity_guards_preserve_standalone_contract"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "docker_runtime_closure_includes_shared_json_fidelity"
+        ]
+        is True
+    )
+    assert editor_successor["checks"]["ci_equivalent_validate_passed"] is True
+    assert (
+        editor_successor["checks"][
+            "native_geometry_return_annotations_match_runtime_shapes"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["canvas_hex_colors_require_canonical_rrggbb"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_native_primary_with_lazy_legacy_rejection_fallback"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "permanent_native_rejection_rerenders_last_live_valid_state"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "native_canvas_document_change_persists_restoreable_native_draft"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "supersede_release_assertion_waits_for_post_delivery_cleanup"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "transient_native_rebuild_candidate_persists_restoreable_draft"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["same_ip_native_consumers_release_independently"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "normalized_json_canvas_overflow_rejected_before_renderer_spawn"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_product_counts_rejected_before_expensive_conversion"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_product_counts_include_omitted_optional_arrays"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "terminal_supersede_history_reuses_capacity_without_raising_limit"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "undelivered_cache_hit_releases_consumer_acquisition"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["native_recovery_browser_waits_for_viewer_ready_signal"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["canvas_node_labels_clipped_to_node_bounds"] is True
+    )
+    assert editor_successor["checks"]["edge_operations_cancel_on_escape"] is True
+    assert editor_successor["checks"]["canvas_self_loops_honor_explicit_sides"] is True
+    assert (
+        editor_successor["checks"]["native_rebuild_preserves_active_frame_until_success"]
+        is True
+    )
+    assert editor_successor["checks"]["stale_canvas_svg_export_fails_closed"] is True
+    assert (
+        editor_successor["checks"]["document_node_bounds_ignore_clipped_label_bbox"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["failed_native_rebuild_preserves_latest_state_with_explicit_retry"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_group_backgrounds_rejected_instead_of_silently_dropped"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_markdown_display_normalized_without_roundtrip_loss"
+        ]
+        is True
+    )
+    assert editor_successor["checks"]["drawio_xml_entity_expansion_hardened"] is True
+    assert editor_successor["checks"]["drawio_xml_namespace_shape_preserved"] is True
+    assert (
+        editor_successor["checks"]["native_product_limits_block_mutation_before_rebuild"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["permanent_native_rebuild_rejection_restores_last_valid_state"]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["extension_only_json_canvas_detected_and_preserved"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "extension_only_json_canvas_requires_explicit_canvas_context"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["canvas_ids_reject_xml_attribute_normalized_whitespace"]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "non_document_live_svg_strips_canonical_input_digest"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "json_canvas_fidelity_rejections_preserve_specific_browser_reason"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"]["native_cutover_boundary_declares_json_canvas"]
+        is True
+    )
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -371,7 +734,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
         elif name in schaubild_superseded_files:
-            assert drawio_successor["source_bindings"][name] == current
+            assert editor_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {

@@ -14,8 +14,28 @@ BROWSER_SMOKE_TESTS = (
         "test_canvas_import_browser_xml_validation_when_chrome_available"
     ),
     (
+        "tests/visual/test_standalone_editor.py::"
+        "test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry"
+    ),
+    (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_document_browser_drag_updates_edge_and_document_state"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_document_browser_preserves_absent_empty_arrays"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_browser_blocks_node_creation_past_product_limit"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
+        "test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
     ),
 )
 MAX_ATTEMPTS = 2

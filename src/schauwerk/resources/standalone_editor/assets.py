@@ -50,10 +50,11 @@ INDEX_HTML = r"""<!doctype html>
       <p class="error" id="error" role="alert" hidden></p>
 
       <aside class="boundary-note">
-        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen und der begrenzte, semantisch
-        importierbare draw.io-Graphpfad werden durch <code>schauwerk-native-diagram-v1</code> gerendert.
-        Nicht verlustarm importierbares draw.io sowie weitere Kompatibilitätsformate öffnen den Legacy-Editor nur
-        nach ausdrücklicher Nutzerwahl. <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
+        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen, <code>.canvas</code>/JSON Canvas
+        und der begrenzte, semantisch importierbare draw.io-Graphpfad werden durch
+        <code>schauwerk-native-diagram-v1</code> gerendert. Nicht verlustarm importierbares draw.io sowie weitere
+        Kompatibilitätsformate öffnen den Legacy-Editor nur nach ausdrücklicher Nutzerwahl.
+        <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
       </aside>
     </section>
 
@@ -70,6 +71,7 @@ INDEX_HTML = r"""<!doctype html>
         </div>
         <button class="button compact" id="layoutButton" type="button">Aufräumen</button>
         <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Legacy bearbeiten</button>
+        <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
         <button class="button compact" id="projectButton" type="button">Projekt</button>
         <button class="button compact" data-export="png" type="button">PNG</button>
         <button class="button compact" data-export="svg" type="button">SVG</button>
@@ -313,18 +315,253 @@ export function readabilityZoomStepCount(scale) {
   );
 }
 
-const FULL_INPUT_FENCE = /^```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
-const INLINE_INPUT_FENCE = /```(?:mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
+const FULL_INPUT_FENCE = /^```(mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)?[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```$/i;
+const INLINE_INPUT_FENCE = /```(mermaid|mmd|json|jsoncanvas|json-canvas|\.?canvas|xml|drawio)[^\S\r\n]*\r?\n([\s\S]*?)\r?\n```/gi;
 
-function detectNormalizedInput(text) {
+function explicitCanvasFence(label) {
+  return /^(?:jsoncanvas|json-canvas|\.?canvas)$/i.test(String(label || ""));
+}
+
+function jsonCanvasNumbersRemainSafe(value) {
+  const pending = [value];
+  const seen = new WeakSet();
+  while (pending.length > 0) {
+    const item = pending.pop();
+    if (typeof item === "number") {
+      if (!Number.isFinite(item)) return false;
+      if (Number.isInteger(item) && !Number.isSafeInteger(item)) return false;
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    if (seen.has(item)) continue;
+    seen.add(item);
+    if (Array.isArray(item)) {
+      for (const child of item) pending.push(child);
+      continue;
+    }
+    for (const child of Object.values(item)) pending.push(child);
+  }
+  return true;
+}
+
+function canonicalJsonNumberToken(token) {
+  const match = String(token).match(
+    /^(-?)(0|[1-9]\d*)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/,
+  );
+  if (!match) return null;
+  const fraction = match[3] || "";
+  const rawExponent = match[4] || "0";
+  const exponentSign = rawExponent.startsWith("-") ? -1 : 1;
+  const exponentDigits = rawExponent.replace(/^[+-]?0*/, "") || "0";
+  if (exponentDigits.length > 6) return null;
+  let exponent = exponentSign * Number(exponentDigits) - fraction.length;
+  let digits = `${match[2]}${fraction}`.replace(/^0+/, "");
+  const sign = match[1] === "-" ? "-" : "+";
+  if (!digits) return `${sign}0`;
+  const trimmedDigits = digits.replace(/0+$/, "");
+  exponent += digits.length - trimmedDigits.length;
+  digits = trimmedDigits;
+  return `${sign}${digits}e${exponent}`;
+}
+
+function jsonCanvasNumberTokensRoundtripSafely(text) {
+  let inString = false;
+  let escaped = false;
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === '"') inString = false;
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      index += 1;
+      continue;
+    }
+    if (character === "-" || (character >= "0" && character <= "9")) {
+      const match = text.slice(index).match(
+        /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/,
+      );
+      if (!match) {
+        index += 1;
+        continue;
+      }
+      const token = match[0];
+      const parsed = Number(token);
+      if (!Number.isFinite(parsed)) return false;
+      const serialized = JSON.stringify(parsed);
+      if (
+        canonicalJsonNumberToken(token) === null ||
+        canonicalJsonNumberToken(serialized) !== canonicalJsonNumberToken(token)
+      ) {
+        return false;
+      }
+      index += token.length;
+      continue;
+    }
+    index += 1;
+  }
+  return true;
+}
+
+function jsonObjectMembersAreUnique(text) {
+  let index = 0;
+
+  const skipWhitespace = () => {
+    while (index < text.length && /[\t\n\r ]/.test(text[index])) index += 1;
+  };
+
+  const parseString = () => {
+    if (text[index] !== '"') return null;
+    const start = index;
+    index += 1;
+    while (index < text.length) {
+      const character = text[index];
+      if (character === "\\") {
+        index += 2;
+        continue;
+      }
+      if (character === '"') {
+        index += 1;
+        try {
+          const value = JSON.parse(text.slice(start, index));
+          return typeof value === "string" ? value : null;
+        } catch (_) {
+          return null;
+        }
+      }
+      if (character.charCodeAt(0) < 0x20) return null;
+      index += 1;
+    }
+    return null;
+  };
+
+  const parseNumber = () => {
+    const match = text.slice(index).match(
+      /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/,
+    );
+    if (!match) return false;
+    index += match[0].length;
+    return true;
+  };
+
+  const parseLiteral = (literal) => {
+    if (!text.startsWith(literal, index)) return false;
+    index += literal.length;
+    return true;
+  };
+
+  const parseValue = () => {
+    skipWhitespace();
+    const character = text[index];
+    if (character === "{") return parseObject();
+    if (character === "[") return parseArray();
+    if (character === '"') return parseString() !== null;
+    if (character === "t") return parseLiteral("true");
+    if (character === "f") return parseLiteral("false");
+    if (character === "n") return parseLiteral("null");
+    return parseNumber();
+  };
+
+  const parseObject = () => {
+    if (text[index] !== "{") return false;
+    index += 1;
+    skipWhitespace();
+    const names = new Set();
+    if (text[index] === "}") {
+      index += 1;
+      return true;
+    }
+    while (index < text.length) {
+      skipWhitespace();
+      const name = parseString();
+      if (name === null || names.has(name)) return false;
+      names.add(name);
+      skipWhitespace();
+      if (text[index] !== ":") return false;
+      index += 1;
+      if (!parseValue()) return false;
+      skipWhitespace();
+      if (text[index] === "}") {
+        index += 1;
+        return true;
+      }
+      if (text[index] !== ",") return false;
+      index += 1;
+    }
+    return false;
+  };
+
+  const parseArray = () => {
+    if (text[index] !== "[") return false;
+    index += 1;
+    skipWhitespace();
+    if (text[index] === "]") {
+      index += 1;
+      return true;
+    }
+    while (index < text.length) {
+      if (!parseValue()) return false;
+      skipWhitespace();
+      if (text[index] === "]") {
+        index += 1;
+        return true;
+      }
+      if (text[index] !== ",") return false;
+      index += 1;
+    }
+    return false;
+  };
+
+  skipWhitespace();
+  const valid = parseValue();
+  skipWhitespace();
+  return valid && index === text.length;
+}
+
+function detectNormalizedInput(text, options = {}) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
   if (text.startsWith("{")) {
     try {
+      const uniqueMembers = jsonObjectMembersAreUnique(text);
       const value = JSON.parse(text);
-      if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
-      if (isJsonCanvas(value)) return { kind: "json-canvas", text, value };
+      if (isSchauwerkRepresentation(value)) {
+        return uniqueMembers ? { kind: "representation", text, value } : { kind: "unknown", text };
+      }
+      if (
+        hasSupportedJsonCanvasShape(value, {
+          allowExtensionOnly: Boolean(options.allowExtensionOnlyCanvas),
+        })
+      ) {
+        if (!uniqueMembers) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: doppelte Objektschlüssel sind nicht zulässig.",
+          };
+        }
+        if (!jsonCanvasNumbersRemainSafe(value)) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: Zahlen müssen im sicheren JavaScript-Zahlenbereich liegen.",
+          };
+        }
+        if (!jsonCanvasNumberTokensRoundtripSafely(text)) {
+          return {
+            kind: "json-canvas-rejected",
+            text,
+            reason: "JSON Canvas kann nicht verlustfrei geöffnet werden: ein Zahlenliteral würde sich beim JavaScript-Roundtrip verändern.",
+          };
+        }
+        return { kind: "json-canvas", text, value };
+      }
     } catch (_) {
       return { kind: "unknown", text };
     }
@@ -332,20 +569,41 @@ function detectNormalizedInput(text) {
   return { kind: "unknown", text };
 }
 
-export function normalizeInput(raw) {
-  let text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
+function normalizeInputContext(raw) {
+  const text = String(raw ?? "").replace(/^\uFEFF/, "").trim();
   const fenced = text.match(FULL_INPUT_FENCE);
-  if (fenced) return fenced[1].trim();
+  if (fenced) {
+    return {
+      text: fenced[2].trim(),
+      allowExtensionOnlyCanvas: explicitCanvasFence(fenced[1]),
+    };
+  }
 
   const recognizedFences = [...text.matchAll(INLINE_INPUT_FENCE)]
-    .map((match) => match[1].trim())
-    .filter((candidate) => detectNormalizedInput(candidate).kind !== "unknown");
-  if (recognizedFences.length === 1) text = recognizedFences[0];
-  return text;
+    .map((match) => {
+      const candidate = match[2].trim();
+      const allowExtensionOnlyCanvas = explicitCanvasFence(match[1]);
+      const detected = detectNormalizedInput(candidate, { allowExtensionOnlyCanvas });
+      return detected.kind === "unknown"
+        ? null
+        : { text: candidate, allowExtensionOnlyCanvas };
+    })
+    .filter(Boolean);
+  if (recognizedFences.length === 1) return recognizedFences[0];
+  return { text, allowExtensionOnlyCanvas: false };
 }
 
-export function detectInput(raw) {
-  return detectNormalizedInput(normalizeInput(raw));
+export function normalizeInput(raw) {
+  return normalizeInputContext(raw).text;
+}
+
+export function detectInput(raw, options = {}) {
+  const normalized = normalizeInputContext(raw);
+  return detectNormalizedInput(normalized.text, {
+    allowExtensionOnlyCanvas: Boolean(
+      options.allowExtensionOnlyCanvas || normalized.allowExtensionOnlyCanvas
+    ),
+  });
 }
 
 export function isSchauwerkRepresentation(value) {
@@ -395,14 +653,18 @@ function isCanvasEdge(edge) {
   );
 }
 
-export function isJsonCanvas(value) {
+function hasSupportedJsonCanvasShape(value, options = {}) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const hasNodes = Object.prototype.hasOwnProperty.call(value, "nodes");
   const hasEdges = Object.prototype.hasOwnProperty.call(value, "edges");
-  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0;
+  if (!hasNodes && !hasEdges) return Object.keys(value).length === 0 || Boolean(options.allowExtensionOnly);
   if (hasNodes && (!Array.isArray(value.nodes) || !value.nodes.every(isCanvasNode))) return false;
   if (hasEdges && (!Array.isArray(value.edges) || !value.edges.every(isCanvasEdge))) return false;
   return true;
+}
+
+export function isJsonCanvas(value, options = {}) {
+  return hasSupportedJsonCanvasShape(value, options) && jsonCanvasNumbersRemainSafe(value);
 }
 
 export const MAX_INPUT_BYTES = 5 * 1024 * 1024;
@@ -715,6 +977,7 @@ const elements = {
   backButton: document.querySelector("#backButton"),
   layoutButton: document.querySelector("#layoutButton"),
   legacyEditButton: document.querySelector("#legacyEditButton"),
+  nativeRetryButton: document.querySelector("#nativeRetryButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
   fullscreenButton: document.querySelector("#fullscreenButton"),
@@ -728,6 +991,8 @@ const elements = {
 let pendingLoad = null;
 let currentXml = null;
 let currentRepresentation = null;
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
 let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = null;
@@ -738,6 +1003,10 @@ let preparedDownloadUrl = null;
 let editorReady = false;
 let editorFocusActive = false;
 let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "";
+let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
@@ -768,7 +1037,11 @@ function setEngineMode(mode) {
   const pngButton = document.querySelector('[data-export="png"]');
   if (pngButton instanceof HTMLButtonElement) pngButton.disabled = native;
   elements.projectButton.title = native
-    ? (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
+    ? (
+        currentNativeCanvas
+          ? "JSON Canvas speichern"
+          : (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
+      )
     : "draw.io-Projekt speichern";
   elements.legacyEditButton.hidden = !(native && currentLegacyXml);
 }
@@ -873,14 +1146,50 @@ function saveNativeDraft(representation) {
   }
 }
 
+function saveNativeCanvasDraft(nativeDocument, nativeCanvas) {
+  if (
+    !nativeDocument
+    || nativeDocument.schema_version !== "schauwerk-native-editing-document.v1"
+    || !nativeCanvas
+    || typeof nativeCanvas !== "object"
+    || Array.isArray(nativeCanvas)
+  ) {
+    return false;
+  }
+  try {
+    localStorage.setItem(
+      NATIVE_DRAFT_KEY,
+      JSON.stringify({
+        title: currentTitle,
+        nativeDocument,
+        nativeCanvas,
+        savedAt: Date.now(),
+      }),
+    );
+    elements.restoreButton.hidden = false;
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 function readNativeDraft() {
   try {
     const raw = localStorage.getItem(NATIVE_DRAFT_KEY);
     if (!raw) return null;
     const value = JSON.parse(raw);
-    return value && value.representation && typeof value.representation === "object"
-      ? value
-      : null;
+    if (!value || typeof value !== "object") return null;
+    if (value.representation && typeof value.representation === "object") return value;
+    if (
+      value.nativeDocument
+      && value.nativeDocument.schema_version === "schauwerk-native-editing-document.v1"
+      && value.nativeCanvas
+      && typeof value.nativeCanvas === "object"
+      && !Array.isArray(value.nativeCanvas)
+    ) {
+      return value;
+    }
+    return null;
   } catch (_) {
     return null;
   }
@@ -944,9 +1253,12 @@ function showStart() {
   pendingCreationDefaults = false;
   pendingExport = null;
   editorReady = false;
+  nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   currentLegacyXml = null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
+  elements.nativeRetryButton.hidden = true;
   replaceEditorFrame();
   clearPreparedDownload();
   elements.workspace.hidden = true;
@@ -963,11 +1275,17 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
-  const detected = detectInput(validateInputText(raw));
+  const detected = detectInput(validateInputText(raw), {
+    allowExtensionOnlyCanvas: /\.canvas$/i.test(String(title)),
+  });
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   currentRepresentation = null;
+  currentNativeDocument = null;
+  currentNativeCanvas = null;
   currentNativeUrl = null;
+  nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   pendingExport = null;
 
   if (detected.kind === "representation") {
@@ -984,12 +1302,18 @@ function prepareInput(raw, title = "Schaubild") {
   }
   if (detected.kind === "json-canvas") {
     return {
-      xml: jsonCanvasToDrawioXml(detected.value, {
-        nodeFontSize: preferredNodeFontSize,
-        edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
-      }),
+      nativeImport: {
+        schema_version: NATIVE_IMPORT_SCHEMA,
+        format: "json-canvas-1.0",
+        source: detected.value,
+        title: currentTitle,
+      },
+      nativeCanvas: detected.value,
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
+  }
+  if (detected.kind === "json-canvas-rejected") {
+    throw new Error(detected.reason);
   }
   if (detected.kind === "drawio") {
     const xml = validateDiagramXml(detected.text);
@@ -1015,6 +1339,7 @@ function prepareInput(raw, title = "Schaubild") {
 function replaceEditorFrame() {
   const previous = elements.frame;
   const frame = previous.cloneNode(false);
+  frame.inert = false;
   frame.removeAttribute("src");
   previous.replaceWith(frame);
   elements.frame = frame;
@@ -1035,10 +1360,15 @@ function launchLegacy(load) {
   pendingExport = null;
   pendingLoad = load;
   currentRepresentation = null;
+  currentNativeDocument = null;
+  currentNativeCanvas = null;
   currentLegacyXml = typeof load?.xml === "string" ? load.xml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
+  elements.nativeRetryButton.hidden = true;
   currentNativeUrl = null;
+  nativeCanvasRenderStale = false;
+  renderedNativeCanvasSnapshot = null;
   setEngineMode("legacy");
   pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";
   const sourceFormat = load?.sourceMetadata?.value;
@@ -1053,8 +1383,27 @@ function launchLegacy(load) {
   });
 }
 
-async function launchNative(load) {
+function nativeTokenFromUrl(value) {
+  const nativeUrl = String(value || "");
+  const prefix = `${PUBLIC_BASE_PATH}/native/`;
+  const suffix = "/index.html";
+  if (!nativeUrl.startsWith(prefix) || !nativeUrl.endsWith(suffix)) return "";
+  const token = nativeUrl.slice(prefix.length, -suffix.length);
+  return /^[0-9a-f]{32}$/.test(token) ? token : "";
+}
+
+async function launchNative(load, options = {}) {
   const loadIntent = invalidateLoadIntents();
+  const preserveActiveFrame = Boolean(
+    options.preserveActiveFrame && editorReady && currentNativeUrl,
+  );
+  const activeFrame = elements.frame;
+  const activeNativeUrl = currentNativeUrl;
+  const activeRepresentation = currentRepresentation;
+  const activeNativeDocument = currentNativeDocument;
+  const activeNativeCanvas = currentNativeCanvas;
+  const activeLegacyXml = currentLegacyXml;
+  const requestValue = load.nativeRepresentation || load.nativeDocument || load.nativeImport;
   clearPreparedDownload();
   pendingExport = null;
   pendingLoad = null;
@@ -1062,32 +1411,68 @@ async function launchNative(load) {
   pendingCreationDefaults = false;
   currentXml = null;
   currentRepresentation = load.nativeRepresentation || null;
+  currentNativeDocument = load.nativeDocument || null;
+  currentNativeCanvas = load.nativeCanvas || null;
   currentLegacyXml = typeof load.legacyXml === "string" ? load.legacyXml : null;
   pendingLegacyFallback = null;
   elements.legacyFallbackButton.hidden = true;
-  currentNativeUrl = null;
+  elements.nativeRetryButton.hidden = true;
+  if (!preserveActiveFrame) {
+    currentNativeUrl = null;
+    nativeCanvasRenderStale = false;
+  } else {
+    nativeCanvasRenderStale = true;
+  }
   setEngineMode("native");
-  editorReady = false;
-  const frame = replaceEditorFrame();
-  showWorkspace();
-  setStatus("Nativer Renderer wird geladen …");
+  if (!preserveActiveFrame) editorReady = false;
+  let frame = elements.frame;
+  if (preserveActiveFrame) {
+    frame.inert = true;
+    frame.blur();
+    setError("");
+  } else {
+    frame = replaceEditorFrame();
+    showWorkspace();
+  }
+  setStatus(
+    preserveActiveFrame
+      ? "Native Änderung wird gerendert …"
+      : "Nativer Renderer wird geladen …",
+  );
+
+  const previousLaunch = nativeLaunchTail;
+  let releaseLaunchTurn = () => {};
+  let permanentRecovery = null;
+  let permanentRejectionMessage = "";
+  nativeLaunchTail = new Promise((resolve) => {
+    releaseLaunchTurn = resolve;
+  });
 
   try {
+    await previousLaunch;
+    if (loadIntent !== loadIntentGeneration) return;
+
+    const headers = { "Content-Type": "application/json" };
+    if (nativeSupersedeToken) {
+      headers["X-Schauwerk-Native-Supersede"] = nativeSupersedeToken;
+    }
     const response = await fetch(NATIVE_API_PATH, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(currentRepresentation || load.nativeImport),
+      headers,
+      body: JSON.stringify(requestValue),
     });
     const result = await response.json();
-    if (loadIntent !== loadIntentGeneration) return;
-    if (!response.ok) throw new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
     const nativeUrl = String(result?.url || "");
-    const nativePrefix = `${PUBLIC_BASE_PATH}/native/`;
-    const nativeSuffix = "/index.html";
-    const nativeToken =
-      nativeUrl.startsWith(nativePrefix) && nativeUrl.endsWith(nativeSuffix)
-        ? nativeUrl.slice(nativePrefix.length, -nativeSuffix.length)
-        : "";
+    const nativeToken = nativeTokenFromUrl(nativeUrl);
+    if (response.ok && nativeToken) {
+      nativeSupersedeToken = nativeToken;
+    }
+    if (loadIntent !== loadIntentGeneration) return;
+    if (!response.ok) {
+      const renderError = new Error(result?.error || "Nativer Renderer hat die Eingabe abgelehnt.");
+      renderError.nativeStatus = response.status;
+      throw renderError;
+    }
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
@@ -1097,40 +1482,194 @@ async function launchNative(load) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
     currentNativeUrl = nativeUrl;
+    nativeCanvasRenderStale = false;
+    renderedNativeCanvasSnapshot = nativeCanvasSnapshot(currentNativeCanvas);
     if (currentRepresentation) {
       if (!saveNativeDraft(currentRepresentation)) {
         setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+      }
+    } else if (currentNativeDocument && currentNativeCanvas) {
+      if (!saveNativeCanvasDraft(currentNativeDocument, currentNativeCanvas)) {
+        setStatus("Native Canvas-Darstellung bereit · Dokument lokal nicht speicherbar");
       }
     } else if (currentLegacyXml && !saveDraft(currentLegacyXml)) {
       setStatus("Nativer draw.io-Import bereit · Original lokal nicht speicherbar");
     }
     editorReady = true;
+    if (preserveActiveFrame) {
+      frame = replaceEditorFrame();
+      showWorkspace();
+    }
     frame.src = currentNativeUrl;
     setEngineMode("native");
-    setStatus(currentLegacyXml
-      ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
-      : "Native Darstellung · Semantik read-only · Layout lokal");
+    setStatus(
+      currentNativeCanvas
+        ? "Native JSON-Canvas-Bearbeitung · Dokumentzustand aktiv"
+        : (
+            currentLegacyXml
+              ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
+              : "Native Darstellung · Semantik read-only · Layout lokal"
+          )
+    );
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
-    editorReady = false;
-    currentNativeUrl = null;
-    const fallbackXml = currentLegacyXml;
-    currentLegacyXml = null;
-    elements.workspace.hidden = true;
-    elements.startView.hidden = false;
-    if (fallbackXml) {
-      pendingLegacyFallback = fallbackXml;
-      elements.legacyFallbackButton.hidden = false;
-      setError(
-        (error instanceof Error ? error.message : "Nativer draw.io-Import wurde abgelehnt.")
-        + " Das Original wurde nicht verändert. Legacy-Bearbeitung kann ausdrücklich geöffnet werden."
+    const nativeStatus = Number(error?.nativeStatus || 0);
+    const permanentCandidateRejection = (
+      preserveActiveFrame
+      && !options.recoveryAttempt
+      && (nativeStatus === 413 || nativeStatus === 422)
+    );
+    if (permanentCandidateRejection) {
+      currentRepresentation = activeRepresentation;
+      currentNativeDocument = activeNativeDocument;
+      currentNativeCanvas = activeNativeCanvas;
+      currentLegacyXml = activeLegacyXml;
+      currentNativeUrl = activeNativeUrl;
+      nativeCanvasRenderStale = true;
+      editorReady = true;
+      elements.nativeRetryButton.hidden = true;
+      if (elements.frame === activeFrame) activeFrame.inert = true;
+      permanentRejectionMessage = (
+        error instanceof Error ? error.message : "Native Änderung wurde abgelehnt."
       );
-      setStatus("Nativer draw.io-Import abgelehnt · Legacy verfügbar");
+      if (activeNativeDocument && activeNativeCanvas && activeNativeUrl) {
+        permanentRecovery = {
+          nativeDocument: activeNativeDocument,
+          nativeCanvas: activeNativeCanvas,
+          sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+        };
+        setEngineMode("native");
+        setError(
+          permanentRejectionMessage
+          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand wird neu gerendert.",
+        );
+        setStatus(
+          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wird wiederhergestellt",
+        );
+      } else {
+        nativeCanvasRenderStale = false;
+        if (elements.frame === activeFrame) {
+          frame = replaceEditorFrame();
+          showWorkspace();
+          frame.src = activeNativeUrl;
+        }
+        setEngineMode("native");
+        setError(
+          permanentRejectionMessage
+          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+        );
+        setStatus(
+          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt",
+        );
+        return;
+      }
+    } else if (preserveActiveFrame) {
+      currentNativeUrl = activeNativeUrl;
+      nativeCanvasRenderStale = true;
+      editorReady = true;
+      if (elements.frame === activeFrame) activeFrame.inert = true;
+      elements.nativeRetryButton.hidden = false;
+      let nativeCanvasDraftSaved = null;
+      if (currentNativeDocument && currentNativeCanvas) {
+        nativeCanvasDraftSaved = saveNativeCanvasDraft(
+          currentNativeDocument,
+          currentNativeCanvas,
+        );
+      }
+      const draftErrorSuffix = (
+        nativeCanvasDraftSaved === true
+          ? " Der aktuelle Dokumentzustand wurde zusätzlich lokal als Entwurf gesichert."
+          : (
+              nativeCanvasDraftSaved === false
+                ? " Der aktuelle Dokumentzustand konnte nicht lokal als Entwurf gespeichert werden."
+                : ""
+            )
+      );
+      const draftStatusSuffix = (
+        nativeCanvasDraftSaved === true
+          ? " · Entwurf lokal gesichert"
+          : (nativeCanvasDraftSaved === false ? " · Entwurf lokal nicht speicherbar" : "")
+      );
+      setError(
+        (error instanceof Error ? error.message : "Native Änderung konnte nicht gerendert werden.")
+        + " Bestehende Ansicht bleibt sichtbar und gesperrt; .canvas-Export enthält den aktuellen Dokumentzustand."
+        + draftErrorSuffix
+        + " Mit „Neu rendern“ erneut versuchen.",
+      );
+      setStatus(
+        "Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen"
+        + draftStatusSuffix,
+      );
+      return;
     } else {
-      setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
-      setStatus("Native Darstellung abgelehnt");
+      editorReady = false;
+      currentNativeUrl = null;
+      let fallbackXml = currentLegacyXml;
+      if (!fallbackXml && currentNativeCanvas) {
+        try {
+          fallbackXml = jsonCanvasToDrawioXml(currentNativeCanvas, {
+            nodeFontSize: preferredNodeFontSize,
+            edgeFontSize: edgeFontSizeFor(preferredNodeFontSize),
+          });
+        } catch (_) {
+          fallbackXml = null;
+        }
+      }
+      currentLegacyXml = null;
+      elements.workspace.hidden = true;
+      elements.startView.hidden = false;
+      if (fallbackXml) {
+        pendingLegacyFallback = fallbackXml;
+        elements.legacyFallbackButton.hidden = false;
+        setError(
+          (error instanceof Error ? error.message : "Nativer Import wurde abgelehnt.")
+          + " Das Original wurde nicht verändert. Legacy-Bearbeitung kann ausdrücklich geöffnet werden."
+        );
+        setStatus("Nativer Import abgelehnt · Legacy verfügbar");
+      } else {
+        setError(error instanceof Error ? error.message : "Native Darstellung konnte nicht geladen werden.");
+        setStatus("Native Darstellung abgelehnt");
+      }
+    }
+  } finally {
+    releaseLaunchTurn();
+  }
+
+  if (permanentRecovery) {
+    await launchNative(
+      permanentRecovery,
+      { preserveActiveFrame: true, recoveryAttempt: true },
+    );
+    if (!nativeCanvasRenderStale && editorReady) {
+      setError(
+        permanentRejectionMessage
+        + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+      );
+      setStatus(
+        "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt",
+      );
     }
   }
+}
+
+async function retryNativeCanvasRender() {
+  if (
+    !nativeCanvasRenderStale ||
+    !editorReady ||
+    !currentNativeDocument ||
+    !currentNativeCanvas ||
+    !currentNativeUrl
+  ) {
+    elements.nativeRetryButton.hidden = true;
+    setStatus("Keine fehlgeschlagene native Änderung zum erneuten Rendern");
+    return;
+  }
+  elements.nativeRetryButton.hidden = true;
+  await launchNative({
+    nativeDocument: currentNativeDocument,
+    nativeCanvas: currentNativeCanvas,
+    sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+  }, { preserveActiveFrame: true });
 }
 
 function loadPendingIntoEditor() {
@@ -1190,13 +1729,68 @@ async function openFile(file) {
   }
 }
 
+function nativeCanvasSnapshot(canvas) {
+  if (!canvas || typeof canvas !== "object" || Array.isArray(canvas)) return null;
+  try {
+    return JSON.stringify(canvas, (_key, value) => {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) return value;
+      return Object.fromEntries(
+        Object.keys(value).sort().map((key) => [key, value[key]]),
+      );
+    });
+  } catch (_) {
+    return null;
+  }
+}
+
+function nativeCanvasDiffersFromRendered(canvas) {
+  if (!canvas) return false;
+  const snapshot = nativeCanvasSnapshot(canvas);
+  return (
+    renderedNativeCanvasSnapshot === null
+    || snapshot === null
+    || snapshot !== renderedNativeCanvasSnapshot
+  );
+}
+
+function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
+  try {
+    const svg = elements.frame.contentDocument?.querySelector("#nativeDiagram");
+    if (
+      !svg ||
+      svg.namespaceURI !== "http://www.w3.org/2000/svg" ||
+      svg.localName !== "svg"
+    ) {
+      return null;
+    }
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    if (stripInputDigest) clone.removeAttribute("data-input-digest");
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+      + new XMLSerializer().serializeToString(clone)
+      + "\n";
+  } catch (_) {
+    return null;
+  }
+}
+
 async function exportNative(format) {
-  if (!editorReady || (!currentRepresentation && !currentLegacyXml) || !currentNativeUrl) {
+  if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Native Darstellung ist noch nicht bereit");
     return;
   }
   clearPreparedDownload();
   if (format === "drawio") {
+    if (currentNativeCanvas) {
+      const source = JSON.stringify(currentNativeCanvas, null, 2) + "\n";
+      prepareDownload(
+        new Blob([source], { type: "application/json;charset=utf-8" }),
+        safeFilename(currentTitle) + ".canvas",
+        "JSON Canvas",
+      );
+      setStatus("Bearbeitete .canvas-Datei bereit");
+      return;
+    }
     if (currentLegacyXml) {
       prepareDownload(
         new Blob([currentLegacyXml], { type: "application/xml;charset=utf-8" }),
@@ -1221,6 +1815,34 @@ async function exportNative(format) {
   }
   if (format !== "svg") {
     setStatus("Native Exportart wird nicht unterstützt");
+    return;
+  }
+  if (currentNativeCanvas && nativeCanvasRenderStale) {
+    setStatus(
+      "Aktuelle SVG-Ausgabe ist nach Renderfehler nicht synchron · .canvas bleibt verfügbar",
+    );
+    return;
+  }
+  const liveSvg = serializeNativeFrameSvg({
+    stripInputDigest: currentNativeCanvas
+      ? nativeCanvasDiffersFromRendered(currentNativeCanvas)
+      : true,
+  });
+  if (liveSvg !== null) {
+    prepareDownload(
+      new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" }),
+      safeFilename(currentTitle) + ".svg",
+      "SVG",
+    );
+    setStatus(
+      currentNativeCanvas
+        ? "SVG aus aktuellem Canvas-Dokument bereit"
+        : "SVG aus aktueller nativer Darstellung bereit",
+    );
+    return;
+  }
+  if (currentNativeCanvas) {
+    setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
     return;
   }
   const assetUrl = currentNativeUrl.replace(/index\.html$/, "diagram.svg");
@@ -1268,9 +1890,49 @@ function exportDiagram(format) {
 }
 
 window.addEventListener("message", (event) => {
-  if (event.origin !== EDITOR_ORIGIN || event.source !== elements.frame.contentWindow) return;
+  if (event.source !== elements.frame.contentWindow) return;
   const message = parseMessage(event.data);
   if (!message) return;
+
+  if (event.origin === window.location.origin) {
+    if (message.event === "native-document-change") {
+      if (
+        message.document &&
+        message.document.schema_version === "schauwerk-native-editing-document.v1" &&
+        message.canvas &&
+        typeof message.canvas === "object"
+      ) {
+        currentNativeDocument = message.document;
+        currentNativeCanvas = message.canvas;
+        const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);
+        setEngineMode("native");
+        setStatus(
+          draftSaved
+            ? "Native Änderung im Dokumentzustand gesichert"
+            : "Native Änderung aktiv · lokales Speichern nicht möglich",
+        );
+      }
+      return;
+    }
+    if (message.event === "native-document-rebuild") {
+      if (
+        message.document &&
+        message.document.schema_version === "schauwerk-native-editing-document.v1" &&
+        message.canvas &&
+        typeof message.canvas === "object"
+      ) {
+        void launchNative({
+          nativeDocument: message.document,
+          nativeCanvas: message.canvas,
+          sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+        }, { preserveActiveFrame: true });
+      }
+      return;
+    }
+    return;
+  }
+
+  if (event.origin !== EDITOR_ORIGIN) return;
 
   if (message.event === "configure") {
     const config = {
@@ -1390,6 +2052,14 @@ elements.restoreButton.addEventListener("click", () => {
   if (!draft) return;
   if (draft.kind === "native") {
     currentTitle = safeFilename(draft.title || "Schaubild");
+    if (draft.nativeDocument && draft.nativeCanvas) {
+      launch({
+        nativeDocument: draft.nativeDocument,
+        nativeCanvas: draft.nativeCanvas,
+        sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+      });
+      return;
+    }
     launch({
       nativeRepresentation: draft.representation,
       sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
@@ -1413,6 +2083,7 @@ elements.legacyFallbackButton.addEventListener("click", () => {
   elements.legacyFallbackButton.hidden = true;
   launchLegacy({ xml });
 });
+elements.nativeRetryButton.addEventListener("click", () => { void retryNativeCanvasRender(); });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
 elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);
 elements.fontDecreaseButton.addEventListener("click", () => {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 import textwrap
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -11,9 +12,10 @@ from html import escape
 from typing import Any
 
 from .grammar import GRAMMAR_SCHEMA_VERSION
+from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
-__all__ = ["render_native_diagram"]
+__all__ = ["render_native_diagram", "render_native_editing_document"]
 
 _NODE_WIDTH = 250
 _NODE_HEIGHT = 166
@@ -590,7 +592,8 @@ def _marker_definitions() -> list[str]:
         lines.extend(
             (
                 f'<marker id="native-arrow-{kind}" viewBox="0 0 8 8" refX="7" refY="4" '
-                'markerWidth="6" markerHeight="6" orient="auto" markerUnits="strokeWidth">',
+                'markerWidth="6" markerHeight="6" orient="auto" '
+                'markerUnits="strokeWidth">',
                 f'<path d="M 0 0 L 8 4 L 0 8 L 2 4 Z" fill="{color}"/>',
                 "</marker>",
             )
@@ -3187,6 +3190,449 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 intent=intent,
             )
         )
+
+    lines.append("</svg>")
+    return "\n".join(lines) + "\n"
+
+_CANVAS_PALETTE = {
+    "1": ("#fff1f0", "#b85450"),
+    "2": ("#fff4e6", "#d97706"),
+    "3": ("#fff9db", "#b08900"),
+    "4": ("#edf8ed", "#4d8a4d"),
+    "5": ("#e9f5fb", "#3d7f91"),
+    "6": ("#f2ecf6", "#806090"),
+}
+
+
+def _canvas_xml(value: Any) -> str:
+    return _xml_escape(str(value))
+
+
+def _canvas_color(value: Any) -> tuple[str, str]:
+    text = str(value) if value is not None else ""
+    if text in _CANVAS_PALETTE:
+        return _CANVAS_PALETTE[text]
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", text):
+        return "#ffffff", text.lower()
+    return "#ffffff", "#64748b"
+
+
+def _canvas_anchor(
+    node: Mapping[str, Any],
+    side: str | None,
+    *,
+    toward: tuple[float, float],
+) -> tuple[float, float, tuple[float, float]]:
+    x = float(node["x"])
+    y = float(node["y"])
+    width = float(node["width"])
+    height = float(node["height"])
+    cx = x + width / 2
+    cy = y + height / 2
+    chosen = side
+    if chosen is None:
+        dx = toward[0] - cx
+        dy = toward[1] - cy
+        if abs(dx) >= abs(dy):
+            chosen = "right" if dx >= 0 else "left"
+        else:
+            chosen = "bottom" if dy >= 0 else "top"
+    points = {
+        "left": (x, cy, (-1.0, 0.0)),
+        "right": (x + width, cy, (1.0, 0.0)),
+        "top": (cx, y, (0.0, -1.0)),
+        "bottom": (cx, y + height, (0.0, 1.0)),
+    }
+    return points[chosen]
+
+
+def _canvas_edge_geometry(
+    source: Mapping[str, Any],
+    target: Mapping[str, Any],
+    edge: Mapping[str, Any],
+    *,
+    lane: float,
+) -> tuple[str, float, float, str, tuple[float, float, float, float]]:
+    source_center = (
+        float(source["x"]) + float(source["width"]) / 2,
+        float(source["y"]) + float(source["height"]) / 2,
+    )
+    target_center = (
+        float(target["x"]) + float(target["width"]) / 2,
+        float(target["y"]) + float(target["height"]) / 2,
+    )
+    if source["id"] == target["id"]:
+        x = float(source["x"])
+        y = float(source["y"])
+        width = float(source["width"])
+        height = float(source["height"])
+        reach = 66.0 + abs(lane)
+        from_side = edge.get("from_side")
+        to_side = edge.get("to_side")
+        if from_side is None and to_side is None:
+            start = (x + width, y + height * 0.35)
+            end = (x + width, y + height * 0.72)
+            c1 = (start[0] + reach, y - 18.0)
+            c2 = (end[0] + reach, y + height + 18.0)
+            label_offset_x = 18.0
+            label_offset_y = 0.0
+        else:
+            def loop_anchor(
+                side: str | None, fraction: float
+            ) -> tuple[float, float, tuple[float, float]]:
+                chosen = side or "right"
+                points = {
+                    "left": (x, y + height * fraction, (-1.0, 0.0)),
+                    "right": (x + width, y + height * fraction, (1.0, 0.0)),
+                    "top": (x + width * fraction, y, (0.0, -1.0)),
+                    "bottom": (x + width * fraction, y + height, (0.0, 1.0)),
+                }
+                return points[chosen]
+
+            sx, sy, source_vector = loop_anchor(from_side, 0.35)
+            tx, ty, target_vector = loop_anchor(to_side, 0.72)
+            start = (sx, sy)
+            end = (tx, ty)
+            c1 = (
+                sx + source_vector[0] * reach,
+                sy + source_vector[1] * reach,
+            )
+            c2 = (
+                tx + target_vector[0] * reach,
+                ty + target_vector[1] * reach,
+            )
+            chosen_from = from_side or "right"
+            chosen_to = to_side or "right"
+            if {chosen_from, chosen_to} == {"top", "bottom"}:
+                outside_bias = reach + width / 2
+                c1 = (c1[0] + outside_bias, c1[1])
+                c2 = (c2[0] + outside_bias, c2[1])
+            elif {chosen_from, chosen_to} == {"left", "right"}:
+                outside_bias = reach + height / 2
+                c1 = (c1[0], c1[1] - outside_bias)
+                c2 = (c2[0], c2[1] - outside_bias)
+            label_offset_x = 9.0 * (source_vector[0] + target_vector[0])
+            label_offset_y = 9.0 * (source_vector[1] + target_vector[1])
+        path = (
+            f"M {start[0]:.1f} {start[1]:.1f} "
+            f"C {c1[0]:.1f} {c1[1]:.1f}, {c2[0]:.1f} {c2[1]:.1f}, "
+            f"{end[0]:.1f} {end[1]:.1f}"
+        )
+        label_x = (
+            (start[0] + 3 * c1[0] + 3 * c2[0] + end[0]) / 8
+            + label_offset_x
+        )
+        label_y = (
+            (start[1] + 3 * c1[1] + 3 * c2[1] + end[1]) / 8
+            + label_offset_y
+        )
+        points = (start, c1, c2, end)
+        bounds = (
+            min(point[0] for point in points),
+            min(point[1] for point in points),
+            max(point[0] for point in points),
+            max(point[1] for point in points),
+        )
+        return path, label_x, label_y, "canvas-self-loop", bounds
+
+    sx, sy, sv = _canvas_anchor(source, edge.get("from_side"), toward=target_center)
+    tx, ty, tv = _canvas_anchor(target, edge.get("to_side"), toward=source_center)
+    distance = max(42.0, min(160.0, math.hypot(tx - sx, ty - sy) * 0.35))
+    c1 = (sx + sv[0] * distance, sy + sv[1] * distance)
+    c2 = (tx + tv[0] * distance, ty + tv[1] * distance)
+    if lane:
+        dx = tx - sx
+        dy = ty - sy
+        magnitude = max(1.0, math.hypot(dx, dy))
+        nx = -dy / magnitude
+        ny = dx / magnitude
+        c1 = (c1[0] + nx * lane, c1[1] + ny * lane)
+        c2 = (c2[0] + nx * lane, c2[1] + ny * lane)
+    path = (
+        f"M {sx:.1f} {sy:.1f} "
+        f"C {c1[0]:.1f} {c1[1]:.1f}, {c2[0]:.1f} {c2[1]:.1f}, "
+        f"{tx:.1f} {ty:.1f}"
+    )
+    label_x = (sx + 3 * c1[0] + 3 * c2[0] + tx) / 8
+    label_y = (sy + 3 * c1[1] + 3 * c2[1] + ty) / 8
+    points = ((sx, sy), c1, c2, (tx, ty))
+    bounds = (
+        min(point[0] for point in points),
+        min(point[1] for point in points),
+        max(point[0] for point in points),
+        max(point[1] for point in points),
+    )
+    return path, label_x, label_y, "canvas-cubic", bounds
+
+
+
+def _canvas_plain_markdown(value: str) -> str:
+    """Normalize the bounded Markdown subset already used by the legacy Canvas path."""
+
+    text = re.sub(r"^#{1,6}\s+", "", str(value), flags=re.MULTILINE)
+    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"__([^_]+)__", r"\1", text)
+    text = re.sub(r"\x60([^\x60]+)\x60", r"\1", text)
+    return text.strip()
+
+
+def _canvas_wrap(value: str, width_px: int, height_px: int) -> list[str]:
+    chars = max(4, width_px // 8)
+    line_count = max(1, min(10, height_px // 20))
+    lines: list[str] = []
+    for paragraph in value.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        wrapped = textwrap.wrap(
+            paragraph,
+            width=chars,
+            break_long_words=True,
+            break_on_hyphens=False,
+        ) or [""]
+        lines.extend(wrapped)
+        if len(lines) >= line_count:
+            break
+    if len(lines) > line_count:
+        lines = lines[:line_count]
+    return lines[:line_count]
+
+
+def render_native_editing_document(document: Mapping[str, Any]) -> str:
+    """Render one explicit-geometry document using the native editor SVG contract."""
+
+    if document.get("schema_version") != NATIVE_DOCUMENT_SCHEMA:
+        raise NativeDocumentError("unsupported native editing document schema")
+    nodes = document.get("nodes")
+    edges = document.get("edges")
+    if not isinstance(nodes, list):
+        raise NativeDocumentError("native editing document nodes are invalid")
+    if not isinstance(edges, list):
+        raise NativeDocumentError("native editing document edges are invalid")
+
+    node_by_id = {str(node["id"]): node for node in nodes}
+
+    pair_counts: dict[tuple[str, str], int] = {}
+    pair_slots: dict[tuple[str, str], int] = {}
+    for edge in edges:
+        key = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+        pair_counts[key] = pair_counts.get(key, 0) + 1
+
+    edge_layouts = []
+    for index, edge in enumerate(edges):
+        source_id = str(edge["from"])
+        target_id = str(edge["to"])
+        source = node_by_id[source_id]
+        target = node_by_id[target_id]
+        key = tuple(sorted((source_id, target_id)))
+        slot = pair_slots.get(key, 0)
+        pair_slots[key] = slot + 1
+        if source_id == target_id:
+            lane = slot * 18.0
+        else:
+            lane = (slot - (pair_counts[key] - 1) / 2) * 18.0
+            if source_id > target_id:
+                lane = -lane
+        path, label_x, label_y, route, edge_bounds = _canvas_edge_geometry(
+            source, target, edge, lane=lane
+        )
+        label = str(edge.get("label", ""))
+        label_width = max(42, min(260, len(label) * 8 + 20))
+        label_height = 28
+        edge_layouts.append(
+            (
+                index,
+                edge,
+                lane,
+                path,
+                label_x,
+                label_y,
+                route,
+                edge_bounds,
+                label,
+                label_width,
+                label_height,
+            )
+        )
+
+    margin = 88
+    if nodes:
+        min_x = min(float(node["x"]) for node in nodes)
+        min_y = min(float(node["y"]) for node in nodes)
+        max_x = max(float(node["x"]) + float(node["width"]) for node in nodes)
+        max_y = max(float(node["y"]) + float(node["height"]) for node in nodes)
+        for layout in edge_layouts:
+            edge_bounds = layout[7]
+            min_x = min(min_x, edge_bounds[0])
+            min_y = min(min_y, edge_bounds[1])
+            max_x = max(max_x, edge_bounds[2])
+            max_y = max(max_y, edge_bounds[3])
+            if layout[8]:
+                label_x = layout[4]
+                label_y = layout[5]
+                label_width = layout[9]
+                label_height = layout[10]
+                min_x = min(min_x, label_x - label_width / 2)
+                min_y = min(min_y, label_y - label_height / 2)
+                max_x = max(max_x, label_x + label_width / 2)
+                max_y = max(max_y, label_y + label_height / 2)
+        view_x = math.floor(min_x - margin)
+        view_y = math.floor(min_y - margin)
+        view_right = math.ceil(max_x + margin)
+        view_bottom = math.ceil(max_y + margin)
+        view_width = max(1, view_right - view_x)
+        view_height = max(1, view_bottom - view_y)
+    else:
+        view_x = 0
+        view_y = 0
+        view_width = 1200
+        view_height = 800
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="{view_x} {view_y} {view_width} {view_height}" '
+            f'width="{view_width}" height="{view_height}" '
+            f'data-renderer="schauwerk-native-diagram-v1" '
+            f'data-intent="freeform" data-document-mode="json-canvas" '
+            f'data-input-digest="{_canvas_xml(document["source_digest"])}">'
+        ),
+        f"<title>{_canvas_xml(document.get('title', 'Schaubild'))}</title>",
+        "<defs>",
+    ]
+    for index, edge in enumerate(edges):
+        _, stroke = _canvas_color(edge.get("source", {}).get("color"))
+        lines.extend(
+            [
+                (
+                    f'<marker id="canvas-arrow-{index}" viewBox="0 0 8 8" refX="7" refY="4" '
+                    'markerWidth="6" markerHeight="6" orient="auto-start-reverse" '
+                    'markerUnits="strokeWidth">'
+                ),
+                f'<path d="M 0 0 L 8 4 L 0 8 L 2 4 Z" fill="{stroke}"/>',
+                "</marker>",
+            ]
+        )
+    lines.append("</defs>")
+
+    def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
+        node_type = str(node["type"])
+        raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
+        fill, stroke = _canvas_color(raw.get("color"))
+        if node_type == "group":
+            fill = "#f8fafc"
+        x = int(node["x"])
+        y = int(node["y"])
+        width = int(node["width"])
+        height = int(node["height"])
+        label = str(node.get("label", ""))
+        display_label = _canvas_plain_markdown(label) if node_type == "text" else label
+        lines.append(
+            f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
+            f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
+            f'data-canvas-type="{_canvas_xml(node_type)}">'
+        )
+        lines.append(f"<title>{_canvas_xml(display_label)}</title>")
+        label_clip_id = f"canvas-node-label-{node_index}"
+        lines.append(
+            f'<defs><clipPath id="{label_clip_id}">'
+            f'<rect x="{x}" y="{y}" width="{width}" height="{height}"/>'
+            "</clipPath></defs>"
+        )
+        dash = ' stroke-dasharray="8 6"' if node_type == "group" else ""
+        fill_opacity = "0.28" if node_type == "group" else "1"
+        lines.append(
+            f'<rect x="{x}" y="{y}" width="{width}" height="{height}" rx="12" '
+            f'fill="{fill}" fill-opacity="{fill_opacity}" stroke="{stroke}" '
+            f'stroke-width="1.8"{dash}/>'
+        )
+        text_x = x + 14
+        text_y = y + 28
+        for line_index, line in enumerate(
+            _canvas_wrap(display_label, width - 28, height - 24)
+        ):
+            weight = "700" if line_index == 0 or node_type == "group" else "500"
+            lines.append(
+                f'<text data-node-label="true" x="{text_x}" '
+                f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
+                f'font-size="16" font-weight="{weight}" fill="#172033" '
+                f'clip-path="url(#{label_clip_id})">{_canvas_xml(line)}</text>'
+            )
+        lines.append("</g>")
+
+    for node_index, node in enumerate(nodes):
+        if str(node["type"]) == "group":
+            append_canvas_node(node, node_index)
+
+    for (
+        index,
+        edge,
+        lane,
+        path,
+        label_x,
+        label_y,
+        route,
+        _edge_bounds,
+        label,
+        label_width,
+        label_height,
+    ) in edge_layouts:
+        _, stroke = _canvas_color(edge.get("source", {}).get("color"))
+        marker_start = (
+            f' marker-start="url(#canvas-arrow-{index})"'
+            if edge.get("from_end") == "arrow"
+            else ""
+        )
+        marker_end = (
+            f' marker-end="url(#canvas-arrow-{index})"'
+            if edge.get("to_end") != "none"
+            else ""
+        )
+        lines.extend(
+            [
+                (
+                    f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
+                    f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
+                    f'data-route="{route}" data-lane="{lane:.1f}">'
+                ),
+                f"<title>{_canvas_xml(label)}</title>",
+                (
+                    f'<path d="{path}" fill="none" stroke="{stroke}" stroke-width="2" '
+                    f'stroke-linecap="round" stroke-linejoin="round"{marker_start}{marker_end}/>'
+                ),
+            ]
+        )
+        if label:
+            clip_id = f"canvas-edge-label-{index}"
+            lines.extend(
+                [
+                    (
+                        f'<defs><clipPath id="{clip_id}">'
+                        f'<rect x="{label_x - label_width / 2:.1f}" '
+                        f'y="{label_y - label_height / 2:.1f}" width="{label_width}" '
+                        f'height="{label_height}"/></clipPath></defs>'
+                    ),
+                    (
+                        f'<rect x="{label_x - label_width / 2:.1f}" '
+                        f'y="{label_y - label_height / 2:.1f}" width="{label_width}" '
+                        f'height="{label_height}" rx="9" fill="#f8fafc" fill-opacity="0.94"/>'
+                    ),
+                    (
+                        f'<text x="{label_x:.1f}" y="{label_y + 5:.1f}" '
+                        f'text-anchor="middle" font-family="Inter, sans-serif" '
+                        f'font-size="14" font-weight="600" fill="{stroke}" '
+                        f'clip-path="url(#{clip_id})">{_canvas_xml(label)}</text>'
+                    ),
+                ]
+            )
+        else:
+            lines.append(
+                f'<rect x="{label_x:.1f}" y="{label_y:.1f}" width="0" height="0" fill="none"/>'
+            )
+        lines.append("</g>")
+
+    for node_index, node in enumerate(nodes):
+        if str(node["type"]) != "group":
+            append_canvas_node(node, node_index)
 
     lines.append("</svg>")
     return "\n".join(lines) + "\n"

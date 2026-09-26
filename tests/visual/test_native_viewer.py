@@ -8,13 +8,21 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import get_type_hints
 
 import pytest
 
-from schauwerk.visual.native_diagram import render_native_diagram
+from schauwerk.visual.native_diagram import (
+    _canvas_color,
+    _canvas_edge_geometry,
+    _edge_geometry,
+    render_native_diagram,
+)
+from schauwerk.visual.native_document import json_canvas_to_editing_document
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
+    _read_representation,
     build_native_viewer,
 )
 from schauwerk.visual.representation import validate_representation_input
@@ -34,6 +42,29 @@ def _source_ids(svg: bytes, kind: str) -> set[str]:
         for element in root.iter()
         if element.attrib.get("data-source-kind") == kind
     }
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["#0x1234", "#+12345", "#-12345", "#1_2345", "# 12345", "#12345 "],
+)
+def test_canvas_color_rejects_noncanonical_hex(value: str) -> None:
+    assert _canvas_color(value) == ("#ffffff", "#64748b")
+
+
+def test_canvas_color_accepts_canonical_hex_case_insensitively() -> None:
+    assert _canvas_color("#A1B2C3") == ("#ffffff", "#a1b2c3")
+
+
+def test_native_geometry_return_annotations_match_runtime_shapes() -> None:
+    assert get_type_hints(_edge_geometry)["return"] == tuple[str, float, float, str]
+    assert get_type_hints(_canvas_edge_geometry)["return"] == tuple[
+        str,
+        float,
+        float,
+        str,
+        tuple[float, float, float, float],
+    ]
 
 
 def test_native_viewer_manifest_binds_integrated_reverse_proxy_context(
@@ -75,6 +106,94 @@ def test_native_viewer_rejects_incoherent_serving_context(tmp_path: Path) -> Non
         )
 
 
+@pytest.mark.parametrize(
+    ("mutator", "error"),
+    [
+        (
+            lambda raw: raw.replace(
+                '"mode":"keep"',
+                '"mode":"keep","mode":"drop"',
+                1,
+            ),
+            "duplicate object member",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"mode":"keep"',
+                '"mode":"keep","m\\u006fde":"drop"',
+                1,
+            ),
+            "duplicate object member",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"revision":"TOKEN"',
+                '"revision":9007199254740990.5',
+                1,
+            ),
+            "would change during JavaScript roundtrip",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"revision":"TOKEN"',
+                '"revision":1e400',
+                1,
+            ),
+            "finite JavaScript number range",
+        ),
+    ],
+)
+def test_native_viewer_cli_rejects_lossy_editing_document_json(
+    tmp_path: Path,
+    mutator,
+    error: str,
+) -> None:
+    document = json_canvas_to_editing_document(
+        {
+            "nodes": [],
+            "edges": [],
+            "plugin": {"mode": "keep", "revision": "TOKEN"},
+        }
+    )
+    raw = json.dumps(document, ensure_ascii=False, separators=(",", ":"))
+    candidate = tmp_path / "document.json"
+    candidate.write_text(mutator(raw), encoding="utf-8")
+
+    with pytest.raises(NativeViewerError, match=error):
+        _read_representation(candidate)
+
+
+def test_native_viewer_cli_accepts_roundtrip_safe_editing_document_json(
+    tmp_path: Path,
+) -> None:
+    document = json_canvas_to_editing_document(
+        {
+            "nodes": [],
+            "edges": [],
+            "plugin": {
+                "left": {"mode": "keep"},
+                "right": {"mode": "drop"},
+                "revision": "TOKEN",
+            },
+        }
+    )
+    raw = json.dumps(document, ensure_ascii=False, separators=(",", ":")).replace(
+        '"revision":"TOKEN"',
+        '"revision":0.1',
+        1,
+    )
+    candidate = tmp_path / "document.json"
+    candidate.write_text(raw, encoding="utf-8")
+
+    parsed = _read_representation(candidate)
+
+    assert parsed["source"]["plugin"] == {
+        "left": {"mode": "keep"},
+        "right": {"mode": "drop"},
+        "revision": 0.1,
+    }
+
+
 def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only(
     tmp_path: Path,
 ) -> None:
@@ -97,10 +216,18 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         "semantic_writeback": False,
         "cross_device_persistence": False,
     }
-    assert first["interactions"] == ["pan", "zoom", "selection", "node-drag"]
+    assert first["interactions"] == [
+        "pan",
+        "zoom",
+        "selection",
+        "node-drag",
+        "live-edge-rerouting",
+    ]
+    assert first["interaction_contract"]["edge_rerouting"] is True
+    assert first["interaction_contract"]["edge_geometry_after_node_drag"] == (
+        "live-route-preserving-overlay"
+    )
     assert first["interaction_contract"]["two_pointer_pinch_zoom"] is True
-    assert first["interaction_contract"]["edge_geometry_after_node_drag"] == "frozen-gate1-svg"
-    assert first["interaction_contract"]["edge_rerouting"] is False
     assert first["network_boundary"] == {
         "bundle": "server-managed-local-bundle",
         "external_requests_required": False,
@@ -152,7 +279,8 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert '/^[0-9a-f]{64}$/.test(inputDigest)' in app
     assert 'querySelectorAll(\'[data-source-kind="node"]\')' in app
     assert 'querySelector(\'[data-source-kind="edge"]\')' not in app
-    assert 'setAttribute("d"' not in app
+    assert 'edgeState.path.setAttribute("d"' in app
+    assert "function updateIncidentEdges(sourceId)" in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
     assert 'gesture = { kind: "pinch"' in app
@@ -163,11 +291,77 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         'if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;'
         in app
     )
-    assert 'endedGesture.moved && persistOverrides()' in app
+    assert "const documentEditorHosted = documentMode && window.parent !== window;" in app
+    assert "if (documentEditorHosted)" in app
+    assert "Dokumentansicht · Bearbeiten im Schaubild-Host" in app
+    assert "else if (persistOverrides())" in app
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
     assert 'event.key === "Enter" || event.key === " "' in app
+    assert 'if (event.key !== "Escape") return;' in app
+    escape_handler = app[app.index('window.addEventListener("keydown"') :]
+    assert "edgeCreateSource = null;" in escape_handler
+    assert "edgeReattach = null;" in escape_handler
+    assert "Kantenaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
+
+
+def test_native_viewer_document_bounds_use_node_rect_not_clipped_label_bbox(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is unavailable")
+
+    output = tmp_path / "viewer"
+    build_native_viewer(_load(), output)
+    app = (output / "app.js").read_text(encoding="utf-8")
+    start = app.index("function nodeBoundsInSvg(node) {")
+    end = app.index("\n}\n\nfunction mergeSvgBounds", start) + 2
+    node_bounds_source = app[start:end]
+
+    script = f"""
+class SVGRectElement {{}}
+globalThis.SVGRectElement = SVGRectElement;
+const identity = {{
+  inverse() {{ return this; }},
+  multiply() {{ return this; }},
+}};
+const svg = {{
+  getCTM() {{ return identity; }},
+  createSVGPoint() {{
+    return {{
+      x: 0,
+      y: 0,
+      matrixTransform() {{ return {{x: this.x, y: this.y}}; }},
+    }};
+  }},
+}};
+const documentMode = true;
+{node_bounds_source}
+const rect = new SVGRectElement();
+rect.getBBox = () => ({{x: 20, y: 30, width: 100, height: 80}});
+const group = {{
+  dataset: {{sourceKind: "node"}},
+  children: [rect],
+  getBBox: () => ({{x: 20, y: 30, width: 180, height: 80}}),
+  getCTM: () => identity,
+}};
+const bounds = nodeBoundsInSvg(group);
+if (!bounds) throw new Error("node bounds missing");
+if (bounds.maxX - bounds.minX !== 100 || bounds.maxY - bounds.minY !== 80) {{
+  throw new Error(
+    "clipped label group bbox leaked into document node geometry: "
+      + JSON.stringify(bounds)
+  );
+}}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
 
 
 def test_native_viewer_title_markers_cannot_capture_svg_template_slot(
@@ -211,6 +405,38 @@ def test_native_viewer_interaction_math_is_browser_independent(tmp_path: Path) -
     module_url = json.dumps(
         "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
     )
+    python_canvas_path, _, _, python_canvas_route, _ = _canvas_edge_geometry(
+        {"id": "source", "x": 0, "y": 0, "width": 100, "height": 60},
+        {"id": "target", "x": 300, "y": 100, "width": 120, "height": 80},
+        {"id": "edge", "from_side": None, "to_side": None},
+        lane=18.0,
+    )
+    assert python_canvas_route == "canvas-cubic"
+    python_canvas_path_json = json.dumps(python_canvas_path)
+    python_explicit_loop_path, _, _, explicit_loop_route, _ = _canvas_edge_geometry(
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"from_side": "top", "to_side": "left"},
+        lane=0,
+    )
+    assert explicit_loop_route == "canvas-self-loop"
+    python_explicit_loop_path_json = json.dumps(python_explicit_loop_path)
+    (
+        python_opposite_loop_path,
+        opposite_label_x,
+        _opposite_label_y,
+        opposite_loop_route,
+        _opposite_bounds,
+    ) = _canvas_edge_geometry(
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"id": "loop", "x": 20, "y": 30, "width": 100, "height": 80},
+        {"from_side": "top", "to_side": "bottom"},
+        lane=0,
+    )
+    assert opposite_loop_route == "canvas-self-loop"
+    assert opposite_label_x > 120
+    python_opposite_loop_path_json = json.dumps(python_opposite_loop_path)
+
     script = f"""
 const m = await import({module_url});
 const view = {{x: 10, y: 20, scale: 2}};
@@ -240,6 +466,49 @@ if (
 const sameWorking = m.updateNodeOffset(safe, 'a', 3, 4);
 if (sameWorking !== safe || m.nodeOffset(safe, 'a').x !== 3 || m.nodeOffset(safe, 'a').y !== 4) {{
   throw new Error('working override update should be in-place and O(1)');
+}}
+const canvasCubic = m.liveEdgeGeometry(
+  {{x: 0, y: 0, width: 100, height: 60}},
+  {{x: 300, y: 100, width: 120, height: 80}},
+  {{route: 'canvas-cubic', lane: 0, fromSide: 'right', toSide: 'left'}}
+);
+if (canvasCubic.path !== 'M 100.0 30.0 C 179.9 30.0, 220.1 140.0, 300.0 140.0') {{
+  throw new Error(`canvas cubic parity drift: ${{canvasCubic.path}}`);
+}}
+const canvasDefaultLane = m.liveEdgeGeometry(
+  {{x: 0, y: 0, width: 100, height: 60}},
+  {{x: 300, y: 100, width: 120, height: 80}},
+  {{route: 'canvas-cubic', lane: 18}}
+);
+if (canvasDefaultLane.path !== {python_canvas_path_json}) {{
+  throw new Error('canvas cubic Python/JS parity drift: ' + canvasDefaultLane.path);
+}}
+const canvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 18, selfLoop: true}}
+);
+if (canvasLoop.path !== 'M 120.0 58.0 C 204.0 12.0, 204.0 128.0, 120.0 87.6') {{
+  throw new Error(`canvas self-loop parity drift: ${{canvasLoop.path}}`);
+}}
+const explicitCanvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 0, selfLoop: true, fromSide: 'top', toSide: 'left'}}
+);
+if (explicitCanvasLoop.path !== {python_explicit_loop_path_json}) {{
+  throw new Error('explicit canvas self-loop Python/JS parity drift: ' + explicitCanvasLoop.path);
+}}
+const oppositeCanvasLoop = m.liveEdgeGeometry(
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{x: 20, y: 30, width: 100, height: 80}},
+  {{route: 'canvas-self-loop', lane: 0, selfLoop: true, fromSide: 'top', toSide: 'bottom'}}
+);
+if (oppositeCanvasLoop.path !== {python_opposite_loop_path_json}) {{
+  throw new Error('opposite canvas self-loop Python/JS parity drift: ' + oppositeCanvasLoop.path);
+}}
+if (!(oppositeCanvasLoop.labelX > 120)) {{
+  throw new Error('opposite canvas self-loop label fell back inside the node');
 }}
 const fitted = m.fitView(1000, 500, 800, 600, 20);
 if (!(
