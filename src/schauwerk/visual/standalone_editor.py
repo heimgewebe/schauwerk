@@ -12,7 +12,6 @@ import argparse
 import hashlib
 import ipaddress
 import json
-import math
 import os
 import re
 import secrets
@@ -33,6 +32,11 @@ from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
+from schauwerk.visual.json_fidelity import (
+    JsonFidelityError,
+    assert_javascript_roundtrip_json_numbers,
+    parse_json_with_unique_object_members,
+)
 from schauwerk.visual.native_document import (
     MAX_NATIVE_EDGES,
     MAX_NATIVE_GROUPS,
@@ -402,65 +406,6 @@ def _assert_native_canvas_product_limits(value: Any) -> None:
         )
 
 
-def _canonical_json_number_token(token: str) -> str | None:
-    match = re.fullmatch(
-        r"(-?)(0|[1-9]\d*)(?:\.(\d+))?(?:[eE]([+-]?\d+))?",
-        token,
-    )
-    if match is None:
-        return None
-    fraction = match.group(3) or ""
-    raw_exponent = match.group(4) or "0"
-    exponent_digits = raw_exponent.lstrip("+-").lstrip("0") or "0"
-    if len(exponent_digits) > 6:
-        return None
-    exponent_sign = -1 if raw_exponent.startswith("-") else 1
-    exponent = exponent_sign * int(exponent_digits) - len(fraction)
-    digits = f"{match.group(2)}{fraction}".lstrip("0")
-    sign = "-" if match.group(1) == "-" else "+"
-    if not digits:
-        return f"{sign}0"
-    trimmed_digits = digits.rstrip("0")
-    exponent += len(digits) - len(trimmed_digits)
-    return f"{sign}{trimmed_digits}e{exponent}"
-
-
-def _assert_javascript_roundtrip_number_token(token: str) -> None:
-    canonical = _canonical_json_number_token(token)
-    if canonical is None:
-        raise StandaloneEditorError(
-            "JSON Canvas numeric token cannot be proven JavaScript-roundtrip safe"
-        )
-    try:
-        parsed = float(token)
-    except ValueError as exc:
-        raise StandaloneEditorError(
-            "JSON Canvas numeric token cannot be parsed as a JavaScript number"
-        ) from exc
-    if not math.isfinite(parsed):
-        raise StandaloneEditorError(
-            "JSON Canvas numeric token exceeds the finite JavaScript number range"
-        )
-    serialized = "0" if parsed == 0.0 else repr(parsed)
-    if _canonical_json_number_token(serialized) != canonical:
-        raise StandaloneEditorError(
-            "JSON Canvas numeric token would change during JavaScript roundtrip"
-        )
-
-
-def _reject_duplicate_json_object_members(
-    pairs: list[tuple[str, Any]],
-) -> dict[str, Any]:
-    value: dict[str, Any] = {}
-    for key, item in pairs:
-        if key in value:
-            raise StandaloneEditorError(
-                "native JSON request contains duplicate object member"
-            )
-        value[key] = item
-    return value
-
-
 def _assert_json_canvas_request_number_tokens(payload_text: str, value: Any) -> None:
     is_canvas_import = (
         isinstance(value, dict)
@@ -473,22 +418,10 @@ def _assert_json_canvas_request_number_tokens(payload_text: str, value: Any) -> 
     )
     if not (is_canvas_import or is_editing_document):
         return
-
-    def validate_number(token: str) -> int:
-        _assert_javascript_roundtrip_number_token(token)
-        return 0
-
-    def reject_constant(token: str) -> None:
-        raise StandaloneEditorError(
-            f"JSON Canvas numeric constant is not standard finite JSON: {token}"
-        )
-
-    json.loads(
-        payload_text,
-        parse_int=validate_number,
-        parse_float=validate_number,
-        parse_constant=reject_constant,
-    )
+    try:
+        assert_javascript_roundtrip_json_numbers(payload_text)
+    except JsonFidelityError as exc:
+        raise StandaloneEditorError(f"JSON Canvas {exc}") from exc
 
 
 def _native_viewer_input_size(value: dict[str, Any]) -> int:
@@ -1989,10 +1922,10 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             return
         try:
             payload_text = payload.decode("utf-8")
-            value = json.loads(
-                payload_text,
-                object_pairs_hook=_reject_duplicate_json_object_members,
-            )
+            try:
+                value = parse_json_with_unique_object_members(payload_text)
+            except JsonFidelityError as exc:
+                raise StandaloneEditorError(f"native JSON request {exc}") from exc
             _assert_json_canvas_request_number_tokens(payload_text, value)
             normalized = _native_product_input(value)
             digest = str(

@@ -18,9 +18,11 @@ from schauwerk.visual.native_diagram import (
     _edge_geometry,
     render_native_diagram,
 )
+from schauwerk.visual.native_document import json_canvas_to_editing_document
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
+    _read_representation,
     build_native_viewer,
 )
 from schauwerk.visual.representation import validate_representation_input
@@ -102,6 +104,94 @@ def test_native_viewer_rejects_incoherent_serving_context(tmp_path: Path) -> Non
             tmp_path / "bad-binding",
             serve_binding="public-internet",
         )
+
+
+@pytest.mark.parametrize(
+    ("mutator", "error"),
+    [
+        (
+            lambda raw: raw.replace(
+                '"mode":"keep"',
+                '"mode":"keep","mode":"drop"',
+                1,
+            ),
+            "duplicate object member",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"mode":"keep"',
+                '"mode":"keep","m\\u006fde":"drop"',
+                1,
+            ),
+            "duplicate object member",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"revision":"TOKEN"',
+                '"revision":9007199254740990.5',
+                1,
+            ),
+            "would change during JavaScript roundtrip",
+        ),
+        (
+            lambda raw: raw.replace(
+                '"revision":"TOKEN"',
+                '"revision":1e400',
+                1,
+            ),
+            "finite JavaScript number range",
+        ),
+    ],
+)
+def test_native_viewer_cli_rejects_lossy_editing_document_json(
+    tmp_path: Path,
+    mutator,
+    error: str,
+) -> None:
+    document = json_canvas_to_editing_document(
+        {
+            "nodes": [],
+            "edges": [],
+            "plugin": {"mode": "keep", "revision": "TOKEN"},
+        }
+    )
+    raw = json.dumps(document, ensure_ascii=False, separators=(",", ":"))
+    candidate = tmp_path / "document.json"
+    candidate.write_text(mutator(raw), encoding="utf-8")
+
+    with pytest.raises(NativeViewerError, match=error):
+        _read_representation(candidate)
+
+
+def test_native_viewer_cli_accepts_roundtrip_safe_editing_document_json(
+    tmp_path: Path,
+) -> None:
+    document = json_canvas_to_editing_document(
+        {
+            "nodes": [],
+            "edges": [],
+            "plugin": {
+                "left": {"mode": "keep"},
+                "right": {"mode": "drop"},
+                "revision": "TOKEN",
+            },
+        }
+    )
+    raw = json.dumps(document, ensure_ascii=False, separators=(",", ":")).replace(
+        '"revision":"TOKEN"',
+        '"revision":0.1',
+        1,
+    )
+    candidate = tmp_path / "document.json"
+    candidate.write_text(raw, encoding="utf-8")
+
+    parsed = _read_representation(candidate)
+
+    assert parsed["source"]["plugin"] == {
+        "left": {"mode": "keep"},
+        "right": {"mode": "drop"},
+        "revision": 0.1,
+    }
 
 
 def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only(

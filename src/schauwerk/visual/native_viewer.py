@@ -22,6 +22,11 @@ from typing import Any, Final
 
 from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
+from .json_fidelity import (
+    JsonFidelityError,
+    assert_javascript_roundtrip_json_numbers,
+    parse_json_with_unique_object_members,
+)
 from .native_diagram import render_native_diagram, render_native_editing_document
 from .native_document import (
     MAX_NATIVE_ABS_COORDINATE,
@@ -307,11 +312,19 @@ def _read_representation(path: Path) -> dict[str, Any]:
     if len(payload) > MAX_INPUT_BYTES:
         raise NativeViewerError("native viewer input exceeds 5 MB")
     try:
-        value = json.loads(payload)
+        payload_text = payload.decode("utf-8")
+        value = parse_json_with_unique_object_members(payload_text)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise NativeViewerError("native viewer input is not valid UTF-8 JSON") from exc
+    except JsonFidelityError as exc:
+        raise NativeViewerError(f"native viewer input {exc}") from exc
     if not isinstance(value, dict):
         raise NativeViewerError("native viewer input must be one JSON object")
+    if value.get("schema_version") == NATIVE_DOCUMENT_SCHEMA:
+        try:
+            assert_javascript_roundtrip_json_numbers(payload_text)
+        except JsonFidelityError as exc:
+            raise NativeViewerError(f"native editing document {exc}") from exc
     return value
 
 
