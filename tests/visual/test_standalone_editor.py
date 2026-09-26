@@ -3646,6 +3646,75 @@ def test_native_render_endpoint_rejects_lossy_json_canvas_number_tokens(
         thread.join(timeout=5)
 
 
+def test_native_render_endpoint_rejects_duplicate_json_object_members(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+
+    handler_class = type(
+        "CanvasDuplicateMemberEditorRequestHandler",
+        (_EditorRequestHandler,),
+        {"editor_origin": EDITOR_ORIGIN},
+    )
+    handler = partial(handler_class, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+        duplicate_payloads = (
+            (
+                b'{"schema_version":"schauwerk-native-import-request.v1",'
+                b'"format":"json-canvas-1.0","source":{"nodes":[],"edges":[],'
+                b'"plugin":{"mode":"keep","mode":"drop"}}}'
+            ),
+            (
+                b'{"schema_version":"schauwerk-native-import-request.v1",'
+                b'"format":"json-canvas-1.0","source":{"nodes":[],"edges":[],'
+                b'"plugin":{"mode":"keep","m\\u006fde":"drop"}}}'
+            ),
+        )
+        for payload in duplicate_payloads:
+            connection.request(
+                "POST",
+                NATIVE_API_PATH,
+                body=payload,
+                headers={
+                    "Content-Type": "application/json",
+                    "Content-Length": str(len(payload)),
+                },
+            )
+            response = connection.getresponse()
+            body = json.loads(response.read().decode("utf-8"))
+            assert response.status == 422
+            assert body["error"] == "native JSON request contains duplicate object member"
+
+        safe_payload = (
+            b'{"schema_version":"schauwerk-native-import-request.v1",'
+            b'"format":"json-canvas-1.0","source":{"nodes":[],"edges":[],'
+            b'"plugin":{"left":{"mode":"keep"},"right":{"mode":"drop"},'
+            b'"note":"{\\\"mode\\\":\\\"keep\\\",\\\"mode\\\":\\\"drop\\\"}"}}}'
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=safe_payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(safe_payload)),
+            },
+        )
+        safe_response = connection.getresponse()
+        safe_body = json.loads(safe_response.read().decode("utf-8"))
+        assert safe_response.status == 200, safe_body
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
@@ -3957,6 +4026,14 @@ if (safeFractionDetected.kind !== 'json-canvas') throw new Error('roundtrip-stab
 if (safeFractionDetected.value?.plugin?.revision !== 0.1) throw new Error('roundtrip-stable JSON fraction changed value');
 const numericStringCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":"9007199254740990.5"}}}}';
 if (detectInput(numericStringCanvas).kind !== 'json-canvas') throw new Error('numeric text was mistaken for a JSON number token');
+const duplicateExtensionCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"mode\":\"keep\",\"mode\":\"drop\"}}}}';
+if (detectInput(duplicateExtensionCanvas).kind !== 'unknown') throw new Error('duplicate JSON object member was accepted');
+const escapedDuplicateExtensionCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"mode\":\"keep\",\"m' + String.fromCharCode(92) + 'u006fde\":\"drop\"}}}}';
+if (detectInput(escapedDuplicateExtensionCanvas).kind !== 'unknown') throw new Error('escape-equivalent duplicate JSON object member was accepted');
+const repeatedMemberAcrossObjectsCanvas = '{{\"nodes\":[],\"edges\":[],\"plugin\":{{\"left\":{{\"mode\":\"keep\"}},\"right\":{{\"mode\":\"drop\"}}}}}}';
+if (detectInput(repeatedMemberAcrossObjectsCanvas).kind !== 'json-canvas') throw new Error('object-local duplicate detection rejected sibling member names');
+const duplicateLookingTextCanvas = JSON.stringify({{nodes: [], edges: [], plugin: {{note: '{{\"mode\":\"keep\",\"mode\":\"drop\"}}'}}}});
+if (detectInput(duplicateLookingTextCanvas).kind !== 'json-canvas') throw new Error('duplicate-looking member names inside string data were rejected');
 const safeIntegerCanvas = '{{"nodes":[],"edges":[],"plugin":{{"revision":9007199254740991}}}}';
 const safeIntegerDetected = detectInput(safeIntegerCanvas);
 if (safeIntegerDetected.kind !== 'json-canvas') throw new Error('maximum safe JSON integer Canvas was rejected');

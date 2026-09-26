@@ -407,12 +407,128 @@ function jsonCanvasNumberTokensRoundtripSafely(text) {
   return true;
 }
 
+function jsonObjectMembersAreUnique(text) {
+  let index = 0;
+
+  const skipWhitespace = () => {
+    while (index < text.length && /[\t\n\r ]/.test(text[index])) index += 1;
+  };
+
+  const parseString = () => {
+    if (text[index] !== '"') return null;
+    const start = index;
+    index += 1;
+    while (index < text.length) {
+      const character = text[index];
+      if (character === "\\") {
+        index += 2;
+        continue;
+      }
+      if (character === '"') {
+        index += 1;
+        try {
+          const value = JSON.parse(text.slice(start, index));
+          return typeof value === "string" ? value : null;
+        } catch (_) {
+          return null;
+        }
+      }
+      if (character.charCodeAt(0) < 0x20) return null;
+      index += 1;
+    }
+    return null;
+  };
+
+  const parseNumber = () => {
+    const match = text.slice(index).match(
+      /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/,
+    );
+    if (!match) return false;
+    index += match[0].length;
+    return true;
+  };
+
+  const parseLiteral = (literal) => {
+    if (!text.startsWith(literal, index)) return false;
+    index += literal.length;
+    return true;
+  };
+
+  const parseValue = () => {
+    skipWhitespace();
+    const character = text[index];
+    if (character === "{") return parseObject();
+    if (character === "[") return parseArray();
+    if (character === '"') return parseString() !== null;
+    if (character === "t") return parseLiteral("true");
+    if (character === "f") return parseLiteral("false");
+    if (character === "n") return parseLiteral("null");
+    return parseNumber();
+  };
+
+  const parseObject = () => {
+    if (text[index] !== "{") return false;
+    index += 1;
+    skipWhitespace();
+    const names = new Set();
+    if (text[index] === "}") {
+      index += 1;
+      return true;
+    }
+    while (index < text.length) {
+      skipWhitespace();
+      const name = parseString();
+      if (name === null || names.has(name)) return false;
+      names.add(name);
+      skipWhitespace();
+      if (text[index] !== ":") return false;
+      index += 1;
+      if (!parseValue()) return false;
+      skipWhitespace();
+      if (text[index] === "}") {
+        index += 1;
+        return true;
+      }
+      if (text[index] !== ",") return false;
+      index += 1;
+    }
+    return false;
+  };
+
+  const parseArray = () => {
+    if (text[index] !== "[") return false;
+    index += 1;
+    skipWhitespace();
+    if (text[index] === "]") {
+      index += 1;
+      return true;
+    }
+    while (index < text.length) {
+      if (!parseValue()) return false;
+      skipWhitespace();
+      if (text[index] === "]") {
+        index += 1;
+        return true;
+      }
+      if (text[index] !== ",") return false;
+      index += 1;
+    }
+    return false;
+  };
+
+  skipWhitespace();
+  const valid = parseValue();
+  skipWhitespace();
+  return valid && index === text.length;
+}
+
 function detectNormalizedInput(text, options = {}) {
   if (!text) return { kind: "empty", text };
   if (DRAWIO_ROOT.test(text)) return { kind: "drawio", text };
   if (MERMAID_HEADER.test(text)) return { kind: "mermaid", text };
   if (text.startsWith("{")) {
     try {
+      if (!jsonObjectMembersAreUnique(text)) return { kind: "unknown", text };
       const value = JSON.parse(text);
       if (isSchauwerkRepresentation(value)) return { kind: "representation", text, value };
       if (

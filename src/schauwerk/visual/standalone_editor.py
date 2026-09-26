@@ -448,6 +448,19 @@ def _assert_javascript_roundtrip_number_token(token: str) -> None:
         )
 
 
+def _reject_duplicate_json_object_members(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise StandaloneEditorError(
+                "native JSON request contains duplicate object member"
+            )
+        value[key] = item
+    return value
+
+
 def _assert_json_canvas_request_number_tokens(payload_text: str, value: Any) -> None:
     is_canvas_import = (
         isinstance(value, dict)
@@ -1976,7 +1989,10 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             return
         try:
             payload_text = payload.decode("utf-8")
-            value = json.loads(payload_text)
+            value = json.loads(
+                payload_text,
+                object_pairs_hook=_reject_duplicate_json_object_members,
+            )
             _assert_json_canvas_request_number_tokens(payload_text, value)
             normalized = _native_product_input(value)
             digest = str(
