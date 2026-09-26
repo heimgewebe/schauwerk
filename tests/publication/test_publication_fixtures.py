@@ -364,7 +364,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
     )
     assert editor_successor["schema_version"] == "schauwerk-schaubild-native-editor.v1"
-    assert editor_successor["functional_head"] == "56622d7c094b8793ec0b168dd7148e160c1582c3"
+    assert editor_successor["functional_head"] == "ea022bfa39b62b709199e421880513021aad4bc3"
     assert editor_successor["parent_evidence"] == {
         "evidence_digest": drawio_successor["evidence_digest"],
         "file_sha256": hashlib.sha256(
@@ -539,6 +539,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         editor_successor["checks"][
             "shared_json_fidelity_guards_preserve_standalone_contract"
+        ]
+        is True
+    )
+    assert (
+        editor_successor["checks"][
+            "docker_runtime_closure_includes_shared_json_fidelity"
         ]
         is True
     )
