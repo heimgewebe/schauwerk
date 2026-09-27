@@ -998,7 +998,7 @@ def test_native_document_numeric_run_uses_conservative_fallback_width() -> None:
     assert "".join(item.text or "" for item in texts) == label
     assert len(texts) >= 2
     assert all(
-        len(item.text or "") * int(item.attrib["font-size"]) * 0.64 <= 279
+        len(item.text or "") * int(item.attrib["font-size"]) * 0.70 <= 279
         for item in texts
     )
 
@@ -1039,7 +1039,7 @@ def test_native_document_narrow_punctuation_uses_conservative_fallback_width() -
     assert "".join(item.text or "" for item in texts) == label
     assert len(texts) >= 2
     assert all(
-        len(item.text or "") * int(item.attrib["font-size"]) * 0.64 <= 279
+        len(item.text or "") * int(item.attrib["font-size"]) * 0.70 <= 279
         for item in texts
     )
 
