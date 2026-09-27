@@ -3442,6 +3442,8 @@ def _canvas_legacy_lines(
 
 
 _CANVAS_ZWJ = "\u200d"
+_CANVAS_EMOJI_PRESENTATION_SELECTOR = "\ufe0f"
+_CANVAS_KEYCAP = "\u20e3"
 
 
 def _canvas_is_grapheme_extend(character: str) -> bool:
@@ -3495,6 +3497,10 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
         len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible)
     ):
         return max(2.0, max(widths))
+    if (
+        _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
+    ):
+        return max(1.0, max(widths))
     return sum(widths)
 
 
