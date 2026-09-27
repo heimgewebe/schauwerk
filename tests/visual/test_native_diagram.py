@@ -1915,6 +1915,12 @@ def test_narrative_orphan_rebalance_does_not_relocate_an_orphan() -> None:
     ) == ["alpha beta", "gamma delta", "epsilon zeta"]
 
 
+def test_narrative_cjk_wrap_uses_legacy_narrative_width_metric() -> None:
+    assert _estimated_wrap_width("漢" * 15, size=17) == pytest.approx(
+        15 * 0.9 * 17
+    )
+
+
 def test_narrative_orphan_rebalance_uses_legacy_narrative_width_metric() -> None:
     assert _rebalance_single_word_lines(
         [

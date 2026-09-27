@@ -186,8 +186,6 @@ def _character_width_units(
     if character in _WIDE_CHARS:
         return 1.12
     if ord(character) > 0x7F:
-        if unicodedata.east_asian_width(character) in {"W", "F"}:
-            return max(non_ascii, 1.0)
         return non_ascii
     if character.isupper():
         return uppercase
@@ -3477,6 +3475,11 @@ def _canvas_has_extended_graphemes(value: str) -> bool:
 def _canvas_character_width_units(character: str) -> float:
     if not character.isspace() and character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
+    if (
+        ord(character) > 0x7F
+        and unicodedata.east_asian_width(character) in {"W", "F"}
+    ):
+        return 1.0
     return _character_width_units(
         character,
         non_ascii=0.9,
