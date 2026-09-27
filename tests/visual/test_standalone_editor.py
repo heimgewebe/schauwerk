@@ -4857,6 +4857,116 @@ def test_admitted_wide_canvas_edge_text_stays_within_native_bundle_budget(
     assert len(title.text.encode("utf-8")) <= 4096
 
 
+def test_escaped_canvas_model_is_rejected_before_bundle_materialization(
+    tmp_path: Path,
+) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Escaped model.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "escaped-model",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "<" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "escaped-model-bundle"
+    with pytest.raises(
+        standalone_editor.NativeViewerBundleBudgetError,
+        match="projected bundle exceeds the 16 MiB bundle budget",
+    ):
+        standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert not bundle.exists()
+
+
+def test_escaped_canvas_model_overflow_is_422_from_renderer_child(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "escaped-model-http"
+    build_standalone_editor(output)
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Escaped model.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "escaped-model",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "<" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    assert len(payload) < standalone_editor.MAX_NATIVE_REQUEST_BYTES
+
+    handler = object.__new__(_EditorRequestHandler)
+    handler.path = NATIVE_API_PATH
+    handler.headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(payload)),
+    }
+    handler.rfile = io.BytesIO(payload)
+    handler.directory = str(output)
+    handler.native_serve_binding = "127.0.0.1-only"
+    handler.public_base_path = ""
+    handler._request_deadline_expired = False
+    handler._request_deadline_at = time.monotonic() + 10
+    handler.close_connection = False
+    monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+    monkeypatch.setattr(
+        handler,
+        "_native_admission_key",
+        lambda: standalone_editor._LOCAL_ADMISSION_KEY,
+    )
+    responses: list[tuple[HTTPStatus, dict[str, object]]] = []
+
+    def capture_json(
+        status: HTTPStatus,
+        body: dict[str, object],
+        *,
+        write_body: bool = True,
+    ) -> bool:
+        del write_body
+        responses.append((status, body))
+        return True
+
+    monkeypatch.setattr(handler, "_send_json", capture_json)
+    handler.do_POST()
+
+    assert responses
+    status, body = responses[-1]
+    assert status == HTTPStatus.UNPROCESSABLE_ENTITY, body
+    assert "projected bundle exceeds the 16 MiB bundle budget" in str(body["error"])
+    cache_root = output / ".native-cache"
+    assert not cache_root.exists() or not any(cache_root.iterdir())
+
+
 def test_escaped_native_title_stays_within_native_bundle_budget(tmp_path: Path) -> None:
     value = {
         "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,

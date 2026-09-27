@@ -14,6 +14,7 @@ import json
 import os
 import re
 import shutil
+import sys
 from collections.abc import Mapping
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +45,7 @@ from .representation import validate_representation_input
 
 MANIFEST_SCHEMA: Final = "schauwerk-native-viewer-manifest.v1"
 MAX_INPUT_BYTES: Final = 5 * 1024 * 1024
+MAX_BUNDLE_BYTES: Final = 16 * 1024 * 1024
 _TITLE_MARKER: Final = "__SCHAUWERK_NATIVE_TITLE__"
 _SVG_MARKER: Final = "__SCHAUWERK_NATIVE_SVG__"
 _MODEL_MARKER: Final = "__SCHAUWERK_NATIVE_MODEL__"
@@ -53,6 +55,10 @@ _MAX_RENDERED_HTML_TITLE_BYTES: Final = 4096
 
 class NativeViewerError(ValueError):
     """Raised when the local native viewer violates its bounded build contract."""
+
+
+class NativeViewerBundleBudgetError(NativeViewerError):
+    """Raised when deterministic viewer bytes exceed the bundle budget."""
 
 
 def _sha256(payload: bytes) -> str:
@@ -113,7 +119,7 @@ def _bounded_html_title(value: str) -> str:
     return value
 
 
-def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
+def _assert_index_template_markers() -> None:
     if (
         INDEX_HTML.count(_SVG_MARKER) != 1
         or INDEX_HTML.count(_TITLE_MARKER) != 2
@@ -121,15 +127,10 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
         or INDEX_HTML.count(_LIMITS_MARKER) != 1
     ):
         raise NativeViewerError("native viewer HTML template markers drifted")
-    embedded_model = json.dumps(
-        model, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
-    embedded_model = (
-        embedded_model.replace("&", r"\u0026")
-        .replace("<", r"\u003c")
-        .replace(">", r"\u003e")
-    )
-    embedded_limits = json.dumps(
+
+
+def _embedded_limits_json() -> str:
+    return json.dumps(
         {
             "max_abs_coordinate": MAX_NATIVE_ABS_COORDINATE,
             "max_edges": MAX_NATIVE_EDGES,
@@ -140,26 +141,187 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
-    rendered_title = _bounded_html_title(title)
+
+
+def _serialized_embedded_model(model: Mapping[str, Any]) -> str:
+    return json.dumps(
+        model, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+
+
+def _escaped_embedded_model_bytes(serialized_model: str) -> int:
+    raw_bytes = len(serialized_model.encode("utf-8"))
+    expanded_ascii = (
+        serialized_model.count("&")
+        + serialized_model.count("<")
+        + serialized_model.count(">")
+    )
+    return raw_bytes + 5 * expanded_ascii
+
+
+def _project_rendered_index_bytes(
+    *,
+    title: str,
+    svg: str,
+    serialized_model: str,
+) -> int:
+    _assert_index_template_markers()
+    rendered_title = html.escape(_bounded_html_title(title))
     replacements = {
-        _TITLE_MARKER: html.escape(rendered_title),
+        _TITLE_MARKER: len(rendered_title.encode("utf-8")),
+        _SVG_MARKER: len(_inline_svg(svg).encode("utf-8")),
+        _MODEL_MARKER: _escaped_embedded_model_bytes(serialized_model),
+        _LIMITS_MARKER: len(_embedded_limits_json().encode("utf-8")),
+    }
+    projected = len(INDEX_HTML.encode("utf-8"))
+    for marker, replacement_bytes in replacements.items():
+        count = INDEX_HTML.count(marker)
+        projected += count * (replacement_bytes - len(marker.encode("utf-8")))
+    return projected
+
+
+def _render_index(
+    *,
+    title: str,
+    svg: str,
+    model: Mapping[str, Any],
+    serialized_model: str | None = None,
+) -> str:
+    _assert_index_template_markers()
+    if serialized_model is None:
+        serialized_model = _serialized_embedded_model(model)
+    embedded_model = serialized_model.translate(
+        str.maketrans(
+            {
+                "&": r"\u0026",
+                "<": r"\u003c",
+                ">": r"\u003e",
+            }
+        )
+    )
+    replacements = {
+        _TITLE_MARKER: html.escape(_bounded_html_title(title)),
         _SVG_MARKER: _inline_svg(svg),
         _MODEL_MARKER: embedded_model,
-        _LIMITS_MARKER: embedded_limits,
+        _LIMITS_MARKER: _embedded_limits_json(),
     }
-    marker_pattern = re.compile(
-        "|".join(re.escape(marker) for marker in replacements)
-    )
+    marker_pattern = re.compile("|".join(re.escape(marker) for marker in replacements))
     return marker_pattern.sub(lambda match: replacements[match.group(0)], INDEX_HTML)
 
 
-def _file_record(path: Path, root: Path) -> dict[str, object]:
-    payload = path.read_bytes()
+def _manifest_core(
+    *,
+    model: Mapping[str, Any],
+    document_mode: bool,
+    semantic_filename: str,
+    semantic_mode: str,
+    serve_binding: str,
+    public_base_path: str,
+    files: list[dict[str, object]],
+    diagram_sha256: str,
+    semantic_sha256: str,
+) -> dict[str, object]:
     return {
-        "path": path.relative_to(root).as_posix(),
-        "bytes": len(payload),
-        "sha256": _sha256(payload),
+        "schema_version": MANIFEST_SCHEMA,
+        "viewer": "schauwerk-native-svg-phase2",
+        "input_digest": str(model.get("input_digest") or model.get("source_digest")),
+        "semantic_authority": {
+            "artifact": semantic_filename,
+            "sha256": semantic_sha256,
+            "mode": semantic_mode,
+            "source_format": model.get(
+                "source_format", "schauwerk-representation-input.v1"
+            ),
+        },
+        "renderer_authority": {
+            "artifact": "diagram.svg",
+            "sha256": diagram_sha256,
+            "renderer": "schauwerk-native-diagram-v1",
+            "bytes_modified_by_viewer": False,
+        },
+        "layout_overlay": {
+            "authority": "document-state" if document_mode else "browser-local-only",
+            "storage": (
+                "document-memory+parent-state" if document_mode else "localStorage"
+            ),
+            "binding": "source_digest" if document_mode else "input_digest",
+            "semantic_writeback": document_mode,
+            "cross_device_persistence": False,
+        },
+        "interactions": [
+            "pan",
+            "zoom",
+            "selection",
+            "node-drag",
+            "live-edge-rerouting",
+        ],
+        "interaction_contract": {
+            "mouse_pointer_events": True,
+            "touch_pointer_events": True,
+            "two_pointer_pinch_zoom": True,
+            "keyboard_node_selection": True,
+            "edge_geometry_after_node_drag": "live-route-preserving-overlay",
+            "edge_rerouting": True,
+            "routing_authority": "native-diagram-canonical+browser-live-deformation",
+        },
+        "network_boundary": {
+            "bundle": "server-managed-local-bundle",
+            "external_requests_required": False,
+            "serve_binding": serve_binding,
+            "public_base_path": public_base_path or "/",
+            "delivery": (
+                "integrated-schaubild-runtime"
+                if serve_binding == "trusted-reverse-proxy-private-ingress"
+                else "development-loopback"
+            ),
+        },
+        "files": files,
+        "does_not_establish": [
+            *(
+                ["consumer-deployment-readiness", "public-edge-acceptance"]
+                if serve_binding == "trusted-reverse-proxy-private-ingress"
+                else ["production-readiness", "phase-3-cutover-acceptance"]
+            ),
+            *(
+                []
+                if document_mode
+                else ["semantic-mutation", "document-backed-editing"]
+            ),
+            "cross-device-layout-persistence",
+        ],
     }
+
+
+def _finalize_manifest(
+    manifest: dict[str, object],
+) -> tuple[dict[str, object], bytes]:
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    finalized = {
+        **manifest,
+        "manifest_sha256": _sha256(canonical.encode("utf-8")),
+    }
+    payload = (
+        json.dumps(finalized, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    return finalized, payload
+
+
+def _projected_file_records(
+    payload_sizes: Mapping[str, int],
+) -> list[dict[str, object]]:
+    return [
+        {
+            "path": name,
+            "bytes": payload_sizes[name],
+            "sha256": "0" * 64,
+        }
+        for name in sorted(payload_sizes)
+    ]
 
 
 def build_native_viewer(
@@ -219,7 +381,88 @@ def build_native_viewer(
         semantic_mode = "read-only"
     svg_payload = svg.encode("utf-8")
     semantic_payload = _canonical_json(model)
-    index_payload = _render_index(title=str(model["title"]), svg=svg, model=model).encode("utf-8")
+    serialized_model = _serialized_embedded_model(model)
+    projected_index_bytes = _project_rendered_index_bytes(
+        title=str(model["title"]),
+        svg=svg,
+        serialized_model=serialized_model,
+    )
+    static_payloads = {
+        "app.js": ASSETS["app.js"].encode("utf-8"),
+        "interaction.js": ASSETS["interaction.js"].encode("utf-8"),
+        "styles.css": ASSETS["styles.css"].encode("utf-8"),
+    }
+    projected_payload_sizes = {
+        **{name: len(payload) for name, payload in static_payloads.items()},
+        "diagram.svg": len(svg_payload),
+        "index.html": projected_index_bytes,
+        semantic_filename: len(semantic_payload),
+    }
+    projected_files = _projected_file_records(projected_payload_sizes)
+    projected_manifest_core = _manifest_core(
+        model=model,
+        document_mode=document_mode,
+        semantic_filename=semantic_filename,
+        semantic_mode=semantic_mode,
+        serve_binding=serve_binding,
+        public_base_path=public_base_path,
+        files=projected_files,
+        diagram_sha256="0" * 64,
+        semantic_sha256="0" * 64,
+    )
+    _, projected_manifest_payload = _finalize_manifest(projected_manifest_core)
+    projected_bundle_bytes = sum(projected_payload_sizes.values()) + len(
+        projected_manifest_payload
+    )
+    if projected_bundle_bytes > MAX_BUNDLE_BYTES:
+        raise NativeViewerBundleBudgetError(
+            "native viewer projected bundle exceeds the 16 MiB bundle budget"
+        )
+
+    index_payload = _render_index(
+        title=str(model["title"]),
+        svg=svg,
+        model=model,
+        serialized_model=serialized_model,
+    ).encode("utf-8")
+    if len(index_payload) != projected_index_bytes:
+        raise NativeViewerError("native viewer index byte projection drifted")
+
+    payloads: dict[str, bytes] = {
+        **static_payloads,
+        "diagram.svg": svg_payload,
+        "index.html": index_payload,
+        semantic_filename: semantic_payload,
+    }
+    files = [
+        {
+            "path": name,
+            "bytes": len(payloads[name]),
+            "sha256": _sha256(payloads[name]),
+        }
+        for name in sorted(payloads)
+    ]
+    diagram_sha256 = _sha256(svg_payload)
+    semantic_sha256 = _sha256(semantic_payload)
+    manifest_core = _manifest_core(
+        model=model,
+        document_mode=document_mode,
+        semantic_filename=semantic_filename,
+        semantic_mode=semantic_mode,
+        serve_binding=serve_binding,
+        public_base_path=public_base_path,
+        files=files,
+        diagram_sha256=diagram_sha256,
+        semantic_sha256=semantic_sha256,
+    )
+    manifest, manifest_payload = _finalize_manifest(manifest_core)
+    exact_bundle_bytes = sum(len(payload) for payload in payloads.values()) + len(
+        manifest_payload
+    )
+    if exact_bundle_bytes != projected_bundle_bytes:
+        raise NativeViewerError("native viewer bundle byte projection drifted")
+    if exact_bundle_bytes > MAX_BUNDLE_BYTES:
+        raise NativeViewerError("native viewer bundle exceeds the 16 MiB bundle budget")
 
     root = output_dir.expanduser().absolute()
     _reject_symlink_chain(root)
@@ -230,86 +473,12 @@ def build_native_viewer(
     root.mkdir(parents=True, exist_ok=True)
     os.chmod(root, 0o700)
 
-    payloads: dict[str, bytes] = {
-        "app.js": ASSETS["app.js"].encode("utf-8"),
-        "diagram.svg": svg_payload,
-        "index.html": index_payload,
-        "interaction.js": ASSETS["interaction.js"].encode("utf-8"),
-        semantic_filename: semantic_payload,
-        "styles.css": ASSETS["styles.css"].encode("utf-8"),
-    }
     for filename, payload in sorted(payloads.items()):
         target = root / filename
         target.write_bytes(payload)
         os.chmod(target, 0o600)
-
-    files = [_file_record(root / name, root) for name in sorted(payloads)]
-    diagram_sha256 = _sha256(svg_payload)
-    semantic_sha256 = _sha256(semantic_payload)
-    manifest: dict[str, object] = {
-        "schema_version": MANIFEST_SCHEMA,
-        "viewer": "schauwerk-native-svg-phase2",
-        "input_digest": str(model.get("input_digest") or model.get("source_digest")),
-        "semantic_authority": {
-            "artifact": semantic_filename,
-            "sha256": semantic_sha256,
-            "mode": semantic_mode,
-            "source_format": model.get("source_format", "schauwerk-representation-input.v1"),
-        },
-        "renderer_authority": {
-            "artifact": "diagram.svg",
-            "sha256": diagram_sha256,
-            "renderer": "schauwerk-native-diagram-v1",
-            "bytes_modified_by_viewer": False,
-        },
-        "layout_overlay": {
-            "authority": "document-state" if document_mode else "browser-local-only",
-            "storage": (
-                "document-memory+parent-state" if document_mode else "localStorage"
-            ),
-            "binding": "source_digest" if document_mode else "input_digest",
-            "semantic_writeback": document_mode,
-            "cross_device_persistence": False,
-        },
-        "interactions": ["pan", "zoom", "selection", "node-drag", "live-edge-rerouting"],
-        "interaction_contract": {
-            "mouse_pointer_events": True,
-            "touch_pointer_events": True,
-            "two_pointer_pinch_zoom": True,
-            "keyboard_node_selection": True,
-            "edge_geometry_after_node_drag": "live-route-preserving-overlay",
-            "edge_rerouting": True,
-            "routing_authority": "native-diagram-canonical+browser-live-deformation",
-        },
-        "network_boundary": {
-            "bundle": "server-managed-local-bundle",
-            "external_requests_required": False,
-            "serve_binding": serve_binding,
-            "public_base_path": public_base_path or "/",
-            "delivery": (
-                "integrated-schaubild-runtime"
-                if serve_binding == "trusted-reverse-proxy-private-ingress"
-                else "development-loopback"
-            ),
-        },
-        "files": files,
-        "does_not_establish": [
-            *(
-                ["consumer-deployment-readiness", "public-edge-acceptance"]
-                if serve_binding == "trusted-reverse-proxy-private-ingress"
-                else ["production-readiness", "phase-3-cutover-acceptance"]
-            ),
-            *([] if document_mode else ["semantic-mutation", "document-backed-editing"]),
-            "cross-device-layout-persistence",
-        ],
-    }
-    canonical = json.dumps(manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    manifest["manifest_sha256"] = _sha256(canonical.encode("utf-8"))
     manifest_path = root / "manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    manifest_path.write_bytes(manifest_payload)
     os.chmod(manifest_path, 0o600)
     return manifest
 
@@ -409,18 +578,22 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if args.command == "build":
-        manifest = build_native_viewer(
-            _read_representation(args.input),
-            args.output_dir,
-            serve_binding=args.serve_binding,
-            public_base_path=args.public_base_path,
-        )
-        print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
-        return 0
-    if args.command == "serve":
-        serve_native_viewer(args.input, port=args.port, build_dir=args.build_dir)
-        return 0
+    try:
+        if args.command == "build":
+            manifest = build_native_viewer(
+                _read_representation(args.input),
+                args.output_dir,
+                serve_binding=args.serve_binding,
+                public_base_path=args.public_base_path,
+            )
+            print(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        if args.command == "serve":
+            serve_native_viewer(args.input, port=args.port, build_dir=args.build_dir)
+            return 0
+    except NativeViewerBundleBudgetError as exc:
+        print(f"native viewer bundle budget: {exc}", file=sys.stderr)
+        return 3
     raise AssertionError(f"unhandled command: {args.command}")
 
 
