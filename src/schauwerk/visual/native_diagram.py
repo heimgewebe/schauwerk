@@ -65,7 +65,6 @@ _CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.70
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
 _CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
 _CANVAS_MAX_ELEMENT_TITLE_BYTES = 4096
-_CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM = 64
 
 _NODE_STYLE = {
     "human": ("#e6f6f8", "#147d92", 28),
@@ -3563,7 +3562,10 @@ def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> st
 
 
 def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
-    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    value, grapheme_truncated = bounded_grapheme_prefix(
+        value,
+        max_clusters=max(1, max_bytes + 1),
+    )
     if grapheme_truncated:
         return _canvas_ellipsize_to_limits(
             value,
@@ -3592,7 +3594,10 @@ def _canvas_fit_single_line(
 
     if not value:
         return "", False
-    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    value, grapheme_truncated = bounded_grapheme_prefix(
+        value,
+        max_clusters=max(1, max_bytes + 1),
+    )
     if grapheme_truncated:
         return (
             _canvas_ellipsize_to_limits(
@@ -3784,8 +3789,34 @@ def _canvas_limit_text_layout_bytes(
     )
 
 
+def _canvas_text_probe_cluster_limit(
+    *, max_width: float, max_lines: int, max_bytes: int, min_size: int
+) -> int:
+    """Bound grapheme work to clusters that could affect visible output."""
+
+    minimum_cluster_width = max(
+        0.001,
+        _canvas_character_width_units(" ") * min_size,
+    )
+    clusters_per_line = max(
+        1,
+        math.ceil(max_width / minimum_cluster_width) + 1,
+    )
+    geometry_limit = max(
+        1,
+        max_lines * clusters_per_line + max_lines + 1,
+    )
+    byte_limit = max(1, max_bytes + 1)
+    return min(geometry_limit, byte_limit)
+
+
 def _canvas_text_layout(
-    value: str, width_px: int, height_px: int, *, max_lines: int
+    value: str,
+    width_px: int,
+    height_px: int,
+    *,
+    max_lines: int,
+    max_bytes: int,
 ) -> _CanvasTextLayout:
     """Fit Canvas text inside explicit geometry without changing that geometry."""
 
@@ -3793,7 +3824,19 @@ def _canvas_text_layout(
     bottom_limit = max(1, height_px - 5)
     min_size = 12
     had_visible_text = bool(value.strip())
-    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    height_line_limit = max(1, height_px // (min_size + 4) + 2)
+    effective_max_lines = min(max_lines, height_line_limit)
+    if effective_max_lines <= 0 or max_bytes <= 0:
+        return _CanvasTextLayout(size=16, lines=(), truncated=had_visible_text)
+    value, grapheme_truncated = bounded_grapheme_prefix(
+        value,
+        max_clusters=_canvas_text_probe_cluster_limit(
+            max_width=max_width,
+            max_lines=effective_max_lines,
+            max_bytes=max_bytes,
+            min_size=min_size,
+        ),
+    )
     if not value.strip():
         if not had_visible_text:
             return _CanvasTextLayout(size=16, lines=(), truncated=False)
@@ -3808,10 +3851,6 @@ def _canvas_text_layout(
             lines=((marker, marker_y),) if marker else (),
             truncated=True,
         )
-    height_line_limit = max(1, height_px // (min_size + 4) + 2)
-    effective_max_lines = min(max_lines, height_line_limit)
-    if effective_max_lines <= 0:
-        return _CanvasTextLayout(size=16, lines=(), truncated=bool(value.strip()))
 
     if not _canvas_has_extended_graphemes(value):
         legacy, legacy_truncated = _canvas_legacy_lines(
@@ -4044,6 +4083,15 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         for _, node in canvas_node_render_order
     ) + sum(bool(layout[8].strip()) for layout in edge_layouts)
 
+    def fair_text_byte_budget(*, has_visible_label: bool) -> int:
+        if (
+            not has_visible_label
+            or remaining_canvas_text_bytes <= 0
+            or remaining_labeled_canvas_items <= 0
+        ):
+            return 0
+        return remaining_canvas_text_bytes // remaining_labeled_canvas_items
+
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
         nonlocal remaining_canvas_text_lines
         nonlocal remaining_canvas_text_bytes
@@ -4068,12 +4116,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             0,
             remaining_canvas_text_lines - reserve_for_later,
         )
-        reserve_bytes_for_later = (
-            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM
-        )
-        node_text_byte_budget = max(
-            0,
-            remaining_canvas_text_bytes - reserve_bytes_for_later,
+        node_text_byte_budget = fair_text_byte_budget(
+            has_visible_label=has_visible_label
         )
         inner_text_width = max(1.0, float(width - 28))
         text_layout = _canvas_text_layout(
@@ -4081,6 +4125,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             width - 28,
             height,
             max_lines=node_line_budget,
+            max_bytes=node_text_byte_budget,
         )
         text_layout = _canvas_limit_text_layout_bytes(
             text_layout,
@@ -4159,12 +4204,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             0,
             remaining_labeled_canvas_items - (1 if has_visible_label else 0),
         )
-        reserve_bytes_for_later = (
-            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM
-        )
-        edge_text_byte_budget = max(
-            0,
-            remaining_canvas_text_bytes - reserve_bytes_for_later,
+        edge_text_byte_budget = fair_text_byte_budget(
+            has_visible_label=has_visible_label
         )
         edge_line_budget = max(
             0,

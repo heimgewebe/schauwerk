@@ -327,25 +327,50 @@ def bounded_grapheme_prefix(
     value: str,
     *,
     max_cluster_codepoints: int = MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+    max_clusters: int | None = None,
 ) -> tuple[str, bool]:
-    """Return the prefix before the first pathologically large grapheme cluster.
+    """Return a cluster-boundary prefix under explicit grapheme scan limits.
 
     The scan never retains more than max_cluster_codepoints code points for one
-    candidate cluster. Callers can therefore truncate explicitly without
-    splitting an ordinary extended grapheme cluster.
+    candidate cluster. With max_clusters omitted, behavior remains exact unless
+    a pathological cluster exceeds that cap. With max_clusters set, scanning
+    also stops after that many complete clusters and reports truncation when
+    source content remains.
     """
 
     if max_cluster_codepoints < 1:
         raise ValueError("max_cluster_codepoints must be positive")
+    if max_clusters is not None and max_clusters < 1:
+        raise ValueError("max_clusters must be positive")
     if not value:
         return value, False
     if value.isascii() and max_cluster_codepoints >= 2:
+        if max_clusters is None:
+            return value, False
+        cluster_count = 0
+        index = 0
+        while index < len(value):
+            next_index = (
+                index + 2
+                if value[index] == "\r"
+                and index + 1 < len(value)
+                and value[index + 1] == "\n"
+                else index + 1
+            )
+            cluster_count += 1
+            if cluster_count >= max_clusters and next_index < len(value):
+                return value[:next_index], True
+            index = next_index
         return value, False
 
     cluster_start = 0
+    completed_clusters = 0
     cluster: list[str] = []
     for index, character in enumerate(value):
         if cluster and _should_break(cluster, character):
+            completed_clusters += 1
+            if max_clusters is not None and completed_clusters >= max_clusters:
+                return value[:index], True
             cluster_start = index
             cluster = []
         elif len(cluster) >= max_cluster_codepoints:

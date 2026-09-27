@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+import schauwerk.visual.native_diagram as native_diagram
 from schauwerk.visual.grapheme import (
     MAX_GRAPHEME_CLUSTER_CODEPOINTS,
     bounded_grapheme_prefix,
@@ -60,6 +61,24 @@ def test_bounded_grapheme_prefix_stops_before_pathological_cluster() -> None:
     assert truncated is True
     assert bounded == prefix
     assert list(iter_grapheme_clusters(bounded)) == list(prefix)
+
+
+def test_bounded_grapheme_prefix_stops_at_cluster_limit_without_splitting() -> None:
+    family = "👨‍👩‍👧‍👦"
+    value = family * 3
+
+    bounded, truncated = bounded_grapheme_prefix(value, max_clusters=2)
+
+    assert truncated is True
+    assert bounded == family * 2
+    assert list(iter_grapheme_clusters(bounded)) == [family, family]
+
+
+def test_bounded_grapheme_prefix_cluster_limit_handles_ascii_crlf() -> None:
+    bounded, truncated = bounded_grapheme_prefix("a\r\nbc", max_clusters=2)
+
+    assert truncated is True
+    assert bounded == "a\r\n"
 
 
 def _canvas() -> dict:
@@ -1425,6 +1444,114 @@ def test_native_document_canvas_text_budget_reserves_later_visible_labels() -> N
     assert nodes["huge"].attrib["data-text-truncated"] == "true"
     assert "data-text-truncated" not in nodes["later"].attrib
     assert later_text == ["Visible label"]
+
+
+def test_native_document_canvas_text_byte_budget_is_fair_across_labels() -> None:
+    later_label = "L" * 108
+    source = {
+        "nodes": [
+            {
+                "id": "huge",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 1_000_000,
+                "height": 200,
+                "text": "x" * 1_100_000,
+            },
+            {
+                "id": "later",
+                "type": "text",
+                "x": 0,
+                "y": 300,
+                "width": 1_000,
+                "height": 100,
+                "text": later_label,
+            },
+        ],
+        "edges": [],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Fair byte budget")
+        )
+    )
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") in {"huge", "later"}
+    }
+    huge_text = "".join(
+        element.text or ""
+        for element in nodes["huge"]
+        if element.tag == f"{SVG_NS}text"
+        and element.attrib.get("data-node-label") == "true"
+    )
+    later_text = "".join(
+        element.text or ""
+        for element in nodes["later"]
+        if element.tag == f"{SVG_NS}text"
+        and element.attrib.get("data-node-label") == "true"
+    )
+
+    assert nodes["huge"].attrib["data-text-truncated"] == "true"
+    assert len(huge_text.encode("utf-8")) <= 512 * 1024
+    assert "data-text-truncated" not in nodes["later"].attrib
+    assert later_text == later_label
+
+
+def test_native_document_bounds_grapheme_probe_to_visible_prefix(monkeypatch) -> None:
+    observed_clusters = 0
+    original_iter = native_diagram.iter_grapheme_clusters
+    original_bounded_prefix = native_diagram.bounded_grapheme_prefix
+
+    def bounded_prefix(value: str, **kwargs):
+        if len(value) > 10_000:
+            assert kwargs.get("max_clusters") is not None
+        return original_bounded_prefix(value, **kwargs)
+
+    def counting_iter(value: str):
+        nonlocal observed_clusters
+        for cluster in original_iter(value):
+            observed_clusters += 1
+            if observed_clusters > 10_000:
+                raise AssertionError("grapheme probing exceeded visible-prefix budget")
+            yield cluster
+
+    monkeypatch.setattr(
+        native_diagram,
+        "bounded_grapheme_prefix",
+        bounded_prefix,
+    )
+    monkeypatch.setattr(native_diagram, "iter_grapheme_clusters", counting_iter)
+    source = {
+        "nodes": [
+            {
+                "id": "bounded-probe",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 1_000,
+                "height": 100,
+                "text": "é" * 800_000,
+            }
+        ],
+        "edges": [],
+    }
+
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Bounded grapheme probe")
+        )
+    )
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "bounded-probe"
+    )
+
+    assert node.attrib["data-text-truncated"] == "true"
+    assert observed_clusters <= 10_000
 
 
 def test_native_document_marks_atomic_glyph_too_wide_for_minimum_font_as_truncated() -> None:
