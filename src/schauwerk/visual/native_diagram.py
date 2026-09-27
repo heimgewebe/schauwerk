@@ -222,11 +222,7 @@ def _estimated_wrap_width(value: str, *, size: int) -> float:
     """Estimate natural browser width for wrapping; clip paths remain authoritative."""
 
     return _estimated_width(
-        value,
-        size=size,
-        non_ascii=0.9,
-        uppercase=0.86,
-        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+        value, size=size, non_ascii=0.9, uppercase=0.86, default=0.58
     )
 
 
@@ -237,10 +233,7 @@ def _split_token_to_width(value: str, *, size: int, max_width: float) -> list[st
     for character in value:
         character_width = (
             _character_width_units(
-                character,
-                non_ascii=0.9,
-                uppercase=0.86,
-                default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+                character, non_ascii=0.9, uppercase=0.86, default=0.58
             )
             * size
         )
@@ -329,7 +322,7 @@ def _rebalance_single_word_lines(
         if len(previous_words) < 3:
             continue
         candidate = f"{previous_words[-1]} {balanced[index]}"
-        if _estimated_wrap_width(candidate, size=size) > max_width:
+        if _estimated_canvas_wrap_width(candidate, size=size) > max_width:
             continue
         balanced[index - 1] = " ".join(previous_words[:-1])
         balanced[index] = candidate
@@ -3444,6 +3437,29 @@ def _canvas_legacy_lines(
     return lines, False
 
 
+def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
+    return _estimated_width(
+        value,
+        size=size,
+        non_ascii=0.9,
+        uppercase=0.86,
+        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+    )
+
+
+def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
+    ellipsis = "…"
+    if _estimated_canvas_wrap_width(ellipsis, size=size) > max_width:
+        return ""
+    candidate = value.rstrip()
+    while (
+        candidate
+        and _estimated_canvas_wrap_width(candidate + ellipsis, size=size) > max_width
+    ):
+        candidate = candidate[:-1].rstrip()
+    return candidate + ellipsis if candidate else ellipsis
+
+
 def _canvas_wrap_source_line(
     value: str, *, size: int, max_width: float, max_lines: int
 ) -> tuple[list[str], bool]:
@@ -3479,7 +3495,7 @@ def _canvas_wrap_source_line(
                 if len(lines) >= max_lines:
                     return lines, True
             current = carry
-            current_width = _estimated_wrap_width("".join(current), size=size)
+            current_width = _estimated_canvas_wrap_width("".join(current), size=size)
             last_space_index = -1
             for index, item in enumerate(current):
                 if item.isspace():
@@ -3572,7 +3588,7 @@ def _canvas_truncated_lines(
     if not lines:
         return ()
     last_text, last_y = lines[-1]
-    marker = _ellipsize_to_width(
+    marker = _canvas_ellipsize_to_width(
         last_text,
         size=size,
         max_width=max_width,
@@ -3606,7 +3622,7 @@ def _canvas_text_layout(
         (line, 28 + index * 20) for index, line in enumerate(legacy)
     )
     legacy_width_safe = all(
-        not line or _estimated_wrap_width(line, size=16) <= max_width
+        not line or _estimated_canvas_wrap_width(line, size=16) <= max_width
         for line in legacy
     )
     if (
@@ -3639,7 +3655,7 @@ def _canvas_text_layout(
     visible = tuple(line for line in candidate if line[1] <= bottom_limit)
     if not visible:
         marker_y = max(1, min(bottom_limit, min_size + 12))
-        marker = _ellipsize_to_width("…", size=min_size, max_width=max_width)
+        marker = _canvas_ellipsize_to_width("…", size=min_size, max_width=max_width)
         return _CanvasTextLayout(
             size=min_size,
             lines=((marker, marker_y),) if marker else (),
