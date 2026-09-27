@@ -3441,6 +3441,7 @@ def _canvas_legacy_lines(
     return lines, False
 
 
+_CANVAS_ZWNJ = "\u200c"
 _CANVAS_ZWJ = "\u200d"
 _CANVAS_EMOJI_PRESENTATION_SELECTOR = "\ufe0f"
 _CANVAS_KEYCAP = "\u20e3"
@@ -3488,7 +3489,8 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     visible = [
         character
         for character in cluster
-        if character != _CANVAS_ZWJ and not _canvas_is_grapheme_extend(character)
+        if character not in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        and not _canvas_is_grapheme_extend(character)
     ]
     if not visible:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
