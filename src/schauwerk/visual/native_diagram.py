@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from html import escape
 from typing import Any
 
+import regex
+
 from .grammar import GRAMMAR_SCHEMA_VERSION
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
@@ -63,8 +65,8 @@ _WIDE_CHARS = frozenset("MW@#%&QGmwo")
 _CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.70
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
 _CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
-_CANVAS_MAX_NODE_TITLE_BYTES = 4096
-_CANVAS_MIN_TEXT_BYTES_PER_LABELED_NODE = 64
+_CANVAS_MAX_ELEMENT_TITLE_BYTES = 4096
+_CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM = 64
 
 _NODE_STYLE = {
     "human": ("#e6f6f8", "#147d92", 28),
@@ -3458,47 +3460,20 @@ def _canvas_is_regional_indicator(character: str) -> bool:
     return 0x1F1E6 <= ord(character) <= 0x1F1FF
 
 
+_CANVAS_GRAPHEME_PATTERN = regex.compile(r"\X")
+
+
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
-    """Yield conservative display clusters for Canvas wrapping.
+    """Yield Unicode extended grapheme clusters without materializing the input."""
 
-    This intentionally covers combining marks, variation selectors, emoji
-    modifiers/tags, regional-indicator pairs, and ZWJ sequences without
-    introducing a runtime dependency on a Unicode regex engine.
-    """
+    for match in _CANVAS_GRAPHEME_PATTERN.finditer(value):
+        yield match.group(0)
 
-    index = 0
-    while index < len(value):
-        cluster = value[index]
-        index += 1
-        if (
-            _canvas_is_regional_indicator(cluster)
-            and index < len(value)
-            and _canvas_is_regional_indicator(value[index])
-        ):
-            cluster += value[index]
-            index += 1
-        while index < len(value) and _canvas_is_grapheme_extend(value[index]):
-            cluster += value[index]
-            index += 1
-        while index < len(value) and value[index] == _CANVAS_ZWJ:
-            cluster += value[index]
-            index += 1
-            if index >= len(value):
-                break
-            cluster += value[index]
-            index += 1
-            while index < len(value) and _canvas_is_grapheme_extend(value[index]):
-                cluster += value[index]
-                index += 1
-        yield cluster
 
 def _canvas_has_extended_graphemes(value: str) -> bool:
-    return any(
-        character == _CANVAS_ZWJ
-        or _canvas_is_grapheme_extend(character)
-        or _canvas_is_regional_indicator(character)
-        for character in value
-    )
+    if value.isascii() and "\r" not in value and "\n" not in value:
+        return False
+    return any(len(cluster) > 1 for cluster in _canvas_grapheme_clusters(value))
 
 
 def _canvas_character_width_units(character: str) -> float:
@@ -3589,6 +3564,33 @@ def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
         size=1,
         max_width=float("inf"),
         max_bytes=max_bytes,
+    )
+
+
+def _canvas_fit_single_line(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int,
+) -> tuple[str, bool]:
+    """Fit one Canvas label without silent clipping."""
+
+    if not value:
+        return "", False
+    if (
+        _estimated_canvas_wrap_width(value, size=size) <= max_width
+        and _canvas_escaped_text_bytes(value) <= max_bytes
+    ):
+        return value, False
+    return (
+        _canvas_ellipsize_to_limits(
+            value,
+            size=size,
+            max_width=max_width,
+            max_bytes=max_bytes,
+        ),
+        True,
     )
 
 
@@ -3926,6 +3928,16 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         view_width = 1200
         view_height = 800
 
+    document_title = str(document.get("title", "Schaubild"))
+    rendered_document_title = _canvas_ellipsize_to_escaped_bytes(
+        document_title,
+        max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+    )
+    document_title_truncated_attribute = (
+        ' data-title-truncated="true"'
+        if rendered_document_title != document_title
+        else ""
+    )
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         (
@@ -3934,9 +3946,10 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'width="{view_width}" height="{view_height}" '
             f'data-renderer="schauwerk-native-diagram-v1" '
             f'data-intent="freeform" data-document-mode="json-canvas" '
-            f'data-input-digest="{_canvas_xml(document["source_digest"])}">'
+            f'data-input-digest="{_canvas_xml(document["source_digest"])}"'
+            f'{document_title_truncated_attribute}>'
         ),
-        f"<title>{_canvas_xml(document.get('title', 'Schaubild'))}</title>",
+        f"<title>{_canvas_xml(rendered_document_title)}</title>",
         "<defs>",
     ]
     for index, edge in enumerate(edges):
@@ -3964,7 +3977,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
     ]
     remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
     remaining_canvas_text_bytes = _CANVAS_MAX_EMITTED_TEXT_BYTES
-    remaining_labeled_canvas_nodes = sum(
+    remaining_labeled_canvas_items = sum(
         bool(
             (
                 _canvas_plain_markdown(str(node.get("label", "")))
@@ -3973,12 +3986,12 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             ).strip()
         )
         for _, node in canvas_node_render_order
-    )
+    ) + sum(bool(layout[8].strip()) for layout in edge_layouts)
 
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
         nonlocal remaining_canvas_text_lines
         nonlocal remaining_canvas_text_bytes
-        nonlocal remaining_labeled_canvas_nodes
+        nonlocal remaining_labeled_canvas_items
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3993,14 +4006,14 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         has_visible_label = bool(display_label.strip())
         reserve_for_later = max(
             0,
-            remaining_labeled_canvas_nodes - (1 if has_visible_label else 0),
+            remaining_labeled_canvas_items - (1 if has_visible_label else 0),
         )
         node_line_budget = max(
             0,
             remaining_canvas_text_lines - reserve_for_later,
         )
         reserve_bytes_for_later = (
-            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_NODE
+            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM
         )
         node_text_byte_budget = max(
             0,
@@ -4027,8 +4040,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             - sum(_canvas_escaped_text_bytes(line) for line, _ in text_layout.lines),
         )
         if has_visible_label:
-            remaining_labeled_canvas_nodes = max(
-                0, remaining_labeled_canvas_nodes - 1
+            remaining_labeled_canvas_items = max(
+                0, remaining_labeled_canvas_items - 1
             )
         truncated_attribute = (
             ' data-text-truncated="true"' if text_layout.truncated else ""
@@ -4040,7 +4053,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
         title_label = _canvas_ellipsize_to_escaped_bytes(
             display_label,
-            max_bytes=_CANVAS_MAX_NODE_TITLE_BYTES,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
         )
         lines.append(f"<title>{_canvas_xml(title_label)}</title>")
         label_clip_id = f"canvas-node-label-{node_index}"
@@ -4085,6 +4098,52 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         label_height,
     ) in edge_layouts:
         _, stroke = _canvas_color(edge.get("source", {}).get("color"))
+        has_visible_label = bool(label.strip())
+        reserve_for_later = max(
+            0,
+            remaining_labeled_canvas_items - (1 if has_visible_label else 0),
+        )
+        reserve_bytes_for_later = (
+            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_ITEM
+        )
+        edge_text_byte_budget = max(
+            0,
+            remaining_canvas_text_bytes - reserve_bytes_for_later,
+        )
+        edge_line_budget = max(
+            0,
+            remaining_canvas_text_lines - reserve_for_later,
+        )
+        rendered_edge_label = ""
+        edge_label_truncated = False
+        if has_visible_label:
+            if edge_line_budget <= 0:
+                edge_label_truncated = True
+            else:
+                rendered_edge_label, edge_label_truncated = _canvas_fit_single_line(
+                    label,
+                    size=14,
+                    max_width=max(1.0, float(label_width - 20)),
+                    max_bytes=edge_text_byte_budget,
+                )
+        if rendered_edge_label:
+            remaining_canvas_text_lines = max(0, remaining_canvas_text_lines - 1)
+            remaining_canvas_text_bytes = max(
+                0,
+                remaining_canvas_text_bytes
+                - _canvas_escaped_text_bytes(rendered_edge_label),
+            )
+        if has_visible_label:
+            remaining_labeled_canvas_items = max(
+                0, remaining_labeled_canvas_items - 1
+            )
+        edge_truncated_attribute = (
+            ' data-text-truncated="true"' if edge_label_truncated else ""
+        )
+        edge_title = _canvas_ellipsize_to_escaped_bytes(
+            label,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
         marker_start = (
             f' marker-start="url(#canvas-arrow-{index})"'
             if edge.get("from_end") == "arrow"
@@ -4100,16 +4159,17 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 (
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
-                    f'data-route="{route}" data-lane="{lane:.1f}">'
+                    f'data-route="{route}" data-lane="{lane:.1f}"'
+                    f'{edge_truncated_attribute}>'
                 ),
-                f"<title>{_canvas_xml(label)}</title>",
+                f"<title>{_canvas_xml(edge_title)}</title>",
                 (
                     f'<path d="{path}" fill="none" stroke="{stroke}" stroke-width="2" '
                     f'stroke-linecap="round" stroke-linejoin="round"{marker_start}{marker_end}/>'
                 ),
             ]
         )
-        if label:
+        if has_visible_label:
             clip_id = f"canvas-edge-label-{index}"
             lines.extend(
                 [
@@ -4128,7 +4188,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                         f'<text x="{label_x:.1f}" y="{label_y + 5:.1f}" '
                         f'text-anchor="middle" font-family="Inter, sans-serif" '
                         f'font-size="14" font-weight="600" fill="{stroke}" '
-                        f'clip-path="url(#{clip_id})">{_canvas_xml(label)}</text>'
+                        f'clip-path="url(#{clip_id})">{_canvas_xml(rendered_edge_label)}</text>'
                     ),
                 ]
             )

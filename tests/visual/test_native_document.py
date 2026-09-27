@@ -1044,6 +1044,45 @@ def test_native_document_canvas_wrap_preserves_combining_mark_clusters() -> None
     )
 
 
+def test_native_document_canvas_wrap_preserves_indic_conjunct_grapheme_clusters() -> None:
+    conjunct = "\u0915\u094d\u0937"
+    label = conjunct * 8
+    source = {
+        "nodes": [
+            {
+                "id": "indic-conjunct",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 60,
+                "height": 220,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Indic conjunct wrapping")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "indic-conjunct"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
+    assert len(texts) >= 2
+    assert all(line and line.replace(conjunct, "") == "" for line in texts)
+
+
 def test_native_document_numeric_run_uses_conservative_bold_fallback_width() -> None:
     label = "0" * 30
     source = {

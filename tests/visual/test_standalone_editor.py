@@ -4728,6 +4728,134 @@ def test_admitted_wide_canvas_text_stays_within_native_bundle_budget(
     assert len(title.text.encode("utf-8")) <= 4096
 
 
+def test_oversized_canvas_identifiers_are_rejected_before_conversion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identifier = "n" * 1_700_000
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Oversized id.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": identifier,
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "ok",
+                }
+            ],
+            "edges": [],
+        },
+    }
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert len(payload) <= standalone_editor.MAX_NATIVE_REQUEST_BYTES
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise AssertionError("oversized identifiers must be rejected before conversion")
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "json_canvas_to_editing_document",
+        unexpected_conversion,
+    )
+    with pytest.raises(
+        standalone_editor.StandaloneEditorError,
+        match="identifiers exceed the rendered identity byte budget",
+    ):
+        standalone_editor._native_product_input(value)
+
+
+def test_canvas_identifier_budget_preserves_accepted_source_identity() -> None:
+    identifier = "n" * standalone_editor.MAX_NATIVE_CANVAS_ID_BYTES
+    source = {
+        "nodes": [
+            {
+                "id": identifier,
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 240,
+                "height": 100,
+                "text": "ok",
+            }
+        ],
+        "edges": [],
+    }
+    normalized = standalone_editor._native_product_input(
+        {
+            "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+            "format": "json-canvas-1.0",
+            "title": "Accepted id.canvas",
+            "source": source,
+        }
+    )
+    assert normalized["nodes"][0]["id"] == identifier
+    assert normalized["source"]["nodes"][0]["id"] == identifier
+
+
+def test_admitted_wide_canvas_edge_text_stays_within_native_bundle_budget(
+    tmp_path: Path,
+) -> None:
+    label = "L" * 1_700_000
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Wide edge.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "a",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "a",
+                },
+                {
+                    "id": "b",
+                    "type": "text",
+                    "x": 400,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "b",
+                },
+            ],
+            "edges": [
+                {"id": "edge", "fromNode": "a", "toNode": "b", "label": label}
+            ],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "wide-edge-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    edge = next(
+        element
+        for element in root.iter("{http://www.w3.org/2000/svg}g")
+        if element.attrib.get("data-source-id") == "edge"
+    )
+    assert edge.attrib["data-text-truncated"] == "true"
+    title = next(edge.iter("{http://www.w3.org/2000/svg}title"))
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+
 def test_normalized_json_canvas_overflow_is_422_before_renderer_spawn(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
