@@ -60,6 +60,7 @@ _VERTICAL_LABEL_MIN_WIDTH = 70
 _DIAGONAL_LABEL_MIN_WIDTH = 84
 _NARROW_CHARS = frozenset("ilI.,'`:;!|[](){}")
 _WIDE_CHARS = frozenset("MW@#%&QGmwo")
+_CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.64
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
 
 _NODE_STYLE = {
@@ -221,7 +222,11 @@ def _estimated_wrap_width(value: str, *, size: int) -> float:
     """Estimate natural browser width for wrapping; clip paths remain authoritative."""
 
     return _estimated_width(
-        value, size=size, non_ascii=0.9, uppercase=0.86, default=0.58
+        value,
+        size=size,
+        non_ascii=0.9,
+        uppercase=0.86,
+        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
     )
 
 
@@ -232,7 +237,10 @@ def _split_token_to_width(value: str, *, size: int, max_width: float) -> list[st
     for character in value:
         character_width = (
             _character_width_units(
-                character, non_ascii=0.9, uppercase=0.86, default=0.58
+                character,
+                non_ascii=0.9,
+                uppercase=0.86,
+                default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
             )
             * size
         )
@@ -3454,7 +3462,7 @@ def _canvas_wrap_source_line(
                 character,
                 non_ascii=0.9,
                 uppercase=0.86,
-                default=0.58,
+                default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
             )
             * size
         )
@@ -3490,6 +3498,22 @@ def _canvas_wrap_source_line(
         if len(lines) >= max_lines:
             return lines, True
         lines.append(trailing)
+
+    if (
+        len(lines) >= 2
+        and not any(character.isspace() for character in value)
+        and 0 < len(lines[-1]) < 4
+    ):
+        donor = lines[-2]
+        fragment = lines[-1]
+        while len(fragment) < 4 and len(donor) > 4:
+            candidate = donor[-1] + fragment
+            if _estimated_wrap_width(candidate, size=size) > max_width:
+                break
+            donor = donor[:-1]
+            fragment = candidate
+        lines[-2] = donor
+        lines[-1] = fragment
     return lines, False
 
 

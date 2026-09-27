@@ -961,6 +961,48 @@ def test_native_document_canvas_full_width_glyphs_fit_conservative_width() -> No
 
 
 
+
+def test_native_document_numeric_run_uses_conservative_fallback_width() -> None:
+    label = "0" * 30
+    source = {
+        "nodes": [
+            {
+                "id": "digits",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 307,
+                "height": 80,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Numeric fallback width")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "digits"
+    )
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(item.text or "" for item in texts) == label
+    assert len(texts) >= 2
+    assert all(
+        len(item.text or "") * int(item.attrib["font-size"]) * 0.64 <= 279
+        for item in texts
+    )
+
+
 def test_native_document_canvas_text_budget_reserves_later_visible_labels() -> None:
     source = {
         "nodes": [
