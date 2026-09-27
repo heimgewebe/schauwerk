@@ -3377,23 +3377,127 @@ def _canvas_plain_markdown(value: str) -> str:
     return text.strip()
 
 
-def _canvas_wrap(value: str, width_px: int, height_px: int) -> list[str]:
+@dataclass(frozen=True)
+class _CanvasTextLayout:
+    size: int
+    lines: tuple[tuple[str, int], ...]
+    truncated: bool
+
+
+def _canvas_legacy_lines(value: str, width_px: int) -> list[str]:
+    """Return the historical fixed-size wrapping without discarding source lines."""
+
     chars = max(4, width_px // 8)
-    line_count = max(1, min(10, height_px // 20))
     lines: list[str] = []
     for paragraph in value.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        wrapped = textwrap.wrap(
-            paragraph,
-            width=chars,
-            break_long_words=True,
-            break_on_hyphens=False,
+        lines.extend(
+            textwrap.wrap(
+                paragraph,
+                width=chars,
+                break_long_words=True,
+                break_on_hyphens=False,
+            )
+            or [""]
+        )
+    return lines
+
+
+def _canvas_adaptive_lines(
+    value: str, *, size: int, max_width: float
+) -> list[tuple[str, bool]]:
+    """Wrap all visible source text and mark only real blank-line paragraph gaps."""
+
+    chars = max(4, int(max_width / max(4.0, size * 0.58)))
+    lines: list[tuple[str, bool]] = []
+    paragraph_gap_pending = False
+    for source_line in (
+        value.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    ):
+        if not source_line.strip():
+            if lines:
+                paragraph_gap_pending = True
+            continue
+        wrapped = _bounded_wrapped(
+            source_line,
+            width=max(chars, len(source_line)),
+            limit=512,
+            size=size,
+            max_width=max_width,
         ) or [""]
-        lines.extend(wrapped)
-        if len(lines) >= line_count:
-            break
-    if len(lines) > line_count:
-        lines = lines[:line_count]
-    return lines[:line_count]
+        for wrapped_index, line in enumerate(wrapped):
+            lines.append(
+                (
+                    line,
+                    paragraph_gap_pending and wrapped_index == 0,
+                )
+            )
+            paragraph_gap_pending = False
+    return lines
+
+
+def _canvas_position_adaptive_lines(
+    lines: Sequence[tuple[str, bool]], *, size: int
+) -> tuple[tuple[str, int], ...]:
+    baseline = size + 12
+    line_height = size + 4
+    paragraph_gap = max(6, size // 2)
+    positioned: list[tuple[str, int]] = []
+    for index, (line, gap_before) in enumerate(lines):
+        if index:
+            baseline += line_height
+            if gap_before:
+                baseline += paragraph_gap
+        positioned.append((line, baseline))
+    return tuple(positioned)
+
+
+def _canvas_text_layout(value: str, width_px: int, height_px: int) -> _CanvasTextLayout:
+    """Fit Canvas text inside explicit geometry without changing that geometry."""
+
+    max_width = max(1.0, float(width_px))
+    bottom_limit = max(1, height_px - 5)
+    legacy = _canvas_legacy_lines(value, width_px)
+    legacy_positioned = tuple(
+        (line, 28 + index * 20) for index, line in enumerate(legacy)
+    )
+    legacy_width_safe = all(
+        not line or _estimated_wrap_width(line, size=16) <= max_width
+        for line in legacy
+    )
+    if (
+        legacy_positioned
+        and legacy_width_safe
+        and legacy_positioned[-1][1] <= bottom_limit
+    ):
+        return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
+
+    candidate: tuple[tuple[str, int], ...] = ()
+    min_size = 12
+    for size in range(16, min_size - 1, -1):
+        wrapped = _canvas_adaptive_lines(value, size=size, max_width=max_width)
+        candidate = _canvas_position_adaptive_lines(wrapped, size=size)
+        if not candidate or candidate[-1][1] <= bottom_limit:
+            return _CanvasTextLayout(size=size, lines=candidate, truncated=False)
+
+    visible = tuple(line for line in candidate if line[1] <= bottom_limit)
+    if not visible:
+        marker_y = max(1, min(bottom_limit, min_size + 12))
+        marker = _ellipsize_to_width("…", size=min_size, max_width=max_width)
+        return _CanvasTextLayout(
+            size=min_size,
+            lines=((marker, marker_y),) if marker else (),
+            truncated=True,
+        )
+
+    if len(visible) < len(candidate):
+        last_text, last_y = visible[-1]
+        marker = _ellipsize_to_width(
+            last_text,
+            size=min_size,
+            max_width=max_width,
+        )
+        visible = (*visible[:-1], (marker, last_y))
+    return _CanvasTextLayout(size=min_size, lines=visible, truncated=True)
 
 
 def render_native_editing_document(document: Mapping[str, Any]) -> str:
@@ -3526,10 +3630,14 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         height = int(node["height"])
         label = str(node.get("label", ""))
         display_label = _canvas_plain_markdown(label) if node_type == "text" else label
+        text_layout = _canvas_text_layout(display_label, width - 28, height)
+        truncated_attribute = (
+            ' data-text-truncated="true"' if text_layout.truncated else ""
+        )
         lines.append(
             f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
             f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
-            f'data-canvas-type="{_canvas_xml(node_type)}">'
+            f'data-canvas-type="{_canvas_xml(node_type)}"{truncated_attribute}>'
         )
         lines.append(f"<title>{_canvas_xml(display_label)}</title>")
         label_clip_id = f"canvas-node-label-{node_index}"
@@ -3546,15 +3654,12 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'stroke-width="1.8"{dash}/>'
         )
         text_x = x + 14
-        text_y = y + 28
-        for line_index, line in enumerate(
-            _canvas_wrap(display_label, width - 28, height - 24)
-        ):
+        for line_index, (line, baseline_offset) in enumerate(text_layout.lines):
             weight = "700" if line_index == 0 or node_type == "group" else "500"
             lines.append(
                 f'<text data-node-label="true" x="{text_x}" '
-                f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
-                f'font-size="16" font-weight="{weight}" fill="#172033" '
+                f'y="{y + baseline_offset}" font-family="Inter, sans-serif" '
+                f'font-size="{text_layout.size}" font-weight="{weight}" fill="#172033" '
                 f'clip-path="url(#{label_clip_id})">{_canvas_xml(line)}</text>'
             )
         lines.append("</g>")

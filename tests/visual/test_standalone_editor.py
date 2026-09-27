@@ -1501,6 +1501,95 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         server.server_close()
         thread.join(timeout=5)
 
+
+def test_native_json_canvas_endpoint_keeps_dense_source_text_visible(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "text",
+                "x": 20,
+                "y": 40,
+                "width": 280,
+                "height": 180,
+                "text": (
+                    "# Start\n\nDies ist eine **JSON-Canvas-Testdatei** für Schaubild."
+                    "\n\n- Markdown\n- Unicode: ä ö ü ß → ✓\n- Mehrzeiliger Text"
+                ),
+            },
+            {
+                "id": "special",
+                "type": "text",
+                "x": 800,
+                "y": 330,
+                "width": 200,
+                "height": 170,
+                "text": (
+                    "### Zeichen\n\n\x60<tag>\x60\n\n\x60A & B\x60\n\n"
+                    "\"Quotes\" & 'Apostrophes'\n\n🙂"
+                ),
+            },
+        ],
+        "edges": [],
+    }
+    request = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "schaubild-test.canvas",
+        "source": source,
+    }
+    payload = json.dumps(request, ensure_ascii=False).encode("utf-8")
+    handler = partial(_EditorRequestHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(server.server_address[1]), timeout=5
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert body["renderer"] == NATIVE_RENDERER
+
+        diagram_url = body["url"].replace("index.html", "diagram.svg")
+        connection.request("GET", diagram_url)
+        diagram_response = connection.getresponse()
+        diagram_svg = diagram_response.read().decode("utf-8")
+        assert diagram_response.status == 200
+        assert 'data-document-mode="json-canvas"' in diagram_svg
+        assert "Unicode: ä ö ü ß → ✓" in diagram_svg
+        assert "Mehrzeiliger Text" in diagram_svg
+        assert "Apostrophes" in diagram_svg
+        assert "🙂" in diagram_svg
+        assert 'data-text-truncated="true"' not in diagram_svg
+        assert 'x="20" y="40" width="280" height="180"' in diagram_svg
+        assert 'x="800" y="330" width="200" height="170"' in diagram_svg
+
+        document_url = body["url"].replace("index.html", "document.json")
+        connection.request("GET", document_url)
+        document_response = connection.getresponse()
+        document = json.loads(document_response.read().decode("utf-8"))
+        assert document_response.status == 200
+        assert document["source"] == source
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_native_product_admission_rejects_excessive_graph_cardinality() -> None:
     too_many_nodes = _golden_representation("decision-flow-v1.json")
     too_many_nodes["groups"] = []

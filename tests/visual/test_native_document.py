@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -743,6 +744,165 @@ def test_native_document_node_labels_are_clipped_to_node_box() -> None:
         "height": "100",
     }
 
+
+
+
+@pytest.mark.parametrize(
+    ("node_id", "width", "height", "label", "needles"),
+    [
+        (
+            "start",
+            280,
+            180,
+            "# Start\n\nDies ist eine **JSON-Canvas-Testdatei** für Schaubild."
+            "\n\n- Markdown\n- Unicode: ä ö ü ß → ✓\n- Mehrzeiliger Text",
+            ("Unicode: ä ö ü ß → ✓", "Mehrzeiliger Text"),
+        ),
+        (
+            "special",
+            200,
+            170,
+            "### Zeichen\n\n\x60<tag>\x60\n\n\x60A & B\x60\n\n"
+            "\"Quotes\" & 'Apostrophes'\n\n🙂",
+            ("Apostrophes", "🙂"),
+        ),
+    ],
+)
+def test_native_document_adaptively_fits_live_canvas_text_without_geometry_change(
+    node_id: str,
+    width: int,
+    height: int,
+    label: str,
+    needles: tuple[str, ...],
+) -> None:
+    source = {
+        "nodes": [
+            {
+                "id": node_id,
+                "type": "text",
+                "x": 20,
+                "y": 30,
+                "width": width,
+                "height": height,
+                "text": label,
+            }
+        ]
+    }
+    document = json_canvas_to_editing_document(source, title="Live clipping regression")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == node_id
+    )
+    assert "data-text-truncated" not in node.attrib
+
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+    assert texts
+    rendered = "".join(item.text or "" for item in texts)
+    def compact(value: str) -> str:
+        return re.sub(r"\s+", "", value)
+
+    for needle in needles:
+        assert compact(needle) in compact(rendered)
+
+    font_sizes = {int(item.attrib["font-size"]) for item in texts}
+    assert min(font_sizes) >= 12
+    assert max(font_sizes) <= 16
+    assert all(float(item.attrib["y"]) <= 30 + height - 5 for item in texts)
+
+    clip = next(node.iter(f"{SVG_NS}clipPath"))
+    clip_rect = next(clip.iter(f"{SVG_NS}rect"))
+    assert clip_rect.attrib == {
+        "x": "20",
+        "y": "30",
+        "width": str(width),
+        "height": str(height),
+    }
+
+
+def test_native_document_canvas_text_fit_handles_cjk_emoji_url_and_long_token() -> None:
+    label = (
+        "日本語の長い文章テスト🙂\n\n"
+        "https://example.com/very/long/path/without-breaks\n\n"
+        "SUPERCALIFRAGILISTICEXPIALIDOCIOUS"
+    )
+    source = {
+        "nodes": [
+            {
+                "id": "i18n",
+                "type": "text",
+                "x": -10,
+                "y": 5,
+                "width": 280,
+                "height": 200,
+                "text": label,
+            }
+        ]
+    }
+    document = json_canvas_to_editing_document(source, title="Unicode wrapping")
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "i18n"
+    )
+    assert "data-text-truncated" not in node.attrib
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+    rendered_compact = re.sub(r"\s+", "", "".join(texts))
+    for token in (
+        "日本語の長い文章テスト🙂",
+        "https://example.com/very/long/path/without-breaks",
+        "SUPERCALIFRAGILISTICEXPIALIDOCIOUS",
+    ):
+        assert re.sub(r"\s+", "", token) in rendered_compact
+    assert all(len(line) >= 4 for line in texts if line)
+
+
+def test_native_document_canvas_text_fit_marks_unavoidably_truncated_content() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "tiny",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 80,
+                "height": 40,
+                "text": "X" * 500,
+            }
+        ]
+    }
+    document = json_canvas_to_editing_document(source, title="Bounded truncation")
+    assert editing_document_to_json_canvas(document) == source
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "tiny"
+    )
+    assert node.attrib["data-text-truncated"] == "true"
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+    assert texts
+    assert texts[-1].text is not None and texts[-1].text.endswith("…")
+    assert {item.attrib["font-size"] for item in texts} == {"12"}
 
 
 def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> None:
