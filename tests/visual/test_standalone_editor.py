@@ -2135,7 +2135,7 @@ def test_native_runtime_import_has_no_third_party_dependency_closure() -> None:
             (
                 "import sys; "
                 "import schauwerk.visual.standalone_editor; "
-                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs'}; "
+                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs','regex'}; "
                 "loaded=sorted(blocked.intersection(sys.modules)); "
                 "assert not loaded, loaded"
             ),
@@ -2183,6 +2183,7 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
         "src/schauwerk/visual/standalone_editor.py",
         "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/grapheme.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/representation.py",
@@ -4854,6 +4855,52 @@ def test_admitted_wide_canvas_edge_text_stays_within_native_bundle_budget(
     assert title.text is not None
     assert title.text.endswith("…")
     assert len(title.text.encode("utf-8")) <= 4096
+
+
+def test_escaped_native_title_stays_within_native_bundle_budget(tmp_path: Path) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": '"' * 1_200_000,
+        "source": {
+            "nodes": [
+                {
+                    "id": "title-probe",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 200,
+                    "height": 100,
+                    "text": "A",
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "title-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    assert root.attrib["data-title-truncated"] == "true"
+    title = root.find("{http://www.w3.org/2000/svg}title")
+    assert title is not None
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+    index_html = (bundle / "index.html").read_text(encoding="utf-8")
+    assert len(index_html.encode("utf-8")) < standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    assert "…" in index_html
 
 
 def test_normalized_json_canvas_overflow_is_422_before_renderer_spawn(

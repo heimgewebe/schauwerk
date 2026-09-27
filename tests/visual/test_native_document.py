@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+from schauwerk.visual.grapheme import iter_grapheme_clusters
 from schauwerk.visual.native_diagram import render_native_editing_document
 from schauwerk.visual.native_document import (
     NativeDocumentError,
@@ -15,6 +16,25 @@ from schauwerk.visual.native_document import (
 )
 
 SVG_NS = "{http://www.w3.org/2000/svg}"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("\r\n", ["\r\n"]),
+        ("\u1100\u1161\u11A8", ["\u1100\u1161\u11A8"]),
+        ("\u0600A", ["\u0600A"]),
+        ("A\u0903", ["A\u0903"]),
+        ("🇩🇪🇺🇸", ["🇩🇪", "🇺🇸"]),
+        ("क्ष", ["क्ष"]),
+        ("👨‍👩‍👧‍👦", ["👨‍👩‍👧‍👦"]),
+    ],
+)
+def test_stdlib_grapheme_segmenter_covers_uax29_rules(
+    value: str,
+    expected: list[str],
+) -> None:
+    assert list(iter_grapheme_clusters(value)) == expected
 
 
 def _canvas() -> dict:

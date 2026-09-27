@@ -13,9 +13,8 @@ from dataclasses import dataclass
 from html import escape
 from typing import Any
 
-import regex
-
 from .grammar import GRAMMAR_SCHEMA_VERSION
+from .grapheme import iter_grapheme_clusters
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
@@ -3460,14 +3459,10 @@ def _canvas_is_regional_indicator(character: str) -> bool:
     return 0x1F1E6 <= ord(character) <= 0x1F1FF
 
 
-_CANVAS_GRAPHEME_PATTERN = regex.compile(r"\X")
-
-
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
     """Yield Unicode extended grapheme clusters without materializing the input."""
 
-    for match in _CANVAS_GRAPHEME_PATTERN.finditer(value):
-        yield match.group(0)
+    yield from iter_grapheme_clusters(value)
 
 
 def _canvas_has_extended_graphemes(value: str) -> bool:

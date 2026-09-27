@@ -22,6 +22,7 @@ from typing import Any, Final
 
 from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
+from .grapheme import iter_grapheme_clusters
 from .json_fidelity import (
     JsonFidelityError,
     assert_javascript_roundtrip_json_numbers,
@@ -47,6 +48,7 @@ _TITLE_MARKER: Final = "__SCHAUWERK_NATIVE_TITLE__"
 _SVG_MARKER: Final = "__SCHAUWERK_NATIVE_SVG__"
 _MODEL_MARKER: Final = "__SCHAUWERK_NATIVE_MODEL__"
 _LIMITS_MARKER: Final = "__SCHAUWERK_NATIVE_LIMITS__"
+_MAX_RENDERED_HTML_TITLE_BYTES: Final = 4096
 
 
 class NativeViewerError(ValueError):
@@ -83,6 +85,28 @@ def _inline_svg(svg: str) -> str:
     )
 
 
+def _bounded_html_title(value: str) -> str:
+    """Bound escaped HTML title bytes without splitting a grapheme cluster."""
+
+    suffix = "…"
+    suffix_bytes = len(html.escape(suffix).encode("utf-8"))
+    selected: list[str] = []
+    escaped_bytes = 0
+    for cluster in iter_grapheme_clusters(value):
+        cluster_bytes = len(html.escape(cluster).encode("utf-8"))
+        if escaped_bytes + cluster_bytes > _MAX_RENDERED_HTML_TITLE_BYTES:
+            while (
+                selected
+                and escaped_bytes + suffix_bytes > _MAX_RENDERED_HTML_TITLE_BYTES
+            ):
+                removed = selected.pop()
+                escaped_bytes -= len(html.escape(removed).encode("utf-8"))
+            return "".join(selected) + suffix
+        selected.append(cluster)
+        escaped_bytes += cluster_bytes
+    return value
+
+
 def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
     if (
         INDEX_HTML.count(_SVG_MARKER) != 1
@@ -110,8 +134,9 @@ def _render_index(*, title: str, svg: str, model: Mapping[str, Any]) -> str:
         sort_keys=True,
         separators=(",", ":"),
     )
+    rendered_title = _bounded_html_title(title)
     replacements = {
-        _TITLE_MARKER: html.escape(title),
+        _TITLE_MARKER: html.escape(rendered_title),
         _SVG_MARKER: _inline_svg(svg),
         _MODEL_MARKER: embedded_model,
         _LIMITS_MARKER: embedded_limits,
