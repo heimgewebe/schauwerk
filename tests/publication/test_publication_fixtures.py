@@ -708,6 +708,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "canvas_grapheme_cluster_amplification_bounded",
         "canvas_embedded_model_escape_amplification_bounded",
         "canvas_zwnj_zero_advance_width_preserved",
+        "narrative_cjk_width_metric_unchanged",
         "native_runtime_import_stdlib_only",
         "docker_runtime_closure_includes_grapheme_segmenter",
     }:
