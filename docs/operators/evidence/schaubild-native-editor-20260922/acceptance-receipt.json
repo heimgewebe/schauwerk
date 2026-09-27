@@ -129,7 +129,8 @@
     "canvas_grapheme_oracle_conformance_checked": true,
     "canvas_html_title_bytes_bounded": true,
     "native_runtime_import_stdlib_only": true,
-    "docker_runtime_closure_includes_grapheme_segmenter": true
+    "docker_runtime_closure_includes_grapheme_segmenter": true,
+    "canvas_emoji_presentation_width_bounded": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -139,7 +140,7 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "f1f47bd3a080a31a9c013d7766bc4a17804f103d141b09bcb62d1a8a83b62f64",
+  "evidence_digest": "3ad279d8a15014b7c61444ce2083f82e56d4f0827be9edf0d24deb5397f33de0",
   "functional_head": "192ab30e80d20cabc18c542bd132d8c318905b38",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
@@ -155,12 +156,12 @@
     "scripts/run_browser_smoke.py": "3ac127a4b8fca674d525406544de1c0378354b29ed77281f33be208ff08a9673",
     "src/schauwerk/resources/native_viewer/assets.py": "d0c5c0d8f88861ca3ac48984aed16fc0720d41b32395a5a8e990133c283ba458",
     "src/schauwerk/resources/standalone_editor/assets.py": "44b27d689f8edb1229675cc92f0a2da6ecdbc005370c564b6404f9d49c1343f6",
-    "src/schauwerk/visual/native_diagram.py": "723ccb408a47fbd9e7f8d7994636483f295473153898ff7c66acecfd17e12454",
+    "src/schauwerk/visual/native_diagram.py": "b8e62e278e5efa2d140cb884adcede9f20ae25b50fe18e706c85c9b8b89bf3e6",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
     "src/schauwerk/visual/native_viewer.py": "09fcaed3345f24b34b5f7e93d0b184bb4153cf487e585dead820299e7b8cf711",
     "src/schauwerk/visual/standalone_editor.py": "9a60f6aecc3df03cc941cf0120971ebfae9c8a22878acf74292f8de0dce673f9",
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
-    "tests/visual/test_native_document.py": "e6b48d5625f469cf71486064b32c812ec2e3c00b98b116ad3ef44fede338f195",
+    "tests/visual/test_native_document.py": "2515c2e6ba3be7c465ddcb5ea227c6d479311f1779a96e668e680bf6aaeb5c03",
     "tests/visual/test_native_viewer.py": "4624026c3238d8cf938d78b1a6228b0130a9a497d15b8ee252f1f5c3b0453dba",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
     "tests/visual/test_standalone_editor.py": "5edcdf9376072d5e368ae91190d24abb483c94b5462e1c78eb5fae817fd72b25",
