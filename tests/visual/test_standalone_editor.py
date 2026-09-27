@@ -4680,6 +4680,54 @@ def test_terminal_supersede_history_does_not_block_129th_normal_edit(
     assert previous.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
 
 
+def test_admitted_wide_canvas_text_stays_within_native_bundle_budget(
+    tmp_path: Path,
+) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Wide.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "wide",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 1_000_000,
+                    "height": 1_000_000,
+                    "text": "0" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "wide-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    node = next(
+        element
+        for element in root.iter("{http://www.w3.org/2000/svg}g")
+        if element.attrib.get("data-source-id") == "wide"
+    )
+    assert node.attrib["data-text-truncated"] == "true"
+    title = next(node.iter("{http://www.w3.org/2000/svg}title"))
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+
 def test_normalized_json_canvas_overflow_is_422_before_renderer_spawn(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

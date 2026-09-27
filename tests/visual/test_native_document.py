@@ -962,7 +962,89 @@ def test_native_document_canvas_full_width_glyphs_fit_conservative_width() -> No
 
 
 
-def test_native_document_numeric_run_uses_conservative_fallback_width() -> None:
+def test_native_document_canvas_wrap_preserves_zwj_grapheme_clusters() -> None:
+    family = "👨‍👩‍👧‍👦"
+    label = family * 5
+    source = {
+        "nodes": [
+            {
+                "id": "family",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 250,
+                "height": 50,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="ZWJ grapheme wrapping")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "family"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert texts == [label]
+    assert all(not line.startswith("\u200d") and not line.endswith("\u200d") for line in texts)
+
+
+def test_native_document_canvas_wrap_preserves_combining_mark_clusters() -> None:
+    cluster = "e\u0301"
+    label = cluster * 24
+    source = {
+        "nodes": [
+            {
+                "id": "combining",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 100,
+                "height": 140,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Combining mark wrapping")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "combining"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
+    assert len(texts) >= 2
+    assert all(
+        line
+        and not line.startswith("\u0301")
+        and line.count("e") == line.count("\u0301")
+        for line in texts
+    )
+
+
+def test_native_document_numeric_run_uses_conservative_bold_fallback_width() -> None:
     label = "0" * 30
     source = {
         "nodes": [
@@ -997,6 +1079,7 @@ def test_native_document_numeric_run_uses_conservative_fallback_width() -> None:
     assert "data-text-truncated" not in node.attrib
     assert "".join(item.text or "" for item in texts) == label
     assert len(texts) >= 2
+    assert texts[0].attrib["font-weight"] == "700"
     assert all(
         len(item.text or "") * int(item.attrib["font-size"]) * 0.70 <= 279
         for item in texts

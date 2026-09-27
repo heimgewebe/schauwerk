@@ -8,7 +8,7 @@ import re
 import textwrap
 import unicodedata
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from html import escape
 from typing import Any
@@ -62,6 +62,9 @@ _NARROW_CHARS = frozenset("ilI.,'`:;!|[](){}")
 _WIDE_CHARS = frozenset("MW@#%&QGmwo")
 _CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.70
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
+_CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
+_CANVAS_MAX_NODE_TITLE_BYTES = 4096
+_CANVAS_MIN_TEXT_BYTES_PER_LABELED_NODE = 64
 
 _NODE_STYLE = {
     "human": ("#e6f6f8", "#147d92", 28),
@@ -3437,6 +3440,67 @@ def _canvas_legacy_lines(
     return lines, False
 
 
+_CANVAS_ZWJ = "\u200d"
+
+
+def _canvas_is_grapheme_extend(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        unicodedata.category(character) in {"Mn", "Mc", "Me"}
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or 0xE0100 <= codepoint <= 0xE01EF
+        or 0x1F3FB <= codepoint <= 0x1F3FF
+        or 0xE0020 <= codepoint <= 0xE007F
+    )
+
+
+def _canvas_is_regional_indicator(character: str) -> bool:
+    return 0x1F1E6 <= ord(character) <= 0x1F1FF
+
+
+def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
+    """Yield conservative display clusters for Canvas wrapping.
+
+    This intentionally covers combining marks, variation selectors, emoji
+    modifiers/tags, regional-indicator pairs, and ZWJ sequences without
+    introducing a runtime dependency on a Unicode regex engine.
+    """
+
+    index = 0
+    while index < len(value):
+        cluster = value[index]
+        index += 1
+        if (
+            _canvas_is_regional_indicator(cluster)
+            and index < len(value)
+            and _canvas_is_regional_indicator(value[index])
+        ):
+            cluster += value[index]
+            index += 1
+        while index < len(value) and _canvas_is_grapheme_extend(value[index]):
+            cluster += value[index]
+            index += 1
+        while index < len(value) and value[index] == _CANVAS_ZWJ:
+            cluster += value[index]
+            index += 1
+            if index >= len(value):
+                break
+            cluster += value[index]
+            index += 1
+            while index < len(value) and _canvas_is_grapheme_extend(value[index]):
+                cluster += value[index]
+                index += 1
+        yield cluster
+
+def _canvas_has_extended_graphemes(value: str) -> bool:
+    return any(
+        character == _CANVAS_ZWJ
+        or _canvas_is_grapheme_extend(character)
+        or _canvas_is_regional_indicator(character)
+        for character in value
+    )
+
+
 def _canvas_character_width_units(character: str) -> float:
     if not character.isspace() and character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
@@ -3448,28 +3512,90 @@ def _canvas_character_width_units(character: str) -> float:
     )
 
 
+def _canvas_grapheme_width_units(cluster: str) -> float:
+    visible = [
+        character
+        for character in cluster
+        if character != _CANVAS_ZWJ and not _canvas_is_grapheme_extend(character)
+    ]
+    if not visible:
+        return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
+    widths = [_canvas_character_width_units(character) for character in visible]
+    if _CANVAS_ZWJ in cluster or (
+        len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible)
+    ):
+        return max(2.0, max(widths))
+    return sum(widths)
+
+
 def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
-    units = sum(_canvas_character_width_units(character) for character in value)
+    units = sum(
+        _canvas_grapheme_width_units(cluster)
+        for cluster in _canvas_grapheme_clusters(value)
+    )
     return units * size
 
 
-def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
+def _canvas_escaped_text_bytes(value: str) -> int:
+    return len(_canvas_xml(value).encode("utf-8"))
+
+
+def _canvas_ellipsize_to_limits(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int | None = None,
+) -> str:
     ellipsis = "…"
-    if _estimated_canvas_wrap_width(ellipsis, size=size) > max_width:
-        return ""
-    candidate = value.rstrip()
-    while (
-        candidate
-        and _estimated_canvas_wrap_width(candidate + ellipsis, size=size) > max_width
+    ellipsis_width = _estimated_canvas_wrap_width(ellipsis, size=size)
+    ellipsis_bytes = _canvas_escaped_text_bytes(ellipsis)
+    if ellipsis_width > max_width or (
+        max_bytes is not None and ellipsis_bytes > max_bytes
     ):
-        candidate = candidate[:-1].rstrip()
+        return ""
+    width_budget = max_width - ellipsis_width
+    byte_budget = None if max_bytes is None else max_bytes - ellipsis_bytes
+    selected: list[str] = []
+    width_used = 0.0
+    bytes_used = 0
+    for cluster in _canvas_grapheme_clusters(value.rstrip()):
+        cluster_width = _canvas_grapheme_width_units(cluster) * size
+        cluster_bytes = _canvas_escaped_text_bytes(cluster)
+        if width_used + cluster_width > width_budget:
+            break
+        if byte_budget is not None and bytes_used + cluster_bytes > byte_budget:
+            break
+        selected.append(cluster)
+        width_used += cluster_width
+        bytes_used += cluster_bytes
+    candidate = "".join(selected).rstrip()
     return candidate + ellipsis if candidate else ellipsis
+
+
+def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
+    return _canvas_ellipsize_to_limits(
+        value,
+        size=size,
+        max_width=max_width,
+    )
+
+
+def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
+    if _canvas_escaped_text_bytes(value) <= max_bytes:
+        return value
+    return _canvas_ellipsize_to_limits(
+        value,
+        size=1,
+        max_width=float("inf"),
+        max_bytes=max_bytes,
+    )
 
 
 def _canvas_wrap_source_line(
     value: str, *, size: int, max_width: float, max_lines: int
 ) -> tuple[list[str], bool]:
-    """Wrap one line incrementally so output amplification is bounded before allocation."""
+    """Wrap one line incrementally without splitting display graphemes."""
 
     if max_lines <= 0:
         return [], bool(value)
@@ -3478,16 +3604,16 @@ def _canvas_wrap_source_line(
     current_width = 0.0
     last_space_index = -1
 
-    for character in value:
-        character_width = _canvas_character_width_units(character) * size
-        while current and current_width + character_width > max_width:
+    for cluster in _canvas_grapheme_clusters(value):
+        cluster_width = _canvas_grapheme_width_units(cluster) * size
+        while current and current_width + cluster_width > max_width:
             if last_space_index >= 0:
-                emitted_chars = current[:last_space_index]
+                emitted_clusters = current[:last_space_index]
                 carry = current[last_space_index + 1 :]
             else:
-                emitted_chars = current
+                emitted_clusters = current
                 carry = []
-            emitted = "".join(emitted_chars).strip()
+            emitted = "".join(emitted_clusters).strip()
             if emitted:
                 lines.append(emitted)
                 if len(lines) >= max_lines:
@@ -3498,13 +3624,13 @@ def _canvas_wrap_source_line(
             for index, item in enumerate(current):
                 if item.isspace():
                     last_space_index = index
-        if not current and character_width > max_width:
+        if not current and cluster_width > max_width:
             if len(lines) < max_lines:
-                lines.append(character)
+                lines.append(cluster)
             return lines, True
-        current.append(character)
-        current_width += character_width
-        if character.isspace():
+        current.append(cluster)
+        current_width += cluster_width
+        if cluster.isspace():
             last_space_index = len(current) - 1
 
     trailing = "".join(current).strip()
@@ -3516,20 +3642,17 @@ def _canvas_wrap_source_line(
     if (
         len(lines) >= 2
         and not any(character.isspace() for character in value)
-        and 0 < len(lines[-1]) < 4
     ):
-        donor = lines[-2]
-        fragment = lines[-1]
+        donor = list(_canvas_grapheme_clusters(lines[-2]))
+        fragment = list(_canvas_grapheme_clusters(lines[-1]))
         while len(fragment) < 4 and len(donor) > 4:
-            candidate = donor[-1] + fragment
+            candidate = donor[-1] + "".join(fragment)
             if _estimated_canvas_wrap_width(candidate, size=size) > max_width:
                 break
-            donor = donor[:-1]
-            fragment = candidate
-        lines[-2] = donor
-        lines[-1] = fragment
+            fragment.insert(0, donor.pop())
+        lines[-2] = "".join(donor)
+        lines[-1] = "".join(fragment)
     return lines, False
-
 
 def _canvas_adaptive_lines(
     value: str, *, size: int, max_width: float, max_lines: int
@@ -3596,6 +3719,42 @@ def _canvas_truncated_lines(
     return (*lines[:-1], (marker, last_y))
 
 
+def _canvas_limit_text_layout_bytes(
+    layout: _CanvasTextLayout,
+    *,
+    max_width: float,
+    max_bytes: int,
+) -> _CanvasTextLayout:
+    """Bound escaped visible label bytes while preserving grapheme boundaries."""
+
+    remaining = max(0, max_bytes)
+    limited: list[tuple[str, int]] = []
+    byte_truncated = False
+    for line, baseline in layout.lines:
+        line_bytes = _canvas_escaped_text_bytes(line)
+        if line_bytes <= remaining:
+            limited.append((line, baseline))
+            remaining -= line_bytes
+            continue
+        marker = _canvas_ellipsize_to_limits(
+            line,
+            size=layout.size,
+            max_width=max_width,
+            max_bytes=remaining,
+        )
+        if marker:
+            limited.append((marker, baseline))
+        byte_truncated = True
+        break
+    if len(limited) < len(layout.lines):
+        byte_truncated = True
+    return _CanvasTextLayout(
+        size=layout.size,
+        lines=tuple(limited),
+        truncated=layout.truncated or byte_truncated,
+    )
+
+
 def _canvas_text_layout(
     value: str, width_px: int, height_px: int, *, max_lines: int
 ) -> _CanvasTextLayout:
@@ -3611,25 +3770,28 @@ def _canvas_text_layout(
     if effective_max_lines <= 0:
         return _CanvasTextLayout(size=16, lines=(), truncated=bool(value.strip()))
 
-    legacy, legacy_truncated = _canvas_legacy_lines(
-        value,
-        width_px,
-        max_lines=effective_max_lines,
-    )
-    legacy_positioned = tuple(
-        (line, 28 + index * 20) for index, line in enumerate(legacy)
-    )
-    legacy_width_safe = all(
-        not line or _estimated_canvas_wrap_width(line, size=16) <= max_width
-        for line in legacy
-    )
-    if (
-        not legacy_truncated
-        and legacy_positioned
-        and legacy_width_safe
-        and legacy_positioned[-1][1] <= bottom_limit
-    ):
-        return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
+    if not _canvas_has_extended_graphemes(value):
+        legacy, legacy_truncated = _canvas_legacy_lines(
+            value,
+            width_px,
+            max_lines=effective_max_lines,
+        )
+        legacy_positioned = tuple(
+            (line, 28 + index * 20) for index, line in enumerate(legacy)
+        )
+        legacy_width_safe = all(
+            not line or _estimated_canvas_wrap_width(line, size=16) <= max_width
+            for line in legacy
+        )
+        if (
+            not legacy_truncated
+            and legacy_positioned
+            and legacy_width_safe
+            and legacy_positioned[-1][1] <= bottom_limit
+        ):
+            return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
+    else:
+        legacy_truncated = False
 
     candidate: tuple[tuple[str, int], ...] = ()
     candidate_truncated = legacy_truncated
@@ -3801,6 +3963,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         if str(node["type"]) != "group"
     ]
     remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
+    remaining_canvas_text_bytes = _CANVAS_MAX_EMITTED_TEXT_BYTES
     remaining_labeled_canvas_nodes = sum(
         bool(
             (
@@ -3813,7 +3976,9 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
     )
 
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
-        nonlocal remaining_canvas_text_lines, remaining_labeled_canvas_nodes
+        nonlocal remaining_canvas_text_lines
+        nonlocal remaining_canvas_text_bytes
+        nonlocal remaining_labeled_canvas_nodes
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3834,14 +3999,32 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             0,
             remaining_canvas_text_lines - reserve_for_later,
         )
+        reserve_bytes_for_later = (
+            reserve_for_later * _CANVAS_MIN_TEXT_BYTES_PER_LABELED_NODE
+        )
+        node_text_byte_budget = max(
+            0,
+            remaining_canvas_text_bytes - reserve_bytes_for_later,
+        )
+        inner_text_width = max(1.0, float(width - 28))
         text_layout = _canvas_text_layout(
             display_label,
             width - 28,
             height,
             max_lines=node_line_budget,
         )
+        text_layout = _canvas_limit_text_layout_bytes(
+            text_layout,
+            max_width=inner_text_width,
+            max_bytes=node_text_byte_budget,
+        )
         remaining_canvas_text_lines = max(
             0, remaining_canvas_text_lines - len(text_layout.lines)
+        )
+        remaining_canvas_text_bytes = max(
+            0,
+            remaining_canvas_text_bytes
+            - sum(_canvas_escaped_text_bytes(line) for line, _ in text_layout.lines),
         )
         if has_visible_label:
             remaining_labeled_canvas_nodes = max(
@@ -3855,7 +4038,11 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
             f'data-canvas-type="{_canvas_xml(node_type)}"{truncated_attribute}>'
         )
-        lines.append(f"<title>{_canvas_xml(display_label)}</title>")
+        title_label = _canvas_ellipsize_to_escaped_bytes(
+            display_label,
+            max_bytes=_CANVAS_MAX_NODE_TITLE_BYTES,
+        )
+        lines.append(f"<title>{_canvas_xml(title_label)}</title>")
         label_clip_id = f"canvas-node-label-{node_index}"
         lines.append(
             f'<defs><clipPath id="{label_clip_id}">'
