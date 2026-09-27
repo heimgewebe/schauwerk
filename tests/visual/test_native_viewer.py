@@ -12,6 +12,7 @@ from typing import get_type_hints
 
 import pytest
 
+from schauwerk.visual.grapheme import MAX_GRAPHEME_CLUSTER_CODEPOINTS
 from schauwerk.visual.native_diagram import (
     _canvas_color,
     _canvas_edge_geometry,
@@ -22,6 +23,7 @@ from schauwerk.visual.native_document import json_canvas_to_editing_document
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
+    _bounded_html_title,
     _read_representation,
     build_native_viewer,
 )
@@ -33,6 +35,17 @@ GOLDEN = ROOT / "docs/operators/fixtures/golden/system-landscape-v1.json"
 
 def _load() -> dict:
     return json.loads(GOLDEN.read_text(encoding="utf-8"))
+
+
+def test_native_viewer_bounds_pathological_grapheme_title_cluster() -> None:
+    value = "safe " + "e" + "\u0301" * (
+        MAX_GRAPHEME_CLUSTER_CODEPOINTS + 4096
+    )
+
+    rendered = _bounded_html_title(value)
+
+    assert rendered == "safe …"
+    assert len(rendered.encode("utf-8")) < 128
 
 
 def _source_ids(svg: bytes, kind: str) -> set[str]:

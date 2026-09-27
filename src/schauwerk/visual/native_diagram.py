@@ -14,7 +14,7 @@ from html import escape
 from typing import Any
 
 from .grammar import GRAMMAR_SCHEMA_VERSION
-from .grapheme import iter_grapheme_clusters
+from .grapheme import bounded_grapheme_prefix, iter_grapheme_clusters
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
@@ -3558,6 +3558,14 @@ def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> st
 
 
 def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
+    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    if grapheme_truncated:
+        return _canvas_ellipsize_to_limits(
+            value,
+            size=1,
+            max_width=float("inf"),
+            max_bytes=max_bytes,
+        )
     if _canvas_escaped_text_bytes(value) <= max_bytes:
         return value
     return _canvas_ellipsize_to_limits(
@@ -3579,6 +3587,17 @@ def _canvas_fit_single_line(
 
     if not value:
         return "", False
+    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    if grapheme_truncated:
+        return (
+            _canvas_ellipsize_to_limits(
+                value,
+                size=size,
+                max_width=max_width,
+                max_bytes=max_bytes,
+            ),
+            True,
+        )
     if (
         _estimated_canvas_wrap_width(value, size=size) <= max_width
         and _canvas_escaped_text_bytes(value) <= max_bytes
@@ -3712,6 +3731,8 @@ def _canvas_truncated_lines(
     if not lines:
         return ()
     last_text, last_y = lines[-1]
+    if last_text == "…":
+        return lines
     marker = _canvas_ellipsize_to_width(
         last_text,
         size=size,
@@ -3766,8 +3787,22 @@ def _canvas_text_layout(
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12
+    had_visible_text = bool(value.strip())
+    value, grapheme_truncated = bounded_grapheme_prefix(value)
     if not value.strip():
-        return _CanvasTextLayout(size=16, lines=(), truncated=False)
+        if not had_visible_text:
+            return _CanvasTextLayout(size=16, lines=(), truncated=False)
+        marker_y = max(1, min(bottom_limit, min_size + 12))
+        marker = (
+            "…"
+            if _estimated_canvas_wrap_width("…", size=min_size) <= max_width
+            else ""
+        )
+        return _CanvasTextLayout(
+            size=min_size,
+            lines=((marker, marker_y),) if marker else (),
+            truncated=True,
+        )
     height_line_limit = max(1, height_px // (min_size + 4) + 2)
     effective_max_lines = min(max_lines, height_line_limit)
     if effective_max_lines <= 0:
@@ -3792,12 +3827,22 @@ def _canvas_text_layout(
             and legacy_width_safe
             and legacy_positioned[-1][1] <= bottom_limit
         ):
+            if grapheme_truncated:
+                return _CanvasTextLayout(
+                    size=16,
+                    lines=_canvas_truncated_lines(
+                        legacy_positioned,
+                        size=16,
+                        max_width=max_width,
+                    ),
+                    truncated=True,
+                )
             return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
     else:
         legacy_truncated = False
 
     candidate: tuple[tuple[str, int], ...] = ()
-    candidate_truncated = legacy_truncated
+    candidate_truncated = legacy_truncated or grapheme_truncated
     candidate_size = min_size
     for size in range(16, min_size - 1, -1):
         wrapped, wrapped_truncated = _canvas_adaptive_lines(
@@ -3807,10 +3852,11 @@ def _canvas_text_layout(
             max_lines=effective_max_lines,
         )
         candidate = _canvas_position_adaptive_lines(wrapped, size=size)
-        candidate_truncated = wrapped_truncated
+        candidate_truncated = wrapped_truncated or grapheme_truncated
         candidate_size = size
         if (
             not wrapped_truncated
+            and not grapheme_truncated
             and (not candidate or candidate[-1][1] <= bottom_limit)
         ):
             return _CanvasTextLayout(size=size, lines=candidate, truncated=False)
@@ -3818,7 +3864,11 @@ def _canvas_text_layout(
     visible = tuple(line for line in candidate if line[1] <= bottom_limit)
     if not visible:
         marker_y = max(1, min(bottom_limit, min_size + 12))
-        marker = _canvas_ellipsize_to_width("…", size=min_size, max_width=max_width)
+        marker = (
+            "…"
+            if _estimated_canvas_wrap_width("…", size=min_size) <= max_width
+            else ""
+        )
         return _CanvasTextLayout(
             size=min_size,
             lines=((marker, marker_y),) if marker else (),

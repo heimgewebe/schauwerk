@@ -31,6 +31,8 @@ _INCB_CONSONANT = 1
 _INCB_LINKER = 2
 _INCB_EXTEND = 3
 
+MAX_GRAPHEME_CLUSTER_CODEPOINTS = 256
+
 _CONTROL_SPEC = (
     "0-9,B-C,E-1F,7F-9F,AD,61C,180E,200B,200E-200F,2028-202E,2060-206F,FEFF,FFF0-FFFB,13430-1343F,"
     "1BCA0-1BCA3,1D173-1D17A,E0000-E001F,E0080-E00FF,E01F0-E0FFF,"
@@ -319,6 +321,37 @@ def _should_break(cluster: list[str], character: str) -> bool:
             return False
 
     return True
+
+
+def bounded_grapheme_prefix(
+    value: str,
+    *,
+    max_cluster_codepoints: int = MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+) -> tuple[str, bool]:
+    """Return the prefix before the first pathologically large grapheme cluster.
+
+    The scan never retains more than max_cluster_codepoints code points for one
+    candidate cluster. Callers can therefore truncate explicitly without
+    splitting an ordinary extended grapheme cluster.
+    """
+
+    if max_cluster_codepoints < 1:
+        raise ValueError("max_cluster_codepoints must be positive")
+    if not value:
+        return value, False
+    if value.isascii() and max_cluster_codepoints >= 2:
+        return value, False
+
+    cluster_start = 0
+    cluster: list[str] = []
+    for index, character in enumerate(value):
+        if cluster and _should_break(cluster, character):
+            cluster_start = index
+            cluster = []
+        elif len(cluster) >= max_cluster_codepoints:
+            return value[:cluster_start], True
+        cluster.append(character)
+    return value, False
 
 
 def iter_grapheme_clusters(value: str) -> Iterator[str]:

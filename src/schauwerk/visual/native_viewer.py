@@ -22,7 +22,7 @@ from typing import Any, Final
 
 from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
-from .grapheme import iter_grapheme_clusters
+from .grapheme import bounded_grapheme_prefix, iter_grapheme_clusters
 from .json_fidelity import (
     JsonFidelityError,
     assert_javascript_roundtrip_json_numbers,
@@ -88,6 +88,7 @@ def _inline_svg(svg: str) -> str:
 def _bounded_html_title(value: str) -> str:
     """Bound escaped HTML title bytes without splitting a grapheme cluster."""
 
+    value, grapheme_truncated = bounded_grapheme_prefix(value)
     suffix = "…"
     suffix_bytes = len(html.escape(suffix).encode("utf-8"))
     selected: list[str] = []
@@ -104,6 +105,11 @@ def _bounded_html_title(value: str) -> str:
             return "".join(selected) + suffix
         selected.append(cluster)
         escaped_bytes += cluster_bytes
+    if grapheme_truncated:
+        while selected and escaped_bytes + suffix_bytes > _MAX_RENDERED_HTML_TITLE_BYTES:
+            removed = selected.pop()
+            escaped_bytes -= len(html.escape(removed).encode("utf-8"))
+        return "".join(selected) + suffix
     return value
 
 

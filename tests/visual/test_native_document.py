@@ -6,7 +6,11 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from schauwerk.visual.grapheme import iter_grapheme_clusters
+from schauwerk.visual.grapheme import (
+    MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+    bounded_grapheme_prefix,
+    iter_grapheme_clusters,
+)
 from schauwerk.visual.native_diagram import render_native_editing_document
 from schauwerk.visual.native_document import (
     NativeDocumentError,
@@ -35,6 +39,27 @@ def test_stdlib_grapheme_segmenter_covers_uax29_rules(
     expected: list[str],
 ) -> None:
     assert list(iter_grapheme_clusters(value)) == expected
+
+
+def test_bounded_grapheme_prefix_stops_before_pathological_cluster() -> None:
+    accepted = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS - 1)
+    bounded_accepted, accepted_truncated = bounded_grapheme_prefix(accepted)
+    assert bounded_accepted == accepted
+    assert accepted_truncated is False
+
+    prefix = "safe "
+    value = (
+        prefix
+        + "e"
+        + "\u0301" * MAX_GRAPHEME_CLUSTER_CODEPOINTS
+        + " remains hidden"
+    )
+
+    bounded, truncated = bounded_grapheme_prefix(value)
+
+    assert truncated is True
+    assert bounded == prefix
+    assert list(iter_grapheme_clusters(bounded)) == list(prefix)
 
 
 def _canvas() -> dict:
@@ -718,6 +743,53 @@ def test_native_document_long_edge_label_is_clipped_to_reserved_box() -> None:
     assert clip_rect.attrib["height"] == visible_rect.attrib["height"]
 
 
+def test_native_document_marks_pathological_edge_grapheme_as_truncated() -> None:
+    label = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS + 4096)
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 360,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "pathological-edge",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": label,
+            }
+        ],
+    }
+
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Pathological edge cluster")
+        )
+    )
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "pathological-edge"
+    )
+    text = next(child for child in edge if child.tag == f"{SVG_NS}text")
+
+    assert edge.attrib["data-text-truncated"] == "true"
+    assert text.text == "…"
 
 
 def test_native_document_node_labels_are_clipped_to_node_box() -> None:
@@ -1059,6 +1131,44 @@ def test_native_document_canvas_wrap_preserves_zwj_grapheme_clusters() -> None:
     assert "data-text-truncated" not in node.attrib
     assert texts == [label]
     assert all(not line.startswith("\u200d") and not line.endswith("\u200d") for line in texts)
+
+
+def test_native_document_marks_pathological_grapheme_cluster_as_truncated() -> None:
+    label = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS + 4096)
+    source = {
+        "nodes": [
+            {
+                "id": "pathological-cluster",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 180,
+                "height": 80,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Pathological cluster")
+    assert editing_document_to_json_canvas(document) == source
+
+    svg = render_native_editing_document(document)
+    root = ET.fromstring(svg)
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "pathological-cluster"
+    )
+    rendered = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert node.attrib["data-text-truncated"] == "true"
+    assert rendered == ["…"]
+    assert len(svg.encode("utf-8")) < 20_000
 
 
 def test_native_document_canvas_wrap_preserves_combining_mark_clusters() -> None:
