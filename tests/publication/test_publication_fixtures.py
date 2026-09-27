@@ -705,6 +705,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "canvas_grapheme_oracle_conformance_checked",
         "canvas_html_title_bytes_bounded",
         "canvas_emoji_presentation_width_bounded",
+        "canvas_grapheme_cluster_amplification_bounded",
         "native_runtime_import_stdlib_only",
         "docker_runtime_closure_includes_grapheme_segmenter",
     }:
