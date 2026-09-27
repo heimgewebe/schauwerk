@@ -322,7 +322,7 @@ def _rebalance_single_word_lines(
         if len(previous_words) < 3:
             continue
         candidate = f"{previous_words[-1]} {balanced[index]}"
-        if _estimated_canvas_wrap_width(candidate, size=size) > max_width:
+        if _estimated_wrap_width(candidate, size=size) > max_width:
             continue
         balanced[index - 1] = " ".join(previous_words[:-1])
         balanced[index] = candidate
@@ -3524,7 +3524,7 @@ def _canvas_wrap_source_line(
         fragment = lines[-1]
         while len(fragment) < 4 and len(donor) > 4:
             candidate = donor[-1] + fragment
-            if _estimated_wrap_width(candidate, size=size) > max_width:
+            if _estimated_canvas_wrap_width(candidate, size=size) > max_width:
                 break
             donor = donor[:-1]
             fragment = candidate
