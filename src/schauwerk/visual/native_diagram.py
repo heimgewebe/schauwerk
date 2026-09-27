@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import io
 import math
 import re
 import textwrap
+import unicodedata
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -58,6 +60,7 @@ _VERTICAL_LABEL_MIN_WIDTH = 70
 _DIAGONAL_LABEL_MIN_WIDTH = 84
 _NARROW_CHARS = frozenset("ilI.,'`:;!|[](){}")
 _WIDE_CHARS = frozenset("MW@#%&QGmwo")
+_CANVAS_MAX_NODE_TEXT_LINES = 2048
 
 _NODE_STYLE = {
     "human": ("#e6f6f8", "#147d92", 28),
@@ -178,6 +181,8 @@ def _character_width_units(
     if character in _WIDE_CHARS:
         return 1.12
     if ord(character) > 0x7F:
+        if unicodedata.east_asian_width(character) in {"W", "F"}:
+            return max(non_ascii, 1.0)
         return non_ascii
     if character.isupper():
         return uppercase
@@ -3384,46 +3389,126 @@ class _CanvasTextLayout:
     truncated: bool
 
 
-def _canvas_legacy_lines(value: str, width_px: int) -> list[str]:
-    """Return the historical fixed-size wrapping without discarding source lines."""
+def _canvas_iter_source_lines(value: str):
+    """Yield normalized source lines without materializing an unbounded split list."""
 
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    if not normalized:
+        yield ""
+        return
+    stream = io.StringIO(normalized)
+    for raw_line in stream:
+        yield raw_line[:-1] if raw_line.endswith("\n") else raw_line
+    if normalized.endswith("\n"):
+        yield ""
+
+
+def _canvas_legacy_lines(
+    value: str, width_px: int, *, max_lines: int
+) -> tuple[list[str], bool]:
+    """Return bounded historical wrapping and whether source text was omitted."""
+
+    if max_lines <= 0:
+        return [], bool(value)
     chars = max(4, width_px // 8)
     lines: list[str] = []
-    for paragraph in value.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
-        lines.extend(
-            textwrap.wrap(
-                paragraph,
-                width=chars,
-                break_long_words=True,
-                break_on_hyphens=False,
+    for paragraph in _canvas_iter_source_lines(value):
+        remaining = max_lines - len(lines)
+        if remaining <= 0:
+            return lines, True
+        if not paragraph:
+            lines.append("")
+            continue
+        sample_limit = max(chars, chars * (remaining + 1))
+        sample = paragraph[:sample_limit]
+        wrapped = textwrap.wrap(
+            sample,
+            width=chars,
+            break_long_words=True,
+            break_on_hyphens=False,
+        ) or [""]
+        if len(wrapped) > remaining:
+            lines.extend(wrapped[:remaining])
+            return lines, True
+        lines.extend(wrapped)
+        if len(sample) < len(paragraph):
+            return lines, True
+    return lines, False
+
+
+def _canvas_wrap_source_line(
+    value: str, *, size: int, max_width: float, max_lines: int
+) -> tuple[list[str], bool]:
+    """Wrap one line incrementally so output amplification is bounded before allocation."""
+
+    if max_lines <= 0:
+        return [], bool(value)
+    lines: list[str] = []
+    current: list[str] = []
+    current_width = 0.0
+    last_space_index = -1
+
+    for character in value:
+        character_width = (
+            _character_width_units(
+                character,
+                non_ascii=0.9,
+                uppercase=0.86,
+                default=0.58,
             )
-            or [""]
+            * size
         )
-    return lines
+        while current and current_width + character_width > max_width:
+            if last_space_index >= 0:
+                emitted_chars = current[:last_space_index]
+                carry = current[last_space_index + 1 :]
+            else:
+                emitted_chars = current
+                carry = []
+            emitted = "".join(emitted_chars).strip()
+            if emitted:
+                lines.append(emitted)
+                if len(lines) >= max_lines:
+                    return lines, True
+            current = carry
+            current_width = _estimated_wrap_width("".join(current), size=size)
+            last_space_index = -1
+            for index, item in enumerate(current):
+                if item.isspace():
+                    last_space_index = index
+        current.append(character)
+        current_width += character_width
+        if character.isspace():
+            last_space_index = len(current) - 1
+
+    trailing = "".join(current).strip()
+    if trailing:
+        if len(lines) >= max_lines:
+            return lines, True
+        lines.append(trailing)
+    return lines, False
 
 
 def _canvas_adaptive_lines(
-    value: str, *, size: int, max_width: float
-) -> list[tuple[str, bool]]:
-    """Wrap all visible source text and mark only real blank-line paragraph gaps."""
+    value: str, *, size: int, max_width: float, max_lines: int
+) -> tuple[list[tuple[str, bool]], bool]:
+    """Wrap visible source text under an explicit line budget."""
 
-    chars = max(4, int(max_width / max(4.0, size * 0.58)))
     lines: list[tuple[str, bool]] = []
     paragraph_gap_pending = False
-    for source_line in (
-        value.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    ):
+    for source_line in _canvas_iter_source_lines(value):
+        if len(lines) >= max_lines:
+            return lines, True
         if not source_line.strip():
             if lines:
                 paragraph_gap_pending = True
             continue
-        wrapped = _bounded_wrapped(
+        wrapped, source_truncated = _canvas_wrap_source_line(
             source_line,
-            width=max(chars, len(source_line)),
-            limit=512,
             size=size,
             max_width=max_width,
-        ) or [""]
+            max_lines=max_lines - len(lines),
+        )
         for wrapped_index, line in enumerate(wrapped):
             lines.append(
                 (
@@ -3432,7 +3517,9 @@ def _canvas_adaptive_lines(
                 )
             )
             paragraph_gap_pending = False
-    return lines
+        if source_truncated:
+            return lines, True
+    return lines, False
 
 
 def _canvas_position_adaptive_lines(
@@ -3451,12 +3538,38 @@ def _canvas_position_adaptive_lines(
     return tuple(positioned)
 
 
-def _canvas_text_layout(value: str, width_px: int, height_px: int) -> _CanvasTextLayout:
+def _canvas_truncated_lines(
+    lines: tuple[tuple[str, int], ...], *, size: int, max_width: float
+) -> tuple[tuple[str, int], ...]:
+    if not lines:
+        return ()
+    last_text, last_y = lines[-1]
+    marker = _ellipsize_to_width(
+        last_text,
+        size=size,
+        max_width=max_width,
+    )
+    return (*lines[:-1], (marker, last_y))
+
+
+def _canvas_text_layout(
+    value: str, width_px: int, height_px: int, *, max_lines: int
+) -> _CanvasTextLayout:
     """Fit Canvas text inside explicit geometry without changing that geometry."""
 
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
-    legacy = _canvas_legacy_lines(value, width_px)
+    min_size = 12
+    height_line_limit = max(1, height_px // (min_size + 4) + 2)
+    effective_max_lines = min(max_lines, height_line_limit)
+    if effective_max_lines <= 0:
+        return _CanvasTextLayout(size=16, lines=(), truncated=bool(value.strip()))
+
+    legacy, legacy_truncated = _canvas_legacy_lines(
+        value,
+        width_px,
+        max_lines=effective_max_lines,
+    )
     legacy_positioned = tuple(
         (line, 28 + index * 20) for index, line in enumerate(legacy)
     )
@@ -3465,18 +3578,30 @@ def _canvas_text_layout(value: str, width_px: int, height_px: int) -> _CanvasTex
         for line in legacy
     )
     if (
-        legacy_positioned
+        not legacy_truncated
+        and legacy_positioned
         and legacy_width_safe
         and legacy_positioned[-1][1] <= bottom_limit
     ):
         return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
 
     candidate: tuple[tuple[str, int], ...] = ()
-    min_size = 12
+    candidate_truncated = legacy_truncated
+    candidate_size = min_size
     for size in range(16, min_size - 1, -1):
-        wrapped = _canvas_adaptive_lines(value, size=size, max_width=max_width)
+        wrapped, wrapped_truncated = _canvas_adaptive_lines(
+            value,
+            size=size,
+            max_width=max_width,
+            max_lines=effective_max_lines,
+        )
         candidate = _canvas_position_adaptive_lines(wrapped, size=size)
-        if not candidate or candidate[-1][1] <= bottom_limit:
+        candidate_truncated = wrapped_truncated
+        candidate_size = size
+        if (
+            not wrapped_truncated
+            and (not candidate or candidate[-1][1] <= bottom_limit)
+        ):
             return _CanvasTextLayout(size=size, lines=candidate, truncated=False)
 
     visible = tuple(line for line in candidate if line[1] <= bottom_limit)
@@ -3489,15 +3614,18 @@ def _canvas_text_layout(value: str, width_px: int, height_px: int) -> _CanvasTex
             truncated=True,
         )
 
-    if len(visible) < len(candidate):
-        last_text, last_y = visible[-1]
-        marker = _ellipsize_to_width(
-            last_text,
-            size=min_size,
+    truncated = candidate_truncated or len(visible) < len(candidate)
+    if truncated:
+        visible = _canvas_truncated_lines(
+            visible,
+            size=candidate_size,
             max_width=max_width,
         )
-        visible = (*visible[:-1], (marker, last_y))
-    return _CanvasTextLayout(size=min_size, lines=visible, truncated=True)
+    return _CanvasTextLayout(
+        size=candidate_size,
+        lines=visible,
+        truncated=truncated,
+    )
 
 
 def render_native_editing_document(document: Mapping[str, Any]) -> str:
@@ -3617,8 +3745,10 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             ]
         )
     lines.append("</defs>")
+    remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
 
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
+        nonlocal remaining_canvas_text_lines
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3630,7 +3760,15 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         height = int(node["height"])
         label = str(node.get("label", ""))
         display_label = _canvas_plain_markdown(label) if node_type == "text" else label
-        text_layout = _canvas_text_layout(display_label, width - 28, height)
+        text_layout = _canvas_text_layout(
+            display_label,
+            width - 28,
+            height,
+            max_lines=remaining_canvas_text_lines,
+        )
+        remaining_canvas_text_lines = max(
+            0, remaining_canvas_text_lines - len(text_layout.lines)
+        )
         truncated_attribute = (
             ' data-text-truncated="true"' if text_layout.truncated else ""
         )

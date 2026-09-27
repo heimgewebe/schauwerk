@@ -871,6 +871,95 @@ def test_native_document_canvas_text_fit_handles_cjk_emoji_url_and_long_token() 
     assert all(len(line) >= 4 for line in texts if line)
 
 
+
+def test_native_document_canvas_text_output_is_bounded_across_document() -> None:
+    first = "\n".join(f"first-{index}" for index in range(1500))
+    second = "\n".join(f"second-{index}" for index in range(1500))
+    source = {
+        "nodes": [
+            {
+                "id": "first",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 240,
+                "height": 1_000_000,
+                "text": first,
+            },
+            {
+                "id": "second",
+                "type": "text",
+                "x": 320,
+                "y": 0,
+                "width": 240,
+                "height": 1_000_000,
+                "text": second,
+            },
+        ]
+    }
+
+    svg = render_native_editing_document(
+        json_canvas_to_editing_document(source, title="Bounded amplification")
+    )
+    root = ET.fromstring(svg)
+    rendered_lines = [
+        element
+        for element in root.iter(f"{SVG_NS}text")
+        if element.attrib.get("data-node-label") == "true"
+    ]
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") in {"first", "second"}
+    }
+
+    assert len(rendered_lines) == 2048
+    assert "data-text-truncated" not in nodes["first"].attrib
+    assert nodes["second"].attrib["data-text-truncated"] == "true"
+    assert len(svg.encode("utf-8")) < 2_000_000
+
+
+def test_native_document_canvas_full_width_glyphs_fit_conservative_width() -> None:
+    label = "漢" * 20
+    source = {
+        "nodes": [
+            {
+                "id": "cjk",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 316,
+                "height": 100,
+                "text": label,
+            }
+        ]
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="CJK width")
+        )
+    )
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "cjk"
+    )
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(item.text or "" for item in texts) == label
+    assert texts
+    assert all(
+        len(item.text or "") * int(item.attrib["font-size"]) <= 288
+        for item in texts
+    )
+
+
 def test_native_document_canvas_text_fit_marks_unavoidably_truncated_content() -> None:
     source = {
         "nodes": [
