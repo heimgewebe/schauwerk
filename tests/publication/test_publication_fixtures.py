@@ -321,6 +321,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_native_canvas_editor.py",
         "tests/visual/test_native_document.py",
+        "tests/visual/test_native_diagram.py",
         "tests/visual/test_drawio_import.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_browser.py",
