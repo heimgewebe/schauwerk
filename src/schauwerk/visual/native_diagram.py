@@ -3437,14 +3437,20 @@ def _canvas_legacy_lines(
     return lines, False
 
 
-def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
-    return _estimated_width(
-        value,
-        size=size,
+def _canvas_character_width_units(character: str) -> float:
+    if not character.isspace() and character in _NARROW_CHARS:
+        return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
+    return _character_width_units(
+        character,
         non_ascii=0.9,
         uppercase=0.86,
         default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
     )
+
+
+def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
+    units = sum(_canvas_character_width_units(character) for character in value)
+    return units * size
 
 
 def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
@@ -3473,15 +3479,7 @@ def _canvas_wrap_source_line(
     last_space_index = -1
 
     for character in value:
-        character_width = (
-            _character_width_units(
-                character,
-                non_ascii=0.9,
-                uppercase=0.86,
-                default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
-            )
-            * size
-        )
+        character_width = _canvas_character_width_units(character) * size
         while current and current_width + character_width > max_width:
             if last_space_index >= 0:
                 emitted_chars = current[:last_space_index]
