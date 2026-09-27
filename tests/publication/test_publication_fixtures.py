@@ -310,6 +310,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     editor_superseded_files = {
         "Dockerfile",
         "Makefile",
+        "pyproject.toml",
         "scripts/run_browser_smoke.py",
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
