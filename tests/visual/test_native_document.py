@@ -960,6 +960,95 @@ def test_native_document_canvas_full_width_glyphs_fit_conservative_width() -> No
     )
 
 
+
+def test_native_document_canvas_text_budget_reserves_later_visible_labels() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "huge",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 240,
+                "height": 1_000_000,
+                "text": "\n".join(f"line-{index}" for index in range(2048)),
+            },
+            {
+                "id": "later",
+                "type": "text",
+                "x": 320,
+                "y": 0,
+                "width": 240,
+                "height": 100,
+                "text": "Visible label",
+            },
+        ],
+        "edges": [],
+    }
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Fair text budget")
+        )
+    )
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") in {"huge", "later"}
+    }
+    all_text = [
+        element
+        for element in root.iter(f"{SVG_NS}text")
+        if element.attrib.get("data-node-label") == "true"
+    ]
+    later_text = [
+        element.text or ""
+        for element in nodes["later"]
+        if element.tag == f"{SVG_NS}text"
+        and element.attrib.get("data-node-label") == "true"
+    ]
+
+    assert len(all_text) == 2048
+    assert nodes["huge"].attrib["data-text-truncated"] == "true"
+    assert "data-text-truncated" not in nodes["later"].attrib
+    assert later_text == ["Visible label"]
+
+
+def test_native_document_marks_atomic_glyph_too_wide_for_minimum_font_as_truncated() -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "narrow",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 35,
+                "height": 80,
+                "text": "A",
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Atomic glyph clipping")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "narrow"
+    )
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert node.attrib["data-text-truncated"] == "true"
+    assert all(not (item.text or "") for item in texts)
+    assert next(node.iter(f"{SVG_NS}title")).text == "A"
+
+
 def test_native_document_canvas_text_fit_marks_unavoidably_truncated_content() -> None:
     source = {
         "nodes": [

@@ -3476,6 +3476,10 @@ def _canvas_wrap_source_line(
             for index, item in enumerate(current):
                 if item.isspace():
                     last_space_index = index
+        if not current and character_width > max_width:
+            if len(lines) < max_lines:
+                lines.append(character)
+            return lines, True
         current.append(character)
         current_width += character_width
         if character.isspace():
@@ -3549,6 +3553,8 @@ def _canvas_truncated_lines(
         size=size,
         max_width=max_width,
     )
+    if not marker:
+        return lines[:-1]
     return (*lines[:-1], (marker, last_y))
 
 
@@ -3560,6 +3566,8 @@ def _canvas_text_layout(
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12
+    if not value.strip():
+        return _CanvasTextLayout(size=16, lines=(), truncated=False)
     height_line_limit = max(1, height_px // (min_size + 4) + 2)
     effective_max_lines = min(max_lines, height_line_limit)
     if effective_max_lines <= 0:
@@ -3745,10 +3753,29 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             ]
         )
     lines.append("</defs>")
+    canvas_node_render_order = [
+        (node_index, node)
+        for node_index, node in enumerate(nodes)
+        if str(node["type"]) == "group"
+    ] + [
+        (node_index, node)
+        for node_index, node in enumerate(nodes)
+        if str(node["type"]) != "group"
+    ]
     remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
+    remaining_labeled_canvas_nodes = sum(
+        bool(
+            (
+                _canvas_plain_markdown(str(node.get("label", "")))
+                if str(node["type"]) == "text"
+                else str(node.get("label", ""))
+            ).strip()
+        )
+        for _, node in canvas_node_render_order
+    )
 
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
-        nonlocal remaining_canvas_text_lines
+        nonlocal remaining_canvas_text_lines, remaining_labeled_canvas_nodes
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3760,15 +3787,28 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         height = int(node["height"])
         label = str(node.get("label", ""))
         display_label = _canvas_plain_markdown(label) if node_type == "text" else label
+        has_visible_label = bool(display_label.strip())
+        reserve_for_later = max(
+            0,
+            remaining_labeled_canvas_nodes - (1 if has_visible_label else 0),
+        )
+        node_line_budget = max(
+            0,
+            remaining_canvas_text_lines - reserve_for_later,
+        )
         text_layout = _canvas_text_layout(
             display_label,
             width - 28,
             height,
-            max_lines=remaining_canvas_text_lines,
+            max_lines=node_line_budget,
         )
         remaining_canvas_text_lines = max(
             0, remaining_canvas_text_lines - len(text_layout.lines)
         )
+        if has_visible_label:
+            remaining_labeled_canvas_nodes = max(
+                0, remaining_labeled_canvas_nodes - 1
+            )
         truncated_attribute = (
             ' data-text-truncated="true"' if text_layout.truncated else ""
         )
@@ -3802,7 +3842,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             )
         lines.append("</g>")
 
-    for node_index, node in enumerate(nodes):
+    for node_index, node in canvas_node_render_order:
         if str(node["type"]) == "group":
             append_canvas_node(node, node_index)
 
@@ -3873,7 +3913,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             )
         lines.append("</g>")
 
-    for node_index, node in enumerate(nodes):
+    for node_index, node in canvas_node_render_order:
         if str(node["type"]) != "group":
             append_canvas_node(node, node_index)
 
