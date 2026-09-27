@@ -317,6 +317,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/json_fidelity.py",
+        "src/schauwerk/visual/grapheme.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/standalone_editor.py",
@@ -699,6 +700,15 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         editor_successor["checks"]["native_cutover_boundary_declares_json_canvas"]
         is True
     )
+    for check_name in {
+        "canvas_grapheme_uax29_stdlib_runtime",
+        "canvas_grapheme_oracle_conformance_checked",
+        "canvas_html_title_bytes_bounded",
+        "native_runtime_import_stdlib_only",
+        "docker_runtime_closure_includes_grapheme_segmenter",
+    }:
+        assert editor_successor["checks"][check_name] is True
+    assert "canvas_grapheme_dependency_pinned" not in editor_successor["checks"]
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
