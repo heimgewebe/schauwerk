@@ -150,7 +150,8 @@
     "canvas_spacing_combining_marks_bounded_incremental_width": true,
     "canvas_non_pictographic_zwj_uses_script_width": true,
     "canvas_mongolian_vowel_separator_zero_advance_width_preserved": true,
-    "canvas_soft_hyphen_zero_advance_width_preserved": true
+    "canvas_soft_hyphen_zero_advance_width_preserved": true,
+    "canvas_zero_advance_controls_bypass_legacy_wrap": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -160,7 +161,7 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "ee8185634447315965ad61c3783e7c9f875dd0d5741a25c536261079e5046d9f",
+  "evidence_digest": "d7c389037e39f23fe9f8870e7cd4900e57ebf0c696c71df54430b5c062977673",
   "functional_head": "192ab30e80d20cabc18c542bd132d8c318905b38",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
@@ -176,12 +177,12 @@
     "scripts/run_browser_smoke.py": "3ac127a4b8fca674d525406544de1c0378354b29ed77281f33be208ff08a9673",
     "src/schauwerk/resources/native_viewer/assets.py": "d0c5c0d8f88861ca3ac48984aed16fc0720d41b32395a5a8e990133c283ba458",
     "src/schauwerk/resources/standalone_editor/assets.py": "44b27d689f8edb1229675cc92f0a2da6ecdbc005370c564b6404f9d49c1343f6",
-    "src/schauwerk/visual/native_diagram.py": "977a13c464c8d332e12b2bde42e9854704f5817932b2d7097179377ba9ca0e33",
+    "src/schauwerk/visual/native_diagram.py": "51497df18dad6305e8a6d2feba0ee90f1b7eefdd25ce9f9039cc50f108cbd965",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
     "src/schauwerk/visual/native_viewer.py": "c84fb8575f6f2a179bc61047bc31bc4955031ab7331bef446984389dc9202692",
     "src/schauwerk/visual/standalone_editor.py": "683d7492c60fc2958820136b8f679de3a82c859361b8dfced24ee57de5833593",
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
-    "tests/visual/test_native_document.py": "6b0c4775a85876f0cacf0e5ae8b64b9620822582e2f4b72f58672c2873c11178",
+    "tests/visual/test_native_document.py": "e7340f81212390e5629168fc26b6b7323bb42ade3e7a952de0a340b96909f83c",
     "tests/visual/test_native_viewer.py": "28ceb2f323df75143f600754cf5f5b60874e2775dffe461531ade3e81dc706b2",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
     "tests/visual/test_standalone_editor.py": "87b4a7b3413b37edbab8add92c72990eb6b65855ade31d075f79323664b5b81e",

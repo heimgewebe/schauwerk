@@ -3932,7 +3932,9 @@ def _canvas_text_layout(
             truncated=True,
         )
 
-    if not _canvas_has_extended_graphemes(value):
+    if not _canvas_has_extended_graphemes(value) and not any(
+        _canvas_is_zero_advance_control(character) for character in value
+    ):
         legacy, legacy_truncated = _canvas_legacy_lines(
             value,
             width_px,

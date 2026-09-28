@@ -1197,6 +1197,44 @@ def test_canvas_bidi_format_controls_have_zero_advance(control: str) -> None:
     assert native_diagram._estimated_canvas_wrap_width(control * 10, size=12) == 0.0
 
 
+def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() -> None:
+    label = "\u200f" * 10 + "abcdefghij"
+    source = {
+        "nodes": [
+            {
+                "id": "bidi-zero-advance",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 148,
+                "height": 60,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    assert native_diagram._estimated_canvas_wrap_width(label, size=16) <= 120
+
+    document = json_canvas_to_editing_document(source, title="Bidi zero advance")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "bidi-zero-advance"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert texts == [label]
+
+
 @pytest.mark.parametrize(
     "control",
     [
