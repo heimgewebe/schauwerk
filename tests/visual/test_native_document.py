@@ -1217,14 +1217,57 @@ def test_canvas_zero_advance_format_scope_excludes_soft_hyphen() -> None:
     assert native_diagram._canvas_is_zero_advance_control("\u00ad") is False
 
 
-def test_canvas_spacing_combining_mark_contributes_advance_width() -> None:
+def test_canvas_spacing_combining_mark_uses_bounded_incremental_advance() -> None:
     base = "\u0915"
     spacing_mark = "\u093e"
     cluster = base + spacing_mark
+    size = 12
 
-    assert native_diagram._estimated_canvas_wrap_width(
-        cluster, size=12
-    ) > native_diagram._estimated_canvas_wrap_width(base, size=12)
+    base_width = native_diagram._estimated_canvas_wrap_width(base, size=size)
+    cluster_width = native_diagram._estimated_canvas_wrap_width(cluster, size=size)
+    full_mark_width = native_diagram._canvas_character_width_units(spacing_mark) * size
+
+    assert base_width < cluster_width < base_width + full_mark_width
+    assert cluster_width - base_width == pytest.approx(
+        native_diagram._CANVAS_SPACING_MARK_WIDTH_UNITS * size
+    )
+
+
+def test_native_document_canvas_spacing_marks_do_not_force_premature_truncation() -> None:
+    label = "का" * 5
+    source = {
+        "nodes": [
+            {
+                "id": "spacing-marks",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+
+    document = json_canvas_to_editing_document(source, title="Spacing marks")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "spacing-marks"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
 
 
 def test_native_document_canvas_zero_width_space_preserves_visible_text() -> None:
@@ -1362,6 +1405,56 @@ def test_native_document_canvas_control_only_zwnj_cluster_has_zero_width() -> No
         element
         for element in root.iter(f"{SVG_NS}g")
         if element.attrib.get("data-source-id") == "zwnj-only"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
+
+
+def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None:
+    malayalam_chillu = "\u0d23\u0d4d\u200d"
+    devanagari_conjunct = "\u0915\u094d\u200d\u0937"
+    emoji_family = "👨‍👩‍👧‍👦"
+
+    assert native_diagram._canvas_grapheme_width_units(malayalam_chillu) == pytest.approx(
+        native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
+    )
+    assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(1.8)
+    assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
+
+
+def test_native_document_canvas_non_pictographic_zwj_does_not_force_truncation() -> None:
+    cluster = "\u0d23\u0d4d\u200d"
+    label = cluster * 4
+    source = {
+        "nodes": [
+            {
+                "id": "script-zwj",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+
+    document = json_canvas_to_editing_document(source, title="Script ZWJ")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "script-zwj"
     )
     texts = [
         child.text or ""

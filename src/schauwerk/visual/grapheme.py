@@ -244,7 +244,7 @@ def _grapheme_break_property(character: str) -> int:
     return _OTHER
 
 
-def _is_extended_pictographic(character: str) -> bool:
+def is_extended_pictographic(character: str) -> bool:
     return _in_ranges(
         ord(character),
         _EXTENDED_PICTOGRAPHIC_RANGES,
@@ -304,11 +304,11 @@ def _should_break(cluster: list[str], character: str) -> bool:
         ):
             return False
 
-    if _is_extended_pictographic(character) and previous == "\u200d":
+    if is_extended_pictographic(character) and previous == "\u200d":
         index = len(cluster) - 2
         while index >= 0 and _grapheme_break_property(cluster[index]) == _EXTEND:
             index -= 1
-        if index >= 0 and _is_extended_pictographic(cluster[index]):
+        if index >= 0 and is_extended_pictographic(cluster[index]):
             return False
 
     if previous_property == _RI and current_property == _RI:

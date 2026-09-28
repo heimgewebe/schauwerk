@@ -17,6 +17,7 @@ from .grammar import GRAMMAR_SCHEMA_VERSION
 from .grapheme import (
     MAX_GRAPHEME_CLUSTER_CODEPOINTS,
     bounded_grapheme_prefix,
+    is_extended_pictographic,
     iter_grapheme_clusters,
 )
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
@@ -3481,6 +3482,8 @@ _CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS = frozenset(
 )
 _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
+_CANVAS_SPACING_MARK_WIDTH_UNITS = 0.60
+_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS = 1.50
 
 
 def _canvas_is_grapheme_extend(character: str) -> bool:
@@ -3549,10 +3552,19 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     ]
     if not visible:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
-    widths = [_canvas_character_width_units(character) for character in visible]
-    if _CANVAS_ZWJ in cluster or (
-        len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible)
-    ):
+    widths = [
+        (
+            _CANVAS_SPACING_MARK_WIDTH_UNITS
+            if unicodedata.category(character) == "Mc"
+            else _canvas_character_width_units(character)
+        )
+        for character in visible
+    ]
+    if _CANVAS_ZWJ in cluster:
+        if any(is_extended_pictographic(item) for item in cluster):
+            return max(2.0, max(widths))
+        return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(widths))
+    if len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible):
         return max(2.0, max(widths))
     if (
         _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
