@@ -3420,7 +3420,6 @@ def _canvas_legacy_lines(
     chars = max(4, width_px // 8)
     lines: list[str] = []
     for paragraph in _canvas_iter_source_lines(value):
-        paragraph = _canvas_collapse_inline_whitespace(paragraph)
         remaining = max_lines - len(lines)
         if remaining <= 0:
             return lines, True
@@ -3510,6 +3509,10 @@ def _canvas_collapse_inline_whitespace(value: str) -> str:
     return re.sub(r"[ \t]+", " ", value)
 
 
+def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
+    return cluster in {" ", "\t"}
+
+
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
     """Yield Unicode extended grapheme clusters without materializing the input."""
 
@@ -3582,6 +3585,19 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     return sum(widths)
 
 
+def _canvas_svg_cluster_width_units(
+    cluster: str, *, previous_cluster: str | None
+) -> float:
+    if _canvas_is_collapsible_inline_whitespace(cluster):
+        if (
+            previous_cluster is not None
+            and _canvas_is_collapsible_inline_whitespace(previous_cluster)
+        ):
+            return 0.0
+        return _canvas_grapheme_width_units(" ")
+    return _canvas_grapheme_width_units(cluster)
+
+
 def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
     value = _canvas_collapse_inline_whitespace(value)
     units = sum(
@@ -3615,7 +3631,13 @@ def _canvas_ellipsize_to_limits(
     width_used = 0.0
     bytes_used = 0
     for cluster in _canvas_grapheme_clusters(value.rstrip()):
-        cluster_width = _canvas_grapheme_width_units(cluster) * size
+        cluster_width = (
+            _canvas_svg_cluster_width_units(
+                cluster,
+                previous_cluster=selected[-1] if selected else None,
+            )
+            * size
+        )
         cluster_bytes = _canvas_escaped_text_bytes(cluster)
         if width_used + cluster_width > width_budget:
             break
@@ -3671,7 +3693,6 @@ def _canvas_fit_single_line(
 ) -> tuple[str, bool]:
     """Fit one Canvas label without silent clipping."""
 
-    value = _canvas_collapse_inline_whitespace(value)
     if not value:
         return "", False
     value, grapheme_truncated = bounded_grapheme_prefix(
@@ -3713,7 +3734,6 @@ def _canvas_wrap_source_line(
 ) -> tuple[list[str], bool]:
     """Wrap one line incrementally without splitting display graphemes."""
 
-    value = _canvas_collapse_inline_whitespace(value)
     if max_lines <= 0:
         return [], bool(value)
     lines: list[str] = []
@@ -3722,7 +3742,13 @@ def _canvas_wrap_source_line(
     last_space_index = -1
 
     for cluster in _canvas_grapheme_clusters(value):
-        cluster_width = _canvas_grapheme_width_units(cluster) * size
+        cluster_width = (
+            _canvas_svg_cluster_width_units(
+                cluster,
+                previous_cluster=current[-1] if current else None,
+            )
+            * size
+        )
         while current and current_width + cluster_width > max_width:
             if last_space_index >= 0:
                 emitted_clusters = current[:last_space_index]
@@ -3741,6 +3767,13 @@ def _canvas_wrap_source_line(
             for index, item in enumerate(current):
                 if item.isspace():
                     last_space_index = index
+            cluster_width = (
+                _canvas_svg_cluster_width_units(
+                    cluster,
+                    previous_cluster=current[-1] if current else None,
+                )
+                * size
+            )
         if not current and cluster_width > max_width:
             if len(lines) < max_lines:
                 lines.append(cluster)
@@ -3909,7 +3942,6 @@ def _canvas_text_layout(
 ) -> _CanvasTextLayout:
     """Fit Canvas text inside explicit geometry without changing that geometry."""
 
-    value = _canvas_collapse_inline_whitespace(value)
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12
@@ -3943,8 +3975,10 @@ def _canvas_text_layout(
             truncated=True,
         )
 
-    if not _canvas_has_extended_graphemes(value) and not any(
-        _canvas_is_zero_advance_control(character) for character in value
+    if (
+        not _canvas_has_extended_graphemes(value)
+        and not any(_canvas_is_zero_advance_control(character) for character in value)
+        and _canvas_collapse_inline_whitespace(value) == value
     ):
         legacy, legacy_truncated = _canvas_legacy_lines(
             value,

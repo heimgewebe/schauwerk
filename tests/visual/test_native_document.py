@@ -1255,8 +1255,16 @@ def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
         max_width=92,
         max_bytes=256,
     )
-    assert fitted == display
+    assert fitted == label
     assert truncated is False
+    wrapped, wrapped_truncated = native_diagram._canvas_wrap_source_line(
+        label,
+        size=16,
+        max_width=92,
+        max_lines=2,
+    )
+    assert wrapped == [label]
+    assert wrapped_truncated is False
 
     source = {
         "nodes": [
@@ -1289,7 +1297,8 @@ def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
     ]
 
     assert "data-text-truncated" not in node.attrib
-    assert texts == [display]
+    assert texts == [label]
+    assert native_diagram._canvas_collapse_inline_whitespace(texts[0]) == display
 
 
 @pytest.mark.parametrize(

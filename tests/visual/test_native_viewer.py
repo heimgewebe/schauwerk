@@ -20,7 +20,10 @@ from schauwerk.visual.native_diagram import (
     _edge_geometry,
     render_native_diagram,
 )
-from schauwerk.visual.native_document import json_canvas_to_editing_document
+from schauwerk.visual.native_document import (
+    editing_document_to_json_canvas,
+    json_canvas_to_editing_document,
+)
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
@@ -376,6 +379,39 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "edgeReattach = null;" in escape_handler
     assert "Kantenaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
+
+
+def test_native_viewer_document_bundle_preserves_collapsible_whitespace_semantics(
+    tmp_path: Path,
+) -> None:
+    label = "abc          def"
+    source = {
+        "nodes": [
+            {
+                "id": "spaces",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Whitespace semantics")
+    output = tmp_path / "whitespace-semantics"
+
+    manifest = build_native_viewer(document, output)
+    semantic = json.loads((output / "document.json").read_text(encoding="utf-8"))
+    index = (output / "index.html").read_text(encoding="utf-8")
+
+    assert manifest["semantic_authority"]["artifact"] == "document.json"
+    assert manifest["semantic_authority"]["mode"] == "editable-document"
+    assert semantic["nodes"][0]["label"] == label
+    assert semantic["source"]["nodes"][0]["text"] == label
+    assert editing_document_to_json_canvas(semantic) == source
+    assert native_viewer._serialized_embedded_model(semantic) in index
 
 
 def test_native_viewer_document_bounds_use_node_rect_not_clipped_label_bbox(

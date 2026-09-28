@@ -152,7 +152,9 @@
     "canvas_mongolian_vowel_separator_zero_advance_width_preserved": true,
     "canvas_soft_hyphen_zero_advance_width_preserved": true,
     "canvas_zero_advance_controls_bypass_legacy_wrap": true,
-    "canvas_collapsible_inline_whitespace_matches_svg_rendering": true
+    "canvas_collapsible_inline_whitespace_matches_svg_rendering": true,
+    "canvas_collapsible_whitespace_semantic_authority_preserved": true,
+    "canvas_collapsible_inline_whitespace_source_bytes_preserved": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -162,7 +164,7 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "9e0b74914083a4d65e5373c8ad665bb1a349ae5d34671e0e30a25c4cceabd1b5",
+  "evidence_digest": "63f976b6ca3bcc884621620ce869ebceacc28e33b3a387365a5bd0ed3f4d1bfe",
   "functional_head": "192ab30e80d20cabc18c542bd132d8c318905b38",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
@@ -178,13 +180,13 @@
     "scripts/run_browser_smoke.py": "3ac127a4b8fca674d525406544de1c0378354b29ed77281f33be208ff08a9673",
     "src/schauwerk/resources/native_viewer/assets.py": "d0c5c0d8f88861ca3ac48984aed16fc0720d41b32395a5a8e990133c283ba458",
     "src/schauwerk/resources/standalone_editor/assets.py": "44b27d689f8edb1229675cc92f0a2da6ecdbc005370c564b6404f9d49c1343f6",
-    "src/schauwerk/visual/native_diagram.py": "b98526c0b730c29b3b366bffaf4e0b710087fcc9d3c4e709188ae8713c6df1a9",
+    "src/schauwerk/visual/native_diagram.py": "c98594fe4bc72672763eb313b07832e9f4acd8b41f3772c196facd35a9e0fcca",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
     "src/schauwerk/visual/native_viewer.py": "c84fb8575f6f2a179bc61047bc31bc4955031ab7331bef446984389dc9202692",
     "src/schauwerk/visual/standalone_editor.py": "683d7492c60fc2958820136b8f679de3a82c859361b8dfced24ee57de5833593",
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
-    "tests/visual/test_native_document.py": "bac53d5b17d7503dc52e099a4d98a3dad219233b15e7c69a608c808c1f74d7f6",
-    "tests/visual/test_native_viewer.py": "28ceb2f323df75143f600754cf5f5b60874e2775dffe461531ade3e81dc706b2",
+    "tests/visual/test_native_document.py": "af41a9587249f817135bbe4929818fbc1353bacb3d5b7c0a9ba6661a867891b3",
+    "tests/visual/test_native_viewer.py": "f6a674c9ee42b4437de3e4a79b119f5195e89f30a14e5f678812425de092c0df",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
     "tests/visual/test_standalone_editor.py": "87b4a7b3413b37edbab8add92c72990eb6b65855ade31d075f79323664b5b81e",
     "src/schauwerk/visual/drawio_import.py": "cad4db096e45dbf572801b3086980ad0c1d066be51640df32f32cde480da1b2c",
