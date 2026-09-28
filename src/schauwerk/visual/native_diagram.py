@@ -3462,6 +3462,17 @@ _CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS = frozenset(
         0x2069,  # POP DIRECTIONAL ISOLATE
     }
 )
+_CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS = frozenset(
+    {
+        0x200B,  # ZERO WIDTH SPACE
+        0x2060,  # WORD JOINER
+        0x2061,  # FUNCTION APPLICATION
+        0x2062,  # INVISIBLE TIMES
+        0x2063,  # INVISIBLE SEPARATOR
+        0x2064,  # INVISIBLE PLUS
+        0xFEFF,  # ZERO WIDTH NO-BREAK SPACE
+    }
+)
 _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 
@@ -3514,6 +3525,7 @@ def _canvas_is_zero_advance_control(character: str) -> bool:
     return (
         character in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
         or codepoint in _CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS
+        or codepoint in _CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS
         or 0xFE00 <= codepoint <= 0xFE0F
         or 0xE0100 <= codepoint <= 0xE01EF
         or 0xE0020 <= codepoint <= 0xE007F

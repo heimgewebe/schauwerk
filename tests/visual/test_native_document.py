@@ -1191,6 +1191,62 @@ def test_canvas_bidi_format_controls_have_zero_advance(control: str) -> None:
     assert native_diagram._estimated_canvas_wrap_width(control * 10, size=12) == 0.0
 
 
+@pytest.mark.parametrize(
+    "control",
+    [
+        "\u200b",
+        "\u2060",
+        "\u2061",
+        "\u2062",
+        "\u2063",
+        "\u2064",
+        "\ufeff",
+    ],
+)
+def test_canvas_invisible_format_controls_have_zero_advance(control: str) -> None:
+    assert native_diagram._estimated_canvas_wrap_width(control * 10, size=12) == 0.0
+
+
+def test_canvas_zero_advance_format_scope_excludes_soft_hyphen() -> None:
+    assert native_diagram._canvas_is_zero_advance_control("\u00ad") is False
+
+
+def test_native_document_canvas_zero_width_space_preserves_visible_text() -> None:
+    label = "\u200b" * 10 + "abcdefghij"
+    source = {
+        "nodes": [
+            {
+                "id": "zero-width-space",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Zero-width space")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "zero-width-space"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
+
+
 def test_native_document_canvas_bidi_controls_do_not_consume_visible_width() -> None:
     label = "\u200f" * 10 + "abcdefghij"
     source = {
