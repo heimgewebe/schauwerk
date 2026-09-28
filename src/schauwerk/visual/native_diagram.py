@@ -3486,7 +3486,7 @@ _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 def _canvas_is_grapheme_extend(character: str) -> bool:
     codepoint = ord(character)
     return (
-        unicodedata.category(character) in {"Mn", "Mc", "Me"}
+        unicodedata.category(character) in {"Mn", "Me"}
         or 0xFE00 <= codepoint <= 0xFE0F
         or 0xE0100 <= codepoint <= 0xE01EF
         or 0x1F3FB <= codepoint <= 0x1F3FF

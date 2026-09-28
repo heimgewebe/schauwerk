@@ -1217,6 +1217,16 @@ def test_canvas_zero_advance_format_scope_excludes_soft_hyphen() -> None:
     assert native_diagram._canvas_is_zero_advance_control("\u00ad") is False
 
 
+def test_canvas_spacing_combining_mark_contributes_advance_width() -> None:
+    base = "\u0915"
+    spacing_mark = "\u093e"
+    cluster = base + spacing_mark
+
+    assert native_diagram._estimated_canvas_wrap_width(
+        cluster, size=12
+    ) > native_diagram._estimated_canvas_wrap_width(base, size=12)
+
+
 def test_native_document_canvas_zero_width_space_preserves_visible_text() -> None:
     label = "\u200b" * 10 + "abcdefghij"
     source = {
