@@ -1200,6 +1200,7 @@ def test_canvas_bidi_format_controls_have_zero_advance(control: str) -> None:
 @pytest.mark.parametrize(
     "control",
     [
+        "\u00ad",
         "\u180e",
         "\u200b",
         "\u2060",
@@ -1250,8 +1251,40 @@ def test_native_document_canvas_mongolian_vowel_separator_keeps_visible_text() -
     assert "".join(texts) == label
 
 
-def test_canvas_zero_advance_format_scope_excludes_soft_hyphen() -> None:
-    assert native_diagram._canvas_is_zero_advance_control("\u00ad") is False
+def test_native_document_canvas_soft_hyphen_keeps_visible_text() -> None:
+    label = "\u00ad" * 10 + "abcdefghij"
+    source = {
+        "nodes": [
+            {
+                "id": "soft-hyphen",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Soft hyphen")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "soft-hyphen"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
 
 
 def test_canvas_spacing_combining_mark_uses_bounded_incremental_advance() -> None:
