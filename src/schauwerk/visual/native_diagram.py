@@ -3446,6 +3446,22 @@ _CANVAS_ZWNJ = "\u200c"
 _CANVAS_ZWJ = "\u200d"
 _CANVAS_EMOJI_PRESENTATION_SELECTOR = "\ufe0f"
 _CANVAS_KEYCAP = "\u20e3"
+_CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS = frozenset(
+    {
+        0x061C,  # ARABIC LETTER MARK
+        0x200E,  # LEFT-TO-RIGHT MARK
+        0x200F,  # RIGHT-TO-LEFT MARK
+        0x202A,  # LEFT-TO-RIGHT EMBEDDING
+        0x202B,  # RIGHT-TO-LEFT EMBEDDING
+        0x202C,  # POP DIRECTIONAL FORMATTING
+        0x202D,  # LEFT-TO-RIGHT OVERRIDE
+        0x202E,  # RIGHT-TO-LEFT OVERRIDE
+        0x2066,  # LEFT-TO-RIGHT ISOLATE
+        0x2067,  # RIGHT-TO-LEFT ISOLATE
+        0x2068,  # FIRST STRONG ISOLATE
+        0x2069,  # POP DIRECTIONAL ISOLATE
+    }
+)
 _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 
@@ -3497,6 +3513,7 @@ def _canvas_is_zero_advance_control(character: str) -> bool:
     codepoint = ord(character)
     return (
         character in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        or codepoint in _CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS
         or 0xFE00 <= codepoint <= 0xFE0F
         or 0xE0100 <= codepoint <= 0xE01EF
         or 0xE0020 <= codepoint <= 0xE007F
@@ -3509,7 +3526,7 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     visible = [
         character
         for character in cluster
-        if character not in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        if not _canvas_is_zero_advance_control(character)
         and not _canvas_is_grapheme_extend(character)
     ]
     if not visible:
