@@ -3420,6 +3420,7 @@ def _canvas_legacy_lines(
     chars = max(4, width_px // 8)
     lines: list[str] = []
     for paragraph in _canvas_iter_source_lines(value):
+        paragraph = _canvas_collapse_inline_whitespace(paragraph)
         remaining = max_lines - len(lines)
         if remaining <= 0:
             return lines, True
@@ -3503,6 +3504,12 @@ def _canvas_is_regional_indicator(character: str) -> bool:
     return 0x1F1E6 <= ord(character) <= 0x1F1FF
 
 
+def _canvas_collapse_inline_whitespace(value: str) -> str:
+    """Match SVG's default inline space/tab collapsing without removing newlines."""
+
+    return re.sub(r"[ \t]+", " ", value)
+
+
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
     """Yield Unicode extended grapheme clusters without materializing the input."""
 
@@ -3576,6 +3583,7 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
 
 
 def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
+    value = _canvas_collapse_inline_whitespace(value)
     units = sum(
         _canvas_grapheme_width_units(cluster)
         for cluster in _canvas_grapheme_clusters(value)
@@ -3663,6 +3671,7 @@ def _canvas_fit_single_line(
 ) -> tuple[str, bool]:
     """Fit one Canvas label without silent clipping."""
 
+    value = _canvas_collapse_inline_whitespace(value)
     if not value:
         return "", False
     value, grapheme_truncated = bounded_grapheme_prefix(
@@ -3704,6 +3713,7 @@ def _canvas_wrap_source_line(
 ) -> tuple[list[str], bool]:
     """Wrap one line incrementally without splitting display graphemes."""
 
+    value = _canvas_collapse_inline_whitespace(value)
     if max_lines <= 0:
         return [], bool(value)
     lines: list[str] = []
@@ -3899,6 +3909,7 @@ def _canvas_text_layout(
 ) -> _CanvasTextLayout:
     """Fit Canvas text inside explicit geometry without changing that geometry."""
 
+    value = _canvas_collapse_inline_whitespace(value)
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12

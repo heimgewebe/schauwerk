@@ -1236,6 +1236,63 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
 
 
 @pytest.mark.parametrize(
+    ("label", "display"),
+    [
+        ("abc          def", "abc def"),
+        ("abc\t\tdef", "abc def"),
+    ],
+)
+def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
+    label: str,
+    display: str,
+) -> None:
+    assert native_diagram._estimated_canvas_wrap_width(
+        label, size=16
+    ) == native_diagram._estimated_canvas_wrap_width(display, size=16)
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=16,
+        max_width=92,
+        max_bytes=256,
+    )
+    assert fitted == display
+    assert truncated is False
+
+    source = {
+        "nodes": [
+            {
+                "id": "collapsible-whitespace",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Collapsible whitespace")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "collapsible-whitespace"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert texts == [display]
+
+
+@pytest.mark.parametrize(
     "control",
     [
         "\u00ad",
