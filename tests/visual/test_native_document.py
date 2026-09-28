@@ -1185,6 +1185,12 @@ def test_native_document_canvas_zwnj_clusters_do_not_consume_visible_width() -> 
         "\u2067",
         "\u2068",
         "\u2069",
+        "\u206a",
+        "\u206b",
+        "\u206c",
+        "\u206d",
+        "\u206e",
+        "\u206f",
     ],
 )
 def test_canvas_bidi_format_controls_have_zero_advance(control: str) -> None:
@@ -1235,6 +1241,42 @@ def test_native_document_canvas_zero_width_space_preserves_visible_text() -> Non
         element
         for element in root.iter(f"{SVG_NS}g")
         if element.attrib.get("data-source-id") == "zero-width-space"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
+
+
+def test_native_document_canvas_deprecated_bidi_controls_preserve_visible_text() -> None:
+    label = "\u206a" * 10 + "abcdefghij"
+    source = {
+        "nodes": [
+            {
+                "id": "deprecated-bidi-controls",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Deprecated bidi controls")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "deprecated-bidi-controls"
     )
     texts = [
         child.text or ""
