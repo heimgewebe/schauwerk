@@ -94,7 +94,10 @@ def _inline_svg(svg: str) -> str:
 def _bounded_html_title(value: str) -> str:
     """Bound escaped HTML title bytes without splitting a grapheme cluster."""
 
-    value, grapheme_truncated = bounded_grapheme_prefix(value)
+    value, grapheme_truncated = bounded_grapheme_prefix(
+        value,
+        max_clusters=_MAX_RENDERED_HTML_TITLE_BYTES + 1,
+    )
     suffix = "…"
     suffix_bytes = len(html.escape(suffix).encode("utf-8"))
     selected: list[str] = []
@@ -161,12 +164,11 @@ def _escaped_embedded_model_bytes(serialized_model: str) -> int:
 
 def _project_rendered_index_bytes(
     *,
-    title: str,
+    rendered_title: str,
     svg: str,
     serialized_model: str,
 ) -> int:
     _assert_index_template_markers()
-    rendered_title = html.escape(_bounded_html_title(title))
     replacements = {
         _TITLE_MARKER: len(rendered_title.encode("utf-8")),
         _SVG_MARKER: len(_inline_svg(svg).encode("utf-8")),
@@ -182,7 +184,7 @@ def _project_rendered_index_bytes(
 
 def _render_index(
     *,
-    title: str,
+    rendered_title: str,
     svg: str,
     model: Mapping[str, Any],
     serialized_model: str | None = None,
@@ -200,7 +202,7 @@ def _render_index(
         )
     )
     replacements = {
-        _TITLE_MARKER: html.escape(_bounded_html_title(title)),
+        _TITLE_MARKER: rendered_title,
         _SVG_MARKER: _inline_svg(svg),
         _MODEL_MARKER: embedded_model,
         _LIMITS_MARKER: _embedded_limits_json(),
@@ -382,8 +384,9 @@ def build_native_viewer(
     svg_payload = svg.encode("utf-8")
     semantic_payload = _canonical_json(model)
     serialized_model = _serialized_embedded_model(model)
+    rendered_title = html.escape(_bounded_html_title(str(model["title"])))
     projected_index_bytes = _project_rendered_index_bytes(
-        title=str(model["title"]),
+        rendered_title=rendered_title,
         svg=svg,
         serialized_model=serialized_model,
     )
@@ -420,7 +423,7 @@ def build_native_viewer(
         )
 
     index_payload = _render_index(
-        title=str(model["title"]),
+        rendered_title=rendered_title,
         svg=svg,
         model=model,
         serialized_model=serialized_model,

@@ -3487,7 +3487,19 @@ def _canvas_character_width_units(character: str) -> float:
     )
 
 
+def _canvas_is_zero_advance_control(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        character in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or 0xE0100 <= codepoint <= 0xE01EF
+        or 0xE0020 <= codepoint <= 0xE007F
+    )
+
+
 def _canvas_grapheme_width_units(cluster: str) -> float:
+    if cluster and all(_canvas_is_zero_advance_control(item) for item in cluster):
+        return 0.0
     visible = [
         character
         for character in cluster

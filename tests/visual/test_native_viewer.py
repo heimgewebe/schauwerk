@@ -12,6 +12,7 @@ from typing import get_type_hints
 
 import pytest
 
+import schauwerk.visual.native_viewer as native_viewer
 from schauwerk.visual.grapheme import MAX_GRAPHEME_CLUSTER_CODEPOINTS
 from schauwerk.visual.native_diagram import (
     _canvas_color,
@@ -46,6 +47,42 @@ def test_native_viewer_bounds_pathological_grapheme_title_cluster() -> None:
 
     assert rendered == "safe …"
     assert len(rendered.encode("utf-8")) < 128
+
+
+def test_native_viewer_bounds_large_single_codepoint_html_title_scan(
+    monkeypatch,
+) -> None:
+    original_bounded_prefix = native_viewer.bounded_grapheme_prefix
+    calls: list[int | None] = []
+
+    def bounded_prefix(value: str, **kwargs):
+        calls.append(kwargs.get("max_clusters"))
+        return original_bounded_prefix(value, **kwargs)
+
+    monkeypatch.setattr(native_viewer, "bounded_grapheme_prefix", bounded_prefix)
+    rendered = native_viewer._bounded_html_title("é" * 800_000)
+
+    assert calls == [native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1]
+    assert len(rendered) < 3_000
+    assert len(rendered.encode("utf-8")) <= native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+
+
+def test_native_viewer_reuses_bounded_html_title_for_projection_and_render(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    original = native_viewer._bounded_html_title
+    calls = 0
+
+    def bounded_title(value: str) -> str:
+        nonlocal calls
+        calls += 1
+        return original(value)
+
+    monkeypatch.setattr(native_viewer, "_bounded_html_title", bounded_title)
+    native_viewer.build_native_viewer(_load(), tmp_path / "reuse-title")
+
+    assert calls == 1
 
 
 def _source_ids(svg: bytes, kind: str) -> set[str]:
