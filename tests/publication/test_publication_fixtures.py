@@ -715,6 +715,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "canvas_element_title_codepoint_work_cap",
         "canvas_zero_advance_control_only_grapheme_width_preserved",
         "canvas_bidi_format_controls_zero_advance_width_preserved",
+        "canvas_invisible_format_controls_zero_advance_width_preserved",
         "canvas_html_title_grapheme_probe_bounded",
         "canvas_html_title_codepoint_work_cap",
         "canvas_html_title_projection_render_reused",
