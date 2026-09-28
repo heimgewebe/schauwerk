@@ -711,6 +711,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "narrative_cjk_width_metric_unchanged",
         "canvas_text_byte_budget_fair_across_labels",
         "canvas_grapheme_probe_visible_prefix_bounded",
+        "canvas_zero_advance_control_only_grapheme_width_preserved",
+        "canvas_html_title_grapheme_probe_bounded",
+        "canvas_html_title_projection_render_reused",
         "native_runtime_import_stdlib_only",
         "docker_runtime_closure_includes_grapheme_segmenter",
     }:
