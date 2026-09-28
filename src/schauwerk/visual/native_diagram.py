@@ -3520,6 +3520,10 @@ def _canvas_has_non_collapsible_whitespace(value: str) -> bool:
     )
 
 
+def _canvas_has_layout_content(value: str) -> bool:
+    return bool(value.strip(" \t\r\n"))
+
+
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
     """Yield Unicode extended grapheme clusters without materializing the input."""
 
@@ -4214,15 +4218,13 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
     remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
     remaining_canvas_text_bytes = _CANVAS_MAX_EMITTED_TEXT_BYTES
     remaining_labeled_canvas_items = sum(
-        bool(
-            (
-                _canvas_plain_markdown(str(node.get("label", "")))
-                if str(node["type"]) == "text"
-                else str(node.get("label", ""))
-            ).strip()
+        _canvas_has_layout_content(
+            _canvas_plain_markdown(str(node.get("label", "")))
+            if str(node["type"]) == "text"
+            else str(node.get("label", ""))
         )
         for _, node in canvas_node_render_order
-    ) + sum(bool(layout[8].strip()) for layout in edge_layouts)
+    ) + sum(_canvas_has_layout_content(layout[8]) for layout in edge_layouts)
 
     def fair_text_byte_budget(*, has_visible_label: bool) -> int:
         if (
@@ -4248,7 +4250,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         height = int(node["height"])
         label = str(node.get("label", ""))
         display_label = _canvas_plain_markdown(label) if node_type == "text" else label
-        has_visible_label = bool(display_label.strip())
+        has_visible_label = _canvas_has_layout_content(display_label)
         reserve_for_later = max(
             0,
             remaining_labeled_canvas_items - (1 if has_visible_label else 0),
@@ -4340,7 +4342,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         label_height,
     ) in edge_layouts:
         _, stroke = _canvas_color(edge.get("source", {}).get("color"))
-        has_visible_label = bool(label.strip())
+        has_visible_label = _canvas_has_layout_content(label)
         reserve_for_later = max(
             0,
             remaining_labeled_canvas_items - (1 if has_visible_label else 0),

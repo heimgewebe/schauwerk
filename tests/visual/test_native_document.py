@@ -1295,6 +1295,105 @@ def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> N
     assert "".join(texts).count("\u00a0") == 1
 
 
+@pytest.mark.parametrize("label", ["\u00a0", "\u202f"])
+def test_native_document_canvas_noncollapsible_whitespace_only_node_label_is_preserved(
+    label: str,
+) -> None:
+    assert native_diagram._canvas_has_layout_content(label) is True
+    assert native_diagram._canvas_has_layout_content(" \t\r\n") is False
+
+    source = {
+        "nodes": [
+            {
+                "id": "noncollapsible-whitespace",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 60,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(
+        source, title="Non-collapsible whitespace node"
+    )
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "noncollapsible-whitespace"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert texts == [label]
+
+
+@pytest.mark.parametrize("label", ["\u00a0", "\u202f"])
+def test_native_document_canvas_noncollapsible_whitespace_only_edge_label_is_preserved(
+    label: str,
+) -> None:
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 360,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "noncollapsible-whitespace-edge",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": label,
+            }
+        ],
+    }
+    document = json_canvas_to_editing_document(
+        source, title="Non-collapsible whitespace edge"
+    )
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id")
+        == "noncollapsible-whitespace-edge"
+    )
+    texts = [
+        child.text or ""
+        for child in edge
+        if child.tag == f"{SVG_NS}text"
+    ]
+
+    assert "data-text-truncated" not in edge.attrib
+    assert texts == [label]
+
+
 @pytest.mark.parametrize(
     ("label", "display"),
     [
