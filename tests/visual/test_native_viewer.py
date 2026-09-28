@@ -53,17 +53,39 @@ def test_native_viewer_bounds_large_single_codepoint_html_title_scan(
     monkeypatch,
 ) -> None:
     original_bounded_prefix = native_viewer.bounded_grapheme_prefix
-    calls: list[int | None] = []
+    calls: list[tuple[int | None, int | None]] = []
 
     def bounded_prefix(value: str, **kwargs):
-        calls.append(kwargs.get("max_clusters"))
+        calls.append(
+            (
+                kwargs.get("max_clusters"),
+                kwargs.get("max_codepoints"),
+            )
+        )
         return original_bounded_prefix(value, **kwargs)
 
     monkeypatch.setattr(native_viewer, "bounded_grapheme_prefix", bounded_prefix)
     rendered = native_viewer._bounded_html_title("é" * 800_000)
 
-    assert calls == [native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1]
+    assert calls == [
+        (
+            native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1,
+            native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+            + MAX_GRAPHEME_CLUSTER_CODEPOINTS
+            + 1,
+        )
+    ]
     assert len(rendered) < 3_000
+    assert len(rendered.encode("utf-8")) <= native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+
+
+def test_native_viewer_bounds_dense_grapheme_title_scan_by_codepoints() -> None:
+    cluster = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS - 1)
+    value = cluster * (native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1)
+
+    rendered = _bounded_html_title(value)
+
+    assert rendered.endswith("…")
     assert len(rendered.encode("utf-8")) <= native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
 
 

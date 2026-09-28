@@ -81,6 +81,24 @@ def test_bounded_grapheme_prefix_cluster_limit_handles_ascii_crlf() -> None:
     assert bounded == "a\r\n"
 
 
+def test_bounded_grapheme_prefix_codepoint_limit_preserves_cluster_boundaries() -> None:
+    family = "👨‍👩‍👧‍👦"
+    bounded, truncated = bounded_grapheme_prefix(
+        family * 2,
+        max_codepoints=len(family) + 2,
+    )
+
+    assert truncated is True
+    assert bounded == family
+
+    ascii_bounded, ascii_truncated = bounded_grapheme_prefix(
+        "a\r\nb",
+        max_codepoints=2,
+    )
+    assert ascii_truncated is True
+    assert ascii_bounded == "a"
+
+
 def _canvas() -> dict:
     return {
         "customTopLevel": {"kept": True},
@@ -1539,22 +1557,33 @@ def test_native_document_canvas_text_byte_budget_is_fair_across_labels() -> None
     assert later_text == later_label
 
 
-def test_native_document_bounds_grapheme_probe_to_visible_prefix(monkeypatch) -> None:
+def test_native_document_bounds_grapheme_probe_independently_of_geometry(
+    monkeypatch,
+) -> None:
     observed_clusters = 0
     original_iter = native_diagram.iter_grapheme_clusters
     original_bounded_prefix = native_diagram.bounded_grapheme_prefix
 
     def bounded_prefix(value: str, **kwargs):
         if len(value) > 10_000:
-            assert kwargs.get("max_clusters") is not None
+            assert (
+                kwargs.get("max_clusters")
+                <= native_diagram._MAX_CANVAS_TEXT_PROBE_CLUSTERS
+            )
+            assert kwargs.get("max_codepoints") is not None
+            assert (
+                0
+                < kwargs["max_codepoints"]
+                <= native_diagram._MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+            )
         return original_bounded_prefix(value, **kwargs)
 
     def counting_iter(value: str):
         nonlocal observed_clusters
         for cluster in original_iter(value):
             observed_clusters += 1
-            if observed_clusters > 10_000:
-                raise AssertionError("grapheme probing exceeded visible-prefix budget")
+            if observed_clusters > 4 * native_diagram._MAX_CANVAS_TEXT_PROBE_CLUSTERS:
+                raise AssertionError("grapheme probing exceeded independent work budget")
             yield cluster
 
     monkeypatch.setattr(
@@ -1570,7 +1599,7 @@ def test_native_document_bounds_grapheme_probe_to_visible_prefix(monkeypatch) ->
                 "type": "text",
                 "x": 0,
                 "y": 0,
-                "width": 1_000,
+                "width": 1_000_000,
                 "height": 100,
                 "text": "é" * 800_000,
             }
@@ -1590,7 +1619,7 @@ def test_native_document_bounds_grapheme_probe_to_visible_prefix(monkeypatch) ->
     )
 
     assert node.attrib["data-text-truncated"] == "true"
-    assert observed_clusters <= 10_000
+    assert observed_clusters <= 4 * native_diagram._MAX_CANVAS_TEXT_PROBE_CLUSTERS
 
 
 def test_native_document_marks_atomic_glyph_too_wide_for_minimum_font_as_truncated() -> None:

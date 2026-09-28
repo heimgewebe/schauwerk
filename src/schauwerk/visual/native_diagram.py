@@ -14,7 +14,11 @@ from html import escape
 from typing import Any
 
 from .grammar import GRAMMAR_SCHEMA_VERSION
-from .grapheme import bounded_grapheme_prefix, iter_grapheme_clusters
+from .grapheme import (
+    MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+    bounded_grapheme_prefix,
+    iter_grapheme_clusters,
+)
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
@@ -3442,6 +3446,8 @@ _CANVAS_ZWNJ = "\u200c"
 _CANVAS_ZWJ = "\u200d"
 _CANVAS_EMOJI_PRESENTATION_SELECTOR = "\ufe0f"
 _CANVAS_KEYCAP = "\u20e3"
+_MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
+_MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 
 
 def _canvas_is_grapheme_extend(character: str) -> bool:
@@ -3577,6 +3583,10 @@ def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
     value, grapheme_truncated = bounded_grapheme_prefix(
         value,
         max_clusters=max(1, max_bytes + 1),
+        max_codepoints=min(
+            _MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+            max(1, max_bytes) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1,
+        ),
     )
     if grapheme_truncated:
         return _canvas_ellipsize_to_limits(
@@ -3609,6 +3619,10 @@ def _canvas_fit_single_line(
     value, grapheme_truncated = bounded_grapheme_prefix(
         value,
         max_clusters=max(1, max_bytes + 1),
+        max_codepoints=min(
+            _MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+            max(1, max_bytes) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1,
+        ),
     )
     if grapheme_truncated:
         return (
@@ -3819,7 +3833,11 @@ def _canvas_text_probe_cluster_limit(
         max_lines * clusters_per_line + max_lines + 1,
     )
     byte_limit = max(1, max_bytes + 1)
-    return min(geometry_limit, byte_limit)
+    return min(
+        geometry_limit,
+        byte_limit,
+        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+    )
 
 
 def _canvas_text_layout(
@@ -3848,6 +3866,7 @@ def _canvas_text_layout(
             max_bytes=max_bytes,
             min_size=min_size,
         ),
+        max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
     )
     if not value.strip():
         if not had_visible_text:
@@ -3900,7 +3919,10 @@ def _canvas_text_layout(
     candidate: tuple[tuple[str, int], ...] = ()
     candidate_truncated = legacy_truncated or grapheme_truncated
     candidate_size = min_size
-    for size in range(16, min_size - 1, -1):
+    candidate_sizes = (
+        (min_size,) if grapheme_truncated else range(16, min_size - 1, -1)
+    )
+    for size in candidate_sizes:
         wrapped, wrapped_truncated = _canvas_adaptive_lines(
             value,
             size=size,

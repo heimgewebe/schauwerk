@@ -328,45 +328,64 @@ def bounded_grapheme_prefix(
     *,
     max_cluster_codepoints: int = MAX_GRAPHEME_CLUSTER_CODEPOINTS,
     max_clusters: int | None = None,
+    max_codepoints: int | None = None,
 ) -> tuple[str, bool]:
     """Return a cluster-boundary prefix under explicit grapheme scan limits.
 
     The scan never retains more than max_cluster_codepoints code points for one
     candidate cluster. With max_clusters omitted, behavior remains exact unless
     a pathological cluster exceeds that cap. With max_clusters set, scanning
-    also stops after that many complete clusters and reports truncation when
-    source content remains.
+    also stops after that many complete clusters. max_codepoints additionally
+    bounds total source work while returning only complete grapheme clusters.
+    Any active limit reports truncation when source content remains.
     """
 
     if max_cluster_codepoints < 1:
         raise ValueError("max_cluster_codepoints must be positive")
     if max_clusters is not None and max_clusters < 1:
         raise ValueError("max_clusters must be positive")
+    if max_codepoints is not None and max_codepoints < 1:
+        raise ValueError("max_codepoints must be positive")
     if not value:
         return value, False
     if value.isascii() and max_cluster_codepoints >= 2:
-        if max_clusters is None:
-            return value, False
+        scan_limit = (
+            len(value) if max_codepoints is None else min(len(value), max_codepoints)
+        )
+        if (
+            scan_limit < len(value)
+            and scan_limit > 0
+            and value[scan_limit - 1] == "\r"
+            and value[scan_limit] == "\n"
+        ):
+            scan_limit -= 1
         cluster_count = 0
         index = 0
-        while index < len(value):
+        while index < scan_limit:
             next_index = (
                 index + 2
                 if value[index] == "\r"
-                and index + 1 < len(value)
+                and index + 1 < scan_limit
                 and value[index + 1] == "\n"
                 else index + 1
             )
             cluster_count += 1
-            if cluster_count >= max_clusters and next_index < len(value):
-                return value[:next_index], True
+            if max_clusters is not None and cluster_count >= max_clusters:
+                if next_index < len(value):
+                    return value[:next_index], True
             index = next_index
+        if scan_limit < len(value):
+            return value[:scan_limit], True
         return value, False
 
     cluster_start = 0
     completed_clusters = 0
     cluster: list[str] = []
     for index, character in enumerate(value):
+        if max_codepoints is not None and index >= max_codepoints:
+            if cluster and _should_break(cluster, character):
+                return value[:index], True
+            return value[:cluster_start], True
         if cluster and _should_break(cluster, character):
             completed_clusters += 1
             if max_clusters is not None and completed_clusters >= max_clusters:

@@ -23,7 +23,11 @@ from typing import Any, Final
 
 from schauwerk.resources.native_viewer.assets import ASSETS, INDEX_HTML
 
-from .grapheme import bounded_grapheme_prefix, iter_grapheme_clusters
+from .grapheme import (
+    MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+    bounded_grapheme_prefix,
+    iter_grapheme_clusters,
+)
 from .json_fidelity import (
     JsonFidelityError,
     assert_javascript_roundtrip_json_numbers,
@@ -97,6 +101,11 @@ def _bounded_html_title(value: str) -> str:
     value, grapheme_truncated = bounded_grapheme_prefix(
         value,
         max_clusters=_MAX_RENDERED_HTML_TITLE_BYTES + 1,
+        max_codepoints=(
+            _MAX_RENDERED_HTML_TITLE_BYTES
+            + MAX_GRAPHEME_CLUSTER_CODEPOINTS
+            + 1
+        ),
     )
     suffix = "…"
     suffix_bytes = len(html.escape(suffix).encode("utf-8"))
