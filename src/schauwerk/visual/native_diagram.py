@@ -3386,7 +3386,7 @@ def _canvas_plain_markdown(value: str) -> str:
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     text = re.sub(r"__([^_]+)__", r"\1", text)
     text = re.sub(r"\x60([^\x60]+)\x60", r"\1", text)
-    return text.strip()
+    return text.strip(" \t\r\n")
 
 
 @dataclass(frozen=True)
@@ -3513,6 +3513,13 @@ def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
     return cluster in {" ", "\t"}
 
 
+def _canvas_has_non_collapsible_whitespace(value: str) -> bool:
+    return any(
+        character.isspace() and character not in {" ", "\t", "\r", "\n"}
+        for character in value
+    )
+
+
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
     """Yield Unicode extended grapheme clusters without materializing the input."""
 
@@ -3630,7 +3637,7 @@ def _canvas_ellipsize_to_limits(
     selected: list[str] = []
     width_used = 0.0
     bytes_used = 0
-    for cluster in _canvas_grapheme_clusters(value.rstrip()):
+    for cluster in _canvas_grapheme_clusters(value.rstrip(" \t")):
         cluster_width = (
             _canvas_svg_cluster_width_units(
                 cluster,
@@ -3646,7 +3653,7 @@ def _canvas_ellipsize_to_limits(
         selected.append(cluster)
         width_used += cluster_width
         bytes_used += cluster_bytes
-    candidate = "".join(selected).rstrip()
+    candidate = "".join(selected).rstrip(" \t")
     return candidate + ellipsis if candidate else ellipsis
 
 
@@ -3756,7 +3763,7 @@ def _canvas_wrap_source_line(
             else:
                 emitted_clusters = current
                 carry = []
-            emitted = "".join(emitted_clusters).strip()
+            emitted = "".join(emitted_clusters).strip(" \t")
             if emitted:
                 lines.append(emitted)
                 if len(lines) >= max_lines:
@@ -3765,7 +3772,7 @@ def _canvas_wrap_source_line(
             current_width = _estimated_canvas_wrap_width("".join(current), size=size)
             last_space_index = -1
             for index, item in enumerate(current):
-                if item.isspace():
+                if _canvas_is_collapsible_inline_whitespace(item):
                     last_space_index = index
             cluster_width = (
                 _canvas_svg_cluster_width_units(
@@ -3780,10 +3787,10 @@ def _canvas_wrap_source_line(
             return lines, True
         current.append(cluster)
         current_width += cluster_width
-        if cluster.isspace():
+        if _canvas_is_collapsible_inline_whitespace(cluster):
             last_space_index = len(current) - 1
 
-    trailing = "".join(current).strip()
+    trailing = "".join(current).strip(" \t")
     if trailing:
         if len(lines) >= max_lines:
             return lines, True
@@ -3791,7 +3798,10 @@ def _canvas_wrap_source_line(
 
     if (
         len(lines) >= 2
-        and not any(character.isspace() for character in value)
+        and not any(
+            _canvas_is_collapsible_inline_whitespace(character)
+            for character in value
+        )
     ):
         donor = list(_canvas_grapheme_clusters(lines[-2]))
         fragment = list(_canvas_grapheme_clusters(lines[-1]))
@@ -3814,7 +3824,7 @@ def _canvas_adaptive_lines(
     for source_line in _canvas_iter_source_lines(value):
         if len(lines) >= max_lines:
             return lines, True
-        if not source_line.strip():
+        if not source_line.strip(" \t"):
             if lines:
                 paragraph_gap_pending = True
             continue
@@ -3945,7 +3955,7 @@ def _canvas_text_layout(
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12
-    had_visible_text = bool(value.strip())
+    had_visible_text = bool(value.strip(" \t\r\n"))
     height_line_limit = max(1, height_px // (min_size + 4) + 2)
     effective_max_lines = min(max_lines, height_line_limit)
     if effective_max_lines <= 0 or max_bytes <= 0:
@@ -3960,7 +3970,7 @@ def _canvas_text_layout(
         ),
         max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
     )
-    if not value.strip():
+    if not value.strip(" \t\r\n"):
         if not had_visible_text:
             return _CanvasTextLayout(size=16, lines=(), truncated=False)
         marker_y = max(1, min(bottom_limit, min_size + 12))
@@ -3979,6 +3989,7 @@ def _canvas_text_layout(
         not _canvas_has_extended_graphemes(value)
         and not any(_canvas_is_zero_advance_control(character) for character in value)
         and _canvas_collapse_inline_whitespace(value) == value
+        and not _canvas_has_non_collapsible_whitespace(value)
     ):
         legacy, legacy_truncated = _canvas_legacy_lines(
             value,

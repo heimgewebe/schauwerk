@@ -1235,6 +1235,66 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
     assert texts == [label]
 
 
+def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
+    label = "AAAA\u00a0BBBB"
+
+    assert native_diagram._canvas_collapse_inline_whitespace(label) == label
+    assert native_diagram._canvas_has_non_collapsible_whitespace(label) is True
+    assert native_diagram._canvas_plain_markdown("\u00a0A\u00a0") == "\u00a0A\u00a0"
+
+    wrapped, wrapped_truncated = native_diagram._canvas_wrap_source_line(
+        label,
+        size=16,
+        max_width=42,
+        max_lines=4,
+    )
+    assert wrapped_truncated is False
+    assert "".join(wrapped) == label
+    assert sum(line.count("\u00a0") for line in wrapped) == 1
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        42,
+        100,
+        max_lines=5,
+        max_bytes=256,
+    )
+    assert "\u00a0" in "".join(line for line, _ in layout.lines)
+
+    source = {
+        "nodes": [
+            {
+                "id": "nbsp",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 70,
+                "height": 70,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="NBSP")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "nbsp"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "".join(texts) == label
+    assert "".join(texts).count("\u00a0") == 1
+
+
 @pytest.mark.parametrize(
     ("label", "display"),
     [
