@@ -157,7 +157,9 @@
     "canvas_collapsible_inline_whitespace_source_bytes_preserved": true,
     "canvas_nonbreaking_whitespace_not_break_or_trim_point": true,
     "canvas_noncollapsible_whitespace_only_labels_preserved": true,
-    "canvas_noncollapsible_whitespace_width_conservative": true
+    "canvas_noncollapsible_whitespace_width_conservative": true,
+    "canvas_edge_single_line_whitespace_matches_svg_collapse": true,
+    "canvas_xml_replacement_width_conservative": true
   },
   "does_not_establish": [
     "arbitrary future JSON Canvas extension semantics beyond opaque preservation",
@@ -167,7 +169,7 @@
     "Commonthing production deployment",
     "native PNG export"
   ],
-  "evidence_digest": "7bfde7c7c0975da21626ae49022e98a2a2cac41a2c607b267bb7333393d8bf62",
+  "evidence_digest": "b64c22a35b276df42a1897f035d6587f60bd5b94aded1dec3df558b7585bcd92",
   "functional_head": "192ab30e80d20cabc18c542bd132d8c318905b38",
   "parent_evidence": {
     "evidence_digest": "ff9f0c4685c6a45ed77a73f0ebd5896a315445fd3ce180898e5c94a2bea40585",
@@ -183,12 +185,12 @@
     "scripts/run_browser_smoke.py": "3ac127a4b8fca674d525406544de1c0378354b29ed77281f33be208ff08a9673",
     "src/schauwerk/resources/native_viewer/assets.py": "d0c5c0d8f88861ca3ac48984aed16fc0720d41b32395a5a8e990133c283ba458",
     "src/schauwerk/resources/standalone_editor/assets.py": "44b27d689f8edb1229675cc92f0a2da6ecdbc005370c564b6404f9d49c1343f6",
-    "src/schauwerk/visual/native_diagram.py": "84a8027ebe80759394a33ecf582d51a02175f9353656eeacf9531c6a4362afa6",
+    "src/schauwerk/visual/native_diagram.py": "38d0ffce4b65e1fbb662101660ae470bda2621c64fba3d62e0157097467222cd",
     "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
     "src/schauwerk/visual/native_viewer.py": "c84fb8575f6f2a179bc61047bc31bc4955031ab7331bef446984389dc9202692",
     "src/schauwerk/visual/standalone_editor.py": "683d7492c60fc2958820136b8f679de3a82c859361b8dfced24ee57de5833593",
     "tests/visual/test_native_canvas_editor.py": "824d74b83d9e53e6134579d3769dc9791428bc01942c45c62916e74caecd1082",
-    "tests/visual/test_native_document.py": "729ead973b7b432816630b4f526eab9a26bb3047ecb2b6a3d8d572016350ef88",
+    "tests/visual/test_native_document.py": "b61d97ee995b5d9960c39771e3c524137cf85a5d983fd677fbd6221d44a2e8ad",
     "tests/visual/test_native_viewer.py": "f6a674c9ee42b4437de3e4a79b119f5195e89f30a14e5f678812425de092c0df",
     "tests/visual/test_native_viewer_browser.py": "00a0f5a935b7c26eb49768588f09cdd650d2618b5a5f1593e60d446f5001f656",
     "tests/visual/test_standalone_editor.py": "87b4a7b3413b37edbab8add92c72990eb6b65855ade31d075f79323664b5b81e",

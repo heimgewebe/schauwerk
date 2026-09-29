@@ -1238,7 +1238,7 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
 @pytest.mark.parametrize(
     ("character", "expected_width"),
     [
-        ("\u000b", 1.0),
+        ("\u000b", 1.15),
         ("\u0085", 0.0),
         ("\u00a0", 0.35),
         ("\u1680", 0.50),
@@ -1272,6 +1272,98 @@ def test_native_document_canvas_noncollapsible_whitespace_width_is_conservative(
     assert native_diagram._estimated_canvas_wrap_width(
         character, size=16
     ) == pytest.approx(expected_width * 16)
+
+
+def test_canvas_single_line_edge_whitespace_matches_svg_collapse() -> None:
+    label = "\n".join(["a"] * 24)
+
+    assert native_diagram._estimated_canvas_wrap_width(label, size=14) == pytest.approx(
+        235.2
+    )
+    assert native_diagram._estimated_canvas_single_line_width(
+        label, size=14
+    ) > 240
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=240,
+        max_bytes=2048,
+    )
+
+    assert truncated is True
+    assert fitted.endswith("…")
+    assert "\n" in fitted
+
+
+def test_native_document_canvas_edge_line_breaks_are_marked_when_truncated() -> None:
+    label = "\n".join(["a"] * 24)
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 480,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "edge-line-breaks",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": label,
+            }
+        ],
+    }
+    document = json_canvas_to_editing_document(source, title="Edge line breaks")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "edge-line-breaks"
+    )
+    texts = [child.text or "" for child in edge if child.tag == f"{SVG_NS}text"]
+
+    assert edge.attrib.get("data-text-truncated") == "true"
+    assert len(texts) == 1
+    assert texts[0].endswith("…")
+    assert texts[0] != label
+
+
+def test_canvas_xml_forbidden_controls_measure_replacement_glyph() -> None:
+    label = "\x01" * 8
+
+    assert native_diagram._xml_10_character_allowed("\x01") is False
+    assert native_diagram._xml_escape("\x01") == "\uFFFD"
+    assert native_diagram._canvas_character_width_units("\x01") == pytest.approx(
+        native_diagram._CANVAS_XML_REPLACEMENT_WIDTH_UNITS
+    )
+    assert native_diagram._estimated_canvas_wrap_width(label, size=14) > 80
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=80,
+        max_bytes=2048,
+    )
+
+    assert truncated is True
+    assert fitted.endswith("…")
 
 
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:

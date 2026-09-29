@@ -105,19 +105,23 @@ _KIND_LABEL = {
 }
 
 
+def _xml_10_character_allowed(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        codepoint in {0x09, 0x0A, 0x0D}
+        or 0x20 <= codepoint <= 0xD7FF
+        or 0xE000 <= codepoint <= 0xFFFD
+        or 0x10000 <= codepoint <= 0x10FFFF
+    )
+
+
 def _xml_escape(value: str) -> str:
     """Replace XML 1.0-forbidden code points, then escape markup characters."""
 
-    compatible: list[str] = []
-    for character in value:
-        codepoint = ord(character)
-        allowed = (
-            codepoint in {0x09, 0x0A, 0x0D}
-            or 0x20 <= codepoint <= 0xD7FF
-            or 0xE000 <= codepoint <= 0xFFFD
-            or 0x10000 <= codepoint <= 0x10FFFF
-        )
-        compatible.append(character if allowed else "\uFFFD")
+    compatible = [
+        character if _xml_10_character_allowed(character) else "\uFFFD"
+        for character in value
+    ]
     return escape("".join(compatible), quote=True)
 
 
@@ -3486,6 +3490,7 @@ _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 _CANVAS_SPACING_MARK_WIDTH_UNITS = 0.60
 _CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS = 1.50
+_CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
     0x0085: 0.0,  # NEXT LINE
     0x00A0: 0.35,  # NO-BREAK SPACE
@@ -3534,6 +3539,10 @@ def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
     return cluster in {" ", "\t"}
 
 
+def _canvas_is_single_line_collapsible_whitespace(cluster: str) -> bool:
+    return cluster in {" ", "\t", "\r", "\n", "\r\n"}
+
+
 def _canvas_is_non_collapsible_whitespace(character: str) -> bool:
     return character.isspace() and character not in {" ", "\t", "\r", "\n"}
 
@@ -3559,6 +3568,8 @@ def _canvas_has_extended_graphemes(value: str) -> bool:
 
 
 def _canvas_character_width_units(character: str) -> float:
+    if not _xml_10_character_allowed(character):
+        return _CANVAS_XML_REPLACEMENT_WIDTH_UNITS
     if _canvas_is_collapsible_inline_whitespace(character):
         return 0.35
     if character in {"\r", "\n"}:
@@ -3640,6 +3651,31 @@ def _canvas_svg_cluster_width_units(
     return _canvas_grapheme_width_units(cluster)
 
 
+def _canvas_single_line_cluster_width_units(
+    cluster: str, *, previous_cluster: str | None
+) -> float:
+    if _canvas_is_single_line_collapsible_whitespace(cluster):
+        if (
+            previous_cluster is not None
+            and _canvas_is_single_line_collapsible_whitespace(previous_cluster)
+        ):
+            return 0.0
+        return _canvas_grapheme_width_units(" ")
+    return _canvas_grapheme_width_units(cluster)
+
+
+def _estimated_canvas_single_line_width(value: str, *, size: int) -> float:
+    units = 0.0
+    previous_cluster: str | None = None
+    for cluster in _canvas_grapheme_clusters(value):
+        units += _canvas_single_line_cluster_width_units(
+            cluster,
+            previous_cluster=previous_cluster,
+        )
+        previous_cluster = cluster
+    return units * size
+
+
 def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
     value = _canvas_collapse_inline_whitespace(value)
     units = sum(
@@ -3659,6 +3695,7 @@ def _canvas_ellipsize_to_limits(
     size: int,
     max_width: float,
     max_bytes: int | None = None,
+    single_line_svg_whitespace: bool = False,
 ) -> str:
     ellipsis = "…"
     ellipsis_width = _estimated_canvas_wrap_width(ellipsis, size=size)
@@ -3673,8 +3710,13 @@ def _canvas_ellipsize_to_limits(
     width_used = 0.0
     bytes_used = 0
     for cluster in _canvas_grapheme_clusters(value.rstrip(" \t")):
+        width_function = (
+            _canvas_single_line_cluster_width_units
+            if single_line_svg_whitespace
+            else _canvas_svg_cluster_width_units
+        )
         cluster_width = (
-            _canvas_svg_cluster_width_units(
+            width_function(
                 cluster,
                 previous_cluster=selected[-1] if selected else None,
             )
@@ -3752,11 +3794,12 @@ def _canvas_fit_single_line(
                 size=size,
                 max_width=max_width,
                 max_bytes=max_bytes,
+                single_line_svg_whitespace=True,
             ),
             True,
         )
     if (
-        _estimated_canvas_wrap_width(value, size=size) <= max_width
+        _estimated_canvas_single_line_width(value, size=size) <= max_width
         and _canvas_escaped_text_bytes(value) <= max_bytes
     ):
         return value, False
@@ -3766,6 +3809,7 @@ def _canvas_fit_single_line(
             size=size,
             max_width=max_width,
             max_bytes=max_bytes,
+            single_line_svg_whitespace=True,
         ),
         True,
     )
