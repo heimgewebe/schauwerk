@@ -16,45 +16,56 @@ INDEX_HTML = r"""<!doctype html>
   <main class="viewer-shell">
     <header class="viewer-bar">
       <div class="viewer-heading">
-        <span class="eyebrow">Native SVG · Phase 2</span>
-        <strong>__SCHAUWERK_NATIVE_TITLE__</strong>
+        <div class="viewer-title">
+          <span class="eyebrow">Arbeitsfläche</span>
+          <strong>__SCHAUWERK_NATIVE_TITLE__</strong>
+        </div>
+        <span class="status" id="status" role="status" aria-live="polite">Bereit</span>
       </div>
-      <span class="status" id="status" role="status" aria-live="polite">Semantik unverändert</span>
-      <div class="controls" aria-label="Ansicht steuern">
-        <button id="zoomOut" type="button" aria-label="Verkleinern">−</button>
-        <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
-        <button id="zoomIn" type="button" aria-label="Vergrößern">+</button>
-        <button id="fitView" type="button">Einpassen</button>
-        <button id="resetLayout" type="button">Layout zurücksetzen</button>
-        <button id="addNode" class="document-only" type="button" hidden>Knoten +</button>
-        <button id="addEdge" class="document-only" type="button" hidden>Kante +</button>
-        <button id="editText" class="document-only" type="button" hidden>Text</button>
-        <button id="reattachSource" class="document-only" type="button" hidden>Start ändern</button>
-        <button id="reattachTarget" class="document-only" type="button" hidden>Ziel ändern</button>
-        <button id="deleteSelection" class="document-only" type="button" hidden>Löschen</button>
+
+      <div class="controls" aria-label="Schaubild steuern">
+        <div class="view-controls" role="group" aria-label="Ansicht">
+          <button id="zoomOut" class="icon-control" type="button" aria-label="Verkleinern" title="Verkleinern">−</button>
+          <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
+          <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
+          <button id="fitView" type="button">Einpassen</button>
+          <button id="resetLayout" type="button">Positionen zurücksetzen</button>
+        </div>
+        <div class="edit-controls document-only" role="group" aria-label="Bearbeiten">
+          <button id="addNode" class="document-only" type="button" hidden>Element hinzufügen</button>
+          <button id="addEdge" class="document-only" type="button" hidden>Verbindung hinzufügen</button>
+          <button id="editText" class="document-only" type="button" hidden>Text bearbeiten</button>
+          <button id="reattachSource" class="document-only" type="button" hidden>Anfang ändern</button>
+          <button id="reattachTarget" class="document-only" type="button" hidden>Ende ändern</button>
+          <button id="deleteSelection" class="document-only destructive-control" type="button" hidden>Löschen</button>
+        </div>
       </div>
     </header>
+
     <section class="viewer-stage" id="nativeViewport" aria-label="Interaktives Schaubild">
       <div class="native-canvas" id="nativeCanvas">
 __SCHAUWERK_NATIVE_SVG__
       </div>
     </section>
+
     <footer class="viewer-foot">
       <span id="selectionStatus">Keine Auswahl</span>
-      <span id="interactionHint">Pan · Zoom · Auswahl · Knoten verschieben</span>
-      <span id="authorityHint">Layout lokal · Source read-only</span>
+      <span id="interactionHint">Verschieben · Zoomen · Auswählen</span>
+      <span id="authorityHint">Änderungen bleiben lokal</span>
     </footer>
   </main>
+
   <dialog id="textDialog" class="text-dialog">
     <form method="dialog">
-      <label for="textInput">Text</label>
+      <label for="textInput">Text bearbeiten</label>
       <textarea id="textInput" rows="5"></textarea>
       <div class="dialog-actions">
         <button id="cancelText" value="cancel" type="submit">Abbrechen</button>
-        <button id="saveText" value="default" type="button">Übernehmen</button>
+        <button id="saveText" class="primary-control" value="default" type="button">Übernehmen</button>
       </div>
     </form>
   </dialog>
+
   <script id="nativeLimits" type="application/json">__SCHAUWERK_NATIVE_LIMITS__</script>
   <script id="nativeModel" type="application/json">__SCHAUWERK_NATIVE_MODEL__</script>
   <script type="module" src="app.js"></script>
@@ -64,52 +75,166 @@ __SCHAUWERK_NATIVE_SVG__
 
 STYLES_CSS = r""":root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172033;
-  background: #eef2f7;
+  color-scheme: light;
+  color: #171927;
+  background: #edf0f6;
   font-synthesis: none;
+  --surface: rgba(255, 255, 255, 0.94);
+  --surface-soft: #f4f5f9;
+  --ink: #171927;
+  --muted: #6f7280;
+  --line: #dfe2ea;
+  --line-strong: #cfd3df;
+  --accent: #635bff;
+  --accent-soft: #efeeff;
+  --danger: #a93333;
+  --stage: #f4f6fa;
 }
+
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-button, output { font: inherit; }
+button, output, textarea { font: inherit; }
+
 button {
-  min-width: 42px;
-  min-height: 42px;
-  border: 1px solid #c8d1df;
-  border-radius: 10px;
-  padding: 7px 12px;
-  color: #25324a;
-  background: #fff;
-  font-weight: 650;
+  min-width: 36px;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 6px 10px;
+  color: #343746;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
   touch-action: manipulation;
+  transition: border-color 120ms ease, background 120ms ease, transform 120ms ease;
 }
-button:hover { background: #f5f7fb; }
-button:focus-visible { outline: 3px solid rgba(56, 89, 199, 0.32); outline-offset: 2px; }
-.viewer-shell { height: 100vh; height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; }
+button:hover {
+  border-color: #bfc3d0;
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+button:active { transform: translateY(0); }
+button:focus-visible {
+  outline: 3px solid rgba(99, 91, 255, 0.28);
+  outline-offset: 2px;
+}
+.icon-control {
+  width: 36px;
+  padding-inline: 0;
+  font-size: 1rem;
+}
+.primary-control {
+  border-color: var(--accent);
+  color: #fff;
+  background: var(--accent);
+}
+.destructive-control { color: var(--danger); }
+
+.viewer-shell {
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
 .viewer-bar {
-  min-height: 64px;
-  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left));
+  position: relative;
+  z-index: 2;
+  min-height: 58px;
+  padding: max(7px, env(safe-area-inset-top)) max(9px, env(safe-area-inset-right)) 7px max(9px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+.viewer-heading {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
-  border-bottom: 1px solid #d8e0eb;
-  background: rgba(255, 255, 255, 0.96);
-  z-index: 2;
+  gap: 10px;
 }
-.viewer-heading { min-width: 0; display: grid; gap: 2px; }
-.viewer-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.eyebrow { color: #3859c7; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
-.status { margin-left: auto; color: #667085; font-size: 0.82rem; white-space: nowrap; }
-.controls { display: flex; align-items: center; gap: 6px; }
-.controls output { min-width: 58px; text-align: center; color: #536079; font-variant-numeric: tabular-nums; }
+.viewer-title {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.viewer-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.status {
+  min-width: 0;
+  max-width: min(36vw, 420px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+.controls {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.view-controls,
+.edit-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+.controls output {
+  min-width: 52px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.view-controls button,
+.edit-controls button {
+  border-color: transparent;
+  background: transparent;
+}
+.view-controls button:hover,
+.edit-controls button:hover {
+  border-color: var(--line);
+  background: #fff;
+}
+
 .viewer-stage {
   position: relative;
   min-height: 0;
   overflow: hidden;
   background:
-    linear-gradient(rgba(100, 116, 139, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(100, 116, 139, 0.06) 1px, transparent 1px),
-    #f8fafc;
+    linear-gradient(rgba(99, 91, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 91, 255, 0.035) 1px, transparent 1px),
+    var(--stage);
   background-size: 24px 24px;
   cursor: grab;
   touch-action: none;
@@ -117,76 +242,128 @@ button:focus-visible { outline: 3px solid rgba(56, 89, 199, 0.32); outline-offse
   -webkit-user-select: none;
 }
 .viewer-stage.is-panning { cursor: grabbing; }
-.native-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
+.native-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
 .native-diagram { display: block; max-width: none; max-height: none; }
 .native-diagram [data-source-kind="node"] { cursor: grab; outline: none; }
 .native-diagram [data-source-kind="node"].is-dragging { cursor: grabbing; }
 .native-diagram [data-source-kind="node"].is-selected > rect {
   stroke-width: 4px !important;
-  filter: drop-shadow(0 0 5px rgba(56, 89, 199, 0.55));
+  filter: drop-shadow(0 0 5px rgba(99, 91, 255, 0.52));
 }
 .native-diagram [data-source-kind="node"]:focus-visible > rect {
   stroke-width: 4px !important;
-  filter: drop-shadow(0 0 5px rgba(56, 89, 199, 0.45));
+  filter: drop-shadow(0 0 5px rgba(99, 91, 255, 0.42));
 }
 .native-diagram [data-source-kind="edge"] { cursor: pointer; }
 .native-diagram [data-source-kind="edge"].is-selected > path {
   stroke-width: 4px !important;
-  filter: drop-shadow(0 0 4px rgba(56, 89, 199, 0.48));
+  filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
 }
+
 .text-dialog {
   width: min(560px, calc(100vw - 28px));
-  border: 1px solid #c8d1df;
-  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
   padding: 18px;
+  color: var(--ink);
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(30, 32, 48, 0.22);
 }
-.text-dialog::backdrop { background: rgba(15, 23, 42, 0.38); }
+.text-dialog::backdrop { background: rgba(15, 18, 30, 0.46); backdrop-filter: blur(3px); }
 .text-dialog form { display: grid; gap: 12px; }
-.text-dialog label { font-weight: 750; }
+.text-dialog label { font-weight: 760; }
 .text-dialog textarea {
   width: 100%;
   min-height: 120px;
   resize: vertical;
-  font: inherit;
-  border: 1px solid #c8d1df;
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 10px;
+  color: var(--ink);
+  background: var(--surface-soft);
 }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
 .viewer-foot {
-  min-height: 38px;
-  padding: 7px max(12px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  min-height: 34px;
+  padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   display: flex;
   align-items: center;
-  gap: 18px;
-  color: #667085;
-  background: #fff;
-  border-top: 1px solid #d8e0eb;
-  font-size: 0.78rem;
+  gap: 14px;
+  color: var(--muted);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  font-size: 0.68rem;
 }
-.viewer-foot span:first-child { color: #344054; font-weight: 650; }
-@media (max-width: 900px) {
-  .viewer-bar { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
-  .viewer-heading { flex: 1 1 200px; }
-  .status { order: 3; margin-left: 0; flex: 1 1 100%; }
-  .controls { margin-left: auto; overflow-x: auto; max-width: 100%; }
-  .controls button { white-space: nowrap; }
-  .viewer-foot { overflow-x: auto; white-space: nowrap; }
+.viewer-foot span:first-child {
+  color: var(--ink);
+  font-weight: 700;
+}
+.viewer-foot span:last-child { margin-left: auto; }
+
+@media (max-width: 980px) {
+  .viewer-bar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .viewer-heading { justify-content: space-between; }
+  .status { max-width: 52vw; }
+  .controls { justify-content: flex-start; }
 }
 @media (max-width: 620px) {
+  .viewer-bar { gap: 6px; padding-inline: 7px; }
   .viewer-heading .eyebrow { display: none; }
-  .controls { width: 100%; margin-left: 0; }
-  .controls button { flex: 1 0 auto; }
+  .status {
+    max-width: 58vw;
+    border: 0;
+    padding-inline: 0;
+    background: transparent;
+  }
+  .controls { gap: 4px; }
+  .view-controls,
+  .edit-controls {
+    width: 100%;
+    padding: 2px;
+  }
+  .view-controls button,
+  .edit-controls button { flex: 1 1 auto; }
+  .viewer-foot { gap: 8px; }
   .viewer-foot span:nth-child(2) { display: none; }
 }
+@media (max-width: 430px) {
+  .viewer-foot span:last-child { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
 @media (prefers-color-scheme: dark) {
-  :root { color: #e8edf7; background: #111827; }
-  .viewer-bar, .viewer-foot { background: #182234; border-color: #344056; }
-  .status, .viewer-foot, .controls output { color: #aeb8ca; }
-  .viewer-foot span:first-child { color: #e8edf7; }
-  button { color: #e8edf7; background: #202c41; border-color: #42506a; }
-  button:hover { background: #29364d; }
-  .viewer-stage { background-color: #111827; }
+  :root {
+    color-scheme: dark;
+    color: #f1f2f7;
+    background: #10121a;
+    --surface: rgba(18, 20, 29, 0.94);
+    --surface-soft: #1d202b;
+    --ink: #f1f2f7;
+    --muted: #a4a8b8;
+    --line: #2c303d;
+    --line-strong: #3b4050;
+    --accent: #8a83ff;
+    --accent-soft: #29264c;
+    --danger: #ffabab;
+    --stage: #111621;
+  }
+  button { color: #e9eaf2; background: #242733; }
+  button:hover { border-color: #4d5262; background: #2b2f3c; }
+  .view-controls button:hover,
+  .edit-controls button:hover { background: #292d39; }
+  .text-dialog { color: var(--ink); background: #181b24; }
+  .text-dialog textarea { color: var(--ink); background: #10131b; }
 }
 """
 
@@ -641,7 +818,7 @@ function persistOverrides() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizeOverrides(overrides)));
     return true;
   } catch (_) {
-    setStatus("Layout lokal verändert · Speichern nicht möglich · Semantik unverändert");
+    setStatus("Position geändert · lokales Speichern nicht möglich");
     return false;
   }
 }
@@ -1024,7 +1201,7 @@ function selectEdge(edgeId) {
     const edgeState = edges.get(selectedEdgeId);
     edgeState.element?.classList.add("is-selected");
     const label = edgeState.element?.querySelector("title")?.textContent?.trim() || selectedEdgeId;
-    selectionStatus.textContent = `Kante: ${label || selectedEdgeId}`;
+    selectionStatus.textContent = `Verbindung: ${label || selectedEdgeId}`;
   }
 }
 
@@ -1047,7 +1224,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   node.classList.add("is-selected");
   node.setAttribute("aria-selected", "true");
   const label = node.querySelector("title")?.textContent?.trim() || selectedId;
-  selectionStatus.textContent = `Knoten: ${label}`;
+  selectionStatus.textContent = `Element: ${label}`;
   if (focus) node.focus({ preventScroll: true });
 }
 
@@ -1071,7 +1248,7 @@ function fit({ announce = true } = {}) {
   const content = contentSize();
   view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
   applyView();
-  if (announce) setStatus("Ansicht eingepasst · Semantik unverändert");
+  if (announce) setStatus("Ansicht angepasst");
 }
 
 function zoomBy(factor, anchor = null) {
@@ -1328,7 +1505,7 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
     }
-    setStatus("Layout lokal verändert · Kanten live geroutet · Semantik unverändert");
+    setStatus("Position geändert · Verbindungen angepasst");
   }
 });
 
@@ -1344,9 +1521,9 @@ function finishPointer(event) {
         publishDocumentState();
         setStatus("Dokumentposition geändert · Kanten live geroutet");
       } else if (documentMode) {
-        setStatus("Layout lokal verändert · Dokument unverändert");
+        setStatus("Position geändert · Dokument unverändert");
       } else if (persistOverrides()) {
-        setStatus("Layout lokal gesichert · Semantik unverändert");
+        setStatus("Position lokal gespeichert");
       }
     }
     gesture = null;
@@ -1434,8 +1611,8 @@ if (documentEditorHosted) {
   ]) {
     if (control instanceof HTMLButtonElement) control.hidden = false;
   }
-  if (interactionHint) interactionHint.textContent = "Pan · Zoom · Drag · Text · Knoten/Kanten";
-  if (authorityHint) authorityHint.textContent = "Dokumentzustand · .canvas speicherbar";
+  if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Text · Elemente & Verbindungen";
+  if (authorityHint) authorityHint.textContent = "Dokument wird lokal gesichert";
   addNodeButton?.addEventListener("click", () => {
     const document = documentSnapshot();
     if (!documentMutationWithinProductLimits(document, { addNodes: 1 })) return;
@@ -1448,31 +1625,31 @@ if (documentEditorHosted) {
       y: Math.round(box.y + box.height / 2 - 70),
       width: 260,
       height: 140,
-      label: "Neuer Knoten",
-      source: { id, type: "text", text: "Neuer Knoten" },
+      label: "Neues Element",
+      source: { id, type: "text", text: "Neues Element" },
     });
     rebuildDocument(document);
   });
   addEdgeButton?.addEventListener("click", () => {
     if (!selectedId) {
-      setStatus("Für eine neue Kante zuerst einen Startknoten auswählen");
+      setStatus("Für eine neue Verbindung zuerst ein Element auswählen");
       return;
     }
     edgeCreateSource = selectedId;
-    setStatus("Zielknoten für die neue Kante auswählen");
+    setStatus("Ziel für die neue Verbindung auswählen");
   });
   editTextButton?.addEventListener("click", openTextEditor);
   const beginReattach = (endpoint) => {
     if (!selectedEdgeId) {
-      setStatus("Zum Umhängen zuerst eine Kante auswählen");
+      setStatus("Zuerst eine Verbindung auswählen");
       return;
     }
     edgeCreateSource = null;
     edgeReattach = { edgeId: selectedEdgeId, endpoint };
     setStatus(
       endpoint === "from"
-        ? "Neuen Startknoten für die Kante auswählen"
-        : "Neuen Zielknoten für die Kante auswählen"
+        ? "Neuen Anfang auswählen"
+        : "Neues Ziel auswählen"
     );
   };
   reattachSourceButton?.addEventListener("click", () => beginReattach("from"));
@@ -1512,8 +1689,8 @@ if (documentEditorHosted) {
     });
   }
 } else if (documentMode) {
-  if (interactionHint) interactionHint.textContent = "Pan · Zoom · Auswahl · Layout lokal";
-  if (authorityHint) authorityHint.textContent = "Dokumentansicht · Bearbeiten im Schaubild-Host";
+  if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Auswählen";
+  if (authorityHint) authorityHint.textContent = "Bearbeiten in Schaubild";
 }
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));
@@ -1527,11 +1704,11 @@ resetLayout.addEventListener("click", () => {
   applyAllNodeTransforms();
   if (documentEditorHosted) {
     publishDocumentState();
-    setStatus("Dokumentlayout auf geladene Geometrie zurückgesetzt");
+    setStatus("Positionen zurückgesetzt");
   } else if (documentMode) {
-    setStatus("Lokales Layout zurückgesetzt · Dokument unverändert");
+    setStatus("Positionen zurückgesetzt");
   } else {
-    setStatus("Lokales Layout zurückgesetzt · Semantik unverändert");
+    setStatus("Positionen zurückgesetzt");
   }
 });
 window.addEventListener("keydown", (event) => {
@@ -1540,7 +1717,7 @@ window.addEventListener("keydown", (event) => {
   edgeCreateSource = null;
   edgeReattach = null;
   selectNode(null);
-  if (pendingEdgeOperation) setStatus("Kantenaktion abgebrochen");
+  if (pendingEdgeOperation) setStatus("Verbindungsaktion abgebrochen");
 });
 
 requestAnimationFrame(() => {
