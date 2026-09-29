@@ -1236,16 +1236,42 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
 
 
 @pytest.mark.parametrize(
-    "character",
-    ["\u00a0", "\u202f", "\u2001", "\u2002", "\u2003", "\u2009"],
+    ("character", "expected_width"),
+    [
+        ("\u000b", 1.0),
+        ("\u0085", 0.0),
+        ("\u00a0", 0.35),
+        ("\u1680", 0.50),
+        ("\u2000", 0.60),
+        ("\u2001", 1.12),
+        ("\u2002", 0.55),
+        ("\u2003", 1.05),
+        ("\u2004", 0.35),
+        ("\u2005", 0.28),
+        ("\u2006", 0.20),
+        ("\u2007", 0.70),
+        ("\u2008", 0.35),
+        ("\u2009", 0.22),
+        ("\u200a", 0.12),
+        ("\u2028", 0.35),
+        ("\u2029", 0.35),
+        ("\u202f", 0.22),
+        ("\u205f", 0.32),
+        ("\u3000", 1.05),
+    ],
 )
 def test_native_document_canvas_noncollapsible_whitespace_width_is_conservative(
     character: str,
+    expected_width: float,
 ) -> None:
     assert native_diagram._canvas_is_non_collapsible_whitespace(character) is True
     assert native_diagram._canvas_is_collapsible_inline_whitespace(character) is False
-    assert native_diagram._canvas_character_width_units(character) == 1.0
-    assert native_diagram._estimated_canvas_wrap_width(character, size=16) == 16.0
+    assert native_diagram._canvas_character_width_units(character) == pytest.approx(
+        expected_width
+    )
+    assert native_diagram._estimated_canvas_wrap_width(
+        character, size=16
+    ) == pytest.approx(expected_width * 16)
 
 
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:

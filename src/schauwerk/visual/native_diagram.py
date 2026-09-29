@@ -3486,6 +3486,27 @@ _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 _CANVAS_SPACING_MARK_WIDTH_UNITS = 0.60
 _CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS = 1.50
+_CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
+    0x0085: 0.0,  # NEXT LINE
+    0x00A0: 0.35,  # NO-BREAK SPACE
+    0x1680: 0.50,  # OGHAM SPACE MARK
+    0x2000: 0.60,  # EN QUAD
+    0x2001: 1.12,  # EM QUAD
+    0x2002: 0.55,  # EN SPACE
+    0x2003: 1.05,  # EM SPACE
+    0x2004: 0.35,  # THREE-PER-EM SPACE
+    0x2005: 0.28,  # FOUR-PER-EM SPACE
+    0x2006: 0.20,  # SIX-PER-EM SPACE
+    0x2007: 0.70,  # FIGURE SPACE
+    0x2008: 0.35,  # PUNCTUATION SPACE
+    0x2009: 0.22,  # THIN SPACE
+    0x200A: 0.12,  # HAIR SPACE
+    0x2028: 0.35,  # LINE SEPARATOR
+    0x2029: 0.35,  # PARAGRAPH SEPARATOR
+    0x202F: 0.22,  # NARROW NO-BREAK SPACE
+    0x205F: 0.32,  # MEDIUM MATHEMATICAL SPACE
+    0x3000: 1.05,  # IDEOGRAPHIC SPACE
+}
 
 
 def _canvas_is_grapheme_extend(character: str) -> bool:
@@ -3543,7 +3564,10 @@ def _canvas_character_width_units(character: str) -> float:
     if character in {"\r", "\n"}:
         return 0.0
     if _canvas_is_non_collapsible_whitespace(character):
-        return 1.0
+        return _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS.get(
+            ord(character),
+            1.0,
+        )
     if character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
     if (
