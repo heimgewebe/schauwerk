@@ -834,17 +834,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/surfaces/miro/credentials.py",
         "tests/miro/test_credentials.py",
     }
-    schaubild_superseded_files = {
-        "tests/visual/test_standalone_editor.py",
-    }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
-        elif name in schaubild_superseded_files:
+        elif name in draft_restore_superseded_files:
             assert draft_restore_successor["source_bindings"][name] == current
+        elif name in editor_superseded_files:
+            assert editor_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {
