@@ -1283,7 +1283,7 @@ def test_canvas_adaptive_lines_resolves_truncated_fsi_from_complete_source() -> 
 
 @pytest.mark.parametrize(
     "separator",
-    ["\u001c", "\u001d", "\u001e", "\u0085", "\u2029"],
+    ["\u0085", "\u2029"],
 )
 def test_canvas_bidi_scope_projection_resets_at_unicode_paragraph_boundary(
     separator: str,
@@ -1296,6 +1296,30 @@ def test_canvas_bidi_scope_projection_resets_at_unicode_paragraph_boundary(
 
     assert truncated is False
     assert projected == [f"\u202eAB\u202c{separator}", "CD"]
+
+
+@pytest.mark.parametrize("separator", ["\u001c", "\u001d", "\u001e"])
+def test_canvas_bidi_projection_replaces_xml_forbidden_paragraph_controls(
+    separator: str,
+) -> None:
+    assert unicodedata.bidirectional(separator) == "B"
+    assert native_diagram._xml_10_character_allowed(separator) is False
+
+    value = f"\u202eAB{separator}CD\u202c"
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines([value])
+
+    assert truncated is False
+    assert projected == ["\u202eAB\uFFFDCD\u202c"]
+
+    fsi_value = f"\u2068---{separator}אבג\u2069"
+    assert native_diagram._canvas_resolve_fsi_opener(fsi_value, 0) == "\u2067"
+    fsi_projected, fsi_truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        [fsi_value],
+        fsi_source=fsi_value,
+    )
+
+    assert fsi_truncated is False
+    assert fsi_projected == ["\u2067---\uFFFDאבג\u2069"]
 
 
 def test_canvas_fsi_resolution_stops_at_unicode_paragraph_boundary() -> None:
@@ -1530,6 +1554,28 @@ def test_canvas_xml_forbidden_controls_measure_replacement_glyph() -> None:
     assert fitted.endswith("…")
 
 
+def test_canvas_wide_non_ascii_fallback_is_conservative() -> None:
+    label = "Ж" * 19
+
+    assert native_diagram._canvas_character_width_units("Ж") >= 1.22
+    assert native_diagram._estimated_canvas_wrap_width(label, size=16) > 279
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        279,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert layout.lines
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 279
+        for line, _ in layout.lines
+    )
+
+
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
     label = "AAAA\u00a0BBBB"
 
@@ -1753,6 +1799,22 @@ def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
     assert "data-text-truncated" not in node.attrib
     assert texts == [label]
     assert native_diagram._canvas_collapse_inline_whitespace(texts[0]) == display
+
+
+def test_canvas_text_probe_collapses_whitespace_before_cluster_cap() -> None:
+    label = "abc" + " " * 100 + "def"
+    assert native_diagram._canvas_collapse_inline_whitespace(label) == "abc def"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        92,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is False
+    assert layout.lines == ((label, 28),)
 
 
 @pytest.mark.parametrize(

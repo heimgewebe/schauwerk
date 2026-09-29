@@ -3510,6 +3510,7 @@ _CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES = (
     (0x1B00, 0x1B7F, 1.55),  # Balinese
 )
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
+_CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
 _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
     0x0085: 0.0,  # NEXT LINE
     0x00A0: 0.35,  # NO-BREAK SPACE
@@ -3548,6 +3549,15 @@ def _canvas_is_regional_indicator(character: str) -> bool:
     return 0x1F1E6 <= ord(character) <= 0x1F1FF
 
 
+def _canvas_xml_compatible_text(value: str) -> str:
+    """Replace XML 1.0-forbidden code points before layout-sensitive processing."""
+
+    return "".join(
+        character if _xml_10_character_allowed(character) else "\uFFFD"
+        for character in value
+    )
+
+
 def _canvas_collapse_inline_whitespace(value: str) -> str:
     """Match SVG's default inline space/tab collapsing without removing newlines."""
 
@@ -3577,6 +3587,7 @@ def _canvas_has_layout_content(value: str) -> bool:
 def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
     """Resolve FSI from its first strong character outside nested isolates."""
 
+    value = _canvas_xml_compatible_text(value)
     nested_isolates = 0
     for character in value[start_index + 1 :]:
         bidi_class = unicodedata.bidirectional(character)
@@ -3611,6 +3622,10 @@ def _canvas_project_bidi_wrapped_lines(
 
     if not wrapped:
         return [], False
+
+    wrapped = tuple(_canvas_xml_compatible_text(line) for line in wrapped)
+    if fsi_source is not None:
+        fsi_source = _canvas_xml_compatible_text(fsi_source)
 
     flattened = "".join(wrapped)
     fsi_source_cursor = 0
@@ -3700,10 +3715,10 @@ def _canvas_character_width_units(character: str) -> float:
         )
     if character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
-    if (
-        ord(character) > 0x7F
-        and unicodedata.east_asian_width(character) in {"W", "F"}
-    ):
+    codepoint = ord(character)
+    if 0x0400 <= codepoint <= 0x052F:
+        return _CANVAS_CYRILLIC_WIDTH_UNITS
+    if codepoint > 0x7F and unicodedata.east_asian_width(character) in {"W", "F"}:
         return 1.0
     return _character_width_units(
         character,
@@ -4208,16 +4223,34 @@ def _canvas_text_layout(
     effective_max_lines = min(max_lines, height_line_limit)
     if effective_max_lines <= 0 or max_bytes <= 0:
         return _CanvasTextLayout(size=16, lines=(), truncated=had_visible_text)
-    value, grapheme_truncated = bounded_grapheme_prefix(
-        value,
-        max_clusters=_canvas_text_probe_cluster_limit(
-            max_width=max_width,
-            max_lines=effective_max_lines,
-            max_bytes=max_bytes,
-            min_size=min_size,
-        ),
+    probe_cluster_limit = _canvas_text_probe_cluster_limit(
+        max_width=max_width,
+        max_lines=effective_max_lines,
+        max_bytes=max_bytes,
+        min_size=min_size,
+    )
+    collapsed_probe = _canvas_collapse_inline_whitespace(value)
+    probe_prefix, probe_truncated = bounded_grapheme_prefix(
+        collapsed_probe,
+        max_clusters=probe_cluster_limit,
         max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
     )
+    if collapsed_probe == value:
+        value = probe_prefix
+        grapheme_truncated = probe_truncated
+    elif probe_truncated:
+        value, _ = bounded_grapheme_prefix(
+            value,
+            max_clusters=probe_cluster_limit,
+            max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+        )
+        grapheme_truncated = True
+    else:
+        value, grapheme_truncated = bounded_grapheme_prefix(
+            value,
+            max_clusters=None,
+            max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+        )
     if not value.strip(" \t\r\n"):
         if not had_visible_text:
             return _CanvasTextLayout(size=16, lines=(), truncated=False)
