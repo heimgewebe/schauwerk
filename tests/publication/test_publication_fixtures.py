@@ -748,14 +748,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert draft_restore_successor["check_evidence"] == {
         "focused_restore_tests_passed": {
             "argv_sha256": (
-                "d5b00776e212884c904e60154e8720deb6fc75e82255cd510a37fc323f68342c"
+                "d22d40c9d980ed5ca0a10d49de65dc4f88ba9e3c10d92f9f2314561ba1f67d2f"
             ),
-            "execution_kind": "direct_python3_pytest",
+            "execution_kind": "source_bound_python3_pytest",
             "finalization_receipt_sha256": (
-                "a86a484466161dcbf19f3bb6441db6c70da7c7398f963b48b57b765b72a1d1b0"
+                "943a387f64490390017db033732ce56b1a737152ac9fc0a2638daf77da3caa67"
             ),
-            "job_unit": "grabowski-job-2cb7e9ae0f45",
+            "job_unit": "grabowski-job-dd920e2b4b11",
             "result": "succeeded",
+            "source_bindings": draft_restore_successor["source_bindings"],
+            "validation_head": "684f386eda27fef12ae6a5010aa78823d328f974",
         },
         "standalone_editor_full_module_passed": {
             "argv_sha256": (
