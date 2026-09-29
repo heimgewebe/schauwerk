@@ -3473,6 +3473,12 @@ _CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS = frozenset(
         0x206F,  # NOMINAL DIGIT SHAPES
     }
 )
+_CANVAS_BIDI_EMBED_OPENERS = frozenset({"\u202a", "\u202b", "\u202d", "\u202e"})
+_CANVAS_BIDI_ISOLATE_OPENERS = frozenset({"\u2066", "\u2067"})
+_CANVAS_BIDI_FSI = "\u2068"
+_CANVAS_BIDI_PDF = "\u202c"
+_CANVAS_BIDI_PDI = "\u2069"
+_CANVAS_MAX_BIDI_SCOPE_DEPTH = 125
 _CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS = frozenset(
     {
         0x00AD,  # SOFT HYPHEN
@@ -3566,6 +3572,86 @@ def _canvas_has_non_collapsible_whitespace(value: str) -> bool:
 
 def _canvas_has_layout_content(value: str) -> bool:
     return bool(value.strip(" \t\r\n"))
+
+
+def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
+    """Resolve FSI from its first strong character outside nested isolates."""
+
+    nested_isolates = 0
+    for character in value[start_index + 1 :]:
+        if (
+            character in _CANVAS_BIDI_ISOLATE_OPENERS
+            or character == _CANVAS_BIDI_FSI
+        ):
+            nested_isolates += 1
+            continue
+        if character == _CANVAS_BIDI_PDI:
+            if nested_isolates:
+                nested_isolates -= 1
+                continue
+            break
+        if nested_isolates:
+            continue
+        bidi_class = unicodedata.bidirectional(character)
+        if bidi_class == "L":
+            return "\u2066"
+        if bidi_class in {"R", "AL"}:
+            return "\u2067"
+    return "\u2066"
+
+
+def _canvas_project_bidi_wrapped_lines(
+    wrapped: Sequence[str],
+) -> tuple[list[str], bool]:
+    """Make each wrapped SVG text line an independent bidi-safe paragraph."""
+
+    if not wrapped:
+        return [], False
+
+    flattened = "".join(wrapped)
+    stack: list[tuple[str, str, str]] = []
+    projected: list[str] = []
+    cursor = 0
+
+    for line in wrapped:
+        rendered = [entry[0] for entry in stack]
+        for offset, character in enumerate(line):
+            if character in _CANVAS_BIDI_EMBED_OPENERS:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                rendered.append(character)
+                stack.append((character, _CANVAS_BIDI_PDF, "embedding"))
+                continue
+            if character in _CANVAS_BIDI_ISOLATE_OPENERS:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                rendered.append(character)
+                stack.append((character, _CANVAS_BIDI_PDI, "isolate"))
+                continue
+            if character == _CANVAS_BIDI_FSI:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                resolved = _canvas_resolve_fsi_opener(flattened, cursor + offset)
+                rendered.append(resolved)
+                stack.append((resolved, _CANVAS_BIDI_PDI, "isolate"))
+                continue
+
+            rendered.append(character)
+            if character == _CANVAS_BIDI_PDF:
+                if stack and stack[-1][2] == "embedding":
+                    stack.pop()
+                continue
+            if character == _CANVAS_BIDI_PDI:
+                for index in range(len(stack) - 1, -1, -1):
+                    if stack[index][2] == "isolate":
+                        del stack[index:]
+                        break
+
+        rendered.extend(entry[1] for entry in reversed(stack))
+        projected.append("".join(rendered))
+        cursor += len(line)
+
+    return projected, False
 
 
 def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
@@ -3951,7 +4037,10 @@ def _canvas_adaptive_lines(
             max_width=max_width,
             max_lines=max_lines - len(lines),
         )
-        for wrapped_index, line in enumerate(wrapped):
+        projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            wrapped
+        )
+        for wrapped_index, line in enumerate(projected):
             lines.append(
                 (
                     line,
@@ -3959,7 +4048,7 @@ def _canvas_adaptive_lines(
                 )
             )
             paragraph_gap_pending = False
-        if source_truncated:
+        if source_truncated or bidi_projection_truncated:
             return lines, True
     return lines, False
 
@@ -4010,9 +4099,15 @@ def _canvas_limit_text_layout_bytes(
     limited: list[tuple[str, int]] = []
     byte_truncated = False
     for line, baseline in layout.lines:
-        line_bytes = _canvas_escaped_text_bytes(line)
+        projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            [line]
+        )
+        safe_line = projected[0] if projected else ""
+        if bidi_projection_truncated:
+            byte_truncated = True
+        line_bytes = _canvas_escaped_text_bytes(safe_line)
         if line_bytes <= remaining:
-            limited.append((line, baseline))
+            limited.append((safe_line, baseline))
             remaining -= line_bytes
             continue
         marker = _canvas_ellipsize_to_limits(
@@ -4022,7 +4117,23 @@ def _canvas_limit_text_layout_bytes(
             max_bytes=remaining,
         )
         if marker:
-            limited.append((marker, baseline))
+            projected_marker, marker_projection_truncated = (
+                _canvas_project_bidi_wrapped_lines([marker])
+            )
+            safe_marker = projected_marker[0] if projected_marker else ""
+            if marker_projection_truncated:
+                safe_marker = "…"
+            if (
+                safe_marker
+                and _canvas_escaped_text_bytes(safe_marker) <= remaining
+            ):
+                limited.append((safe_marker, baseline))
+            elif (
+                _canvas_escaped_text_bytes("…") <= remaining
+                and _estimated_canvas_wrap_width("…", size=layout.size)
+                <= max_width
+            ):
+                limited.append(("…", baseline))
         byte_truncated = True
         break
     if len(limited) < len(layout.lines):
@@ -4032,7 +4143,6 @@ def _canvas_limit_text_layout_bytes(
         lines=tuple(limited),
         truncated=layout.truncated or byte_truncated,
     )
-
 
 def _canvas_text_probe_cluster_limit(
     *, max_width: float, max_lines: int, max_bytes: int, min_size: int

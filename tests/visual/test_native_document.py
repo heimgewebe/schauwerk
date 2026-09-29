@@ -1235,6 +1235,122 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
     assert texts == [label]
 
 
+def test_canvas_bidi_scope_projection_reopens_wrapped_override() -> None:
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        ["\u202eabcd", "efgh", "ijkl", "mno\u202c"]
+    )
+
+    assert truncated is False
+    assert projected == [
+        "\u202eabcd\u202c",
+        "\u202eefgh\u202c",
+        "\u202eijkl\u202c",
+        "\u202emno\u202c",
+    ]
+
+
+def test_canvas_bidi_scope_projection_resolves_fsi_across_wrapped_lines() -> None:
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        ["\u2068---", "אבג", "\u2069"]
+    )
+
+    assert truncated is False
+    assert projected == [
+        "\u2067---\u2069",
+        "\u2067אבג\u2069",
+        "\u2067\u2069",
+    ]
+
+
+def test_canvas_bidi_scope_projection_resets_at_source_line_boundary() -> None:
+    lines, truncated = native_diagram._canvas_adaptive_lines(
+        "\u202eabcd\nEFGH",
+        size=16,
+        max_width=200,
+        max_lines=8,
+    )
+
+    assert truncated is False
+    assert [line for line, _ in lines] == ["\u202eabcd\u202c", "EFGH"]
+
+
+def test_canvas_bidi_scope_projection_fails_closed_past_depth_limit() -> None:
+    label = (
+        "\u202e" * (native_diagram._CANVAS_MAX_BIDI_SCOPE_DEPTH + 1)
+        + "a"
+        + "\u202c" * (native_diagram._CANVAS_MAX_BIDI_SCOPE_DEPTH + 1)
+    )
+
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines([label])
+
+    assert truncated is True
+    assert projected == ["…"]
+
+
+def test_canvas_bidi_scope_byte_limit_keeps_emitted_line_balanced() -> None:
+    layout = native_diagram._CanvasTextLayout(
+        size=16,
+        lines=(("\u202eabcdefghijklmno\u202c", 28),),
+        truncated=False,
+    )
+
+    limited = native_diagram._canvas_limit_text_layout_bytes(
+        layout,
+        max_width=200,
+        max_bytes=18,
+    )
+
+    assert limited.truncated is True
+    assert limited.lines
+    rendered = limited.lines[0][0]
+    assert native_diagram._canvas_escaped_text_bytes(rendered) <= 18
+    assert rendered == "…" or (
+        rendered.startswith("\u202e") and rendered.endswith("\u202c")
+    )
+
+
+def test_native_document_canvas_preserves_bidi_scope_across_wrapped_lines() -> None:
+    label = "\u202eabcdefghijklmno\u202c"
+    source = {
+        "nodes": [
+            {
+                "id": "bidi-scope",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 80,
+                "height": 120,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Bidi scope")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "bidi-scope"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert texts == [
+        "\u202eabcd\u202c",
+        "\u202eefgh\u202c",
+        "\u202eijkl\u202c",
+        "\u202emno\u202c",
+    ]
+    assert "".join(item[1:-1] for item in texts) == "abcdefghijklmno"
+
+
 @pytest.mark.parametrize(
     ("character", "expected_width"),
     [
