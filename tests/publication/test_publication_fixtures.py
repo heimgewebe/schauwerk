@@ -32,6 +32,9 @@ SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
 SCHAUBILD_NATIVE_EDITOR_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-native-editor-20260922"
 )
+SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-draft-restore-20260929"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -358,6 +361,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name not in editor_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
+    draft_restore_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -381,7 +388,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in draft_restore_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
     assert (
@@ -698,6 +706,108 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         is True
     )
 
+    draft_restore_successor = json.loads(
+        (SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        draft_restore_successor["schema_version"]
+        == "schauwerk-schaubild-native-draft-restore.v1"
+    )
+    assert (
+        draft_restore_successor["functional_head"]
+        == "1c2c43086c063a349637f61b580c09a29775543b"
+    )
+    assert draft_restore_successor["parent_evidence"] == {
+        "evidence_digest": editor_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-native-editor-20260922/acceptance-receipt.json"
+        ),
+        "schema_version": editor_successor["schema_version"],
+    }
+    assert draft_restore_successor["evidence_digest"] == digest_mapping(
+        draft_restore_successor, "evidence_digest"
+    )
+    assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
+    for name, expected in draft_restore_successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert draft_restore_successor["checks"] == {
+        "focused_restore_tests_passed": True,
+        "functional_head_independent_opus_review_passed": True,
+        "historical_acceptance_left_immutable": True,
+        "native_canvas_document_change_persists_restoreable_native_draft": True,
+        "native_canvas_draft_restore_dispatches_document_to_native_editor": True,
+        "ruff_passed": True,
+        "standalone_editor_full_module_passed": True,
+    }
+    assert draft_restore_successor["check_evidence"] == {
+        "focused_restore_tests_passed": {
+            "argv_sha256": (
+                "d5b00776e212884c904e60154e8720deb6fc75e82255cd510a37fc323f68342c"
+            ),
+            "execution_kind": "direct_python3_pytest",
+            "finalization_receipt_sha256": (
+                "a86a484466161dcbf19f3bb6441db6c70da7c7398f963b48b57b765b72a1d1b0"
+            ),
+            "job_unit": "grabowski-job-2cb7e9ae0f45",
+            "result": "succeeded",
+        },
+        "standalone_editor_full_module_passed": {
+            "argv_sha256": (
+                "f5edf0ee1f16c0ae60a81a93801f427fb8a34e84263b55d3ffe62d1c875885f4"
+            ),
+            "execution_kind": "direct_python3_pytest",
+            "finalization_receipt_sha256": (
+                "55b2571281463d4a423ce5468389a18a0395289df76d8d010fee984381223a2c"
+            ),
+            "functional_head": "1c2c43086c063a349637f61b580c09a29775543b",
+            "job_unit": "grabowski-job-094eccad77a0",
+            "result": "succeeded",
+        },
+        "ruff_passed": {
+            "argv_sha256": (
+                "3922639b99666924940ea6bc51c9ffcf32f887816bbb42a43dac528493266d75"
+            ),
+            "execution_kind": "direct_python3_ruff",
+            "finalization_receipt_sha256": (
+                "a9ea5c976f475f47963fd8a21edcf7c92b46b001b88d8dc44bff4b75ff25fcf6"
+            ),
+            "job_unit": "grabowski-job-38a669aca771",
+            "result": "succeeded",
+            "source_bindings": draft_restore_successor["source_bindings"],
+        },
+        "functional_head_independent_opus_review_passed": {
+            "reviewed_head": "1c2c43086c063a349637f61b580c09a29775543b",
+            "reviewed_diff_sha256": (
+                "8ec87f60bd2391efd0d70e3b64ab9925201062925dcb179affa8c9c27e78ffcb"
+            ),
+            "role_receipt_file_sha256": (
+                "c4d27dd9b8cc42cbc64b805f8de5c28525c1bc1315a4b6308e1439dff8f60177"
+            ),
+            "role_receipt_sha256": (
+                "96c09fff09f54accaad608962c3db032c16c1b5181cc35afbc8af7a48901a41d"
+            ),
+            "verdict": "PASS",
+        },
+    }
+    assert (
+        "supported local browser-smoke execution; the direct pytest/Ruff jobs "
+        "recorded above used the local python3 module path, while the repository "
+        "browser-smoke path selected python3.11 without pytest on this host"
+        in draft_restore_successor["does_not_establish"]
+    )
+    assert (
+        "independent Opus approval of this successor evidence revision or any "
+        "later head; the recorded PASS is bound only to functional_head "
+        "1c2c43086c063a349637f61b580c09a29775543b"
+        in draft_restore_successor["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -724,16 +834,15 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/surfaces/miro/credentials.py",
         "tests/miro/test_credentials.py",
     }
-    schaubild_superseded_files = {
-        "tests/visual/test_standalone_editor.py",
-    }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
-        elif name in schaubild_superseded_files:
+        elif name in draft_restore_superseded_files:
+            assert draft_restore_successor["source_bindings"][name] == current
+        elif name in editor_superseded_files:
             assert editor_successor["source_bindings"][name] == current
         else:
             assert current == expected

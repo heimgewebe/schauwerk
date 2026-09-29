@@ -1347,7 +1347,7 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
-  if (load?.nativeRepresentation || load?.nativeImport) {
+  if (load?.nativeRepresentation || load?.nativeDocument || load?.nativeImport) {
     void launchNative(load);
     return;
   }
