@@ -3579,6 +3579,9 @@ def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
 
     nested_isolates = 0
     for character in value[start_index + 1 :]:
+        bidi_class = unicodedata.bidirectional(character)
+        if bidi_class == "B":
+            break
         if (
             character in _CANVAS_BIDI_ISOLATE_OPENERS
             or character == _CANVAS_BIDI_FSI
@@ -3592,7 +3595,6 @@ def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
             break
         if nested_isolates:
             continue
-        bidi_class = unicodedata.bidirectional(character)
         if bidi_class == "L":
             return "\u2066"
         if bidi_class in {"R", "AL"}:
@@ -3602,6 +3604,8 @@ def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
 
 def _canvas_project_bidi_wrapped_lines(
     wrapped: Sequence[str],
+    *,
+    fsi_source: str | None = None,
 ) -> tuple[list[str], bool]:
     """Make each wrapped SVG text line an independent bidi-safe paragraph."""
 
@@ -3609,6 +3613,7 @@ def _canvas_project_bidi_wrapped_lines(
         return [], False
 
     flattened = "".join(wrapped)
+    fsi_source_cursor = 0
     stack: list[tuple[str, str, str]] = []
     projected: list[str] = []
     cursor = 0
@@ -3631,9 +3636,24 @@ def _canvas_project_bidi_wrapped_lines(
             if character == _CANVAS_BIDI_FSI:
                 if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
                     return ["…"], True
-                resolved = _canvas_resolve_fsi_opener(flattened, cursor + offset)
+                if fsi_source is None:
+                    resolved = _canvas_resolve_fsi_opener(flattened, cursor + offset)
+                else:
+                    source_index = fsi_source.find(
+                        _CANVAS_BIDI_FSI, fsi_source_cursor
+                    )
+                    if source_index < 0:
+                        return ["…"], True
+                    fsi_source_cursor = source_index + 1
+                    resolved = _canvas_resolve_fsi_opener(fsi_source, source_index)
                 rendered.append(resolved)
                 stack.append((resolved, _CANVAS_BIDI_PDI, "isolate"))
+                continue
+
+            if unicodedata.bidirectional(character) == "B":
+                rendered.extend(entry[1] for entry in reversed(stack))
+                stack.clear()
+                rendered.append(character)
                 continue
 
             rendered.append(character)
@@ -4038,7 +4058,8 @@ def _canvas_adaptive_lines(
             max_lines=max_lines - len(lines),
         )
         projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
-            wrapped
+            wrapped,
+            fsi_source=source_line,
         )
         for wrapped_index, line in enumerate(projected):
             lines.append(

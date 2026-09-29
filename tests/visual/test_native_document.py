@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import re
+import unicodedata
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -1260,6 +1261,53 @@ def test_canvas_bidi_scope_projection_resolves_fsi_across_wrapped_lines() -> Non
         "\u2067אבג\u2069",
         "\u2067\u2069",
     ]
+
+
+def test_canvas_adaptive_lines_resolves_truncated_fsi_from_complete_source() -> None:
+    value = "\u2068" + "12345678901234567890" + "אבג" + "\u2069"
+
+    lines, truncated = native_diagram._canvas_adaptive_lines(
+        value,
+        size=12,
+        max_width=48,
+        max_lines=1,
+    )
+
+    assert truncated is True
+    assert lines
+    rendered = lines[0][0]
+    assert rendered.startswith("\u2067")
+    assert rendered.endswith("\u2069")
+    assert "אבג" not in rendered
+
+
+@pytest.mark.parametrize(
+    "separator",
+    ["\u001c", "\u001d", "\u001e", "\u0085", "\u2029"],
+)
+def test_canvas_bidi_scope_projection_resets_at_unicode_paragraph_boundary(
+    separator: str,
+) -> None:
+    assert unicodedata.bidirectional(separator) == "B"
+
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        [f"\u202eAB{separator}", "CD"]
+    )
+
+    assert truncated is False
+    assert projected == [f"\u202eAB\u202c{separator}", "CD"]
+
+
+def test_canvas_fsi_resolution_stops_at_unicode_paragraph_boundary() -> None:
+    value = "\u2068---\u2029אבג\u2069"
+
+    assert native_diagram._canvas_resolve_fsi_opener(value, 0) == "\u2066"
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        ["\u2068---\u2029", "אבג\u2069"]
+    )
+
+    assert truncated is False
+    assert projected == ["\u2066---\u2069\u2029", "אבג\u2069"]
 
 
 def test_canvas_bidi_scope_projection_resets_at_source_line_boundary() -> None:
