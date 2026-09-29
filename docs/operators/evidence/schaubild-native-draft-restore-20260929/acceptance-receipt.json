@@ -1,0 +1,35 @@
+{
+  "schema_version": "schauwerk-schaubild-native-draft-restore.v1",
+  "scope": "json-canvas-native-draft-restore-routing",
+  "accepted_at": "2026-09-29",
+  "functional_head": "1c2c43086c063a349637f61b580c09a29775543b",
+  "parent_evidence": {
+    "evidence_digest": "59a8fc0f651cb8b14527b3e49cb7c55a8a756bc6b69b3de8edc30e10a72db3ac",
+    "file_sha256": "9cade3ab2edced27be114b8b7e773750dc33cd47d4d9fcad410a518bda832207",
+    "path": "docs/operators/evidence/schaubild-native-editor-20260922/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-editor.v1"
+  },
+  "checks": {
+    "native_canvas_draft_restore_dispatches_document_to_native_editor": true,
+    "native_canvas_document_change_persists_restoreable_native_draft": true,
+    "focused_restore_tests_passed": true,
+    "standalone_editor_full_module_passed": true,
+    "ruff_passed": true,
+    "diff_check_passed": true,
+    "independent_opus_review_passed": true,
+    "historical_acceptance_left_immutable": true
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "1b442cb714ecf15ca2020f98149efb2c643a159940a3afac957c2136891b8ff5",
+    "tests/visual/test_standalone_editor.py": "c6dae1b419a1034a124523e696bdee580d64048156296d31a1055dd5bb6b26a1"
+  },
+  "does_not_establish": [
+    "new visual styling or aesthetic acceptance beyond the unchanged prior native-editor design",
+    "local browser-smoke execution on this host because no supported Python 3.11-3.13 pytest environment is installed",
+    "final GitHub CI for the successor revision",
+    "GHCR publication of this revision",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "6746d561adb76ed1ef23d420abbf5dc8f3e7367125a7fd87a5b4e84d8d24e95d"
+}

@@ -32,6 +32,9 @@ SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
 SCHAUBILD_NATIVE_EDITOR_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-native-editor-20260922"
 )
+SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-draft-restore-20260929"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -358,6 +361,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name not in editor_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
+    draft_restore_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -381,7 +388,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in draft_restore_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
     assert (
@@ -698,6 +706,47 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         is True
     )
 
+    draft_restore_successor = json.loads(
+        (SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        draft_restore_successor["schema_version"]
+        == "schauwerk-schaubild-native-draft-restore.v1"
+    )
+    assert (
+        draft_restore_successor["functional_head"]
+        == "1c2c43086c063a349637f61b580c09a29775543b"
+    )
+    assert draft_restore_successor["parent_evidence"] == {
+        "evidence_digest": editor_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-native-editor-20260922/acceptance-receipt.json"
+        ),
+        "schema_version": editor_successor["schema_version"],
+    }
+    assert draft_restore_successor["evidence_digest"] == digest_mapping(
+        draft_restore_successor, "evidence_digest"
+    )
+    assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
+    for name, expected in draft_restore_successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert draft_restore_successor["checks"] == {
+        "diff_check_passed": True,
+        "focused_restore_tests_passed": True,
+        "historical_acceptance_left_immutable": True,
+        "independent_opus_review_passed": True,
+        "native_canvas_document_change_persists_restoreable_native_draft": True,
+        "native_canvas_draft_restore_dispatches_document_to_native_editor": True,
+        "ruff_passed": True,
+        "standalone_editor_full_module_passed": True,
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -734,7 +783,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
         elif name in schaubild_superseded_files:
-            assert editor_successor["source_bindings"][name] == current
+            assert draft_restore_successor["source_bindings"][name] == current
         else:
             assert current == expected
     assert receipt["checks"] == {
