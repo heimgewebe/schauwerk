@@ -3613,6 +3613,48 @@ def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
     return "\u2066"
 
 
+def _canvas_resolve_fsi_opener_bounded(
+    value: str,
+    start_index: int,
+    *,
+    max_scan_codepoints: int,
+) -> tuple[str | None, int]:
+    """Resolve one FSI with a caller-owned total scan budget."""
+
+    nested_isolates = 0
+    scanned = 0
+    index = start_index + 1
+    while index < len(value):
+        if scanned >= max_scan_codepoints:
+            return None, scanned
+        character = value[index]
+        scanned += 1
+        index += 1
+        if not _xml_10_character_allowed(character):
+            character = "�"
+        bidi_class = unicodedata.bidirectional(character)
+        if bidi_class == "B":
+            return "⁦", scanned
+        if (
+            character in _CANVAS_BIDI_ISOLATE_OPENERS
+            or character == _CANVAS_BIDI_FSI
+        ):
+            nested_isolates += 1
+            continue
+        if character == _CANVAS_BIDI_PDI:
+            if nested_isolates:
+                nested_isolates -= 1
+                continue
+            return "⁦", scanned
+        if nested_isolates:
+            continue
+        if bidi_class == "L":
+            return "⁦", scanned
+        if bidi_class in {"R", "AL"}:
+            return "⁧", scanned
+    return "⁦", scanned
+
+
 def _canvas_project_bidi_wrapped_lines(
     wrapped: Sequence[str],
     *,
@@ -3974,6 +4016,58 @@ def _canvas_fit_single_line_unprojected(
     )
 
 
+def _canvas_project_truncated_single_line_bidi(
+    value: str,
+    fitted: str,
+) -> tuple[str, bool]:
+    """Project only the admitted truncated prefix, with bounded FSI lookahead."""
+
+    has_scope_opener = any(
+        character in _CANVAS_BIDI_EMBED_OPENERS
+        or character in _CANVAS_BIDI_ISOLATE_OPENERS
+        or character == _CANVAS_BIDI_FSI
+        for character in fitted
+    )
+    if not has_scope_opener:
+        return fitted, False
+
+    remaining_scan = _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+    source_cursor = 0
+    source_search_limit = min(
+        len(value),
+        _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+        + MAX_GRAPHEME_CLUSTER_CODEPOINTS
+        + 1,
+    )
+    resolved: list[str] = []
+    for character in fitted:
+        if character != _CANVAS_BIDI_FSI:
+            resolved.append(character)
+            continue
+        source_index = value.find(
+            _CANVAS_BIDI_FSI,
+            source_cursor,
+            source_search_limit,
+        )
+        if source_index < 0:
+            return "…", True
+        source_cursor = source_index + 1
+        opener, scanned = _canvas_resolve_fsi_opener_bounded(
+            value,
+            source_index,
+            max_scan_codepoints=remaining_scan,
+        )
+        remaining_scan = max(0, remaining_scan - scanned)
+        if opener is None:
+            return "…", True
+        resolved.append(opener)
+
+    projected, projection_truncated = _canvas_project_bidi_wrapped_lines(
+        ["".join(resolved)]
+    )
+    return (projected[0] if projected else ""), projection_truncated
+
+
 def _canvas_fit_single_line(
     value: str,
     *,
@@ -3992,9 +4086,9 @@ def _canvas_fit_single_line(
     if not truncated:
         return fitted, False
 
-    projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
-        [value],
-        fsi_source=value,
+    fitted, bidi_projection_truncated = _canvas_project_truncated_single_line_bidi(
+        value,
+        fitted,
     )
     if bidi_projection_truncated:
         marker = "…"
@@ -4005,13 +4099,6 @@ def _canvas_fit_single_line(
             return marker, True
         return "", True
 
-    projected_source = projected[0] if projected else ""
-    fitted, _ = _canvas_fit_single_line_unprojected(
-        projected_source,
-        size=size,
-        max_width=max_width,
-        max_bytes=max_bytes,
-    )
     limited = _canvas_limit_text_layout_bytes(
         _CanvasTextLayout(
             size=size,

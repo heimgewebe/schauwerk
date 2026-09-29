@@ -1517,6 +1517,53 @@ def test_canvas_single_line_truncation_resolves_fsi_from_complete_source() -> No
     assert complete_fitted == complete
 
 
+def test_canvas_single_line_truncation_does_not_project_full_ascii_source(
+    monkeypatch,
+) -> None:
+    label = "a" * (native_diagram._MAX_CANVAS_TEXT_PROBE_CODEPOINTS * 4)
+    original_compatible = native_diagram._canvas_xml_compatible_text
+
+    def bounded_compatible(value: str) -> str:
+        assert len(value) < 1024
+        return original_compatible(value)
+
+    monkeypatch.setattr(
+        native_diagram,
+        "_canvas_xml_compatible_text",
+        bounded_compatible,
+    )
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=80,
+        max_bytes=2048,
+    )
+
+    assert truncated is True
+    assert fitted.endswith("…")
+    assert len(fitted) < 1024
+
+
+def test_canvas_single_line_fsi_resolution_fails_closed_past_scan_budget() -> None:
+    label = (
+        "⁨"
+        + "1" * (native_diagram._MAX_CANVAS_TEXT_PROBE_CODEPOINTS + 1)
+        + "אבג"
+        + "⁩"
+    )
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=80,
+        max_bytes=2048,
+    )
+
+    assert truncated is True
+    assert fitted == "…"
+
+
 def test_native_document_canvas_edge_truncation_balances_resolved_fsi() -> None:
     label = "⁨" + "1234567890" * 5 + "אבג" + "⁩"
     source = {
