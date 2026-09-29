@@ -598,6 +598,82 @@ if (saveNativeCanvasDraft(nativeDocument, nativeCanvas)) {
 
 
 
+def test_native_canvas_draft_restore_dispatches_document_to_native_editor(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    launch_start = app_js.index("function launch(load)")
+    launch_end = app_js.index("function launchLegacy(load)", launch_start)
+    launch_source = app_js[launch_start:launch_end]
+    restore_start = app_js.index(
+        'elements.restoreButton.addEventListener("click", () => {'
+    )
+    restore_end = app_js.index(
+        'elements.legacyEditButton.addEventListener("click"', restore_start
+    )
+    restore_source = app_js[restore_start:restore_end]
+
+    script = r"""
+let currentTitle = "";
+let nativeLoad = null;
+let legacyLoad = null;
+const nativeDocument = {
+  schema_version: "schauwerk-native-editing-document.v1",
+  source_digest: "a".repeat(64),
+};
+const nativeCanvas = {nodes: [], edges: []};
+const elements = {
+  restoreButton: {
+    addEventListener(type, handler) {
+      if (type !== "click") throw new Error("restore handler event drifted");
+      globalThis.restoreDraft = handler;
+    },
+  },
+};
+function readLatestDraft() {
+  return {
+    kind: "native",
+    title: "Restored Canvas",
+    nativeDocument,
+    nativeCanvas,
+  };
+}
+function safeFilename(value) { return String(value); }
+async function launchNative(load) { nativeLoad = load; }
+function launchLegacy(load) { legacyLoad = load; }
+""" + launch_source + restore_source + r"""
+if (typeof globalThis.restoreDraft !== "function") {
+  throw new Error("restore handler was not registered");
+}
+globalThis.restoreDraft();
+await Promise.resolve();
+if (legacyLoad !== null) {
+  throw new Error("native document restore was routed to the legacy editor");
+}
+if (
+  nativeLoad?.nativeDocument !== nativeDocument
+  || nativeLoad?.nativeCanvas !== nativeCanvas
+) {
+  throw new Error("native document restore lost its bound document or canvas");
+}
+if (nativeLoad?.sourceMetadata?.value !== "json-canvas-1.0") {
+  throw new Error("native document restore lost JSON Canvas source metadata");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_document_rebuild_preserves_active_frame_across_render_failure(
     tmp_path: Path,
 ) -> None:
