@@ -1235,6 +1235,19 @@ def test_native_document_canvas_zero_advance_bidi_controls_bypass_legacy_wrap() 
     assert texts == [label]
 
 
+@pytest.mark.parametrize(
+    "character",
+    ["\u00a0", "\u202f", "\u2001", "\u2002", "\u2003", "\u2009"],
+)
+def test_native_document_canvas_noncollapsible_whitespace_width_is_conservative(
+    character: str,
+) -> None:
+    assert native_diagram._canvas_is_non_collapsible_whitespace(character) is True
+    assert native_diagram._canvas_is_collapsible_inline_whitespace(character) is False
+    assert native_diagram._canvas_character_width_units(character) == 1.0
+    assert native_diagram._estimated_canvas_wrap_width(character, size=16) == 16.0
+
+
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
     label = "AAAA\u00a0BBBB"
 

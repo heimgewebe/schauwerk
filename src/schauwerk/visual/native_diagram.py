@@ -3513,11 +3513,12 @@ def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
     return cluster in {" ", "\t"}
 
 
+def _canvas_is_non_collapsible_whitespace(character: str) -> bool:
+    return character.isspace() and character not in {" ", "\t", "\r", "\n"}
+
+
 def _canvas_has_non_collapsible_whitespace(value: str) -> bool:
-    return any(
-        character.isspace() and character not in {" ", "\t", "\r", "\n"}
-        for character in value
-    )
+    return any(_canvas_is_non_collapsible_whitespace(character) for character in value)
 
 
 def _canvas_has_layout_content(value: str) -> bool:
@@ -3537,7 +3538,13 @@ def _canvas_has_extended_graphemes(value: str) -> bool:
 
 
 def _canvas_character_width_units(character: str) -> float:
-    if not character.isspace() and character in _NARROW_CHARS:
+    if _canvas_is_collapsible_inline_whitespace(character):
+        return 0.35
+    if character in {"\r", "\n"}:
+        return 0.0
+    if _canvas_is_non_collapsible_whitespace(character):
+        return 1.0
+    if character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
     if (
         ord(character) > 0x7F
