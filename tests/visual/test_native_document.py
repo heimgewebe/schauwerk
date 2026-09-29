@@ -1681,7 +1681,7 @@ def test_native_document_canvas_soft_hyphen_keeps_visible_text() -> None:
     assert "".join(texts) == label
 
 
-def test_canvas_spacing_combining_mark_uses_bounded_incremental_advance() -> None:
+def test_canvas_spacing_combining_mark_uses_script_cluster_calibration() -> None:
     base = "\u0915"
     spacing_mark = "\u093e"
     cluster = base + spacing_mark
@@ -1692,13 +1692,20 @@ def test_canvas_spacing_combining_mark_uses_bounded_incremental_advance() -> Non
     full_mark_width = native_diagram._canvas_character_width_units(spacing_mark) * size
 
     assert base_width < cluster_width < base_width + full_mark_width
-    assert cluster_width - base_width == pytest.approx(
-        native_diagram._CANVAS_SPACING_MARK_WIDTH_UNITS * size
+    assert cluster_width == pytest.approx(1.20 * size)
+
+
+def test_canvas_spacing_mark_unknown_script_falls_back_to_full_width() -> None:
+    cluster = "\ua984\ua9b4"
+    visible = list(cluster)
+
+    assert native_diagram._canvas_grapheme_width_units(cluster) == pytest.approx(
+        sum(native_diagram._canvas_character_width_units(item) for item in visible)
     )
 
 
 def test_native_document_canvas_spacing_marks_do_not_force_premature_truncation() -> None:
-    label = "का" * 5
+    label = "का" * 6
     source = {
         "nodes": [
             {

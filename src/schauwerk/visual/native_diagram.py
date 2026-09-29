@@ -3490,6 +3490,19 @@ _MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
 _MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
 _CANVAS_SPACING_MARK_WIDTH_UNITS = 0.60
 _CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS = 1.50
+_CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES = (
+    (0x0900, 0x097F, 1.20),  # Devanagari
+    (0x0980, 0x09FF, 1.25),  # Bengali
+    (0x0A00, 0x0A7F, 1.15),  # Gurmukhi
+    (0x0A80, 0x0AFF, 1.15),  # Gujarati
+    (0x0B00, 0x0B7F, 1.15),  # Oriya
+    (0x0B80, 0x0BFF, 1.25),  # Tamil
+    (0x0C80, 0x0CFF, 1.15),  # Kannada
+    (0x0D00, 0x0D7F, 1.65),  # Malayalam
+    (0x0D80, 0x0DFF, 1.50),  # Sinhala
+    (0x1780, 0x17FF, 1.10),  # Khmer
+    (0x1B00, 0x1B7F, 1.55),  # Balinese
+)
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
     0x0085: 0.0,  # NEXT LINE
@@ -3606,6 +3619,29 @@ def _canvas_is_zero_advance_control(character: str) -> bool:
     )
 
 
+def _canvas_spacing_mark_cluster_width_units(visible: list[str]) -> float:
+    spacing_marks = [
+        character for character in visible if unicodedata.category(character) == "Mc"
+    ]
+    fallback = sum(_canvas_character_width_units(character) for character in visible)
+    if len(spacing_marks) != 1:
+        return fallback
+
+    base_width = sum(
+        _canvas_character_width_units(character)
+        for character in visible
+        if unicodedata.category(character) != "Mc"
+    )
+    if base_width == 0.0:
+        return fallback
+
+    codepoint = ord(spacing_marks[0])
+    for first, last, calibrated_width in _CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES:
+        if first <= codepoint <= last:
+            return max(base_width, min(fallback, calibrated_width))
+    return fallback
+
+
 def _canvas_grapheme_width_units(cluster: str) -> float:
     if cluster and all(_canvas_is_zero_advance_control(item) for item in cluster):
         return 0.0
@@ -3635,6 +3671,8 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
         _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
     ):
         return max(1.0, max(widths))
+    if any(unicodedata.category(character) == "Mc" for character in visible):
+        return _canvas_spacing_mark_cluster_width_units(visible)
     return sum(widths)
 
 
