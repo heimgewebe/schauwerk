@@ -3927,14 +3927,14 @@ def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
     )
 
 
-def _canvas_fit_single_line(
+def _canvas_fit_single_line_unprojected(
     value: str,
     *,
     size: int,
     max_width: float,
     max_bytes: int,
 ) -> tuple[str, bool]:
-    """Fit one Canvas label without silent clipping."""
+    """Fit one Canvas label before bidi-scope projection."""
 
     if not value:
         return "", False
@@ -3972,6 +3972,58 @@ def _canvas_fit_single_line(
         ),
         True,
     )
+
+
+def _canvas_fit_single_line(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int,
+) -> tuple[str, bool]:
+    """Fit one Canvas label without silent clipping or broken bidi scopes."""
+
+    fitted, truncated = _canvas_fit_single_line_unprojected(
+        value,
+        size=size,
+        max_width=max_width,
+        max_bytes=max_bytes,
+    )
+    if not truncated:
+        return fitted, False
+
+    projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
+        [value],
+        fsi_source=value,
+    )
+    if bidi_projection_truncated:
+        marker = "…"
+        if (
+            _estimated_canvas_single_line_width(marker, size=size) <= max_width
+            and _canvas_escaped_text_bytes(marker) <= max_bytes
+        ):
+            return marker, True
+        return "", True
+
+    projected_source = projected[0] if projected else ""
+    fitted, _ = _canvas_fit_single_line_unprojected(
+        projected_source,
+        size=size,
+        max_width=max_width,
+        max_bytes=max_bytes,
+    )
+    limited = _canvas_limit_text_layout_bytes(
+        _CanvasTextLayout(
+            size=size,
+            lines=((fitted, 0),) if fitted else (),
+            truncated=True,
+        ),
+        max_width=max_width,
+        max_bytes=max_bytes,
+    )
+    if not limited.lines:
+        return "", True
+    return limited.lines[0][0], True
 
 
 def _canvas_wrap_source_line(

@@ -1484,6 +1484,92 @@ def test_canvas_single_line_edge_whitespace_matches_svg_collapse() -> None:
     assert "\n" in fitted
 
 
+def test_canvas_single_line_truncation_resolves_fsi_from_complete_source() -> None:
+    label = "⁨" + "12345678901234567890" + "אבג" + "⁩"
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=80,
+        max_bytes=15,
+    )
+
+    assert truncated is True
+    assert fitted.startswith("⁧")
+    assert fitted.endswith("⁩")
+    assert "⁨" not in fitted
+    assert "אבג" not in fitted
+    assert "…" in fitted
+    assert native_diagram._canvas_escaped_text_bytes(fitted) <= 15
+    assert native_diagram._estimated_canvas_single_line_width(
+        fitted, size=14
+    ) <= 80
+
+    complete = "⁨---אבג⁩"
+    complete_fitted, complete_truncated = native_diagram._canvas_fit_single_line(
+        complete,
+        size=14,
+        max_width=200,
+        max_bytes=2048,
+    )
+
+    assert complete_truncated is False
+    assert complete_fitted == complete
+
+
+def test_native_document_canvas_edge_truncation_balances_resolved_fsi() -> None:
+    label = "⁨" + "1234567890" * 5 + "אבג" + "⁩"
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 480,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "edge-fsi",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": label,
+            }
+        ],
+    }
+    document = json_canvas_to_editing_document(source, title="Edge FSI truncation")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "edge-fsi"
+    )
+    texts = [child.text or "" for child in edge if child.tag == f"{SVG_NS}text"]
+
+    assert edge.attrib.get("data-text-truncated") == "true"
+    assert len(texts) == 1
+    rendered = texts[0]
+    assert rendered.startswith("⁧")
+    assert rendered.endswith("⁩")
+    assert "⁨" not in rendered
+    assert "אבג" not in rendered
+    assert "…" in rendered
+
+
 def test_native_document_canvas_edge_line_breaks_are_marked_when_truncated() -> None:
     label = "\n".join(["a"] * 24)
     source = {
