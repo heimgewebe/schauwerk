@@ -4385,11 +4385,17 @@ def _canvas_text_layout(
         )
         grapheme_truncated = True
     else:
-        value, grapheme_truncated = bounded_grapheme_prefix(
+        source_prefix, source_truncated = bounded_grapheme_prefix(
             value,
             max_clusters=None,
             max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
         )
+        if source_truncated:
+            value = probe_prefix
+            grapheme_truncated = probe_truncated
+        else:
+            value = source_prefix
+            grapheme_truncated = False
     if not value.strip(" \t\r\n"):
         if not had_visible_text:
             return _CanvasTextLayout(size=16, lines=(), truncated=False)
