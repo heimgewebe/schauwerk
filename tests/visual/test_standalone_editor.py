@@ -174,7 +174,11 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
-    assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
+    assert (
+        "body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output)"
+        in styles_css
+    )
+    assert "body.editor-focus .workspace-output > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
     assert 'if (detected.kind === "drawio")' in app_js

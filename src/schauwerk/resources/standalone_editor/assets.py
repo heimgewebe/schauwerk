@@ -30,9 +30,8 @@ INDEX_HTML = r"""<!doctype html>
         <div class="intro">
           <p class="eyebrow">Schaubild</p>
           <h1>Vom Gedanken zum Schaubild.</h1>
-          <p class="lede">Inhalt rein, Struktur sehen, direkt weiterarbeiten. Öffne Text, Mermaid, JSON Canvas oder draw.io – ohne Werkzeugwechsel.</p>
+          <p class="lede">Struktur rein, Schaubild auf. Öffne Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten – direkt in einem Arbeitsraum.</p>
           <div class="format-strip" aria-label="Unterstützte Eingaben">
-            <span>Text</span>
             <span>Mermaid</span>
             <span>JSON Canvas</span>
             <span>draw.io</span>
@@ -54,7 +53,7 @@ INDEX_HTML = r"""<!doctype html>
 
           <label class="paste-box" for="sourceInput">
             <span class="visually-hidden">KI-Ergebnis hier einfügen</span>
-            <textarea id="sourceInput" spellcheck="false" placeholder="Text, Mermaid, JSON Canvas oder draw.io hier einfügen …"></textarea>
+            <textarea id="sourceInput" spellcheck="false" placeholder="Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten hier einfügen …"></textarea>
           </label>
 
           <div class="primary-actions">
@@ -527,8 +526,21 @@ body.editor-focus .workspace-bar {
   background: transparent;
   backdrop-filter: none;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-body.editor-focus .workspace-bar > :not(.fullscreen-toggle) { display: none; }
+body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output) { display: none; }
+body.editor-focus .workspace-output {
+  display: flex;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex-wrap: nowrap;
+  pointer-events: none;
+}
+body.editor-focus .workspace-output > :not(.fullscreen-toggle) { display: none; }
 body.editor-focus .workspace-bar > .font-controls {
   display: inline-flex;
   padding: 3px;
@@ -582,7 +594,6 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
 
 @media (max-width: 1024px) {
   .workspace-bar > .font-controls { order: -2; }
-  .workspace-bar > .fullscreen-toggle { order: -1; }
   .product-badge { display: none; }
 }
 

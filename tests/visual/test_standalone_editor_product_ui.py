@@ -20,6 +20,10 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "SCHAUWERK_AI_HANDOFF_ACTION" in index_html
     assert ">Leeres Schaubild<" in index_html
     assert ">Legacy leer<" not in index_html
+    assert "Öffne Text," not in index_html
+    assert "<span>Text</span>" not in index_html
+    assert 'placeholder="Text,' not in index_html
+    assert "Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten" in index_html
 
     for class_name in (
         "workspace-leading",
