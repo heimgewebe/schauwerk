@@ -58,6 +58,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_COMBINING_SPACE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-combining-space-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_FALLBACK_CARRY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-fallback-carry-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -427,6 +431,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_combining_space_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_fallback_carry_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -1404,7 +1412,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_combining_space[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_fallback_carry_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_combining_space["checks"] == {
         "historical_zero_advance_acceptance_left_immutable": True,
         "already_stripped_collapsible_edge_whitespace_normalized_before_grapheme_fit": True,
@@ -1434,6 +1443,93 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         "current-head Codex settlement after the later evidence commit"
         in json_canvas_text_fit_combining_space["does_not_establish"]
+    )
+
+    json_canvas_text_fit_fallback_carry = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_FALLBACK_CARRY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_fallback_carry["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-fallback-carry.v1"
+    )
+    assert (
+        json_canvas_text_fit_fallback_carry["functional_head"]
+        == "21ea3248e02f63a68b701624ad925e3fb90ac2a4"
+    )
+    assert (
+        json_canvas_text_fit_fallback_carry["integrated_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_fallback_carry["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_combining_space["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_COMBINING_SPACE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-combining-space-20260930/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_combining_space["schema_version"],
+    }
+    assert json_canvas_text_fit_fallback_carry["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_fallback_carry, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_fallback_carry["source_bindings"]) == (
+        json_canvas_text_fit_fallback_carry_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_fallback_carry[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_fallback_carry["checks"] == {
+        "historical_combining_space_acceptance_left_immutable": True,
+        "wide_fallback_punctuation_and_symbols_budgeted_conservatively": True,
+        "fallback_width_calibration_uses_font_and_browser_measurements": True,
+        "post_trim_wrapped_lines_refit_to_geometry": True,
+        "internal_combining_space_carry_no_longer_silently_overflows": True,
+        "existing_grapheme_and_work_caps_preserved": True,
+        "focused_wide_and_carry_regressions_passed": True,
+        "native_document_and_diagram_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_smoke_passed": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "exact_case_browser_readback_passed": True,
+        "visual_readback_passed": True,
+    }
+    assert json_canvas_text_fit_fallback_carry["check_evidence"][
+        "fallback_width_calibration_uses_font_and_browser_measurements"
+    ]["calibrated_range_count"] == 50
+    assert json_canvas_text_fit_fallback_carry["check_evidence"][
+        "focused_wide_and_carry_regressions_passed"
+    ]["passed_count"] == 10
+    assert json_canvas_text_fit_fallback_carry["check_evidence"][
+        "browser_smoke_passed"
+    ]["passed_count"] == 7
+    fallback_carry_readback = json_canvas_text_fit_fallback_carry["check_evidence"][
+        "exact_case_browser_readback_passed"
+    ]
+    assert fallback_carry_readback["wide_fallback"]["rendered"] == "‰‰‰‰‰‰…"
+    assert fallback_carry_readback["wide_fallback"]["truncated"] is True
+    assert (
+        fallback_carry_readback["wide_fallback"]["all_text_boxes_within_node_bounds"]
+        is True
+    )
+    assert fallback_carry_readback["internal_carry"]["rendered"] == "éBBBB"
+    assert fallback_carry_readback["internal_carry"]["truncated"] is False
+    assert (
+        fallback_carry_readback["internal_carry"]["all_text_boxes_within_node_bounds"]
+        is True
+    )
+    assert (
+        "current-head Codex settlement after the later evidence commit"
+        in json_canvas_text_fit_fallback_carry["does_not_establish"]
     )
 
     oauth_successor = json.loads(
@@ -1468,6 +1564,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_fallback_carry_superseded_files:
+            assert json_canvas_text_fit_fallback_carry["source_bindings"][name] == current
         elif name in json_canvas_text_fit_combining_space_superseded_files:
             assert json_canvas_text_fit_combining_space["source_bindings"][name] == current
         elif name in json_canvas_text_fit_zero_advance_superseded_files:

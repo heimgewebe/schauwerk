@@ -1,0 +1,137 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-fallback-carry.v1",
+  "scope": "json-canvas-text-fit-wide-fallback-and-internal-carry",
+  "accepted_at": "2026-09-30",
+  "functional_head": "21ea3248e02f63a68b701624ad925e3fb90ac2a4",
+  "integrated_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "6d944ab60a23667c4c1094fc5fc01f29c7dbe1c75cc0fe1f63dfba8b5825298d",
+    "file_sha256": "8e74a1e008f27d78de1c1f25b7589763049355e12d71775651b94521e225c927",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-combining-space-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-combining-space.v1"
+  },
+  "checks": {
+    "historical_combining_space_acceptance_left_immutable": true,
+    "wide_fallback_punctuation_and_symbols_budgeted_conservatively": true,
+    "fallback_width_calibration_uses_font_and_browser_measurements": true,
+    "post_trim_wrapped_lines_refit_to_geometry": true,
+    "internal_combining_space_carry_no_longer_silently_overflows": true,
+    "existing_grapheme_and_work_caps_preserved": true,
+    "focused_wide_and_carry_regressions_passed": true,
+    "native_document_and_diagram_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_case_browser_readback_passed": true,
+    "visual_readback_passed": true
+  },
+  "check_evidence": {
+    "fallback_width_calibration_uses_font_and_browser_measurements": {
+      "job_unit": "grabowski-job-0969988de831",
+      "argv_sha256": "d076e2d4203a3f0ea95a40cd68fcaab7d95cc2dfb358e418a8db2cf96368ba59",
+      "finalization_receipt_sha256": "b03c1f683ec9d3c5d91b2b684b3ba4bd29bebb128a191316ddadc3043e499142",
+      "result": "succeeded",
+      "calibrated_range_count": 50,
+      "rounding_increment_em": 0.05,
+      "sample_width_units": {
+        "U+2030": 1.45,
+        "U+2031": 1.9,
+        "U+27F7": 1.8,
+        "U+2A0C": 1.7,
+        "U+20A7": 1.55
+      }
+    },
+    "focused_wide_and_carry_regressions_passed": {
+      "job_unit": "grabowski-job-20e3a4cec4f2",
+      "argv_sha256": "2dfbf70b07f00ffd7c94014b785e68238d7cf8e21f1b7b62db88dcac47447bf5",
+      "finalization_receipt_sha256": "ab23fb6d312ec35d6969e6f65970b731dd42b3380c0ddce86b4ff9c5356dd816",
+      "result": "succeeded",
+      "passed_count": 10
+    },
+    "native_document_and_diagram_modules_passed": {
+      "job_unit": "grabowski-job-c73d5656a4b1",
+      "argv_sha256": "b63095682105069ad152bf677f38d530be386cfb37481485bdec562611637d5f",
+      "finalization_receipt_sha256": "576314b916bc890c2d974025ad37af06fc8cb0c7b72ece1a645ed10a3e4c8cbb",
+      "result": "succeeded"
+    },
+    "static_validation_passed": {
+      "job_unit": "grabowski-job-7dbdbf5d2d66",
+      "argv_sha256": "5bbc4372789c38566bdffc5e7568c3caa191a0692f073440d7f071fd77bf7a1c",
+      "finalization_receipt_sha256": "4b0e381e76517e9345d79c7ff745645c973ffb15954664abfbe11443f181625b",
+      "result": "succeeded"
+    },
+    "browser_smoke_passed": {
+      "job_unit": "grabowski-job-58f5ebe2defa",
+      "argv_sha256": "b74cc476f844690ec4d3cfe81289068314081d5e45fdb0e2694c2b93849903aa",
+      "finalization_receipt_sha256": "22fed51e717a6e868bab48c3553b60f517ea784d3eb4bfe7e05e096077cf298c",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-443b3f768457",
+      "argv_sha256": "1ffe8b8b7a0e2a3551cc6abfa93e85b4f44bc273f9b2c9fd6fbdb88f73ed7caa",
+      "finalization_receipt_sha256": "43190a8b1e7c7c480f6dc1b7ee58899effe022e9ec25de00e36f80e7e75fd8ea",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "browser_smoke_covered_separately": true
+    },
+    "exact_case_browser_readback_passed": {
+      "job_unit": "grabowski-job-14d834002456",
+      "argv_sha256": "94460780099b5dba09c8f40544ca9b5114561db6958c9a41b276fe281b943cd4",
+      "finalization_receipt_sha256": "a685826055df984526db2271f3e544afccee1da43d89300be66471c4872ed09f",
+      "result": "succeeded",
+      "wide_fallback": {
+        "source": "‰‰‰‰‰‰‰‰‰‰",
+        "rendered": "‰‰‰‰‰‰…",
+        "truncated": true,
+        "all_text_boxes_within_node_bounds": true,
+        "node_bbox": {
+          "x": 20,
+          "y": 20,
+          "width": 172,
+          "height": 40
+        },
+        "text_bbox": {
+          "x": 34,
+          "y": 32,
+          "width": 88.296875,
+          "height": 15
+        }
+      },
+      "internal_carry": {
+        "source": "e  ́BBBB",
+        "rendered": "éBBBB",
+        "lines": [
+          "e",
+          "́B",
+          "B",
+          "B",
+          "B"
+        ],
+        "truncated": false,
+        "all_text_boxes_within_node_bounds": true,
+        "node_bbox": {
+          "x": 20,
+          "y": 100,
+          "width": 48,
+          "height": 140
+        }
+      },
+      "screenshot_png_sha256": "38df6927d4098b7ff5e4a4ce16cc99ccf5467a31b7e4b218eac7ab74dd219123",
+      "svg_sha256": "2c4dc1db4b1c083f82758a3a5f2a190ab509e60411e0a22f66ee0cf2039a4316"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "db0a95ecdc99cf2ddc265f93af4e4668fa68b95fed8f8a58605f2dff4a5124e1",
+    "tests/visual/test_native_document.py": "3b5a818e59c09d320ba2b791b119f353b49f5a51e286eec41075e7c38470d56e"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the fallback/carry JSON Canvas text-fit revision",
+    "independent review of the fallback/carry JSON Canvas text-fit revision",
+    "GitHub CI success on the later evidence commit",
+    "current-head Codex settlement after the later evidence commit",
+    "Captain merge readiness",
+    "runtime publication or Commonthing deployment"
+  ],
+  "evidence_digest": "e8b61f31a4ee65dda7176f03692140bbf934eea9ee587713b274b094181e4627"
+}
