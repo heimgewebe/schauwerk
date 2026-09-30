@@ -1,0 +1,68 @@
+{
+  "schema_version": "schauwerk-schaubild-product-ui-review-fixes.v1",
+  "scope": "pr-196-codex-review-fixes",
+  "accepted_at": "2026-09-30",
+  "functional_head": "13c1324ba0ed9aab75a0b5a314a620442b961f01",
+  "parent_evidence": {
+    "evidence_digest": "5e848c2ff6150851d933508e8f55a22b72a75633c015b68826c2d5fe3994ba22",
+    "file_sha256": "4983490c33d2364bc62160297a2db342e93be1b1eb6a0c0f18ea2ecdc00f6fa4",
+    "path": "docs/operators/evidence/schaubild-product-ui-20260929/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-product-ui.v1"
+  },
+  "checks": {
+    "historical_product_ui_acceptance_left_immutable": true,
+    "unsupported_plain_text_claim_removed": true,
+    "focus_mode_exit_visible_and_clickable": true,
+    "focused_tests_passed": true,
+    "exact_head_browser_readback_passed": true,
+    "critical_diff_self_review_passed": true
+  },
+  "check_evidence": {
+    "focused_tests_passed": {
+      "job_unit": "grabowski-job-8c592ed9dfcf",
+      "argv_sha256": "427669ff9fc02e46efeb55c39e0ee0f6a96021c99a66831bb0a229398568faf1",
+      "finalization_receipt_sha256": "52fe44ad62638df3aa33a8dca41b9a5bf7ee0fc9f5f8eab1ec957f2561e2da48",
+      "result": "succeeded"
+    },
+    "exact_head_browser_readback_passed": {
+      "job_unit": "grabowski-job-35f4cea02c84",
+      "finalization_receipt_sha256": "d5338ad2eb066db5c0a6fbceb1a64138a7be24864d90c8b42e2fedae37e8313e",
+      "result": "succeeded",
+      "focus_screenshot_sha256": "daf1e34979a0f44f1fc6326757be78c09306fc04d4f10dc85f7fb7d7b8adeed0",
+      "observed_supported_formats": [
+        "Mermaid",
+        "JSON Canvas",
+        "draw.io"
+      ],
+      "observed_focus_exit": {
+        "width": 40,
+        "height": 40,
+        "visible": true,
+        "pointer_events": "auto"
+      }
+    },
+    "critical_diff_self_review_passed": {
+      "path": "docs/operators/evidence/schaubild-product-ui-review-fixes-20260930/grabowski-self-review.json",
+      "file_sha256": "4bc92be401219d7259fbe2efe757c10d5b08c315447164bc2ceb3b27fd3395e3",
+      "review_mode": "critical_diff_review",
+      "verdict": "PASS",
+      "reviewed_head": "13c1324ba0ed9aab75a0b5a314a620442b961f01",
+      "reviewed_diff_sha256": "7d1e8f7d835a475163e25c9c290e6e849c9d29b6ed3d62e1a88d8c3e2ae0182c"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "6864735b14452dd899fc8e626fe2f40a2ea1d2ca9754093d3e54cd50d65925e5",
+    "tests/visual/test_standalone_editor.py": "8a534f259e033515f4827218b2702ce6dd5c1ac9b326538d69fe71180d380f20",
+    "tests/visual/test_standalone_editor_font_controls.py": "389446d5afb05a2e5de708f01b680c73eba5cc7e4abcc55b073927f5dc3a14d0",
+    "tests/visual/test_standalone_editor_product_ui.py": "97054fa4bf194b67a68c22a701902de72715ae76582143bd7bbfbbf8d8e8dda2"
+  },
+  "does_not_establish": [
+    "independent review of the review-fix revision",
+    "GitHub CI success for the review-fix revision",
+    "Codex settlement on the later final PR head",
+    "merge readiness after later evidence changes",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "dc7a7b71dceca6f8b11a66db49342cce310d48fef672f728f12daedc0ff472e0"
+}

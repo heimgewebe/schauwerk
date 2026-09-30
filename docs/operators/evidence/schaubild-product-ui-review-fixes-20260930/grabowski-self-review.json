@@ -1,0 +1,51 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "7c5534c3ba8a97d98b8cfe37fa27fbf9d7d4795c",
+  "head_sha": "13c1324ba0ed9aab75a0b5a314a620442b961f01",
+  "diff_sha256": "7d1e8f7d835a475163e25c9c290e6e849c9d29b6ed3d62e1a88d8c3e2ae0182c",
+  "diff_bytes": 6203,
+  "reviewed_files": [
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "primary product copy advertises only formats accepted by detectInput and prepareInput",
+    "focus-mode exit remains a visible and pointer-targetable control after workspace-output regrouping",
+    "font controls remain reachable in focus mode while unrelated output actions stay hidden",
+    "review fixes do not change parser, renderer, document or export authority"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "Codex P1: the redesigned start surface advertised ordinary Text although plain prose is rejected as an unknown format.",
+      "resolution": "Removed the Text badge and plain-text claims from the lede and placeholder; retained only Mermaid, JSON Canvas, draw.io and Schauwerk data."
+    },
+    {
+      "iteration": 2,
+      "finding": "Codex P2: the focus exit button was nested in workspace-output while a direct-child hide selector hid the whole wrapper.",
+      "resolution": "Kept font-controls and workspace-output as the only visible top-level focus groups, hid non-focus output children, and verified the 40x40 exit control is visible and pointer-targetable."
+    }
+  ],
+  "validation": {
+    "focused_tests_job_unit": "grabowski-job-8c592ed9dfcf",
+    "focused_tests_finalization_receipt_sha256": "52fe44ad62638df3aa33a8dca41b9a5bf7ee0fc9f5f8eab1ec957f2561e2da48",
+    "focused_tests_result": "succeeded",
+    "browser_readback_job_unit": "grabowski-job-35f4cea02c84",
+    "browser_readback_finalization_receipt_sha256": "d5338ad2eb066db5c0a6fbceb1a64138a7be24864d90c8b42e2fedae37e8313e",
+    "browser_readback_result": "succeeded",
+    "focus_screenshot_sha256": "daf1e34979a0f44f1fc6326757be78c09306fc04d4f10dc85f7fb7d7b8adeed0"
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review of the review-fix revision",
+    "GitHub CI success for the review-fix revision",
+    "Codex settlement on the later final PR head",
+    "merge readiness after later evidence changes",
+    "Commonthing integration or production deployment"
+  ]
+}
