@@ -31,7 +31,7 @@ INDEX_HTML = r"""<!doctype html>
           <button id="fitView" type="button">Einpassen</button>
           <button id="resetLayout" type="button">Positionen zurücksetzen</button>
         </div>
-        <div class="edit-controls document-only" role="group" aria-label="Bearbeiten">
+        <div class="edit-controls document-only" role="group" aria-label="Bearbeiten" hidden>
           <button id="addNode" class="document-only" type="button" hidden>Element hinzufügen</button>
           <button id="addEdge" class="document-only" type="button" hidden>Verbindung hinzufügen</button>
           <button id="editText" class="document-only" type="button" hidden>Text bearbeiten</button>
@@ -742,6 +742,7 @@ const zoomIn = document.querySelector("#zoomIn");
 const zoomOut = document.querySelector("#zoomOut");
 const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
+const editControls = document.querySelector(".edit-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -1601,6 +1602,7 @@ function deleteSelection() {
 }
 
 if (documentEditorHosted) {
+  if (editControls instanceof HTMLElement) editControls.hidden = false;
   for (const control of [
     addNodeButton,
     addEdgeButton,
