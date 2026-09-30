@@ -1,0 +1,104 @@
+{
+  "schema_version": "schauwerk-schaubild-product-ui-final-fixes.v1",
+  "scope": "schaubild-product-ui-final-fixes",
+  "accepted_at": "2026-09-30",
+  "functional_head": "903e68c7ba9ed6885578a291b8abab5634dcd78f",
+  "parent_evidence": {
+    "evidence_digest": "dc7a7b71dceca6f8b11a66db49342cce310d48fef672f728f12daedc0ff472e0",
+    "file_sha256": "4c9b3745b18b2e8a82cac3a5ef797097b34617934a8256309b61797192f570af",
+    "path": "docs/operators/evidence/schaubild-product-ui-review-fixes-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-product-ui-review-fixes.v1"
+  },
+  "checks": {
+    "historical_review_fix_acceptance_left_immutable": true,
+    "inactive_edit_controls_hidden_outside_hosted_editing": true,
+    "hosted_edit_controls_visible_and_usable": true,
+    "focus_controls_clear_of_editor_stage": true,
+    "focus_mode_exit_visible_and_clickable": true,
+    "supported_formats_product_copy_verified": true,
+    "focused_tests_passed": true,
+    "browser_smoke_passed": true,
+    "final_visual_readback_passed": true
+  },
+  "check_evidence": {
+    "browser_smoke_passed": {
+      "argv_sha256": "c3a3326ecd7e89174bf9fd6441db176f329c2a7edafb7a028262b977c10dbf65",
+      "execution_kind": "make_browser_smoke",
+      "finalization_receipt_sha256": "4c87a25a7a9c031cd8f133378c2e28629c038cca2a879a8fb1c3212d3e5f3547",
+      "functional_head": "903e68c7ba9ed6885578a291b8abab5634dcd78f",
+      "job_unit": "grabowski-job-58a3b2970edb",
+      "passed_count": 7,
+      "result": "succeeded",
+      "coverage": [
+        "read-only native viewer hides inactive edit-control group",
+        "hosted native document editor exposes edit-control group"
+      ]
+    },
+    "focused_tests_passed": {
+      "argv_sha256": "03cdbb0a3755be17a73626c24fb60b3d9542f0d9235375060a84dd8bd99f2b43",
+      "execution_kind": "repo_venv_pytest",
+      "finalization_receipt_sha256": "30f780e461a1d5e7f1a59a64aea57c236da5c9b1e8edc9eefef3fd14986c0a56",
+      "functional_head": "903e68c7ba9ed6885578a291b8abab5634dcd78f",
+      "job_unit": "grabowski-job-0440f5ecbd2d",
+      "passed_count": 3,
+      "result": "succeeded"
+    },
+    "final_visual_readback_passed": {
+      "argv_sha256": "1f8598582c7aa7354ca60bfd2e9b3dd9606fe680dc2068fe4a9af332859faad8",
+      "execution_kind": "local_cdp_pixel_readback",
+      "finalization_receipt_sha256": "48bdea93772a0c8be7f203a6699ef00fb06c664f59672ac507dde6c3eb792358",
+      "functional_head": "903e68c7ba9ed6885578a291b8abab5634dcd78f",
+      "job_unit": "grabowski-job-b6119b6ec61f",
+      "result": "succeeded",
+      "product_copy": {
+        "formats": [
+          "Mermaid",
+          "JSON Canvas",
+          "draw.io"
+        ],
+        "plain_text_advertised": false
+      },
+      "focus_contract": {
+        "controls_max_bottom_px": 56,
+        "editor_frame_top_px": 60,
+        "editor_stage_padding_top_px": 60,
+        "no_overlap": true,
+        "exit_returned_to_normal_workspace": true
+      },
+      "hosted_edit_controls": {
+        "display": "flex",
+        "hidden": false,
+        "visible_control_ids": [
+          "addNode",
+          "addEdge",
+          "editText",
+          "reattachSource",
+          "reattachTarget",
+          "deleteSelection"
+        ]
+      },
+      "screenshots_sha256": {
+        "desktop_start": "c69b980dc49c189b0c503f91e829e51a0cfdfb483076ad3720de9c7edf10cf88",
+        "mobile_start": "a92e386faa9e332c5bdaa5886b5b27504134e8f458fd3331f3a149fb8ed5cb2d",
+        "desktop_workspace": "de24472784cc4c2bc66b24d0191467eaff147f81a31e959c567ad7989c2129a4",
+        "mobile_workspace_cold_start": "0ecd534e0899759bf71e5c70b9b726fb40ddef413e762410b92a5f4ced86576d",
+        "desktop_focus": "c7f7d4d45c8f77a67b62b8489d6c7d3a8cf94f2b7a63f0872a90bda3fecbb2ad"
+      }
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "169dd84ab06059545e5a29536d052643a42fba56741efeb81b62852c3d44a74a",
+    "src/schauwerk/resources/standalone_editor/assets.py": "85187c7f3e167bbc5cc8675f260e3e44dbc2c45d84a0ca5ed9bd0970d9df2a56",
+    "tests/visual/test_native_viewer_browser.py": "ed4dcd28804d403c05f5188e2ca65e359d66ea967be55e5f226d6e20d2d8ac79",
+    "tests/visual/test_standalone_editor_font_controls.py": "3158378af1c00b87d5a3aeb14bff4b23b361a4e444721b4edec8ea570511fd7c"
+  },
+  "does_not_establish": [
+    "independent review of the final UI-fix revision",
+    "user visual acceptance of the final UI-fix revision",
+    "GitHub CI success on the later Evidence-Successor commit",
+    "Codex settlement on the later final PR head",
+    "Captain merge readiness",
+    "runtime publication or Commonthing integration/deployment"
+  ],
+  "evidence_digest": "ccaba5ce593e4e3212577e91d9ff81d31547773d141b25dfb3aa3bbe710c18e6"
+}
