@@ -47,6 +47,9 @@ SCHAUBILD_PRODUCT_UI_FINAL_FIX_EVIDENCE = (
 SCHAUBILD_JSON_CANVAS_TEXT_FIT_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-json-canvas-text-fit-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-json-canvas-text-fit-final-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -406,6 +409,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_standalone_editor.py",
+    }
+    json_canvas_text_fit_final_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -1134,7 +1141,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_superseded_files
     )
     for name, expected in json_canvas_text_fit["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_final_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
     ).hexdigest() == "9cade3ab2edced27be114b8b7e773750dc33cd47d4d9fcad410a518bda832207"
@@ -1186,6 +1194,85 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in json_canvas_text_fit["does_not_establish"]
     )
 
+    json_canvas_text_fit_final = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_final["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-final.v1"
+    )
+    assert (
+        json_canvas_text_fit_final["functional_head"]
+        == "4f26a3a3bb5fd272aa7e20e135385c28d2f6e756"
+    )
+    assert (
+        json_canvas_text_fit_final["integrated_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_final["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-20260930/acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit["schema_version"],
+    }
+    assert json_canvas_text_fit_final["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_final, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_final["source_bindings"]) == (
+        json_canvas_text_fit_final_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_final["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_final["checks"] == {
+        "historical_text_fit_acceptance_left_immutable": True,
+        "xml_forbidden_controls_normalized_before_bounded_grapheme_layout": True,
+        "single_line_xml_normalization_preserves_work_cap": True,
+        "latin_zwj_uses_base_letter_width": True,
+        "shaping_script_zwj_width_preserved": True,
+        "focused_xml_zwj_and_work_cap_tests_passed": True,
+        "native_document_and_diagram_modules_passed": True,
+        "ruff_passed": True,
+        "browser_smoke_passed": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "exact_case_browser_readback_passed": True,
+        "visual_readback_passed": True,
+    }
+    assert json_canvas_text_fit_final["check_evidence"][
+        "focused_xml_zwj_and_work_cap_tests_passed"
+    ]["passed_count"] == 7
+    assert json_canvas_text_fit_final["check_evidence"]["browser_smoke_passed"][
+        "passed_count"
+    ] == 7
+    final_case_readback = json_canvas_text_fit_final["check_evidence"][
+        "exact_case_browser_readback_passed"
+    ]
+    assert final_case_readback["xml_raw"] == {
+        "lines": ["�́�́"],
+        "truncated": False,
+    }
+    assert final_case_readback["xml_replacement"] == {
+        "lines": ["�́�́"],
+        "truncated": False,
+    }
+    assert final_case_readback["latin_zwj"]["truncated"] is False
+    assert final_case_readback["shaping_script_zwj"]["truncated"] is False
+    assert final_case_readback["all_text_boxes_within_node_bounds"] is True
+    assert (
+        "current-head Codex settlement after the later evidence commit"
+        in json_canvas_text_fit_final["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -1218,6 +1305,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_final_superseded_files:
+            assert json_canvas_text_fit_final["source_bindings"][name] == current
         elif name in json_canvas_text_fit_superseded_files:
             assert json_canvas_text_fit["source_bindings"][name] == current
         elif name in final_ui_fix_superseded_files:
