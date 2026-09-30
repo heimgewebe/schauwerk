@@ -1334,6 +1334,33 @@ def test_canvas_fsi_resolution_stops_at_unicode_paragraph_boundary() -> None:
     assert projected == ["\u2066---\u2069\u2029", "אבג\u2069"]
 
 
+def test_canvas_bidi_projection_normalizes_repeated_fsi_source_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "\u2068\u2069" * 512
+    normalization_lengths: list[int] = []
+    original = native_diagram._canvas_xml_compatible_text
+
+    def tracked_normalize(value: str) -> str:
+        normalization_lengths.append(len(value))
+        return original(value)
+
+    monkeypatch.setattr(
+        native_diagram,
+        "_canvas_xml_compatible_text",
+        tracked_normalize,
+    )
+
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        [source],
+        fsi_source=source,
+    )
+
+    assert truncated is False
+    assert projected == ["\u2066\u2069" * 512]
+    assert normalization_lengths == [len(source), len(source)]
+
+
 def test_canvas_bidi_scope_projection_resets_at_source_line_boundary() -> None:
     lines, truncated = native_diagram._canvas_adaptive_lines(
         "\u202eabcd\nEFGH",
@@ -1784,8 +1811,24 @@ def test_canvas_wide_fallback_punctuation_and_symbols_are_conservative() -> None
 
 def test_canvas_wide_fallback_letters_are_script_aware() -> None:
     assert native_diagram._canvas_character_width_units("A") == pytest.approx(0.86)
+    assert native_diagram._canvas_character_width_units("Ā") == pytest.approx(0.90)
+    assert native_diagram._canvas_character_width_units("α") == pytest.approx(0.90)
+    assert native_diagram._canvas_character_width_units("\u0149") == pytest.approx(1.00)
+    assert native_diagram._canvas_character_width_units("Æ") == pytest.approx(1.10)
+    assert native_diagram._canvas_character_width_units("Ǆ") == pytest.approx(1.60)
+    assert native_diagram._canvas_character_width_units("\u03e2") == pytest.approx(1.10)
+    assert native_diagram._canvas_character_width_units("\u047c") == pytest.approx(1.45)
+    assert native_diagram._canvas_character_width_units("\u1029") == pytest.approx(1.40)
+    assert native_diagram._canvas_character_width_units("\u1380") == pytest.approx(1.30)
+    assert native_diagram._canvas_character_width_units("\u1e80") == pytest.approx(1.15)
+    assert native_diagram._canvas_character_width_units("\u2133") == pytest.approx(1.20)
+    assert native_diagram._canvas_character_width_units("\u2c29") == pytest.approx(1.25)
+    assert native_diagram._canvas_character_width_units("\u2c72") == pytest.approx(1.25)
+    assert native_diagram._canvas_character_width_units("\ua9ec") == pytest.approx(1.30)
     assert native_diagram._canvas_character_width_units("ᐁ") == pytest.approx(1.30)
     assert native_diagram._canvas_character_width_units("\u1675") == pytest.approx(2.05)
+    assert native_diagram._canvas_character_width_units("\u1677") == pytest.approx(1.00)
+    assert native_diagram._canvas_character_width_units("\u167f") == pytest.approx(1.00)
     assert native_diagram._canvas_character_width_units("\u102a") == pytest.approx(2.50)
     assert native_diagram._canvas_character_width_units("\u0d10") == pytest.approx(1.95)
     assert native_diagram._canvas_character_width_units("\u1685") == pytest.approx(1.90)
@@ -2433,7 +2476,11 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     assert native_diagram._canvas_grapheme_width_units(malayalam_chillu) == pytest.approx(
         native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
     )
-    assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(1.8)
+    assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(
+        native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
+    )
+    assert native_diagram._canvas_grapheme_width_units("\u0d10\u200d") == pytest.approx(1.95)
+    assert native_diagram._canvas_grapheme_width_units("\u102a\u200d") == pytest.approx(2.50)
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
 
 

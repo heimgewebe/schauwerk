@@ -3517,16 +3517,129 @@ _CANVAS_ZWJ_SHAPING_SCRIPT_RANGES = (
     (0x1A20, 0x1AAF),  # Tai Tham
     (0x1B00, 0x1B7F),  # Balinese
 )
+# Isolated shaping-script letters whose measured bold fallback advance exceeds
+# the 1.5em composite-cluster floor. Keep only the widest member of a shaped
+# ZWJ cluster; summing per-letter fallback advances overbudgets conjuncts.
+_CANVAS_ZWJ_SHAPING_WIDE_LETTER_WIDTH_RANGES = (
+    (0x0B94, 0x0B94, 1.60),
+    (0x0C60, 0x0C60, 1.80),
+    (0x0CE0, 0x0CE0, 1.60),
+    (0x0D06, 0x0D06, 1.55),
+    (0x0D08, 0x0D08, 1.75),
+    (0x0D10, 0x0D10, 1.95),
+    (0x0D1D, 0x0D1D, 1.55),
+    (0x0D8E, 0x0D8E, 1.75),
+    (0x0D90, 0x0D90, 1.60),
+    (0x102A, 0x102A, 2.50),
+    (0x103F, 0x103F, 1.60),
+    (0x1B08, 0x1B08, 1.55),
+    (0x1B12, 0x1B12, 1.55),
+    (0x1B46, 0x1B46, 1.80),
+    (0x1B4B, 0x1B4B, 1.85),
+)
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
-_CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 1.0
+_CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 0.90
 _CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
+# The generic non-ASCII letter estimate stays at the historical 0.9em. Only
+# measured fallback outliers receive a higher floor, which avoids applying the
+# previous 1.0em safety floor to every alphabetic code point.
+_CANVAS_FALLBACK_LETTER_FLOOR_RANGES = (
+    (0x0126, 0x0126, 1.00),
+    (0x0149, 0x0149, 1.00),
+    (0x0175, 0x0175, 0.95),
+    (0x018A, 0x018A, 0.95),
+    (0x01A3, 0x01A3, 0.95),
+    (0x026F, 0x0271, 1.05),
+    (0x0276, 0x0277, 0.95),
+    (0x0289, 0x0289, 0.95),
+    (0x028D, 0x028D, 0.95),
+    (0x02A6, 0x02A6, 1.00),
+    (0x02A8, 0x02A8, 0.95),
+    (0x02A9, 0x02A9, 1.05),
+    (0x038E, 0x038E, 1.00),
+    (0x039C, 0x039C, 1.00),
+    (0x03C9, 0x03C9, 0.95),
+    (0x03CE, 0x03CE, 0.95),
+    (0x03D3, 0x03D3, 1.00),
+    (0x03D6, 0x03D6, 0.95),
+    (0x03E0, 0x03E0, 0.95),
+    (0x03E6, 0x03E6, 0.95),
+    (0x03FA, 0x03FA, 1.00),
+    (0x0539, 0x0539, 0.95),
+    (0x053D, 0x053D, 1.00),
+    (0x0560, 0x0560, 0.95),
+    (0x0561, 0x0561, 1.00),
+    (0x056D, 0x056D, 1.00),
+    (0x057A, 0x057A, 1.00),
+    (0x057F, 0x057F, 1.00),
+    (0x0583, 0x0583, 1.00),
+    (0x079F, 0x079F, 1.00),
+    (0x090B, 0x090B, 0.95),
+    (0x0B06, 0x0B06, 1.00),
+    (0x0B10, 0x0B10, 1.00),
+    (0x0B14, 0x0B14, 1.00),
+    (0x0B2B, 0x0B2B, 1.00),
+    (0x1100, 0x11FF, 0.95),  # Hangul Jamo
+    (0x1700, 0x177F, 1.10),  # Tagalog/Hanunoo/Buhid/Tagbanwa
+    (0x18B0, 0x18FF, 1.05),  # Canadian Syllabics Extended
+    (0x1905, 0x1905, 0.95),
+    (0x1CFA, 0x1CFA, 1.05),
+    (0x1D02, 0x1D02, 1.05),
+    (0x1D14, 0x1D14, 1.10),
+    (0x1D1E, 0x1D1E, 0.95),
+    (0x1D21, 0x1D21, 0.95),
+    (0x2D00, 0x2D2F, 1.05),  # Georgian Supplement
+    (0xA4DF, 0xA4DF, 1.00),
+    (0xA4EA, 0xA4EA, 1.15),
+    (0xA6E1, 0xA6E1, 0.95),
+    (0xA808, 0xA808, 1.00),
+    (0xA80F, 0xA80F, 0.95),
+    (0xA815, 0xA815, 0.95),
+    (0xA81A, 0xA81A, 0.95),
+    (0xA89A, 0xA89A, 0.95),
+    (0xA944, 0xA944, 0.95),
+    (0xAB3A, 0xAB42, 0.95),  # Latin Extended-E measured tail
+    (0xABC0, 0xABC0, 0.95),
+    (0xABC4, 0xABC4, 1.00),
+    (0xABC9, 0xABC9, 0.95),
+    (0xD7B0, 0xD7FF, 0.95),  # Hangul Jamo Extended-B
+    (0xFFA0, 0xFFDC, 0.95),  # Halfwidth Hangul letters
+)
 # Letter fallback glyphs whose isolated bold advance exceeds the generic
 # non-ASCII budget in DejaVu Sans Bold or the headless-Chrome
 # Inter/Arial/sans-serif fallback stack. Ranges are script/block aware and
-# rounded upward to 0.05em. Myanmar and Canadian Syllabics are tiered so
-# their few extreme glyphs do not force the whole script to the maximum.
+# rounded upward to 0.05em.
 _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
+    (0x00C6, 0x00C6, 1.10),  # LATIN CAPITAL LETTER AE
+    (0x00E6, 0x00E6, 1.05),  # LATIN SMALL LETTER AE
+    (0x0152, 0x0152, 1.20),  # LATIN CAPITAL LIGATURE OE
+    (0x0153, 0x0153, 1.10),  # LATIN SMALL LIGATURE OE
+    (0x0174, 0x0174, 1.15),  # LATIN CAPITAL LETTER W WITH CIRCUMFLEX
+    (0x0195, 0x0195, 1.05),
+    (0x019C, 0x019C, 1.05),
+    (0x01A2, 0x01A2, 1.10),
+    (0x01C4, 0x01CC, 1.60),  # Latin DZ/LJ/NJ digraph family
+    (0x01E2, 0x01E2, 1.10),
+    (0x01E3, 0x01E3, 1.05),
+    (0x01F1, 0x01F3, 1.60),  # Latin DZ digraph family
+    (0x01F6, 0x01F6, 1.30),
+    (0x01FC, 0x01FC, 1.10),
+    (0x01FD, 0x01FD, 1.05),
+    (0x0238, 0x0239, 1.10),
+    (0x02A3, 0x02A5, 1.30),  # IPA digraphs
+    (0x0372, 0x0372, 1.05),
+    (0x0389, 0x0389, 1.05),
+    (0x03E2, 0x03E2, 1.10),
+    (0x0429, 0x0429, 1.35),
+    (0x0468, 0x0468, 1.40),
+    (0x0478, 0x0478, 1.40),
+    (0x047C, 0x047C, 1.45),
+    (0x04A6, 0x04A6, 1.30),
+    (0x050A, 0x050A, 1.30),
+    (0x0514, 0x0514, 1.30),
+    (0x0520, 0x0520, 1.30),
+    (0x0522, 0x0522, 1.30),
     (0x0590, 0x05FF, 1.05),  # Hebrew
     (0x0600, 0x06FF, 1.40),  # Arabic
     (0x0750, 0x077F, 1.40),  # Arabic Supplement
@@ -3542,13 +3655,15 @@ _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
     (0x0D00, 0x0D7F, 1.95),  # Malayalam
     (0x0D80, 0x0DFF, 1.75),  # Sinhala
     (0x0E80, 0x0EFF, 1.40),  # Lao
-    (0x1000, 0x1029, 1.35),  # Myanmar common letters
+    (0x1000, 0x1028, 1.35),  # Myanmar common letters
+    (0x1029, 0x1029, 1.40),  # MYANMAR LETTER O
     (0x102A, 0x102A, 2.50),  # MYANMAR LETTER AU
     (0x102B, 0x103E, 1.35),  # Myanmar common letters
     (0x103F, 0x103F, 1.60),  # MYANMAR LETTER GREAT SA
     (0x1040, 0x109F, 1.35),  # Myanmar remainder
     (0x10A0, 0x10FF, 1.10),  # Georgian
     (0x1200, 0x137F, 1.35),  # Ethiopic
+    (0x1380, 0x139F, 1.30),  # Ethiopic Supplement
     (0x13A0, 0x13FF, 1.20),  # Cherokee
     (0x1400, 0x151C, 1.30),  # Canadian Aboriginal Syllabics
     (0x151D, 0x1524, 1.45),
@@ -3561,6 +3676,7 @@ _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
     (0x1671, 0x1672, 2.05),
     (0x1673, 0x1674, 1.75),
     (0x1675, 0x1676, 2.05),
+    (0x1677, 0x167F, 1.00),  # measured tail stays below 0.8em
     (0x1680, 0x169F, 1.90),  # Ogham
     (0x1780, 0x17FF, 1.30),  # Khmer
     (0x1800, 0x18AF, 1.25),  # Mongolian
@@ -3572,7 +3688,11 @@ _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
     (0x1BC0, 0x1BFF, 1.15),  # Batak
     (0x1C00, 0x1C4F, 1.10),  # Lepcha
     (0x1C90, 0x1CBF, 1.15),  # Georgian Extended
+    (0x1E00, 0x1EFF, 1.15),  # Latin Extended Additional
     (0x1F00, 0x1FFF, 1.30),  # Greek Extended
+    (0x2100, 0x214F, 1.20),  # Letterlike Symbols (letter-category members)
+    (0x2C00, 0x2C5F, 1.25),  # Glagolitic
+    (0x2C60, 0x2C7F, 1.25),  # Latin Extended-C
     (0x2C80, 0x2CFF, 1.05),  # Coptic
     (0x2D30, 0x2D7F, 1.05),  # Tifinagh
     (0x2D80, 0x2DDF, 1.40),  # Ethiopic Extended
@@ -3581,6 +3701,7 @@ _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
     (0xA720, 0xA7FF, 1.45),  # Latin Extended-D
     (0xA840, 0xA87F, 1.20),  # Phags-pa
     (0xA980, 0xA9DF, 1.50),  # Javanese
+    (0xA9E0, 0xA9FF, 1.30),  # Myanmar Extended-B
     (0xAA00, 0xAA5F, 1.60),  # Cham
     (0xAA60, 0xAA7F, 1.45),  # Myanmar Extended-A
     (0xAA80, 0xAADF, 1.25),  # Tai Viet
@@ -3778,10 +3899,9 @@ def _canvas_has_layout_content(value: str) -> bool:
     return bool(value.strip(" \t\r\n"))
 
 
-def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
-    """Resolve FSI from its first strong character outside nested isolates."""
+def _canvas_resolve_fsi_opener_normalized(value: str, start_index: int) -> str:
+    """Resolve FSI from an already XML-compatible source."""
 
-    value = _canvas_xml_compatible_text(value)
     nested_isolates = 0
     for character in value[start_index + 1 :]:
         bidi_class = unicodedata.bidirectional(character)
@@ -3805,6 +3925,15 @@ def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
         if bidi_class in {"R", "AL"}:
             return "\u2067"
     return "\u2066"
+
+
+def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
+    """Resolve FSI from its first strong character outside nested isolates."""
+
+    return _canvas_resolve_fsi_opener_normalized(
+        _canvas_xml_compatible_text(value),
+        start_index,
+    )
 
 
 def _canvas_resolve_fsi_opener_bounded(
@@ -3888,7 +4017,9 @@ def _canvas_project_bidi_wrapped_lines(
                 if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
                     return ["…"], True
                 if fsi_source is None:
-                    resolved = _canvas_resolve_fsi_opener(flattened, cursor + offset)
+                    resolved = _canvas_resolve_fsi_opener_normalized(
+                        flattened, cursor + offset
+                    )
                 else:
                     source_index = fsi_source.find(
                         _CANVAS_BIDI_FSI, fsi_source_cursor
@@ -3896,7 +4027,9 @@ def _canvas_project_bidi_wrapped_lines(
                     if source_index < 0:
                         return ["…"], True
                     fsi_source_cursor = source_index + 1
-                    resolved = _canvas_resolve_fsi_opener(fsi_source, source_index)
+                    resolved = _canvas_resolve_fsi_opener_normalized(
+                        fsi_source, source_index
+                    )
                 rendered.append(resolved)
                 stack.append((resolved, _CANVAS_BIDI_PDI, "isolate"))
                 continue
@@ -3941,12 +4074,20 @@ def _canvas_fallback_letter_width_units(character: str) -> float | None:
     codepoint = ord(character)
     if codepoint <= 0x7F or not unicodedata.category(character).startswith("L"):
         return None
-    for first, last, width_units in _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES:
+    width_units = _CANVAS_FALLBACK_LETTER_WIDTH_UNITS
+    for first, last, floor_units in _CANVAS_FALLBACK_LETTER_FLOOR_RANGES:
         if codepoint < first:
             break
         if codepoint <= last:
-            return max(_CANVAS_FALLBACK_LETTER_WIDTH_UNITS, width_units)
-    return _CANVAS_FALLBACK_LETTER_WIDTH_UNITS
+            width_units = max(width_units, floor_units)
+            break
+    for first, last, calibrated_units in _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            width_units = max(width_units, calibrated_units)
+            break
+    return width_units
 
 
 def _canvas_character_width_units(character: str) -> float:
@@ -4028,6 +4169,16 @@ def _canvas_zwj_uses_shaping_script(cluster: str) -> bool:
     )
 
 
+def _canvas_shaping_zwj_wide_letter_width_units(character: str) -> float:
+    codepoint = ord(character)
+    for first, last, width_units in _CANVAS_ZWJ_SHAPING_WIDE_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            return width_units
+    return 0.0
+
+
 def _canvas_grapheme_width_units(cluster: str) -> float:
     if cluster and all(_canvas_is_zero_advance_control(item) for item in cluster):
         return 0.0
@@ -4064,7 +4215,18 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
                 )
                 for character in visible
             ]
-            return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(shaping_widths))
+            wide_letter_width = max(
+                (
+                    _canvas_shaping_zwj_wide_letter_width_units(character)
+                    for character in visible
+                ),
+                default=0.0,
+            )
+            return max(
+                _CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS,
+                max(shaping_widths),
+                wide_letter_width,
+            )
         return sum(widths)
     if len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible):
         return max(2.0, max(widths))
