@@ -2541,6 +2541,26 @@ def test_native_document_marks_pathological_grapheme_cluster_as_truncated() -> N
     assert len(svg.encode("utf-8")) < 20_000
 
 
+def test_canvas_wrap_refits_after_stripping_combining_mark_base_space() -> None:
+    label = " \u0301BBBB"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        46,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert layout.lines
+    assert all(not line.startswith((" ", "\t")) for line, _baseline in layout.lines)
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 46
+        for line, _baseline in layout.lines
+    )
+
+
 def test_native_document_canvas_wrap_preserves_combining_mark_clusters() -> None:
     cluster = "e\u0301"
     label = cluster * 24

@@ -4164,6 +4164,9 @@ def _canvas_wrap_source_line(
 
     if max_lines <= 0:
         return [], bool(value)
+    value = value.strip(" \t")
+    if not value:
+        return [], False
     lines: list[str] = []
     current: list[str] = []
     current_width = 0.0
