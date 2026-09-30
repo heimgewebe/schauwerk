@@ -1782,6 +1782,31 @@ def test_canvas_wide_fallback_punctuation_and_symbols_are_conservative() -> None
     )
 
 
+def test_canvas_wide_fallback_letters_are_script_aware() -> None:
+    assert native_diagram._canvas_character_width_units("A") == pytest.approx(0.86)
+    assert native_diagram._canvas_character_width_units("ᐁ") == pytest.approx(1.30)
+    assert native_diagram._canvas_character_width_units("\u1675") == pytest.approx(2.05)
+    assert native_diagram._canvas_character_width_units("\u102a") == pytest.approx(2.50)
+    assert native_diagram._canvas_character_width_units("\u0d10") == pytest.approx(1.95)
+    assert native_diagram._canvas_character_width_units("\u1685") == pytest.approx(1.90)
+    assert native_diagram._canvas_character_width_units("\u1b4b") == pytest.approx(1.85)
+
+    layout = native_diagram._canvas_text_layout(
+        "\u1675" * 10,
+        144,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert layout.lines
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 144
+        for line, _ in layout.lines
+    )
+
+
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
     label = "AAAA\u00a0BBBB"
 

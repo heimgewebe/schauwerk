@@ -3519,6 +3519,78 @@ _CANVAS_ZWJ_SHAPING_SCRIPT_RANGES = (
 )
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
+_CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 1.0
+_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
+# Letter fallback glyphs whose isolated bold advance exceeds the generic
+# non-ASCII budget in DejaVu Sans Bold or the headless-Chrome
+# Inter/Arial/sans-serif fallback stack. Ranges are script/block aware and
+# rounded upward to 0.05em. Myanmar and Canadian Syllabics are tiered so
+# their few extreme glyphs do not force the whole script to the maximum.
+_CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
+    (0x0590, 0x05FF, 1.05),  # Hebrew
+    (0x0600, 0x06FF, 1.40),  # Arabic
+    (0x0750, 0x077F, 1.40),  # Arabic Supplement
+    (0x07C0, 0x07FF, 1.05),  # NKo
+    (0x0800, 0x083F, 1.10),  # Samaritan
+    (0x0840, 0x085F, 1.15),  # Mandaic
+    (0x0860, 0x08FF, 1.35),  # Syriac/Arabic Extended
+    (0x0A00, 0x0A7F, 1.25),  # Gurmukhi
+    (0x0A80, 0x0AFF, 1.30),  # Gujarati
+    (0x0B80, 0x0BFF, 1.60),  # Tamil
+    (0x0C00, 0x0C7F, 1.80),  # Telugu
+    (0x0C80, 0x0CFF, 1.60),  # Kannada
+    (0x0D00, 0x0D7F, 1.95),  # Malayalam
+    (0x0D80, 0x0DFF, 1.75),  # Sinhala
+    (0x0E80, 0x0EFF, 1.40),  # Lao
+    (0x1000, 0x1029, 1.35),  # Myanmar common letters
+    (0x102A, 0x102A, 2.50),  # MYANMAR LETTER AU
+    (0x102B, 0x103E, 1.35),  # Myanmar common letters
+    (0x103F, 0x103F, 1.60),  # MYANMAR LETTER GREAT SA
+    (0x1040, 0x109F, 1.35),  # Myanmar remainder
+    (0x10A0, 0x10FF, 1.10),  # Georgian
+    (0x1200, 0x137F, 1.35),  # Ethiopic
+    (0x13A0, 0x13FF, 1.20),  # Cherokee
+    (0x1400, 0x151C, 1.30),  # Canadian Aboriginal Syllabics
+    (0x151D, 0x1524, 1.45),
+    (0x1525, 0x158D, 1.30),
+    (0x158E, 0x1590, 1.60),
+    (0x1591, 0x1592, 1.30),
+    (0x1593, 0x1594, 1.60),
+    (0x1595, 0x166F, 1.30),
+    (0x1670, 0x1670, 1.60),
+    (0x1671, 0x1672, 2.05),
+    (0x1673, 0x1674, 1.75),
+    (0x1675, 0x1676, 2.05),
+    (0x1680, 0x169F, 1.90),  # Ogham
+    (0x1780, 0x17FF, 1.30),  # Khmer
+    (0x1800, 0x18AF, 1.25),  # Mongolian
+    (0x1980, 0x19DF, 1.30),  # New Tai Lue
+    (0x1A00, 0x1A1F, 1.25),  # Buginese
+    (0x1A20, 0x1AAF, 1.40),  # Tai Tham
+    (0x1B00, 0x1B7F, 1.85),  # Balinese
+    (0x1B80, 0x1BBF, 1.65),  # Sundanese
+    (0x1BC0, 0x1BFF, 1.15),  # Batak
+    (0x1C00, 0x1C4F, 1.10),  # Lepcha
+    (0x1C90, 0x1CBF, 1.15),  # Georgian Extended
+    (0x1F00, 0x1FFF, 1.30),  # Greek Extended
+    (0x2C80, 0x2CFF, 1.05),  # Coptic
+    (0x2D30, 0x2D7F, 1.05),  # Tifinagh
+    (0x2D80, 0x2DDF, 1.40),  # Ethiopic Extended
+    (0xA500, 0xA63F, 1.35),  # Vai
+    (0xA640, 0xA69F, 1.45),  # Cyrillic Extended-B
+    (0xA720, 0xA7FF, 1.45),  # Latin Extended-D
+    (0xA840, 0xA87F, 1.20),  # Phags-pa
+    (0xA980, 0xA9DF, 1.50),  # Javanese
+    (0xAA00, 0xAA5F, 1.60),  # Cham
+    (0xAA60, 0xAA7F, 1.45),  # Myanmar Extended-A
+    (0xAA80, 0xAADF, 1.25),  # Tai Viet
+    (0xAAE0, 0xAAFF, 1.15),  # Meetei Mayek Extensions
+    (0xAB00, 0xAB2F, 1.30),  # Ethiopic Extended-A
+    (0xAB70, 0xABBF, 1.05),  # Cherokee Supplement
+    (0xFB00, 0xFB4F, 1.75),  # Alphabetic Presentation Forms
+    (0xFB50, 0xFDFF, 2.15),  # Arabic Presentation Forms-A
+    (0xFE70, 0xFEFF, 1.45),  # Arabic Presentation Forms-B
+)
 # Rare punctuation/symbol fallback glyphs that exceed the generic 0.9em budget
 # in DejaVu Sans Bold. Values are checked against the headless-Chrome
 # Inter/Arial/sans-serif fallback stack and conservatively rounded upward
@@ -3865,6 +3937,18 @@ def _canvas_has_extended_graphemes(value: str) -> bool:
     return any(len(cluster) > 1 for cluster in _canvas_grapheme_clusters(value))
 
 
+def _canvas_fallback_letter_width_units(character: str) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0x7F or not unicodedata.category(character).startswith("L"):
+        return None
+    for first, last, width_units in _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            return max(_CANVAS_FALLBACK_LETTER_WIDTH_UNITS, width_units)
+    return _CANVAS_FALLBACK_LETTER_WIDTH_UNITS
+
+
 def _canvas_character_width_units(character: str) -> float:
     if not _xml_10_character_allowed(character):
         return _CANVAS_XML_REPLACEMENT_WIDTH_UNITS
@@ -3880,15 +3964,18 @@ def _canvas_character_width_units(character: str) -> float:
     if character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
     codepoint = ord(character)
+    letter_width = _canvas_fallback_letter_width_units(character)
     if 0x0400 <= codepoint <= 0x052F:
-        return _CANVAS_CYRILLIC_WIDTH_UNITS
+        return max(_CANVAS_CYRILLIC_WIDTH_UNITS, letter_width or 0.0)
     if codepoint > 0x7F and unicodedata.east_asian_width(character) in {"W", "F"}:
-        return 1.0
+        return max(_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS, letter_width or 0.0)
     for first, last, width_units in _CANVAS_WIDE_FALLBACK_WIDTH_RANGES:
         if codepoint < first:
             break
         if codepoint <= last:
             return width_units
+    if letter_width is not None:
+        return letter_width
     return _character_width_units(
         character,
         non_ascii=0.9,
@@ -3964,7 +4051,20 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
         if any(is_extended_pictographic(item) for item in cluster):
             return max(2.0, max(widths))
         if _canvas_zwj_uses_shaping_script(cluster):
-            return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(widths))
+            shaping_widths = [
+                (
+                    _CANVAS_SPACING_MARK_WIDTH_UNITS
+                    if unicodedata.category(character) == "Mc"
+                    else _character_width_units(
+                        character,
+                        non_ascii=0.9,
+                        uppercase=0.86,
+                        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+                    )
+                )
+                for character in visible
+            ]
+            return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(shaping_widths))
         return sum(widths)
     if len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible):
         return max(2.0, max(widths))
