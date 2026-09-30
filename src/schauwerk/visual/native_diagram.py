@@ -4388,6 +4388,37 @@ def _canvas_text_probe_cluster_limit(
     )
 
 
+def _canvas_bounded_text_probe_prefix(
+    value: str,
+    *,
+    geometry_cluster_limit: int,
+    work_cluster_limit: int,
+    max_codepoints: int,
+) -> tuple[str, bool]:
+    """Bound probe work without charging control-only clusters to geometry."""
+
+    prefix, work_truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=work_cluster_limit,
+        max_codepoints=max_codepoints,
+    )
+    if not any(_canvas_is_zero_advance_control(character) for character in prefix):
+        return prefix, work_truncated
+
+    selected: list[str] = []
+    geometry_clusters = 0
+    for cluster in _canvas_grapheme_clusters(prefix):
+        consumes_geometry = not all(
+            _canvas_is_zero_advance_control(character) for character in cluster
+        )
+        if consumes_geometry and geometry_clusters >= geometry_cluster_limit:
+            return "".join(selected), True
+        selected.append(cluster)
+        if consumes_geometry:
+            geometry_clusters += 1
+    return prefix, work_truncated
+
+
 def _canvas_text_layout(
     value: str,
     width_px: int,
@@ -4412,10 +4443,15 @@ def _canvas_text_layout(
         max_bytes=max_bytes,
         min_size=min_size,
     )
+    probe_work_cluster_limit = min(
+        max(1, max_bytes + 1),
+        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+    )
     collapsed_probe = _canvas_collapse_inline_whitespace(value)
-    probe_prefix, probe_truncated = _canvas_bounded_xml_compatible_prefix(
+    probe_prefix, probe_truncated = _canvas_bounded_text_probe_prefix(
         collapsed_probe,
-        max_clusters=probe_cluster_limit,
+        geometry_cluster_limit=probe_cluster_limit,
+        work_cluster_limit=probe_work_cluster_limit,
         max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
     )
     if collapsed_probe == value:

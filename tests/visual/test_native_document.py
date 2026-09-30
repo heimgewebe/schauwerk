@@ -2038,6 +2038,43 @@ def test_canvas_text_layout_uses_collapsed_whitespace_past_cluster_cap() -> None
     assert layout.lines == (("abc", 24), ("defxxxxxx…", 40))
 
 
+def test_canvas_text_probe_zero_advance_controls_do_not_consume_geometry_cap() -> None:
+    label = "\u200f" * 100 + "abcdefghij"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        92,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    rendered = "".join(line for line, _baseline in layout.lines)
+
+    assert layout.truncated is False
+    assert rendered.count("\u200f") == 100
+    assert rendered.replace("\u200f", "") == "abcdefghij"
+    assert (
+        native_diagram._estimated_canvas_wrap_width(rendered, size=layout.size)
+        <= 92
+    )
+
+
+def test_canvas_text_probe_zero_advance_controls_still_honor_work_cap() -> None:
+    label = "\u200f" * 100 + "abcdefghij"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        92,
+        40,
+        max_lines=8,
+        max_bytes=64,
+    )
+    rendered = "".join(line for line, _baseline in layout.lines)
+
+    assert layout.truncated is True
+    assert "abcdefghij" not in rendered
+
+
 @pytest.mark.parametrize(
     "control",
     [
