@@ -1,0 +1,100 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit.v1",
+  "scope": "json-canvas-text-fit-and-render-bounds",
+  "accepted_at": "2026-09-30",
+  "functional_head": "0a1eb7e5ca705d378fbdd1a3e86e8caf7095371c",
+  "integrated_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "ccaba5ce593e4e3212577e91d9ff81d31547773d141b25dfb3aa3bbe710c18e6",
+    "file_sha256": "efb16d5adc5c30a72acc6b526468fb1ba8fdd8d36ded8fe8edbb961c89952e88",
+    "path": "docs/operators/evidence/schaubild-product-ui-final-fixes-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-product-ui-final-fixes.v1"
+  },
+  "checks": {
+    "current_main_integrated": true,
+    "historical_native_editor_receipt_restored_to_main": true,
+    "collapsed_whitespace_cluster_cap_fixed": true,
+    "explicit_line_breaks_preserved": true,
+    "focused_whitespace_regressions_passed": true,
+    "native_document_suite_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_case_browser_readback_passed": true,
+    "visual_readback_passed": true
+  },
+  "check_evidence": {
+    "focused_whitespace_regressions_passed": {
+      "job_unit": "grabowski-job-b10136c9adfb",
+      "argv_sha256": "d1c8103d8c0f5284e12f87a8fc273eb8d92bbb448b045788f80ba8704d3bbad8",
+      "finalization_receipt_sha256": "1efbdee214b45db8d381d434220fcbddfba495873407308a652ddde3ae800dd1",
+      "result": "succeeded",
+      "passed_count": 3
+    },
+    "native_document_suite_passed": {
+      "job_unit": "grabowski-job-e193d2abeae1",
+      "argv_sha256": "16188f67f72fcfcfb581ef857632976bd4ef53769e92bf949070110113103869",
+      "finalization_receipt_sha256": "0835e9ca64bfdde50eb8e97f0aaa0ef5c0fabeed6df5f8db9c090290ac01684d",
+      "result": "succeeded",
+      "passed_count": 154
+    },
+    "browser_smoke_passed": {
+      "job_unit": "grabowski-job-414703a7b72b",
+      "argv_sha256": "9cb4108802bafa012593be3f97737a3ad363b56172fdacd0bc988192685c3d8f",
+      "finalization_receipt_sha256": "12c3a2868fe069a4fb0aec3c88de92829062b32e710ffaa84956444a76363422",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-2704fc858f4f",
+      "argv_sha256": "4201db379bc79304334603517b3d0e13442d6311b43d2d22503d1514cbfb5cfa",
+      "finalization_receipt_sha256": "4acee90b8e56b2791129f5f6ab1a06e06f037c5ed9baf3e82b392fc8be3a559c",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    },
+    "exact_case_browser_readback_passed": {
+      "job_unit": "grabowski-job-aeb95d32c06e",
+      "argv_sha256": "63d93db7a769fa9416ca0b52053c1b9a7241e37e451b7191235881233c7827bb",
+      "finalization_receipt_sha256": "669f763a0981a0707094bb088e8594e411a71f956ea85d3a237b6fc77122f225",
+      "result": "succeeded",
+      "long_collapsible_whitespace_lines": [
+        "abc",
+        "defxxxxxx…"
+      ],
+      "single_space_equivalent_lines": [
+        "abc",
+        "defxxxxxx…"
+      ],
+      "long_collapsible_whitespace_truncated": true,
+      "single_space_equivalent_truncated": true,
+      "explicit_multiline_lines": [
+        "Zeile eins mit",
+        "Text",
+        "Zeile zwei",
+        "bleibt sichtbar"
+      ],
+      "explicit_multiline_truncated": false,
+      "screenshot_png_sha256": "1b53c32af7e4427d408134a7e4b89517eb3bd9c36bbae68929f363887b58f3c4",
+      "screenshot_jpg_sha256": "bb0965a01dc189db657de5ce22f97e74eae8fe7f6bd1a071cb440a92cf564319"
+    }
+  },
+  "source_bindings": {
+    "Dockerfile": "deae1dfdf21ae6eef2f7e32bd90c2c3e443a3136baa3aa3799bd1b1db0808ca5",
+    "src/schauwerk/visual/grapheme.py": "0e7e2bd1ad8f79df3b4d1916b6ae21e9e08de3b4d21dad61cbf08d30235b2d2b",
+    "src/schauwerk/visual/native_diagram.py": "fc992a16585c215103beac52d1125f5b6a08cdd4bcff7269841e45cef6aef971",
+    "src/schauwerk/visual/native_viewer.py": "c84fb8575f6f2a179bc61047bc31bc4955031ab7331bef446984389dc9202692",
+    "src/schauwerk/visual/standalone_editor.py": "3f2a98c93872edb9d06079e716eaf444f3ca0d6caf22c0084ea58db949402899",
+    "tests/visual/test_native_diagram.py": "6acedb5dbed1ed50b2626fe00a56c07e69f593ad1f22b3df0bad64e38d6e37cb",
+    "tests/visual/test_native_document.py": "a2a12328a74c271562e1d05c2206db35f55e8ae2fd563f96f72d2ac3b9d0479d",
+    "tests/visual/test_native_viewer.py": "5bde0f525510d6f80de624a324122d1d525ca9581569429cc801a4736924680a",
+    "tests/visual/test_standalone_editor.py": "aafca168e96c24e439a608d8e196c3598bfffb3cededf111160e5a0872fcc7c1"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the JSON Canvas text-fit revision",
+    "independent review of the JSON Canvas text-fit revision",
+    "GitHub CI success on the later evidence commit",
+    "current-head Codex settlement after the evidence commit",
+    "Captain merge readiness",
+    "runtime publication or Commonthing deployment"
+  ],
+  "evidence_digest": "580cbf8e0a0eb6fde9c2ed708e207588fbbfaa8202661651321182d03d6e8cdf"
+}

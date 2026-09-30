@@ -44,6 +44,9 @@ SCHAUBILD_PRODUCT_UI_REVIEW_FIX_EVIDENCE = (
 SCHAUBILD_PRODUCT_UI_FINAL_FIX_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-product-ui-final-fixes-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-json-canvas-text-fit-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -322,20 +325,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     editor_superseded_files = {
         "Dockerfile",
         "Makefile",
-        "pyproject.toml",
         "scripts/run_browser_smoke.py",
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/json_fidelity.py",
-        "src/schauwerk/visual/grapheme.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/native_viewer.py",
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_native_canvas_editor.py",
         "tests/visual/test_native_document.py",
-        "tests/visual/test_native_diagram.py",
         "tests/visual/test_drawio_import.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_browser.py",
@@ -396,6 +396,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_standalone_editor_font_controls.py",
     }
+    json_canvas_text_fit_superseded_files = {
+        "Dockerfile",
+        "src/schauwerk/visual/grapheme.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "tests/visual/test_native_diagram.py",
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -423,6 +434,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             draft_restore_superseded_files
             | product_ui_superseded_files
             | final_ui_fix_superseded_files
+            | json_canvas_text_fit_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
@@ -740,31 +752,6 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         editor_successor["checks"]["native_cutover_boundary_declares_json_canvas"]
         is True
     )
-    for check_name in {
-        "canvas_grapheme_uax29_stdlib_runtime",
-        "canvas_grapheme_oracle_conformance_checked",
-        "canvas_html_title_bytes_bounded",
-        "canvas_emoji_presentation_width_bounded",
-        "canvas_grapheme_cluster_amplification_bounded",
-        "canvas_embedded_model_escape_amplification_bounded",
-        "canvas_zwnj_zero_advance_width_preserved",
-        "narrative_cjk_width_metric_unchanged",
-        "canvas_text_byte_budget_fair_across_labels",
-        "canvas_grapheme_probe_visible_prefix_bounded",
-        "canvas_text_probe_geometry_independent_work_cap",
-        "canvas_element_title_codepoint_work_cap",
-        "canvas_zero_advance_control_only_grapheme_width_preserved",
-        "canvas_bidi_format_controls_zero_advance_width_preserved",
-        "canvas_invisible_format_controls_zero_advance_width_preserved",
-        "canvas_deprecated_bidi_controls_zero_advance_width_preserved",
-        "canvas_html_title_grapheme_probe_bounded",
-        "canvas_html_title_codepoint_work_cap",
-        "canvas_html_title_projection_render_reused",
-        "native_runtime_import_stdlib_only",
-        "docker_runtime_closure_includes_grapheme_segmenter",
-    }:
-        assert editor_successor["checks"][check_name] is True
-    assert "canvas_grapheme_dependency_pinned" not in editor_successor["checks"]
 
     draft_restore_successor = json.loads(
         (SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -795,7 +782,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
     for name, expected in draft_restore_successor["source_bindings"].items():
-        if name not in product_ui_superseded_files:
+        if name not in (
+            product_ui_superseded_files | json_canvas_text_fit_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert draft_restore_successor["checks"] == {
         "focused_restore_tests_passed": True,
@@ -905,7 +894,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(product_ui_successor["source_bindings"]) == expected_product_ui_bindings
     for name, expected in product_ui_successor["source_bindings"].items():
         if name not in (
-            product_ui_review_fix_superseded_files | final_ui_fix_superseded_files
+            product_ui_review_fix_superseded_files
+            | final_ui_fix_superseded_files
+            | json_canvas_text_fit_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_successor["checks"] == {
@@ -975,7 +966,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(product_ui_review_fix["source_bindings"]) == expected_review_fix_bindings
     for name, expected in product_ui_review_fix["source_bindings"].items():
-        if name not in final_ui_fix_superseded_files:
+        if name not in (
+            final_ui_fix_superseded_files | json_canvas_text_fit_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_review_fix["checks"] == {
         "historical_product_ui_acceptance_left_immutable": True,
@@ -1103,6 +1096,96 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in final_ui_fix["does_not_establish"]
     )
 
+    json_canvas_text_fit = json.loads(
+        (SCHAUBILD_JSON_CANVAS_TEXT_FIT_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        json_canvas_text_fit["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit.v1"
+    )
+    assert (
+        json_canvas_text_fit["functional_head"]
+        == "0a1eb7e5ca705d378fbdd1a3e86e8caf7095371c"
+    )
+    assert (
+        json_canvas_text_fit["integrated_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit["parent_evidence"] == {
+        "evidence_digest": final_ui_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PRODUCT_UI_FINAL_FIX_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-product-ui-final-fixes-20260930/acceptance-receipt.json"
+        ),
+        "schema_version": final_ui_fix["schema_version"],
+    }
+    assert json_canvas_text_fit["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit["source_bindings"]) == (
+        json_canvas_text_fit_superseded_files
+    )
+    for name, expected in json_canvas_text_fit["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert hashlib.sha256(
+        (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
+    ).hexdigest() == "9cade3ab2edced27be114b8b7e773750dc33cd47d4d9fcad410a518bda832207"
+    assert json_canvas_text_fit["checks"] == {
+        "current_main_integrated": True,
+        "historical_native_editor_receipt_restored_to_main": True,
+        "collapsed_whitespace_cluster_cap_fixed": True,
+        "explicit_line_breaks_preserved": True,
+        "focused_whitespace_regressions_passed": True,
+        "native_document_suite_passed": True,
+        "browser_smoke_passed": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "exact_case_browser_readback_passed": True,
+        "visual_readback_passed": True,
+    }
+    assert json_canvas_text_fit["check_evidence"][
+        "focused_whitespace_regressions_passed"
+    ]["passed_count"] == 3
+    assert json_canvas_text_fit["check_evidence"]["native_document_suite_passed"][
+        "passed_count"
+    ] == 154
+    assert json_canvas_text_fit["check_evidence"]["browser_smoke_passed"][
+        "passed_count"
+    ] == 7
+    case_readback = json_canvas_text_fit["check_evidence"][
+        "exact_case_browser_readback_passed"
+    ]
+    assert case_readback["long_collapsible_whitespace_lines"] == [
+        "abc",
+        "defxxxxxx…",
+    ]
+    assert case_readback["single_space_equivalent_lines"] == [
+        "abc",
+        "defxxxxxx…",
+    ]
+    assert case_readback["explicit_multiline_lines"] == [
+        "Zeile eins mit",
+        "Text",
+        "Zeile zwei",
+        "bleibt sichtbar",
+    ]
+    assert case_readback["explicit_multiline_truncated"] is False
+    assert (
+        "user visual acceptance of the JSON Canvas text-fit revision"
+        in json_canvas_text_fit["does_not_establish"]
+    )
+    assert (
+        "current-head Codex settlement after the evidence commit"
+        in json_canvas_text_fit["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -1135,6 +1218,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_superseded_files:
+            assert json_canvas_text_fit["source_bindings"][name] == current
         elif name in final_ui_fix_superseded_files:
             assert final_ui_fix["source_bindings"][name] == current
         elif name in product_ui_review_fix_superseded_files:
