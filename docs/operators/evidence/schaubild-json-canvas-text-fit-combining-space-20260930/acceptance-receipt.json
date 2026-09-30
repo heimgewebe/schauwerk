@@ -1,0 +1,99 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-combining-space.v1",
+  "scope": "json-canvas-text-fit-combining-space-refit",
+  "accepted_at": "2026-09-30",
+  "functional_head": "fa04a9970466dec9403f814aa05139c6b2d09f63",
+  "integrated_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "554b21889f4a65cb7df7aec21766a0536aa252984b844878f00d4a8b30d8fe9f",
+    "file_sha256": "c9b934671caeb03468a13c040522673dd3249e1552dcc95d7bf55dc4324a84a8",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-zero-advance-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-zero-advance.v1"
+  },
+  "checks": {
+    "historical_zero_advance_acceptance_left_immutable": true,
+    "already_stripped_collapsible_edge_whitespace_normalized_before_grapheme_fit": true,
+    "emitted_combining_mark_line_refit_to_geometry": true,
+    "existing_grapheme_and_work_caps_preserved": true,
+    "focused_combining_and_regression_tests_passed": true,
+    "native_document_and_diagram_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_case_browser_readback_passed": true,
+    "visual_readback_passed": true
+  },
+  "check_evidence": {
+    "focused_combining_and_regression_tests_passed": {
+      "job_unit": "grabowski-job-b4d52a4149c3",
+      "argv_sha256": "70294bf3a8a931bddacc8e614aed4835f3b14e4537df2507cfcbccf5a602fc39",
+      "finalization_receipt_sha256": "e8b3385fcd0796a5ffd69c0782030db4a9286719c7aa76be6b913b8a1dec5239",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "native_document_and_diagram_modules_passed": {
+      "job_unit": "grabowski-job-5043831ff24a",
+      "argv_sha256": "38f80627a2f81a10ffebc53de6c335ae6d86cb7226a785c9d3f2490d6764e18a",
+      "finalization_receipt_sha256": "b660a47d74dddbe4065f1af1bbeb0df9c9689e9ced513b9a33e9568c7d17f3c9",
+      "result": "succeeded"
+    },
+    "static_validation_passed": {
+      "job_unit": "grabowski-job-7aac1bc0b461",
+      "argv_sha256": "1735bb5704da0dbc1194fad74a8a4f7644ab47227d31b876a623813a71da4564",
+      "finalization_receipt_sha256": "b6f035a9f539fef2a63859afc8c252b3151f8b3724b747da64d842bfdf6ecd3a",
+      "result": "succeeded"
+    },
+    "browser_smoke_passed": {
+      "job_unit": "grabowski-job-7b3f0afd36eb",
+      "argv_sha256": "b99521982a251a83311bf46c21566eac331cb1ad7e2bab78a2a855f308c2a580",
+      "finalization_receipt_sha256": "8697dddd40a49ba27489563453b433145c8e8fb294d61241a0f82ff21aa2b551",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-61deaab3043e",
+      "argv_sha256": "1ffe8b8b7a0e2a3551cc6abfa93e85b4f44bc273f9b2c9fd6fbdb88f73ed7caa",
+      "finalization_receipt_sha256": "88ce1321693f63e94e3e5444657503ca51eacc2ffefc8fa4f0e65c3775879d59",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "browser_smoke_covered_separately": true
+    },
+    "exact_case_browser_readback_passed": {
+      "job_unit": "grabowski-job-7e78bbdf691d",
+      "argv_sha256": "16e1465bbfdae47621611749ee60b770cb0f4c29c15e7f5b10def2e2bd532634",
+      "finalization_receipt_sha256": "35e3f5726a57af0c3b1d060efbed5506dc284f3d130c87fd893bc91db4ce7dcb",
+      "result": "succeeded",
+      "source_label": " ́BBBB",
+      "rendered_label": "́BB…",
+      "truncated": true,
+      "all_text_boxes_within_node_bounds": true,
+      "node_bbox": {
+        "x": 20,
+        "y": 20,
+        "width": 74,
+        "height": 40
+      },
+      "text_bbox": {
+        "x": 31,
+        "y": 32,
+        "width": 28.453125,
+        "height": 15
+      },
+      "screenshot_png_sha256": "3c9e479d2c16566da3de5b69f16a4ea661a9406294035b2821a328a1bf27148a",
+      "svg_sha256": "98fb2ca07df9283eaa817836d6acda97e35405dae431e44ef32d6d35fefc9f07"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "85e37c5e6486deb3b183226fea4d58ec5b2a265a9440557c36d2c3260d389fb6",
+    "tests/visual/test_native_document.py": "1a7f70fc982be332fdf81213bf9e6ec50cb3734a9089c3aa025c308db2346ad7"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the combining-mark JSON Canvas text-fit revision",
+    "independent review of the combining-mark JSON Canvas text-fit revision",
+    "GitHub CI success on the later evidence commit",
+    "current-head Codex settlement after the later evidence commit",
+    "Captain merge readiness",
+    "runtime publication or Commonthing deployment"
+  ],
+  "evidence_digest": "6d944ab60a23667c4c1094fc5fc01f29c7dbe1c75cc0fe1f63dfba8b5825298d"
+}
