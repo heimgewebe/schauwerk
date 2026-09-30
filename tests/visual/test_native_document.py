@@ -1754,6 +1754,27 @@ def test_canvas_wide_non_ascii_fallback_is_conservative() -> None:
     )
 
 
+def test_canvas_wide_fallback_punctuation_and_symbols_are_conservative() -> None:
+    assert native_diagram._canvas_character_width_units("‰") == pytest.approx(1.45)
+    assert native_diagram._canvas_character_width_units("‱") == pytest.approx(1.90)
+    assert native_diagram._canvas_character_width_units("⟷") == pytest.approx(1.80)
+
+    layout = native_diagram._canvas_text_layout(
+        "‰" * 10,
+        144,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert layout.lines
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 144
+        for line, _ in layout.lines
+    )
+
+
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
     label = "AAAA\u00a0BBBB"
 
@@ -2557,6 +2578,38 @@ def test_canvas_wrap_refits_after_stripping_combining_mark_base_space() -> None:
     assert all(not line.startswith((" ", "\t")) for line, _baseline in layout.lines)
     assert all(
         native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 46
+        for line, _baseline in layout.lines
+    )
+
+
+def test_canvas_wrap_refits_internal_combining_space_carry() -> None:
+    label = "e  \u0301BBBB"
+
+    wrapped, wrapped_truncated = native_diagram._canvas_wrap_source_line(
+        label,
+        size=16,
+        max_width=20,
+        max_lines=8,
+    )
+
+    assert wrapped_truncated is True
+    assert wrapped
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=16) <= 20
+        for line in wrapped
+    )
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        20,
+        140,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is False
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 20
         for line, _baseline in layout.lines
     )
 
