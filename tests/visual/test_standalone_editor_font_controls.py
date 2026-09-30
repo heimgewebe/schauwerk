@@ -38,6 +38,12 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
     ]
     assert "display: inline-flex;" in focus_controls
     assert "pointer-events: auto;" in focus_controls
+    focus_stage_selector = "body.editor-focus .editor-stage"
+    focus_stage = styles_css[
+        styles_css.index(f"{focus_stage_selector} {{")
+        : styles_css.index("body.editor-focus .editor-wrap {")
+    ]
+    assert "padding: max(60px, calc(env(safe-area-inset-top) + 52px)) 0 0;" in focus_stage
     dark_override = (
         f"{show_selector} {{ background: rgba(24, 34, 52, 0.94); }}"
     )

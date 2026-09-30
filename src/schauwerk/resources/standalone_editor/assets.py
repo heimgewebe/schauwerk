@@ -576,7 +576,12 @@ body.editor-focus .fullscreen-toggle::after {
   font-weight: 400;
   line-height: 1;
 }
-body.editor-focus .editor-stage { flex: 1 1 auto; min-height: 0; height: auto; padding: 0; }
+body.editor-focus .editor-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  padding: max(60px, calc(env(safe-area-inset-top) + 52px)) 0 0;
+}
 body.editor-focus .editor-wrap { min-height: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
 body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
 
