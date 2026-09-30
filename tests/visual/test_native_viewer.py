@@ -368,7 +368,7 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     )
     assert "const documentEditorHosted = documentMode && window.parent !== window;" in app
     assert "if (documentEditorHosted)" in app
-    assert "Dokumentansicht · Bearbeiten im Schaubild-Host" in app
+    assert "Bearbeiten in Schaubild" in app
     assert "else if (persistOverrides())" in app
     assert 'event.ctrlKey || event.metaKey' in app
     assert 'view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);' in app
@@ -377,7 +377,7 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     escape_handler = app[app.index('window.addEventListener("keydown"') :]
     assert "edgeCreateSource = null;" in escape_handler
     assert "edgeReattach = null;" in escape_handler
-    assert "Kantenaktion abgebrochen" in escape_handler
+    assert "Verbindungsaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
 
 

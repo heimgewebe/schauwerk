@@ -1,0 +1,75 @@
+{
+  "schema_version": "schauwerk-schaubild-native-draft-restore.v1",
+  "scope": "json-canvas-native-draft-restore-routing",
+  "accepted_at": "2026-09-29",
+  "functional_head": "1c2c43086c063a349637f61b580c09a29775543b",
+  "parent_evidence": {
+    "evidence_digest": "59a8fc0f651cb8b14527b3e49cb7c55a8a756bc6b69b3de8edc30e10a72db3ac",
+    "file_sha256": "9cade3ab2edced27be114b8b7e773750dc33cd47d4d9fcad410a518bda832207",
+    "path": "docs/operators/evidence/schaubild-native-editor-20260922/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-editor.v1"
+  },
+  "checks": {
+    "native_canvas_draft_restore_dispatches_document_to_native_editor": true,
+    "native_canvas_document_change_persists_restoreable_native_draft": true,
+    "focused_restore_tests_passed": true,
+    "standalone_editor_full_module_passed": true,
+    "ruff_passed": true,
+    "functional_head_independent_opus_review_passed": true,
+    "historical_acceptance_left_immutable": true
+  },
+  "check_evidence": {
+    "focused_restore_tests_passed": {
+      "job_unit": "grabowski-job-dd920e2b4b11",
+      "argv_sha256": "d22d40c9d980ed5ca0a10d49de65dc4f88ba9e3c10d92f9f2314561ba1f67d2f",
+      "finalization_receipt_sha256": "943a387f64490390017db033732ce56b1a737152ac9fc0a2638daf77da3caa67",
+      "result": "succeeded",
+      "execution_kind": "source_bound_python3_pytest",
+      "validation_head": "684f386eda27fef12ae6a5010aa78823d328f974",
+      "source_bindings": {
+        "src/schauwerk/resources/standalone_editor/assets.py": "1b442cb714ecf15ca2020f98149efb2c643a159940a3afac957c2136891b8ff5",
+        "tests/visual/test_standalone_editor.py": "c6dae1b419a1034a124523e696bdee580d64048156296d31a1055dd5bb6b26a1"
+      }
+    },
+    "standalone_editor_full_module_passed": {
+      "job_unit": "grabowski-job-094eccad77a0",
+      "argv_sha256": "f5edf0ee1f16c0ae60a81a93801f427fb8a34e84263b55d3ffe62d1c875885f4",
+      "finalization_receipt_sha256": "55b2571281463d4a423ce5468389a18a0395289df76d8d010fee984381223a2c",
+      "result": "succeeded",
+      "execution_kind": "direct_python3_pytest",
+      "functional_head": "1c2c43086c063a349637f61b580c09a29775543b"
+    },
+    "ruff_passed": {
+      "job_unit": "grabowski-job-38a669aca771",
+      "argv_sha256": "3922639b99666924940ea6bc51c9ffcf32f887816bbb42a43dac528493266d75",
+      "finalization_receipt_sha256": "a9ea5c976f475f47963fd8a21edcf7c92b46b001b88d8dc44bff4b75ff25fcf6",
+      "result": "succeeded",
+      "execution_kind": "direct_python3_ruff",
+      "source_bindings": {
+        "src/schauwerk/resources/standalone_editor/assets.py": "1b442cb714ecf15ca2020f98149efb2c643a159940a3afac957c2136891b8ff5",
+        "tests/visual/test_standalone_editor.py": "c6dae1b419a1034a124523e696bdee580d64048156296d31a1055dd5bb6b26a1"
+      }
+    },
+    "functional_head_independent_opus_review_passed": {
+      "reviewed_head": "1c2c43086c063a349637f61b580c09a29775543b",
+      "reviewed_diff_sha256": "8ec87f60bd2391efd0d70e3b64ab9925201062925dcb179affa8c9c27e78ffcb",
+      "role_receipt_file_sha256": "c4d27dd9b8cc42cbc64b805f8de5c28525c1bc1315a4b6308e1439dff8f60177",
+      "role_receipt_sha256": "96c09fff09f54accaad608962c3db032c16c1b5181cc35afbc8af7a48901a41d",
+      "verdict": "PASS"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "1b442cb714ecf15ca2020f98149efb2c643a159940a3afac957c2136891b8ff5",
+    "tests/visual/test_standalone_editor.py": "c6dae1b419a1034a124523e696bdee580d64048156296d31a1055dd5bb6b26a1"
+  },
+  "does_not_establish": [
+    "new visual styling or aesthetic acceptance beyond the unchanged prior native-editor design",
+    "supported local browser-smoke execution; the direct pytest/Ruff jobs recorded above used the local python3 module path, while the repository browser-smoke path selected python3.11 without pytest on this host",
+    "independent Opus approval of this successor evidence revision or any later head; the recorded PASS is bound only to functional_head 1c2c43086c063a349637f61b580c09a29775543b",
+    "final GitHub CI for the successor revision",
+    "GHCR publication of this revision",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "ca78d80146d92a5ba87188c63df48f7ce5c9988e2bc3e6188e8032ced8259b3d"
+}

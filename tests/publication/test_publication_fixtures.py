@@ -32,6 +32,18 @@ SCHAUBILD_DRAWIO_NATIVE_EVIDENCE = (
 SCHAUBILD_NATIVE_EDITOR_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-native-editor-20260922"
 )
+SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-draft-restore-20260929"
+)
+SCHAUBILD_PRODUCT_UI_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-product-ui-20260929"
+)
+SCHAUBILD_PRODUCT_UI_REVIEW_FIX_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-product-ui-review-fixes-20260930"
+)
+SCHAUBILD_PRODUCT_UI_FINAL_FIX_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-product-ui-final-fixes-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -361,6 +373,29 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name not in editor_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
+    draft_restore_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    product_ui_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    product_ui_review_fix_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    final_ui_fix_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -384,7 +419,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in (
+            draft_restore_superseded_files
+            | product_ui_superseded_files
+            | final_ui_fix_superseded_files
+        ):
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
     assert editor_successor["checks"]["clipped_edge_labels_do_not_block_node_drag"] is True
     assert (
@@ -726,6 +766,343 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert editor_successor["checks"][check_name] is True
     assert "canvas_grapheme_dependency_pinned" not in editor_successor["checks"]
 
+    draft_restore_successor = json.loads(
+        (SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        draft_restore_successor["schema_version"]
+        == "schauwerk-schaubild-native-draft-restore.v1"
+    )
+    assert (
+        draft_restore_successor["functional_head"]
+        == "1c2c43086c063a349637f61b580c09a29775543b"
+    )
+    assert draft_restore_successor["parent_evidence"] == {
+        "evidence_digest": editor_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-native-editor-20260922/acceptance-receipt.json"
+        ),
+        "schema_version": editor_successor["schema_version"],
+    }
+    assert draft_restore_successor["evidence_digest"] == digest_mapping(
+        draft_restore_successor, "evidence_digest"
+    )
+    assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
+    for name, expected in draft_restore_successor["source_bindings"].items():
+        if name not in product_ui_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert draft_restore_successor["checks"] == {
+        "focused_restore_tests_passed": True,
+        "functional_head_independent_opus_review_passed": True,
+        "historical_acceptance_left_immutable": True,
+        "native_canvas_document_change_persists_restoreable_native_draft": True,
+        "native_canvas_draft_restore_dispatches_document_to_native_editor": True,
+        "ruff_passed": True,
+        "standalone_editor_full_module_passed": True,
+    }
+    assert draft_restore_successor["check_evidence"] == {
+        "focused_restore_tests_passed": {
+            "argv_sha256": (
+                "d22d40c9d980ed5ca0a10d49de65dc4f88ba9e3c10d92f9f2314561ba1f67d2f"
+            ),
+            "execution_kind": "source_bound_python3_pytest",
+            "finalization_receipt_sha256": (
+                "943a387f64490390017db033732ce56b1a737152ac9fc0a2638daf77da3caa67"
+            ),
+            "job_unit": "grabowski-job-dd920e2b4b11",
+            "result": "succeeded",
+            "source_bindings": draft_restore_successor["source_bindings"],
+            "validation_head": "684f386eda27fef12ae6a5010aa78823d328f974",
+        },
+        "standalone_editor_full_module_passed": {
+            "argv_sha256": (
+                "f5edf0ee1f16c0ae60a81a93801f427fb8a34e84263b55d3ffe62d1c875885f4"
+            ),
+            "execution_kind": "direct_python3_pytest",
+            "finalization_receipt_sha256": (
+                "55b2571281463d4a423ce5468389a18a0395289df76d8d010fee984381223a2c"
+            ),
+            "functional_head": "1c2c43086c063a349637f61b580c09a29775543b",
+            "job_unit": "grabowski-job-094eccad77a0",
+            "result": "succeeded",
+        },
+        "ruff_passed": {
+            "argv_sha256": (
+                "3922639b99666924940ea6bc51c9ffcf32f887816bbb42a43dac528493266d75"
+            ),
+            "execution_kind": "direct_python3_ruff",
+            "finalization_receipt_sha256": (
+                "a9ea5c976f475f47963fd8a21edcf7c92b46b001b88d8dc44bff4b75ff25fcf6"
+            ),
+            "job_unit": "grabowski-job-38a669aca771",
+            "result": "succeeded",
+            "source_bindings": draft_restore_successor["source_bindings"],
+        },
+        "functional_head_independent_opus_review_passed": {
+            "reviewed_head": "1c2c43086c063a349637f61b580c09a29775543b",
+            "reviewed_diff_sha256": (
+                "8ec87f60bd2391efd0d70e3b64ab9925201062925dcb179affa8c9c27e78ffcb"
+            ),
+            "role_receipt_file_sha256": (
+                "c4d27dd9b8cc42cbc64b805f8de5c28525c1bc1315a4b6308e1439dff8f60177"
+            ),
+            "role_receipt_sha256": (
+                "96c09fff09f54accaad608962c3db032c16c1b5181cc35afbc8af7a48901a41d"
+            ),
+            "verdict": "PASS",
+        },
+    }
+    assert (
+        "supported local browser-smoke execution; the direct pytest/Ruff jobs "
+        "recorded above used the local python3 module path, while the repository "
+        "browser-smoke path selected python3.11 without pytest on this host"
+        in draft_restore_successor["does_not_establish"]
+    )
+    assert (
+        "independent Opus approval of this successor evidence revision or any "
+        "later head; the recorded PASS is bound only to functional_head "
+        "1c2c43086c063a349637f61b580c09a29775543b"
+        in draft_restore_successor["does_not_establish"]
+    )
+
+    product_ui_successor = json.loads(
+        (SCHAUBILD_PRODUCT_UI_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        product_ui_successor["schema_version"]
+        == "schauwerk-schaubild-product-ui.v1"
+    )
+    assert (
+        product_ui_successor["functional_head"]
+        == "f7f0cd956386bc82202fd7f9633bb0b11f68a343"
+    )
+    assert product_ui_successor["parent_evidence"] == {
+        "evidence_digest": draft_restore_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_NATIVE_DRAFT_RESTORE_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-native-draft-restore-20260929/acceptance-receipt.json"
+        ),
+        "schema_version": draft_restore_successor["schema_version"],
+    }
+    assert product_ui_successor["evidence_digest"] == digest_mapping(
+        product_ui_successor, "evidence_digest"
+    )
+    expected_product_ui_bindings = product_ui_superseded_files | {
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    assert set(product_ui_successor["source_bindings"]) == expected_product_ui_bindings
+    for name, expected in product_ui_successor["source_bindings"].items():
+        if name not in (
+            product_ui_review_fix_superseded_files | final_ui_fix_superseded_files
+        ):
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert product_ui_successor["checks"] == {
+        "historical_acceptance_left_immutable": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "desktop_start_visual_readback_passed": True,
+        "mobile_start_visual_readback_passed": True,
+        "desktop_native_workspace_visual_readback_passed": True,
+        "mobile_native_workspace_cold_start_visual_readback_passed": True,
+        "critical_diff_self_review_passed": True,
+    }
+    self_review_evidence = product_ui_successor["check_evidence"][
+        "critical_diff_self_review_passed"
+    ]
+    assert self_review_evidence == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-product-ui-20260929/grabowski-self-review.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PRODUCT_UI_EVIDENCE / "grabowski-self-review.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "review_mode": "critical_diff_review",
+        "verdict": "PASS",
+        "reviewed_head": "f7f0cd956386bc82202fd7f9633bb0b11f68a343",
+        "reviewed_diff_sha256": (
+            "1dfc35169c372161cd088ba7862d0ffc14f4a6cff13e8d46d1623f39327ecd0c"
+        ),
+    }
+    assert (
+        "independent review of the Product-UI revision"
+        in product_ui_successor["does_not_establish"]
+    )
+    assert (
+        "user visual acceptance of the Product-UI revision"
+        in product_ui_successor["does_not_establish"]
+    )
+
+    product_ui_review_fix = json.loads(
+        (SCHAUBILD_PRODUCT_UI_REVIEW_FIX_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        product_ui_review_fix["schema_version"]
+        == "schauwerk-schaubild-product-ui-review-fixes.v1"
+    )
+    assert (
+        product_ui_review_fix["functional_head"]
+        == "13c1324ba0ed9aab75a0b5a314a620442b961f01"
+    )
+    assert product_ui_review_fix["parent_evidence"] == {
+        "evidence_digest": product_ui_successor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_PRODUCT_UI_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": "docs/operators/evidence/schaubild-product-ui-20260929/acceptance-receipt.json",
+        "schema_version": product_ui_successor["schema_version"],
+    }
+    assert product_ui_review_fix["evidence_digest"] == digest_mapping(
+        product_ui_review_fix, "evidence_digest"
+    )
+    expected_review_fix_bindings = product_ui_review_fix_superseded_files | {
+        "tests/visual/test_standalone_editor_font_controls.py",
+    }
+    assert set(product_ui_review_fix["source_bindings"]) == expected_review_fix_bindings
+    for name, expected in product_ui_review_fix["source_bindings"].items():
+        if name not in final_ui_fix_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert product_ui_review_fix["checks"] == {
+        "historical_product_ui_acceptance_left_immutable": True,
+        "unsupported_plain_text_claim_removed": True,
+        "focus_mode_exit_visible_and_clickable": True,
+        "focused_tests_passed": True,
+        "exact_head_browser_readback_passed": True,
+        "critical_diff_self_review_passed": True,
+    }
+    review_fix_self_review = product_ui_review_fix["check_evidence"][
+        "critical_diff_self_review_passed"
+    ]
+    assert review_fix_self_review == {
+        "path": (
+            "docs/operators/evidence/schaubild-product-ui-review-fixes-20260930/"
+            "grabowski-self-review.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PRODUCT_UI_REVIEW_FIX_EVIDENCE / "grabowski-self-review.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "review_mode": "critical_diff_review",
+        "verdict": "PASS",
+        "reviewed_head": "13c1324ba0ed9aab75a0b5a314a620442b961f01",
+        "reviewed_diff_sha256": (
+            "7d1e8f7d835a475163e25c9c290e6e849c9d29b6ed3d62e1a88d8c3e2ae0182c"
+        ),
+    }
+    assert (
+        "independent review of the review-fix revision"
+        in product_ui_review_fix["does_not_establish"]
+    )
+    assert (
+        "Codex settlement on the later final PR head"
+        in product_ui_review_fix["does_not_establish"]
+    )
+
+    final_ui_fix = json.loads(
+        (SCHAUBILD_PRODUCT_UI_FINAL_FIX_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        final_ui_fix["schema_version"]
+        == "schauwerk-schaubild-product-ui-final-fixes.v1"
+    )
+    assert (
+        final_ui_fix["functional_head"]
+        == "903e68c7ba9ed6885578a291b8abab5634dcd78f"
+    )
+    assert final_ui_fix["parent_evidence"] == {
+        "evidence_digest": product_ui_review_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PRODUCT_UI_REVIEW_FIX_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-product-ui-review-fixes-20260930/acceptance-receipt.json"
+        ),
+        "schema_version": product_ui_review_fix["schema_version"],
+    }
+    assert final_ui_fix["evidence_digest"] == digest_mapping(
+        final_ui_fix, "evidence_digest"
+    )
+    assert set(final_ui_fix["source_bindings"]) == final_ui_fix_superseded_files
+    for name, expected in final_ui_fix["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert final_ui_fix["checks"] == {
+        "historical_review_fix_acceptance_left_immutable": True,
+        "inactive_edit_controls_hidden_outside_hosted_editing": True,
+        "hosted_edit_controls_visible_and_usable": True,
+        "focus_controls_clear_of_editor_stage": True,
+        "focus_mode_exit_visible_and_clickable": True,
+        "supported_formats_product_copy_verified": True,
+        "focused_tests_passed": True,
+        "browser_smoke_passed": True,
+        "final_visual_readback_passed": True,
+    }
+    browser_evidence = final_ui_fix["check_evidence"]["browser_smoke_passed"]
+    assert browser_evidence["job_unit"] == "grabowski-job-58a3b2970edb"
+    assert browser_evidence["finalization_receipt_sha256"] == (
+        "4c87a25a7a9c031cd8f133378c2e28629c038cca2a879a8fb1c3212d3e5f3547"
+    )
+    assert browser_evidence["passed_count"] == 7
+    visual_readback = final_ui_fix["check_evidence"]["final_visual_readback_passed"]
+    assert visual_readback["functional_head"] == final_ui_fix["functional_head"]
+    assert visual_readback["focus_contract"] == {
+        "controls_max_bottom_px": 56,
+        "editor_frame_top_px": 60,
+        "editor_stage_padding_top_px": 60,
+        "exit_returned_to_normal_workspace": True,
+        "no_overlap": True,
+    }
+    assert visual_readback["product_copy"] == {
+        "formats": ["Mermaid", "JSON Canvas", "draw.io"],
+        "plain_text_advertised": False,
+    }
+    assert visual_readback["screenshots_sha256"] == {
+        "desktop_focus": (
+            "c7f7d4d45c8f77a67b62b8489d6c7d3a8cf94f2b7a63f0872a90bda3fecbb2ad"
+        ),
+        "desktop_start": (
+            "c69b980dc49c189b0c503f91e829e51a0cfdfb483076ad3720de9c7edf10cf88"
+        ),
+        "desktop_workspace": (
+            "de24472784cc4c2bc66b24d0191467eaff147f81a31e959c567ad7989c2129a4"
+        ),
+        "mobile_start": (
+            "a92e386faa9e332c5bdaa5886b5b27504134e8f458fd3331f3a149fb8ed5cb2d"
+        ),
+        "mobile_workspace_cold_start": (
+            "0ecd534e0899759bf71e5c70b9b726fb40ddef413e762410b92a5f4ced86576d"
+        ),
+    }
+    assert (
+        "user visual acceptance of the final UI-fix revision"
+        in final_ui_fix["does_not_establish"]
+    )
+    assert (
+        "Codex settlement on the later final PR head"
+        in final_ui_fix["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -752,16 +1129,21 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/surfaces/miro/credentials.py",
         "tests/miro/test_credentials.py",
     }
-    schaubild_superseded_files = {
-        "tests/visual/test_standalone_editor.py",
-    }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
-        elif name in schaubild_superseded_files:
+        elif name in final_ui_fix_superseded_files:
+            assert final_ui_fix["source_bindings"][name] == current
+        elif name in product_ui_review_fix_superseded_files:
+            assert product_ui_review_fix["source_bindings"][name] == current
+        elif name in product_ui_superseded_files:
+            assert product_ui_successor["source_bindings"][name] == current
+        elif name in draft_restore_superseded_files:
+            assert draft_restore_successor["source_bindings"][name] == current
+        elif name in editor_superseded_files:
             assert editor_successor["source_bindings"][name] == current
         else:
             assert current == expected

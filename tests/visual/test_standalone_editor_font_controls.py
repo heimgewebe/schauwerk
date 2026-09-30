@@ -13,8 +13,22 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
     index_html = (output / "index.html").read_text(encoding="utf-8")
     styles_css = (output / "styles.css").read_text(encoding="utf-8")
 
-    hide_selector = "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)"
+    hide_selector = (
+        "body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output)"
+    )
     assert styles_css.count(hide_selector) == 1
+    output_selector = "body.editor-focus .workspace-output"
+    assert styles_css.count(f"{output_selector} {{") == 1
+    assert (
+        "body.editor-focus .workspace-output > :not(.fullscreen-toggle) { display: none; }"
+        in styles_css
+    )
+    output_controls = styles_css[
+        styles_css.index(f"{output_selector} {{")
+        : styles_css.index("body.editor-focus .workspace-output > :not(.fullscreen-toggle)")
+    ]
+    assert "display: flex;" in output_controls
+    assert "pointer-events: none;" in output_controls
     show_selector = "body.editor-focus .workspace-bar > .font-controls"
     assert styles_css.count(show_selector) == 2
     assert styles_css.index(hide_selector) < styles_css.index(show_selector)
@@ -24,6 +38,12 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
     ]
     assert "display: inline-flex;" in focus_controls
     assert "pointer-events: auto;" in focus_controls
+    focus_stage_selector = "body.editor-focus .editor-stage"
+    focus_stage = styles_css[
+        styles_css.index(f"{focus_stage_selector} {{")
+        : styles_css.index("body.editor-focus .editor-wrap {")
+    ]
+    assert "padding: max(60px, calc(env(safe-area-inset-top) + 52px)) 0 0;" in focus_stage
     dark_override = (
         f"{show_selector} {{ background: rgba(24, 34, 52, 0.94); }}"
     )
@@ -31,7 +51,7 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
 
     assert "@media (max-width: 1024px)" in styles_css
     assert ".workspace-bar > .font-controls { order: -2; }" in styles_css
-    assert ".workspace-bar > .fullscreen-toggle { order: -1; }" in styles_css
+    assert ".workspace-bar > .fullscreen-toggle { order: -1; }" not in styles_css
 
     for control_id in (
         "fontDecreaseButton",

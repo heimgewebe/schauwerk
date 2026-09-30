@@ -215,7 +215,7 @@ def test_integrated_native_canvas_endpoint_preserves_layout_and_serves_editing_c
             in viewer_app
         )
         assert "if (documentEditorHosted) {" in viewer_app
-        assert "Dokumentansicht · Bearbeiten im Schaubild-Host" in viewer_app
+        assert "Bearbeiten in Schaubild" in viewer_app
         assert 'reattachSourceButton?.addEventListener("click"' in viewer_app
         assert 'reattachTargetButton?.addEventListener("click"' in viewer_app
 

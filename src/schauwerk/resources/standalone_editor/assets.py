@@ -15,77 +15,125 @@ INDEX_HTML = r"""<!doctype html>
 <body>
   <main class="app-shell">
     <header class="topline">
-      <a class="brand" href="#" id="homeLink" aria-label="Zur Startseite">Schaubild</a>
-      <span class="status" id="status" role="status" aria-live="polite">Bereit</span>
+      <a class="brand" href="#" id="homeLink" aria-label="Zur Startseite">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span class="brand-copy"><strong>Schaubild</strong><small>von Schauwerk</small></span>
+      </a>
+      <div class="topline-meta">
+        <span class="product-badge">Visueller Arbeitsraum</span>
+        <span class="status" id="status" role="status" aria-live="polite">Bereit</span>
+      </div>
     </header>
 
     <section class="start-card" id="startView">
-      <div class="intro">
-        <p class="eyebrow">Schauwerk Native · Native-first</p>
-        <h1>Einfügen, ansehen, weiterarbeiten.</h1>
-        <p class="lede">Kanonische Schauwerk-Repräsentationen und unterstützte draw.io-Graphen laufen nativ. Legacy-Bearbeitung bleibt nur als bewusster Kompatibilitätsweg erhalten.</p>
+      <div class="start-layout">
+        <div class="intro">
+          <p class="eyebrow">Schaubild</p>
+          <h1>Vom Gedanken zum Schaubild.</h1>
+          <p class="lede">Struktur rein, Schaubild auf. Öffne Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten – direkt in einem Arbeitsraum.</p>
+          <div class="format-strip" aria-label="Unterstützte Eingaben">
+            <span>Mermaid</span>
+            <span>JSON Canvas</span>
+            <span>draw.io</span>
+          </div>
+          <button class="restore-button" id="restoreButton" type="button" hidden>
+            <span class="restore-icon" aria-hidden="true">↺</span>
+            Letzten lokalen Entwurf öffnen
+          </button>
+        </div>
+
+        <div class="import-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="panel-kicker">Neues Schaubild</p>
+              <h2>Was möchtest du sichtbar machen?</h2>
+            </div>
+            <span class="shortcut-hint">⌘ / Ctrl + Enter</span>
+          </div>
+
+          <label class="paste-box" for="sourceInput">
+            <span class="visually-hidden">KI-Ergebnis hier einfügen</span>
+            <textarea id="sourceInput" spellcheck="false" placeholder="Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten hier einfügen …"></textarea>
+          </label>
+
+          <div class="primary-actions">
+            <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
+            <button class="button" id="fileButton" type="button">Datei wählen</button>
+            <button class="button ghost" id="blankButton" type="button">Leeres Schaubild</button>
+            <button class="button ghost" id="legacyFallbackButton" type="button" hidden>Im Kompatibilitätsmodus öffnen</button>
+            <input id="fileInput" type="file" hidden>
+          </div>
+
+          <p class="error" id="error" role="alert" hidden></p>
+
+          <details class="advanced-settings">
+            <summary>Import &amp; Kompatibilität</summary>
+            <div class="advanced-settings-body">
+              <label class="font-default-control" for="fontDefaultInput">
+                <span>Schriftgröße für neue Kompatibilitäts-Elemente</span>
+                <span class="numeric-control">
+                  <input id="fontDefaultInput" type="number" min="8" max="72" step="1" inputmode="numeric" aria-describedby="fontDefaultHint">
+                  <span>px</span>
+                </span>
+              </label>
+              <p class="field-hint" id="fontDefaultHint">Gilt nur für neu erzeugte Elemente im Kompatibilitätseditor. Bestehende Formatierungen bleiben unverändert.</p>
+              <div class="advanced-utility-actions">
+                <!-- SCHAUWERK_AI_HANDOFF_ACTION -->
+              </div>
+              <aside class="boundary-note">
+                <strong>Technischer Kompatibilitätsmodus:</strong> Kanonische Schauwerk-Repräsentationen, <code>.canvas</code>/JSON Canvas
+                und der semantisch importierbare draw.io-Graphpfad laufen nativ über
+                <code>schauwerk-native-diagram-v1</code>. Formate, die nicht verlustarm nativ bearbeitet werden können,
+                bleiben über den ausdrücklich gewählten Kompatibilitätseditor erreichbar.
+              </aside>
+            </div>
+          </details>
+        </div>
       </div>
-
-      <label class="paste-box" for="sourceInput">
-        <span>KI-Ergebnis hier einfügen</span>
-        <textarea id="sourceInput" spellcheck="false" placeholder='Zum Beispiel:&#10;{"schema_version":"schauwerk-representation-input.v1", ...}'></textarea>
-      </label>
-
-      <div class="primary-actions">
-        <button class="button primary" id="openPasteButton" type="button">Schaubild öffnen</button>
-        <button class="button" id="fileButton" type="button">Datei öffnen</button>
-        <button class="button ghost" id="blankButton" type="button">Legacy leer</button>
-        <button class="button ghost" id="legacyFallbackButton" type="button" hidden>Legacy bearbeiten</button>
-        <input id="fileInput" type="file" hidden>
-      </div>
-
-      <label class="font-default-control" for="fontDefaultInput">
-        <span>Legacy-Schriftstandard</span>
-        <input id="fontDefaultInput" type="number" min="8" max="72" step="1" inputmode="numeric" aria-describedby="fontDefaultHint">
-        <span>px</span>
-      </label>
-      <p class="field-hint" id="fontDefaultHint">Gilt für neu erzeugte Elemente. Bestehende Formatierungen bleiben unverändert.</p>
-
-      <button class="restore-button" id="restoreButton" type="button" hidden>Letzten lokalen Entwurf wiederherstellen</button>
-      <p class="error" id="error" role="alert" hidden></p>
-
-      <aside class="boundary-note">
-        <strong>Renderer-Cutover:</strong> Kanonische Schauwerk-Repräsentationen, <code>.canvas</code>/JSON Canvas
-        und der begrenzte, semantisch importierbare draw.io-Graphpfad werden durch
-        <code>schauwerk-native-diagram-v1</code> gerendert. Nicht verlustarm importierbares draw.io sowie weitere
-        Kompatibilitätsformate öffnen den Legacy-Editor nur nach ausdrücklicher Nutzerwahl.
-        <code>knowledge_map</code> bleibt bis zur allgemeinen Routing-Härtung im Legacy-Pfad.
-      </aside>
     </section>
 
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
-        <button class="button compact ghost" id="backButton" type="button">← Start</button>
-        <strong class="document-title" id="documentTitle">Schaubild</strong>
-        <span class="spacer"></span>
-        <div class="font-controls" role="group" aria-label="Schriftgröße">
-          <button class="button compact" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
-          <button class="button compact" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Schrift</button>
-          <button class="button compact" id="fontIncreaseButton" type="button" aria-label="Schriftgröße der Auswahl vergrößern" title="Ausgewählte Beschriftungen vergrößern">A+</button>
-          <button class="button compact" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alle</button>
+        <div class="workspace-leading">
+          <button class="button compact ghost icon-button" id="backButton" type="button" aria-label="Zurück zum Start">←</button>
+          <div class="document-meta">
+            <span class="document-kicker">Arbeitsfläche</span>
+            <strong class="document-title" id="documentTitle">Schaubild</strong>
+          </div>
         </div>
-        <button class="button compact" id="layoutButton" type="button">Aufräumen</button>
-        <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Legacy bearbeiten</button>
-        <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
-        <button class="button compact" id="projectButton" type="button">Projekt</button>
-        <button class="button compact" data-export="png" type="button">PNG</button>
-        <button class="button compact" data-export="svg" type="button">SVG</button>
-        <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
-        <button class="button compact fullscreen-toggle" id="fullscreenButton" type="button" aria-pressed="false" aria-label="Vollbildmodus aktivieren" title="Vollbildmodus für die Bearbeitung">Vollbild</button>
+
+        <div class="font-controls" role="group" aria-label="Schriftgröße">
+          <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
+          <button class="button compact tool-button" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Text</button>
+          <button class="button compact tool-button" id="fontIncreaseButton" type="button" aria-label="Schriftgröße der Auswahl vergrößern" title="Ausgewählte Beschriftungen vergrößern">A+</button>
+          <button class="button compact tool-button" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alles</button>
+        </div>
+
+        <div class="workspace-tools">
+          <button class="button compact" id="layoutButton" type="button">Ordnen</button>
+          <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
+          <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
+        </div>
+
+        <div class="workspace-output">
+          <button class="button compact" id="projectButton" type="button">Projekt</button>
+          <button class="button compact output-button" data-export="png" type="button">PNG</button>
+          <button class="button compact output-button" data-export="svg" type="button">SVG</button>
+          <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
+          <button class="button compact fullscreen-toggle" id="fullscreenButton" type="button" aria-pressed="false" aria-label="Vollbildmodus aktivieren" title="Fokusmodus für die Bearbeitung">Fokus</button>
+        </div>
       </nav>
-      <div class="editor-wrap">
-        <iframe
-          id="editorFrame"
-          title="Schaubild bearbeiten"
-          sandbox="allow-scripts allow-same-origin allow-downloads allow-modals allow-popups"
-          allow="clipboard-read; clipboard-write"
-          referrerpolicy="no-referrer"
-        ></iframe>
+
+      <div class="editor-stage">
+        <div class="editor-wrap">
+          <iframe
+            id="editorFrame"
+            title="Schaubild bearbeiten"
+            sandbox="allow-scripts allow-same-origin allow-downloads allow-modals allow-popups"
+            allow="clipboard-read; clipboard-write"
+            referrerpolicy="no-referrer"
+          ></iframe>
+        </div>
       </div>
     </section>
   </main>
@@ -96,111 +144,371 @@ INDEX_HTML = r"""<!doctype html>
 
 STYLES_CSS = r""":root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #172033;
-  background: #f4f6fa;
+  color-scheme: light;
   font-synthesis: none;
+  --bg: #f3f4f8;
+  --surface: #ffffff;
+  --surface-raised: rgba(255, 255, 255, 0.88);
+  --surface-soft: #f7f7fb;
+  --ink: #161827;
+  --muted: #6f7280;
+  --line: #e3e4ec;
+  --line-strong: #d4d6e1;
+  --accent: #635bff;
+  --accent-strong: #5048e5;
+  --accent-soft: #efeeff;
+  --danger: #a12b2b;
+  --danger-soft: #fff0f0;
+  --shadow-lg: 0 30px 90px rgba(35, 37, 60, 0.14);
+  --shadow-md: 0 12px 38px rgba(35, 37, 60, 0.10);
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; min-height: 100%; }
-body { min-height: 100vh; }
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 4%, rgba(99, 91, 255, 0.11), transparent 34rem),
+    radial-gradient(circle at 86% 18%, rgba(64, 190, 178, 0.08), transparent 30rem),
+    var(--bg);
+}
 button, textarea, input { font: inherit; }
 button { touch-action: manipulation; }
+button, a, summary { -webkit-tap-highlight-color: transparent; }
 
-.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.app-shell { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
 .topline {
-  min-height: 56px;
-  padding: 10px clamp(16px, 3vw, 32px);
+  position: relative;
+  z-index: 10;
+  min-height: 64px;
+  padding: 10px clamp(16px, 3vw, 36px);
   display: flex;
   align-items: center;
-  gap: 16px;
-  border-bottom: 1px solid #dce2eb;
-  background: rgba(255, 255, 255, 0.94);
+  gap: 20px;
+  border-bottom: 1px solid rgba(212, 214, 225, 0.78);
+  background: rgba(247, 248, 251, 0.78);
+  backdrop-filter: blur(22px) saturate(150%);
 }
-.brand { color: #172033; text-decoration: none; font-weight: 750; letter-spacing: -0.02em; }
-.status { margin-left: auto; color: #667085; font-size: 0.9rem; }
+.brand { display: inline-flex; align-items: center; gap: 11px; color: var(--ink); text-decoration: none; }
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(145deg, #756dff, #5147e7 62%, #4039c8);
+  box-shadow: 0 9px 22px rgba(99, 91, 255, 0.26);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.brand-copy { display: grid; line-height: 1.05; }
+.brand-copy strong { font-size: 0.98rem; letter-spacing: -0.025em; }
+.brand-copy small { margin-top: 4px; color: var(--muted); font-size: 0.68rem; font-weight: 650; letter-spacing: 0.02em; }
+.topline-meta { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.product-badge,
+.status {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+  font-weight: 680;
+  white-space: nowrap;
+}
+.status { max-width: min(42vw, 520px); overflow: hidden; text-overflow: ellipsis; }
 
 .start-card {
-  width: min(880px, calc(100% - 32px));
-  margin: clamp(28px, 7vh, 80px) auto;
-  padding: clamp(24px, 5vw, 48px);
-  border: 1px solid #dce2eb;
-  border-radius: 24px;
-  background: #ffffff;
-  box-shadow: 0 20px 70px rgba(37, 53, 84, 0.08);
+  flex: 1;
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 78px) clamp(18px, 5vw, 64px);
+  display: grid;
+  align-items: center;
 }
-.eyebrow { margin: 0 0 10px; color: #3859c7; font-size: 0.82rem; font-weight: 750; text-transform: uppercase; letter-spacing: 0.08em; }
-h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.8rem); line-height: 1.02; letter-spacing: -0.05em; }
-.lede { margin: 18px 0 30px; color: #667085; font-size: 1.08rem; line-height: 1.55; }
+.start-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(440px, 1.14fr);
+  gap: clamp(36px, 7vw, 96px);
+  align-items: center;
+}
+.intro { min-width: 0; padding: 10px 0; }
+.eyebrow,
+.panel-kicker,
+.document-kicker {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.105em;
+}
+h1 {
+  max-width: 720px;
+  margin: 12px 0 0;
+  font-size: clamp(3rem, 6.8vw, 6.9rem);
+  line-height: 0.89;
+  letter-spacing: -0.068em;
+  text-wrap: balance;
+}
+.lede {
+  max-width: 650px;
+  margin: 25px 0 0;
+  color: var(--muted);
+  font-size: clamp(1.02rem, 1.7vw, 1.28rem);
+  line-height: 1.55;
+}
+.format-strip { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
+.format-strip span {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: #555968;
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
 
-.paste-box { display: grid; gap: 10px; font-weight: 650; }
+.import-panel {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid rgba(212, 214, 225, 0.88);
+  border-radius: 28px;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(28px) saturate(135%);
+}
+.panel-heading { display: flex; align-items: flex-start; gap: 20px; justify-content: space-between; }
+.panel-heading h2 {
+  margin: 7px 0 0;
+  font-size: clamp(1.35rem, 2.3vw, 1.92rem);
+  line-height: 1.14;
+  letter-spacing: -0.035em;
+}
+.shortcut-hint {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.paste-box { display: block; margin-top: 20px; }
 .paste-box textarea {
   width: 100%;
-  min-height: 220px;
+  min-height: 280px;
+  max-height: 52vh;
   resize: vertical;
-  border: 1px solid #cfd7e6;
-  border-radius: 16px;
-  padding: 16px;
-  color: #172033;
-  background: #fbfcff;
-  font: 0.94rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  padding: 18px;
+  color: var(--ink);
+  background: rgba(248, 248, 252, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  font: 0.9rem/1.58 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
-.paste-box textarea:focus { border-color: #5674dc; box-shadow: 0 0 0 4px rgba(86, 116, 220, 0.13); }
+.paste-box textarea::placeholder { color: #9b9daa; }
+.paste-box textarea:focus {
+  border-color: rgba(99, 91, 255, 0.72);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(99, 91, 255, 0.12);
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.primary-actions { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
 
-.primary-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-.font-default-control { display: flex; align-items: center; gap: 8px; width: fit-content; margin-top: 18px; font-weight: 650; }
-.font-default-control input { width: 72px; min-height: 40px; border: 1px solid #cfd7e6; border-radius: 10px; padding: 7px 9px; color: inherit; background: inherit; }
-.font-default-control input:focus { outline: 3px solid rgba(86, 116, 220, 0.3); outline-offset: 2px; }
-.field-hint { margin: 6px 0 0; color: #667085; font-size: 0.82rem; }
 .button {
-  min-height: 44px;
-  border: 1px solid #c9d2e3;
-  border-radius: 12px;
-  padding: 10px 16px;
-  color: #25324a;
-  background: #ffffff;
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  padding: 9px 14px;
+  color: #303342;
+  background: rgba(255, 255, 255, 0.9);
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 710;
+  letter-spacing: -0.01em;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
-.button:hover { background: #f5f7fb; }
-.button:focus-visible { outline: 3px solid rgba(86, 116, 220, 0.3); outline-offset: 2px; }
-.button.primary { border-color: #3859c7; color: white; background: #3859c7; }
-.button.primary:hover { background: #2f4fb7; }
-.button.ghost { border-color: transparent; background: transparent; }
-.button.compact { min-height: 36px; padding: 7px 11px; border-radius: 9px; font-size: 0.9rem; }
-.download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
-.download-link[hidden] { display: none; }
+.button:hover { border-color: #c4c6d3; background: #f9f9fc; transform: translateY(-1px); }
+.button:active { transform: translateY(0); }
+.button:focus-visible,
+.restore-button:focus-visible,
+.advanced-settings summary:focus-visible {
+  outline: 3px solid rgba(99, 91, 255, 0.28);
+  outline-offset: 2px;
+}
+.button.primary {
+  border-color: var(--accent);
+  color: #fff;
+  background: linear-gradient(180deg, #7068ff, var(--accent-strong));
+  box-shadow: 0 8px 20px rgba(99, 91, 255, 0.22);
+}
+.button.primary:hover { border-color: #4b43d8; background: linear-gradient(180deg, #675fff, #4941da); }
+.button.ghost { border-color: transparent; color: var(--muted); background: transparent; }
+.button.ghost:hover { border-color: var(--line); color: var(--ink); background: rgba(255, 255, 255, 0.64); }
+.button.compact { min-height: 36px; padding: 7px 10px; border-radius: 9px; font-size: 0.82rem; }
+
 .restore-button {
-  margin-top: 18px;
-  padding: 0;
+  margin-top: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
-  color: #3859c7;
+  padding: 8px 0;
+  color: var(--accent-strong);
   background: transparent;
   cursor: pointer;
-  text-decoration: underline;
+  font-weight: 750;
 }
-.error { margin: 18px 0 0; padding: 12px 14px; border-radius: 12px; color: #8c1d18; background: #fff0ef; }
-.boundary-note { margin-top: 28px; padding: 14px 16px; border-radius: 12px; color: #536079; background: #f4f6fa; font-size: 0.86rem; line-height: 1.5; }
-.boundary-note code { font-size: 0.82rem; }
+.restore-icon {
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+}
+.error {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #f0cccc;
+  border-radius: 12px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.advanced-settings { margin-top: 18px; border-top: 1px solid var(--line); }
+.advanced-settings summary {
+  padding: 15px 2px 4px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 750;
+  list-style-position: inside;
+}
+.advanced-settings[open] summary { color: var(--ink); }
+.advanced-settings-body { padding: 12px 2px 2px; }
+.advanced-utility-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.font-default-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.numeric-control { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); }
+.font-default-control input {
+  width: 68px;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: var(--surface);
+}
+.field-hint { margin: 7px 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.45; }
+.boundary-note {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border-radius: 11px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+.boundary-note code { font-size: 0.72rem; }
 
 .workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .workspace-bar {
-  min-height: 52px;
-  padding: 8px 12px;
+  position: relative;
+  z-index: 5;
+  min-height: 62px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(251, 251, 253, 0.92);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+.workspace-leading { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.document-meta { min-width: 0; display: grid; gap: 2px; }
+.document-kicker { color: #8a8d99; font-size: 0.6rem; }
+.document-title {
+  min-width: 0;
+  max-width: min(31vw, 440px);
+  overflow: hidden;
+  color: var(--ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+.icon-button { width: 36px; padding-inline: 0 !important; font-size: 1.02rem !important; }
+.font-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+.font-controls .button { min-width: 38px; border-color: transparent; background: transparent; }
+.font-controls .button:hover { border-color: var(--line); background: var(--surface); }
+.workspace-tools,
+.workspace-output {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-bottom: 1px solid #dce2eb;
-  background: #ffffff;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
 }
-.document-title { max-width: min(36vw, 420px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.spacer { flex: 1; }
-.font-controls { display: inline-flex; gap: 4px; flex: 0 0 auto; }
-.font-controls .button { min-width: 40px; }
+.workspace-tools,
+.workspace-output { padding-left: 10px; border-left: 1px solid var(--line); }
+.output-button { min-width: 46px; color: var(--muted); }
 .fullscreen-toggle { white-space: nowrap; }
-.editor-wrap { flex: 1; min-height: 520px; background: white; }
-.editor-wrap iframe { width: 100%; height: 100%; min-height: 520px; display: block; border: 0; background: white; }
+.download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.download-link[hidden] { display: none; }
+
+.editor-stage {
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  display: flex;
+  background: linear-gradient(rgba(99, 91, 255, 0.018), rgba(99, 91, 255, 0)), #eceef4;
+}
+.editor-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid #d8dae4;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-md);
+}
+.editor-wrap iframe { width: 100%; height: 100%; min-height: 520px; display: block; border: 0; background: #fff; }
 
 body.editor-focus { overflow: hidden; }
 body.editor-focus .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
@@ -208,23 +516,38 @@ body.editor-focus .topline { display: none; }
 body.editor-focus .workspace { position: relative; height: 100vh; height: 100dvh; min-height: 0; }
 body.editor-focus .workspace-bar {
   position: absolute;
-  z-index: 4;
-  top: max(6px, env(safe-area-inset-top));
-  right: max(6px, env(safe-area-inset-right));
+  z-index: 20;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
   min-height: 0;
+  width: auto;
   padding: 0;
   border: 0;
   background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output) { display: none; }
+body.editor-focus .workspace-output {
+  display: flex;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  flex-wrap: nowrap;
   pointer-events: none;
 }
-body.editor-focus .workspace-bar > :not(.fullscreen-toggle) { display: none; }
+body.editor-focus .workspace-output > :not(.fullscreen-toggle) { display: none; }
 body.editor-focus .workspace-bar > .font-controls {
   display: inline-flex;
   padding: 3px;
   border: 1px solid rgba(133, 150, 180, 0.55);
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.20);
   backdrop-filter: blur(12px);
   pointer-events: auto;
 }
@@ -238,7 +561,7 @@ body.editor-focus .fullscreen-toggle {
   color: transparent;
   background: rgba(24, 34, 52, 0.88);
   border-color: rgba(133, 150, 180, 0.55);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.20);
   backdrop-filter: blur(12px);
   pointer-events: auto;
 }
@@ -253,33 +576,156 @@ body.editor-focus .fullscreen-toggle::after {
   font-weight: 400;
   line-height: 1;
 }
-body.editor-focus .editor-wrap { flex: 1 1 auto; min-height: 0; height: auto; }
-body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
-@media (max-width: 1024px) {
-  .workspace-bar { overflow-x: auto; }
-  .workspace-bar > .font-controls { order: -2; }
-  .workspace-bar > .fullscreen-toggle { order: -1; }
+body.editor-focus .editor-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  padding: max(60px, calc(env(safe-area-inset-top) + 52px)) 0 0;
 }
-@media (max-width: 720px) {
-  .start-card { width: min(100% - 20px, 880px); margin: 18px auto; padding: 22px 18px; border-radius: 18px; }
-  .primary-actions .button { flex: 1 1 42%; }
-  .document-title { max-width: 150px; }
-  .editor-wrap, .editor-wrap iframe { min-height: calc(100vh - 109px); }
+body.editor-focus .editor-wrap { min-height: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
+
+@media (max-width: 1180px) {
+  .start-layout { grid-template-columns: minmax(0, 0.78fr) minmax(400px, 1.22fr); gap: 42px; }
+  h1 { font-size: clamp(3rem, 7.8vw, 5.8rem); }
+  .workspace-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .workspace-leading { grid-column: 1; grid-row: 1; }
+  .workspace-output { grid-column: 2; grid-row: 1; }
+  .font-controls { grid-column: 1; grid-row: 2; width: fit-content; }
+  .workspace-tools { grid-column: 2; grid-row: 2; }
+  .workspace-tools,
+  .workspace-output { border-left: 0; padding-left: 0; }
+}
+
+@media (max-width: 1024px) {
+  .workspace-bar > .font-controls { order: -2; }
+  .product-badge { display: none; }
+}
+
+@media (max-width: 900px) {
+  .start-card { align-items: start; padding-top: 38px; padding-bottom: 38px; }
+  .start-layout { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  h1 { max-width: 760px; font-size: clamp(3.5rem, 12.5vw, 6.1rem); }
+  .lede { max-width: 720px; }
+  .format-strip { margin-top: 20px; }
+  .restore-button { margin-top: 20px; }
+  .import-panel { width: 100%; }
+}
+
+@media (max-width: 760px) {
+  .topline { min-height: 58px; padding: 8px 12px; }
+  .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
+  .brand-copy small { display: none; }
+  .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
+  .start-card { padding: 27px 12px 22px; }
+  .start-layout { gap: 20px; }
+  h1 { margin-top: 9px; font-size: clamp(2.85rem, 13.2vw, 4rem); line-height: 0.92; }
+  .lede { margin-top: 14px; font-size: 0.96rem; }
+  .format-strip { margin-top: 14px; gap: 6px; }
+  .format-strip span { padding: 6px 8px; font-size: 0.7rem; }
+  .import-panel { padding: 17px; border-radius: 21px; }
+  .panel-heading { gap: 10px; }
+  .shortcut-hint { display: none; }
+  .paste-box textarea { min-height: 160px; max-height: 36vh; padding: 14px; border-radius: 14px; }
+  .primary-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .primary-actions .button { width: 100%; }
+  .primary-actions .button.primary { grid-column: 1 / -1; }
+  .font-default-control { align-items: flex-start; flex-direction: column; gap: 8px; }
+
+  .workspace-bar {
+    padding: 8px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px 8px;
+  }
+  .workspace-leading {
+    grid-column: 1;
+    grid-row: 1;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .document-kicker { display: none; }
+  .document-title { max-width: 108px; }
+  .font-controls {
+    grid-column: 2;
+    grid-row: 1;
+    width: auto;
+    max-width: 100%;
+    flex-wrap: nowrap;
+  }
+  .font-controls .button { min-width: 32px; padding-inline: 7px; }
+  .workspace-tools {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+  .workspace-output {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-end;
+    padding-top: 0;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .workspace-output .button { padding-inline: 8px; }
+  .editor-stage { padding: 6px; }
+  .editor-wrap { min-height: calc(100dvh - 190px); border-radius: 11px; }
+  .editor-wrap iframe { min-height: calc(100dvh - 190px); }
+}
+
+@media (max-width: 420px) {
+  .primary-actions { grid-template-columns: minmax(0, 1fr); }
+  .primary-actions .button.primary { grid-column: auto; }
+  .workspace-output { gap: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root { color: #e8edf7; background: #111827; }
-  .topline, .start-card, .workspace-bar { background: #182234; border-color: #344056; }
-  .brand, .paste-box textarea { color: #e8edf7; }
-  .status, .lede, .field-hint { color: #aeb8ca; }
-  .paste-box textarea, .font-default-control input { background: #111827; border-color: #3b475d; }
-  .button { color: #e8edf7; background: #202c41; border-color: #42506a; }
-  .button:hover { background: #29364d; }
-  .button.primary { background: #5674dc; border-color: #5674dc; }
+  :root {
+    color-scheme: dark;
+    --bg: #0f1118;
+    --surface: #171922;
+    --surface-raised: rgba(24, 26, 36, 0.92);
+    --surface-soft: #20232e;
+    --ink: #f0f1f7;
+    --muted: #a2a6b5;
+    --line: #2c2f3b;
+    --line-strong: #3a3e4b;
+    --accent: #8a83ff;
+    --accent-strong: #746cf4;
+    --accent-soft: #282549;
+    --danger: #ffb4b4;
+    --danger-soft: #3f2327;
+    --shadow-lg: 0 30px 90px rgba(0, 0, 0, 0.34);
+    --shadow-md: 0 12px 38px rgba(0, 0, 0, 0.28);
+  }
+  body {
+    background:
+      radial-gradient(circle at 18% 4%, rgba(125, 116, 255, 0.14), transparent 34rem),
+      radial-gradient(circle at 86% 18%, rgba(64, 190, 178, 0.07), transparent 30rem),
+      var(--bg);
+  }
+  .topline,
+  .workspace-bar { background: rgba(16, 18, 25, 0.82); }
+  .product-badge,
+  .status,
+  .format-strip span { background: rgba(31, 34, 45, 0.72); color: var(--muted); }
+  .paste-box textarea { color: var(--ink); background: rgba(18, 20, 28, 0.82); box-shadow: none; }
+  .paste-box textarea:focus { background: #161821; }
+  .button { color: #e9eaf1; background: #20232e; }
+  .button:hover { border-color: #4b4f5e; background: #282b37; }
+  .button.ghost { color: var(--muted); background: transparent; }
+  .button.ghost:hover { color: var(--ink); background: #20232e; }
+  .font-controls { background: #1b1e27; }
+  .font-controls .button:hover { background: #292c37; }
+  .editor-stage { background: #11131a; }
+  .editor-wrap { border-color: #2b2e39; background: #fff; }
   body.editor-focus .workspace-bar > .font-controls { background: rgba(24, 34, 52, 0.94); }
-  .boundary-note { color: #b5bed0; background: #202c41; }
-  .error { color: #ffb4ad; background: #4f2525; }
-  .editor-wrap { background: #182234; }
 }
 """
 
@@ -1141,7 +1587,7 @@ function saveNativeDraft(representation) {
     elements.restoreButton.hidden = false;
     return true;
   } catch (_) {
-    setStatus("Native Quelle geöffnet · lokaler Speicher voll");
+    setStatus("Quelle geöffnet · lokaler Speicher voll");
     return false;
   }
 }
@@ -1347,7 +1793,7 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
-  if (load?.nativeRepresentation || load?.nativeImport) {
+  if (load?.nativeRepresentation || load?.nativeDocument || load?.nativeImport) {
     void launchNative(load);
     return;
   }
@@ -1376,7 +1822,7 @@ function launchLegacy(load) {
   editorReady = false;
   const frame = replaceEditorFrame();
   showWorkspace();
-  setStatus("Legacy-Editor wird geladen …");
+  setStatus("Kompatibilitätseditor wird geladen …");
   requestAnimationFrame(() => {
     if (elements.frame !== frame) return;
     frame.src = EDITOR_URL;
@@ -1436,8 +1882,8 @@ async function launchNative(load, options = {}) {
   }
   setStatus(
     preserveActiveFrame
-      ? "Native Änderung wird gerendert …"
-      : "Nativer Renderer wird geladen …",
+      ? "Änderung wird übernommen …"
+      : "Schaubild wird geöffnet …",
   );
 
   const previousLaunch = nativeLaunchTail;
@@ -1486,14 +1932,14 @@ async function launchNative(load, options = {}) {
     renderedNativeCanvasSnapshot = nativeCanvasSnapshot(currentNativeCanvas);
     if (currentRepresentation) {
       if (!saveNativeDraft(currentRepresentation)) {
-        setStatus("Native Darstellung bereit · Quelle lokal nicht speicherbar");
+        setStatus("Bereit · Quelle nicht lokal speicherbar");
       }
     } else if (currentNativeDocument && currentNativeCanvas) {
       if (!saveNativeCanvasDraft(currentNativeDocument, currentNativeCanvas)) {
-        setStatus("Native Canvas-Darstellung bereit · Dokument lokal nicht speicherbar");
+        setStatus("Bereit · Dokument nicht lokal speicherbar");
       }
     } else if (currentLegacyXml && !saveDraft(currentLegacyXml)) {
-      setStatus("Nativer draw.io-Import bereit · Original lokal nicht speicherbar");
+      setStatus("Bereit · Original nicht lokal speicherbar");
     }
     editorReady = true;
     if (preserveActiveFrame) {
@@ -1504,11 +1950,11 @@ async function launchNative(load, options = {}) {
     setEngineMode("native");
     setStatus(
       currentNativeCanvas
-        ? "Native JSON-Canvas-Bearbeitung · Dokumentzustand aktiv"
+        ? "Bereit · Änderungen werden lokal gesichert"
         : (
             currentLegacyXml
-              ? "Native draw.io-Darstellung · Original bleibt für Legacy-Bearbeitung erhalten"
-              : "Native Darstellung · Semantik read-only · Layout lokal"
+              ? "Bereit · Original bleibt erhalten"
+              : "Bereit · Ansicht lokal anpassbar"
           )
     );
   } catch (error) {
@@ -1776,7 +2222,7 @@ function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
 
 async function exportNative(format) {
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
-    setStatus("Native Darstellung ist noch nicht bereit");
+    setStatus("Schaubild ist noch nicht bereit");
     return;
   }
   clearPreparedDownload();
@@ -1810,11 +2256,11 @@ async function exportNative(format) {
     return;
   }
   if (format === "png") {
-    setStatus("PNG ist im nativen Pfad noch nicht verfügbar");
+    setStatus("PNG ist für dieses Schaubild noch nicht verfügbar");
     return;
   }
   if (format !== "svg") {
-    setStatus("Native Exportart wird nicht unterstützt");
+    setStatus("Exportformat wird nicht unterstützt");
     return;
   }
   if (currentNativeCanvas && nativeCanvasRenderStale) {
@@ -1857,7 +2303,7 @@ async function exportNative(format) {
     );
     setStatus("SVG bereit");
   } catch (_) {
-    setStatus("Native SVG-Ausgabe konnte nicht vorbereitet werden");
+    setStatus("SVG konnte nicht vorbereitet werden");
   }
 }
 
@@ -1908,8 +2354,8 @@ window.addEventListener("message", (event) => {
         setEngineMode("native");
         setStatus(
           draftSaved
-            ? "Native Änderung im Dokumentzustand gesichert"
-            : "Native Änderung aktiv · lokales Speichern nicht möglich",
+            ? "Gesichert"
+            : "Änderung aktiv · lokales Speichern nicht möglich",
         );
       }
       return;
@@ -1971,7 +2417,7 @@ window.addEventListener("message", (event) => {
     enforceReadableInitialScale(message.scale);
     if (shouldAutoLayout) {
       requestCollisionSafeLayout();
-      setStatus("Bereit · Kanten werden kollisionsarm angeordnet");
+      setStatus("Bereit · Layout wird optimiert");
     } else {
       setStatus("Bereit · Änderungen werden lokal gesichert");
     }
@@ -2030,7 +2476,7 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (message.event === "openLink") {
-    setStatus("Externe Links sind im Spike gesperrt");
+    setStatus("Externe Links sind hier deaktiviert");
     return;
   }
   if (message.error) setStatus("Editor meldet einen Fehler");

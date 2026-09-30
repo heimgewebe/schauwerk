@@ -1,0 +1,62 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "c42ba0b20736dd29426691af55626b18d231eabd",
+  "head_sha": "f7f0cd956386bc82202fd7f9633bb0b11f68a343",
+  "diff_sha256": "1dfc35169c372161cd088ba7862d0ffc14f4a6cff13e8d46d1623f39327ecd0c",
+  "diff_bytes": 70541,
+  "reviewed_files": [
+    "src/schauwerk/resources/native_viewer/assets.py",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "src/schauwerk/visual/standalone_editor.py",
+    "tests/visual/test_native_canvas_editor.py",
+    "tests/visual/test_native_viewer.py",
+    "tests/visual/test_native_viewer_product_ui.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "stable control ids and event wiring preserved",
+    "renderer, import, document and export authority paths unchanged except user-facing copy",
+    "native and outer toolbars wrap instead of relying on horizontal overflow",
+    "mobile and desktop shell hierarchy remains usable without overlapping controls",
+    "AI handoff remains outside primary start actions",
+    "historical security acceptance remains immutable and requires a new successor binding"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The outer shell redesign still exposed development-era native-viewer language and toolbar structure.",
+      "resolution": "Extended the presentation-only scope to native_viewer assets while preserving stable control ids and interaction logic."
+    },
+    {
+      "iteration": 2,
+      "finding": "Changing native_viewer assets invalidated a historical security-bound source digest.",
+      "resolution": "Kept historical acceptance immutable and required a new Product-UI successor receipt."
+    },
+    {
+      "iteration": 3,
+      "finding": "A full-suite browser readiness failure occurred while local preview Chrome was active.",
+      "resolution": "Stopped preview browser/runtime; isolated browser regression then passed and the exact code suite excluding only the expected successor-binding gate passed."
+    }
+  ],
+  "validation": {
+    "code_suite_job_unit": "grabowski-job-6c74ae9c9d0f",
+    "code_suite_finalization_receipt_sha256": "7f500421f32f24ca7d9a6629e0793508402c8f4f768c2aad72869326089134ec",
+    "code_suite_result": "succeeded",
+    "desktop_start_png_sha256": "b1e34a2af630b79948ddc36143a8e58fd5fd68732cb6243f78f0522f172c481e",
+    "mobile_start_png_sha256": "0f6f440de3bd5c4530a3def697c7d90efa271ceacf6957a685a317345a4f8ec4",
+    "desktop_workspace_png_sha256": "d3275862f43c05dc0bab697795dabce08385bf27a083b2a5040fc9959e680f76",
+    "mobile_workspace_cold_png_sha256": "0ecd534e0899759bf71e5c70b9b726fb40ddef413e762410b92a5f4ced86576d"
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "user visual acceptance",
+    "GitHub CI success",
+    "merge readiness after later evidence changes",
+    "Commonthing integration or production deployment"
+  ]
+}
