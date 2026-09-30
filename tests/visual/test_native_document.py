@@ -1708,7 +1708,7 @@ def test_canvas_text_layout_normalizes_xml_controls_before_grapheme_fitting() ->
 
     assert raw_layout == emitted_layout
     assert raw_layout.truncated is False
-    assert raw_layout.lines == ((emitted, 28),)
+    assert raw_layout.lines == ((emitted, raw_layout.size + 12),)
 
 
 def test_canvas_single_line_normalizes_xml_controls_before_grapheme_fitting() -> None:
@@ -1729,7 +1729,10 @@ def test_canvas_single_line_normalizes_xml_controls_before_grapheme_fitting() ->
     )
 
     assert raw_fitted == emitted_fitted
-    assert raw_fitted == (emitted, False)
+    fitted, truncated = raw_fitted
+    assert truncated is True
+    assert fitted == "…"
+    assert native_diagram._estimated_canvas_single_line_width(fitted, size=16) <= 30
 
 
 def test_canvas_wide_non_ascii_fallback_is_conservative() -> None:
@@ -1755,9 +1758,13 @@ def test_canvas_wide_non_ascii_fallback_is_conservative() -> None:
 
 
 def test_canvas_wide_fallback_punctuation_and_symbols_are_conservative() -> None:
+    assert native_diagram._canvas_character_width_units("…") == pytest.approx(1.05)
+    assert native_diagram._canvas_character_width_units("—") == pytest.approx(1.05)
+    assert native_diagram._canvas_character_width_units("©") == pytest.approx(1.05)
     assert native_diagram._canvas_character_width_units("‰") == pytest.approx(1.45)
     assert native_diagram._canvas_character_width_units("‱") == pytest.approx(1.90)
     assert native_diagram._canvas_character_width_units("⟷") == pytest.approx(1.80)
+    assert native_diagram._canvas_character_width_units("�") == pytest.approx(1.15)
 
     layout = native_diagram._canvas_text_layout(
         "‰" * 10,
@@ -2592,8 +2599,9 @@ def test_canvas_wrap_refits_internal_combining_space_carry() -> None:
         max_lines=8,
     )
 
-    assert wrapped_truncated is True
+    assert wrapped_truncated is False
     assert wrapped
+    assert "".join(wrapped) == "éBBBB"
     assert all(
         native_diagram._estimated_canvas_wrap_width(line, size=16) <= 20
         for line in wrapped

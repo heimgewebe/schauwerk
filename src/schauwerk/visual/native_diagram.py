@@ -3520,18 +3520,27 @@ _CANVAS_ZWJ_SHAPING_SCRIPT_RANGES = (
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
 # Rare punctuation/symbol fallback glyphs that exceed the generic 0.9em budget
-# in either DejaVu Sans Bold or the headless-Chrome Inter/Arial/sans-serif
-# fallback stack. Values are conservatively rounded upward to 0.05em.
+# in DejaVu Sans Bold. Values are checked against the headless-Chrome
+# Inter/Arial/sans-serif fallback stack and conservatively rounded upward
+# to 0.05em.
 _CANVAS_WIDE_FALLBACK_WIDTH_RANGES = (
+    (0x00A9, 0x00A9, 1.05),
+    (0x00AE, 0x00AE, 1.05),
     (0x060A, 0x060A, 1.20),
+    (0x2014, 0x2015, 1.05),
+    (0x2026, 0x2026, 1.05),
     (0x2030, 0x2030, 1.45),
     (0x2031, 0x2031, 1.90),
+    (0x203B, 0x203B, 1.00),
     (0x2042, 0x2042, 1.05),
     (0x2047, 0x2047, 1.15),
+    (0x2053, 0x2053, 1.05),
+    (0x20A0, 0x20A0, 0.95),
     (0x20A5, 0x20A5, 1.05),
     (0x20A7, 0x20A7, 1.55),
     (0x20A8, 0x20A8, 1.25),
     (0x20A9, 0x20A9, 1.15),
+    (0x20AA, 0x20AA, 0.95),
     (0x20AF, 0x20AF, 1.45),
     (0x2100, 0x2100, 1.15),
     (0x2101, 0x2101, 1.20),
@@ -3539,24 +3548,44 @@ _CANVAS_WIDE_FALLBACK_WIDTH_RANGES = (
     (0x2105, 0x2105, 1.10),
     (0x2106, 0x2106, 1.15),
     (0x2109, 0x2109, 1.10),
+    (0x2114, 0x2114, 1.00),
     (0x2116, 0x2116, 1.25),
+    (0x2117, 0x2117, 1.05),
     (0x2120, 0x2120, 1.05),
     (0x2121, 0x2121, 1.30),
+    (0x2122, 0x2122, 1.05),
+    (0x213A, 0x213A, 0.95),
     (0x213B, 0x213B, 1.35),
+    (0x222C, 0x222C, 0.95),
     (0x222D, 0x222D, 1.30),
+    (0x222F, 0x222F, 1.00),
     (0x2230, 0x2230, 1.35),
     (0x2254, 0x2255, 1.10),
     (0x226A, 0x226B, 1.05),
+    (0x22A2, 0x22A5, 0.95),
+    (0x22A8, 0x22AF, 0.95),
+    (0x22B6, 0x22B7, 1.05),
+    (0x22C8, 0x22CC, 1.05),
     (0x22D8, 0x22D9, 1.45),
+    (0x22EE, 0x22F1, 1.05),
     (0x22F2, 0x22F2, 1.20),
     (0x22FA, 0x22FA, 1.20),
+    (0x2318, 0x2318, 1.00),
     (0x2324, 0x2325, 1.20),
     (0x2326, 0x2326, 1.45),
     (0x2327, 0x2327, 1.20),
     (0x2328, 0x2328, 1.45),
     (0x232B, 0x232B, 1.45),
     (0x2387, 0x2387, 1.20),
+    (0x23CF, 0x23CF, 0.95),
+    (0x25A0, 0x25A9, 0.95),
+    (0x25AC, 0x25AC, 1.05),
+    (0x25AD, 0x25AD, 0.95),
+    (0x25D9, 0x25DB, 1.00),
+    (0x25E7, 0x25EB, 0.95),
     (0x25EF, 0x25EF, 1.45),
+    (0x25F0, 0x25F3, 0.95),
+    (0x2601, 0x2601, 1.05),
     (0x260D, 0x260D, 1.05),
     (0x260E, 0x260F, 1.30),
     (0x2639, 0x263A, 1.05),
@@ -3564,15 +3593,20 @@ _CANVAS_WIDE_FALLBACK_WIDTH_RANGES = (
     (0x26A2, 0x26A2, 1.05),
     (0x26A3, 0x26A3, 1.10),
     (0x26A4, 0x26A4, 1.20),
+    (0x26A5, 0x26A5, 0.95),
     (0x27F4, 0x27F4, 1.20),
     (0x27F5, 0x27F6, 1.45),
     (0x27F7, 0x27F7, 1.80),
     (0x27F8, 0x27F9, 1.45),
     (0x27FA, 0x27FA, 1.80),
     (0x27FB, 0x27FF, 1.45),
-    (0x29CF, 0x29D0, 1.05),
+    (0x29CF, 0x29D5, 1.05),
+    (0x2A00, 0x2A02, 1.05),
     (0x2A0C, 0x2A0C, 1.70),
+    (0x2B12, 0x2B15, 0.95),
+    (0x2B1A, 0x2B1A, 0.95),
     (0x2B24, 0x2B24, 1.15),
+    (0xFFFD, 0xFFFD, 1.15),
 )
 _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
     0x0085: 0.0,  # NEXT LINE
@@ -3937,7 +3971,9 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     if (
         _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
     ):
-        return max(1.0, max(widths))
+        # Emoji-presentation/keycap shaping uses its own full-em glyph contract;
+        # plain-text fallback calibration for the base character must not inflate it.
+        return 1.0
     if any(unicodedata.category(character) == "Mc" for character in visible):
         return _canvas_spacing_mark_cluster_width_units(visible)
     return sum(widths)
@@ -4233,6 +4269,10 @@ def _canvas_wrap_source_line(
     last_space_index = -1
 
     for cluster in _canvas_grapheme_clusters(value):
+        if not current:
+            cluster = cluster.lstrip(" \t")
+            if not cluster:
+                continue
         cluster_width = (
             _canvas_svg_cluster_width_units(
                 cluster,
@@ -4249,24 +4289,21 @@ def _canvas_wrap_source_line(
                 carry = []
             emitted = "".join(emitted_clusters).strip(" \t")
             if emitted:
-                if _estimated_canvas_wrap_width(emitted, size=size) > max_width:
-                    marker = _canvas_ellipsize_to_width(
-                        emitted,
-                        size=size,
-                        max_width=max_width,
-                    )
-                    if marker:
-                        lines.append(marker)
-                    return lines, True
                 lines.append(emitted)
                 if len(lines) >= max_lines:
                     return lines, True
-            current = carry
-            current_width = _estimated_canvas_wrap_width("".join(current), size=size)
+            carry_text = "".join(carry).strip(" \t")
+            current = list(_canvas_grapheme_clusters(carry_text))
+            current_width = _estimated_canvas_wrap_width(carry_text, size=size)
             last_space_index = -1
             for index, item in enumerate(current):
                 if _canvas_is_collapsible_inline_whitespace(item):
                     last_space_index = index
+            if not current:
+                cluster = cluster.lstrip(" \t")
+                if not cluster:
+                    cluster_width = 0.0
+                    break
             cluster_width = (
                 _canvas_svg_cluster_width_units(
                     cluster,
@@ -4274,6 +4311,8 @@ def _canvas_wrap_source_line(
                 )
                 * size
             )
+        if not cluster:
+            continue
         if not current and cluster_width > max_width:
             if len(lines) < max_lines:
                 lines.append(cluster)
@@ -4286,15 +4325,6 @@ def _canvas_wrap_source_line(
     trailing = "".join(current).strip(" \t")
     if trailing:
         if len(lines) >= max_lines:
-            return lines, True
-        if _estimated_canvas_wrap_width(trailing, size=size) > max_width:
-            marker = _canvas_ellipsize_to_width(
-                trailing,
-                size=size,
-                max_width=max_width,
-            )
-            if marker:
-                lines.append(marker)
             return lines, True
         lines.append(trailing)
 
