@@ -62,6 +62,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_FALLBACK_CARRY_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-fallback-carry-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDEPENDENT_REVIEW_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-independent-review-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -435,6 +439,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_fallback_carry_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_independent_review_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -1487,7 +1495,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_fallback_carry[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_independent_review_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_fallback_carry["checks"] == {
         "historical_combining_space_acceptance_left_immutable": True,
         "wide_fallback_punctuation_and_symbols_budgeted_conservatively": True,
@@ -1532,6 +1541,104 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in json_canvas_text_fit_fallback_carry["does_not_establish"]
     )
 
+    json_canvas_text_fit_independent_review = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDEPENDENT_REVIEW_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_independent_review["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-independent-review.v1"
+    )
+    assert (
+        json_canvas_text_fit_independent_review["functional_head"]
+        == "aff9ff10032d49bf641e1726450cf9c3b51f3939"
+    )
+    assert (
+        json_canvas_text_fit_independent_review["integrated_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_independent_review["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_fallback_carry["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_FALLBACK_CARRY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-fallback-carry-20260930/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_fallback_carry["schema_version"],
+    }
+    assert json_canvas_text_fit_independent_review["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_independent_review, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_independent_review["source_bindings"]) == (
+        json_canvas_text_fit_independent_review_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_independent_review[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    review_debt = json_canvas_text_fit_independent_review["review_debt"]
+    assert review_debt["rejected_head"] == "a4ebdbf1d7757556843bc4fe62a86d79df2cbd55"
+    assert review_debt["verdict"] == "REJECT_THIS_REVISION"
+    assert review_debt["material_findings"] == 2
+    assert review_debt["disposition"] == "remediated_in_new_functional_revision"
+    assert json_canvas_text_fit_independent_review["checks"] == {
+        "historical_fallback_carry_acceptance_left_immutable": True,
+        "rejected_revision_not_reused_as_accepted_revision": True,
+        "line_start_carry_normalized_before_width_accounting": True,
+        "post_trim_early_abort_removed": True,
+        "fallback_calibration_extended_to_all_measured_over_0_9em_candidates": True,
+        "fallback_calibration_uses_font_and_browser_measurements": True,
+        "emoji_presentation_width_contract_isolated_from_plain_fallback_calibration": True,
+        "literal_xml_replacement_width_budgeted_conservatively": True,
+        "existing_grapheme_and_work_caps_preserved": True,
+        "focused_review_regressions_passed": True,
+        "native_document_and_diagram_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_smoke_passed": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "exact_dejavu_browser_readback_passed": True,
+        "visual_readback_passed": True,
+    }
+    calibration = json_canvas_text_fit_independent_review["check_evidence"][
+        "fallback_calibration_uses_font_and_browser_measurements"
+    ]
+    assert calibration["calibrated_codepoint_count"] == 143
+    assert calibration["calibrated_range_count"] == 83
+    assert calibration["threshold_em"] == 0.9
+    assert json_canvas_text_fit_independent_review["check_evidence"][
+        "focused_review_regressions_passed"
+    ]["passed_count"] == 11
+    assert json_canvas_text_fit_independent_review["check_evidence"][
+        "browser_smoke_passed"
+    ]["passed_count"] == 7
+    independent_readback = json_canvas_text_fit_independent_review["check_evidence"][
+        "exact_dejavu_browser_readback_passed"
+    ]
+    assert independent_readback["forced_font"] == "DejaVu Sans Bold"
+    assert independent_readback["emdash"]["rendered"] == "——————————"
+    assert independent_readback["emdash"]["all_text_boxes_within_node_bounds"] is True
+    assert independent_readback["internal_carry"]["rendered"] == "éBBBB"
+    assert independent_readback["internal_carry"]["truncated"] is False
+    assert independent_readback["internal_carry"]["all_text_boxes_within_node_bounds"] is True
+    assert independent_readback["emoji_presentation"]["rendered"] == "©️"
+    assert independent_readback["emoji_presentation"]["truncated"] is False
+    assert (
+        independent_readback["emoji_presentation"]["all_text_boxes_within_node_bounds"]
+        is True
+    )
+    assert (
+        "independent review PASS for functional head aff9ff10032d49bf641e1726450cf9c3b51f3939"
+        in json_canvas_text_fit_independent_review["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -1564,6 +1671,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_independent_review_superseded_files:
+            assert json_canvas_text_fit_independent_review["source_bindings"][name] == current
         elif name in json_canvas_text_fit_fallback_carry_superseded_files:
             assert json_canvas_text_fit_fallback_carry["source_bindings"][name] == current
         elif name in json_canvas_text_fit_combining_space_superseded_files:
