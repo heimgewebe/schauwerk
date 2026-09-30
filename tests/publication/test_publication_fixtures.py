@@ -70,6 +70,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_WIDE_LETTERS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-wide-letters-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_REMEDIATION_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-review-remediation-20261001"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -451,6 +455,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_wide_letters_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_review_remediation_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -1688,7 +1696,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_wide_letters_superseded_files
     )
     for name, expected in json_canvas_text_fit_wide_letters["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_review_remediation_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_wide_letters["checks"] == {
         "historical_independent_review_acceptance_left_immutable": True,
         "u1675_reproduced_as_prior_underbudget_case": True,
@@ -1717,6 +1726,103 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert (
         "independent review PASS for functional head 64605f7b71b4e4be1c71ead5841db5cc78821497"
         in json_canvas_text_fit_wide_letters["does_not_establish"]
+    )
+
+    json_canvas_text_fit_review_remediation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_REMEDIATION_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_review_remediation["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-review-remediation.v1"
+    )
+    assert (
+        json_canvas_text_fit_review_remediation["functional_head"]
+        == "bccbce5cc345784ab35d76c34f8d450652a0b87a"
+    )
+    assert (
+        json_canvas_text_fit_review_remediation["base_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_review_remediation["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_wide_letters["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_WIDE_LETTERS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-wide-letters-20260930/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_wide_letters["schema_version"],
+    }
+    assert json_canvas_text_fit_review_remediation["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_review_remediation, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_review_remediation["source_bindings"]) == (
+        json_canvas_text_fit_review_remediation_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_review_remediation[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_review_remediation["checks"] == {
+        "historical_wide_letter_acceptance_left_immutable": True,
+        "rejected_revision_not_reused_as_accepted_revision": True,
+        "generic_non_ascii_letter_baseline_restored_to_0_9em": True,
+        "measured_letter_outliers_calibrated_separately": True,
+        "full_bmp_letter_scan_has_no_underestimates": True,
+        "u1675_remains_conservatively_truncated": True,
+        "canadian_tail_measurement_disproves_hidden_overflow_claim": True,
+        "shaping_script_zwj_budget_is_non_linear": True,
+        "shaping_script_wide_single_letter_outliers_preserved": True,
+        "fsi_source_normalized_once_per_projection": True,
+        "fsi_pathological_pair_probe_is_bounded": True,
+        "focused_renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_smoke_passed_after_fresh_profile_retry": True,
+        "exact_browser_geometry_and_performance_probe_passed": True,
+        "successor_full_validate_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+    }
+    remediation_review_debt = json_canvas_text_fit_review_remediation["review_debt"]
+    assert remediation_review_debt["rejected_head"] == (
+        "50b51f71862e63208e7c0f675537c2c27920f230"
+    )
+    assert remediation_review_debt["verdict"] == "REJECT_THIS_REVISION"
+    assert remediation_review_debt["material_findings"] == 3
+    assert [item["disposition"] for item in remediation_review_debt["dispositions"]] == [
+        "confirmed_and_remediated",
+        "not_reproduced_and_disproved_by_measurement",
+        "confirmed_and_remediated",
+    ]
+    bmp_scan = json_canvas_text_fit_review_remediation["check_evidence"][
+        "full_bmp_letter_scan"
+    ]
+    assert bmp_scan["sample_count"] == 48913
+    assert bmp_scan["under_count"] == 0
+    assert json_canvas_text_fit_review_remediation["check_evidence"][
+        "successor_full_validate_passed"
+    ]["passed_count"] == 1583
+    remediation_browser = json_canvas_text_fit_review_remediation["check_evidence"][
+        "exact_browser_geometry_and_performance_probe"
+    ]
+    assert remediation_browser["fsi_pair_count"] == 4000
+    assert remediation_browser["cases"]["u1675"]["truncated"] is True
+    assert remediation_browser["cases"]["u1675"]["inside"] is True
+    assert remediation_browser["cases"]["canadian_tail_u1677"]["truncated"] is False
+    assert remediation_browser["cases"]["canadian_tail_u1677"]["inside"] is True
+    assert remediation_browser["cases"]["devanagari_zwj"]["inside"] is True
+    assert remediation_browser["cases"]["malayalam_zwj"]["inside"] is True
+    assert remediation_browser["cases"]["malayalam_wide_zwj"]["inside"] is True
+    assert (
+        "independent review PASS for functional head bccbce5cc345784ab35d76c34f8d450652a0b87a"
+        in json_canvas_text_fit_review_remediation["does_not_establish"]
     )
 
     oauth_successor = json.loads(
@@ -1751,6 +1857,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_review_remediation_superseded_files:
+            assert json_canvas_text_fit_review_remediation["source_bindings"][name] == current
         elif name in json_canvas_text_fit_wide_letters_superseded_files:
             assert json_canvas_text_fit_wide_letters["source_bindings"][name] == current
         elif name in json_canvas_text_fit_independent_review_superseded_files:

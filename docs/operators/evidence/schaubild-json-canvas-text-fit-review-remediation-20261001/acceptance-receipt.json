@@ -1,0 +1,179 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-review-remediation.v1",
+  "scope": "json-canvas-text-fit-exact-head-review-remediation",
+  "accepted_at": "2026-10-01",
+  "functional_head": "bccbce5cc345784ab35d76c34f8d450652a0b87a",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "505d8c54b324895608fac88814de75169aa3e02d6ade352116511a34ddedb98f",
+    "file_sha256": "b26c67f34ed0cfb05810716ce2d5065d9e1f8b50d512f1e151e82c7ce130782a",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-wide-letters-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-wide-letters.v1"
+  },
+  "review_debt": {
+    "rejected_head": "50b51f71862e63208e7c0f675537c2c27920f230",
+    "decision_review_job": "grabowski-job-64e84c078c1b",
+    "role_receipt_file_sha256": "17a2e632bfd5d7adb6384214aa25362b196d8e0465e2d23bfb3f21f8d1c2d95b",
+    "role_receipt_sha256": "3b36d7db11c6571b62e06a070b76d08398bd5a8d52d69537802f0109d7db4f22",
+    "verdict": "REJECT_THIS_REVISION",
+    "material_findings": 3,
+    "dispositions": [
+      {
+        "title": "Unnecessary over-truncation of unlisted non-ASCII letters",
+        "disposition": "confirmed_and_remediated",
+        "evidence": "generic letter fallback restored to 0.90em; measured exceptions are calibrated separately; final 48,913-letter BMP scan reports under_count=0"
+      },
+      {
+        "title": "Missed wide letters in Canadian Syllabics causing hidden overflow",
+        "disposition": "not_reproduced_and_disproved_by_measurement",
+        "evidence": "U+1677..U+167F measured at at most about 0.78em in the tested Chrome/DejaVu stacks; real U+1677 x10 browser BBox stayed inside a 172x40 node without truncation; 1.0em explicit tail floor remains conservative"
+      },
+      {
+        "title": "Linear shaping-script ZWJ inflation",
+        "disposition": "confirmed_and_remediated",
+        "evidence": "shaping ZWJ clusters no longer sum isolated letter advances; they use a 1.5em cluster floor plus measured single-letter outlier floors"
+      }
+    ]
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6nsIiR",
+    "comment_id": 4148783412,
+    "reviewed_head": "50b51f71862e63208e7c0f675537c2c27920f230",
+    "finding": "Normalize the FSI source only once",
+    "disposition": "remediated_in_functional_head",
+    "evidence": "4,000 FSI/PDI pairs project in about 0.005s and complete layout in about 0.042s in the final acceptance probe"
+  },
+  "checks": {
+    "historical_wide_letter_acceptance_left_immutable": true,
+    "rejected_revision_not_reused_as_accepted_revision": true,
+    "generic_non_ascii_letter_baseline_restored_to_0_9em": true,
+    "measured_letter_outliers_calibrated_separately": true,
+    "full_bmp_letter_scan_has_no_underestimates": true,
+    "u1675_remains_conservatively_truncated": true,
+    "canadian_tail_measurement_disproves_hidden_overflow_claim": true,
+    "shaping_script_zwj_budget_is_non_linear": true,
+    "shaping_script_wide_single_letter_outliers_preserved": true,
+    "fsi_source_normalized_once_per_projection": true,
+    "fsi_pathological_pair_probe_is_bounded": true,
+    "focused_renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed_after_fresh_profile_retry": true,
+    "exact_browser_geometry_and_performance_probe_passed": true,
+    "successor_full_validate_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true
+  },
+  "check_evidence": {
+    "full_bmp_letter_scan": {
+      "task_id": "ccc323b85d96454183427383",
+      "argv_sha256": "1657c6ee1e71da7023fe9b2dfb493ce5ce65263c840a5fc77de97e4315f0e55d",
+      "outcome_receipt_sha256": "4b8844f8500cd320d148a3253284b2e9dcce770fcf81751b8c4f3b8e76f9ced5",
+      "sample_count": 48913,
+      "under_count": 0,
+      "fonts": [
+        "Chrome Inter, Arial, sans-serif",
+        "DejaVu Sans Bold"
+      ]
+    },
+    "focused_renderer_modules_passed": {
+      "task_id": "a9d2753eba2549948276aced",
+      "argv_sha256": "742deed1469501f0f45022253a3b9ade3e2f9f300957909a9b160713264b4019",
+      "outcome_receipt_sha256": "c3f17715acb47b526dd2758b3beac3bf80ddf3942eee8192f9c009d5d016c312",
+      "result": "succeeded",
+      "modules": [
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_native_diagram.py"
+      ]
+    },
+    "static_validation_passed": {
+      "task_id": "14ac5296f6734b1f9c782787",
+      "argv_sha256": "6fe0429ea801e8f51465354f2aad3e12ffaa0e528fb18888754b07ade28b7eca",
+      "outcome_receipt_sha256": "e085cb6cd999e493138e1e69ccd6abe64f0aa70140e14542212e3617f1972bac",
+      "targets": [
+        "lint",
+        "compile-check",
+        "registry-validate"
+      ]
+    },
+    "browser_smoke_passed": {
+      "task_id": "9e13a23575654dca9fad624e",
+      "argv_sha256": "c3a3326ecd7e89174bf9fd6441db176f329c2a7edafb7a028262b977c10dbf65",
+      "outcome_receipt_sha256": "320fd5d542b3bd37404a9e47d63bf3693fff31ba7acea1b8e6199382a7f1f462",
+      "result": "succeeded_after_builtin_fresh_profile_retry",
+      "passed_count": 7,
+      "first_attempt_note": "coordinate viewer readiness timed out before the successful fresh-profile retry"
+    },
+    "exact_browser_geometry_and_performance_probe": {
+      "task_id": "38c257b2f411493c810e9168",
+      "argv_sha256": "005c886c5f29f1bb66d19d6c731e0eec379338dc31e352958dd5a51f167cf241",
+      "outcome_receipt_sha256": "992e011409c3cc71b7d965b80ccfdfd59352fd97504aac87fc053a21722733ff",
+      "fsi_projection_seconds": 0.005328739993274212,
+      "fsi_layout_seconds": 0.04158803302561864,
+      "fsi_pair_count": 4000,
+      "cases": {
+        "u1675": {
+          "rendered": "ᙵᙵᙵᙵᙵ…",
+          "truncated": true,
+          "inside": true,
+          "right": 146.96875,
+          "bottom": 27
+        },
+        "canadian_tail_u1677": {
+          "rendered": "ᙷᙷᙷᙷᙷᙷᙷᙷᙷᙷ",
+          "truncated": false,
+          "inside": true,
+          "right": 107.53125,
+          "bottom": 109
+        },
+        "devanagari_zwj": {
+          "truncated": false,
+          "inside": true,
+          "right": 72.53535461425781,
+          "bottom": 191
+        },
+        "malayalam_zwj": {
+          "truncated": false,
+          "inside": true,
+          "right": 104.20011901855469,
+          "bottom": 272
+        },
+        "malayalam_wide_zwj": {
+          "truncated": false,
+          "inside": true,
+          "right": 106.47247314453125,
+          "bottom": 348
+        }
+      }
+    },
+    "successor_full_validate_passed": {
+      "task_id": "9d95f8d19365432c80089074",
+      "argv_sha256": "9575550303b6181605085be404cd608717b8a79c591299b7d9088d1c7d25cbae",
+      "outcome_receipt_sha256": "46a0c3c1955d50ad606b87a7a0af7c4fd7353c514cf73727da44a7ec3df44312",
+      "result": "succeeded",
+      "passed_count": 1583,
+      "includes_successor_binding_gate": true
+    },
+    "pre_successor_full_validate": {
+      "task_id": "941d0599e8944a5a940b0860",
+      "argv_sha256": "52e3e3d22d1132916092a35e36fa6a7512f24bd61807de2bbe814dcc613d59a5",
+      "outcome_receipt_sha256": "a431bc795057c10b5baf2a8214dc82450790fe3b52e0a7e3ec547b86f7524a4c",
+      "result": "expected_binding_gate_failure",
+      "passed_count": 1582,
+      "failed_count": 1,
+      "failed_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "reason": "the previous immutable wide-letter receipt still bound the prior functional source hashes"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "b94c805bfd5838cee81a704d5ab62e1ccc8475899f289a7a5b7bc2167f263a6d",
+    "tests/visual/test_native_document.py": "2e8496ec08d94674fdffa781914af3ae777130beb99111416dd9a56a6a72d409"
+  },
+  "does_not_establish": [
+    "independent review PASS for functional head bccbce5cc345784ab35d76c34f8d450652a0b87a",
+    "GitHub CI success on the later evidence commit",
+    "all GitHub review threads settled on the later evidence commit",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "1e01c0b090c8cb453fee2d4febe9f60f674904df80f36e97238a3283464737cc"
+}
