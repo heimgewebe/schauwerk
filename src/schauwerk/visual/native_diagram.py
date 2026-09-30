@@ -4378,11 +4378,7 @@ def _canvas_text_layout(
         value = probe_prefix
         grapheme_truncated = probe_truncated
     elif probe_truncated:
-        value, _ = bounded_grapheme_prefix(
-            value,
-            max_clusters=probe_cluster_limit,
-            max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
-        )
+        value = probe_prefix
         grapheme_truncated = True
     else:
         source_prefix, source_truncated = bounded_grapheme_prefix(

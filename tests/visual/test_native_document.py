@@ -1969,6 +1969,30 @@ def test_canvas_text_layout_uses_collapsed_whitespace_past_codepoint_cap() -> No
     assert layout.lines == (("abc def", 28), ("xyz", 48))
 
 
+def test_canvas_text_layout_uses_collapsed_whitespace_past_cluster_cap() -> None:
+    label = "abc" + " " * 1000 + "def" + "x" * 200
+    collapsed = native_diagram._canvas_collapse_inline_whitespace(label)
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        92,
+        60,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    collapsed_layout = native_diagram._canvas_text_layout(
+        collapsed,
+        92,
+        60,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout == collapsed_layout
+    assert layout.truncated is True
+    assert layout.lines == (("abc", 24), ("defxxxxxx…", 40))
+
+
 @pytest.mark.parametrize(
     "control",
     [
