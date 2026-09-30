@@ -1687,6 +1687,51 @@ def test_canvas_xml_forbidden_controls_measure_replacement_glyph() -> None:
     assert fitted.endswith("…")
 
 
+def test_canvas_text_layout_normalizes_xml_controls_before_grapheme_fitting() -> None:
+    raw = ("\x01\u0301") * 2
+    emitted = ("\uFFFD\u0301") * 2
+
+    raw_layout = native_diagram._canvas_text_layout(
+        raw,
+        30,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    emitted_layout = native_diagram._canvas_text_layout(
+        emitted,
+        30,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert raw_layout == emitted_layout
+    assert raw_layout.truncated is False
+    assert raw_layout.lines == ((emitted, 28),)
+
+
+def test_canvas_single_line_normalizes_xml_controls_before_grapheme_fitting() -> None:
+    raw = ("\x01\u0301") * 2
+    emitted = ("\uFFFD\u0301") * 2
+
+    raw_fitted = native_diagram._canvas_fit_single_line(
+        raw,
+        size=16,
+        max_width=30,
+        max_bytes=4096,
+    )
+    emitted_fitted = native_diagram._canvas_fit_single_line(
+        emitted,
+        size=16,
+        max_width=30,
+        max_bytes=4096,
+    )
+
+    assert raw_fitted == emitted_fitted
+    assert raw_fitted == (emitted, False)
+
+
 def test_canvas_wide_non_ascii_fallback_is_conservative() -> None:
     label = "Ж" * 19
 
@@ -2300,6 +2345,49 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     )
     assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(1.8)
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
+
+
+def test_canvas_latin_zwj_clusters_keep_base_letter_width() -> None:
+    cluster = "a\u200d"
+    label = cluster * 10
+
+    assert native_diagram._canvas_grapheme_width_units(cluster) == pytest.approx(
+        native_diagram._canvas_character_width_units("a")
+    )
+    assert native_diagram._estimated_canvas_wrap_width(label, size=12) <= 92
+
+    source = {
+        "nodes": [
+            {
+                "id": "latin-zwj",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Latin ZWJ")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "latin-zwj"
+    )
+    texts = [
+        child.text or ""
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert "data-text-truncated" not in node.attrib
+    assert "".join(texts) == label
 
 
 def test_native_document_canvas_non_pictographic_zwj_does_not_force_truncation() -> None:

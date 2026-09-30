@@ -3509,6 +3509,14 @@ _CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES = (
     (0x1780, 0x17FF, 1.10),  # Khmer
     (0x1B00, 0x1B7F, 1.55),  # Balinese
 )
+_CANVAS_ZWJ_SHAPING_SCRIPT_RANGES = (
+    (0x0600, 0x08FF),  # Arabic-family joining scripts
+    (0x0900, 0x0DFF),  # Indic scripts covered by the native Canvas renderer
+    (0x1000, 0x109F),  # Myanmar
+    (0x1780, 0x17FF),  # Khmer
+    (0x1A20, 0x1AAF),  # Tai Tham
+    (0x1B00, 0x1B7F),  # Balinese
+)
 _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
 _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
@@ -3555,6 +3563,31 @@ def _canvas_xml_compatible_text(value: str) -> str:
     return "".join(
         character if _xml_10_character_allowed(character) else "\uFFFD"
         for character in value
+    )
+
+
+def _canvas_bounded_xml_compatible_prefix(
+    value: str,
+    *,
+    max_clusters: int | None,
+    max_codepoints: int,
+) -> tuple[str, bool]:
+    """Bound grapheme work while matching the XML text that will be emitted."""
+
+    scan_limit = max(1, max_codepoints) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1
+    source_probe = value[:scan_limit]
+    if any(not _xml_10_character_allowed(character) for character in source_probe):
+        normalized_probe = _canvas_xml_compatible_text(source_probe)
+        prefix, truncated = bounded_grapheme_prefix(
+            normalized_probe,
+            max_clusters=max_clusters,
+            max_codepoints=max_codepoints,
+        )
+        return prefix, truncated or len(value) > scan_limit
+    return bounded_grapheme_prefix(
+        value,
+        max_clusters=max_clusters,
+        max_codepoints=max_codepoints,
     )
 
 
@@ -3805,6 +3838,15 @@ def _canvas_spacing_mark_cluster_width_units(visible: list[str]) -> float:
     return fallback
 
 
+def _canvas_zwj_uses_shaping_script(cluster: str) -> bool:
+    return any(
+        first <= ord(character) <= last
+        for character in cluster
+        if character not in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        for first, last in _CANVAS_ZWJ_SHAPING_SCRIPT_RANGES
+    )
+
+
 def _canvas_grapheme_width_units(cluster: str) -> float:
     if cluster and all(_canvas_is_zero_advance_control(item) for item in cluster):
         return 0.0
@@ -3827,7 +3869,9 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     if _CANVAS_ZWJ in cluster:
         if any(is_extended_pictographic(item) for item in cluster):
             return max(2.0, max(widths))
-        return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(widths))
+        if _canvas_zwj_uses_shaping_script(cluster):
+            return max(_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS, sum(widths))
+        return sum(widths)
     if len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible):
         return max(2.0, max(widths))
     if (
@@ -3980,7 +4024,7 @@ def _canvas_fit_single_line_unprojected(
 
     if not value:
         return "", False
-    value, grapheme_truncated = bounded_grapheme_prefix(
+    value, grapheme_truncated = _canvas_bounded_xml_compatible_prefix(
         value,
         max_clusters=max(1, max_bytes + 1),
         max_codepoints=min(
@@ -4369,7 +4413,7 @@ def _canvas_text_layout(
         min_size=min_size,
     )
     collapsed_probe = _canvas_collapse_inline_whitespace(value)
-    probe_prefix, probe_truncated = bounded_grapheme_prefix(
+    probe_prefix, probe_truncated = _canvas_bounded_xml_compatible_prefix(
         collapsed_probe,
         max_clusters=probe_cluster_limit,
         max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
@@ -4381,7 +4425,7 @@ def _canvas_text_layout(
         value = probe_prefix
         grapheme_truncated = True
     else:
-        source_prefix, source_truncated = bounded_grapheme_prefix(
+        source_prefix, source_truncated = _canvas_bounded_xml_compatible_prefix(
             value,
             max_clusters=None,
             max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
