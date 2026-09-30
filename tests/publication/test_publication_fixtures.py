@@ -66,6 +66,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDEPENDENT_REVIEW_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-independent-review-20260930"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_WIDE_LETTERS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-wide-letters-20260930"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -443,6 +447,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_independent_review_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_wide_letters_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -1583,7 +1591,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_independent_review[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_wide_letters_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     review_debt = json_canvas_text_fit_independent_review["review_debt"]
     assert review_debt["rejected_head"] == "a4ebdbf1d7757556843bc4fe62a86d79df2cbd55"
     assert review_debt["verdict"] == "REJECT_THIS_REVISION"
@@ -1639,6 +1648,77 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in json_canvas_text_fit_independent_review["does_not_establish"]
     )
 
+    json_canvas_text_fit_wide_letters = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_WIDE_LETTERS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_wide_letters["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-wide-letters.v1"
+    )
+    assert (
+        json_canvas_text_fit_wide_letters["functional_head"]
+        == "64605f7b71b4e4be1c71ead5841db5cc78821497"
+    )
+    assert (
+        json_canvas_text_fit_wide_letters["base_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_wide_letters["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_independent_review["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDEPENDENT_REVIEW_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-independent-review-20260930/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_independent_review["schema_version"],
+    }
+    assert json_canvas_text_fit_wide_letters["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_wide_letters, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_wide_letters["source_bindings"]) == (
+        json_canvas_text_fit_wide_letters_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_wide_letters["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_wide_letters["checks"] == {
+        "historical_independent_review_acceptance_left_immutable": True,
+        "u1675_reproduced_as_prior_underbudget_case": True,
+        "non_ascii_letter_floor_is_script_aware": True,
+        "ascii_letter_metrics_left_unchanged": True,
+        "east_asian_wide_floor_preserved_conservatively": True,
+        "myanmar_and_canadian_syllabics_extremes_are_tiered": True,
+        "shaping_script_zwj_uses_shaping_aware_metric": True,
+        "focused_renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_smoke_passed": True,
+        "code_suite_excluding_successor_binding_gate_passed": True,
+        "exact_u1675_dejavu_bbox_passed": True,
+        "successor_full_validate_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+    }
+    wide_readback = json_canvas_text_fit_wide_letters["check_evidence"][
+        "exact_u1675_dejavu_bbox_passed"
+    ]
+    assert wide_readback["forced_font"] == "DejaVu Sans"
+    assert wide_readback["rendered"] == "ᙵᙵᙵᙵᙵ…"
+    assert wide_readback["truncated"] is True
+    assert wide_readback["all_text_boxes_within_node_bounds"] is True
+    assert wide_readback["text_bbox"]["right"] <= wide_readback["node_bbox"]["width"]
+    assert wide_readback["text_bbox"]["bottom"] <= wide_readback["node_bbox"]["height"]
+    assert (
+        "independent review PASS for functional head 64605f7b71b4e4be1c71ead5841db5cc78821497"
+        in json_canvas_text_fit_wide_letters["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -1671,6 +1751,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_wide_letters_superseded_files:
+            assert json_canvas_text_fit_wide_letters["source_bindings"][name] == current
         elif name in json_canvas_text_fit_independent_review_superseded_files:
             assert json_canvas_text_fit_independent_review["source_bindings"][name] == current
         elif name in json_canvas_text_fit_fallback_carry_superseded_files:

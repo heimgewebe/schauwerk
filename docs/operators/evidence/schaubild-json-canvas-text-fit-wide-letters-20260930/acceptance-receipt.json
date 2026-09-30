@@ -1,0 +1,139 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-wide-letters.v1",
+  "scope": "json-canvas-text-fit-wide-fallback-letters",
+  "accepted_at": "2026-09-30",
+  "functional_head": "64605f7b71b4e4be1c71ead5841db5cc78821497",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "579e4b0a179e79c217878cec6aa7a6b9a46ffe7b157ff4c58265288e5ca72ce9",
+    "file_sha256": "455c12372b814d4cd53ef567ed0712785899ba7a8794a7694c62e1b4aa4bbd89",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-independent-review-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-independent-review.v1"
+  },
+  "checks": {
+    "historical_independent_review_acceptance_left_immutable": true,
+    "u1675_reproduced_as_prior_underbudget_case": true,
+    "non_ascii_letter_floor_is_script_aware": true,
+    "ascii_letter_metrics_left_unchanged": true,
+    "east_asian_wide_floor_preserved_conservatively": true,
+    "myanmar_and_canadian_syllabics_extremes_are_tiered": true,
+    "shaping_script_zwj_uses_shaping_aware_metric": true,
+    "focused_renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_u1675_dejavu_bbox_passed": true,
+    "successor_full_validate_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true
+  },
+  "check_evidence": {
+    "letter_budget_contract": {
+      "generic_non_ascii_letter_floor_em": 1,
+      "east_asian_wide_floor_em": 1.05,
+      "ascii_A_width_em": 0.86,
+      "sample_width_units": {
+        "U+1675_CANADIAN_SYLLABICS_NNGAA": 2.05,
+        "U+102A_MYANMAR_LETTER_AU": 2.5,
+        "U+0D10_MALAYALAM_LETTER_AI": 1.95,
+        "U+1685_OGHAM_LETTER_NION": 1.9,
+        "U+1B4B_BALINESE_LETTER_ASYURA_SASAK": 1.85
+      },
+      "shaping_zwj_policy": "retain prior shaping-aware per-character metric instead of summing isolated fallback-letter maxima"
+    },
+    "focused_renderer_modules_passed": {
+      "task_id": "d4e312c5c92b476284b0556b",
+      "argv_sha256": "a69d43947b8e2a3f97932aa1988439e71cfb9310dc0d42d0341a14e8b81dc220",
+      "outcome_receipt_sha256": "c37f84973cf84ed8b55b52a20ee2616c6b5db29b297ef9a97f1f9611fd39691b",
+      "result": "succeeded",
+      "modules": [
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_native_diagram.py"
+      ]
+    },
+    "static_validation_passed": {
+      "task_id": "9834400a1c884209bc54596b",
+      "argv_sha256": "173dc0f88661221aab6d40eaf47e951c1de0dc40b073cd8e8b8dd4a083939a99",
+      "outcome_receipt_sha256": "878f7bc685f20fc4051d4b9a51f8f4010be66990632027627a3e6679b12c70c1",
+      "result": "succeeded",
+      "targets": [
+        "lint",
+        "compile-check",
+        "registry-validate"
+      ]
+    },
+    "browser_smoke_passed": {
+      "task_id": "c66b312d58c44210bf3aca2d",
+      "argv_sha256": "c3a3326ecd7e89174bf9fd6441db176f329c2a7edafb7a028262b977c10dbf65",
+      "outcome_receipt_sha256": "4c262a9ce1901598aac4c0da05d5995b29deb22e38d3a45728af8d219cd506eb",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "task_id": "a0d7d6b6dfb541acba5921d1",
+      "argv_sha256": "a2f9baaf043c29dff85aa642df049f4ec8dde647d46642329344bf8f6927a36b",
+      "outcome_receipt_sha256": "a5d3171574cef7abc67b2d4aaa1a0f0eb574911e884a1c8f8cea013e6e31044f",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "browser_smoke_covered_separately": true
+    },
+    "successor_full_validate_passed": {
+      "task_id": "33665ec5405d488189bd07f4",
+      "argv_sha256": "9575550303b6181605085be404cd608717b8a79c591299b7d9088d1c7d25cbae",
+      "outcome_receipt_sha256": "5815ac76800e14e69be460a04f4c23513d93a1081897f6865740c9fb8d1b5c38",
+      "result": "succeeded",
+      "passed_count": 1582,
+      "includes_successor_binding_gate": true
+    },
+    "pre_successor_full_validate": {
+      "task_id": "691f63fa51224c4dbc5efab4",
+      "argv_sha256": "9575550303b6181605085be404cd608717b8a79c591299b7d9088d1c7d25cbae",
+      "outcome_receipt_sha256": "e69d2be4bffbf4e0eac12b23fbda3dd1fb517c560fa04538a6d73c22c2921548",
+      "result": "expected_binding_gate_failure",
+      "passed_count": 1581,
+      "failed_count": 1,
+      "failed_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "reason": "the prior immutable independent-review receipt still bound pre-successor source hashes"
+    },
+    "exact_u1675_dejavu_bbox_passed": {
+      "task_id": "42ea8a9dcdce464da0881685",
+      "argv_sha256": "e8a9d3d100411f9598a7fef1326759957191dcfe6b1d5654db3b367f22e05be8",
+      "outcome_receipt_sha256": "5a7717d0d6576334354a620cf3b0f4d25232f1831f0107fe45ceb08f41a5e249",
+      "result": "succeeded",
+      "acceptance_html_sha256": "26cbaf2919e1711072bf7226582214ea85a55386f8943e13ec39a5888b291044",
+      "forced_font": "DejaVu Sans",
+      "font_weight": 700,
+      "font_size_px": 12,
+      "source": "ᙵᙵᙵᙵᙵᙵᙵᙵᙵᙵ",
+      "rendered": "ᙵᙵᙵᙵᙵ…",
+      "truncated": true,
+      "node_bbox": {
+        "x": 0,
+        "y": 0,
+        "width": 172,
+        "height": 40
+      },
+      "text_bbox": {
+        "x": 14,
+        "y": 13,
+        "width": 132.96875,
+        "height": 14,
+        "right": 146.96875,
+        "bottom": 27
+      },
+      "all_text_boxes_within_node_bounds": true
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "61b50a5c80eb20b913c59053aca82d9521bd5cfe37d7f7958080b2ba4770790d",
+    "tests/visual/test_native_document.py": "3bec0001c5be0e11405d54af4257825f69620d1db1ccf17791f2f5c1dce71892"
+  },
+  "does_not_establish": [
+    "independent review PASS for functional head 64605f7b71b4e4be1c71ead5841db5cc78821497",
+    "GitHub CI success on the later evidence commit",
+    "all GitHub review threads settled on the later evidence commit",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "505d8c54b324895608fac88814de75169aa3e02d6ade352116511a34ddedb98f"
+}
