@@ -113,11 +113,9 @@ _EDITOR_URL_MARKER: Final = 'const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";'
 _PUBLIC_BASE_PATH_MARKER: Final = (
     'const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";'
 )
-_HANDOFF_BUTTON_ANCHOR: Final = (
-    '        <button class="button ghost" id="blankButton" type="button">Legacy leer</button>'
-)
+_HANDOFF_BUTTON_ANCHOR: Final = "                <!-- SCHAUWERK_AI_HANDOFF_ACTION -->"
 _HANDOFF_BUTTON_HTML: Final = (
-    '        <button class="button ghost" id="copyAiGuideButton" type="button">'
+    '                <button class="button compact ghost" id="copyAiGuideButton" type="button">'
     "KI-Anleitung kopieren</button>"
 )
 

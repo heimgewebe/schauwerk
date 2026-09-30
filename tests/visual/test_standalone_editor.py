@@ -166,14 +166,19 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     file_input = re.search(r'<input\b[^>]*\bid="fileInput"[^>]*>', index_html)
     assert file_input is not None
     assert re.search(r"\baccept\s*=", file_input.group(0), flags=re.IGNORECASE) is None
-    assert "schauwerk-representation-input.v1" in index_html
-    assert "Legacy leer" in index_html
-    assert "Renderer-Cutover:" in index_html
+    assert "schauwerk-representation-input.v1" not in index_html
+    assert "Leeres Schaubild" in index_html
+    assert "Legacy leer" not in index_html
+    assert "Technischer Kompatibilitätsmodus:" in index_html
     assert "<code>.canvas</code>/JSON Canvas" in index_html
     assert 'aria-pressed="false"' in index_html
     assert 'aria-label="Vollbildmodus aktivieren"' in index_html
     assert "body.editor-focus .topline" in styles_css
-    assert "body.editor-focus .workspace-bar > :not(.fullscreen-toggle)" in styles_css
+    assert (
+        "body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output)"
+        in styles_css
+    )
+    assert "body.editor-focus .workspace-output > :not(.fullscreen-toggle)" in styles_css
     assert "height: 100dvh" in styles_css
     assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
     assert 'if (detected.kind === "drawio")' in app_js
@@ -516,7 +521,7 @@ def test_native_canvas_document_change_persists_restoreable_native_draft(
     draft_source = app_js[draft_start:draft_end]
 
     assert "const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);" in app_js
-    assert '"Native Änderung aktiv · lokales Speichern nicht möglich"' in app_js
+    assert '"Änderung aktiv · lokales Speichern nicht möglich"' in app_js
     assert "if (draft.nativeDocument && draft.nativeCanvas)" in app_js
     assert "nativeDocument: draft.nativeDocument" in app_js
     assert "nativeCanvas: draft.nativeCanvas" in app_js

@@ -1,0 +1,67 @@
+{
+  "schema_version": "schauwerk-schaubild-product-ui.v1",
+  "scope": "schaubild-product-shell-and-native-viewer-ui",
+  "accepted_at": "2026-09-29",
+  "functional_head": "f7f0cd956386bc82202fd7f9633bb0b11f68a343",
+  "parent_evidence": {
+    "evidence_digest": "ca78d80146d92a5ba87188c63df48f7ce5c9988e2bc3e6188e8032ced8259b3d",
+    "file_sha256": "7e1ba7879b422737376dd93a8004f30f46444041aed06725001dd897e0676138",
+    "path": "docs/operators/evidence/schaubild-native-draft-restore-20260929/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-draft-restore.v1"
+  },
+  "checks": {
+    "historical_acceptance_left_immutable": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "desktop_start_visual_readback_passed": true,
+    "mobile_start_visual_readback_passed": true,
+    "desktop_native_workspace_visual_readback_passed": true,
+    "mobile_native_workspace_cold_start_visual_readback_passed": true,
+    "critical_diff_self_review_passed": true
+  },
+  "check_evidence": {
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-6c74ae9c9d0f",
+      "argv_sha256": "f0b0a95d2f98de419715060037be699f228d0e8958e94f4aa21ec80d1258213e",
+      "finalization_receipt_sha256": "7f500421f32f24ca7d9a6629e0793508402c8f4f768c2aad72869326089134ec",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    },
+    "visual_readback": {
+      "primary_job_unit": "grabowski-job-f953765b2417",
+      "primary_finalization_receipt_sha256": "cd4f7055122786f9d413504ebcbefd2f81058a342dd15083bb8686af6c255f7f",
+      "mobile_cold_start_job_unit": "grabowski-job-617d2fdb9a62",
+      "mobile_cold_start_finalization_receipt_sha256": "5bc2a3a528a5970b7fea2dc8e6bb900a87c824d99e52524bc95a1732309709b3",
+      "desktop_start_png_sha256": "b1e34a2af630b79948ddc36143a8e58fd5fd68732cb6243f78f0522f172c481e",
+      "mobile_start_png_sha256": "0f6f440de3bd5c4530a3def697c7d90efa271ceacf6957a685a317345a4f8ec4",
+      "desktop_workspace_png_sha256": "d3275862f43c05dc0bab697795dabce08385bf27a083b2a5040fc9959e680f76",
+      "mobile_workspace_cold_png_sha256": "0ecd534e0899759bf71e5c70b9b726fb40ddef413e762410b92a5f4ced86576d"
+    },
+    "critical_diff_self_review_passed": {
+      "path": "docs/operators/evidence/schaubild-product-ui-20260929/grabowski-self-review.json",
+      "file_sha256": "d373993721587430f9c810e439d21f32a2e61a41d8fd72c3b621b4f1b1e94dd3",
+      "review_mode": "critical_diff_review",
+      "verdict": "PASS",
+      "reviewed_head": "f7f0cd956386bc82202fd7f9633bb0b11f68a343",
+      "reviewed_diff_sha256": "1dfc35169c372161cd088ba7862d0ffc14f4a6cff13e8d46d1623f39327ecd0c"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "b88518ce2ea8707de2bd4d31a60e213d3fa4b09d3eb86d202d6d1a34f475640e",
+    "src/schauwerk/resources/standalone_editor/assets.py": "7e3efe795551d3f47dccba2e0cfdc9113d14ca47c1623c01780e7924e47d1eb8",
+    "src/schauwerk/visual/standalone_editor.py": "9f48f7b4eac36e81ea037c891b481cb975cb1372fabe46ca40465e4dcb372cfd",
+    "tests/visual/test_native_canvas_editor.py": "df722e0686218032461fd2b30b729077078a23155982aa7f221a6dac851fea7f",
+    "tests/visual/test_native_viewer.py": "f1be50e48ba684e3221ce028c195ff3a09b22b7d5d40004126c5d3c88374ba8e",
+    "tests/visual/test_standalone_editor.py": "4d62eb6bb25ab3ab3092bdb8b0f3a90eb5a9bc49e273f8b1a7aefe60be098fff",
+    "tests/visual/test_native_viewer_product_ui.py": "68b7582aeeb87b21e291ca7f9b96f9c90d5e122af326ae1fa48787d052cc9203",
+    "tests/visual/test_standalone_editor_product_ui.py": "18b844dc7a27c4ad869a5eb442e8c5c17926a003753ddc4cbe258ea43d5e847f"
+  },
+  "does_not_establish": [
+    "independent review of the Product-UI revision",
+    "user visual acceptance of the Product-UI revision",
+    "GitHub CI success for the Product-UI revision",
+    "merge or deploy readiness after any later source change",
+    "Commonthing consumer integration",
+    "Commonthing production deployment"
+  ],
+  "evidence_digest": "5e848c2ff6150851d933508e8f55a22b72a75633c015b68826c2d5fe3994ba22"
+}

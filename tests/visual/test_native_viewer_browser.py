@@ -153,6 +153,14 @@ try {
   const svg = document.querySelector("#nativeDiagram");
   const status = document.querySelector("#status");
   await waitForViewerReady(status, canvas);
+  const editControls = document.querySelector(".edit-controls");
+  if (
+    !(editControls instanceof HTMLElement) ||
+    !editControls.hidden ||
+    getComputedStyle(editControls).display !== "none"
+  ) {
+    throw new Error("read-only viewer exposed an empty edit-control group");
+  }
   Storage.prototype.setItem = window.__schauwerkOriginalStorageSetItem;
   if (!status?.textContent?.includes("Speichern nicht möglich")) {
     throw new Error("startup repair persistence failure was hidden by fit status");
@@ -461,6 +469,14 @@ try {
       window.__nativeDocumentMessages.length > 0,
     "canvas viewer deterministic readiness timed out",
   );
+  const editControls = document.querySelector(".edit-controls");
+  if (
+    !(editControls instanceof HTMLElement) ||
+    editControls.hidden ||
+    getComputedStyle(editControls).display === "none"
+  ) {
+    throw new Error("hosted canvas edit-control group remained hidden");
+  }
   window.__nativeDocumentMessages.length = 0;
 
   const node = svg.querySelector('[data-source-kind="node"][data-source-id="a"]');
