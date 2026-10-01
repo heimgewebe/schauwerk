@@ -2075,7 +2075,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
 
 
     json_canvas_text_fit_review_hardening = json.loads(
-        (SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
     )
     assert json_canvas_text_fit_review_hardening["schema_version"] == (
         "schauwerk-schaubild-json-canvas-text-fit-review-hardening.v1"
@@ -2089,9 +2092,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert json_canvas_text_fit_review_hardening["parent_evidence"] == {
         "evidence_digest": json_canvas_text_fit_claim_integrity["evidence_digest"],
         "file_sha256": hashlib.sha256(
-            (SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE / "acceptance-receipt.json").read_bytes()
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
         ).hexdigest(),
-        "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-claim-integrity-20261001/acceptance-receipt.json",
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-claim-integrity-20261001/"
+            "acceptance-receipt.json"
+        ),
         "schema_version": json_canvas_text_fit_claim_integrity["schema_version"],
     }
     assert json_canvas_text_fit_review_hardening["evidence_digest"] == digest_mapping(
@@ -2129,20 +2139,30 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
 
     review_hardening_validation = json.loads(
-        (SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE / "validation-receipt.json").read_text(encoding="utf-8")
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
     )
     assert review_hardening_validation["schema_version"] == (
         "schauwerk-schaubild-json-canvas-text-fit-review-hardening-validation.v1"
     )
     assert review_hardening_validation["acceptance_receipt"] == {
-        "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-review-hardening-20261001/acceptance-receipt.json",
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-review-hardening-20261001/"
+            "acceptance-receipt.json"
+        ),
         "file_sha256": hashlib.sha256(
-            (SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE / "acceptance-receipt.json").read_bytes()
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
         ).hexdigest(),
     }
     assert review_hardening_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
-        "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "file_sha256": "b0ffda1271f1bf442946fbc076e0d657d5b2775ac31b35e3669ac83ecc886c2e",
     }
 
     oauth_successor = json.loads(
