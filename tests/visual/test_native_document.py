@@ -1372,6 +1372,42 @@ def test_canvas_fsi_normalized_resolver_does_not_slice_suffixes() -> None:
     assert native_diagram._canvas_resolve_fsi_opener_normalized(value, 0) == "\u2067"
 
 
+def test_canvas_bidi_projection_shares_fsi_scan_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = "\u2068a\u2069\u2068b\u2069"
+    scan_budgets: list[int] = []
+    monkeypatch.setattr(native_diagram, "_MAX_CANVAS_TEXT_PROBE_CODEPOINTS", 3)
+
+    def bounded_resolver(
+        value: str,
+        start_index: int,
+        *,
+        max_scan_codepoints: int,
+    ) -> tuple[str | None, int]:
+        del value, start_index
+        scan_budgets.append(max_scan_codepoints)
+        scanned = min(2, max_scan_codepoints)
+        if max_scan_codepoints < 2:
+            return None, scanned
+        return "\u2066", scanned
+
+    monkeypatch.setattr(
+        native_diagram,
+        "_canvas_resolve_fsi_opener_bounded",
+        bounded_resolver,
+    )
+
+    projected, truncated = native_diagram._canvas_project_bidi_wrapped_lines(
+        [source],
+        fsi_source=source,
+    )
+
+    assert scan_budgets == [3, 1]
+    assert truncated is True
+    assert projected == ["…"]
+
+
 def test_canvas_bidi_scope_projection_resets_at_source_line_boundary() -> None:
     lines, truncated = native_diagram._canvas_adaptive_lines(
         "\u202eabcd\nEFGH",
@@ -2504,6 +2540,15 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     assert native_diagram._canvas_grapheme_width_units(myanmar_chain) == pytest.approx(7.50)
     assert native_diagram._estimated_canvas_wrap_width(balinese_chain, size=100) >= 6.0
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
+
+
+def test_canvas_shaping_zwj_keeps_calibrated_wide_non_letter_width() -> None:
+    cluster = "\u0915\u200d\u2031"
+
+    assert native_diagram._canvas_zwj_uses_shaping_script(cluster) is True
+    assert unicodedata.category("\u2031").startswith("P")
+    assert native_diagram._canvas_character_width_units("\u2031") == pytest.approx(1.90)
+    assert native_diagram._canvas_grapheme_width_units(cluster) == pytest.approx(1.90)
 
 
 def test_canvas_latin_zwj_clusters_keep_base_letter_width() -> None:

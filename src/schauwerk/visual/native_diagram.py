@@ -4233,6 +4233,7 @@ def _canvas_project_bidi_wrapped_lines(
 
     flattened = "".join(wrapped)
     fsi_source_cursor = 0
+    remaining_fsi_scan = _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
     stack: list[tuple[str, str, str]] = []
     projected: list[str] = []
     cursor = 0
@@ -4256,8 +4257,10 @@ def _canvas_project_bidi_wrapped_lines(
                 if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
                     return ["…"], True
                 if fsi_source is None:
-                    resolved = _canvas_resolve_fsi_opener_normalized(
-                        flattened, cursor + offset
+                    resolved, scanned = _canvas_resolve_fsi_opener_bounded(
+                        flattened,
+                        cursor + offset,
+                        max_scan_codepoints=remaining_fsi_scan,
                     )
                 else:
                     source_index = fsi_source.find(
@@ -4266,9 +4269,14 @@ def _canvas_project_bidi_wrapped_lines(
                     if source_index < 0:
                         return ["…"], True
                     fsi_source_cursor = source_index + 1
-                    resolved = _canvas_resolve_fsi_opener_normalized(
-                        fsi_source, source_index
+                    resolved, scanned = _canvas_resolve_fsi_opener_bounded(
+                        fsi_source,
+                        source_index,
+                        max_scan_codepoints=remaining_fsi_scan,
                     )
+                remaining_fsi_scan = max(0, remaining_fsi_scan - scanned)
+                if resolved is None:
+                    return ["…"], True
                 rendered.append(resolved)
                 stack.append((resolved, _CANVAS_BIDI_PDI, "isolate"))
                 continue
@@ -4462,11 +4470,15 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
                 (
                     _CANVAS_SPACING_MARK_WIDTH_UNITS
                     if unicodedata.category(character) == "Mc"
-                    else _character_width_units(
-                        character,
-                        non_ascii=0.9,
-                        uppercase=0.86,
-                        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+                    else (
+                        _character_width_units(
+                            character,
+                            non_ascii=0.9,
+                            uppercase=0.86,
+                            default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+                        )
+                        if unicodedata.category(character).startswith("L")
+                        else _canvas_character_width_units(character)
                     )
                 )
                 for character in visible
