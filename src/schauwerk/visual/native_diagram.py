@@ -4348,6 +4348,10 @@ def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
     return cluster in {" ", "\t"}
 
 
+def _canvas_has_collapsible_inline_whitespace_prefix(cluster: str) -> bool:
+    return bool(cluster) and cluster[0] in {" ", "\t"}
+
+
 def _canvas_is_single_line_collapsible_whitespace(cluster: str) -> bool:
     return cluster in {" ", "\t", "\r", "\n", "\r\n"}
 
@@ -5058,7 +5062,7 @@ def _canvas_wrap_source_line(
 
     if max_lines <= 0:
         return [], bool(value)
-    value = value.strip(" \t")
+    value = _canvas_collapse_inline_whitespace(value).strip(" \t")
     if not value:
         return [], False
     lines: list[str] = []
@@ -5081,7 +5085,11 @@ def _canvas_wrap_source_line(
         while current and current_width + cluster_width > max_width:
             if last_space_index >= 0:
                 emitted_clusters = current[:last_space_index]
+                break_cluster = current[last_space_index]
                 carry = current[last_space_index + 1 :]
+                carry_prefix = break_cluster.lstrip(" \t")
+                if carry_prefix:
+                    carry.insert(0, carry_prefix)
             else:
                 emitted_clusters = current
                 carry = []
@@ -5095,7 +5103,7 @@ def _canvas_wrap_source_line(
             current_width = _estimated_canvas_wrap_width(carry_text, size=size)
             last_space_index = -1
             for index, item in enumerate(current):
-                if _canvas_is_collapsible_inline_whitespace(item):
+                if _canvas_has_collapsible_inline_whitespace_prefix(item):
                     last_space_index = index
             if not current:
                 cluster = cluster.lstrip(" \t")
@@ -5117,7 +5125,7 @@ def _canvas_wrap_source_line(
             return lines, True
         current.append(cluster)
         current_width += cluster_width
-        if _canvas_is_collapsible_inline_whitespace(cluster):
+        if _canvas_has_collapsible_inline_whitespace_prefix(cluster):
             last_space_index = len(current) - 1
 
     trailing = "".join(current).strip(" \t")

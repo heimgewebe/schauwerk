@@ -2116,7 +2116,7 @@ def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
         max_width=92,
         max_lines=2,
     )
-    assert wrapped == [label]
+    assert wrapped == [display]
     assert wrapped_truncated is False
 
     source = {
@@ -2150,8 +2150,32 @@ def test_native_document_canvas_collapses_inline_svg_whitespace_for_layout(
     ]
 
     assert "data-text-truncated" not in node.attrib
-    assert texts == [label]
+    assert texts == [display]
     assert native_diagram._canvas_collapse_inline_whitespace(texts[0]) == display
+
+
+def test_canvas_wrap_collapses_svg_whitespace_before_grapheme_segmentation() -> None:
+    label = " \u093e" + ("\t\u200d\u094d" * 5)
+    display = native_diagram._canvas_collapse_inline_whitespace(label).strip(" \t")
+
+    raw_clusters = list(native_diagram._canvas_grapheme_clusters(label.strip(" \t")))
+    display_clusters = list(native_diagram._canvas_grapheme_clusters(display))
+    assert raw_clusters != display_clusters
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        106,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is False
+    assert "".join(line for line, _baseline in layout.lines) == display
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 106
+        for line, _baseline in layout.lines
+    )
 
 
 def test_canvas_text_probe_collapses_whitespace_before_cluster_cap() -> None:
@@ -2167,7 +2191,7 @@ def test_canvas_text_probe_collapses_whitespace_before_cluster_cap() -> None:
     )
 
     assert layout.truncated is False
-    assert layout.lines == ((label, 28),)
+    assert layout.lines == (("abc def", 28),)
 
 
 def test_canvas_text_layout_uses_collapsed_whitespace_past_codepoint_cap() -> None:
