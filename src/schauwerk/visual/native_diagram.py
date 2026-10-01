@@ -67,6 +67,10 @@ _DIAGONAL_LABEL_MIN_WIDTH = 84
 _NARROW_CHARS = frozenset("ilI.,'`:;!|[](){}")
 _WIDE_CHARS = frozenset("MW@#%&QGmwo")
 _CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.70
+_CANVAS_BOLD_FALLBACK_OPERATORS = frozenset("+<=>^~")
+_CANVAS_BOLD_FALLBACK_OPERATOR_WIDTH_UNITS = 0.85
+_CANVAS_BOLD_FALLBACK_DEFAULT_CHARS = frozenset("bdghnpqu{}")
+_CANVAS_BOLD_FALLBACK_DEFAULT_WIDTH_UNITS = 0.72
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
 _CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
 _CANVAS_MAX_ELEMENT_TITLE_BYTES = 4096
@@ -4356,6 +4360,10 @@ def _canvas_character_width_units(character: str) -> float:
             ord(character),
             1.0,
         )
+    if character in _CANVAS_BOLD_FALLBACK_OPERATORS:
+        return _CANVAS_BOLD_FALLBACK_OPERATOR_WIDTH_UNITS
+    if character in _CANVAS_BOLD_FALLBACK_DEFAULT_CHARS:
+        return _CANVAS_BOLD_FALLBACK_DEFAULT_WIDTH_UNITS
     if character in _NARROW_CHARS:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
     codepoint = ord(character)
