@@ -86,6 +86,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-review-hardening-20261001"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_ASCII_FALLBACK_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-ascii-fallback-20261001"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -479,6 +483,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_review_hardening_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_ascii_fallback_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2111,7 +2119,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_review_hardening_superseded_files
     )
     for name, expected in json_canvas_text_fit_review_hardening["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_ascii_fallback_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_review_hardening["checks"] == {
         "claim_integrity_parent_left_immutable": True,
         "fsi_budget_exhaustion_fails_closed": True,
@@ -2165,6 +2174,98 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "file_sha256": "b0ffda1271f1bf442946fbc076e0d657d5b2775ac31b35e3669ac83ecc886c2e",
     }
 
+    json_canvas_text_fit_ascii_fallback = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_ASCII_FALLBACK_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_ascii_fallback["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-ascii-fallback.v1"
+    )
+    assert json_canvas_text_fit_ascii_fallback["functional_head"] == (
+        "2048da0ec97914f25c720bf34b48f6c4fa5f0d4b"
+    )
+    assert json_canvas_text_fit_ascii_fallback["evidence_predecessor_head"] == (
+        "7ff4e028b281c545fed9045c78af71770ccf1b29"
+    )
+    assert json_canvas_text_fit_ascii_fallback["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_review_hardening["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_HARDENING_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-review-hardening-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_review_hardening["schema_version"],
+    }
+    assert json_canvas_text_fit_ascii_fallback["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_ascii_fallback, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_ascii_fallback["source_bindings"]) == (
+        json_canvas_text_fit_ascii_fallback_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_ascii_fallback["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_ascii_fallback["checks"] == {
+        "review_hardening_parent_left_immutable": True,
+        "github_ascii_operator_fallback_review_remediated": True,
+        "bold_fallback_operators_calibrated_to_0_85em": True,
+        "measured_ascii_default_outliers_calibrated_to_0_72em": True,
+        "plus_run_reflows_before_fallback_overflow": True,
+        "lowercase_run_reflows_before_fallback_overflow": True,
+        "existing_unicode_and_zwj_specializations_preserved": True,
+        "publication_successor_binding_added": True,
+    }
+    ascii_github_debt = json_canvas_text_fit_ascii_fallback["github_review_debt"]
+    assert ascii_github_debt["thread_id"] == "PRRT_kwDOTGqvHc6n4v26"
+    assert ascii_github_debt["comment_id"] == 4153967306
+    assert ascii_github_debt["disposition"] == (
+        "confirmed_and_remediated_in_functional_head"
+    )
+    ascii_scope = json_canvas_text_fit_ascii_fallback["measurement_scope"]
+    assert ascii_scope["operator_measured_max_em"] <= ascii_scope["operator_floor_em"]
+    assert ascii_scope["default_measured_max_em"] <= ascii_scope["default_floor_em"]
+    assert (
+        "universal width safety for arbitrary fonts outside the measured acceptance population"
+        in json_canvas_text_fit_ascii_fallback["does_not_establish"]
+    )
+
+    ascii_fallback_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_ASCII_FALLBACK_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert ascii_fallback_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-ascii-fallback-validation.v1"
+    )
+    assert ascii_fallback_validation["functional_head"] == (
+        "2048da0ec97914f25c720bf34b48f6c4fa5f0d4b"
+    )
+    assert ascii_fallback_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-ascii-fallback-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_ASCII_FALLBACK_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert ascii_fallback_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -2197,6 +2298,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_ascii_fallback_superseded_files:
+            assert json_canvas_text_fit_ascii_fallback["source_bindings"][name] == current
         elif name in json_canvas_text_fit_review_hardening_superseded_files:
             assert json_canvas_text_fit_review_hardening["source_bindings"][name] == current
         elif name in json_canvas_text_fit_unicode_remediation_superseded_files:
