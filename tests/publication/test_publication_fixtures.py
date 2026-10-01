@@ -94,6 +94,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_NUMERIC_FALLBACK_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-numeric-fallback-20261001"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-svg-whitespace-20261001"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -495,6 +499,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_numeric_fallback_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_svg_whitespace_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2314,7 +2322,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_numeric_fallback[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_svg_whitespace_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_numeric_fallback["checks"] == {
         "ascii_fallback_parent_left_immutable": True,
         "github_numeric_fallback_review_remediated": True,
@@ -2385,6 +2394,107 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert numeric_fallback_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "210b12597ed566d6694eb941f8cc9fc35e2b456527c2d4a225efd776d129ceb4",
+    }
+
+    json_canvas_text_fit_svg_whitespace = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_svg_whitespace["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-svg-whitespace.v1"
+    )
+    assert json_canvas_text_fit_svg_whitespace["functional_head"] == (
+        "15432349737dfbd9c1a019e73d18ef009a7f8817"
+    )
+    assert json_canvas_text_fit_svg_whitespace["evidence_predecessor_head"] == (
+        "91f0fef452f445015f66291f64dbf24de5c69e57"
+    )
+    assert json_canvas_text_fit_svg_whitespace["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_numeric_fallback["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_NUMERIC_FALLBACK_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-numeric-fallback-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_numeric_fallback["schema_version"],
+    }
+    assert json_canvas_text_fit_svg_whitespace["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_svg_whitespace, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_svg_whitespace["source_bindings"]) == (
+        json_canvas_text_fit_svg_whitespace_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_svg_whitespace[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_svg_whitespace["checks"] == {
+        "numeric_fallback_parent_left_immutable": True,
+        "github_svg_whitespace_review_remediated": True,
+        "svg_inline_whitespace_collapsed_before_grapheme_segmentation": True,
+        "whitespace_prefixed_extended_grapheme_wrap_carry_preserved": True,
+        "combining_space_carry_regression_preserved": True,
+        "renderer_modules_passed": True,
+        "browser_smoke_passed": True,
+        "exact_case_browser_readback_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    svg_whitespace_debt = json_canvas_text_fit_svg_whitespace["github_review_debt"]
+    assert svg_whitespace_debt["thread_id"] == "PRRT_kwDOTGqvHc6oEOx0"
+    assert svg_whitespace_debt["comment_id"] == 4158617787
+    assert svg_whitespace_debt["disposition"] == (
+        "confirmed_and_remediated_in_functional_head"
+    )
+    svg_whitespace_validate = json_canvas_text_fit_svg_whitespace["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert svg_whitespace_validate["result"] == "expected_binding_gate_failure"
+    assert svg_whitespace_validate["passed_count"] == 1606
+    assert svg_whitespace_validate["failed_count"] == 1
+    svg_whitespace_browser = json_canvas_text_fit_svg_whitespace["check_evidence"][
+        "exact_case_browser_readback"
+    ]
+    assert svg_whitespace_browser["result"] == "passed"
+    assert svg_whitespace_browser["truncated"] is True
+    assert svg_whitespace_browser["all_text_boxes_within_node_bounds"] is True
+    assert svg_whitespace_browser["text_right_px"] < svg_whitespace_browser["node_right_px"]
+
+    svg_whitespace_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert svg_whitespace_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-svg-whitespace-validation.v1"
+    )
+    assert svg_whitespace_validation["functional_head"] == (
+        "15432349737dfbd9c1a019e73d18ef009a7f8817"
+    )
+    assert svg_whitespace_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-svg-whitespace-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert svg_whitespace_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -2420,6 +2530,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_svg_whitespace_superseded_files:
+            assert json_canvas_text_fit_svg_whitespace["source_bindings"][name] == current
         elif name in json_canvas_text_fit_numeric_fallback_superseded_files:
             assert json_canvas_text_fit_numeric_fallback["source_bindings"][name] == current
         elif name in json_canvas_text_fit_ascii_fallback_superseded_files:
