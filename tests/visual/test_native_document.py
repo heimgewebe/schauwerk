@@ -1361,6 +1361,17 @@ def test_canvas_bidi_projection_normalizes_repeated_fsi_source_once(
     assert normalization_lengths == [len(source), len(source)]
 
 
+def test_canvas_fsi_normalized_resolver_does_not_slice_suffixes() -> None:
+    class NoSliceStr(str):
+        def __getitem__(self, key: object) -> str:
+            if isinstance(key, slice):
+                raise AssertionError("FSI resolver must not copy source suffixes")
+            return super().__getitem__(key)
+
+    value = NoSliceStr("\u2068---אבג\u2069")
+    assert native_diagram._canvas_resolve_fsi_opener_normalized(value, 0) == "\u2067"
+
+
 def test_canvas_bidi_scope_projection_resets_at_source_line_boundary() -> None:
     lines, truncated = native_diagram._canvas_adaptive_lines(
         "\u202eabcd\nEFGH",
@@ -1827,12 +1838,14 @@ def test_canvas_wide_fallback_letters_are_script_aware() -> None:
     assert native_diagram._canvas_character_width_units("\ua9ec") == pytest.approx(1.30)
     assert native_diagram._canvas_character_width_units("ᐁ") == pytest.approx(1.30)
     assert native_diagram._canvas_character_width_units("\u1675") == pytest.approx(2.05)
-    assert native_diagram._canvas_character_width_units("\u1677") == pytest.approx(1.00)
-    assert native_diagram._canvas_character_width_units("\u167f") == pytest.approx(1.00)
+    assert native_diagram._canvas_character_width_units("\u1677") == pytest.approx(0.90)
+    assert native_diagram._canvas_character_width_units("\u167f") == pytest.approx(0.90)
     assert native_diagram._canvas_character_width_units("\u102a") == pytest.approx(2.50)
     assert native_diagram._canvas_character_width_units("\u0d10") == pytest.approx(1.95)
     assert native_diagram._canvas_character_width_units("\u1685") == pytest.approx(1.90)
     assert native_diagram._canvas_character_width_units("\u1b4b") == pytest.approx(1.85)
+    assert native_diagram._canvas_character_width_units("\U0001030c") >= 1.35
+    assert native_diagram._canvas_character_width_units("\U00012219") >= 4.05
 
     layout = native_diagram._canvas_text_layout(
         "\u1675" * 10,
@@ -2481,6 +2494,15 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     )
     assert native_diagram._canvas_grapheme_width_units("\u0d10\u200d") == pytest.approx(1.95)
     assert native_diagram._canvas_grapheme_width_units("\u102a\u200d") == pytest.approx(2.50)
+
+    malayalam_chain = "\u0d1d\u0d4d\u200d\u0d1d\u0d4d\u200d\u0d1d"
+    myanmar_chain = "\u102a\u1039\u200d\u102a\u1039\u200d\u102a"
+    balinese_chain = "\u1b4b\u1b44\u200d\u1b4b\u1b44\u200d\u1b4b"
+    assert len(list(native_diagram._canvas_grapheme_clusters(malayalam_chain))) == 1
+    assert len(list(native_diagram._canvas_grapheme_clusters(myanmar_chain))) == 1
+    assert native_diagram._canvas_grapheme_width_units(malayalam_chain) == pytest.approx(4.65)
+    assert native_diagram._canvas_grapheme_width_units(myanmar_chain) == pytest.approx(7.50)
+    assert native_diagram._estimated_canvas_wrap_width(balinese_chain, size=100) >= 6.0
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
 
 
