@@ -74,6 +74,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_REMEDIATION_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-review-remediation-20261001"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_UNICODE_REMEDIATION_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-unicode-remediation-20261001"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -459,6 +463,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_review_remediation_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_unicode_remediation_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -1770,7 +1778,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_review_remediation[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_unicode_remediation_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_review_remediation["checks"] == {
         "historical_wide_letter_acceptance_left_immutable": True,
         "rejected_revision_not_reused_as_accepted_revision": True,
@@ -1825,6 +1834,127 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in json_canvas_text_fit_review_remediation["does_not_establish"]
     )
 
+
+    json_canvas_text_fit_unicode_remediation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_UNICODE_REMEDIATION_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_unicode_remediation["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-unicode-remediation.v1"
+    )
+    assert (
+        json_canvas_text_fit_unicode_remediation["functional_head"]
+        == "aca0edd884097741cf1ab5816c163293fef48de4"
+    )
+    assert (
+        json_canvas_text_fit_unicode_remediation["base_main_head"]
+        == "7a51dfa618a926f88ce14a96144c1bd360f203b5"
+    )
+    assert json_canvas_text_fit_unicode_remediation["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_review_remediation["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_REVIEW_REMEDIATION_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-review-remediation-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_review_remediation["schema_version"],
+    }
+    assert json_canvas_text_fit_unicode_remediation["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_unicode_remediation, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_unicode_remediation["source_bindings"]) == (
+        json_canvas_text_fit_unicode_remediation_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_unicode_remediation[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_unicode_remediation["checks"] == {
+        "historical_review_remediation_acceptance_left_immutable": True,
+        "rejected_revision_not_reused_as_accepted_revision": True,
+        "u1677_tail_floor_removed": True,
+        "full_bmp_letter_scan_has_no_underestimates": True,
+        "supplementary_letter_calibration_is_range_bounded": True,
+        "full_supplementary_letter_scan_has_no_underestimates": True,
+        "multi_letter_shaping_zwj_fallback_is_script_calibrated": True,
+        "fsi_resolver_avoids_suffix_slicing": True,
+        "fsi_scaling_probe_is_bounded": True,
+        "focused_renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_smoke_passed": True,
+        "exact_browser_and_performance_probe_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "git_show_check_passed": True,
+    }
+    unicode_review_debt = json_canvas_text_fit_unicode_remediation["review_debt"]
+    assert unicode_review_debt["rejected_head"] == (
+        "437ec208423b6025f6e90bb360476e3548e7b860"
+    )
+    assert unicode_review_debt["verdict"] == "REJECT_THIS_REVISION"
+    assert unicode_review_debt["material_findings"] == 4
+    assert [item["disposition"] for item in unicode_review_debt["dispositions"]] == [
+        "confirmed_and_remediated",
+        "confirmed_and_remediated",
+        "confirmed_and_remediated",
+        "disproved_by_full_measurement",
+    ]
+    unicode_github_debt = json_canvas_text_fit_unicode_remediation["github_review_debt"]
+    assert unicode_github_debt["thread_id"] == "PRRT_kwDOTGqvHc6nwDCP"
+    assert unicode_github_debt["comment_id"] == 4150423149
+    assert unicode_github_debt["disposition"] == (
+        "confirmed_and_remediated_in_functional_head"
+    )
+    unicode_bmp = json_canvas_text_fit_unicode_remediation["check_evidence"][
+        "full_bmp_letter_scan"
+    ]
+    assert unicode_bmp["sample_count"] == 48913
+    assert unicode_bmp["under_count"] == 0
+    unicode_supplementary = json_canvas_text_fit_unicode_remediation["check_evidence"][
+        "full_supplementary_letter_scan"
+    ]
+    assert unicode_supplementary["sample_count"] == 87761
+    assert unicode_supplementary["under_count"] == 0
+    assert unicode_supplementary["calibrated_range_count"] == 216
+    assert unicode_supplementary["ranges_sorted_nonoverlap"] is True
+    assert unicode_supplementary["u1030c_estimate_em"] == 1.45
+    assert unicode_supplementary["u12219_estimate_em"] == 4.05
+    unicode_probe = json_canvas_text_fit_unicode_remediation["check_evidence"][
+        "exact_browser_and_performance_probe"
+    ]
+    assert unicode_probe["under_count"] == 0
+    assert unicode_probe["cases"]["u1030c"]["estimate_em"] >= (
+        unicode_probe["cases"]["u1030c"]["actual_max_em"]
+    )
+    assert unicode_probe["cases"]["malayalam_chain"]["estimate_em"] >= (
+        unicode_probe["cases"]["malayalam_chain"]["actual_max_em"]
+    )
+    assert unicode_probe["cases"]["myanmar_chain"]["estimate_em"] >= (
+        unicode_probe["cases"]["myanmar_chain"]["actual_max_em"]
+    )
+    assert unicode_probe["cases"]["balinese_chain"]["estimate_em"] >= (
+        unicode_probe["cases"]["balinese_chain"]["actual_max_em"]
+    )
+    unicode_pre_validate = json_canvas_text_fit_unicode_remediation["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert unicode_pre_validate["result"] == "expected_binding_gate_failure"
+    assert unicode_pre_validate["passed_count"] == 1583
+    assert unicode_pre_validate["failed_count"] == 1
+    assert (
+        "independent review PASS for functional head "
+        "aca0edd884097741cf1ab5816c163293fef48de4"
+        in json_canvas_text_fit_unicode_remediation["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -1857,6 +1987,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_unicode_remediation_superseded_files:
+            assert json_canvas_text_fit_unicode_remediation["source_bindings"][name] == current
         elif name in json_canvas_text_fit_review_remediation_superseded_files:
             assert json_canvas_text_fit_review_remediation["source_bindings"][name] == current
         elif name in json_canvas_text_fit_wide_letters_superseded_files:
