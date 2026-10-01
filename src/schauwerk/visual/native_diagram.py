@@ -3954,6 +3954,229 @@ _CANVAS_SUPPLEMENTARY_FALLBACK_LETTER_WIDTH_RANGES = (
     (0x1EE60, 0x1EE7F, 1.20),
     (0x1EE80, 0x1EEBF, 1.15),
 )
+# Non-ASCII numeric glyphs use a conservative 1.0em floor. The ordered
+# calibration ranges cover every Nd/Nl/No code point whose measured Bold
+# advance exceeds 1.0em in the acceptance browser/font population. Each
+# bound is the strict next 0.05em above the larger of the single-glyph
+# advance and the per-glyph advance of a ten-glyph repeated run.
+_CANVAS_FALLBACK_NUMERIC_WIDTH_UNITS = 1.00
+_CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES = (
+    (0xBC, 0xBE, 1.05),
+    (0xD58, 0xD58, 1.25),
+    (0xD59, 0xD59, 1.15),
+    (0xD5A, 0xD5A, 1.10),
+    (0xD5C, 0xD5C, 1.55),
+    (0xD5D, 0xD5D, 2.05),
+    (0xD5E, 0xD5E, 1.40),
+    (0xD69, 0xD69, 1.05),
+    (0xD6C, 0xD6C, 1.25),
+    (0xD70, 0xD70, 1.25),
+    (0xD72, 0xD72, 1.35),
+    (0xD75, 0xD75, 1.05),
+    (0xD76, 0xD76, 1.40),
+    (0xD77, 0xD77, 1.75),
+    (0xD78, 0xD78, 2.20),
+    (0xDE8, 0xDE8, 1.20),
+    (0xDE9, 0xDE9, 1.55),
+    (0xDEF, 0xDEF, 1.20),
+    (0x1A93, 0x1A93, 1.05),
+    (0x1A99, 0x1A99, 1.05),
+    (0x1B51, 0x1B51, 1.25),
+    (0x1B57, 0x1B57, 1.05),
+    (0x2150, 0x2151, 1.05),
+    (0x2152, 0x2152, 1.50),
+    (0x2153, 0x215E, 1.05),
+    (0x2163, 0x2163, 1.10),
+    (0x2165, 0x2165, 1.10),
+    (0x2166, 0x2166, 1.40),
+    (0x2167, 0x2167, 1.70),
+    (0x2168, 0x2168, 1.15),
+    (0x216A, 0x216A, 1.15),
+    (0x216B, 0x216B, 1.45),
+    (0x2176, 0x2176, 1.25),
+    (0x2177, 0x2177, 1.50),
+    (0x217B, 0x217B, 1.25),
+    (0x217F, 0x217F, 1.05),
+    (0x2180, 0x2180, 1.30),
+    (0x2182, 0x2182, 1.30),
+    (0x2188, 0x2188, 1.25),
+    (0x2189, 0x2189, 1.05),
+    (0x2460, 0x2468, 1.40),
+    (0x24EA, 0x24EA, 1.40),
+    (0x2780, 0x2788, 1.40),
+    (0xA9D3, 0xA9D3, 1.40),
+    (0xA9D7, 0xA9D7, 1.20),
+    (0xA9D8, 0xA9D8, 1.05),
+    (0xA9D9, 0xA9D9, 1.40),
+    (0xA9F9, 0xA9F9, 1.15),
+    (0xAA58, 0xAA58, 1.05),
+    (0xAA59, 0xAA59, 1.10),
+    (0x10169, 0x1016A, 1.05),
+    (0x1016B, 0x1016B, 1.15),
+    (0x1016D, 0x1016D, 1.20),
+    (0x1016E, 0x1016E, 1.40),
+    (0x10177, 0x10177, 1.10),
+    (0x1018A, 0x1018A, 1.05),
+    (0x102E2, 0x102E2, 1.10),
+    (0x102E3, 0x102E3, 1.55),
+    (0x102E6, 0x102E6, 1.05),
+    (0x102F1, 0x102F1, 1.05),
+    (0x102F4, 0x102F4, 1.25),
+    (0x1087E, 0x1087E, 1.15),
+    (0x109BC, 0x109BC, 1.65),
+    (0x109C6, 0x109C6, 1.30),
+    (0x109C9, 0x109C9, 1.30),
+    (0x109CA, 0x109CA, 1.35),
+    (0x109CC, 0x109CC, 1.50),
+    (0x109CD, 0x109CD, 1.30),
+    (0x109CE, 0x109CE, 1.50),
+    (0x109CF, 0x109CF, 1.40),
+    (0x109D2, 0x109DA, 1.60),
+    (0x109DB, 0x109E1, 1.55),
+    (0x109E2, 0x109E2, 1.75),
+    (0x109E3, 0x109E3, 1.70),
+    (0x109E4, 0x109EC, 1.30),
+    (0x109ED, 0x109F5, 1.45),
+    (0x109FC, 0x109FF, 1.05),
+    (0x10B7B, 0x10B7B, 1.20),
+    (0x10BAC, 0x10BAC, 1.20),
+    (0x10BAF, 0x10BAF, 1.25),
+    (0x10E62, 0x10E62, 1.10),
+    (0x10E6D, 0x10E6D, 1.20),
+    (0x10E78, 0x10E78, 1.05),
+    (0x10E7C, 0x10E7C, 1.15),
+    (0x10E7D, 0x10E7E, 1.10),
+    (0x10F20, 0x10F20, 1.05),
+    (0x10F21, 0x10F21, 1.30),
+    (0x10F25, 0x10F25, 1.20),
+    (0x10F54, 0x10F54, 1.65),
+    (0x10FC5, 0x10FCB, 1.05),
+    (0x1105B, 0x1105B, 1.05),
+    (0x111E2, 0x111E2, 1.20),
+    (0x111E3, 0x111E3, 1.35),
+    (0x111E5, 0x111E5, 1.55),
+    (0x111E9, 0x111E9, 1.45),
+    (0x111EA, 0x111EA, 1.40),
+    (0x111ED, 0x111ED, 1.50),
+    (0x111EE, 0x111EE, 1.05),
+    (0x111EF, 0x111EF, 1.10),
+    (0x111F0, 0x111F0, 2.00),
+    (0x111F3, 0x111F3, 1.40),
+    (0x111F4, 0x111F4, 1.15),
+    (0x11734, 0x11734, 1.30),
+    (0x11735, 0x11735, 1.05),
+    (0x11738, 0x11738, 1.30),
+    (0x1173A, 0x1173A, 1.10),
+    (0x1173B, 0x1173B, 1.30),
+    (0x11950, 0x11959, 1.05),
+    (0x11C61, 0x11C61, 1.05),
+    (0x11F50, 0x11F59, 1.05),
+    (0x11FC0, 0x11FC0, 1.85),
+    (0x11FC3, 0x11FC3, 1.35),
+    (0x11FC4, 0x11FC4, 1.10),
+    (0x11FC5, 0x11FC5, 1.35),
+    (0x11FC6, 0x11FC6, 1.45),
+    (0x11FC7, 0x11FC7, 1.35),
+    (0x11FC9, 0x11FC9, 1.40),
+    (0x11FCA, 0x11FCA, 1.30),
+    (0x11FCC, 0x11FCC, 1.90),
+    (0x11FCD, 0x11FCD, 1.10),
+    (0x11FCE, 0x11FCE, 1.55),
+    (0x11FCF, 0x11FCF, 1.10),
+    (0x11FD2, 0x11FD2, 1.15),
+    (0x11FD3, 0x11FD3, 1.30),
+    (0x11FD4, 0x11FD4, 1.05),
+    (0x12401, 0x12401, 1.35),
+    (0x12403, 0x12404, 1.35),
+    (0x12405, 0x12406, 1.70),
+    (0x12407, 0x12407, 2.05),
+    (0x1240C, 0x1240D, 1.20),
+    (0x1240E, 0x1240E, 1.45),
+    (0x12412, 0x12413, 1.15),
+    (0x12414, 0x12414, 1.35),
+    (0x12417, 0x12417, 1.20),
+    (0x12419, 0x1241A, 1.20),
+    (0x1241B, 0x1241C, 1.50),
+    (0x1241D, 0x1241D, 1.80),
+    (0x1241F, 0x1241F, 1.10),
+    (0x12420, 0x12420, 1.55),
+    (0x12422, 0x12422, 1.20),
+    (0x12423, 0x12423, 2.05),
+    (0x12424, 0x12424, 2.90),
+    (0x12425, 0x12426, 2.05),
+    (0x12427, 0x12428, 2.90),
+    (0x12429, 0x1242A, 3.80),
+    (0x1242B, 0x1242B, 4.65),
+    (0x1242C, 0x1242C, 1.15),
+    (0x1242D, 0x1242D, 2.05),
+    (0x1242E, 0x1242E, 2.90),
+    (0x1242F, 0x12430, 2.05),
+    (0x12431, 0x12431, 2.90),
+    (0x12432, 0x12433, 1.15),
+    (0x12435, 0x12435, 1.05),
+    (0x12436, 0x12436, 1.45),
+    (0x12437, 0x12438, 1.05),
+    (0x12439, 0x12439, 1.45),
+    (0x1243A, 0x1243A, 1.05),
+    (0x1243D, 0x1243D, 1.15),
+    (0x12440, 0x12440, 1.05),
+    (0x12441, 0x12441, 1.50),
+    (0x12443, 0x12443, 1.20),
+    (0x12445, 0x12445, 1.50),
+    (0x12447, 0x12447, 1.35),
+    (0x1244D, 0x12450, 1.05),
+    (0x1245A, 0x1245C, 1.15),
+    (0x12461, 0x12461, 1.60),
+    (0x12462, 0x12462, 1.40),
+    (0x12465, 0x12465, 1.25),
+    (0x12466, 0x12466, 1.50),
+    (0x12467, 0x12468, 1.05),
+    (0x16AC0, 0x16AC9, 1.05),
+    (0x1D2C0, 0x1D2D3, 1.05),
+    (0x1E4F0, 0x1E4F9, 1.05),
+    (0x1EC71, 0x1EC71, 1.25),
+    (0x1EC72, 0x1EC72, 1.20),
+    (0x1EC73, 0x1EC73, 1.40),
+    (0x1EC74, 0x1EC74, 1.10),
+    (0x1EC76, 0x1EC76, 1.40),
+    (0x1EC78, 0x1EC78, 1.40),
+    (0x1EC7A, 0x1EC7A, 1.95),
+    (0x1EC7B, 0x1EC7B, 2.00),
+    (0x1EC7C, 0x1EC7C, 1.90),
+    (0x1EC7D, 0x1EC7D, 2.20),
+    (0x1EC7E, 0x1EC7E, 2.00),
+    (0x1EC7F, 0x1EC7F, 1.95),
+    (0x1EC80, 0x1EC80, 2.05),
+    (0x1EC81, 0x1EC81, 1.80),
+    (0x1EC82, 0x1EC82, 1.95),
+    (0x1EC8C, 0x1EC8C, 1.90),
+    (0x1EC8D, 0x1EC8D, 2.00),
+    (0x1EC8E, 0x1EC8E, 1.85),
+    (0x1EC8F, 0x1EC8F, 2.15),
+    (0x1EC90, 0x1EC90, 2.05),
+    (0x1EC91, 0x1EC93, 2.00),
+    (0x1EC94, 0x1EC94, 1.90),
+    (0x1EC95, 0x1EC95, 2.00),
+    (0x1EC96, 0x1EC96, 2.10),
+    (0x1EC97, 0x1EC97, 1.95),
+    (0x1EC98, 0x1EC98, 2.15),
+    (0x1EC99, 0x1EC99, 2.00),
+    (0x1EC9A, 0x1EC9A, 1.95),
+    (0x1EC9B, 0x1EC9B, 2.05),
+    (0x1EC9C, 0x1EC9C, 1.80),
+    (0x1EC9D, 0x1EC9D, 1.90),
+    (0x1EC9E, 0x1EC9E, 1.20),
+    (0x1EC9F, 0x1EC9F, 1.70),
+    (0x1ECA0, 0x1ECA0, 1.30),
+    (0x1ECA1, 0x1ECA1, 1.15),
+    (0x1ECA2, 0x1ECA2, 1.70),
+    (0x1ECB3, 0x1ECB3, 2.00),
+    (0x1ECB4, 0x1ECB4, 1.25),
+    (0x1ED01, 0x1ED2D, 1.05),
+    (0x1ED2F, 0x1ED3D, 1.05),
+)
+
+
 # Rare punctuation/symbol fallback glyphs that exceed the generic 0.9em budget
 # in DejaVu Sans Bold. Values are checked against the headless-Chrome
 # Inter/Arial/sans-serif fallback stack and conservatively rounded upward
@@ -4348,6 +4571,25 @@ def _canvas_fallback_letter_width_units(character: str) -> float | None:
     return width_units
 
 
+def _canvas_fallback_numeric_width_units(character: str) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0x7F or unicodedata.category(character) not in {"Nd", "Nl", "No"}:
+        return None
+    width_units = _CANVAS_FALLBACK_NUMERIC_WIDTH_UNITS
+    low = 0
+    high = len(_CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES)
+    while low < high:
+        middle = (low + high) // 2
+        first, last, calibrated_units = _CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES[middle]
+        if codepoint < first:
+            high = middle
+        elif codepoint > last:
+            low = middle + 1
+        else:
+            return max(width_units, calibrated_units)
+    return width_units
+
+
 def _canvas_character_width_units(character: str) -> float:
     if not _xml_10_character_allowed(character):
         return _CANVAS_XML_REPLACEMENT_WIDTH_UNITS
@@ -4368,17 +4610,21 @@ def _canvas_character_width_units(character: str) -> float:
         return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
     codepoint = ord(character)
     letter_width = _canvas_fallback_letter_width_units(character)
+    numeric_width = _canvas_fallback_numeric_width_units(character)
+    fallback_width = max(letter_width or 0.0, numeric_width or 0.0)
     if 0x0400 <= codepoint <= 0x052F:
-        return max(_CANVAS_CYRILLIC_WIDTH_UNITS, letter_width or 0.0)
+        return max(_CANVAS_CYRILLIC_WIDTH_UNITS, fallback_width)
     if codepoint > 0x7F and unicodedata.east_asian_width(character) in {"W", "F"}:
-        return max(_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS, letter_width or 0.0)
+        return max(_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS, fallback_width)
     for first, last, width_units in _CANVAS_WIDE_FALLBACK_WIDTH_RANGES:
         if codepoint < first:
             break
         if codepoint <= last:
-            return width_units
+            return max(width_units, fallback_width)
     if letter_width is not None:
         return letter_width
+    if numeric_width is not None:
+        return numeric_width
     return _character_width_units(
         character,
         non_ascii=0.9,

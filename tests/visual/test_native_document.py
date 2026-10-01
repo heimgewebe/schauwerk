@@ -1899,6 +1899,36 @@ def test_canvas_wide_fallback_letters_are_script_aware() -> None:
     )
 
 
+def test_canvas_wide_fallback_numeric_glyphs_are_calibrated() -> None:
+    expected_floors = {
+        "\u0ed9": 1.00,
+        "\u0d78": 2.20,
+        "\U0001242b": 4.65,
+        "\u2152": 1.50,
+        "\u2167": 1.70,
+        "\u2177": 1.50,
+        "\u2460": 1.40,
+        "\u2780": 1.40,
+    }
+    for character, floor_units in expected_floors.items():
+        assert native_diagram._canvas_character_width_units(character) >= floor_units
+
+    layout = native_diagram._canvas_text_layout(
+        "\u2167" * 10,
+        144,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.lines
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 144
+        for line, _ in layout.lines
+    )
+    assert layout.size < 16 or len(layout.lines) > 1 or layout.truncated is True
+
+
 def test_native_document_canvas_nonbreaking_space_is_not_a_wrap_separator() -> None:
     label = "AAAA\u00a0BBBB"
 
@@ -2884,6 +2914,55 @@ def test_native_document_numeric_run_uses_conservative_bold_fallback_width() -> 
         len(item.text or "") * int(item.attrib["font-size"]) * 0.70 <= 279
         for item in texts
     )
+
+
+def test_native_document_roman_numeral_run_uses_calibrated_fallback_width() -> None:
+    label = "\u2167" * 10
+    source = {
+        "nodes": [
+            {
+                "id": "roman-numerals",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 172,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Roman numeral fallback")
+    assert editing_document_to_json_canvas(document) == source
+
+    root = ET.fromstring(render_native_editing_document(document))
+    node = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "roman-numerals"
+    )
+    texts = [
+        child
+        for child in node
+        if child.tag == f"{SVG_NS}text"
+        and child.attrib.get("data-node-label") == "true"
+    ]
+
+    assert texts
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(
+            item.text or "",
+            size=int(item.attrib["font-size"]),
+        )
+        <= 144
+        for item in texts
+    )
+    assert (
+        "data-text-truncated" in node.attrib
+        or len(texts) > 1
+        or max(int(item.attrib["font-size"]) for item in texts) < 16
+    )
+    assert all(item.attrib["font-weight"] == "700" for item in texts)
 
 
 def test_native_document_narrow_punctuation_uses_conservative_fallback_width() -> None:
