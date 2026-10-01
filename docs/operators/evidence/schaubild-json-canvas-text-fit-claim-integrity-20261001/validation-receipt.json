@@ -1,0 +1,14 @@
+{
+  "acceptance_receipt": {
+    "file_sha256": "85157515d09e1cc9df8dbc85c4ad75886e067a3dbfb97d4d44248fd6d1f18339",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-claim-integrity-20261001/acceptance-receipt.json"
+  },
+  "evidence_predecessor_head": "4686cb38154e7c24b9bfb53ae23f82c9fdf79c22",
+  "functional_head": "aca0edd884097741cf1ab5816c163293fef48de4",
+  "note": "This receipt binds the claim-integrity successor and publication fixture only. It does not establish exact-head post-commit validation, independent-review PASS, Captain readiness, merge, or deployment; those remain subsequent gates.",
+  "publication_fixture": {
+    "file_sha256": "672c2d538ab253ecf9b5117074d4c9a5a626168f3efa61c921b0e40d66fc70ad",
+    "path": "tests/publication/test_publication_fixtures.py"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-claim-integrity-validation.v1"
+}

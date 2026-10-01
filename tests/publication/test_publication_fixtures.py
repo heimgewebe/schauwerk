@@ -78,6 +78,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_UNICODE_REMEDIATION_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-unicode-remediation-20261001"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-claim-integrity-20261001"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1954,6 +1958,110 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "aca0edd884097741cf1ab5816c163293fef48de4"
         in json_canvas_text_fit_unicode_remediation["does_not_establish"]
     )
+
+    json_canvas_text_fit_claim_integrity = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        json_canvas_text_fit_claim_integrity["schema_version"]
+        == "schauwerk-schaubild-json-canvas-text-fit-claim-integrity.v1"
+    )
+    assert json_canvas_text_fit_claim_integrity["functional_head"] == (
+        "aca0edd884097741cf1ab5816c163293fef48de4"
+    )
+    assert json_canvas_text_fit_claim_integrity["evidence_predecessor_head"] == (
+        "4686cb38154e7c24b9bfb53ae23f82c9fdf79c22"
+    )
+    assert json_canvas_text_fit_claim_integrity["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_unicode_remediation["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_UNICODE_REMEDIATION_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-unicode-remediation-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_unicode_remediation["schema_version"],
+    }
+    assert json_canvas_text_fit_claim_integrity["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_claim_integrity, "evidence_digest"
+    )
+    for name, expected in json_canvas_text_fit_claim_integrity[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_claim_integrity["checks"] == {
+        "historical_review_remediation_acceptance_left_immutable": True,
+        "historical_non_linear_zwj_claim_is_explicitly_superseded": True,
+        "current_multi_letter_shaping_zwj_fallback_is_intentionally_linear": True,
+        "linear_fallback_applies_only_to_two_or_more_visible_letters": True,
+        "current_browser_probe_remains_non_underestimating_for_bound_cases": True,
+        "rejected_revision_not_reused_as_accepted_revision": True,
+    }
+    claim_correction = json_canvas_text_fit_claim_integrity[
+        "historical_claim_correction"
+    ]
+    assert claim_correction["status"] == "superseded"
+    assert (
+        claim_correction["source_receipt"]
+        == "docs/operators/evidence/"
+        "schaubild-json-canvas-text-fit-review-remediation-20261001/"
+        "acceptance-receipt.json"
+    )
+    assert "intentionally sums script-calibrated per-letter fallback floors" in (
+        claim_correction["current_truth"]
+    )
+    assert (
+        json_canvas_text_fit_claim_integrity["current_behavior"]["fallback"]
+        == "sum script-calibrated per-letter fallback floors"
+    )
+    claim_review_debt = json_canvas_text_fit_claim_integrity["review_debt"]
+    assert claim_review_debt["rejected_head"] == (
+        "4686cb38154e7c24b9bfb53ae23f82c9fdf79c22"
+    )
+    assert claim_review_debt["verdict"] == "REJECT_THIS_REVISION"
+    assert claim_review_debt["material_findings"] == 1
+    assert claim_review_debt["disposition"]["status"] == (
+        "confirmed_claim_integrity_defect_and_remediated_by_successor"
+    )
+    assert (
+        "independent review PASS for the successor evidence head"
+        in json_canvas_text_fit_claim_integrity["does_not_establish"]
+    )
+
+    claim_integrity_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert claim_integrity_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-claim-integrity-validation.v1"
+    )
+    assert claim_integrity_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-claim-integrity-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_CLAIM_INTEGRITY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert claim_integrity_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
