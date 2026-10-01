@@ -1,0 +1,14 @@
+{
+  "acceptance_receipt": {
+    "file_sha256": "aa8d55c1ed7f3251323522c919fc785b859502d3955babfd2f6d0c2ce8a2afeb",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-review-hardening-20261001/acceptance-receipt.json"
+  },
+  "evidence_predecessor_head": "67b19ae362e00f38d6fef98c0133cfaea426e544",
+  "functional_head": "3f3d8da49b6bb5be0c207eab9686d94a54b9fb3b",
+  "note": "This receipt binds the review-hardening successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, Captain readiness, merge, or deployment; those remain subsequent gates.",
+  "publication_fixture": {
+    "file_sha256": "b0ffda1271f1bf442946fbc076e0d657d5b2775ac31b35e3669ac83ecc886c2e",
+    "path": "tests/publication/test_publication_fixtures.py"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-review-hardening-validation.v1"
+}

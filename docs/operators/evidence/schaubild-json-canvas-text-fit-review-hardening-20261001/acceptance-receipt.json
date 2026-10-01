@@ -1,0 +1,97 @@
+{
+  "accepted_at": "2026-10-01T13:39:37.605583+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "check_evidence": {
+    "focused_regressions_after_fix": {
+      "outcome_receipt_sha256": "1bbeba1a8a1260d4b149074b202b218aee592ae63faf8f8ca72492052dd0ce60",
+      "passed_tests": 2,
+      "task_id": "6f6487e2f73e4100a2b60e1a"
+    },
+    "fsi_adversarial_probe": {
+      "elapsed_seconds": 0.0369946010177955,
+      "outcome_receipt_sha256": "7df91c191274b0b6354cb41ddeda58e2eff80f5d8a635bd974142756648d262d",
+      "result": "fail_closed",
+      "scope_depth": 125,
+      "source_codepoints": 65536,
+      "task_id": "c7ee765b4414467d9e26fe40",
+      "truncated": true
+    },
+    "fsi_zwj_bidi_regressions": {
+      "outcome_receipt_sha256": "090351e33f541c66a29c577864530db0cba2c046ef45076bd432430273df28f0",
+      "passed_tests": 19,
+      "task_id": "b9add56d1db64cfdbbb9a710"
+    },
+    "regressions_red_before_fix": {
+      "failed_tests": 2,
+      "finalization_receipt_sha256": "131e9f01fcb3d95e684b7ae60e4ab2a48135f427c0e2c505718c269f0492d3b0",
+      "job_id": "grabowski-job-0da6b9464eb1",
+      "result": "expected_red"
+    },
+    "renderer_modules": {
+      "outcome_receipt_sha256": "ce13bbaaf1918ff7d91194d618a22f7ee16d1f6468602cbbf80844659cb6ab67",
+      "result": "passed",
+      "task_id": "11da55fe22e74d57ac6807f3"
+    }
+  },
+  "checks": {
+    "claim_integrity_parent_left_immutable": true,
+    "fsi_budget_exhaustion_fails_closed": true,
+    "fsi_projection_uses_shared_scan_budget": true,
+    "publication_successor_binding_added": true,
+    "rejected_revision_not_reused_as_accepted_revision": true,
+    "shaping_zwj_letter_specialization_preserved": true,
+    "shaping_zwj_non_letter_width_uses_canvas_calibration": true
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment",
+    "universal width safety for arbitrary fonts outside the measured acceptance population"
+  ],
+  "evidence_digest": "2c40d446fa30b20f0e1c2cf09ef155dc431199047eb3c86fe6675b53b5656f89",
+  "evidence_predecessor_head": "67b19ae362e00f38d6fef98c0133cfaea426e544",
+  "functional_head": "3f3d8da49b6bb5be0c207eab9686d94a54b9fb3b",
+  "limits": {
+    "bidi_scope_depth": 125,
+    "fsi_total_scan_codepoints": 65536
+  },
+  "parent_evidence": {
+    "evidence_digest": "447ba6d8a92e4802491a9f23d348c68bb0f99b421d9daf7da4bbb762b133cd84",
+    "file_sha256": "85157515d09e1cc9df8dbc85c4ad75886e067a3dbfb97d4d44248fd6d1f18339",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-claim-integrity-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-claim-integrity.v1"
+  },
+  "review_debt": {
+    "decision_review_slot": "independent-gemini",
+    "dispositions": [
+      {
+        "evidence": "The review-hardening successor is inserted ahead of the unicode-remediation binding in the final publication source-binding loop.",
+        "status": "confirmed_and_remediated_by_evidence_successor",
+        "title": "Missing claim integrity successor binding in publication fixture"
+      },
+      {
+        "evidence": "All FSI lookahead in wrapped-line projection now consumes one caller-owned total scan budget and fails closed on exhaustion.",
+        "status": "confirmed_and_remediated_in_functional_head",
+        "title": "Unbounded O(N^2) FSI resolver scan complexity"
+      },
+      {
+        "evidence": "Letter-specific shaping calibration is preserved while non-letter members use the calibrated Canvas width path.",
+        "status": "confirmed_and_remediated_in_functional_head",
+        "title": "Shaping ZWJ fallback uses legacy non-script-aware width metric"
+      }
+    ],
+    "material_findings": 3,
+    "rejected_head": "67b19ae362e00f38d6fef98c0133cfaea426e544",
+    "role_receipt_sha256": "70eeefafe23bd3c8701a615a859b351991a85f30baff64dfcb5c72f1abf8df4b",
+    "verdict": "REJECT_THIS_REVISION"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-review-hardening.v1",
+  "scope": "json-canvas-text-fit-exact-head-review-hardening",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6fc9e588badfff2781742617261c8a3b36adf60d34b46eec16056c422fbe1ea8",
+    "tests/visual/test_native_document.py": "574f5a1c06915c4b0905c8bff03b34a113422dee99f925cbe599bcdb261e62e9"
+  }
+}
