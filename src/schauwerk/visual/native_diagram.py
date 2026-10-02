@@ -3386,11 +3386,44 @@ def _canvas_edge_geometry(
 
 
 
+def _canvas_strip_markdown_links(value: str) -> str:
+    """Strip legacy Markdown links with monotonic linear scanning."""
+
+    output: list[str] = []
+    cursor = 0
+    length = len(value)
+    while cursor < length:
+        opening = value.find("[", cursor)
+        if opening < 0:
+            output.append(value[cursor:])
+            break
+        output.append(value[cursor:opening])
+        closing = value.find("]", opening + 1)
+        if closing < 0:
+            output.append(value[opening:])
+            break
+        if closing == opening + 1 or closing + 1 >= length or value[closing + 1] != "(":
+            output.append(value[opening : closing + 1])
+            cursor = closing + 1
+            continue
+        target_end = value.find(")", closing + 2)
+        if target_end < 0:
+            output.append(value[opening:])
+            break
+        if target_end == closing + 2:
+            output.append(value[opening : target_end + 1])
+            cursor = target_end + 1
+            continue
+        output.append(value[opening + 1 : closing])
+        cursor = target_end + 1
+    return "".join(output)
+
+
 def _canvas_plain_markdown(value: str) -> str:
     """Normalize the bounded Markdown subset already used by the legacy Canvas path."""
 
     text = re.sub(r"^#{1,6}\s+", "", str(value), flags=re.MULTILINE)
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = _canvas_strip_markdown_links(text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     text = re.sub(r"__([^_]+)__", r"\1", text)
     text = re.sub(r"\x60([^\x60]+)\x60", r"\1", text)

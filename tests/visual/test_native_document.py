@@ -221,6 +221,28 @@ def test_json_canvas_markdown_is_normalized_for_display_without_roundtrip_loss()
     assert "\x60code\x60" not in rendered_text
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("[OpenAI](https://openai.com)", "OpenAI"),
+        ("[[OpenAI](https://openai.com)", "[OpenAI"),
+        ("[][OpenAI](https://openai.com)", "[]OpenAI"),
+        ("[OpenAI]()", "[OpenAI]()"),
+        ("[OpenAI](unterminated", "[OpenAI](unterminated"),
+    ],
+)
+def test_canvas_plain_markdown_link_scanner_preserves_legacy_semantics(
+    source: str,
+    expected: str,
+) -> None:
+    assert native_diagram._canvas_plain_markdown(source) == expected
+
+
+def test_canvas_plain_markdown_handles_large_unmatched_brackets() -> None:
+    source = "[" * 32_768
+    assert native_diagram._canvas_plain_markdown(source) == source
+
+
 def test_json_canvas_roundtrip_preserves_geometry_ids_order_and_extensions() -> None:
     source = _canvas()
     document = json_canvas_to_editing_document(source, title="Probe")
