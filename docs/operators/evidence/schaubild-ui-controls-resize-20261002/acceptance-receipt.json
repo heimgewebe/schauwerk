@@ -1,0 +1,74 @@
+{
+  "schema_version": "schauwerk-schaubild-ui-controls-resize.v1",
+  "scope": "schaubild-ui-controls-resize",
+  "accepted_at": "2026-10-02",
+  "functional_head": "4a52b78858e646e78d5e2ad78d6f9aa8b0626505",
+  "parent_evidence": {
+    "evidence_digest": "78b6b1b34780845485bd3cd13ad94bdea8f630e61bed4aa51e566c83622af804",
+    "file_sha256": "453d4fb8bed43c1a0a589614ad5f27d5cc4ff46f485851ac5b8fc2cb0e8424fd",
+    "path": "docs/operators/evidence/schaubild-ui-controls-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-ui-controls-overhaul.v1"
+  },
+  "checks": {
+    "parent_acceptance_left_immutable": true,
+    "fitted_view_refits_on_viewport_resize": true,
+    "manual_zoom_survives_viewport_resize": true,
+    "responsive_shrink_keeps_nodes_visible": true,
+    "no_horizontal_overflow_after_resize": true,
+    "focused_tests_passed": true,
+    "exact_head_resize_readback_passed": true
+  },
+  "check_evidence": {
+    "focused_tests_passed": {
+      "execution_kind": "repo_venv_pytest_with_worktree_pythonpath",
+      "functional_head": "4a52b78858e646e78d5e2ad78d6f9aa8b0626505",
+      "job_unit": "grabowski-job-671055e9d93e",
+      "argv_sha256": "810faaa7f7a043885c8b165c1b350deeb1f31b54f0848fd1f1c68fda80a40cff",
+      "finalization_receipt_sha256": "29667482deb1a7c0ca37ef50178e77838741fe2f0f4ba1a8f8fa085cc38cc4ca",
+      "passed_count": 8,
+      "result": "succeeded"
+    },
+    "exact_head_resize_readback_passed": {
+      "execution_kind": "local_cdp_resize_geometry_and_pixel_readback",
+      "functional_head": "4a52b78858e646e78d5e2ad78d6f9aa8b0626505",
+      "job_unit": "grabowski-job-cf4484a8a336",
+      "finalization_receipt_sha256": "d0a16825fe29d1d61e65f4401e8d537d7bd6e85bbfc8084dbb2903f5afd8f54e",
+      "result": "succeeded",
+      "fitted_760": {
+        "zoom_percent": 91,
+        "all_nodes_inside": true,
+        "outer_overflow": false,
+        "inner_overflow": false
+      },
+      "fitted_after_shrink_430": {
+        "zoom_percent": 48,
+        "auto_refit_changed_transform": true,
+        "all_nodes_inside": true,
+        "outer_overflow": false,
+        "inner_overflow": false
+      },
+      "manual_view": {
+        "zoom_percent": 57,
+        "preserved_across_430_to_390_resize": true
+      },
+      "refit_after_manual_view": {
+        "zoom_percent": 48,
+        "all_nodes_inside": true,
+        "outer_overflow": false,
+        "inner_overflow": false
+      },
+      "screenshot_sha256": "9471e2e4cac888f8866a3a329a612557a4cca9b6b824d7918c8e4ab756974a45"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "eb539e877dda9ff2e58ce3abee733e47c14bd47c341fb37d968abcaf659518d0",
+    "tests/visual/test_native_viewer_browser.py": "78ca186be01c3d88153c45740bdee161f10bcd0678e3ad3984f032f3ba21dc5c"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the resize successor revision",
+    "GitHub CI success on the evidence-successor head",
+    "Captain merge readiness",
+    "runtime publication or Commonthing integration/deployment"
+  ],
+  "evidence_digest": "229053238ce73deffab51cabc70f4d261b5a5422d41a2ae3a215e1018cd410dd"
+}
