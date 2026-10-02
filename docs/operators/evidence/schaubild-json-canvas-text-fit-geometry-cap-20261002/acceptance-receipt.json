@@ -1,0 +1,97 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-geometry-cap.v1",
+  "scope": "json-canvas-text-probe-geometry-cap-before-work-cap",
+  "accepted_at": "2026-10-02T03:43:22.764092+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "c6ded6e3ff8412fe88ced6361b2a5b92738fb634",
+  "evidence_predecessor_head": "e4fc308e5633f36c6a837c3d38f33fea3acb8ac8",
+  "parent_evidence": {
+    "evidence_digest": "e7540040504323d0c2ad59878c972e3b8a39fa294f17a4adc54febede9e2fc28",
+    "file_sha256": "c2e24e844cd6eeac08700c1969314489b298f1285cdfad3e1558f0424dc4038d",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-svg-whitespace-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-svg-whitespace.v1"
+  },
+  "checks": {
+    "svg_whitespace_parent_left_immutable": true,
+    "github_geometry_cap_review_remediated": true,
+    "control_free_geometry_cap_applied_before_work_cap": true,
+    "zero_advance_control_path_preserved": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "control_equivalence_probe_passed": true,
+    "performance_probe_passed": true,
+    "browser_readiness_flake_cleared_by_isolated_rerun": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "renderer_modules": {
+      "job_unit": "grabowski-job-aa9153bc1344",
+      "finalization_receipt_sha256": "33eebe1022547aa2f672493d91dc3c7d5300e154fb99e5464a974897815b4cad",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-be84fadf6640",
+      "finalization_receipt_sha256": "72b73b4301554783d58587620aaf37715b12da72fd7181c851eaa01ad0a51ad9",
+      "result": "passed"
+    },
+    "control_equivalence_and_performance": {
+      "job_unit": "grabowski-job-a32a66fbe2a4",
+      "finalization_receipt_sha256": "41dcf279fc2e6044f415d026c068cfdba2897f2a85651fed97ca9d0eff7d5f89",
+      "control_cases": 6,
+      "source_cluster_count": 19000,
+      "geometry_cluster_limit": 21,
+      "work_cluster_limit": 8193,
+      "loop_count": 128,
+      "prefix_clusters": 21,
+      "elapsed_seconds": 0.204271,
+      "result": "passed"
+    },
+    "initial_pre_successor_full_validate": {
+      "job_unit": "grabowski-job-5e75e807b743",
+      "finalization_receipt_sha256": "87fcd868b04ce8dc7a30477f2dbadcc00d63e84a5702dd3dc7c5bd6dc3a32455",
+      "passed_count": 1606,
+      "failed_count": 2,
+      "result": "expected_binding_gate_plus_browser_readiness_flake",
+      "failing_tests": [
+        "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+        "tests/visual/test_native_viewer_browser.py::test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
+      ]
+    },
+    "isolated_browser_readiness_retry": {
+      "job_unit": "grabowski-job-dc873a482330",
+      "finalization_receipt_sha256": "c66a559498c1b6708b47324f69f5cde277c9ddaaae6ebfc80636a0819509917e",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-70fbfc2f1e98",
+      "finalization_receipt_sha256": "e7303cebc315543eea3f4b2a3211f66008f7ec7749dffeef166aeefa1244f0d8",
+      "passed_count": 1607,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oFz01",
+    "comment_id": 4159253445,
+    "reviewed_head": "e4fc308e5633f36c6a837c3d38f33fea3acb8ac8",
+    "severity": "P2",
+    "title": "Apply the geometry cap to labels without controls",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4159253445",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "eba8e9f90f4b52029afe35d052548805e68be2f6312ef2bfc9751f245f94e607",
+    "tests/visual/test_native_document.py": "5cb529eae7f8a7e07af9ea458adc4a31f0174f01c856a8deb2b33310ecb51599"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "6b3d93f8b518a1479257bfd0b940178af6e4fc822a2e617262bc551b83a2600f"
+}

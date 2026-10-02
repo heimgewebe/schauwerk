@@ -98,6 +98,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-svg-whitespace-20261001"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-geometry-cap-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -503,6 +507,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_svg_whitespace_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_geometry_cap_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2436,7 +2444,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_svg_whitespace[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_geometry_cap_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_svg_whitespace["checks"] == {
         "numeric_fallback_parent_left_immutable": True,
         "github_svg_whitespace_review_remediated": True,
@@ -2495,6 +2504,112 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert svg_whitespace_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "91d2d774fd69006557c761dccad19bfa409112adc2e1dfc794851fb49d9b22b4",
+    }
+
+    json_canvas_text_fit_geometry_cap = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_geometry_cap["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-geometry-cap.v1"
+    )
+    assert json_canvas_text_fit_geometry_cap["functional_head"] == (
+        "c6ded6e3ff8412fe88ced6361b2a5b92738fb634"
+    )
+    assert json_canvas_text_fit_geometry_cap["evidence_predecessor_head"] == (
+        "e4fc308e5633f36c6a837c3d38f33fea3acb8ac8"
+    )
+    assert json_canvas_text_fit_geometry_cap["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_svg_whitespace["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_SVG_WHITESPACE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-svg-whitespace-20261001/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_svg_whitespace["schema_version"],
+    }
+    assert json_canvas_text_fit_geometry_cap["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_geometry_cap, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_geometry_cap["source_bindings"]) == (
+        json_canvas_text_fit_geometry_cap_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_geometry_cap["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_geometry_cap["checks"] == {
+        "svg_whitespace_parent_left_immutable": True,
+        "github_geometry_cap_review_remediated": True,
+        "control_free_geometry_cap_applied_before_work_cap": True,
+        "zero_advance_control_path_preserved": True,
+        "renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "control_equivalence_probe_passed": True,
+        "performance_probe_passed": True,
+        "browser_readiness_flake_cleared_by_isolated_rerun": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    geometry_debt = json_canvas_text_fit_geometry_cap["github_review_debt"]
+    assert geometry_debt["thread_id"] == "PRRT_kwDOTGqvHc6oFz01"
+    assert geometry_debt["comment_id"] == 4159253445
+    assert geometry_debt["disposition"] == "confirmed_and_remediated_in_functional_head"
+    geometry_probe = json_canvas_text_fit_geometry_cap["check_evidence"][
+        "control_equivalence_and_performance"
+    ]
+    assert geometry_probe["control_cases"] == 6
+    assert geometry_probe["source_cluster_count"] == 19000
+    assert geometry_probe["geometry_cluster_limit"] == 21
+    assert geometry_probe["work_cluster_limit"] == 8193
+    assert geometry_probe["loop_count"] == 128
+    assert geometry_probe["prefix_clusters"] == 21
+    assert geometry_probe["elapsed_seconds"] < 1.0
+    geometry_pre_validate = json_canvas_text_fit_geometry_cap["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert geometry_pre_validate["result"] == "expected_binding_gate_failure"
+    assert geometry_pre_validate["passed_count"] == 1607
+    assert geometry_pre_validate["failed_count"] == 1
+    geometry_browser_retry = json_canvas_text_fit_geometry_cap["check_evidence"][
+        "isolated_browser_readiness_retry"
+    ]
+    assert geometry_browser_retry["result"] == "passed"
+
+    geometry_cap_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert geometry_cap_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-geometry-cap-validation.v1"
+    )
+    assert geometry_cap_validation["functional_head"] == (
+        "c6ded6e3ff8412fe88ced6361b2a5b92738fb634"
+    )
+    assert geometry_cap_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-geometry-cap-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert geometry_cap_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -2530,6 +2645,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_geometry_cap_superseded_files:
+            assert json_canvas_text_fit_geometry_cap["source_bindings"][name] == current
         elif name in json_canvas_text_fit_svg_whitespace_superseded_files:
             assert json_canvas_text_fit_svg_whitespace["source_bindings"][name] == current
         elif name in json_canvas_text_fit_numeric_fallback_superseded_files:

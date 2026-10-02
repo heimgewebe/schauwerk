@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-geometry-cap-validation.v1",
+  "evidence_predecessor_head": "e4fc308e5633f36c6a837c3d38f33fea3acb8ac8",
+  "functional_head": "c6ded6e3ff8412fe88ced6361b2a5b92738fb634",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-geometry-cap-20261002/acceptance-receipt.json",
+    "file_sha256": "f36139e762dd481c980311a55e89bd993f79c4202c7f9d865ef77f6ff0975e37"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "d016758ca6e636385f52ac5a788481ac001b0192e87237a4ac201c2508970eda"
+  },
+  "note": "This receipt binds the geometry-cap successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment; those remain subsequent gates."
+}
