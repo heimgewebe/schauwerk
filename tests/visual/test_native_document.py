@@ -2580,7 +2580,7 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
         native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
     )
     assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(
-        native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
+        1.80
     )
     assert native_diagram._canvas_grapheme_width_units("\u0d10\u200d") == pytest.approx(1.95)
     assert native_diagram._canvas_grapheme_width_units("\u102a\u200d") == pytest.approx(2.50)
@@ -2590,10 +2590,41 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     balinese_chain = "\u1b4b\u1b44\u200d\u1b4b\u1b44\u200d\u1b4b"
     assert len(list(native_diagram._canvas_grapheme_clusters(malayalam_chain))) == 1
     assert len(list(native_diagram._canvas_grapheme_clusters(myanmar_chain))) == 1
-    assert native_diagram._canvas_grapheme_width_units(malayalam_chain) == pytest.approx(4.65)
+    assert native_diagram._canvas_grapheme_width_units(malayalam_chain) == pytest.approx(5.85)
     assert native_diagram._canvas_grapheme_width_units(myanmar_chain) == pytest.approx(7.50)
     assert native_diagram._estimated_canvas_wrap_width(balinese_chain, size=100) >= 6.0
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize(
+    "cluster",
+    [
+        "\u0915\u094d\u200d\u0915",  # Devanagari
+        "\u0995\u09cd\u200d\u0995",  # Bengali
+        "\u0a95\u0acd\u200d\u0a95",  # Gujarati
+        "\u0b15\u0b4d\u200d\u0b15",  # Oriya
+        "\u0c15\u0c4d\u200d\u0c15",  # Telugu
+        "\u0d15\u0d4d\u200d\u0d15",  # Malayalam
+        "\u1b13\u1b44\u200d\u1b13",  # Balinese
+    ],
+)
+def test_canvas_shaping_zwj_linear_floor_covers_isolated_letter_fallback(
+    cluster: str,
+) -> None:
+    clusters = list(native_diagram._canvas_grapheme_clusters(cluster))
+    assert clusters == [cluster]
+
+    letters = [
+        character
+        for character in cluster
+        if unicodedata.category(character).startswith("L")
+    ]
+    isolated_fallback = sum(
+        native_diagram._canvas_character_width_units(character)
+        for character in letters
+    )
+
+    assert native_diagram._canvas_grapheme_width_units(cluster) >= isolated_fallback
 
 
 def test_canvas_shaping_zwj_keeps_calibrated_wide_non_letter_width() -> None:
@@ -2658,7 +2689,7 @@ def test_native_document_canvas_non_pictographic_zwj_does_not_force_truncation()
                 "type": "text",
                 "x": 0,
                 "y": 0,
-                "width": 120,
+                "width": 130,
                 "height": 40,
                 "text": label,
             }

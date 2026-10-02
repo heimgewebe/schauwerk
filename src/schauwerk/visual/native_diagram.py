@@ -4755,7 +4755,10 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
             ]
             linear_fallback_width = (
                 sum(
-                    _canvas_shaping_zwj_linear_letter_width_units(character)
+                    max(
+                        _canvas_shaping_zwj_linear_letter_width_units(character),
+                        _canvas_character_width_units(character),
+                    )
                     for character in shaping_letters
                 )
                 if len(shaping_letters) >= 2
