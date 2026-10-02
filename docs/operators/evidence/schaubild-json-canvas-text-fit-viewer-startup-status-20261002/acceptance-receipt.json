@@ -1,0 +1,80 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-viewer-startup-status.v1",
+  "scope": "json-canvas-native-viewer-startup-status-preservation",
+  "accepted_at": "2026-10-02T12:21:33.725179+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "006058e014e45d80d6fa2ba9126d88502c94bfa1",
+  "evidence_predecessor_head": "7048d76db0ff49796f68f5e1fa50c1fbe3da9f02",
+  "parent_evidence": {
+    "evidence_digest": "cb25e93f44488e077189b11d06a20d77201684f5626a4de621607ea0f68eee82",
+    "file_sha256": "2f201d9bcfec12488f34e37b8897caeff8f69ba2b135cdcf68abb4ec2fe4ae5b",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-viewer-startup-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-viewer-startup.v1"
+  },
+  "checks": {
+    "viewer_startup_parent_left_immutable": true,
+    "browser_test_remains_parent_owned_and_byte_identical": true,
+    "startup_status_race_reproduced": true,
+    "status_guard_preserves_later_user_messages": true,
+    "startup_readiness_remains_repeatable": true,
+    "product_limit_status_remains_repeatable": true,
+    "browser_module_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "status_contract": {
+    "startup_status_snapshot_captured_before_scheduling": true,
+    "fit_always_runs": true,
+    "document_publication_always_runs_when_hosted": true,
+    "startup_fit_announces_only_when_status_is_unchanged": true,
+    "storage_failure_status_is_not_overwritten": true,
+    "later_user_status_is_not_overwritten": true
+  },
+  "check_evidence": {
+    "status_race_reproduction": {
+      "task_id": "fd50352b7ffc45e0a6c22330",
+      "lifecycle_receipt_sha256": "b26e0b7542cdb2e01998aa92c1b20c8ae1968778d3287a8071e9cdd0dcd6992a",
+      "passed_count": 17,
+      "failed_count": 3,
+      "result": "limit_status_overwrite_reproduced"
+    },
+    "status_guard_prototype": {
+      "task_id": "b6ed01e76c5f469eb03fa26b",
+      "lifecycle_receipt_sha256": "23989c990765107517a13bac808e2e2b526022c6964fa0c075b16a9ed1f5fe5e",
+      "startup_readiness_repeat_passed_count": 30,
+      "product_limit_repeat_passed_count": 30,
+      "browser_module_passed_count": 5,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "exact_functional_head": {
+      "task_id": "f4f62d7ee37d49e592a97c76",
+      "lifecycle_receipt_sha256": "0da91fd05d12fe57c96600359009ceec74cf4453297546f9a7f655737324ccec",
+      "startup_readiness_repeat_passed_count": 20,
+      "product_limit_repeat_passed_count": 20,
+      "browser_module_passed_count": 5,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "05fbd7f9dcdd40868f14564c",
+      "lifecycle_receipt_sha256": "e9ce1d3896ba6e2ba0a9d3ea0ea67d62b08704bfb31b2631ba77765c2f4b53a0",
+      "passed_count": 1644,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3fa8c1b26919a2985a6c1facdc6640a1760b757a5d4060f87c159a7d3108dc2f"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "1fcea495f23b1290266ddc3b8959ca71704a462098f5a83a3fa495871afc2d5c"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-viewer-startup-status-validation.v1",
+  "evidence_predecessor_head": "7048d76db0ff49796f68f5e1fa50c1fbe3da9f02",
+  "functional_head": "006058e014e45d80d6fa2ba9126d88502c94bfa1",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-viewer-startup-status-20261002/acceptance-receipt.json",
+    "file_sha256": "206ae1338807df6cabe5e1daa4677dfc0e7925539b1c413eca07693f1c7f7296"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "0fe14fcd7f9c9639256e61cb14f72c1ad36c226adbb3e7a0ff3daee440401715"
+  },
+  "note": "This receipt binds the startup-status preservation successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, review settlement, Captain readiness, merge, or deployment."
+}
