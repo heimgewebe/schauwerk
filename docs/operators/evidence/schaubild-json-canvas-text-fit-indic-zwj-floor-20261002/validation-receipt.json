@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-indic-zwj-floor-validation.v1",
+  "evidence_predecessor_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+  "functional_head": "f025693f44a37e1563775a18b834569d3f655b3a",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-indic-zwj-floor-20261002/acceptance-receipt.json",
+    "file_sha256": "e5a8e16e01cd158f9fb81bacbca099963ac92f74f9b33de19a1b3e2217b22371"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "d3167d937dcf8f5692bd7a59fcf6c0d12f3558194a832332cb70d47f4c4814d7"
+  },
+  "note": "This receipt binds the Indic shaping-ZWJ floor successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment; those remain subsequent gates."
+}

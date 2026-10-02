@@ -106,6 +106,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-ellipsis-width-20261002"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-indic-zwj-floor-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -519,6 +523,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_ellipsis_width_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_indic_zwj_floor_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2659,7 +2667,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_ellipsis_width_superseded_files
     )
     for name, expected in json_canvas_text_fit_ellipsis_width["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_indic_zwj_floor_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_ellipsis_width["checks"] == {
         "geometry_cap_parent_left_immutable": True,
         "github_ellipsis_width_review_remediated": True,
@@ -2719,6 +2728,111 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert ellipsis_width_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "7f393a43a8ad7749d5bd53bae5d33cc41f1aada1af1d447828414240edc01713",
+    }
+
+    json_canvas_text_fit_indic_zwj_floor = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_indic_zwj_floor["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-indic-zwj-floor.v1"
+    )
+    assert json_canvas_text_fit_indic_zwj_floor["functional_head"] == (
+        "f025693f44a37e1563775a18b834569d3f655b3a"
+    )
+    assert json_canvas_text_fit_indic_zwj_floor["evidence_predecessor_head"] == (
+        "1b9061207515836d8de8d2fa7da4a82814b2486e"
+    )
+    assert json_canvas_text_fit_indic_zwj_floor["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_ellipsis_width["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-ellipsis-width-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_ellipsis_width["schema_version"],
+    }
+    assert json_canvas_text_fit_indic_zwj_floor["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_indic_zwj_floor, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_indic_zwj_floor["source_bindings"]) == (
+        json_canvas_text_fit_indic_zwj_floor_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_indic_zwj_floor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_indic_zwj_floor["checks"] == {
+        "ellipsis_width_parent_left_immutable": True,
+        "independent_review_linear_floor_finding_remediated": True,
+        "independent_review_incb_expansion_rejected_against_current_ucd": True,
+        "per_letter_isolated_fallback_floor_applied": True,
+        "incb_snapshot_left_unchanged": True,
+        "focused_indic_regressions_passed": True,
+        "renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "diff_hygiene_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    review = json_canvas_text_fit_indic_zwj_floor["independent_review"]
+    assert review["reviewed_head"] == "1b9061207515836d8de8d2fa7da4a82814b2486e"
+    assert review["verdict"] == "NEEDS_CHANGE"
+    assert [item["disposition"] for item in review["findings"]] == [
+        "confirmed_and_remediated_in_functional_head",
+        "not_applicable_current_unicode_virama_scripts",
+    ]
+    assert review["findings"][1]["current_virama_scripts"] == [
+        "Balinese","Bengali","Devanagari","Gujarati","Javanese","Malayalam","Oriya","Telugu"
+    ]
+    floor_probe = json_canvas_text_fit_indic_zwj_floor["check_evidence"][
+        "pre_fix_floor_probe"
+    ]
+    assert set(floor_probe["under_budget_scripts"]) == {
+        "Bengali","Devanagari","Gujarati","Malayalam","Telugu"
+    }
+    assert floor_probe["gurmukhi_cluster_count"] == 2
+    pre_validate = json_canvas_text_fit_indic_zwj_floor["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert pre_validate["result"] == "expected_binding_gate_failure"
+    assert pre_validate["passed_count"] == 1615
+    assert pre_validate["failed_count"] == 1
+
+    indic_zwj_floor_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert indic_zwj_floor_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-indic-zwj-floor-validation.v1"
+    )
+    assert indic_zwj_floor_validation["functional_head"] == (
+        "f025693f44a37e1563775a18b834569d3f655b3a"
+    )
+    assert indic_zwj_floor_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-indic-zwj-floor-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert indic_zwj_floor_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -2754,6 +2868,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_indic_zwj_floor_superseded_files:
+            assert json_canvas_text_fit_indic_zwj_floor["source_bindings"][name] == current
         elif name in json_canvas_text_fit_ellipsis_width_superseded_files:
             assert json_canvas_text_fit_ellipsis_width["source_bindings"][name] == current
         elif name in json_canvas_text_fit_geometry_cap_superseded_files:
