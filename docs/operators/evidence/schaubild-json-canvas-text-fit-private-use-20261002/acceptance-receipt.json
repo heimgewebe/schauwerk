@@ -1,0 +1,106 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-private-use.v1",
+  "scope": "json-canvas-private-use-fallback-width",
+  "accepted_at": "2026-10-02T13:08:26.745648+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "ca014372ee498e0be0274b4f00106817f265c150",
+  "evidence_predecessor_head": "86cecc36e7d7df74c317da5b76bb684c962c5ef4",
+  "parent_evidence": {
+    "evidence_digest": "1fcea495f23b1290266ddc3b8959ca71704a462098f5a83a3fa495871afc2d5c",
+    "file_sha256": "206ae1338807df6cabe5e1daa4677dfc0e7925539b1c413eca07693f1c7f7296",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-viewer-startup-status-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-viewer-startup-status.v1"
+  },
+  "checks": {
+    "viewer_startup_status_parent_left_immutable": true,
+    "github_private_use_review_remediated": true,
+    "complete_private_use_population_measured": true,
+    "acceptance_font_population_measured_in_chromium": true,
+    "private_use_floor_covers_measured_maximum": true,
+    "focused_regressions_passed": true,
+    "complete_private_use_estimator_scan_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oVirw",
+    "comment_id": 4165744379,
+    "reviewed_head": "86cecc36e7d7df74c317da5b76bb684c962c5ef4",
+    "author": "chatgpt-codex-connector",
+    "severity": "P2",
+    "title": "Budget private-use fallback glyphs conservatively",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4165744379",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "measurement_scope": {
+    "unicode_category": "Co",
+    "codepoint_ranges": [
+      "U+E000..U+F8FF",
+      "U+F0000..U+FFFFD",
+      "U+100000..U+10FFFD"
+    ],
+    "sample_count": 137468,
+    "font_stacks": [
+      "700 100px Inter, Arial, sans-serif",
+      "700 100px 'DejaVu Sans'"
+    ],
+    "measurement_api": "Chromium canvas measureText",
+    "pre_fix_generic_estimate_em": 0.9,
+    "pre_fix_under_09_count": 137073,
+    "pre_fix_over_12_count": 56,
+    "measured_maximum": {
+      "codepoint": "U+E12B",
+      "font": "700 100px Inter, Arial, sans-serif",
+      "width_em": 1.3892002868652344
+    },
+    "reviewed_codepoint": {
+      "codepoint": "U+F40A",
+      "font": "700 100px 'DejaVu Sans'",
+      "width_em": 1.16259765625
+    },
+    "post_fix_floor_em": 1.4,
+    "post_fix_under_count": 0
+  },
+  "check_evidence": {
+    "pre_fix_chromium_private_use_scan": {
+      "task_id": "dcc2abfa6bb744638e659c3b",
+      "lifecycle_receipt_sha256": "87ac0c0c5f3a6937904e456638089df9feba308301768067aef45ea2615043b9",
+      "sample_count": 137468,
+      "result": "generic_0_9_underestimated_private_use_population"
+    },
+    "focused_regressions": {
+      "task_id": "b8f645389aa6429295223a04",
+      "lifecycle_receipt_sha256": "787f96ac39ad1dc61c476d4d722ace2440140d4c4af866d06abf0e5a2138e2f8",
+      "passed_count": 13,
+      "result": "passed"
+    },
+    "complete_private_use_estimator_scan": {
+      "task_id": "afa3ceff134b4fdbaaafee9f",
+      "lifecycle_receipt_sha256": "b043f0f79844b2a8736002ba1aefeeec03473ebb2bed51dabb8a85507a40d633",
+      "sample_count": 137468,
+      "under_count": 0,
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "85bba247ed274333b0677aac",
+      "lifecycle_receipt_sha256": "5319835785fc14411cdd5e9336ec93ef8538a027fdee5491d8346b7acea08169",
+      "passed_count": 1648,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "1d18cbd3fa1737be63df2b6c01d92be636c7a5e9b330303b82bcdef7f5918fa8",
+    "tests/visual/test_native_document.py": "4d4e3cd58e91375fcc0ff6b318a1463c605dcb7faf3dd18283a2cd05b77d87ab"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "bb3285b5f794b35d0dafe521d1ab19222d75ee48c6fe5b07e6b0d31ebc135fab"
+}
