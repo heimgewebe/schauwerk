@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-vertical-marker-validation.v1",
+  "evidence_predecessor_head": "00ec7ab9b333afedf3cb1a0f5f6d761011e8d0b7",
+  "functional_head": "95629e6e83c2153ab8d4ceffafcf32f8e39722eb",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-vertical-marker-20261002/acceptance-receipt.json",
+    "file_sha256": "3f72060d6cec13dbd49bde4c209097458b76e3054bc4ed3ea0400a86271918c4"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "8309e21bda54e9fec49c32350dd2dc920c82585e9b566a4af8af1eb210c82bd6"
+  },
+  "note": "This receipt binds the vertical truncation-marker successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, review settlement, Captain readiness, merge, or deployment."
+}
