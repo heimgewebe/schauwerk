@@ -131,6 +131,11 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_SUPPLEMENTARY_SYMBOLS_EVIDENCE = (
     / "docs/operators/evidence/"
     "schaubild-json-canvas-text-fit-supplementary-symbols-20261002"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_VIEWER_STARTUP_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/"
+    "schaubild-json-canvas-text-fit-viewer-startup-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -570,6 +575,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     json_canvas_text_fit_supplementary_symbols_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_viewer_startup_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -1203,7 +1212,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(final_ui_fix["source_bindings"]) == final_ui_fix_superseded_files
     for name, expected in final_ui_fix["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_viewer_startup_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert final_ui_fix["checks"] == {
         "historical_review_fix_acceptance_left_immutable": True,
         "inactive_edit_controls_hidden_outside_hosted_editing": True,
@@ -3423,6 +3433,101 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert supplementary_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "0a80fafeedfb4ff4ecc54eff15de2b789473830230534f022aebe877129f1081",
+    }
+
+    json_canvas_text_fit_viewer_startup = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_VIEWER_STARTUP_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_viewer_startup["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-viewer-startup.v1"
+    )
+    assert json_canvas_text_fit_viewer_startup["functional_head"] == (
+        "7939d9389b3d31f84170660c39616998e5ef3574"
+    )
+    assert json_canvas_text_fit_viewer_startup["evidence_predecessor_head"] == (
+        "5d672a3ca712e469e38439613681037126282a5c"
+    )
+    assert json_canvas_text_fit_viewer_startup["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_supplementary_symbols["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_SUPPLEMENTARY_SYMBOLS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-supplementary-symbols-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_supplementary_symbols["schema_version"],
+    }
+    assert json_canvas_text_fit_viewer_startup["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_viewer_startup, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_viewer_startup["source_bindings"]) == (
+        json_canvas_text_fit_viewer_startup_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_viewer_startup["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_viewer_startup["checks"] == {
+        "supplementary_symbols_parent_left_immutable": True,
+        "public_head_browser_baseline_passed": True,
+        "startup_flake_reproduced": True,
+        "test_only_yield_hardening_proved_insufficient": True,
+        "viewer_startup_timer_fallback_idempotent": True,
+        "prototype_repeatability_passed": True,
+        "exact_functional_head_repeatability_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    startup_contract = json_canvas_text_fit_viewer_startup["startup_contract"]
+    assert startup_contract == {
+        "primary_scheduler": "requestAnimationFrame",
+        "fallback_scheduler": "setTimeout",
+        "fallback_delay_ms": 50,
+        "initialization_idempotent": True,
+        "preserves_storage_failure_status": True,
+        "fit_runs_after_startup_repair_persistence_failure": True,
+    }
+    startup_pre_validate = json_canvas_text_fit_viewer_startup["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert startup_pre_validate["result"] == "expected_binding_gate_failure"
+    assert startup_pre_validate["passed_count"] == 1644
+    assert startup_pre_validate["failed_count"] == 1
+
+    viewer_startup_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_VIEWER_STARTUP_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert viewer_startup_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-viewer-startup-validation.v1"
+    )
+    assert viewer_startup_validation["functional_head"] == (
+        "7939d9389b3d31f84170660c39616998e5ef3574"
+    )
+    assert viewer_startup_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-viewer-startup-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_VIEWER_STARTUP_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert viewer_startup_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -3503,6 +3608,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert json_canvas_text_fit_final["source_bindings"][name] == current
         elif name in json_canvas_text_fit_superseded_files:
             assert json_canvas_text_fit["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_viewer_startup_superseded_files:
+            assert json_canvas_text_fit_viewer_startup["source_bindings"][name] == current
         elif name in final_ui_fix_superseded_files:
             assert final_ui_fix["source_bindings"][name] == current
         elif name in product_ui_review_fix_superseded_files:

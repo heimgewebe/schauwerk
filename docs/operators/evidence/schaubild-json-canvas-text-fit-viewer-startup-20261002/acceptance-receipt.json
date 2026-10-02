@@ -1,0 +1,93 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-viewer-startup.v1",
+  "scope": "json-canvas-native-viewer-startup-readiness",
+  "accepted_at": "2026-10-02T12:09:59.443891+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "7939d9389b3d31f84170660c39616998e5ef3574",
+  "evidence_predecessor_head": "5d672a3ca712e469e38439613681037126282a5c",
+  "parent_evidence": {
+    "evidence_digest": "65de4c07398fa32f61cd451f0737fc86f4f3aee360e27457e271026be2dd0d55",
+    "file_sha256": "e96e9594ba658f806138a676734fd42a05872988b0d3d808d9c7a19f25ef2832",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-supplementary-symbols-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-supplementary-symbols.v1"
+  },
+  "checks": {
+    "supplementary_symbols_parent_left_immutable": true,
+    "public_head_browser_baseline_passed": true,
+    "startup_flake_reproduced": true,
+    "test_only_yield_hardening_proved_insufficient": true,
+    "viewer_startup_timer_fallback_idempotent": true,
+    "prototype_repeatability_passed": true,
+    "exact_functional_head_repeatability_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "startup_contract": {
+    "primary_scheduler": "requestAnimationFrame",
+    "fallback_scheduler": "setTimeout",
+    "fallback_delay_ms": 50,
+    "initialization_idempotent": true,
+    "preserves_storage_failure_status": true,
+    "fit_runs_after_startup_repair_persistence_failure": true
+  },
+  "check_evidence": {
+    "public_head_browser_baseline": {
+      "head": "e507a028f3291fd78a2d7aac1b8026f7432ef74c",
+      "task_id": "dfae9469a59c46d5af121d4f",
+      "lifecycle_receipt_sha256": "ccf8e598e1beb224074c976b24df8e13b4df1e3aa80391accd5d8c68648b2dc5",
+      "passed_count": 1,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "startup_flake_repeatability": {
+      "task_id": "847f1e55f47940ddac1ad092",
+      "lifecycle_receipt_sha256": "e6a540ab1ecc37a7c33779a834d1e363069f98dd978da539f832a55ab013a422",
+      "passed_count": 13,
+      "failed_count": 2,
+      "result": "startup_readiness_timeout_reproduced"
+    },
+    "test_only_yield_attempt": {
+      "head": "2c65a021b39fb918b872558203b37d8e85e2b917",
+      "task_id": "5b7560028be34a588ffb3c4a",
+      "lifecycle_receipt_sha256": "1eb2fcf9b9d47df94c59b2147f081cd6adc7a698bc9ede97e232bac4d365adcf",
+      "passed_count": 19,
+      "failed_count": 1,
+      "result": "insufficient_startup_readiness_hardening"
+    },
+    "viewer_startup_fallback_prototype": {
+      "task_id": "91a0c3de7dc34cae94dd6569",
+      "lifecycle_receipt_sha256": "83061e95bb7a781bb198681c7f2fa62381361132d38dc908855ed03ee7957365",
+      "passed_count": 30,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "exact_functional_head_repeatability": {
+      "task_id": "80c36c83a1f843a28cdba37b",
+      "lifecycle_receipt_sha256": "e2241dd857c78339491d112f6eda7467f6a424b0d1591160d99ba8e230812a34",
+      "passed_count": 10,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "fb6d4c1cdfa8444fbad73bc9",
+      "lifecycle_receipt_sha256": "e6e02677eeeabf90b57dfa843e7f3bed00d078237bac6695f40fda547af62715",
+      "passed_count": 1644,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "9b3dc6a2322fb374e434f080b41b4123614c61fa548a6cc989e222c817c91378",
+    "tests/visual/test_native_viewer_browser.py": "aa1a764c19e0e56b42795cec72bdd7a96311f0b05478827fb98b0b9eb456b61a"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "cb25e93f44488e077189b11d06a20d77201684f5626a4de621607ea0f68eee82"
+}
