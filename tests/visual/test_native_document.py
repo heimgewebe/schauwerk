@@ -1092,6 +1092,25 @@ def test_native_document_canvas_full_width_glyphs_fit_conservative_width() -> No
 
 
 
+def test_canvas_supplementary_pictographic_fallback_uses_measured_floor() -> None:
+    character = "😴"
+    assert native_diagram._canvas_character_width_units(character) == pytest.approx(1.65)
+
+    layout = native_diagram._canvas_text_layout(
+        character * 10,
+        172,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 172
+        for line, _baseline in layout.lines
+    )
+
+
 @pytest.mark.parametrize("label", ["1\ufe0f\u20e3", "\u00a9\ufe0f"])
 def test_native_document_canvas_emoji_presentation_clusters_use_full_width_budget(
     label: str,
@@ -2616,7 +2635,7 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     emoji_family = "👨‍👩‍👧‍👦"
 
     assert native_diagram._canvas_grapheme_width_units(malayalam_chillu) == pytest.approx(
-        native_diagram._CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS
+        native_diagram._canvas_character_width_units("\u0d23")
     )
     assert native_diagram._canvas_grapheme_width_units(devanagari_conjunct) == pytest.approx(
         1.80
@@ -2633,6 +2652,33 @@ def test_canvas_non_pictographic_zwj_uses_script_width_not_emoji_width() -> None
     assert native_diagram._canvas_grapheme_width_units(myanmar_chain) == pytest.approx(7.50)
     assert native_diagram._estimated_canvas_wrap_width(balinese_chain, size=100) >= 6.0
     assert native_diagram._canvas_grapheme_width_units(emoji_family) == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize(
+    "cluster",
+    [
+        "\u0915\u094d\u200d",  # Devanagari
+        "\u0995\u09cd\u200d",  # Bengali
+        "\u0a95\u0acd\u200d",  # Gujarati
+        "\u0c15\u0c4d\u200d",  # Telugu
+        "\u0d23\u0d4d\u200d",  # Malayalam
+        "\u1b13\u1b44\u200d",  # Balinese
+    ],
+)
+def test_canvas_single_letter_shaping_zwj_covers_isolated_fallback(
+    cluster: str,
+) -> None:
+    assert list(native_diagram._canvas_grapheme_clusters(cluster)) == [cluster]
+
+    letters = [
+        character
+        for character in cluster
+        if unicodedata.category(character).startswith("L")
+    ]
+    assert len(letters) == 1
+    isolated_fallback = native_diagram._canvas_character_width_units(letters[0])
+
+    assert native_diagram._canvas_grapheme_width_units(cluster) >= isolated_fallback
 
 
 @pytest.mark.parametrize(

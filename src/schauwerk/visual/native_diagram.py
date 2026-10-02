@@ -3561,6 +3561,7 @@ _CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
 _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
 _CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 0.90
 _CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
+_CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS = 1.65
 # The generic non-ASCII letter estimate stays at the historical 0.9em. Only
 # measured fallback outliers receive a higher floor, which avoids applying the
 # previous 1.0em safety floor to every alphabetic code point.
@@ -4618,6 +4619,8 @@ def _canvas_character_width_units(character: str) -> float:
     fallback_width = max(letter_width or 0.0, numeric_width or 0.0)
     if 0x0400 <= codepoint <= 0x052F:
         return max(_CANVAS_CYRILLIC_WIDTH_UNITS, fallback_width)
+    if codepoint >= 0x1F000 and is_extended_pictographic(character):
+        return max(_CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS, fallback_width)
     if codepoint > 0x7F and unicodedata.east_asian_width(character) in {"W", "F"}:
         return max(_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS, fallback_width)
     for first, last, width_units in _CANVAS_WIDE_FALLBACK_WIDTH_RANGES:
@@ -4761,7 +4764,7 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
                     )
                     for character in shaping_letters
                 )
-                if len(shaping_letters) >= 2
+                if shaping_letters
                 else 0.0
             )
             return max(
