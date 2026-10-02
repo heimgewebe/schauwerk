@@ -1155,6 +1155,32 @@ def test_canvas_supplementary_neutral_symbols_use_calibrated_fallback_width(
     )
 
 
+@pytest.mark.parametrize("character", ["\ue12b", "\uf40a", "\U000f0000"])
+def test_canvas_private_use_glyphs_use_conservative_fallback_floor(
+    character: str,
+) -> None:
+    assert native_diagram._canvas_character_width_units(character) == pytest.approx(1.40)
+
+
+def test_canvas_private_use_fallback_width_cannot_escape_layout_budget() -> None:
+    label = "\uf40a" * 10
+    assert native_diagram._estimated_canvas_wrap_width(label, size=16) > 144
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        144,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is True
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 144
+        for line, _baseline in layout.lines
+    )
+
+
 def test_canvas_domino_fallback_width_cannot_escape_layout_budget() -> None:
     label = "\U0001f061" * 10
     assert native_diagram._estimated_canvas_wrap_width(label, size=16) > 172

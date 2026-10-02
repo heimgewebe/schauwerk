@@ -72,6 +72,7 @@ _CANVAS_BOLD_FALLBACK_OPERATORS = frozenset("+<=>^~")
 _CANVAS_BOLD_FALLBACK_OPERATOR_WIDTH_UNITS = 0.85
 _CANVAS_BOLD_FALLBACK_DEFAULT_CHARS = frozenset("bdghnpqu{}")
 _CANVAS_BOLD_FALLBACK_DEFAULT_WIDTH_UNITS = 0.72
+_CANVAS_PRIVATE_USE_WIDTH_UNITS = 1.40
 _CANVAS_MAX_NODE_TEXT_LINES = 2048
 _CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
 _CANVAS_MAX_ELEMENT_TITLE_BYTES = 4096
@@ -4916,6 +4917,8 @@ def _canvas_character_width_units(character: str) -> float:
         numeric_width or 0.0,
         supplementary_symbol_width or 0.0,
     )
+    if unicodedata.category(character) == "Co":
+        return max(_CANVAS_PRIVATE_USE_WIDTH_UNITS, fallback_width)
     if 0x0400 <= codepoint <= 0x052F:
         return max(_CANVAS_CYRILLIC_WIDTH_UNITS, fallback_width)
     if codepoint >= 0x1F000 and is_extended_pictographic(character):
