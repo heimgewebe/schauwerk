@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-emoji-presentation-validation.v1",
+  "evidence_predecessor_head": "927612360df5d11fad57426db96c7f30bc2955b0",
+  "functional_head": "cb21e7ee40dbe87b0cbf999aaae989c7c8a1bf74",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-emoji-presentation-20261002/acceptance-receipt.json",
+    "file_sha256": "b16249d20ab832c280c8b471efac721d943aa556b1a51a0ef31dffdc2a1cd6b2"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "3f78429f0adbe21cbf51d5df2093961e9ef625ef746176aea55fe31faf34fe14"
+  },
+  "note": "This receipt binds the measured emoji-presentation width successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment."
+}
