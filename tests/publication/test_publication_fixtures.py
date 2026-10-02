@@ -118,6 +118,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_EMOJI_PRESENTATION_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-emoji-presentation-20261002"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_MARKDOWN_LINEAR_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-markdown-linear-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -543,6 +547,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_emoji_presentation_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_markdown_linear_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -3015,7 +3023,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_emoji_presentation[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_markdown_linear_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_emoji_presentation["checks"] == {
         "final_invariants_parent_left_immutable": True,
         "github_emoji_presentation_review_remediated": True,
@@ -3077,6 +3086,108 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert emoji_presentation_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "3f78429f0adbe21cbf51d5df2093961e9ef625ef746176aea55fe31faf34fe14",
+    }
+
+    json_canvas_text_fit_markdown_linear = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_MARKDOWN_LINEAR_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_markdown_linear["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-markdown-linear.v1"
+    )
+    assert json_canvas_text_fit_markdown_linear["functional_head"] == (
+        "e609de6bd3510111a3094e2ba0de23f4857ef489"
+    )
+    assert json_canvas_text_fit_markdown_linear["evidence_predecessor_head"] == (
+        "c080f7c995d9aa722ef9b95b5a4fbda815351880"
+    )
+    assert json_canvas_text_fit_markdown_linear["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_emoji_presentation["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_EMOJI_PRESENTATION_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-emoji-presentation-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_emoji_presentation["schema_version"],
+    }
+    assert json_canvas_text_fit_markdown_linear["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_markdown_linear, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_markdown_linear["source_bindings"]) == (
+        json_canvas_text_fit_markdown_linear_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_markdown_linear[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_markdown_linear["checks"] == {
+        "emoji_presentation_parent_left_immutable": True,
+        "github_markdown_regex_review_remediated": True,
+        "markdown_link_parser_linearized": True,
+        "legacy_markdown_link_semantics_preserved": True,
+        "large_unmatched_brackets_bounded": True,
+        "focused_regressions_passed": True,
+        "differential_semantics_probe_passed": True,
+        "performance_probe_passed": True,
+        "renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "diff_hygiene_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    markdown_debt = json_canvas_text_fit_markdown_linear["github_review_debt"]
+    assert markdown_debt["review_id"] == "PRR_kwDOTGqvHc8AAAABQTWU6w"
+    assert markdown_debt["reviewed_head"] == (
+        "c080f7c995d9aa722ef9b95b5a4fbda815351880"
+    )
+    assert markdown_debt["disposition"] == "confirmed_and_remediated_in_functional_head"
+    markdown_perf = json_canvas_text_fit_markdown_linear["performance_evidence"]
+    assert markdown_perf["differential_case_count"] == 12800
+    assert markdown_perf["differential_mismatch_count"] == 0
+    assert markdown_perf["post_fix"]["brackets_32000_seconds"] < 0.01
+    markdown_pre_validate = json_canvas_text_fit_markdown_linear["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert markdown_pre_validate["result"] == "expected_binding_gate_failure"
+    assert markdown_pre_validate["passed_count"] == 1634
+    assert markdown_pre_validate["failed_count"] == 1
+
+    markdown_linear_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_MARKDOWN_LINEAR_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert markdown_linear_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-markdown-linear-validation.v1"
+    )
+    assert markdown_linear_validation["functional_head"] == (
+        "e609de6bd3510111a3094e2ba0de23f4857ef489"
+    )
+    assert markdown_linear_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-markdown-linear-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_MARKDOWN_LINEAR_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert markdown_linear_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -3112,6 +3223,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_markdown_linear_superseded_files:
+            assert json_canvas_text_fit_markdown_linear["source_bindings"][name] == current
         elif name in json_canvas_text_fit_emoji_presentation_superseded_files:
             assert json_canvas_text_fit_emoji_presentation["source_bindings"][name] == current
         elif name in json_canvas_text_fit_final_invariants_superseded_files:
