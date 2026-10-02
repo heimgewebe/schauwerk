@@ -1111,6 +1111,38 @@ def test_canvas_supplementary_pictographic_fallback_uses_measured_floor() -> Non
     )
 
 
+@pytest.mark.parametrize(
+    ("cluster", "expected_units"),
+    [
+        ("\U0001f634\ufe0f", 1.25),
+        ("\u00a9\ufe0f", 1.25),
+        ("1\ufe0f\u20e3", 1.25),
+    ],
+)
+def test_canvas_emoji_presentation_preserves_calibrated_base_width(
+    cluster: str,
+    expected_units: float,
+) -> None:
+    assert native_diagram._canvas_grapheme_width_units(cluster) == pytest.approx(
+        expected_units
+    )
+
+    if cluster.startswith("\U0001f634"):
+        layout = native_diagram._canvas_text_layout(
+            cluster * 10,
+            160,
+            40,
+            max_lines=8,
+            max_bytes=4096,
+        )
+        assert layout.truncated is False
+        assert layout.size < 16
+        assert all(
+            native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 160
+            for line, _baseline in layout.lines
+        )
+
+
 @pytest.mark.parametrize("label", ["1\ufe0f\u20e3", "\u00a9\ufe0f"])
 def test_native_document_canvas_emoji_presentation_clusters_use_full_width_budget(
     label: str,
@@ -1122,7 +1154,7 @@ def test_native_document_canvas_emoji_presentation_clusters_use_full_width_budge
                 "type": "text",
                 "x": 0,
                 "y": 0,
-                "width": 40,
+                "width": 44,
                 "height": 50,
                 "text": label,
             }

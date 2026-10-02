@@ -3562,6 +3562,7 @@ _CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
 _CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 0.90
 _CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
 _CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS = 1.65
+_CANVAS_EMOJI_PRESENTATION_WIDTH_UNITS = 1.25
 # The generic non-ASCII letter estimate stays at the historical 0.9em. Only
 # measured fallback outliers receive a higher floor, which avoids applying the
 # previous 1.0em safety floor to every alphabetic code point.
@@ -4779,9 +4780,10 @@ def _canvas_grapheme_width_units(cluster: str) -> float:
     if (
         _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
     ):
-        # Emoji-presentation/keycap shaping uses its own full-em glyph contract;
-        # plain-text fallback calibration for the base character must not inflate it.
-        return 1.0
+        # VS16/keycap presentation selects the browser emoji fallback rather than
+        # the plain base-glyph fallback. Chromium SVG/Canvas scans bound that
+        # presentation path at 1.25em for the accepted font stacks.
+        return _CANVAS_EMOJI_PRESENTATION_WIDTH_UNITS
     if any(unicodedata.category(character) == "Mc" for character in visible):
         return _canvas_spacing_mark_cluster_width_units(visible)
     return sum(widths)
