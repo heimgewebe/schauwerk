@@ -5044,18 +5044,38 @@ def _canvas_fit_single_line(
             return marker, True
         return "", True
 
-    limited = _canvas_limit_text_layout_bytes(
-        _CanvasTextLayout(
-            size=size,
-            lines=((fitted, 0),) if fitted else (),
-            truncated=True,
-        ),
+    if (
+        _estimated_canvas_single_line_width(fitted, size=size) <= max_width
+        and _canvas_escaped_text_bytes(fitted) <= max_bytes
+    ):
+        return fitted, True
+
+    refitted = _canvas_ellipsize_to_limits(
+        fitted,
+        size=size,
         max_width=max_width,
         max_bytes=max_bytes,
+        single_line_svg_whitespace=True,
     )
-    if not limited.lines:
-        return "", True
-    return limited.lines[0][0], True
+    if refitted:
+        reprojected, refit_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            [refitted]
+        )
+        final = reprojected[0] if reprojected else ""
+        if (
+            not refit_projection_truncated
+            and _estimated_canvas_single_line_width(final, size=size) <= max_width
+            and _canvas_escaped_text_bytes(final) <= max_bytes
+        ):
+            return final, True
+
+    marker = "…"
+    if (
+        _estimated_canvas_single_line_width(marker, size=size) <= max_width
+        and _canvas_escaped_text_bytes(marker) <= max_bytes
+    ):
+        return marker, True
+    return "", True
 
 
 def _canvas_wrap_source_line(
@@ -5108,6 +5128,44 @@ def _canvas_wrap_source_line(
             for index, item in enumerate(current):
                 if _canvas_has_collapsible_inline_whitespace_prefix(item):
                     last_space_index = index
+            while current and current_width > max_width:
+                fitted_carry: list[str] = []
+                fitted_width = 0.0
+                for item in current:
+                    item_width = (
+                        _canvas_svg_cluster_width_units(
+                            item,
+                            previous_cluster=(
+                                fitted_carry[-1] if fitted_carry else None
+                            ),
+                        )
+                        * size
+                    )
+                    if fitted_carry and fitted_width + item_width > max_width:
+                        break
+                    if not fitted_carry and item_width > max_width:
+                        if len(lines) < max_lines:
+                            lines.append(item)
+                        return lines, True
+                    fitted_carry.append(item)
+                    fitted_width += item_width
+
+                if not fitted_carry or len(fitted_carry) == len(current):
+                    break
+                emitted_carry = "".join(fitted_carry).strip(" \t")
+                if emitted_carry:
+                    lines.append(emitted_carry)
+                    if len(lines) >= max_lines:
+                        return lines, True
+                current = current[len(fitted_carry) :]
+                carry_text = "".join(current).strip(" \t")
+                current = list(_canvas_grapheme_clusters(carry_text))
+                current_width = _estimated_canvas_wrap_width(carry_text, size=size)
+                last_space_index = -1
+                for index, item in enumerate(current):
+                    if _canvas_has_collapsible_inline_whitespace_prefix(item):
+                        last_space_index = index
+
             if not current:
                 cluster = cluster.lstrip(" \t")
                 if not cluster:
@@ -5327,7 +5385,9 @@ def _canvas_bounded_text_probe_prefix(
         max_codepoints=max_codepoints,
     )
     if not any(
-        _canvas_is_zero_advance_control(character) for character in geometry_prefix
+        _canvas_is_zero_advance_control(character)
+        or _canvas_character_width_units(character) == 0.0
+        for character in geometry_prefix
     ):
         return geometry_prefix, geometry_truncated
 
@@ -5339,9 +5399,7 @@ def _canvas_bounded_text_probe_prefix(
     selected: list[str] = []
     geometry_clusters = 0
     for cluster in _canvas_grapheme_clusters(prefix):
-        consumes_geometry = not all(
-            _canvas_is_zero_advance_control(character) for character in cluster
-        )
+        consumes_geometry = _canvas_grapheme_width_units(cluster) > 0.0
         if consumes_geometry and geometry_clusters >= geometry_cluster_limit:
             return "".join(selected), True
         selected.append(cluster)

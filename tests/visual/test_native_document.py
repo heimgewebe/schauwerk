@@ -1558,6 +1558,24 @@ def test_canvas_single_line_edge_whitespace_matches_svg_collapse() -> None:
     assert "\n" in fitted
 
 
+def test_canvas_single_line_refits_after_bidi_projection() -> None:
+    label = ("\u202e \n" * 7) + ("x" * 21) + "\u202c"
+
+    fitted, truncated = native_diagram._canvas_fit_single_line(
+        label,
+        size=14,
+        max_width=240,
+        max_bytes=4096,
+    )
+
+    assert truncated is True
+    assert fitted.endswith("…")
+    assert native_diagram._estimated_canvas_single_line_width(
+        fitted, size=14
+    ) <= 240
+    assert native_diagram._canvas_escaped_text_bytes(fitted) <= 4096
+
+
 def test_canvas_single_line_truncation_resolves_fsi_from_complete_source() -> None:
     label = "⁨" + "12345678901234567890" + "אבג" + "⁩"
 
@@ -2258,6 +2276,27 @@ def test_canvas_text_probe_zero_advance_controls_do_not_consume_geometry_cap() -
     )
 
 
+def test_canvas_text_probe_zero_width_whitespace_does_not_consume_geometry_cap() -> None:
+    label = "\u0085" * 97 + "abcdefghij"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        92,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    rendered = "".join(line for line, _baseline in layout.lines)
+
+    assert layout.truncated is False
+    assert rendered.count("\u0085") == 97
+    assert rendered.endswith("abcdefghij")
+    assert (
+        native_diagram._estimated_canvas_wrap_width(rendered, size=layout.size)
+        <= 92
+    )
+
+
 def test_canvas_text_probe_zero_advance_controls_still_honor_work_cap() -> None:
     label = "\u200f" * 100 + "abcdefghij"
 
@@ -2867,6 +2906,25 @@ def test_canvas_wrap_refits_internal_combining_space_carry() -> None:
     assert layout.truncated is False
     assert all(
         native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 20
+        for line, _baseline in layout.lines
+    )
+
+
+def test_canvas_wrap_refits_overwide_reconstructed_combining_carry() -> None:
+    label = "\u202c \u0301AA"
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        15,
+        80,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert layout.truncated is False
+    assert "".join(line for line, _baseline in layout.lines) == "\u202c\u0301AA"
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 15
         for line, _baseline in layout.lines
     )
 
