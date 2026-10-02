@@ -830,6 +830,7 @@ const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
 let view = { x: 0, y: 0, scale: 1 };
+let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
 let selectedEdgeId = null;
@@ -1337,12 +1338,14 @@ function contentSize() {
 function fit({ announce = true } = {}) {
   const content = contentSize();
   view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
+  autoFitActive = true;
   applyView();
   if (announce) setStatus("Ansicht angepasst");
 }
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+  autoFitActive = false;
   view = zoomAt(view, clampScale(view.scale * factor), point);
   applyView();
 }
@@ -1387,6 +1390,7 @@ function updatePinch() {
   const distance = Math.hypot(second.x - first.x, second.y - first.y);
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const scale = clampScale(gesture.startScale * (distance / gesture.startDistance));
+  autoFitActive = false;
   view = {
     x: midpoint.x - gesture.diagramPoint.x * scale,
     y: midpoint.y - gesture.diagramPoint.y * scale,
@@ -1574,6 +1578,7 @@ viewport.addEventListener("pointermove", (event) => {
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
   if (gesture.kind === "pan") {
+    autoFitActive = false;
     view = panBy(gesture.startView, event.clientX - gesture.startX, event.clientY - gesture.startY);
     applyView();
     return;
@@ -1652,6 +1657,7 @@ viewport.addEventListener("wheel", (event) => {
     zoomBy(factor, localPoint(event));
     return;
   }
+  autoFitActive = false;
   view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);
   applyView();
 }, { passive: false });
@@ -1788,6 +1794,9 @@ if (documentEditorHosted) {
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
+window.addEventListener("resize", () => {
+  if (autoFitActive) fit({ announce: false });
+});
 resetLayout.addEventListener("click", () => {
   overrides = {};
   if (!documentMode) {

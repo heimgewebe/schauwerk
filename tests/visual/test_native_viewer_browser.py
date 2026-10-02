@@ -173,6 +173,38 @@ try {
     throw new Error("startup fit did not run after repair persistence failure");
   }
 
+  const fitViewButton = document.querySelector("#fitView");
+  const zoomInButton = document.querySelector("#zoomIn");
+  if (
+    !(fitViewButton instanceof HTMLButtonElement) ||
+    !(zoomInButton instanceof HTMLButtonElement)
+  ) {
+    throw new Error("viewer fit controls missing");
+  }
+  const initialClientWidth = viewport.clientWidth;
+  const initialFittedTransform = canvas.style.transform;
+  Object.defineProperty(viewport, "clientWidth", {
+    configurable: true,
+    value: Math.max(160, Math.floor(initialClientWidth * 0.58)),
+  });
+  window.dispatchEvent(new Event("resize"));
+  const resizedFittedTransform = canvas.style.transform;
+  if (resizedFittedTransform === initialFittedTransform) {
+    throw new Error("fitted viewer did not refit after viewport resize");
+  }
+  zoomInButton.click();
+  const manualViewTransform = canvas.style.transform;
+  Object.defineProperty(viewport, "clientWidth", {
+    configurable: true,
+    value: Math.max(120, Math.floor(initialClientWidth * 0.44)),
+  });
+  window.dispatchEvent(new Event("resize"));
+  if (canvas.style.transform !== manualViewTransform) {
+    throw new Error("manual zoom was overwritten by viewport resize");
+  }
+  delete viewport.clientWidth;
+  fitViewButton.click();
+
   const embeddedModel = JSON.parse(document.querySelector("#nativeModel")?.textContent || "{}");
   const connectedIds = new Set(
     (embeddedModel.edges || []).flatMap((edge) => [String(edge.from), String(edge.to)]),
