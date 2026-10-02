@@ -1,0 +1,168 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-final-invariants.v1",
+  "scope": "json-canvas-final-fit-invariants-and-fallback-widths",
+  "accepted_at": "2026-10-02T05:30:46.828096+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "evidence_predecessor_head": "75474e6d82494dda219c5ebabe2c93d589db3477",
+  "intermediate_functional_head": "236c717e62e2eb3b35e0f6ba2602fd085bd96308",
+  "functional_head": "f3213a17674d379edddc9242f0d270acae4a940e",
+  "parent_evidence": {
+    "evidence_digest": "bae851cf2d9c1201f66ea497b0383ebcfa2286f810e93c004a1d6250f5e609d5",
+    "file_sha256": "e5a8e16e01cd158f9fb81bacbca099963ac92f74f9b33de19a1b3e2217b22371",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-indic-zwj-floor-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-indic-zwj-floor.v1"
+  },
+  "checks": {
+    "indic_zwj_parent_left_immutable": true,
+    "github_zero_width_geometry_review_remediated": true,
+    "github_bidi_projection_review_remediated": true,
+    "github_combining_carry_review_remediated": true,
+    "independent_single_letter_zwj_review_remediated": true,
+    "github_supplementary_pictographic_review_remediated": true,
+    "single_letter_shaping_zwj_uses_isolated_floor": true,
+    "supplementary_pictographic_fallback_measured_and_bounded": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "diff_hygiene_passed": true,
+    "browser_readiness_flake_cleared_by_isolated_rerun": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": [
+    {
+      "thread_id": "PRRT_kwDOTGqvHc6oObs1",
+      "comment_id": 4162813203,
+      "reviewed_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+      "severity": "P2",
+      "title": "Treat zero-width NEL as geometry-free",
+      "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4162813203",
+      "disposition": "confirmed_and_remediated_in_intermediate_functional_head"
+    },
+    {
+      "thread_id": "PRRT_kwDOTGqvHc6oObz1",
+      "comment_id": 4162813927,
+      "reviewed_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+      "severity": "P2",
+      "title": "Re-fit single-line labels after bidi projection",
+      "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4162813927",
+      "disposition": "confirmed_and_remediated_in_intermediate_functional_head"
+    },
+    {
+      "thread_id": "PRRT_kwDOTGqvHc6oObz3",
+      "comment_id": 4162813934,
+      "reviewed_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+      "severity": "P2",
+      "title": "Re-check reconstructed combining carry before emitting",
+      "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4162813934",
+      "disposition": "confirmed_and_remediated_in_intermediate_functional_head"
+    },
+    {
+      "thread_id": "PRRT_kwDOTGqvHc6oOw2p",
+      "comment_id": 4162950847,
+      "reviewed_head": "75474e6d82494dda219c5ebabe2c93d589db3477",
+      "severity": "P2",
+      "title": "Budget fallback emoji glyphs at their actual advance",
+      "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4162950847",
+      "disposition": "confirmed_and_remediated_in_functional_head"
+    }
+  ],
+  "independent_review_debt": {
+    "reviewed_head": "75474e6d82494dda219c5ebabe2c93d589db3477",
+    "local_role_diff_sha256": "3cd316c937a520cd7e0b695446009ac8b0dbb1325d859916a48a7135c0761834",
+    "role_receipt_path": "/home/alex/.local/state/grabowski/review-checkouts/schauwerk-pr191-75474e6-role-receipt.json",
+    "role_receipt_file_sha256": "5bed3744b047079b5390fbda74d4767c75379e2324272a1b2bb21c07009078c4",
+    "role_receipt_sha256": "2f4c27f31b8b68b64c2f56cc470cdb01104e661ba995f4cb912af2cc9c1bb5d6",
+    "verdict": "NEEDS_CHANGE",
+    "finding": {
+      "severity": "P2",
+      "title": "Single-letter shaping-ZWJ clusters still under-budget isolated Indic letter floors",
+      "disposition": "confirmed_and_remediated_in_functional_head"
+    }
+  },
+  "measurement_scope": {
+    "supplementary_pictographic_floor_em": 1.65,
+    "font": "DejaVu Sans Bold",
+    "font_path": "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "supported_extended_pictographic_count": 77,
+    "max_measured_codepoint": "U+1F634",
+    "max_measured_em": 1.6040625,
+    "chromium_inter_arial_sans_u1f634_em": 1.247706298828125,
+    "chromium_dejavu_sans_u1f634_em": 1.60400390625,
+    "does_not_establish": "universal width safety for arbitrary fonts outside the measured acceptance population"
+  },
+  "check_evidence": {
+    "combined_review_reproduction": {
+      "job_unit": "grabowski-job-4c3e7ee668dd",
+      "finalization_receipt_sha256": "f43456f447159f5772bce89c432243ac9d15cf194fe8e9bdc7090cd76e752bcf",
+      "result": "confirmed_emoji_under_budget_and_other_review_paths_after_partial_remediation"
+    },
+    "supplementary_pictographic_font_scan": {
+      "job_unit": "grabowski-job-7c227ff08f91",
+      "finalization_receipt_sha256": "a76b498aff499ccdc474c6569a0af01838fc7d3818ba7bcf1c275f32a9940f76",
+      "result": "measured_floor_rounded_above_maximum"
+    },
+    "chromium_u1f634_measurement": {
+      "job_unit": "grabowski-job-ff49c6c33d74",
+      "finalization_receipt_sha256": "2458cd8c0f49ba04addb74d825ead9ecf8bf56c85b59d225e9af525986ee8a59",
+      "result": "measured"
+    },
+    "focused_review_regressions": {
+      "job_unit": "grabowski-job-16ec86d1a822",
+      "finalization_receipt_sha256": "81b93e5aa6fbee993d02bd7a3e0b354b8e0446608a0b2760b47a2b8774f11f39",
+      "passed_count": 12,
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-2ac15c8f6d99",
+      "finalization_receipt_sha256": "3e401fbc734767f8593c4389a2cc2a15610a1a25ea1726c28cee09d4def3929b",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-6007c7ec0024",
+      "finalization_receipt_sha256": "3f46b9e3d9cd06b166ca6f6fe3827ed9115bd1f966ed6f486434a2d6bfac593c",
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "job_unit": "grabowski-job-897ee75af1b6",
+      "finalization_receipt_sha256": "bbaba800ec955a9e42d46193a1a59a9acbf254d3fd6d40679913d10bff18086c",
+      "result": "passed"
+    },
+    "initial_pre_successor_full_validate": {
+      "job_unit": "grabowski-job-4f1c0d1ff298",
+      "finalization_receipt_sha256": "cd2d368ebb98f95fb27e87e7c1d56f6164c0f827c79bde4f7ba1f01c023ab379",
+      "passed_count": 1624,
+      "failed_count": 2,
+      "result": "expected_binding_gate_plus_browser_readiness_flake",
+      "failing_tests": [
+        "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+        "tests/visual/test_native_viewer_browser.py::test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
+      ]
+    },
+    "isolated_browser_readiness_retry": {
+      "job_unit": "grabowski-job-4c4c35c8e0ef",
+      "finalization_receipt_sha256": "e8446a7ec77ba600fbaa0d8a049a50d017b09dde26953862e77d84a411c32e14",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-0b5d493146c9",
+      "finalization_receipt_sha256": "e01dbac2c8ebec472b8cdf0ec9f807e9aee92db3718bc24651831c6d43a9a24e",
+      "passed_count": 1625,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c2d617a0a4f51512e974adac6a5b48afa40c05181476df5563047661618f439c",
+    "tests/visual/test_native_document.py": "3c82f333fc6d8fa5b405bc65d183c3f0c536b0f7c6561d83379d5d9700447e99"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "fae63cec3c8142a3309911b3a025236b7c850e6f7966b1d6dc9b788e92bf96d8"
+}

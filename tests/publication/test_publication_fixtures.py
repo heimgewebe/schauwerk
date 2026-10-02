@@ -110,6 +110,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-indic-zwj-floor-20261002"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_INVARIANTS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-final-invariants-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -527,6 +531,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_indic_zwj_floor_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_final_invariants_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2768,7 +2776,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_indic_zwj_floor_superseded_files
     )
     for name, expected in json_canvas_text_fit_indic_zwj_floor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_final_invariants_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_indic_zwj_floor["checks"] == {
         "ellipsis_width_parent_left_immutable": True,
         "independent_review_linear_floor_finding_remediated": True,
@@ -2833,6 +2842,128 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert indic_zwj_floor_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "d3167d937dcf8f5692bd7a59fcf6c0d12f3558194a832332cb70d47f4c4814d7",
+    }
+
+    json_canvas_text_fit_final_invariants = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_INVARIANTS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_final_invariants["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-final-invariants.v1"
+    )
+    assert json_canvas_text_fit_final_invariants["intermediate_functional_head"] == (
+        "236c717e62e2eb3b35e0f6ba2602fd085bd96308"
+    )
+    assert json_canvas_text_fit_final_invariants["functional_head"] == (
+        "f3213a17674d379edddc9242f0d270acae4a940e"
+    )
+    assert json_canvas_text_fit_final_invariants["evidence_predecessor_head"] == (
+        "75474e6d82494dda219c5ebabe2c93d589db3477"
+    )
+    assert json_canvas_text_fit_final_invariants["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_indic_zwj_floor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_INDIC_ZWJ_FLOOR_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-indic-zwj-floor-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_indic_zwj_floor["schema_version"],
+    }
+    assert json_canvas_text_fit_final_invariants["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_final_invariants, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_final_invariants["source_bindings"]) == (
+        json_canvas_text_fit_final_invariants_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_final_invariants[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_final_invariants["checks"] == {
+        "indic_zwj_parent_left_immutable": True,
+        "github_zero_width_geometry_review_remediated": True,
+        "github_bidi_projection_review_remediated": True,
+        "github_combining_carry_review_remediated": True,
+        "independent_single_letter_zwj_review_remediated": True,
+        "github_supplementary_pictographic_review_remediated": True,
+        "single_letter_shaping_zwj_uses_isolated_floor": True,
+        "supplementary_pictographic_fallback_measured_and_bounded": True,
+        "renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "diff_hygiene_passed": True,
+        "browser_readiness_flake_cleared_by_isolated_rerun": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    final_github_debt = json_canvas_text_fit_final_invariants["github_review_debt"]
+    assert [item["thread_id"] for item in final_github_debt] == [
+        "PRRT_kwDOTGqvHc6oObs1",
+        "PRRT_kwDOTGqvHc6oObz1",
+        "PRRT_kwDOTGqvHc6oObz3",
+        "PRRT_kwDOTGqvHc6oOw2p",
+    ]
+    assert all(
+        item["disposition"].startswith("confirmed_and_remediated")
+        for item in final_github_debt
+    )
+    final_independent = json_canvas_text_fit_final_invariants[
+        "independent_review_debt"
+    ]
+    assert final_independent["reviewed_head"] == (
+        "75474e6d82494dda219c5ebabe2c93d589db3477"
+    )
+    assert final_independent["verdict"] == "NEEDS_CHANGE"
+    assert final_independent["finding"]["disposition"] == (
+        "confirmed_and_remediated_in_functional_head"
+    )
+    final_measurement = json_canvas_text_fit_final_invariants["measurement_scope"]
+    assert final_measurement["max_measured_codepoint"] == "U+1F634"
+    assert final_measurement["max_measured_em"] < (
+        final_measurement["supplementary_pictographic_floor_em"]
+    )
+    final_pre_validate = json_canvas_text_fit_final_invariants["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert final_pre_validate["result"] == "expected_binding_gate_failure"
+    assert final_pre_validate["passed_count"] == 1625
+    assert final_pre_validate["failed_count"] == 1
+
+    final_invariants_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_INVARIANTS_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert final_invariants_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-final-invariants-validation.v1"
+    )
+    assert final_invariants_validation["functional_head"] == (
+        "f3213a17674d379edddc9242f0d270acae4a940e"
+    )
+    assert final_invariants_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-final-invariants-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_FINAL_INVARIANTS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert final_invariants_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -2868,6 +2999,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_final_invariants_superseded_files:
+            assert json_canvas_text_fit_final_invariants["source_bindings"][name] == current
         elif name in json_canvas_text_fit_indic_zwj_floor_superseded_files:
             assert json_canvas_text_fit_indic_zwj_floor["source_bindings"][name] == current
         elif name in json_canvas_text_fit_ellipsis_width_superseded_files:
