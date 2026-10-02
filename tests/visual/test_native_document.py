@@ -3224,6 +3224,20 @@ def test_native_document_canvas_text_byte_budget_is_fair_across_labels() -> None
     assert later_text == later_label
 
 
+def test_canvas_text_probe_applies_geometry_cap_without_zero_advance_controls() -> None:
+    value = "é" * 19_000
+
+    prefix, truncated = native_diagram._canvas_bounded_text_probe_prefix(
+        value,
+        geometry_cluster_limit=21,
+        work_cluster_limit=8_193,
+        max_codepoints=native_diagram._MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+    )
+
+    assert prefix == "é" * 21
+    assert truncated is True
+
+
 def test_native_document_bounds_grapheme_probe_independently_of_geometry(
     monkeypatch,
 ) -> None:

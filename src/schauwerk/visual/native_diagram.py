@@ -5314,14 +5314,21 @@ def _canvas_bounded_text_probe_prefix(
 ) -> tuple[str, bool]:
     """Bound probe work without charging control-only clusters to geometry."""
 
+    geometry_prefix, geometry_truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=min(geometry_cluster_limit, work_cluster_limit),
+        max_codepoints=max_codepoints,
+    )
+    if not any(
+        _canvas_is_zero_advance_control(character) for character in geometry_prefix
+    ):
+        return geometry_prefix, geometry_truncated
+
     prefix, work_truncated = _canvas_bounded_xml_compatible_prefix(
         value,
         max_clusters=work_cluster_limit,
         max_codepoints=max_codepoints,
     )
-    if not any(_canvas_is_zero_advance_control(character) for character in prefix):
-        return prefix, work_truncated
-
     selected: list[str] = []
     geometry_clusters = 0
     for cluster in _canvas_grapheme_clusters(prefix):
