@@ -1136,10 +1136,13 @@ def test_canvas_supplementary_pictographic_fallback_uses_measured_floor() -> Non
 @pytest.mark.parametrize(
     ("character", "expected_units"),
     [
+        ("\U0001d05b", 0.95),
         ("\U0001f061", 1.40),
         ("\U00011fe2", 1.80),
         ("\U0001f1e6", 1.25),
         ("\U0001f130", 1.40),
+        ("\U0001f542", 0.95),
+        ("\U0001f544", 0.95),
         ("\U0001f850", 2.70),
     ],
 )
