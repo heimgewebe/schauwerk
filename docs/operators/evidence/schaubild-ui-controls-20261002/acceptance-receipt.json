@@ -1,0 +1,159 @@
+{
+  "schema_version": "schauwerk-schaubild-ui-controls-overhaul.v1",
+  "scope": "schaubild-ui-controls-overhaul",
+  "accepted_at": "2026-10-02",
+  "base_head": "706c7de8a18fedda0e6c4d2f382a7cf1c0148b3c",
+  "functional_head": "42484490a4e8a7dd0e1feba96ade81b7807bc7ac",
+  "parent_evidence": {
+    "evidence_digest": "bb3285b5f794b35d0dafe521d1ab19222d75ee48c6fe5b07e6b0d31ebc135fab",
+    "file_sha256": "1db2658a83933a011dcea83084e5ed92a3e111460f058787796d0f5351b5e4e8",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-private-use-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-private-use.v1"
+  },
+  "audit": {
+    "production_runtime_observation": {
+      "consumer_repository": "heimgewebe/commonthing",
+      "source_repository": "heimgewebe/schauwerk",
+      "observed_source_commit": "47b334407e573ddae66633d32089ae44634185ed",
+      "audited_schauwerk_main": "706c7de8a18fedda0e6c4d2f382a7cf1c0148b3c",
+      "conclusion": "production_was_pinned_before_product_ui_redesign_at_audit_time"
+    },
+    "confirmed_current_main_defects": [
+      "native mode exposed disabled legacy-only host controls without a strong disabled affordance",
+      "selection-dependent native edit controls appeared actionable while handlers could no-op without a valid selection",
+      "host and native toolbars duplicated editing controls and consumed avoidable vertical space"
+    ]
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "native_host_legacy_only_controls_hidden": true,
+    "native_output_controls_reduced_to_supported_actions": true,
+    "selection_dependent_edit_controls_stateful": true,
+    "hosted_native_toolbar_compacted": true,
+    "responsive_toolbar_has_no_horizontal_overflow": true,
+    "focus_controls_clear_of_editor_stage": true,
+    "focused_tests_passed": true,
+    "exact_head_visual_readback_passed": true,
+    "responsive_760_readback_passed": true
+  },
+  "check_evidence": {
+    "focused_tests_passed": {
+      "execution_kind": "repo_venv_pytest_with_worktree_pythonpath",
+      "functional_head": "42484490a4e8a7dd0e1feba96ade81b7807bc7ac",
+      "job_unit": "grabowski-job-8dd00e04e83a",
+      "argv_sha256": "1002179f9cde9d7780c97a045f95bfaa2287173dd2a02d5dd310abf708c2b062",
+      "finalization_receipt_sha256": "7fa1bdc5f1b23bac75fbda5e8410ec455fda06e15992a962cb05eb7495e8d460",
+      "passed_count": 8,
+      "result": "succeeded",
+      "coverage": [
+        "standalone product toolbar adaptation",
+        "native product toolbar structure",
+        "font control regressions",
+        "hosted native contextual control state transitions"
+      ]
+    },
+    "exact_head_visual_readback_passed": {
+      "execution_kind": "local_cdp_geometry_and_pixel_readback",
+      "functional_head": "42484490a4e8a7dd0e1feba96ade81b7807bc7ac",
+      "job_unit": "grabowski-job-f343eb8e0d3a",
+      "argv_sha256": "f2458e02789b12bf343ffdb28858d5b892915c27141e6b4e974c7b116db80db6",
+      "finalization_receipt_sha256": "6b96d562b7d7e46fd20b81d2025bba40916d57a0c26e1bc443cad248aff64b88",
+      "result": "succeeded",
+      "viewport_css_px": {
+        "width": 1024,
+        "height": 768
+      },
+      "normal_mode": {
+        "outer_control_ids": [
+          "backButton",
+          "projectButton",
+          "svg-export",
+          "fullscreenButton"
+        ],
+        "project_label": "Canvas",
+        "legacy_font_controls_visible": false,
+        "layout_control_visible": false,
+        "png_control_visible": false,
+        "outer_controls_max_bottom_px": 110,
+        "editor_frame_top_px": 144,
+        "no_outer_overlap": true,
+        "no_horizontal_overflow": true,
+        "inner_toolbar_bottom_px": 109,
+        "inner_stage_top_px": 109,
+        "inner_toolbar_stage_separated": true,
+        "selection_state": {
+          "addNode_disabled": false,
+          "addEdge_disabled": true,
+          "editText_disabled": true,
+          "reattachSource_disabled": true,
+          "reattachTarget_disabled": true,
+          "deleteSelection_disabled": true
+        }
+      },
+      "focus_mode": {
+        "outer_control_ids": [
+          "fullscreenButton"
+        ],
+        "outer_controls_max_bottom_px": 48,
+        "editor_frame_top_px": 60,
+        "no_outer_overlap": true,
+        "no_horizontal_overflow": true,
+        "inner_toolbar_bottom_px": 59,
+        "inner_stage_top_px": 59,
+        "inner_toolbar_stage_separated": true
+      },
+      "screenshots_sha256": {
+        "normal": "89a05a11b40d94ba6bf2493b06002d1e947c6909221a44897e342970249d77ee",
+        "focus": "cdc7cba5d0fcb2e96cd2b71ff8c25720551674440624d53d27184db4739e3bcc"
+      }
+    },
+    "responsive_760_readback_passed": {
+      "execution_kind": "local_cdp_geometry_and_pixel_readback",
+      "functional_head": "42484490a4e8a7dd0e1feba96ade81b7807bc7ac",
+      "job_unit": "grabowski-job-e0ea61477e37",
+      "finalization_receipt_sha256": "190575edbeb6970066b9975f28fbc8e5b3171faf076c1cdedef06165efed2a8e",
+      "result": "succeeded",
+      "viewport_css_px": {
+        "width": 760,
+        "height": 900
+      },
+      "normal_mode": {
+        "no_outer_overlap": true,
+        "no_horizontal_overflow": true,
+        "outer_controls_max_bottom_px": 145,
+        "editor_frame_top_px": 161,
+        "inner_toolbar_bottom_px": 109,
+        "inner_stage_top_px": 109,
+        "inner_toolbar_stage_separated": true
+      },
+      "focus_mode": {
+        "no_outer_overlap": true,
+        "no_horizontal_overflow": true,
+        "outer_controls_max_bottom_px": 48,
+        "editor_frame_top_px": 60,
+        "inner_toolbar_bottom_px": 109,
+        "inner_stage_top_px": 109,
+        "inner_toolbar_stage_separated": true
+      },
+      "screenshots_sha256": {
+        "normal": "df7417be086fbf2c20fa73f91d92605de6666eab5e40af029df41091e51f5282",
+        "focus": "e97913c6e18325b42c51739f6f240687d0ac3208ea2095f8e73b607af47484e0"
+      }
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "404d8c49e140e0708f10d134adff13ea7dcaa01b6433cc1f19cd98c1a48dbb04",
+    "src/schauwerk/resources/standalone_editor/assets.py": "7f21dfe1af14c823737593e4cdfa0fc77821a62666cec81e20415ed887ab0986",
+    "tests/visual/test_native_viewer_browser.py": "a683960df3baa987cb94a7f9c4b20e5e9a7a8977f6a12985bfbd55c441b96db6",
+    "tests/visual/test_native_viewer_product_ui.py": "ac76cb50c4aa249a3cec37249faccc4fb6484234daee2ae702413429b810f498",
+    "tests/visual/test_standalone_editor_product_ui.py": "4f7b64316bca431771fddf25fb9bcdc8552a253d93c099d82fdcd0d9f88978ea"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the UI revision",
+    "GitHub CI success on the evidence-successor head",
+    "Captain merge readiness",
+    "runtime publication or Commonthing integration/deployment",
+    "continued production pin state after the recorded audit observation"
+  ],
+  "evidence_digest": "78b6b1b34780845485bd3cd13ad94bdea8f630e61bed4aa51e566c83622af804"
+}

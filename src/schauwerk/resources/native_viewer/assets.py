@@ -32,12 +32,12 @@ INDEX_HTML = r"""<!doctype html>
           <button id="resetLayout" type="button">Positionen zurücksetzen</button>
         </div>
         <div class="edit-controls document-only" role="group" aria-label="Bearbeiten" hidden>
-          <button id="addNode" class="document-only" type="button" hidden>Element hinzufügen</button>
-          <button id="addEdge" class="document-only" type="button" hidden>Verbindung hinzufügen</button>
-          <button id="editText" class="document-only" type="button" hidden>Text bearbeiten</button>
-          <button id="reattachSource" class="document-only" type="button" hidden>Anfang ändern</button>
-          <button id="reattachTarget" class="document-only" type="button" hidden>Ende ändern</button>
-          <button id="deleteSelection" class="document-only destructive-control" type="button" hidden>Löschen</button>
+          <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
+          <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
+          <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
+          <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
+          <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
+          <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
         </div>
       </div>
     </header>
@@ -117,6 +117,19 @@ button:hover {
   transform: translateY(-1px);
 }
 button:active { transform: translateY(0); }
+button:disabled {
+  border-color: transparent;
+  color: #9a9da9;
+  background: transparent;
+  cursor: default;
+  transform: none;
+  opacity: 0.5;
+}
+button:disabled:hover {
+  border-color: transparent;
+  background: transparent;
+  transform: none;
+}
 button:focus-visible {
   outline: 3px solid rgba(99, 91, 255, 0.28);
   outline-offset: 2px;
@@ -226,6 +239,20 @@ button:focus-visible {
   border-color: var(--line);
   background: #fff;
 }
+.view-controls button:disabled:hover,
+.edit-controls button:disabled:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
+.document-editor-hosted .viewer-bar {
+  min-height: 50px;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+}
+.document-editor-hosted .viewer-title { display: none; }
+.document-editor-hosted .viewer-heading { gap: 0; }
+.document-editor-hosted .status { max-width: min(28vw, 320px); }
+.document-editor-hosted .controls { justify-content: flex-end; }
 
 .viewer-stage {
   position: relative;
@@ -315,6 +342,12 @@ button:focus-visible {
   .viewer-heading { justify-content: space-between; }
   .status { max-width: 52vw; }
   .controls { justify-content: flex-start; }
+  .document-editor-hosted .viewer-bar {
+    grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+    align-items: center;
+  }
+  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
+  .document-editor-hosted .controls { justify-content: flex-end; }
 }
 @media (max-width: 620px) {
   .viewer-bar { gap: 6px; padding-inline: 7px; }
@@ -326,6 +359,10 @@ button:focus-visible {
     background: transparent;
   }
   .controls { gap: 4px; }
+  .document-editor-hosted .viewer-bar { grid-template-columns: minmax(0, 1fr); }
+  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
+  .document-editor-hosted .status { max-width: 100%; }
+  .document-editor-hosted .controls { justify-content: flex-start; }
   .view-controls,
   .edit-controls {
     width: 100%;
@@ -781,6 +818,7 @@ if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
 }
 const documentMode = sourceModel.schema_version === "schauwerk-native-editing-document.v1";
 const documentEditorHosted = documentMode && window.parent !== window;
+document.body.classList.toggle("document-editor-hosted", documentEditorHosted);
 
 const inputDigest = svg.dataset.inputDigest || "";
 if (!/^[0-9a-f]{64}$/.test(inputDigest)) {
@@ -792,6 +830,7 @@ const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
 let view = { x: 0, y: 0, scale: 1 };
+let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
 let selectedEdgeId = null;
@@ -1188,6 +1227,54 @@ function constrainAllNodesToCanvas() {
   return changed;
 }
 
+function setDocumentControlState(control, enabled, enabledTitle, disabledTitle) {
+  if (!(control instanceof HTMLButtonElement)) return;
+  control.disabled = !enabled;
+  control.title = enabled ? enabledTitle : disabledTitle;
+}
+
+function updateDocumentToolbarState() {
+  if (!documentEditorHosted) return;
+  const hasNode = Boolean(selectedId && nodes.has(selectedId));
+  const hasEdge = Boolean(selectedEdgeId && edges.has(selectedEdgeId));
+  setDocumentControlState(
+    addNodeButton,
+    true,
+    "Element hinzufügen",
+    "Element hinzufügen",
+  );
+  setDocumentControlState(
+    addEdgeButton,
+    hasNode,
+    "Verbindung vom ausgewählten Element hinzufügen",
+    "Zuerst ein Element auswählen",
+  );
+  setDocumentControlState(
+    editTextButton,
+    hasNode || hasEdge,
+    "Text der Auswahl bearbeiten",
+    "Zuerst ein Element oder eine Verbindung auswählen",
+  );
+  setDocumentControlState(
+    reattachSourceButton,
+    hasEdge,
+    "Anfang der ausgewählten Verbindung ändern",
+    "Zuerst eine Verbindung auswählen",
+  );
+  setDocumentControlState(
+    reattachTargetButton,
+    hasEdge,
+    "Ende der ausgewählten Verbindung ändern",
+    "Zuerst eine Verbindung auswählen",
+  );
+  setDocumentControlState(
+    deleteSelectionButton,
+    hasNode || hasEdge,
+    "Auswahl löschen",
+    "Zuerst ein Element oder eine Verbindung auswählen",
+  );
+}
+
 function selectEdge(edgeId) {
   if (selectedEdgeId && edges.has(selectedEdgeId)) {
     edges.get(selectedEdgeId).element?.classList.remove("is-selected");
@@ -1204,6 +1291,7 @@ function selectEdge(edgeId) {
     const label = edgeState.element?.querySelector("title")?.textContent?.trim() || selectedEdgeId;
     selectionStatus.textContent = `Verbindung: ${label || selectedEdgeId}`;
   }
+  updateDocumentToolbarState();
 }
 
 function selectNode(sourceId, { focus = false } = {}) {
@@ -1219,6 +1307,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   selectedId = sourceId && nodes.has(sourceId) ? sourceId : null;
   if (!selectedId) {
     selectionStatus.textContent = "Keine Auswahl";
+    updateDocumentToolbarState();
     return;
   }
   const node = nodes.get(selectedId);
@@ -1226,6 +1315,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   node.setAttribute("aria-selected", "true");
   const label = node.querySelector("title")?.textContent?.trim() || selectedId;
   selectionStatus.textContent = `Element: ${label}`;
+  updateDocumentToolbarState();
   if (focus) node.focus({ preventScroll: true });
 }
 
@@ -1248,12 +1338,14 @@ function contentSize() {
 function fit({ announce = true } = {}) {
   const content = contentSize();
   view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
+  autoFitActive = true;
   applyView();
   if (announce) setStatus("Ansicht angepasst");
 }
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+  autoFitActive = false;
   view = zoomAt(view, clampScale(view.scale * factor), point);
   applyView();
 }
@@ -1298,6 +1390,7 @@ function updatePinch() {
   const distance = Math.hypot(second.x - first.x, second.y - first.y);
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const scale = clampScale(gesture.startScale * (distance / gesture.startDistance));
+  autoFitActive = false;
   view = {
     x: midpoint.x - gesture.diagramPoint.x * scale,
     y: midpoint.y - gesture.diagramPoint.y * scale,
@@ -1485,6 +1578,7 @@ viewport.addEventListener("pointermove", (event) => {
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
   if (gesture.kind === "pan") {
+    autoFitActive = false;
     view = panBy(gesture.startView, event.clientX - gesture.startX, event.clientY - gesture.startY);
     applyView();
     return;
@@ -1563,6 +1657,7 @@ viewport.addEventListener("wheel", (event) => {
     zoomBy(factor, localPoint(event));
     return;
   }
+  autoFitActive = false;
   view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);
   applyView();
 }, { passive: false });
@@ -1615,6 +1710,7 @@ if (documentEditorHosted) {
   }
   if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Text · Elemente & Verbindungen";
   if (authorityHint) authorityHint.textContent = "Dokument wird lokal gesichert";
+  updateDocumentToolbarState();
   addNodeButton?.addEventListener("click", () => {
     const document = documentSnapshot();
     if (!documentMutationWithinProductLimits(document, { addNodes: 1 })) return;
@@ -1698,6 +1794,9 @@ if (documentEditorHosted) {
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
+window.addEventListener("resize", () => {
+  if (autoFitActive) fit({ announce: false });
+});
 resetLayout.addEventListener("click", () => {
   overrides = {};
   if (!documentMode) {

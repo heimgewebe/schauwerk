@@ -22,11 +22,16 @@ def test_native_viewer_uses_product_language_and_wrapping_toolbar(tmp_path: Path
     assert 'class="view-controls"' in html
     assert 'class="edit-controls document-only"' in html
     assert ">Positionen zurücksetzen<" in html
-    assert ">Element hinzufügen<" in html
-    assert ">Verbindung hinzufügen<" in html
-    assert ">Text bearbeiten<" in html
-    assert ">Anfang ändern<" in html
-    assert ">Ende ändern<" in html
+    assert 'aria-label="Element hinzufügen"' in html
+    assert ">+ Element<" in html
+    assert 'aria-label="Verbindung hinzufügen"' in html
+    assert ">+ Verbindung<" in html
+    assert 'aria-label="Text bearbeiten"' in html
+    assert ">Text<" in html
+    assert 'aria-label="Anfang ändern"' in html
+    assert ">Anfang<" in html
+    assert 'aria-label="Ende ändern"' in html
+    assert ">Ende<" in html
 
     for control_id in (
         "zoomOut",
@@ -44,6 +49,10 @@ def test_native_viewer_uses_product_language_and_wrapping_toolbar(tmp_path: Path
 
     assert ".controls { overflow-x: auto;" not in css
     assert "flex-wrap: wrap;" in css
+    assert "button:disabled {" in css
+    assert ".document-editor-hosted .viewer-bar {" in css
+    assert 'document.body.classList.toggle("document-editor-hosted", documentEditorHosted);' in app
+    assert "function updateDocumentToolbarState()" in app
     assert '"Ansicht angepasst"' in app
     assert '"Positionen zurückgesetzt"' in app
     assert "Semantik unverändert" not in app

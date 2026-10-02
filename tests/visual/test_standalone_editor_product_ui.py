@@ -11,6 +11,7 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
 
     index_html = (output / "index.html").read_text(encoding="utf-8")
     styles_css = (output / "styles.css").read_text(encoding="utf-8")
+    app_js = (output / "app.js").read_text(encoding="utf-8")
 
     assert "Vom Gedanken zum Schaubild." in index_html
     assert 'class="start-layout"' in index_html
@@ -41,6 +42,11 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert ".workspace-bar { overflow-x: auto; }" not in styles_css
     assert ".workspace-tools,\n.workspace-output" in styles_css
     assert "flex-wrap: wrap;" in styles_css
+    assert ".button:disabled {" in styles_css
+    assert "fontControls.hidden = native;" in app_js
+    assert "elements.layoutButton.hidden = native;" in app_js
+    assert "pngButton.hidden = native;" in app_js
+    assert 'elements.projectButton.textContent = "Canvas";' in app_js
 
     mobile_css = styles_css[
         styles_css.index("@media (max-width: 760px)") : styles_css.index(

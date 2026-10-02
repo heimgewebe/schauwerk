@@ -146,6 +146,12 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_PRIVATE_USE_EVIDENCE = (
     / "docs/operators/evidence/"
     "schaubild-json-canvas-text-fit-private-use-20261002"
 )
+SCHAUBILD_UI_CONTROLS_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-ui-controls-20261002"
+)
+SCHAUBILD_UI_CONTROLS_RESIZE_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-ui-controls-resize-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -596,6 +602,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     json_canvas_text_fit_private_use_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
+    }
+    ui_controls_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    ui_controls_resize_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -1087,6 +1104,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             product_ui_review_fix_superseded_files
             | final_ui_fix_superseded_files
             | json_canvas_text_fit_superseded_files
+            | ui_controls_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_successor["checks"] == {
@@ -1157,7 +1175,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(product_ui_review_fix["source_bindings"]) == expected_review_fix_bindings
     for name, expected in product_ui_review_fix["source_bindings"].items():
         if name not in (
-            final_ui_fix_superseded_files | json_canvas_text_fit_superseded_files
+            final_ui_fix_superseded_files
+            | json_canvas_text_fit_superseded_files
+            | ui_controls_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_review_fix["checks"] == {
@@ -1229,7 +1249,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(final_ui_fix["source_bindings"]) == final_ui_fix_superseded_files
     for name, expected in final_ui_fix["source_bindings"].items():
-        if name not in json_canvas_text_fit_viewer_startup_superseded_files:
+        if name not in (
+            json_canvas_text_fit_viewer_startup_superseded_files
+            | ui_controls_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert final_ui_fix["checks"] == {
         "historical_review_fix_acceptance_left_immutable": True,
@@ -3491,7 +3514,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_viewer_startup_superseded_files
     )
     for name, expected in json_canvas_text_fit_viewer_startup["source_bindings"].items():
-        if name not in json_canvas_text_fit_viewer_startup_status_superseded_files:
+        if name not in (
+            json_canvas_text_fit_viewer_startup_status_superseded_files
+            | ui_controls_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_viewer_startup["checks"] == {
         "supplementary_symbols_parent_left_immutable": True,
@@ -3589,7 +3615,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_viewer_startup_status[
         "source_bindings"
     ].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in ui_controls_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_viewer_startup_status["checks"] == {
         "viewer_startup_parent_left_immutable": True,
         "browser_test_remains_parent_owned_and_byte_identical": True,
@@ -3743,8 +3770,161 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert private_use_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
-        "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "file_sha256": "ee4ccf0cf301b767322176448f82b55c0c6ad38945c8edc502c7b171fdf66926",
     }
+
+    ui_controls = json.loads(
+        (SCHAUBILD_UI_CONTROLS_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        ui_controls["schema_version"]
+        == "schauwerk-schaubild-ui-controls-overhaul.v1"
+    )
+    assert (
+        ui_controls["functional_head"]
+        == "42484490a4e8a7dd0e1feba96ade81b7807bc7ac"
+    )
+    assert ui_controls["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_private_use["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_PRIVATE_USE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-private-use-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_private_use["schema_version"],
+    }
+    assert ui_controls["evidence_digest"] == digest_mapping(
+        ui_controls, "evidence_digest"
+    )
+    assert set(ui_controls["source_bindings"]) == ui_controls_superseded_files
+    for name, expected in ui_controls["source_bindings"].items():
+        if name not in ui_controls_resize_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert ui_controls["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "native_host_legacy_only_controls_hidden": True,
+        "native_output_controls_reduced_to_supported_actions": True,
+        "selection_dependent_edit_controls_stateful": True,
+        "hosted_native_toolbar_compacted": True,
+        "responsive_toolbar_has_no_horizontal_overflow": True,
+        "focus_controls_clear_of_editor_stage": True,
+        "focused_tests_passed": True,
+        "exact_head_visual_readback_passed": True,
+        "responsive_760_readback_passed": True,
+    }
+    ui_test_evidence = ui_controls["check_evidence"]["focused_tests_passed"]
+    assert ui_test_evidence["functional_head"] == ui_controls["functional_head"]
+    assert ui_test_evidence["job_unit"] == "grabowski-job-8dd00e04e83a"
+    assert ui_test_evidence["passed_count"] == 8
+    ui_visual_evidence = ui_controls["check_evidence"][
+        "exact_head_visual_readback_passed"
+    ]
+    assert ui_visual_evidence["functional_head"] == ui_controls["functional_head"]
+    assert ui_visual_evidence["job_unit"] == "grabowski-job-f343eb8e0d3a"
+    assert ui_visual_evidence["normal_mode"]["no_outer_overlap"] is True
+    assert ui_visual_evidence["normal_mode"]["no_horizontal_overflow"] is True
+    assert ui_visual_evidence["focus_mode"]["no_outer_overlap"] is True
+    assert ui_visual_evidence["focus_mode"]["no_horizontal_overflow"] is True
+    assert ui_visual_evidence["focus_mode"]["outer_controls_max_bottom_px"] == 48
+    assert ui_visual_evidence["focus_mode"]["editor_frame_top_px"] == 60
+    assert ui_visual_evidence["screenshots_sha256"] == {
+        "normal": "89a05a11b40d94ba6bf2493b06002d1e947c6909221a44897e342970249d77ee",
+        "focus": "cdc7cba5d0fcb2e96cd2b71ff8c25720551674440624d53d27184db4739e3bcc",
+    }
+    ui_responsive_evidence = ui_controls["check_evidence"][
+        "responsive_760_readback_passed"
+    ]
+    assert ui_responsive_evidence["functional_head"] == ui_controls["functional_head"]
+    assert ui_responsive_evidence["job_unit"] == "grabowski-job-e0ea61477e37"
+    assert ui_responsive_evidence["viewport_css_px"] == {"width": 760, "height": 900}
+    assert ui_responsive_evidence["normal_mode"]["no_outer_overlap"] is True
+    assert ui_responsive_evidence["normal_mode"]["no_horizontal_overflow"] is True
+    assert ui_responsive_evidence["focus_mode"]["no_outer_overlap"] is True
+    assert ui_responsive_evidence["focus_mode"]["no_horizontal_overflow"] is True
+    assert ui_responsive_evidence["screenshots_sha256"] == {
+        "normal": "df7417be086fbf2c20fa73f91d92605de6666eab5e40af029df41091e51f5282",
+        "focus": "e97913c6e18325b42c51739f6f240687d0ac3208ea2095f8e73b607af47484e0",
+    }
+    assert (
+        "user visual acceptance of the UI revision"
+        in ui_controls["does_not_establish"]
+    )
+    assert (
+        "runtime publication or Commonthing integration/deployment"
+        in ui_controls["does_not_establish"]
+    )
+
+    ui_controls_resize = json.loads(
+        (
+            SCHAUBILD_UI_CONTROLS_RESIZE_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        ui_controls_resize["schema_version"]
+        == "schauwerk-schaubild-ui-controls-resize.v1"
+    )
+    assert (
+        ui_controls_resize["functional_head"]
+        == "4a52b78858e646e78d5e2ad78d6f9aa8b0626505"
+    )
+    assert ui_controls_resize["parent_evidence"] == {
+        "evidence_digest": ui_controls["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_UI_CONTROLS_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-ui-controls-20261002/acceptance-receipt.json"
+        ),
+        "schema_version": ui_controls["schema_version"],
+    }
+    assert ui_controls_resize["evidence_digest"] == digest_mapping(
+        ui_controls_resize, "evidence_digest"
+    )
+    assert set(ui_controls_resize["source_bindings"]) == (
+        ui_controls_resize_superseded_files
+    )
+    for name, expected in ui_controls_resize["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert ui_controls_resize["checks"] == {
+        "parent_acceptance_left_immutable": True,
+        "fitted_view_refits_on_viewport_resize": True,
+        "manual_zoom_survives_viewport_resize": True,
+        "responsive_shrink_keeps_nodes_visible": True,
+        "no_horizontal_overflow_after_resize": True,
+        "focused_tests_passed": True,
+        "exact_head_resize_readback_passed": True,
+    }
+    resize_tests = ui_controls_resize["check_evidence"]["focused_tests_passed"]
+    assert resize_tests["functional_head"] == ui_controls_resize["functional_head"]
+    assert resize_tests["job_unit"] == "grabowski-job-671055e9d93e"
+    assert resize_tests["passed_count"] == 8
+    resize_readback = ui_controls_resize["check_evidence"][
+        "exact_head_resize_readback_passed"
+    ]
+    assert resize_readback["functional_head"] == ui_controls_resize["functional_head"]
+    assert resize_readback["job_unit"] == "grabowski-job-cf4484a8a336"
+    assert resize_readback["fitted_after_shrink_430"]["all_nodes_inside"] is True
+    assert (
+        resize_readback["fitted_after_shrink_430"]["auto_refit_changed_transform"]
+        is True
+    )
+    assert resize_readback["manual_view"][
+        "preserved_across_430_to_390_resize"
+    ] is True
+    assert resize_readback["refit_after_manual_view"]["all_nodes_inside"] is True
+    assert (
+        "user visual acceptance of the resize successor revision"
+        in ui_controls_resize["does_not_establish"]
+    )
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -3778,6 +3958,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in ui_controls_resize_superseded_files:
+            assert ui_controls_resize["source_bindings"][name] == current
+        elif name in ui_controls_superseded_files:
+            assert ui_controls["source_bindings"][name] == current
         elif name in json_canvas_text_fit_private_use_superseded_files:
             assert json_canvas_text_fit_private_use["source_bindings"][name] == current
         elif name in json_canvas_text_fit_supplementary_symbols_superseded_files:
