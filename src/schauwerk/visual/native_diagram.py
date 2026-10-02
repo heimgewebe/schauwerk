@@ -5212,7 +5212,11 @@ def _canvas_truncated_lines(
         return ()
     last_text, last_y = lines[-1]
     if last_text == "…":
-        return lines
+        return (
+            lines
+            if _estimated_canvas_wrap_width(last_text, size=size) <= max_width
+            else lines[:-1]
+        )
     marker = _canvas_ellipsize_to_width(
         last_text,
         size=size,

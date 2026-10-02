@@ -2762,6 +2762,31 @@ def test_native_document_marks_pathological_grapheme_cluster_as_truncated() -> N
     assert len(svg.encode("utf-8")) < 20_000
 
 
+def test_canvas_text_layout_drops_ellipsis_that_cannot_fit() -> None:
+    narrow = native_diagram._canvas_text_layout(
+        "…",
+        7,
+        80,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    fitting = native_diagram._canvas_text_layout(
+        "…",
+        13,
+        80,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert narrow.truncated is True
+    assert narrow.lines == ()
+    assert [line for line, _baseline in fitting.lines] == ["…"]
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=fitting.size) <= 13
+        for line, _baseline in fitting.lines
+    )
+
+
 def test_canvas_wrap_refits_after_stripping_combining_mark_base_space() -> None:
     label = " \u0301BBBB"
 
