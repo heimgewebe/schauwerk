@@ -7,6 +7,7 @@ import math
 import re
 import textwrap
 import unicodedata
+from bisect import bisect_right
 from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -3596,6 +3597,248 @@ _CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 0.90
 _CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
 _CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS = 1.65
 _CANVAS_EMOJI_PRESENTATION_WIDTH_UNITS = 1.25
+# Supplementary neutral symbols that still reach the generic 0.9em path can
+# select wider bold fallback glyphs in Chromium. These sorted, non-overlapping
+# ranges are rounded upward to 0.05em from the maximum measured advance across
+# the Inter/Arial/sans-serif and explicit DejaVu Sans acceptance stacks.
+_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES = (
+    (0x1013F, 0x1013F, 1.05),
+    (0x10185, 0x10185, 0.95),
+    (0x10198, 0x10198, 1.15),
+    (0x1019C, 0x1019C, 1.00),
+    (0x1173F, 0x1173F, 0.95),
+    (0x11FD5, 0x11FD5, 1.40),
+    (0x11FD6, 0x11FD6, 1.50),
+    (0x11FD7, 0x11FD7, 1.25),
+    (0x11FD8, 0x11FD8, 1.20),
+    (0x11FD9, 0x11FD9, 1.60),
+    (0x11FDB, 0x11FDB, 1.60),
+    (0x11FDC, 0x11FDC, 1.35),
+    (0x11FE1, 0x11FE1, 1.60),
+    (0x11FE2, 0x11FE2, 1.80),
+    (0x11FE3, 0x11FE3, 1.70),
+    (0x11FE4, 0x11FE4, 1.40),
+    (0x11FE5, 0x11FE5, 1.30),
+    (0x11FE6, 0x11FE6, 1.35),
+    (0x11FE7, 0x11FE7, 1.45),
+    (0x11FE8, 0x11FE8, 1.55),
+    (0x11FE9, 0x11FE9, 1.15),
+    (0x11FEA, 0x11FEA, 1.35),
+    (0x11FEB, 0x11FEB, 1.25),
+    (0x11FEC, 0x11FEC, 1.05),
+    (0x11FED, 0x11FED, 1.65),
+    (0x11FEE, 0x11FEE, 1.45),
+    (0x11FEF, 0x11FEF, 1.35),
+    (0x11FF0, 0x11FF0, 1.45),
+    (0x11FF1, 0x11FF1, 1.70),
+    (0x1CF50, 0x1CFC3, 1.05),
+    (0x1D004, 0x1D004, 1.05),
+    (0x1D006, 0x1D006, 0.95),
+    (0x1D008, 0x1D008, 1.30),
+    (0x1D009, 0x1D009, 1.20),
+    (0x1D00C, 0x1D00C, 1.05),
+    (0x1D013, 0x1D013, 1.25),
+    (0x1D025, 0x1D025, 0.95),
+    (0x1D027, 0x1D027, 1.05),
+    (0x1D028, 0x1D028, 1.25),
+    (0x1D029, 0x1D029, 1.10),
+    (0x1D02A, 0x1D02A, 1.20),
+    (0x1D02B, 0x1D02B, 1.45),
+    (0x1D02C, 0x1D02C, 1.15),
+    (0x1D02D, 0x1D02D, 1.10),
+    (0x1D02E, 0x1D02E, 1.20),
+    (0x1D02F, 0x1D02F, 0.95),
+    (0x1D031, 0x1D031, 1.00),
+    (0x1D032, 0x1D032, 1.50),
+    (0x1D033, 0x1D033, 1.10),
+    (0x1D034, 0x1D034, 1.25),
+    (0x1D035, 0x1D035, 1.05),
+    (0x1D037, 0x1D037, 1.10),
+    (0x1D03B, 0x1D03B, 1.50),
+    (0x1D03D, 0x1D03D, 1.50),
+    (0x1D03E, 0x1D03E, 1.05),
+    (0x1D03F, 0x1D03F, 1.10),
+    (0x1D043, 0x1D043, 1.50),
+    (0x1D044, 0x1D044, 0.95),
+    (0x1D045, 0x1D045, 1.30),
+    (0x1D04B, 0x1D04C, 1.05),
+    (0x1D060, 0x1D060, 1.00),
+    (0x1D061, 0x1D061, 1.05),
+    (0x1D062, 0x1D062, 0.95),
+    (0x1D065, 0x1D065, 0.95),
+    (0x1D06C, 0x1D06D, 0.95),
+    (0x1D06E, 0x1D06E, 1.05),
+    (0x1D070, 0x1D071, 0.95),
+    (0x1D075, 0x1D075, 1.50),
+    (0x1D079, 0x1D079, 0.95),
+    (0x1D07B, 0x1D07B, 1.05),
+    (0x1D138, 0x1D139, 1.20),
+    (0x1D192, 0x1D193, 1.40),
+    (0x1D1DA, 0x1D1DA, 1.10),
+    (0x1D1DC, 0x1D1DC, 0.95),
+    (0x1D1E1, 0x1D1E1, 1.45),
+    (0x1D1E9, 0x1D1EA, 1.05),
+    (0x1D20C, 0x1D20C, 0.95),
+    (0x1D800, 0x1D9FF, 1.00),
+    (0x1DA37, 0x1DA3A, 1.00),
+    (0x1DA6D, 0x1DA74, 1.00),
+    (0x1DA76, 0x1DA83, 1.00),
+    (0x1DA85, 0x1DA86, 1.00),
+    (0x1ED2E, 0x1ED2E, 1.05),
+    (0x1F030, 0x1F061, 1.40),
+    (0x1F0A0, 0x1F0AE, 1.05),
+    (0x1F0B1, 0x1F0BE, 1.05),
+    (0x1F0C1, 0x1F0CE, 1.05),
+    (0x1F0D1, 0x1F0DF, 1.05),
+    (0x1F110, 0x1F12E, 1.00),
+    (0x1F12F, 0x1F12F, 0.95),
+    (0x1F130, 0x1F149, 1.40),
+    (0x1F14A, 0x1F169, 1.00),
+    (0x1F172, 0x1F17D, 1.00),
+    (0x1F180, 0x1F18D, 1.00),
+    (0x1F18F, 0x1F190, 1.00),
+    (0x1F19B, 0x1F1AC, 1.00),
+    (0x1F1E6, 0x1F1FF, 1.25),
+    (0x1F394, 0x1F394, 1.10),
+    (0x1F395, 0x1F395, 0.95),
+    (0x1F398, 0x1F398, 1.10),
+    (0x1F39C, 0x1F39C, 1.00),
+    (0x1F39D, 0x1F39D, 0.95),
+    (0x1F3F6, 0x1F3F6, 0.95),
+    (0x1F4FE, 0x1F4FE, 1.15),
+    (0x1F53E, 0x1F53F, 0.95),
+    (0x1F540, 0x1F541, 1.00),
+    (0x1F568, 0x1F56A, 1.10),
+    (0x1F56B, 0x1F56B, 1.00),
+    (0x1F56C, 0x1F56C, 1.30),
+    (0x1F56E, 0x1F56E, 1.20),
+    (0x1F571, 0x1F571, 1.00),
+    (0x1F572, 0x1F572, 1.10),
+    (0x1F57C, 0x1F57C, 1.05),
+    (0x1F57E, 0x1F580, 1.00),
+    (0x1F582, 0x1F584, 1.20),
+    (0x1F585, 0x1F585, 1.30),
+    (0x1F586, 0x1F586, 1.20),
+    (0x1F588, 0x1F588, 0.95),
+    (0x1F589, 0x1F589, 1.10),
+    (0x1F58E, 0x1F58E, 1.20),
+    (0x1F58F, 0x1F58F, 1.10),
+    (0x1F591, 0x1F591, 1.10),
+    (0x1F592, 0x1F593, 1.00),
+    (0x1F598, 0x1F59D, 1.25),
+    (0x1F5A6, 0x1F5A6, 1.00),
+    (0x1F5A7, 0x1F5A7, 1.15),
+    (0x1F5AD, 0x1F5AD, 1.20),
+    (0x1F5AE, 0x1F5AE, 1.00),
+    (0x1F5B3, 0x1F5B3, 1.35),
+    (0x1F5B4, 0x1F5B4, 1.05),
+    (0x1F5B5, 0x1F5B5, 1.10),
+    (0x1F5B6, 0x1F5B8, 0.95),
+    (0x1F5BD, 0x1F5BE, 1.10),
+    (0x1F5BF, 0x1F5C0, 1.00),
+    (0x1F5C1, 0x1F5C1, 1.25),
+    (0x1F5C7, 0x1F5C7, 0.95),
+    (0x1F5CA, 0x1F5CA, 0.95),
+    (0x1F5CD, 0x1F5CD, 1.00),
+    (0x1F5D0, 0x1F5D0, 1.00),
+    (0x1F5D4, 0x1F5D4, 1.10),
+    (0x1F5D6, 0x1F5D7, 0.95),
+    (0x1F5DA, 0x1F5DB, 1.25),
+    (0x1F5E0, 0x1F5E0, 1.05),
+    (0x1F5E2, 0x1F5E2, 1.05),
+    (0x1F5E4, 0x1F5E7, 1.00),
+    (0x1F5E9, 0x1F5E9, 1.15),
+    (0x1F5EA, 0x1F5EA, 1.25),
+    (0x1F5EB, 0x1F5EB, 1.35),
+    (0x1F5EC, 0x1F5ED, 1.10),
+    (0x1F5EE, 0x1F5EE, 1.25),
+    (0x1F5F0, 0x1F5F1, 1.20),
+    (0x1F5F2, 0x1F5F2, 0.95),
+    (0x1F5F6, 0x1F5F6, 0.95),
+    (0x1F651, 0x1F652, 0.95),
+    (0x1F654, 0x1F654, 0.95),
+    (0x1F657, 0x1F657, 0.95),
+    (0x1F658, 0x1F65B, 1.00),
+    (0x1F65C, 0x1F65F, 1.15),
+    (0x1F660, 0x1F663, 1.00),
+    (0x1F664, 0x1F667, 1.10),
+    (0x1F668, 0x1F66B, 1.05),
+    (0x1F66C, 0x1F66C, 1.10),
+    (0x1F66E, 0x1F66E, 1.10),
+    (0x1F670, 0x1F671, 1.30),
+    (0x1F675, 0x1F675, 1.30),
+    (0x1F67C, 0x1F67F, 1.20),
+    (0x1F6C6, 0x1F6C6, 1.00),
+    (0x1F6C7, 0x1F6C8, 1.05),
+    (0x1F6D3, 0x1F6D4, 1.00),
+    (0x1F6E7, 0x1F6E7, 0.95),
+    (0x1F6E8, 0x1F6E8, 1.05),
+    (0x1F6F1, 0x1F6F1, 1.00),
+    (0x1F6F2, 0x1F6F2, 1.15),
+    (0x1F700, 0x1F700, 1.20),
+    (0x1F705, 0x1F705, 1.15),
+    (0x1F706, 0x1F706, 1.20),
+    (0x1F707, 0x1F707, 1.10),
+    (0x1F712, 0x1F712, 1.00),
+    (0x1F713, 0x1F713, 1.15),
+    (0x1F719, 0x1F719, 1.20),
+    (0x1F71A, 0x1F71A, 1.05),
+    (0x1F71B, 0x1F71B, 0.95),
+    (0x1F71C, 0x1F71C, 1.15),
+    (0x1F71D, 0x1F71D, 1.00),
+    (0x1F721, 0x1F721, 1.00),
+    (0x1F724, 0x1F724, 1.40),
+    (0x1F732, 0x1F732, 0.95),
+    (0x1F733, 0x1F733, 1.10),
+    (0x1F738, 0x1F738, 0.95),
+    (0x1F73A, 0x1F73A, 0.95),
+    (0x1F73C, 0x1F73D, 1.00),
+    (0x1F740, 0x1F740, 1.00),
+    (0x1F744, 0x1F744, 1.00),
+    (0x1F747, 0x1F747, 1.50),
+    (0x1F748, 0x1F748, 1.00),
+    (0x1F749, 0x1F749, 0.95),
+    (0x1F750, 0x1F750, 1.25),
+    (0x1F751, 0x1F752, 0.95),
+    (0x1F756, 0x1F756, 0.95),
+    (0x1F759, 0x1F75A, 1.05),
+    (0x1F75B, 0x1F75B, 1.00),
+    (0x1F75C, 0x1F75C, 1.20),
+    (0x1F75D, 0x1F75D, 0.95),
+    (0x1F75E, 0x1F75F, 1.05),
+    (0x1F760, 0x1F760, 1.40),
+    (0x1F764, 0x1F764, 0.95),
+    (0x1F76A, 0x1F76A, 1.15),
+    (0x1F76B, 0x1F76B, 1.05),
+    (0x1F76C, 0x1F76C, 0.95),
+    (0x1F76E, 0x1F76E, 1.00),
+    (0x1F770, 0x1F770, 1.00),
+    (0x1F772, 0x1F776, 1.05),
+    (0x1F77B, 0x1F77F, 1.05),
+    (0x1F79A, 0x1F79C, 1.15),
+    (0x1F7D2, 0x1F7D4, 0.95),
+    (0x1F7D9, 0x1F7D9, 1.05),
+    (0x1F808, 0x1F808, 0.95),
+    (0x1F80A, 0x1F80A, 0.95),
+    (0x1F830, 0x1F830, 1.05),
+    (0x1F832, 0x1F832, 1.05),
+    (0x1F841, 0x1F841, 1.05),
+    (0x1F843, 0x1F847, 1.05),
+    (0x1F850, 0x1F850, 2.70),
+    (0x1F852, 0x1F852, 2.70),
+    (0x1F858, 0x1F858, 1.10),
+    (0x1F8A0, 0x1F8AB, 1.05),
+    (0x1F8B0, 0x1F8B1, 1.00),
+    (0x1F900, 0x1F90B, 1.05),
+    (0x1F946, 0x1F946, 1.05),
+    (0x1FA00, 0x1FA53, 1.00),
+    (0x1FA60, 0x1FA6D, 1.00),
+    (0x1FB00, 0x1FB92, 1.00),
+    (0x1FB94, 0x1FBC4, 1.00),
+)
+_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_STARTS = tuple(
+    first for first, _last, _width in _CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES
+)
 # The generic non-ASCII letter estimate stays at the historical 0.9em. Only
 # measured fallback outliers receive a higher floor, which avoids applying the
 # previous 1.0em safety floor to every alphabetic code point.
@@ -4629,6 +4872,19 @@ def _canvas_fallback_numeric_width_units(character: str) -> float | None:
     return width_units
 
 
+def _canvas_fallback_supplementary_symbol_width_units(
+    character: str,
+) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0xFFFF or unicodedata.category(character) != "So":
+        return None
+    index = bisect_right(_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_STARTS, codepoint) - 1
+    if index < 0:
+        return None
+    _first, last, calibrated_units = _CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES[index]
+    return calibrated_units if codepoint <= last else None
+
+
 def _canvas_character_width_units(character: str) -> float:
     if not _xml_10_character_allowed(character):
         return _CANVAS_XML_REPLACEMENT_WIDTH_UNITS
@@ -4650,7 +4906,14 @@ def _canvas_character_width_units(character: str) -> float:
     codepoint = ord(character)
     letter_width = _canvas_fallback_letter_width_units(character)
     numeric_width = _canvas_fallback_numeric_width_units(character)
-    fallback_width = max(letter_width or 0.0, numeric_width or 0.0)
+    supplementary_symbol_width = _canvas_fallback_supplementary_symbol_width_units(
+        character
+    )
+    fallback_width = max(
+        letter_width or 0.0,
+        numeric_width or 0.0,
+        supplementary_symbol_width or 0.0,
+    )
     if 0x0400 <= codepoint <= 0x052F:
         return max(_CANVAS_CYRILLIC_WIDTH_UNITS, fallback_width)
     if codepoint >= 0x1F000 and is_extended_pictographic(character):
@@ -4666,6 +4929,8 @@ def _canvas_character_width_units(character: str) -> float:
         return letter_width
     if numeric_width is not None:
         return numeric_width
+    if supplementary_symbol_width is not None:
+        return supplementary_symbol_width
     return _character_width_units(
         character,
         non_ascii=0.9,

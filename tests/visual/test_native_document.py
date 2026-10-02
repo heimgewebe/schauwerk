@@ -1134,6 +1134,43 @@ def test_canvas_supplementary_pictographic_fallback_uses_measured_floor() -> Non
 
 
 @pytest.mark.parametrize(
+    ("character", "expected_units"),
+    [
+        ("\U0001f061", 1.40),
+        ("\U00011fe2", 1.80),
+        ("\U0001f1e6", 1.25),
+        ("\U0001f130", 1.40),
+        ("\U0001f850", 2.70),
+    ],
+)
+def test_canvas_supplementary_neutral_symbols_use_calibrated_fallback_width(
+    character: str,
+    expected_units: float,
+) -> None:
+    assert native_diagram._canvas_character_width_units(character) == pytest.approx(
+        expected_units
+    )
+
+
+def test_canvas_domino_fallback_width_cannot_escape_layout_budget() -> None:
+    label = "\U0001f061" * 10
+    assert native_diagram._estimated_canvas_wrap_width(label, size=16) > 172
+
+    layout = native_diagram._canvas_text_layout(
+        label,
+        172,
+        40,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 172
+        for line, _baseline in layout.lines
+    )
+
+
+@pytest.mark.parametrize(
     ("cluster", "expected_units"),
     [
         ("\U0001f634\ufe0f", 1.25),
