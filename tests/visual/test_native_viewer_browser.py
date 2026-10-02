@@ -481,6 +481,34 @@ try {
   ) {
     throw new Error("hosted canvas edit-control group remained hidden");
   }
+  const initialAddNode = document.querySelector("#addNode");
+  const initialAddEdge = document.querySelector("#addEdge");
+  const initialEditText = document.querySelector("#editText");
+  const initialReattachSource = document.querySelector("#reattachSource");
+  const initialReattachTarget = document.querySelector("#reattachTarget");
+  const initialDeleteSelection = document.querySelector("#deleteSelection");
+  if (
+    !(initialAddNode instanceof HTMLButtonElement) ||
+    !(initialAddEdge instanceof HTMLButtonElement) ||
+    !(initialEditText instanceof HTMLButtonElement) ||
+    !(initialReattachSource instanceof HTMLButtonElement) ||
+    !(initialReattachTarget instanceof HTMLButtonElement) ||
+    !(initialDeleteSelection instanceof HTMLButtonElement)
+  ) {
+    throw new Error("hosted canvas contextual controls missing");
+  }
+  if (initialAddNode.disabled) {
+    throw new Error("add-element control was disabled without a product-limit action");
+  }
+  if (
+    !initialAddEdge.disabled ||
+    !initialEditText.disabled ||
+    !initialReattachSource.disabled ||
+    !initialReattachTarget.disabled ||
+    !initialDeleteSelection.disabled
+  ) {
+    throw new Error("selection-dependent controls were active without a selection");
+  }
   window.__nativeDocumentMessages.length = 0;
 
   const node = svg.querySelector('[data-source-kind="node"][data-source-id="a"]');
@@ -539,6 +567,43 @@ try {
   const groupNode = latest?.canvas?.nodes?.find((item) => item.id === "group");
   if (!groupNode || Object.prototype.hasOwnProperty.call(groupNode, "label")) {
     throw new Error("absent group label was materialized");
+  }
+
+  if (
+    initialAddEdge.disabled ||
+    initialEditText.disabled ||
+    initialDeleteSelection.disabled ||
+    !initialReattachSource.disabled ||
+    !initialReattachTarget.disabled
+  ) {
+    throw new Error("node selection did not expose exactly the node-valid actions");
+  }
+
+  const edgeRectForSelection = edgePath.getBoundingClientRect();
+  const edgeSelectX = (edgeRectForSelection.left + edgeRectForSelection.right) / 2;
+  const edgeSelectY = (edgeRectForSelection.top + edgeRectForSelection.bottom) / 2;
+  firePointer(edgePath, "pointerdown", 32, edgeSelectX, edgeSelectY);
+  firePointer(viewport, "pointerup", 32, edgeSelectX, edgeSelectY);
+  if (
+    !initialAddEdge.disabled ||
+    initialEditText.disabled ||
+    initialReattachSource.disabled ||
+    initialReattachTarget.disabled ||
+    initialDeleteSelection.disabled
+  ) {
+    throw new Error("edge selection did not expose exactly the edge-valid actions");
+  }
+
+  firePointer(node, "pointerdown", 33, x, y);
+  firePointer(viewport, "pointerup", 33, x, y);
+  if (
+    initialAddEdge.disabled ||
+    initialEditText.disabled ||
+    initialDeleteSelection.disabled ||
+    !initialReattachSource.disabled ||
+    !initialReattachTarget.disabled
+  ) {
+    throw new Error("node reselection did not restore node-valid actions");
   }
 
   const editButton = document.querySelector("#editText");

@@ -348,6 +348,15 @@ h1 {
 }
 .button:hover { border-color: #c4c6d3; background: #f9f9fc; transform: translateY(-1px); }
 .button:active { transform: translateY(0); }
+.button:disabled {
+  border-color: transparent;
+  color: #9b9daa;
+  background: rgba(244, 245, 249, 0.72);
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.72;
+}
 .button:focus-visible,
 .restore-button:focus-visible,
 .advanced-settings summary:focus-visible {
@@ -1471,6 +1480,10 @@ function setError(message) {
 function setEngineMode(mode) {
   activeEngine = mode === "native" ? "native" : "legacy";
   const native = activeEngine === "native";
+  elements.legacyEditButton.hidden = !(native && Boolean(currentLegacyXml));
+
+  const fontControls = elements.fontDecreaseButton.closest(".font-controls");
+  if (fontControls instanceof HTMLElement) fontControls.hidden = native;
   for (const control of [
     elements.fontDecreaseButton,
     elements.fontPanelButton,
@@ -1480,16 +1493,29 @@ function setEngineMode(mode) {
   ]) {
     control.disabled = native;
   }
+  elements.layoutButton.hidden = native;
+
   const pngButton = document.querySelector('[data-export="png"]');
-  if (pngButton instanceof HTMLButtonElement) pngButton.disabled = native;
-  elements.projectButton.title = native
-    ? (
-        currentNativeCanvas
-          ? "JSON Canvas speichern"
-          : (currentLegacyXml ? "Ursprüngliches draw.io-Projekt speichern" : "Kanonische Schauwerk-Repräsentation speichern")
-      )
-    : "draw.io-Projekt speichern";
-  elements.legacyEditButton.hidden = !(native && currentLegacyXml);
+  if (pngButton instanceof HTMLButtonElement) {
+    pngButton.disabled = native;
+    pngButton.hidden = native;
+  }
+
+  if (native) {
+    if (currentNativeCanvas) {
+      elements.projectButton.textContent = "Canvas";
+      elements.projectButton.title = "Aktuelle .canvas-Datei speichern";
+    } else if (currentLegacyXml) {
+      elements.projectButton.textContent = "Original";
+      elements.projectButton.title = "Unverändertes draw.io-Original speichern";
+    } else {
+      elements.projectButton.textContent = "Quelle";
+      elements.projectButton.title = "Kanonische Quelle speichern";
+    }
+  } else {
+    elements.projectButton.textContent = "Projekt";
+    elements.projectButton.title = "Bearbeitbares draw.io-Projekt speichern";
+  }
 }
 
 function safeFilename(value) {
