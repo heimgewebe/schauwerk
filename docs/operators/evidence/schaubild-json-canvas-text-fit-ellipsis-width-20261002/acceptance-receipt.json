@@ -1,0 +1,97 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ellipsis-width.v1",
+  "scope": "json-canvas-preexisting-ellipsis-width-fit",
+  "accepted_at": "2026-10-02T04:03:52.353573+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "7098f102f898493e7129d297bd2495bf8d4a61cc",
+  "evidence_predecessor_head": "8ef89166bdd40276d157c474fa5594fed5a64db8",
+  "parent_evidence": {
+    "evidence_digest": "6b3d93f8b518a1479257bfd0b940178af6e4fc822a2e617262bc551b83a2600f",
+    "file_sha256": "f36139e762dd481c980311a55e89bd993f79c4202c7f9d865ef77f6ff0975e37",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-geometry-cap-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-geometry-cap.v1"
+  },
+  "checks": {
+    "geometry_cap_parent_left_immutable": true,
+    "github_ellipsis_width_review_remediated": true,
+    "existing_ellipsis_width_checked_before_retention": true,
+    "oversized_ellipsis_dropped": true,
+    "fitting_ellipsis_preserved": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_readiness_flake_cleared_by_isolated_rerun": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "original_reproduction": {
+      "job_unit": "grabowski-job-ec53727cfe60",
+      "finalization_receipt_sha256": "dcdcd98ea89f65a27b81d57600c96a267092920aece1b18d2dc921dd04b83344",
+      "available_width_px": 7.0,
+      "ellipsis_width_px": 12.600000000000001,
+      "layout_truncated": true,
+      "result": "confirmed_width_contract_violation"
+    },
+    "focused_regression": {
+      "job_unit": "grabowski-job-187d8ed76633",
+      "finalization_receipt_sha256": "fbe370ec50d69b88d773fc34dc364b497671be3282db96c852cef8a2bcc5cafa",
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-986cd2fcb555",
+      "finalization_receipt_sha256": "84c4c0834558058f714a7ce197c3ca370bf7636a6789338dd8c6bc492825eb1c",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-80643c0df4e7",
+      "finalization_receipt_sha256": "d809205b4d3b4b0b40f14bccd6f4b2836467c49d68b4c06ed68308bd7185eb84",
+      "result": "passed"
+    },
+    "initial_pre_successor_full_validate": {
+      "job_unit": "grabowski-job-cc7d7fb32242",
+      "finalization_receipt_sha256": "e8d64128b599a19957eb5ccf43f076970cf07aec311c00d5cecc7034ee152122",
+      "passed_count": 1607,
+      "failed_count": 2,
+      "result": "expected_binding_gate_plus_browser_readiness_flake",
+      "failing_tests": [
+        "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+        "tests/visual/test_native_viewer_browser.py::test_native_viewer_browser_keeps_dragged_nodes_reachable_and_continues_pan_after_pinch"
+      ]
+    },
+    "isolated_browser_readiness_retry": {
+      "job_unit": "grabowski-job-dfabe2db9b10",
+      "finalization_receipt_sha256": "a09dcb96cc12079deea376a4a9fbd57d64372278d0fb5b92d94d9ab6df95ca62",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-a8f884d46e22",
+      "finalization_receipt_sha256": "73a73e41112b64cf332e00aff8c0bb4b62fe1660e2314dab0ab7517a443320ac",
+      "passed_count": 1608,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oOOUp",
+    "comment_id": 4162726312,
+    "reviewed_head": "8ef89166bdd40276d157c474fa5594fed5a64db8",
+    "severity": "P2",
+    "title": "Drop an ellipsis that cannot fit",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4162726312",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9f422638146fc4a7aeaa3e96237bd50444e62b950def33390c326ce8c607c70c",
+    "tests/visual/test_native_document.py": "4b5a5cd89bedf7ff4d65bc1d5c51db2b7be95de5b7f7a9bbdca96d0278e5dabe"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "52e07204e12209ddbeb07144a2e3cdf5c58dbff77c915b3d694f16050107e9a8"
+}

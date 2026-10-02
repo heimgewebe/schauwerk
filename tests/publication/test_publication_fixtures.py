@@ -102,6 +102,10 @@ SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-json-canvas-text-fit-geometry-cap-20261002"
 )
+SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-json-canvas-text-fit-ellipsis-width-20261002"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -511,6 +515,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     json_canvas_text_fit_geometry_cap_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    json_canvas_text_fit_ellipsis_width_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -2544,7 +2552,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_geometry_cap_superseded_files
     )
     for name, expected in json_canvas_text_fit_geometry_cap["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in json_canvas_text_fit_ellipsis_width_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_geometry_cap["checks"] == {
         "svg_whitespace_parent_left_immutable": True,
         "github_geometry_cap_review_remediated": True,
@@ -2610,6 +2619,106 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert geometry_cap_validation["publication_fixture"] == {
         "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "d016758ca6e636385f52ac5a788481ac001b0192e87237a4ac201c2508970eda",
+    }
+
+    json_canvas_text_fit_ellipsis_width = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert json_canvas_text_fit_ellipsis_width["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-ellipsis-width.v1"
+    )
+    assert json_canvas_text_fit_ellipsis_width["functional_head"] == (
+        "7098f102f898493e7129d297bd2495bf8d4a61cc"
+    )
+    assert json_canvas_text_fit_ellipsis_width["evidence_predecessor_head"] == (
+        "8ef89166bdd40276d157c474fa5594fed5a64db8"
+    )
+    assert json_canvas_text_fit_ellipsis_width["parent_evidence"] == {
+        "evidence_digest": json_canvas_text_fit_geometry_cap["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_GEOMETRY_CAP_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-geometry-cap-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": json_canvas_text_fit_geometry_cap["schema_version"],
+    }
+    assert json_canvas_text_fit_ellipsis_width["evidence_digest"] == digest_mapping(
+        json_canvas_text_fit_ellipsis_width, "evidence_digest"
+    )
+    assert set(json_canvas_text_fit_ellipsis_width["source_bindings"]) == (
+        json_canvas_text_fit_ellipsis_width_superseded_files
+    )
+    for name, expected in json_canvas_text_fit_ellipsis_width["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert json_canvas_text_fit_ellipsis_width["checks"] == {
+        "geometry_cap_parent_left_immutable": True,
+        "github_ellipsis_width_review_remediated": True,
+        "existing_ellipsis_width_checked_before_retention": True,
+        "oversized_ellipsis_dropped": True,
+        "fitting_ellipsis_preserved": True,
+        "renderer_modules_passed": True,
+        "static_validation_passed": True,
+        "browser_readiness_flake_cleared_by_isolated_rerun": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    ellipsis_debt = json_canvas_text_fit_ellipsis_width["github_review_debt"]
+    assert ellipsis_debt["thread_id"] == "PRRT_kwDOTGqvHc6oOOUp"
+    assert ellipsis_debt["comment_id"] == 4162726312
+    assert ellipsis_debt["disposition"] == "confirmed_and_remediated_in_functional_head"
+    ellipsis_reproduction = json_canvas_text_fit_ellipsis_width["check_evidence"][
+        "original_reproduction"
+    ]
+    assert ellipsis_reproduction["result"] == "confirmed_width_contract_violation"
+    assert ellipsis_reproduction["ellipsis_width_px"] > ellipsis_reproduction["available_width_px"]
+    ellipsis_pre_validate = json_canvas_text_fit_ellipsis_width["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert ellipsis_pre_validate["result"] == "expected_binding_gate_failure"
+    assert ellipsis_pre_validate["passed_count"] == 1608
+    assert ellipsis_pre_validate["failed_count"] == 1
+    ellipsis_browser_retry = json_canvas_text_fit_ellipsis_width["check_evidence"][
+        "isolated_browser_readiness_retry"
+    ]
+    assert ellipsis_browser_retry["result"] == "passed"
+
+    ellipsis_width_validation = json.loads(
+        (
+            SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE
+            / "validation-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert ellipsis_width_validation["schema_version"] == (
+        "schauwerk-schaubild-json-canvas-text-fit-ellipsis-width-validation.v1"
+    )
+    assert ellipsis_width_validation["functional_head"] == (
+        "7098f102f898493e7129d297bd2495bf8d4a61cc"
+    )
+    assert ellipsis_width_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-json-canvas-text-fit-ellipsis-width-20261002/"
+            "acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_JSON_CANVAS_TEXT_FIT_ELLIPSIS_WIDTH_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+    }
+    assert ellipsis_width_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
         "file_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 
@@ -2645,6 +2754,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in json_canvas_text_fit_ellipsis_width_superseded_files:
+            assert json_canvas_text_fit_ellipsis_width["source_bindings"][name] == current
         elif name in json_canvas_text_fit_geometry_cap_superseded_files:
             assert json_canvas_text_fit_geometry_cap["source_bindings"][name] == current
         elif name in json_canvas_text_fit_svg_whitespace_superseded_files:
