@@ -1,0 +1,196 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-unicode-remediation.v1",
+  "scope": "json-canvas-text-fit-unicode-final-review-remediation",
+  "accepted_at": "2026-10-01",
+  "functional_head": "aca0edd884097741cf1ab5816c163293fef48de4",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "1e01c0b090c8cb453fee2d4febe9f60f674904df80f36e97238a3283464737cc",
+    "file_sha256": "7a6d1f1a962c9a4d50cc68e7c4af16290ec4af2d3f2e5fb094342fd02ab05b81",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-review-remediation-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-review-remediation.v1"
+  },
+  "review_debt": {
+    "rejected_head": "437ec208423b6025f6e90bb360476e3548e7b860",
+    "role_receipt_file_sha256": "abe764274bc1ae0b7bf472e018acbf329c59224d4fdafd349503a41feb45ae60",
+    "role_receipt_sha256": "71477487b79abb822599dba2f57e0fff052d3792b656d0ae9ba76faef578fd01",
+    "expected_diff_sha256": "99d32f7aa96ec69dfd45d4667ed93ee81706cf44bf1102081e88440b307e4b3e",
+    "verdict": "REJECT_THIS_REVISION",
+    "material_findings": 4,
+    "dispositions": [
+      {
+        "title": "Material Mismatch in Canadian Syllabics Range Constraint",
+        "disposition": "confirmed_and_remediated",
+        "evidence": "U+1677..U+167F measure below 0.8em in the bound browser/font population; the explicit 1.00em tail floor was removed and the generic 0.90em letter floor remains conservative."
+      },
+      {
+        "title": "Hidden Overflow from Shaping-Script ZWJ Linear Inflation",
+        "disposition": "confirmed_and_remediated",
+        "evidence": "multi-letter same-grapheme shaping-ZWJ clusters now use script-calibrated per-base fallback floors; final browser probes remain above Malayalam, Myanmar and Balinese measured widths."
+      },
+      {
+        "title": "O(N^2) Quadratic Complexity in FSI Resolution (String Slicing)",
+        "disposition": "confirmed_and_remediated",
+        "evidence": "the normalized FSI resolver iterates by index without value[start_index + 1:] suffix copies; 4k/8k/16k pair probes scale approximately 0.0061/0.0091/0.0202 seconds."
+      },
+      {
+        "title": "Unverified 0.90em Generic Baseline Underestimates BMP Outliers",
+        "disposition": "disproved_by_full_measurement",
+        "evidence": "the exact functional head passes the full 48,913 Unicode BMP L-category scan with under_count=0 against the bound Chrome Inter/Arial/sans-serif and DejaVu Sans Bold population."
+      }
+    ]
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6nwDCP",
+    "comment_id": 4150423149,
+    "reviewed_head": "437ec208423b6025f6e90bb360476e3548e7b860",
+    "finding": "Budget supplementary fallback letters conservatively",
+    "disposition": "confirmed_and_remediated_in_functional_head",
+    "evidence": "the final 87,761-codepoint supplementary Unicode L-category scan has under_count=0 across 216 ordered calibration ranges; U+1030C estimates 1.45em and U+12219 4.05em."
+  },
+  "checks": {
+    "historical_review_remediation_acceptance_left_immutable": true,
+    "rejected_revision_not_reused_as_accepted_revision": true,
+    "u1677_tail_floor_removed": true,
+    "full_bmp_letter_scan_has_no_underestimates": true,
+    "supplementary_letter_calibration_is_range_bounded": true,
+    "full_supplementary_letter_scan_has_no_underestimates": true,
+    "multi_letter_shaping_zwj_fallback_is_script_calibrated": true,
+    "fsi_resolver_avoids_suffix_slicing": true,
+    "fsi_scaling_probe_is_bounded": true,
+    "focused_renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed": true,
+    "exact_browser_and_performance_probe_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "git_show_check_passed": true
+  },
+  "check_evidence": {
+    "full_bmp_letter_scan": {
+      "task_id": "9e418e0b3d184c27a5b955c9",
+      "argv_sha256": "35b6eada06e7f16ebbe166f22a57fb1e108f0a5ddd175df21eb78f24795855dc",
+      "outcome_receipt_sha256": "1c5f108e66d6d87e07c7dba419cf5ea3cb027f12559a952218abe7c01fafb880",
+      "sample_count": 48913,
+      "under_count": 0,
+      "fonts": [
+        "Chrome Inter, Arial, sans-serif",
+        "DejaVu Sans Bold"
+      ]
+    },
+    "full_supplementary_letter_scan": {
+      "task_id": "3132b547acef411a9c6b4142",
+      "argv_sha256": "3ef40d3066dd0aedc2cbcf01c0abd3309a496e00682a4bf66f9c63591ec3375c",
+      "outcome_receipt_sha256": "ae941b8df3049d449511d389adb2905b0c92e78600d02533dc339f897042a916",
+      "sample_count": 87761,
+      "under_count": 0,
+      "calibrated_range_count": 216,
+      "ranges_sorted_nonoverlap": true,
+      "u1030c_estimate_em": 1.45,
+      "u12219_estimate_em": 4.05,
+      "fonts": [
+        "Chrome Inter, Arial, sans-serif",
+        "DejaVu Sans Bold"
+      ]
+    },
+    "focused_renderer_modules_passed": {
+      "task_id": "d5de82cfea5346b098daf42c",
+      "argv_sha256": "4971667516ff539eab65111d7f8e5120a8af12191c0198a8f9d654d06d8c8400",
+      "outcome_receipt_sha256": "ab14980f2a88d433d8a0fc26e4316c5773a84c34b575e07866873cf1e69be12c",
+      "result": "succeeded",
+      "modules": [
+        "tests/visual/test_native_document.py",
+        "tests/visual/test_native_diagram.py"
+      ]
+    },
+    "static_validation_passed": {
+      "task_id": "218b294137f347c694535a30",
+      "argv_sha256": "e9b89ff1a297f7d216825765e64e0b72eb089c57cfc205f4473b83eaec0423b5",
+      "outcome_receipt_sha256": "bdd30781d334ff341ba2f1c6bc1b85a60370fb57cd65a28e83f02e80efa78734",
+      "targets": [
+        "lint",
+        "compile-check",
+        "registry-validate"
+      ]
+    },
+    "browser_smoke_passed": {
+      "task_id": "0e7de66429824da385b63e07",
+      "argv_sha256": "6308ff893bd5fdb449823e68480efa8bc78c718c0e4155ac52bbdd04899b6d2c",
+      "outcome_receipt_sha256": "719440050dbe8da84dc56c419e48a365424ebe9318c1e18d8f2bfaf505a91fcb",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "exact_browser_and_performance_probe": {
+      "task_id": "b5e3462c5c92475ba87d9c15",
+      "argv_sha256": "c21dea74b0437249f3113939e3fc29780fd5117757fe4b51da9ac0e2b0627ce0",
+      "outcome_receipt_sha256": "316d59cf80575e754a9de3bd9c3e0bb3511a54e35584f82d1c046ba09209c84d",
+      "under_count": 0,
+      "fsi_projection_seconds": {
+        "4000": 0.0061320289969444275,
+        "8000": 0.009111702966038138,
+        "16000": 0.02017148199956864
+      },
+      "cases": {
+        "u1675": {
+          "estimate_em": 20.5,
+          "actual_max_em": 20.1611328125
+        },
+        "u1677": {
+          "estimate_em": 9,
+          "actual_max_em": 6.679993896484375
+        },
+        "u1030c": {
+          "estimate_em": 14.5,
+          "actual_max_em": 14.267578125
+        },
+        "malayalam_chain": {
+          "estimate_em": 4.65,
+          "actual_max_em": 4.60799560546875
+        },
+        "myanmar_chain": {
+          "estimate_em": 7.5,
+          "actual_max_em": 7.355993041992187
+        },
+        "balinese_chain": {
+          "estimate_em": 6,
+          "actual_max_em": 5.990994262695312
+        }
+      }
+    },
+    "pre_successor_full_validate": {
+      "task_id": "93c18c8d415545fa98b8627e",
+      "argv_sha256": "3d3afea002866d6e15684f85becffc3ef7e4b6929f8dc99cc21ac5268cd59357",
+      "outcome_receipt_sha256": "02580e4f26d1ba0b54ebb29e76c94618fabce6566e4f1dccdbc0d7f653de7aa4",
+      "result": "expected_binding_gate_failure",
+      "passed_count": 1583,
+      "failed_count": 1,
+      "failed_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "reason": "the previous immutable review-remediation receipt still bound the prior functional source hashes"
+    },
+    "git_show_check_passed": {
+      "revision": "aca0edd884097741cf1ab5816c163293fef48de4",
+      "argv_sha256": "5c787e59f6a7b3f74166175b27310ae4159905a3cc868b524c710d2f64da01bf",
+      "result": "succeeded"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2569bf9d3ac8b495e6099193cf7e8514236c8ca9b5a614927f07b2e772680d78",
+    "tests/visual/test_native_document.py": "dd1efa14f5419db04eb131be331a176194639a8f42ae83996bcfb1ce9d64042d"
+  },
+  "measurement_scope": {
+    "font_population": [
+      "Chrome Inter, Arial, sans-serif",
+      "DejaVu Sans Bold"
+    ],
+    "claim": "zero underestimates are established only for the explicitly measured fallback population, not for arbitrary future client fonts"
+  },
+  "does_not_establish": [
+    "independent review PASS for functional head aca0edd884097741cf1ab5816c163293fef48de4",
+    "GitHub CI success on the later evidence commit",
+    "all GitHub review threads settled on the later evidence commit",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment",
+    "universal width safety for arbitrary fonts outside the measured acceptance population"
+  ],
+  "evidence_digest": "97ca12d38fbe3bdb9273f39b6e29dd36b91e54cd03c150e54a74acfc19006a3b"
+}

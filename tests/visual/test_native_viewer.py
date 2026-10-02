@@ -12,16 +12,22 @@ from typing import get_type_hints
 
 import pytest
 
+import schauwerk.visual.native_viewer as native_viewer
+from schauwerk.visual.grapheme import MAX_GRAPHEME_CLUSTER_CODEPOINTS
 from schauwerk.visual.native_diagram import (
     _canvas_color,
     _canvas_edge_geometry,
     _edge_geometry,
     render_native_diagram,
 )
-from schauwerk.visual.native_document import json_canvas_to_editing_document
+from schauwerk.visual.native_document import (
+    editing_document_to_json_canvas,
+    json_canvas_to_editing_document,
+)
 from schauwerk.visual.native_viewer import (
     MANIFEST_SCHEMA,
     NativeViewerError,
+    _bounded_html_title,
     _read_representation,
     build_native_viewer,
 )
@@ -33,6 +39,75 @@ GOLDEN = ROOT / "docs/operators/fixtures/golden/system-landscape-v1.json"
 
 def _load() -> dict:
     return json.loads(GOLDEN.read_text(encoding="utf-8"))
+
+
+def test_native_viewer_bounds_pathological_grapheme_title_cluster() -> None:
+    value = "safe " + "e" + "\u0301" * (
+        MAX_GRAPHEME_CLUSTER_CODEPOINTS + 4096
+    )
+
+    rendered = _bounded_html_title(value)
+
+    assert rendered == "safe …"
+    assert len(rendered.encode("utf-8")) < 128
+
+
+def test_native_viewer_bounds_large_single_codepoint_html_title_scan(
+    monkeypatch,
+) -> None:
+    original_bounded_prefix = native_viewer.bounded_grapheme_prefix
+    calls: list[tuple[int | None, int | None]] = []
+
+    def bounded_prefix(value: str, **kwargs):
+        calls.append(
+            (
+                kwargs.get("max_clusters"),
+                kwargs.get("max_codepoints"),
+            )
+        )
+        return original_bounded_prefix(value, **kwargs)
+
+    monkeypatch.setattr(native_viewer, "bounded_grapheme_prefix", bounded_prefix)
+    rendered = native_viewer._bounded_html_title("é" * 800_000)
+
+    assert calls == [
+        (
+            native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1,
+            native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+            + MAX_GRAPHEME_CLUSTER_CODEPOINTS
+            + 1,
+        )
+    ]
+    assert len(rendered) < 3_000
+    assert len(rendered.encode("utf-8")) <= native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+
+
+def test_native_viewer_bounds_dense_grapheme_title_scan_by_codepoints() -> None:
+    cluster = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS - 1)
+    value = cluster * (native_viewer._MAX_RENDERED_HTML_TITLE_BYTES + 1)
+
+    rendered = _bounded_html_title(value)
+
+    assert rendered.endswith("…")
+    assert len(rendered.encode("utf-8")) <= native_viewer._MAX_RENDERED_HTML_TITLE_BYTES
+
+
+def test_native_viewer_reuses_bounded_html_title_for_projection_and_render(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    original = native_viewer._bounded_html_title
+    calls = 0
+
+    def bounded_title(value: str) -> str:
+        nonlocal calls
+        calls += 1
+        return original(value)
+
+    monkeypatch.setattr(native_viewer, "_bounded_html_title", bounded_title)
+    native_viewer.build_native_viewer(_load(), tmp_path / "reuse-title")
+
+    assert calls == 1
 
 
 def _source_ids(svg: bytes, kind: str) -> set[str]:
@@ -304,6 +379,39 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "edgeReattach = null;" in escape_handler
     assert "Verbindungsaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
+
+
+def test_native_viewer_document_bundle_preserves_collapsible_whitespace_semantics(
+    tmp_path: Path,
+) -> None:
+    label = "abc          def"
+    source = {
+        "nodes": [
+            {
+                "id": "spaces",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 40,
+                "text": label,
+            }
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(source, title="Whitespace semantics")
+    output = tmp_path / "whitespace-semantics"
+
+    manifest = build_native_viewer(document, output)
+    semantic = json.loads((output / "document.json").read_text(encoding="utf-8"))
+    index = (output / "index.html").read_text(encoding="utf-8")
+
+    assert manifest["semantic_authority"]["artifact"] == "document.json"
+    assert manifest["semantic_authority"]["mode"] == "editable-document"
+    assert semantic["nodes"][0]["label"] == label
+    assert semantic["source"]["nodes"][0]["text"] == label
+    assert editing_document_to_json_canvas(semantic) == source
+    assert native_viewer._serialized_embedded_model(semantic) in index
 
 
 def test_native_viewer_document_bounds_use_node_rect_not_clipped_label_bbox(

@@ -1,0 +1,179 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-independent-review.v1",
+  "scope": "json-canvas-text-fit-independent-review-remediation",
+  "accepted_at": "2026-09-30",
+  "functional_head": "aff9ff10032d49bf641e1726450cf9c3b51f3939",
+  "integrated_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "e8b61f31a4ee65dda7176f03692140bbf934eea9ee587713b274b094181e4627",
+    "file_sha256": "980bdbe04065e288205a136350c991db6657456d9f0e07295bc0a7f4d88ec61f",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-fallback-carry-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-fallback-carry.v1"
+  },
+  "review_debt": {
+    "rejected_head": "a4ebdbf1d7757556843bc4fe62a86d79df2cbd55",
+    "decision_review_unit": "grabowski-job-6dd7782579fd",
+    "review_role_receipt_sha256": "d1ecce2aefa92694966e761252f8fb9829777dbfff446bf63a4acfe9edda4e56",
+    "verdict": "REJECT_THIS_REVISION",
+    "material_findings": 2,
+    "findings": [
+      "Post-trim wrap refit causes over-truncation of text",
+      "Missed fallback glyphs (e.g., U+2026) cause hidden overflow"
+    ],
+    "disposition": "remediated_in_new_functional_revision",
+    "does_not_establish": [
+      "independent review PASS for the new functional revision"
+    ]
+  },
+  "checks": {
+    "historical_fallback_carry_acceptance_left_immutable": true,
+    "rejected_revision_not_reused_as_accepted_revision": true,
+    "line_start_carry_normalized_before_width_accounting": true,
+    "post_trim_early_abort_removed": true,
+    "fallback_calibration_extended_to_all_measured_over_0_9em_candidates": true,
+    "fallback_calibration_uses_font_and_browser_measurements": true,
+    "emoji_presentation_width_contract_isolated_from_plain_fallback_calibration": true,
+    "literal_xml_replacement_width_budgeted_conservatively": true,
+    "existing_grapheme_and_work_caps_preserved": true,
+    "focused_review_regressions_passed": true,
+    "native_document_and_diagram_modules_passed": true,
+    "static_validation_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_dejavu_browser_readback_passed": true,
+    "visual_readback_passed": true
+  },
+  "check_evidence": {
+    "fallback_calibration_uses_font_and_browser_measurements": {
+      "job_unit": "grabowski-job-a13e28263b0b",
+      "argv_sha256": "bb789bcafefce9a87bd46fcdaa2b4b71bf09af8dfd6e42e14c55dec033ace552",
+      "finalization_receipt_sha256": "f1ffeb2781b8cabbccb1f2901caaa9c90b89c0ab3bb39372a95b2a34105eac49",
+      "result": "succeeded",
+      "calibrated_codepoint_count": 143,
+      "calibrated_range_count": 83,
+      "rounding_increment_em": 0.05,
+      "threshold_em": 0.9,
+      "sample_width_units": {
+        "U+00A9": 1.05,
+        "U+2014": 1.05,
+        "U+2026": 1.05,
+        "U+2030": 1.45,
+        "U+2031": 1.9,
+        "U+27F7": 1.8,
+        "U+FFFD": 1.15
+      }
+    },
+    "focused_review_regressions_passed": {
+      "job_unit": "grabowski-job-00d239c1de74",
+      "argv_sha256": "8f5da752d4de6ccdb14118bdbdfe8bc2f26fa1e9a1a3cd81933a100d52d9ef7f",
+      "finalization_receipt_sha256": "4f7c01c8eb23e20b26b28a256e6de05715496d79aed19db57cd509861373b9b0",
+      "result": "succeeded",
+      "passed_count": 11
+    },
+    "native_document_and_diagram_modules_passed": {
+      "job_unit": "grabowski-job-869a65ccac26",
+      "argv_sha256": "f1abc2283c252925627d552b9fe9f5b3d729506dab9f7a1ea8b6c60771a2b179",
+      "finalization_receipt_sha256": "cc6694c61bf5912c61454481ae1b8bb3dea0db8062c6877c798c5feb48b7f0cc",
+      "result": "succeeded"
+    },
+    "static_validation_passed": {
+      "job_unit": "grabowski-job-be2113a441f4",
+      "argv_sha256": "ceb643697473b85be8bc27541b4bd9523fca070e006f3e8fd45076c026171df0",
+      "finalization_receipt_sha256": "3aeaeb97449080542a20a3a5613e58ff2ff73b853f7dcc7b5db939276b573cfd",
+      "result": "succeeded"
+    },
+    "browser_smoke_passed": {
+      "job_unit": "grabowski-job-61d5f6a48ed2",
+      "argv_sha256": "08ebddafaf7df605a9ed40ddf6a249a7c7cfb17bef0870537be698300a9333d3",
+      "finalization_receipt_sha256": "fc7aa03b7b05e20267d8e8d512ff2664afd48573d3011cfb61fe1aa9c5fa0c48",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-97f98c010b11",
+      "argv_sha256": "1ffe8b8b7a0e2a3551cc6abfa93e85b4f44bc273f9b2c9fd6fbdb88f73ed7caa",
+      "finalization_receipt_sha256": "c44252a3d07af8982c82b17e5d574e69962c4d04280fc8070026b5e88d95379d",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "browser_smoke_covered_separately": true
+    },
+    "exact_dejavu_browser_readback_passed": {
+      "job_unit": "grabowski-job-d0a0326578ab",
+      "argv_sha256": "507c59374b274d1d8221ae275e34b66af3ecb3d42aeb4eee785daadffd25178a",
+      "finalization_receipt_sha256": "5f7b27d45c4298f2fe08285c65430a4ef6c7a8316db6e17abc323316c11cc5f0",
+      "result": "succeeded",
+      "forced_font": "DejaVu Sans Bold",
+      "emdash": {
+        "source": "——————————",
+        "rendered": "——————————",
+        "truncated": false,
+        "all_text_boxes_within_node_bounds": true,
+        "node_bbox": {
+          "x": 20,
+          "y": 20,
+          "width": 172,
+          "height": 40
+        },
+        "text_bbox": {
+          "x": 34,
+          "y": 33,
+          "width": 130,
+          "height": 15
+        }
+      },
+      "internal_carry": {
+        "source": "e  ́BBBB",
+        "rendered": "éBBBB",
+        "lines": [
+          "e",
+          "́",
+          "B",
+          "B",
+          "B",
+          "B"
+        ],
+        "truncated": false,
+        "all_text_boxes_within_node_bounds": true,
+        "node_bbox": {
+          "x": 20,
+          "y": 100,
+          "width": 48,
+          "height": 140
+        }
+      },
+      "emoji_presentation": {
+        "source": "©️",
+        "rendered": "©️",
+        "truncated": false,
+        "all_text_boxes_within_node_bounds": true,
+        "node_bbox": {
+          "x": 240,
+          "y": 20,
+          "width": 40,
+          "height": 50
+        },
+        "text_bbox": {
+          "x": 254,
+          "y": 32,
+          "width": 15,
+          "height": 15
+        }
+      },
+      "screenshot_png_sha256": "6972aec64c968d50581f5f2c8a001bfc0cca474f21fe4f6c5d387a12c99e541d",
+      "svg_sha256": "3de9d3f8a91bfb0110543310b33f77cecf274d3449ca8258369bcd2a57f8e47f"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "420a03e406331a45969e6a1a5ba83cd2c75d8760a49fa7315c7d2999b2e5d78a",
+    "tests/visual/test_native_document.py": "ec5a06ab0c6062ebb9beebe8318a92db843979059a344d15f0d0b14de679b157"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the independent-review remediation revision",
+    "independent review PASS for functional head aff9ff10032d49bf641e1726450cf9c3b51f3939",
+    "GitHub CI success on the later evidence commit",
+    "current-head Codex settlement after the later evidence commit",
+    "Captain merge readiness",
+    "runtime publication or Commonthing deployment"
+  ],
+  "evidence_digest": "579e4b0a179e79c217878cec6aa7a6b9a46ffe7b157ff4c58265288e5ca72ce9"
+}

@@ -1,0 +1,86 @@
+{
+  "accepted_at": "2026-10-01T09:22:10.884862+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "check_evidence": {
+    "parent_browser_probe": {
+      "cases": {
+        "balinese_chain": {
+          "actual_max_em": 5.990994262695312,
+          "estimate_em": 6
+        },
+        "malayalam_chain": {
+          "actual_max_em": 4.60799560546875,
+          "estimate_em": 4.65
+        },
+        "myanmar_chain": {
+          "actual_max_em": 7.355993041992187,
+          "estimate_em": 7.5
+        }
+      },
+      "outcome_receipt_sha256": "316d59cf80575e754a9de3bd9c3e0bb3511a54e35584f82d1c046ba09209c84d",
+      "task_id": "b5e3462c5c92475ba87d9c15",
+      "under_count": 0
+    }
+  },
+  "checks": {
+    "current_browser_probe_remains_non_underestimating_for_bound_cases": true,
+    "current_multi_letter_shaping_zwj_fallback_is_intentionally_linear": true,
+    "historical_non_linear_zwj_claim_is_explicitly_superseded": true,
+    "historical_review_remediation_acceptance_left_immutable": true,
+    "linear_fallback_applies_only_to_two_or_more_visible_letters": true,
+    "rejected_revision_not_reused_as_accepted_revision": true
+  },
+  "current_behavior": {
+    "combination": "max(cluster_minimum, max(shaping_widths), wide_letter_width, linear_fallback_width)",
+    "fallback": "sum script-calibrated per-letter fallback floors",
+    "implementation": "src/schauwerk/visual/native_diagram.py:4481-4499",
+    "purpose": "conservatively bound browsers that render the ZWJ letters independently instead of shaping a ligature",
+    "trigger": "at least two visible Letter-category codepoints in a shaping-script ZWJ grapheme"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment",
+    "universal width safety for arbitrary fonts outside the measured acceptance population"
+  ],
+  "evidence_digest": "447ba6d8a92e4802491a9f23d348c68bb0f99b421d9daf7da4bbb762b133cd84",
+  "evidence_predecessor_head": "4686cb38154e7c24b9bfb53ae23f82c9fdf79c22",
+  "functional_head": "aca0edd884097741cf1ab5816c163293fef48de4",
+  "historical_claim_correction": {
+    "current_truth": "For shaping-script ZWJ graphemes with at least two visible Unicode Letter codepoints, the current implementation intentionally sums script-calibrated per-letter fallback floors to bound the browser no-ligature fallback path. That linear fallback is combined with the cluster minimum, per-character shaping widths and wide-letter floors via max(...).",
+    "reason": "The historical max-only/non-linear policy was later shown to permit hidden clipping when a client lacks the shaping font or ligature. The unicode-remediation functional head therefore introduced an intentionally linear conservative fallback. The historical receipt remains immutable as evidence of the prior accepted state, but its non-linear claim is not current semantic truth.",
+    "source_evidence_digest": "1e01c0b090c8cb453fee2d4febe9f60f674904df80f36e97238a3283464737cc",
+    "source_receipt": "docs/operators/evidence/schaubild-json-canvas-text-fit-review-remediation-20261001/acceptance-receipt.json",
+    "source_receipt_file_sha256": "7a6d1f1a962c9a4d50cc68e7c4af16290ec4af2d3f2e5fb094342fd02ab05b81",
+    "stale_claim": "shaping_script_zwj_budget_is_non_linear / shaping ZWJ clusters no longer sum isolated letter advances",
+    "status": "superseded"
+  },
+  "parent_evidence": {
+    "evidence_digest": "97ca12d38fbe3bdb9273f39b6e29dd36b91e54cd03c150e54a74acfc19006a3b",
+    "file_sha256": "44c800078530efac0f2995c9b0a45bd14b91f1022e3e62292a3192e1f514571b",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-unicode-remediation-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-unicode-remediation.v1"
+  },
+  "review_debt": {
+    "decision_review_job": "grabowski-job-20f6b18f00ac",
+    "decision_review_slot": "independent",
+    "disposition": {
+      "evidence": "The implementation is intentionally linear for the browser no-ligature fallback; the defect was the stale historical evidence claim that the current policy remained non-linear.",
+      "status": "confirmed_claim_integrity_defect_and_remediated_by_successor",
+      "title": "Linear shaping ZWJ inflation remains linearly scaled"
+    },
+    "material_findings": 1,
+    "rejected_head": "4686cb38154e7c24b9bfb53ae23f82c9fdf79c22",
+    "role_receipt_sha256": "d0e21af6ae161076ff9ce7a6dd0f24575f891ee2ab435bc8f5ab63ec5d504ed5",
+    "verdict": "REJECT_THIS_REVISION"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-claim-integrity.v1",
+  "scope": "json-canvas-text-fit-claim-integrity-remediation",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2569bf9d3ac8b495e6099193cf7e8514236c8ca9b5a614927f07b2e772680d78",
+    "tests/visual/test_native_document.py": "dd1efa14f5419db04eb131be331a176194639a8f42ae83996bcfb1ce9d64042d"
+  }
+}

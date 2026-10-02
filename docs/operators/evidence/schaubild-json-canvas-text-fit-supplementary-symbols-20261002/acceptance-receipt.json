@@ -1,0 +1,136 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-supplementary-symbols.v1",
+  "scope": "json-canvas-supplementary-neutral-symbol-fallback-width",
+  "accepted_at": "2026-10-02T11:39:45.318134+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "1bbaa12a488591faf5c653c1be2bcf5c4c2adfad",
+  "evidence_predecessor_head": "e507a028f3291fd78a2d7aac1b8026f7432ef74c",
+  "parent_evidence": {
+    "evidence_digest": "24e3e45cd4bfe6a9776223ebf7f026b65014799c0866b6b07275162281c1e912",
+    "file_sha256": "3f72060d6cec13dbd49bde4c209097458b76e3054bc4ed3ea0400a86271918c4",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-vertical-marker-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-vertical-marker.v1"
+  },
+  "checks": {
+    "vertical_marker_parent_left_immutable": true,
+    "github_supplementary_symbol_review_remediated": true,
+    "supplementary_so_scan_covered_all_candidates": true,
+    "acceptance_font_population_measured_in_chromium": true,
+    "countercheck_outliers_closed": true,
+    "calibration_ranges_sorted_nonoverlap": true,
+    "reviewed_domino_budgeted_conservatively": true,
+    "focused_regressions_passed": true,
+    "complete_supplementary_so_scan_passed": true,
+    "diff_hygiene_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oTWSk",
+    "comment_id": 4164846704,
+    "reviewed_head": "e507a028f3291fd78a2d7aac1b8026f7432ef74c",
+    "author": "chatgpt-codex-connector",
+    "severity": "P2",
+    "title": "Budget supplementary neutral symbols at fallback width",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4164846704",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "measurement_scope": {
+    "unicode_category": "So",
+    "codepoint_range": "U+10000..U+10FFFF",
+    "sample_count": 3903,
+    "font_stacks": [
+      "700 100px Inter, Arial, sans-serif",
+      "700 100px 'DejaVu Sans'"
+    ],
+    "measurement_api": "Chromium canvas measureText",
+    "calibration_rounding": "round upward to 0.05em",
+    "calibration_range_count": 235,
+    "ranges_sorted_nonoverlap": true,
+    "under_count": 0,
+    "reviewed_codepoint": {
+      "codepoint": "U+1F061",
+      "name": "DOMINO TILE HORIZONTAL-06-06",
+      "post_fix_estimate_em": 1.4
+    },
+    "countercheck_outliers": [
+      {
+        "codepoint": "U+1D05B",
+        "name": "BYZANTINE MUSICAL SYMBOL OMALON",
+        "pre_fix_estimate_em": 0.9,
+        "measured_max_em": 0.9029991149902343,
+        "post_fix_estimate_em": 0.95
+      },
+      {
+        "codepoint": "U+1F542",
+        "name": "CROSS POMMEE",
+        "pre_fix_estimate_em": 0.9,
+        "measured_max_em": 0.9039991760253906,
+        "post_fix_estimate_em": 0.95
+      },
+      {
+        "codepoint": "U+1F543",
+        "name": "NOTCHED LEFT SEMICIRCLE WITH THREE DOTS",
+        "pre_fix_estimate_em": 0.9,
+        "measured_max_em": 0.9009991455078125,
+        "post_fix_estimate_em": 0.95
+      },
+      {
+        "codepoint": "U+1F544",
+        "name": "NOTCHED RIGHT SEMICIRCLE WITH THREE DOTS",
+        "pre_fix_estimate_em": 0.9,
+        "measured_max_em": 0.9009991455078125,
+        "post_fix_estimate_em": 0.95
+      }
+    ]
+  },
+  "check_evidence": {
+    "pre_fix_countercheck_scan": {
+      "task_id": "ead3977fc8a748b289887488",
+      "lifecycle_receipt_sha256": "ea4de947c2f3247797aba2e287130ec87f3799843c4a1b4fb3d6b093b6850d62",
+      "head": "938cbbab5746c753dc5046ab255ad0a2bbca8528",
+      "sample_count": 3903,
+      "under_count": 4,
+      "result": "failed_with_four_measured_underestimates"
+    },
+    "focused_regressions": {
+      "task_id": "33944367b8064843b3edf06c",
+      "lifecycle_receipt_sha256": "cf1cee06c35abed345bc5109967ffd2c6f0aff3e54f2dcd2944045f0973d7e91",
+      "passed_count": 9,
+      "result": "passed"
+    },
+    "complete_supplementary_so_scan": {
+      "task_id": "c9436680f5e14e33b242b130",
+      "lifecycle_receipt_sha256": "77f49f44507e0066f0fe083ceaeb8d72f6e63ad7ee6506f5d9e3bc9aa122bef4",
+      "sample_count": 3903,
+      "under_count": 0,
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "task_id": "33ed5880ffa24b8699a02cda",
+      "lifecycle_receipt_sha256": "3a8ff5bc9205a90dede1f4202ca19aad64a129009173a28e8abd6804329a527c",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "a45f3e626ed849f2ac3c930c",
+      "lifecycle_receipt_sha256": "660322c7a13cb3032fb3c3cd6e2f6797f2aa7dece883d54471092567e07ba4e4",
+      "passed_count": 1644,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c207cd2047b30d48d2a9449e2ccf72568bcc3916f706902fddc7bc0bdb43c528",
+    "tests/visual/test_native_document.py": "52745c1bbb830af4a76b5d48898afef0dbb76d575b8e142563f0cf88d4728911"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "65de4c07398fa32f61cd451f0737fc86f4f3aee360e27457e271026be2dd0d55"
+}

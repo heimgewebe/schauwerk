@@ -1,0 +1,96 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-vertical-marker.v1",
+  "scope": "json-canvas-truncation-marker-vertical-fit",
+  "accepted_at": "2026-10-02T10:06:58.605335+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "95629e6e83c2153ab8d4ceffafcf32f8e39722eb",
+  "evidence_predecessor_head": "00ec7ab9b333afedf3cb1a0f5f6d761011e8d0b7",
+  "parent_evidence": {
+    "evidence_digest": "2106fd4ee95861acbca996728f60a1b551cbb7bcd164eb08484df5ae53470cce",
+    "file_sha256": "381617f916603a1cf6c7810db0e35e2dc3f1d361191c1f7915e1e552b5ad315f",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-markdown-linear-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-markdown-linear.v1"
+  },
+  "checks": {
+    "markdown_linear_parent_left_immutable": true,
+    "github_vertical_marker_review_remediated": true,
+    "horizontal_marker_fit_preserved": true,
+    "vertical_marker_fit_uses_existing_minimum_baseline": true,
+    "too_short_nodes_emit_no_clipped_marker": true,
+    "normal_minimum_height_content_fit_preserved": true,
+    "focused_regressions_passed": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "diff_hygiene_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oQQ8x",
+    "comment_id": 4163573076,
+    "reviewed_head": "00ec7ab9b333afedf3cb1a0f5f6d761011e8d0b7",
+    "author": "chatgpt-codex-connector",
+    "severity": "P2",
+    "title": "Drop markers that cannot fit vertically",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4163573076",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "geometry_scope": {
+    "minimum_font_size_px": 12,
+    "minimum_first_baseline_offset_px": 24,
+    "bottom_padding_px": 5,
+    "height_1_result": "truncated_without_marker",
+    "height_28_result": "truncated_without_marker",
+    "height_29_result": "content_line_fits_at_baseline_24",
+    "claim": "synthetic truncation markers now use the same vertical minimum-baseline fit rule as ordinary minimum-size text"
+  },
+  "check_evidence": {
+    "pre_fix_reproduction": {
+      "job_unit": "grabowski-job-0f8188d7a777",
+      "finalization_receipt_sha256": "6f70d5cddb296d919bacaab5bc05e31006b7e7c7b28a36e6c450861789e0f0fe",
+      "result": "confirmed_vertically_clipped_marker"
+    },
+    "focused_regressions": {
+      "job_unit": "grabowski-job-0240530f212e",
+      "finalization_receipt_sha256": "314bfd2f262fe6b26b3fb50ef0fba8f176ab0e541c96dc3d70d13cb0860c53ec",
+      "passed_count": 6,
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-0a7dda911a58",
+      "finalization_receipt_sha256": "1ead7ef91a56995ba91a0b9b34526789b58069087b7beaca7efac44fa63e39b8",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-67eb11e8a419",
+      "finalization_receipt_sha256": "02ae20b422ccf6b4daa0223f14403d17ab6a91261c1569fe8faa725b960e8f6b",
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "job_unit": "grabowski-job-163e1b4a7b41",
+      "finalization_receipt_sha256": "4acb1a2c24289b7fc3e45051aa3f879b9ffaafa1e61d63a35a1e56e5103ebd4f",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-b58a37bd3a98",
+      "finalization_receipt_sha256": "15a1e7c6c10530cac8a9b98daee7659fda73cf9956faf0e50345c4b8d937560d",
+      "passed_count": 1635,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "08924cf5b7b0138f9bbfeb473ad751f9ae33d6102b805328cb75d8ea8f2feaa7",
+    "tests/visual/test_native_document.py": "58ae26b3f3e6ccf642585b01c34938f5d7fd522b22ba95e64a4eb1825c0865ff"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "24e3e45cd4bfe6a9776223ebf7f026b65014799c0866b6b07275162281c1e912"
+}

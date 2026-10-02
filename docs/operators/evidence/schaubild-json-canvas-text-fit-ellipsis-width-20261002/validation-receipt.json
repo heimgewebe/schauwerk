@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ellipsis-width-validation.v1",
+  "evidence_predecessor_head": "8ef89166bdd40276d157c474fa5594fed5a64db8",
+  "functional_head": "7098f102f898493e7129d297bd2495bf8d4a61cc",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-ellipsis-width-20261002/acceptance-receipt.json",
+    "file_sha256": "317e9a0c12b5492a65bc6f5c8584acd5e79e790313ba86f2b12d920d648ac78a"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "7f393a43a8ad7749d5bd53bae5d33cc41f1aada1af1d447828414240edc01713"
+  },
+  "note": "This receipt binds the ellipsis-width successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment; those remain subsequent gates."
+}

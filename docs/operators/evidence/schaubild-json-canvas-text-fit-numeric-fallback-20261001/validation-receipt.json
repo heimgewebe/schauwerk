@@ -1,0 +1,14 @@
+{
+  "acceptance_receipt": {
+    "file_sha256": "c8fb6938106d76c81523fdb78ddbe3d21c82146b23c693cb8ae8b05c88c7edd9",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-numeric-fallback-20261001/acceptance-receipt.json"
+  },
+  "evidence_predecessor_head": "3ece0ef7e0e87bad9f68f521226df06cebb937be",
+  "functional_head": "901c843d0f90b1b5f213a43d50d021ce9d77b849",
+  "note": "This receipt binds the Unicode numeric fallback-width successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment; those remain subsequent gates.",
+  "publication_fixture": {
+    "file_sha256": "210b12597ed566d6694eb941f8cc9fc35e2b456527c2d4a225efd776d129ceb4",
+    "path": "tests/publication/test_publication_fixtures.py"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-numeric-fallback-validation.v1"
+}

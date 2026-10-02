@@ -1,0 +1,21 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-unicode-remediation-validation.v1",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-unicode-remediation-20261001/acceptance-receipt.json",
+    "file_sha256": "44c800078530efac0f2995c9b0a45bd14b91f1022e3e62292a3192e1f514571b",
+    "evidence_digest": "97ca12d38fbe3bdb9273f39b6e29dd36b91e54cd03c150e54a74acfc19006a3b"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "97be40f2865cd6ee948faef0b74cb1c28fb5747732a3d127f30f242cecd7059f"
+  },
+  "functional_head": "aca0edd884097741cf1ab5816c163293fef48de4",
+  "full_validate": {
+    "task_id": "b18afba60da443d3976c5807",
+    "argv_sha256": "196c54aeb53d8fb271474adbcb6a08a742f750adfff88ba86dd6ea3797c63432",
+    "outcome_receipt_sha256": "40ea23bf4f6783ecaa9d07669bd2eb5eb5192239ace779236eba086e5e0a0cb5",
+    "result": "succeeded",
+    "passed_count": 1584
+  },
+  "note": "The recorded full validate ran after the acceptance receipt and publication fixture were finalized and before this metadata-only validation receipt was added. A final repository-wide validate is required after adding this file and before the evidence commit."
+}

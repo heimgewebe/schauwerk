@@ -1582,6 +1582,95 @@ def test_prefixed_native_render_response_stays_bound_to_internal_endpoint(tmp_pa
         server.server_close()
         thread.join(timeout=5)
 
+
+def test_native_json_canvas_endpoint_keeps_dense_source_text_visible(tmp_path: Path) -> None:
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = {
+        "nodes": [
+            {
+                "id": "start",
+                "type": "text",
+                "x": 20,
+                "y": 40,
+                "width": 280,
+                "height": 180,
+                "text": (
+                    "# Start\n\nDies ist eine **JSON-Canvas-Testdatei** für Schaubild."
+                    "\n\n- Markdown\n- Unicode: ä ö ü ß → ✓\n- Mehrzeiliger Text"
+                ),
+            },
+            {
+                "id": "special",
+                "type": "text",
+                "x": 800,
+                "y": 330,
+                "width": 200,
+                "height": 170,
+                "text": (
+                    "### Zeichen\n\n\x60<tag>\x60\n\n\x60A & B\x60\n\n"
+                    "\"Quotes\" & 'Apostrophes'\n\n🙂"
+                ),
+            },
+        ],
+        "edges": [],
+    }
+    request = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "schaubild-test.canvas",
+        "source": source,
+    }
+    payload = json.dumps(request, ensure_ascii=False).encode("utf-8")
+    handler = partial(_EditorRequestHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        connection = HTTPConnection(
+            "127.0.0.1", int(server.server_address[1]), timeout=5
+        )
+        connection.request(
+            "POST",
+            NATIVE_API_PATH,
+            body=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(payload)),
+            },
+        )
+        response = connection.getresponse()
+        body = json.loads(response.read().decode("utf-8"))
+        assert response.status == 200
+        assert body["renderer"] == NATIVE_RENDERER
+
+        diagram_url = body["url"].replace("index.html", "diagram.svg")
+        connection.request("GET", diagram_url)
+        diagram_response = connection.getresponse()
+        diagram_svg = diagram_response.read().decode("utf-8")
+        assert diagram_response.status == 200
+        assert 'data-document-mode="json-canvas"' in diagram_svg
+        assert "Unicode: ä ö ü ß → ✓" in diagram_svg
+        assert "Mehrzeiliger Text" in diagram_svg
+        assert "Apostrophes" in diagram_svg
+        assert "🙂" in diagram_svg
+        assert 'data-text-truncated="true"' not in diagram_svg
+        assert 'x="20" y="40" width="280" height="180"' in diagram_svg
+        assert 'x="800" y="330" width="200" height="170"' in diagram_svg
+
+        document_url = body["url"].replace("index.html", "document.json")
+        connection.request("GET", document_url)
+        document_response = connection.getresponse()
+        document = json.loads(document_response.read().decode("utf-8"))
+        assert document_response.status == 200
+        assert document["source"] == source
+        connection.close()
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 def test_native_product_admission_rejects_excessive_graph_cardinality() -> None:
     too_many_nodes = _golden_representation("decision-flow-v1.json")
     too_many_nodes["groups"] = []
@@ -2127,7 +2216,7 @@ def test_native_runtime_import_has_no_third_party_dependency_closure() -> None:
             (
                 "import sys; "
                 "import schauwerk.visual.standalone_editor; "
-                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs'}; "
+                "blocked={'mcp','httpx','jsonschema','pydantic','platformdirs','regex'}; "
                 "loaded=sorted(blocked.intersection(sys.modules)); "
                 "assert not loaded, loaded"
             ),
@@ -2175,6 +2264,7 @@ def test_runtime_dockerfile_copies_only_native_runtime_closure() -> None:
         "src/schauwerk/visual/standalone_editor.py",
         "src/schauwerk/visual/drawio_import.py",
         "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/visual/grapheme.py",
         "src/schauwerk/visual/native_diagram.py",
         "src/schauwerk/visual/native_document.py",
         "src/schauwerk/visual/representation.py",
@@ -4670,6 +4760,338 @@ def test_terminal_supersede_history_does_not_block_129th_normal_edit(
     assert len(root_windows) <= standalone_editor.MAX_NATIVE_PIN_WINDOWS
     assert previous is not None
     assert previous.consumer_counts == {standalone_editor._LOCAL_ADMISSION_KEY: 1}
+
+
+def test_admitted_wide_canvas_text_stays_within_native_bundle_budget(
+    tmp_path: Path,
+) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Wide.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "wide",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 1_000_000,
+                    "height": 1_000_000,
+                    "text": "0" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "wide-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    node = next(
+        element
+        for element in root.iter("{http://www.w3.org/2000/svg}g")
+        if element.attrib.get("data-source-id") == "wide"
+    )
+    assert node.attrib["data-text-truncated"] == "true"
+    title = next(node.iter("{http://www.w3.org/2000/svg}title"))
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+
+def test_oversized_canvas_identifiers_are_rejected_before_conversion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identifier = "n" * 1_700_000
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Oversized id.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": identifier,
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "ok",
+                }
+            ],
+            "edges": [],
+        },
+    }
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert len(payload) <= standalone_editor.MAX_NATIVE_REQUEST_BYTES
+
+    def unexpected_conversion(*_args: object, **_kwargs: object) -> dict[str, object]:
+        raise AssertionError("oversized identifiers must be rejected before conversion")
+
+    monkeypatch.setattr(
+        standalone_editor,
+        "json_canvas_to_editing_document",
+        unexpected_conversion,
+    )
+    with pytest.raises(
+        standalone_editor.StandaloneEditorError,
+        match="identifiers exceed the rendered identity byte budget",
+    ):
+        standalone_editor._native_product_input(value)
+
+
+def test_canvas_identifier_budget_preserves_accepted_source_identity() -> None:
+    identifier = "n" * standalone_editor.MAX_NATIVE_CANVAS_ID_BYTES
+    source = {
+        "nodes": [
+            {
+                "id": identifier,
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 240,
+                "height": 100,
+                "text": "ok",
+            }
+        ],
+        "edges": [],
+    }
+    normalized = standalone_editor._native_product_input(
+        {
+            "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+            "format": "json-canvas-1.0",
+            "title": "Accepted id.canvas",
+            "source": source,
+        }
+    )
+    assert normalized["nodes"][0]["id"] == identifier
+    assert normalized["source"]["nodes"][0]["id"] == identifier
+
+
+def test_admitted_wide_canvas_edge_text_stays_within_native_bundle_budget(
+    tmp_path: Path,
+) -> None:
+    label = "L" * 1_700_000
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Wide edge.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "a",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "a",
+                },
+                {
+                    "id": "b",
+                    "type": "text",
+                    "x": 400,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "b",
+                },
+            ],
+            "edges": [
+                {"id": "edge", "fromNode": "a", "toNode": "b", "label": label}
+            ],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "wide-edge-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    edge = next(
+        element
+        for element in root.iter("{http://www.w3.org/2000/svg}g")
+        if element.attrib.get("data-source-id") == "edge"
+    )
+    assert edge.attrib["data-text-truncated"] == "true"
+    title = next(edge.iter("{http://www.w3.org/2000/svg}title"))
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+
+def test_escaped_canvas_model_is_rejected_before_bundle_materialization(
+    tmp_path: Path,
+) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Escaped model.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "escaped-model",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "<" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "escaped-model-bundle"
+    with pytest.raises(
+        standalone_editor.NativeViewerBundleBudgetError,
+        match="projected bundle exceeds the 16 MiB bundle budget",
+    ):
+        standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert not bundle.exists()
+
+
+def test_escaped_canvas_model_overflow_is_422_from_renderer_child(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "escaped-model-http"
+    build_standalone_editor(output)
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": "Escaped model.canvas",
+        "source": {
+            "nodes": [
+                {
+                    "id": "escaped-model",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 240,
+                    "height": 100,
+                    "text": "<" * 1_700_000,
+                }
+            ],
+            "edges": [],
+        },
+    }
+    payload = json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
+    assert len(payload) < standalone_editor.MAX_NATIVE_REQUEST_BYTES
+
+    handler = object.__new__(_EditorRequestHandler)
+    handler.path = NATIVE_API_PATH
+    handler.headers = {
+        "Content-Type": "application/json",
+        "Content-Length": str(len(payload)),
+    }
+    handler.rfile = io.BytesIO(payload)
+    handler.directory = str(output)
+    handler.native_serve_binding = "127.0.0.1-only"
+    handler.public_base_path = ""
+    handler._request_deadline_expired = False
+    handler._request_deadline_at = time.monotonic() + 10
+    handler.close_connection = False
+    monkeypatch.setattr(handler, "_reject_non_loopback_host", lambda: False)
+    monkeypatch.setattr(
+        handler,
+        "_native_admission_key",
+        lambda: standalone_editor._LOCAL_ADMISSION_KEY,
+    )
+    responses: list[tuple[HTTPStatus, dict[str, object]]] = []
+
+    def capture_json(
+        status: HTTPStatus,
+        body: dict[str, object],
+        *,
+        write_body: bool = True,
+    ) -> bool:
+        del write_body
+        responses.append((status, body))
+        return True
+
+    monkeypatch.setattr(handler, "_send_json", capture_json)
+    handler.do_POST()
+
+    assert responses
+    status, body = responses[-1]
+    assert status == HTTPStatus.UNPROCESSABLE_ENTITY, body
+    assert "projected bundle exceeds the 16 MiB bundle budget" in str(body["error"])
+    cache_root = output / ".native-cache"
+    assert not cache_root.exists() or not any(cache_root.iterdir())
+
+
+def test_escaped_native_title_stays_within_native_bundle_budget(tmp_path: Path) -> None:
+    value = {
+        "schema_version": standalone_editor.NATIVE_IMPORT_SCHEMA,
+        "format": "json-canvas-1.0",
+        "title": '"' * 1_200_000,
+        "source": {
+            "nodes": [
+                {
+                    "id": "title-probe",
+                    "type": "text",
+                    "x": 0,
+                    "y": 0,
+                    "width": 200,
+                    "height": 100,
+                    "text": "A",
+                }
+            ],
+            "edges": [],
+        },
+    }
+    normalized = _native_product_input(value)
+    assert (
+        standalone_editor._native_viewer_input_size(normalized)
+        <= standalone_editor.MAX_NATIVE_VIEWER_INPUT_BYTES
+    )
+
+    bundle = tmp_path / "title-bundle"
+    standalone_editor.build_native_viewer(normalized, bundle)
+
+    assert (
+        standalone_editor._native_bundle_size(bundle)
+        <= standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    )
+    root = ET.fromstring((bundle / "diagram.svg").read_text(encoding="utf-8"))
+    assert root.attrib["data-title-truncated"] == "true"
+    title = root.find("{http://www.w3.org/2000/svg}title")
+    assert title is not None
+    assert title.text is not None
+    assert title.text.endswith("…")
+    assert len(title.text.encode("utf-8")) <= 4096
+
+    index_html = (bundle / "index.html").read_text(encoding="utf-8")
+    assert len(index_html.encode("utf-8")) < standalone_editor.MAX_NATIVE_BUNDLE_BYTES
+    assert "…" in index_html
 
 
 def test_normalized_json_canvas_overflow_is_422_before_renderer_spawn(

@@ -1,0 +1,156 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-indic-zwj-floor.v1",
+  "scope": "json-canvas-indic-shaping-zwj-linear-fallback-floor",
+  "accepted_at": "2026-10-02T04:36:48.037433+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "f025693f44a37e1563775a18b834569d3f655b3a",
+  "evidence_predecessor_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+  "parent_evidence": {
+    "evidence_digest": "52e07204e12209ddbeb07144a2e3cdf5c58dbff77c915b3d694f16050107e9a8",
+    "file_sha256": "317e9a0c12b5492a65bc6f5c8584acd5e79e790313ba86f2b12d920d648ac78a",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-ellipsis-width-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ellipsis-width.v1"
+  },
+  "checks": {
+    "ellipsis_width_parent_left_immutable": true,
+    "independent_review_linear_floor_finding_remediated": true,
+    "independent_review_incb_expansion_rejected_against_current_ucd": true,
+    "per_letter_isolated_fallback_floor_applied": true,
+    "incb_snapshot_left_unchanged": true,
+    "focused_indic_regressions_passed": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "diff_hygiene_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "independent_review": {
+    "reviewed_head": "1b9061207515836d8de8d2fa7da4a82814b2486e",
+    "canonical_github_diff_sha256": "8cd6ee269b3ab2a4b479c1738524a0e4088dda37e02673e6d575d254e6ec2ec8",
+    "local_role_diff_sha256": "2eda3b65b0dc95c6b6a732c70bea737b5ab2b5efbab59e944be45e31544651c5",
+    "job_unit": "grabowski-job-cf91e3b3bf1b",
+    "job_finalization_receipt_sha256": "5307ea4cd8c538323cf79471475fe506cf5db95197f05f77b44c80ac4278a616",
+    "role_receipt_path": "/home/alex/.local/state/grabowski/review-checkouts/schauwerk-pr191-1b90612-role-receipt.json",
+    "role_receipt_file_sha256": "9b2259f49ce523ff79f474a2959c10c9ef83696e592ed359ccf06ac7c657a60f",
+    "role_receipt_sha256": "c1268d6717e57d259c2f31edb3bf4cf2eaef80c7176605386050683b2b80080c",
+    "verdict": "NEEDS_CHANGE",
+    "findings": [
+      {
+        "severity": "P2",
+        "title": "Shaping-ZWJ linear floors are below isolated letter floors for joined Indic graphemes",
+        "disposition": "confirmed_and_remediated_in_functional_head"
+      },
+      {
+        "severity": "P2",
+        "title": "InCB snapshot omits Gurmukhi/Tamil/Kannada/Sinhala, masking the same ZWJ under-budget",
+        "disposition": "not_applicable_current_unicode_virama_scripts",
+        "reason": "Current Unicode Indic_Conjunct_Break derivation applies the virama-script consonant/linker override to Balinese, Bengali, Devanagari, Gujarati, Javanese, Malayalam, Oriya and Telugu; it does not require Gurmukhi, Tamil, Kannada or Sinhala to join under GB9c. The grapheme snapshot therefore remains unchanged.",
+        "reference_urls": [
+          "https://www.unicode.org/reports/tr44/",
+          "https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt"
+        ],
+        "current_virama_scripts": [
+          "Balinese",
+          "Bengali",
+          "Devanagari",
+          "Gujarati",
+          "Javanese",
+          "Malayalam",
+          "Oriya",
+          "Telugu"
+        ]
+      }
+    ]
+  },
+  "check_evidence": {
+    "pre_fix_floor_probe": {
+      "job_unit": "grabowski-job-8267aa4e2d44",
+      "finalization_receipt_sha256": "773b2b3badcc87ab879e5134c6eef123cd58c8cbd752b037b23d6efb90b79935",
+      "result": "confirmed_under_budget",
+      "under_budget_scripts": {
+        "Bengali": {
+          "current_em": 1.5,
+          "isolated_letter_sum_em": 1.8
+        },
+        "Devanagari": {
+          "current_em": 1.5,
+          "isolated_letter_sum_em": 1.8
+        },
+        "Gujarati": {
+          "current_em": 2.0,
+          "isolated_letter_sum_em": 2.6
+        },
+        "Malayalam": {
+          "current_em": 3.1,
+          "isolated_letter_sum_em": 3.9
+        },
+        "Telugu": {
+          "current_em": 2.6,
+          "isolated_letter_sum_em": 3.6
+        }
+      },
+      "already_conservative_scripts": [
+        "Balinese",
+        "Oriya"
+      ],
+      "gurmukhi_cluster_count": 2
+    },
+    "focused_regressions": {
+      "job_unit": "grabowski-job-e4d08531eb8c",
+      "finalization_receipt_sha256": "499f6904c4018a8d7b2d481819fe3fc2136fb43f26c1bfa7cab4cea4136c7e0b",
+      "passed_count": 9,
+      "result": "passed"
+    },
+    "initial_renderer_modules": {
+      "job_unit": "grabowski-job-70d00eeccd7d",
+      "finalization_receipt_sha256": "1560a91b1487b046b0a45f177164e71dcbe100b8c3dae25a7cb66b8aab441fb8",
+      "result": "test_fixture_width_exposed_old_underbudget_dependency",
+      "failing_test": "tests/visual/test_native_document.py::test_native_document_canvas_non_pictographic_zwj_does_not_force_truncation"
+    },
+    "malayalam_fixture_diagnostic": {
+      "job_unit": "grabowski-job-f1dcafe12cf8",
+      "finalization_receipt_sha256": "a93bd3d1a3ace4b6b9ba6472902fc7b15063df29abe9ec2c5c0674b0caef768d",
+      "cluster_count": 1,
+      "cluster_width_em": 7.8,
+      "inner_width_92_result": "truncated",
+      "inner_width_102_result": "fits",
+      "result": "test_fixture_widened_without_weakening_width_floor"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-84ebff904dcb",
+      "finalization_receipt_sha256": "7d5bffc653678fc6d2a23a03eb8e17dc0a2a33712384e90c5434808bb5202ec9",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-22beb9962a7a",
+      "finalization_receipt_sha256": "11c9004ada7cbc9cfcc0e1b0d45bb4cd67b887b2ebb3c84c9580047b0652124e",
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "job_unit": "grabowski-job-55f15dea4e62",
+      "finalization_receipt_sha256": "2211002b865ab317ec5ffebb825932aeef902498e5a156e35b73b9bbbbde9f3a",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-deacb757c5b6",
+      "finalization_receipt_sha256": "68d66f00eda5be4a61ed49ed8c075c274b8876108cda7dad54ee5d03177af848",
+      "passed_count": 1615,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9c281852c74ede1b683743d05bc1eb5efb94fa603ee92443448d2df0155224ce",
+    "tests/visual/test_native_document.py": "58bffd60dbdec089cc5ddb5d71c4abdcc518679fd8d44b24dd8875fb588f17a6"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "bae851cf2d9c1201f66ea497b0383ebcfa2286f810e93c004a1d6250f5e609d5"
+}

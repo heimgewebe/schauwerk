@@ -48,9 +48,13 @@ from schauwerk.visual.native_document import (
     normalize_editing_document,
 )
 from schauwerk.visual.native_viewer import (
+    MAX_BUNDLE_BYTES as MAX_NATIVE_BUNDLE_BYTES,
+)
+from schauwerk.visual.native_viewer import (
     MAX_INPUT_BYTES as MAX_NATIVE_VIEWER_INPUT_BYTES,
 )
 from schauwerk.visual.native_viewer import (
+    NativeViewerBundleBudgetError,
     NativeViewerError,
     build_native_viewer,
 )
@@ -62,7 +66,7 @@ NATIVE_API_PATH: Final = "/api/native-viewer"
 NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
 NATIVE_SUPERSEDE_HEADER: Final = "X-Schauwerk-Native-Supersede"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
-MAX_NATIVE_BUNDLE_BYTES: Final = 16 * 1024 * 1024
+MAX_NATIVE_CANVAS_ID_BYTES: Final = 64 * 1024
 MAX_NATIVE_CACHE_BYTES: Final = 32 * 1024 * 1024
 MAX_NATIVE_CACHE_ENTRIES: Final = 32
 NATIVE_CACHE_GRACE_SECONDS: Final = 60.0
@@ -401,6 +405,17 @@ def _assert_native_canvas_product_limits(value: Any) -> None:
             "native JSON Canvas document exceeds product complexity limits "
             f"(groups<={MAX_NATIVE_GROUPS}, nodes<={MAX_NATIVE_NODES}, "
             f"edges<={MAX_NATIVE_EDGES}, edge-pairs<={MAX_NATIVE_ROUTING_PAIRS})"
+        )
+    identifier_bytes = sum(
+        len(identifier.encode("utf-8"))
+        for item in (*nodes, *edges)
+        if isinstance(item, dict)
+        and isinstance((identifier := item.get("id")), str)
+    )
+    if identifier_bytes > MAX_NATIVE_CANVAS_ID_BYTES:
+        raise StandaloneEditorError(
+            "native JSON Canvas identifiers exceed the rendered identity byte budget "
+            f"({identifier_bytes}>{MAX_NATIVE_CANVAS_ID_BYTES})"
         )
 
 
@@ -1209,6 +1224,10 @@ def _run_native_viewer_build(
                     f"native viewer subprocess failed: {stderr}",
                     file=sys.stderr,
                 )
+            if returncode == 3:
+                raise NativeViewerBundleBudgetError(
+                    "native viewer projected bundle exceeds the 16 MiB bundle budget"
+                )
             raise NativeViewerError("native viewer subprocess build failed")
     finally:
         if input_path is not None:
@@ -1959,6 +1978,9 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             token = record.token
         except NativeRequestDeadlineError:
             self.close_connection = True
+            return
+        except NativeViewerBundleBudgetError as exc:
+            self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
             return
         except (NativeCacheCapacityError, NativeViewerError) as exc:
             self._send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": str(exc)})

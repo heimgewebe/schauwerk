@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+import io
 import math
 import re
 import textwrap
+import unicodedata
+from bisect import bisect_right
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from html import escape
 from typing import Any
 
 from .grammar import GRAMMAR_SCHEMA_VERSION
+from .grapheme import (
+    MAX_GRAPHEME_CLUSTER_CODEPOINTS,
+    bounded_grapheme_prefix,
+    is_extended_pictographic,
+    iter_grapheme_clusters,
+)
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
@@ -58,6 +67,15 @@ _VERTICAL_LABEL_MIN_WIDTH = 70
 _DIAGONAL_LABEL_MIN_WIDTH = 84
 _NARROW_CHARS = frozenset("ilI.,'`:;!|[](){}")
 _WIDE_CHARS = frozenset("MW@#%&QGmwo")
+_CANVAS_WRAP_DEFAULT_WIDTH_UNITS = 0.70
+_CANVAS_BOLD_FALLBACK_OPERATORS = frozenset("+<=>^~")
+_CANVAS_BOLD_FALLBACK_OPERATOR_WIDTH_UNITS = 0.85
+_CANVAS_BOLD_FALLBACK_DEFAULT_CHARS = frozenset("bdghnpqu{}")
+_CANVAS_BOLD_FALLBACK_DEFAULT_WIDTH_UNITS = 0.72
+_CANVAS_PRIVATE_USE_WIDTH_UNITS = 1.40
+_CANVAS_MAX_NODE_TEXT_LINES = 2048
+_CANVAS_MAX_EMITTED_TEXT_BYTES = 1 * 1024 * 1024
+_CANVAS_MAX_ELEMENT_TITLE_BYTES = 4096
 
 _NODE_STYLE = {
     "human": ("#e6f6f8", "#147d92", 28),
@@ -93,19 +111,23 @@ _KIND_LABEL = {
 }
 
 
+def _xml_10_character_allowed(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        codepoint in {0x09, 0x0A, 0x0D}
+        or 0x20 <= codepoint <= 0xD7FF
+        or 0xE000 <= codepoint <= 0xFFFD
+        or 0x10000 <= codepoint <= 0x10FFFF
+    )
+
+
 def _xml_escape(value: str) -> str:
     """Replace XML 1.0-forbidden code points, then escape markup characters."""
 
-    compatible: list[str] = []
-    for character in value:
-        codepoint = ord(character)
-        allowed = (
-            codepoint in {0x09, 0x0A, 0x0D}
-            or 0x20 <= codepoint <= 0xD7FF
-            or 0xE000 <= codepoint <= 0xFFFD
-            or 0x10000 <= codepoint <= 0x10FFFF
-        )
-        compatible.append(character if allowed else "\uFFFD")
+    compatible = [
+        character if _xml_10_character_allowed(character) else "\uFFFD"
+        for character in value
+    ]
     return escape("".join(compatible), quote=True)
 
 
@@ -3366,34 +3388,2487 @@ def _canvas_edge_geometry(
 
 
 
+def _canvas_strip_markdown_links(value: str) -> str:
+    """Strip legacy Markdown links with monotonic linear scanning."""
+
+    output: list[str] = []
+    cursor = 0
+    length = len(value)
+    while cursor < length:
+        opening = value.find("[", cursor)
+        if opening < 0:
+            output.append(value[cursor:])
+            break
+        output.append(value[cursor:opening])
+        closing = value.find("]", opening + 1)
+        if closing < 0:
+            output.append(value[opening:])
+            break
+        if closing == opening + 1 or closing + 1 >= length or value[closing + 1] != "(":
+            output.append(value[opening : closing + 1])
+            cursor = closing + 1
+            continue
+        target_end = value.find(")", closing + 2)
+        if target_end < 0:
+            output.append(value[opening:])
+            break
+        if target_end == closing + 2:
+            output.append(value[opening : target_end + 1])
+            cursor = target_end + 1
+            continue
+        output.append(value[opening + 1 : closing])
+        cursor = target_end + 1
+    return "".join(output)
+
+
 def _canvas_plain_markdown(value: str) -> str:
     """Normalize the bounded Markdown subset already used by the legacy Canvas path."""
 
     text = re.sub(r"^#{1,6}\s+", "", str(value), flags=re.MULTILINE)
-    text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", text)
+    text = _canvas_strip_markdown_links(text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     text = re.sub(r"__([^_]+)__", r"\1", text)
     text = re.sub(r"\x60([^\x60]+)\x60", r"\1", text)
-    return text.strip()
+    return text.strip(" \t\r\n")
 
 
-def _canvas_wrap(value: str, width_px: int, height_px: int) -> list[str]:
+@dataclass(frozen=True)
+class _CanvasTextLayout:
+    size: int
+    lines: tuple[tuple[str, int], ...]
+    truncated: bool
+
+
+def _canvas_iter_source_lines(value: str):
+    """Yield normalized source lines without materializing an unbounded split list."""
+
+    normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+    if not normalized:
+        yield ""
+        return
+    stream = io.StringIO(normalized)
+    for raw_line in stream:
+        yield raw_line[:-1] if raw_line.endswith("\n") else raw_line
+    if normalized.endswith("\n"):
+        yield ""
+
+
+def _canvas_legacy_lines(
+    value: str, width_px: int, *, max_lines: int
+) -> tuple[list[str], bool]:
+    """Return bounded historical wrapping and whether source text was omitted."""
+
+    if max_lines <= 0:
+        return [], bool(value)
     chars = max(4, width_px // 8)
-    line_count = max(1, min(10, height_px // 20))
     lines: list[str] = []
-    for paragraph in value.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    for paragraph in _canvas_iter_source_lines(value):
+        remaining = max_lines - len(lines)
+        if remaining <= 0:
+            return lines, True
+        if not paragraph:
+            lines.append("")
+            continue
+        sample_limit = max(chars, chars * (remaining + 1))
+        sample = paragraph[:sample_limit]
         wrapped = textwrap.wrap(
-            paragraph,
+            sample,
             width=chars,
             break_long_words=True,
             break_on_hyphens=False,
         ) or [""]
+        if len(wrapped) > remaining:
+            lines.extend(wrapped[:remaining])
+            return lines, True
         lines.extend(wrapped)
-        if len(lines) >= line_count:
+        if len(sample) < len(paragraph):
+            return lines, True
+    return lines, False
+
+
+_CANVAS_ZWNJ = "\u200c"
+_CANVAS_ZWJ = "\u200d"
+_CANVAS_EMOJI_PRESENTATION_SELECTOR = "\ufe0f"
+_CANVAS_KEYCAP = "\u20e3"
+_CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS = frozenset(
+    {
+        0x061C,  # ARABIC LETTER MARK
+        0x200E,  # LEFT-TO-RIGHT MARK
+        0x200F,  # RIGHT-TO-LEFT MARK
+        0x202A,  # LEFT-TO-RIGHT EMBEDDING
+        0x202B,  # RIGHT-TO-LEFT EMBEDDING
+        0x202C,  # POP DIRECTIONAL FORMATTING
+        0x202D,  # LEFT-TO-RIGHT OVERRIDE
+        0x202E,  # RIGHT-TO-LEFT OVERRIDE
+        0x2066,  # LEFT-TO-RIGHT ISOLATE
+        0x2067,  # RIGHT-TO-LEFT ISOLATE
+        0x2068,  # FIRST STRONG ISOLATE
+        0x2069,  # POP DIRECTIONAL ISOLATE
+        0x206A,  # INHIBIT SYMMETRIC SWAPPING
+        0x206B,  # ACTIVATE SYMMETRIC SWAPPING
+        0x206C,  # INHIBIT ARABIC FORM SHAPING
+        0x206D,  # ACTIVATE ARABIC FORM SHAPING
+        0x206E,  # NATIONAL DIGIT SHAPES
+        0x206F,  # NOMINAL DIGIT SHAPES
+    }
+)
+_CANVAS_BIDI_EMBED_OPENERS = frozenset({"\u202a", "\u202b", "\u202d", "\u202e"})
+_CANVAS_BIDI_ISOLATE_OPENERS = frozenset({"\u2066", "\u2067"})
+_CANVAS_BIDI_FSI = "\u2068"
+_CANVAS_BIDI_PDF = "\u202c"
+_CANVAS_BIDI_PDI = "\u2069"
+_CANVAS_MAX_BIDI_SCOPE_DEPTH = 125
+_CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS = frozenset(
+    {
+        0x00AD,  # SOFT HYPHEN
+        0x180E,  # MONGOLIAN VOWEL SEPARATOR
+        0x200B,  # ZERO WIDTH SPACE
+        0x2060,  # WORD JOINER
+        0x2061,  # FUNCTION APPLICATION
+        0x2062,  # INVISIBLE TIMES
+        0x2063,  # INVISIBLE SEPARATOR
+        0x2064,  # INVISIBLE PLUS
+        0xFEFF,  # ZERO WIDTH NO-BREAK SPACE
+    }
+)
+_MAX_CANVAS_TEXT_PROBE_CLUSTERS = 32_768
+_MAX_CANVAS_TEXT_PROBE_CODEPOINTS = 65_536
+_CANVAS_SPACING_MARK_WIDTH_UNITS = 0.60
+_CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS = 1.50
+_CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES = (
+    (0x0900, 0x097F, 1.20),  # Devanagari
+    (0x0980, 0x09FF, 1.25),  # Bengali
+    (0x0A00, 0x0A7F, 1.15),  # Gurmukhi
+    (0x0A80, 0x0AFF, 1.15),  # Gujarati
+    (0x0B00, 0x0B7F, 1.15),  # Oriya
+    (0x0B80, 0x0BFF, 1.25),  # Tamil
+    (0x0C80, 0x0CFF, 1.15),  # Kannada
+    (0x0D00, 0x0D7F, 1.65),  # Malayalam
+    (0x0D80, 0x0DFF, 1.50),  # Sinhala
+    (0x1780, 0x17FF, 1.10),  # Khmer
+    (0x1B00, 0x1B7F, 1.55),  # Balinese
+)
+_CANVAS_ZWJ_SHAPING_SCRIPT_RANGES = (
+    (0x0600, 0x08FF),  # Arabic-family joining scripts
+    (0x0900, 0x0DFF),  # Indic scripts covered by the native Canvas renderer
+    (0x1000, 0x109F),  # Myanmar
+    (0x1780, 0x17FF),  # Khmer
+    (0x1A20, 0x1AAF),  # Tai Tham
+    (0x1B00, 0x1B7F),  # Balinese
+)
+# Isolated shaping-script letters whose measured bold fallback advance exceeds
+# the 1.5em composite-cluster floor. Keep only the widest member of a shaped
+# ZWJ cluster; summing per-letter fallback advances overbudgets conjuncts.
+_CANVAS_ZWJ_SHAPING_WIDE_LETTER_WIDTH_RANGES = (
+    (0x0B94, 0x0B94, 1.60),
+    (0x0C60, 0x0C60, 1.80),
+    (0x0CE0, 0x0CE0, 1.60),
+    (0x0D06, 0x0D06, 1.55),
+    (0x0D08, 0x0D08, 1.75),
+    (0x0D10, 0x0D10, 1.95),
+    (0x0D1D, 0x0D1D, 1.55),
+    (0x0D8E, 0x0D8E, 1.75),
+    (0x0D90, 0x0D90, 1.60),
+    (0x102A, 0x102A, 2.50),
+    (0x103F, 0x103F, 1.60),
+    (0x1B08, 0x1B08, 1.55),
+    (0x1B12, 0x1B12, 1.55),
+    (0x1B46, 0x1B46, 1.80),
+    (0x1B4B, 0x1B4B, 1.85),
+)
+# Per-base floors for multi-letter shaping-ZWJ graphemes that remain one
+# extended grapheme cluster. The 0.75em default preserves the short shaped
+# conjunct floor; higher script floors are rounded above exhaustive repeated-
+# letter Chrome/DejaVu probes so missing/partial shaping cannot collapse the
+# whole cluster to the width of only its widest member.
+_CANVAS_ZWJ_LINEAR_FALLBACK_DEFAULT_WIDTH_UNITS = 0.75
+_CANVAS_ZWJ_LINEAR_FALLBACK_LETTER_WIDTH_RANGES = (
+    (0x0A80, 0x0AFF, 1.00),
+    (0x0B00, 0x0B7F, 1.00),
+    (0x0C00, 0x0C7F, 1.30),
+    (0x0D00, 0x0D7F, 1.55),
+    (0x1000, 0x109F, 2.50),
+    (0x1780, 0x17FF, 1.30),
+    (0x1A20, 0x1AAF, 1.40),
+    (0x1B00, 0x1B7F, 2.00),
+)
+_CANVAS_XML_REPLACEMENT_WIDTH_UNITS = 1.15
+_CANVAS_CYRILLIC_WIDTH_UNITS = 1.25
+_CANVAS_FALLBACK_LETTER_WIDTH_UNITS = 0.90
+_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS = 1.05
+_CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS = 1.65
+_CANVAS_EMOJI_PRESENTATION_WIDTH_UNITS = 1.25
+# Supplementary neutral symbols that still reach the generic 0.9em path can
+# select wider bold fallback glyphs in Chromium. These sorted, non-overlapping
+# ranges are rounded upward to 0.05em from the maximum measured advance across
+# the Inter/Arial/sans-serif and explicit DejaVu Sans acceptance stacks.
+_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES = (
+    (0x1013F, 0x1013F, 1.05),
+    (0x10185, 0x10185, 0.95),
+    (0x10198, 0x10198, 1.15),
+    (0x1019C, 0x1019C, 1.00),
+    (0x1173F, 0x1173F, 0.95),
+    (0x11FD5, 0x11FD5, 1.40),
+    (0x11FD6, 0x11FD6, 1.50),
+    (0x11FD7, 0x11FD7, 1.25),
+    (0x11FD8, 0x11FD8, 1.20),
+    (0x11FD9, 0x11FD9, 1.60),
+    (0x11FDB, 0x11FDB, 1.60),
+    (0x11FDC, 0x11FDC, 1.35),
+    (0x11FE1, 0x11FE1, 1.60),
+    (0x11FE2, 0x11FE2, 1.80),
+    (0x11FE3, 0x11FE3, 1.70),
+    (0x11FE4, 0x11FE4, 1.40),
+    (0x11FE5, 0x11FE5, 1.30),
+    (0x11FE6, 0x11FE6, 1.35),
+    (0x11FE7, 0x11FE7, 1.45),
+    (0x11FE8, 0x11FE8, 1.55),
+    (0x11FE9, 0x11FE9, 1.15),
+    (0x11FEA, 0x11FEA, 1.35),
+    (0x11FEB, 0x11FEB, 1.25),
+    (0x11FEC, 0x11FEC, 1.05),
+    (0x11FED, 0x11FED, 1.65),
+    (0x11FEE, 0x11FEE, 1.45),
+    (0x11FEF, 0x11FEF, 1.35),
+    (0x11FF0, 0x11FF0, 1.45),
+    (0x11FF1, 0x11FF1, 1.70),
+    (0x1CF50, 0x1CFC3, 1.05),
+    (0x1D004, 0x1D004, 1.05),
+    (0x1D006, 0x1D006, 0.95),
+    (0x1D008, 0x1D008, 1.30),
+    (0x1D009, 0x1D009, 1.20),
+    (0x1D00C, 0x1D00C, 1.05),
+    (0x1D013, 0x1D013, 1.25),
+    (0x1D025, 0x1D025, 0.95),
+    (0x1D027, 0x1D027, 1.05),
+    (0x1D028, 0x1D028, 1.25),
+    (0x1D029, 0x1D029, 1.10),
+    (0x1D02A, 0x1D02A, 1.20),
+    (0x1D02B, 0x1D02B, 1.45),
+    (0x1D02C, 0x1D02C, 1.15),
+    (0x1D02D, 0x1D02D, 1.10),
+    (0x1D02E, 0x1D02E, 1.20),
+    (0x1D02F, 0x1D02F, 0.95),
+    (0x1D031, 0x1D031, 1.00),
+    (0x1D032, 0x1D032, 1.50),
+    (0x1D033, 0x1D033, 1.10),
+    (0x1D034, 0x1D034, 1.25),
+    (0x1D035, 0x1D035, 1.05),
+    (0x1D037, 0x1D037, 1.10),
+    (0x1D03B, 0x1D03B, 1.50),
+    (0x1D03D, 0x1D03D, 1.50),
+    (0x1D03E, 0x1D03E, 1.05),
+    (0x1D03F, 0x1D03F, 1.10),
+    (0x1D043, 0x1D043, 1.50),
+    (0x1D044, 0x1D044, 0.95),
+    (0x1D045, 0x1D045, 1.30),
+    (0x1D04B, 0x1D04C, 1.05),
+    (0x1D05B, 0x1D05B, 0.95),
+    (0x1D060, 0x1D060, 1.00),
+    (0x1D061, 0x1D061, 1.05),
+    (0x1D062, 0x1D062, 0.95),
+    (0x1D065, 0x1D065, 0.95),
+    (0x1D06C, 0x1D06D, 0.95),
+    (0x1D06E, 0x1D06E, 1.05),
+    (0x1D070, 0x1D071, 0.95),
+    (0x1D075, 0x1D075, 1.50),
+    (0x1D079, 0x1D079, 0.95),
+    (0x1D07B, 0x1D07B, 1.05),
+    (0x1D138, 0x1D139, 1.20),
+    (0x1D192, 0x1D193, 1.40),
+    (0x1D1DA, 0x1D1DA, 1.10),
+    (0x1D1DC, 0x1D1DC, 0.95),
+    (0x1D1E1, 0x1D1E1, 1.45),
+    (0x1D1E9, 0x1D1EA, 1.05),
+    (0x1D20C, 0x1D20C, 0.95),
+    (0x1D800, 0x1D9FF, 1.00),
+    (0x1DA37, 0x1DA3A, 1.00),
+    (0x1DA6D, 0x1DA74, 1.00),
+    (0x1DA76, 0x1DA83, 1.00),
+    (0x1DA85, 0x1DA86, 1.00),
+    (0x1ED2E, 0x1ED2E, 1.05),
+    (0x1F030, 0x1F061, 1.40),
+    (0x1F0A0, 0x1F0AE, 1.05),
+    (0x1F0B1, 0x1F0BE, 1.05),
+    (0x1F0C1, 0x1F0CE, 1.05),
+    (0x1F0D1, 0x1F0DF, 1.05),
+    (0x1F110, 0x1F12E, 1.00),
+    (0x1F12F, 0x1F12F, 0.95),
+    (0x1F130, 0x1F149, 1.40),
+    (0x1F14A, 0x1F169, 1.00),
+    (0x1F172, 0x1F17D, 1.00),
+    (0x1F180, 0x1F18D, 1.00),
+    (0x1F18F, 0x1F190, 1.00),
+    (0x1F19B, 0x1F1AC, 1.00),
+    (0x1F1E6, 0x1F1FF, 1.25),
+    (0x1F394, 0x1F394, 1.10),
+    (0x1F395, 0x1F395, 0.95),
+    (0x1F398, 0x1F398, 1.10),
+    (0x1F39C, 0x1F39C, 1.00),
+    (0x1F39D, 0x1F39D, 0.95),
+    (0x1F3F6, 0x1F3F6, 0.95),
+    (0x1F4FE, 0x1F4FE, 1.15),
+    (0x1F53E, 0x1F53F, 0.95),
+    (0x1F540, 0x1F541, 1.00),
+    (0x1F542, 0x1F544, 0.95),
+    (0x1F568, 0x1F56A, 1.10),
+    (0x1F56B, 0x1F56B, 1.00),
+    (0x1F56C, 0x1F56C, 1.30),
+    (0x1F56E, 0x1F56E, 1.20),
+    (0x1F571, 0x1F571, 1.00),
+    (0x1F572, 0x1F572, 1.10),
+    (0x1F57C, 0x1F57C, 1.05),
+    (0x1F57E, 0x1F580, 1.00),
+    (0x1F582, 0x1F584, 1.20),
+    (0x1F585, 0x1F585, 1.30),
+    (0x1F586, 0x1F586, 1.20),
+    (0x1F588, 0x1F588, 0.95),
+    (0x1F589, 0x1F589, 1.10),
+    (0x1F58E, 0x1F58E, 1.20),
+    (0x1F58F, 0x1F58F, 1.10),
+    (0x1F591, 0x1F591, 1.10),
+    (0x1F592, 0x1F593, 1.00),
+    (0x1F598, 0x1F59D, 1.25),
+    (0x1F5A6, 0x1F5A6, 1.00),
+    (0x1F5A7, 0x1F5A7, 1.15),
+    (0x1F5AD, 0x1F5AD, 1.20),
+    (0x1F5AE, 0x1F5AE, 1.00),
+    (0x1F5B3, 0x1F5B3, 1.35),
+    (0x1F5B4, 0x1F5B4, 1.05),
+    (0x1F5B5, 0x1F5B5, 1.10),
+    (0x1F5B6, 0x1F5B8, 0.95),
+    (0x1F5BD, 0x1F5BE, 1.10),
+    (0x1F5BF, 0x1F5C0, 1.00),
+    (0x1F5C1, 0x1F5C1, 1.25),
+    (0x1F5C7, 0x1F5C7, 0.95),
+    (0x1F5CA, 0x1F5CA, 0.95),
+    (0x1F5CD, 0x1F5CD, 1.00),
+    (0x1F5D0, 0x1F5D0, 1.00),
+    (0x1F5D4, 0x1F5D4, 1.10),
+    (0x1F5D6, 0x1F5D7, 0.95),
+    (0x1F5DA, 0x1F5DB, 1.25),
+    (0x1F5E0, 0x1F5E0, 1.05),
+    (0x1F5E2, 0x1F5E2, 1.05),
+    (0x1F5E4, 0x1F5E7, 1.00),
+    (0x1F5E9, 0x1F5E9, 1.15),
+    (0x1F5EA, 0x1F5EA, 1.25),
+    (0x1F5EB, 0x1F5EB, 1.35),
+    (0x1F5EC, 0x1F5ED, 1.10),
+    (0x1F5EE, 0x1F5EE, 1.25),
+    (0x1F5F0, 0x1F5F1, 1.20),
+    (0x1F5F2, 0x1F5F2, 0.95),
+    (0x1F5F6, 0x1F5F6, 0.95),
+    (0x1F651, 0x1F652, 0.95),
+    (0x1F654, 0x1F654, 0.95),
+    (0x1F657, 0x1F657, 0.95),
+    (0x1F658, 0x1F65B, 1.00),
+    (0x1F65C, 0x1F65F, 1.15),
+    (0x1F660, 0x1F663, 1.00),
+    (0x1F664, 0x1F667, 1.10),
+    (0x1F668, 0x1F66B, 1.05),
+    (0x1F66C, 0x1F66C, 1.10),
+    (0x1F66E, 0x1F66E, 1.10),
+    (0x1F670, 0x1F671, 1.30),
+    (0x1F675, 0x1F675, 1.30),
+    (0x1F67C, 0x1F67F, 1.20),
+    (0x1F6C6, 0x1F6C6, 1.00),
+    (0x1F6C7, 0x1F6C8, 1.05),
+    (0x1F6D3, 0x1F6D4, 1.00),
+    (0x1F6E7, 0x1F6E7, 0.95),
+    (0x1F6E8, 0x1F6E8, 1.05),
+    (0x1F6F1, 0x1F6F1, 1.00),
+    (0x1F6F2, 0x1F6F2, 1.15),
+    (0x1F700, 0x1F700, 1.20),
+    (0x1F705, 0x1F705, 1.15),
+    (0x1F706, 0x1F706, 1.20),
+    (0x1F707, 0x1F707, 1.10),
+    (0x1F712, 0x1F712, 1.00),
+    (0x1F713, 0x1F713, 1.15),
+    (0x1F719, 0x1F719, 1.20),
+    (0x1F71A, 0x1F71A, 1.05),
+    (0x1F71B, 0x1F71B, 0.95),
+    (0x1F71C, 0x1F71C, 1.15),
+    (0x1F71D, 0x1F71D, 1.00),
+    (0x1F721, 0x1F721, 1.00),
+    (0x1F724, 0x1F724, 1.40),
+    (0x1F732, 0x1F732, 0.95),
+    (0x1F733, 0x1F733, 1.10),
+    (0x1F738, 0x1F738, 0.95),
+    (0x1F73A, 0x1F73A, 0.95),
+    (0x1F73C, 0x1F73D, 1.00),
+    (0x1F740, 0x1F740, 1.00),
+    (0x1F744, 0x1F744, 1.00),
+    (0x1F747, 0x1F747, 1.50),
+    (0x1F748, 0x1F748, 1.00),
+    (0x1F749, 0x1F749, 0.95),
+    (0x1F750, 0x1F750, 1.25),
+    (0x1F751, 0x1F752, 0.95),
+    (0x1F756, 0x1F756, 0.95),
+    (0x1F759, 0x1F75A, 1.05),
+    (0x1F75B, 0x1F75B, 1.00),
+    (0x1F75C, 0x1F75C, 1.20),
+    (0x1F75D, 0x1F75D, 0.95),
+    (0x1F75E, 0x1F75F, 1.05),
+    (0x1F760, 0x1F760, 1.40),
+    (0x1F764, 0x1F764, 0.95),
+    (0x1F76A, 0x1F76A, 1.15),
+    (0x1F76B, 0x1F76B, 1.05),
+    (0x1F76C, 0x1F76C, 0.95),
+    (0x1F76E, 0x1F76E, 1.00),
+    (0x1F770, 0x1F770, 1.00),
+    (0x1F772, 0x1F776, 1.05),
+    (0x1F77B, 0x1F77F, 1.05),
+    (0x1F79A, 0x1F79C, 1.15),
+    (0x1F7D2, 0x1F7D4, 0.95),
+    (0x1F7D9, 0x1F7D9, 1.05),
+    (0x1F808, 0x1F808, 0.95),
+    (0x1F80A, 0x1F80A, 0.95),
+    (0x1F830, 0x1F830, 1.05),
+    (0x1F832, 0x1F832, 1.05),
+    (0x1F841, 0x1F841, 1.05),
+    (0x1F843, 0x1F847, 1.05),
+    (0x1F850, 0x1F850, 2.70),
+    (0x1F852, 0x1F852, 2.70),
+    (0x1F858, 0x1F858, 1.10),
+    (0x1F8A0, 0x1F8AB, 1.05),
+    (0x1F8B0, 0x1F8B1, 1.00),
+    (0x1F900, 0x1F90B, 1.05),
+    (0x1F946, 0x1F946, 1.05),
+    (0x1FA00, 0x1FA53, 1.00),
+    (0x1FA60, 0x1FA6D, 1.00),
+    (0x1FB00, 0x1FB92, 1.00),
+    (0x1FB94, 0x1FBC4, 1.00),
+)
+_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_STARTS = tuple(
+    first for first, _last, _width in _CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES
+)
+# The generic non-ASCII letter estimate stays at the historical 0.9em. Only
+# measured fallback outliers receive a higher floor, which avoids applying the
+# previous 1.0em safety floor to every alphabetic code point.
+_CANVAS_FALLBACK_LETTER_FLOOR_RANGES = (
+    (0x0126, 0x0126, 1.00),
+    (0x0149, 0x0149, 1.00),
+    (0x0175, 0x0175, 0.95),
+    (0x018A, 0x018A, 0.95),
+    (0x01A3, 0x01A3, 0.95),
+    (0x026F, 0x0271, 1.05),
+    (0x0276, 0x0277, 0.95),
+    (0x0289, 0x0289, 0.95),
+    (0x028D, 0x028D, 0.95),
+    (0x02A6, 0x02A6, 1.00),
+    (0x02A8, 0x02A8, 0.95),
+    (0x02A9, 0x02A9, 1.05),
+    (0x038E, 0x038E, 1.00),
+    (0x039C, 0x039C, 1.00),
+    (0x03C9, 0x03C9, 0.95),
+    (0x03CE, 0x03CE, 0.95),
+    (0x03D3, 0x03D3, 1.00),
+    (0x03D6, 0x03D6, 0.95),
+    (0x03E0, 0x03E0, 0.95),
+    (0x03E6, 0x03E6, 0.95),
+    (0x03FA, 0x03FA, 1.00),
+    (0x0539, 0x0539, 0.95),
+    (0x053D, 0x053D, 1.00),
+    (0x0560, 0x0560, 0.95),
+    (0x0561, 0x0561, 1.00),
+    (0x056D, 0x056D, 1.00),
+    (0x057A, 0x057A, 1.00),
+    (0x057F, 0x057F, 1.00),
+    (0x0583, 0x0583, 1.00),
+    (0x079F, 0x079F, 1.00),
+    (0x090B, 0x090B, 0.95),
+    (0x0B06, 0x0B06, 1.00),
+    (0x0B10, 0x0B10, 1.00),
+    (0x0B14, 0x0B14, 1.00),
+    (0x0B2B, 0x0B2B, 1.00),
+    (0x1100, 0x11FF, 0.95),  # Hangul Jamo
+    (0x1700, 0x177F, 1.10),  # Tagalog/Hanunoo/Buhid/Tagbanwa
+    (0x18B0, 0x18FF, 1.05),  # Canadian Syllabics Extended
+    (0x1905, 0x1905, 0.95),
+    (0x1CFA, 0x1CFA, 1.05),
+    (0x1D02, 0x1D02, 1.05),
+    (0x1D14, 0x1D14, 1.10),
+    (0x1D1E, 0x1D1E, 0.95),
+    (0x1D21, 0x1D21, 0.95),
+    (0x2D00, 0x2D2F, 1.05),  # Georgian Supplement
+    (0xA4DF, 0xA4DF, 1.00),
+    (0xA4EA, 0xA4EA, 1.15),
+    (0xA6E1, 0xA6E1, 0.95),
+    (0xA808, 0xA808, 1.00),
+    (0xA80F, 0xA80F, 0.95),
+    (0xA815, 0xA815, 0.95),
+    (0xA81A, 0xA81A, 0.95),
+    (0xA89A, 0xA89A, 0.95),
+    (0xA944, 0xA944, 0.95),
+    (0xAB3A, 0xAB42, 0.95),  # Latin Extended-E measured tail
+    (0xABC0, 0xABC0, 0.95),
+    (0xABC4, 0xABC4, 1.00),
+    (0xABC9, 0xABC9, 0.95),
+    (0xD7B0, 0xD7FF, 0.95),  # Hangul Jamo Extended-B
+    (0xFFA0, 0xFFDC, 0.95),  # Halfwidth Hangul letters
+)
+# Letter fallback glyphs whose isolated bold advance exceeds the generic
+# non-ASCII budget in DejaVu Sans Bold or the headless-Chrome
+# Inter/Arial/sans-serif fallback stack. Ranges are script/block aware and
+# rounded upward to 0.05em.
+_CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES = (
+    (0x00C6, 0x00C6, 1.10),  # LATIN CAPITAL LETTER AE
+    (0x00E6, 0x00E6, 1.05),  # LATIN SMALL LETTER AE
+    (0x0152, 0x0152, 1.20),  # LATIN CAPITAL LIGATURE OE
+    (0x0153, 0x0153, 1.10),  # LATIN SMALL LIGATURE OE
+    (0x0174, 0x0174, 1.15),  # LATIN CAPITAL LETTER W WITH CIRCUMFLEX
+    (0x0195, 0x0195, 1.05),
+    (0x019C, 0x019C, 1.05),
+    (0x01A2, 0x01A2, 1.10),
+    (0x01C4, 0x01CC, 1.60),  # Latin DZ/LJ/NJ digraph family
+    (0x01E2, 0x01E2, 1.10),
+    (0x01E3, 0x01E3, 1.05),
+    (0x01F1, 0x01F3, 1.60),  # Latin DZ digraph family
+    (0x01F6, 0x01F6, 1.30),
+    (0x01FC, 0x01FC, 1.10),
+    (0x01FD, 0x01FD, 1.05),
+    (0x0238, 0x0239, 1.10),
+    (0x02A3, 0x02A5, 1.30),  # IPA digraphs
+    (0x0372, 0x0372, 1.05),
+    (0x0389, 0x0389, 1.05),
+    (0x03E2, 0x03E2, 1.10),
+    (0x0429, 0x0429, 1.35),
+    (0x0468, 0x0468, 1.40),
+    (0x0478, 0x0478, 1.40),
+    (0x047C, 0x047C, 1.45),
+    (0x04A6, 0x04A6, 1.30),
+    (0x050A, 0x050A, 1.30),
+    (0x0514, 0x0514, 1.30),
+    (0x0520, 0x0520, 1.30),
+    (0x0522, 0x0522, 1.30),
+    (0x0590, 0x05FF, 1.05),  # Hebrew
+    (0x0600, 0x06FF, 1.40),  # Arabic
+    (0x0750, 0x077F, 1.40),  # Arabic Supplement
+    (0x07C0, 0x07FF, 1.05),  # NKo
+    (0x0800, 0x083F, 1.10),  # Samaritan
+    (0x0840, 0x085F, 1.15),  # Mandaic
+    (0x0860, 0x08FF, 1.35),  # Syriac/Arabic Extended
+    (0x0A00, 0x0A7F, 1.25),  # Gurmukhi
+    (0x0A80, 0x0AFF, 1.30),  # Gujarati
+    (0x0B80, 0x0BFF, 1.60),  # Tamil
+    (0x0C00, 0x0C7F, 1.80),  # Telugu
+    (0x0C80, 0x0CFF, 1.60),  # Kannada
+    (0x0D00, 0x0D7F, 1.95),  # Malayalam
+    (0x0D80, 0x0DFF, 1.75),  # Sinhala
+    (0x0E80, 0x0EFF, 1.40),  # Lao
+    (0x1000, 0x1028, 1.35),  # Myanmar common letters
+    (0x1029, 0x1029, 1.40),  # MYANMAR LETTER O
+    (0x102A, 0x102A, 2.50),  # MYANMAR LETTER AU
+    (0x102B, 0x103E, 1.35),  # Myanmar common letters
+    (0x103F, 0x103F, 1.60),  # MYANMAR LETTER GREAT SA
+    (0x1040, 0x109F, 1.35),  # Myanmar remainder
+    (0x10A0, 0x10FF, 1.10),  # Georgian
+    (0x1200, 0x137F, 1.35),  # Ethiopic
+    (0x1380, 0x139F, 1.30),  # Ethiopic Supplement
+    (0x13A0, 0x13FF, 1.20),  # Cherokee
+    (0x1400, 0x151C, 1.30),  # Canadian Aboriginal Syllabics
+    (0x151D, 0x1524, 1.45),
+    (0x1525, 0x158D, 1.30),
+    (0x158E, 0x1590, 1.60),
+    (0x1591, 0x1592, 1.30),
+    (0x1593, 0x1594, 1.60),
+    (0x1595, 0x166F, 1.30),
+    (0x1670, 0x1670, 1.60),
+    (0x1671, 0x1672, 2.05),
+    (0x1673, 0x1674, 1.75),
+    (0x1675, 0x1676, 2.05),
+    (0x1680, 0x169F, 1.90),  # Ogham
+    (0x1780, 0x17FF, 1.30),  # Khmer
+    (0x1800, 0x18AF, 1.25),  # Mongolian
+    (0x1980, 0x19DF, 1.30),  # New Tai Lue
+    (0x1A00, 0x1A1F, 1.25),  # Buginese
+    (0x1A20, 0x1AAF, 1.40),  # Tai Tham
+    (0x1B00, 0x1B7F, 1.85),  # Balinese
+    (0x1B80, 0x1BBF, 1.65),  # Sundanese
+    (0x1BC0, 0x1BFF, 1.15),  # Batak
+    (0x1C00, 0x1C4F, 1.10),  # Lepcha
+    (0x1C90, 0x1CBF, 1.15),  # Georgian Extended
+    (0x1E00, 0x1EFF, 1.15),  # Latin Extended Additional
+    (0x1F00, 0x1FFF, 1.30),  # Greek Extended
+    (0x2100, 0x214F, 1.20),  # Letterlike Symbols (letter-category members)
+    (0x2C00, 0x2C5F, 1.25),  # Glagolitic
+    (0x2C60, 0x2C7F, 1.25),  # Latin Extended-C
+    (0x2C80, 0x2CFF, 1.05),  # Coptic
+    (0x2D30, 0x2D7F, 1.05),  # Tifinagh
+    (0x2D80, 0x2DDF, 1.40),  # Ethiopic Extended
+    (0xA500, 0xA63F, 1.35),  # Vai
+    (0xA640, 0xA69F, 1.45),  # Cyrillic Extended-B
+    (0xA720, 0xA7FF, 1.45),  # Latin Extended-D
+    (0xA840, 0xA87F, 1.20),  # Phags-pa
+    (0xA980, 0xA9DF, 1.50),  # Javanese
+    (0xA9E0, 0xA9FF, 1.30),  # Myanmar Extended-B
+    (0xAA00, 0xAA5F, 1.60),  # Cham
+    (0xAA60, 0xAA7F, 1.45),  # Myanmar Extended-A
+    (0xAA80, 0xAADF, 1.25),  # Tai Viet
+    (0xAAE0, 0xAAFF, 1.15),  # Meetei Mayek Extensions
+    (0xAB00, 0xAB2F, 1.30),  # Ethiopic Extended-A
+    (0xAB70, 0xABBF, 1.05),  # Cherokee Supplement
+    (0xFB00, 0xFB4F, 1.75),  # Alphabetic Presentation Forms
+    (0xFB50, 0xFDFF, 2.15),  # Arabic Presentation Forms-A
+    (0xFE70, 0xFEFF, 1.45),  # Arabic Presentation Forms-B
+)
+# Supplementary-plane Unicode L-category fallback calibration for the same
+# headless-Chrome Inter/Arial/sans-serif and DejaVu Sans Bold acceptance
+# population as the BMP verifier. Each 0x20-aligned range uses the largest
+# measured width in that block, rounded upward to 0.05em. The bound 87,761-
+# letter scan reports zero underestimates while avoiding a per-codepoint table.
+_CANVAS_SUPPLEMENTARY_FALLBACK_LETTER_WIDTH_RANGES = (
+    (0x10000, 0x1001F, 1.00),
+    (0x10040, 0x1005F, 1.05),
+    (0x10080, 0x1009F, 1.25),
+    (0x100A0, 0x100BF, 1.65),
+    (0x100C0, 0x100DF, 1.95),
+    (0x100E0, 0x100FF, 1.40),
+    (0x102A0, 0x102DF, 0.95),
+    (0x10300, 0x1031F, 1.45),
+    (0x10360, 0x1037F, 0.95),
+    (0x10380, 0x1039F, 1.25),
+    (0x103A0, 0x103DF, 1.40),
+    (0x10480, 0x1049F, 1.10),
+    (0x10560, 0x105BF, 1.05),
+    (0x10600, 0x1061F, 1.00),
+    (0x10620, 0x1063F, 1.05),
+    (0x10640, 0x1065F, 1.00),
+    (0x10660, 0x1067F, 1.25),
+    (0x10680, 0x106DF, 1.20),
+    (0x106E0, 0x106FF, 1.15),
+    (0x10700, 0x1071F, 1.00),
+    (0x10720, 0x1073F, 1.30),
+    (0x10740, 0x1075F, 1.25),
+    (0x10780, 0x107BF, 1.05),
+    (0x10800, 0x1081F, 1.00),
+    (0x10820, 0x1085F, 0.95),
+    (0x10920, 0x1093F, 0.95),
+    (0x10980, 0x1099F, 1.55),
+    (0x109A0, 0x109BF, 0.95),
+    (0x10AC0, 0x10ADF, 1.25),
+    (0x10AE0, 0x10AFF, 1.20),
+    (0x10B00, 0x10B1F, 1.35),
+    (0x10B20, 0x10B3F, 1.15),
+    (0x10B40, 0x10B5F, 1.20),
+    (0x10B80, 0x10B9F, 1.10),
+    (0x10C20, 0x10C3F, 0.95),
+    (0x10C80, 0x10CBF, 1.05),
+    (0x10F00, 0x10F1F, 1.05),
+    (0x10F20, 0x10F3F, 1.25),
+    (0x10F40, 0x10F5F, 1.10),
+    (0x10F60, 0x10FDF, 1.05),
+    (0x10FE0, 0x10FFF, 1.20),
+    (0x11020, 0x1103F, 1.00),
+    (0x11060, 0x1107F, 1.05),
+    (0x11100, 0x1111F, 1.15),
+    (0x11120, 0x1113F, 1.05),
+    (0x11140, 0x1117F, 1.10),
+    (0x111C0, 0x111DF, 1.10),
+    (0x11200, 0x1121F, 1.15),
+    (0x11220, 0x1123F, 1.10),
+    (0x11240, 0x1125F, 1.05),
+    (0x11280, 0x1129F, 0.95),
+    (0x112A0, 0x112BF, 1.25),
+    (0x112C0, 0x112DF, 1.05),
+    (0x11300, 0x1131F, 2.80),
+    (0x11320, 0x1133F, 1.70),
+    (0x11340, 0x1135F, 1.20),
+    (0x11360, 0x1137F, 1.80),
+    (0x11400, 0x1141F, 0.95),
+    (0x11460, 0x1147F, 1.40),
+    (0x11480, 0x1149F, 1.05),
+    (0x114C0, 0x114DF, 1.05),
+    (0x11580, 0x1159F, 0.95),
+    (0x11700, 0x1171F, 1.15),
+    (0x11740, 0x1175F, 1.05),
+    (0x11800, 0x1181F, 1.00),
+    (0x11900, 0x1195F, 1.05),
+    (0x119A0, 0x119FF, 1.05),
+    (0x11A00, 0x11A1F, 1.15),
+    (0x11A80, 0x11A9F, 1.25),
+    (0x11AA0, 0x11ABF, 1.05),
+    (0x11C00, 0x11C1F, 1.10),
+    (0x11C20, 0x11C3F, 0.95),
+    (0x11D00, 0x11D1F, 1.00),
+    (0x11D20, 0x11D3F, 1.20),
+    (0x11D60, 0x11D7F, 1.00),
+    (0x11EE0, 0x11F3F, 1.05),
+    (0x11FA0, 0x11FBF, 1.05),
+    (0x12000, 0x1201F, 2.10),
+    (0x12020, 0x1203F, 3.65),
+    (0x12040, 0x1205F, 3.25),
+    (0x12060, 0x1207F, 2.65),
+    (0x12080, 0x1209F, 2.40),
+    (0x120A0, 0x120BF, 1.80),
+    (0x120C0, 0x120DF, 1.60),
+    (0x120E0, 0x120FF, 2.15),
+    (0x12100, 0x1211F, 2.30),
+    (0x12120, 0x1213F, 3.15),
+    (0x12140, 0x1215F, 3.10),
+    (0x12160, 0x1217F, 2.25),
+    (0x12180, 0x1219F, 2.50),
+    (0x121A0, 0x121BF, 2.00),
+    (0x121C0, 0x121DF, 1.10),
+    (0x121E0, 0x121FF, 1.95),
+    (0x12200, 0x1221F, 4.05),
+    (0x12220, 0x1223F, 2.35),
+    (0x12240, 0x1225F, 2.45),
+    (0x12260, 0x1227F, 2.60),
+    (0x12280, 0x1229F, 2.90),
+    (0x122A0, 0x122BF, 2.20),
+    (0x122C0, 0x122DF, 2.35),
+    (0x122E0, 0x122FF, 1.90),
+    (0x12300, 0x1231F, 2.25),
+    (0x12320, 0x1233F, 2.55),
+    (0x12340, 0x1235F, 2.85),
+    (0x12360, 0x1237F, 2.65),
+    (0x12380, 0x1239F, 2.50),
+    (0x12480, 0x1249F, 3.25),
+    (0x124A0, 0x124BF, 2.45),
+    (0x124C0, 0x124DF, 2.50),
+    (0x124E0, 0x124FF, 2.70),
+    (0x12500, 0x1251F, 2.95),
+    (0x12520, 0x1253F, 2.45),
+    (0x12540, 0x1255F, 2.25),
+    (0x12F80, 0x12FFF, 1.05),
+    (0x13000, 0x1301F, 1.40),
+    (0x13020, 0x1303F, 1.30),
+    (0x13040, 0x1307F, 1.25),
+    (0x13080, 0x1309F, 1.55),
+    (0x130A0, 0x130DF, 1.90),
+    (0x130E0, 0x1311F, 1.75),
+    (0x13120, 0x1313F, 1.25),
+    (0x13140, 0x1315F, 1.55),
+    (0x13160, 0x1317F, 1.85),
+    (0x13180, 0x131BF, 1.65),
+    (0x131C0, 0x131DF, 2.05),
+    (0x131E0, 0x131FF, 1.40),
+    (0x13200, 0x1321F, 1.50),
+    (0x13220, 0x1323F, 1.30),
+    (0x13240, 0x1325F, 1.40),
+    (0x13260, 0x1327F, 1.60),
+    (0x13280, 0x1329F, 1.45),
+    (0x132A0, 0x132BF, 1.40),
+    (0x132C0, 0x1331F, 1.45),
+    (0x13320, 0x1333F, 1.40),
+    (0x13340, 0x1337F, 1.55),
+    (0x13380, 0x1339F, 1.75),
+    (0x133A0, 0x133BF, 1.30),
+    (0x133C0, 0x133DF, 1.35),
+    (0x133E0, 0x133FF, 1.45),
+    (0x13400, 0x1341F, 1.50),
+    (0x13420, 0x1343F, 1.25),
+    (0x13440, 0x1345F, 1.05),
+    (0x14400, 0x1441F, 1.60),
+    (0x14420, 0x1443F, 1.40),
+    (0x14440, 0x1445F, 1.50),
+    (0x14460, 0x1447F, 1.55),
+    (0x14480, 0x1449F, 1.35),
+    (0x144A0, 0x144DF, 1.55),
+    (0x144E0, 0x144FF, 1.45),
+    (0x14500, 0x1451F, 1.25),
+    (0x14520, 0x1453F, 1.15),
+    (0x14540, 0x1455F, 1.40),
+    (0x14560, 0x1457F, 1.45),
+    (0x14580, 0x1459F, 1.25),
+    (0x145A0, 0x145BF, 1.45),
+    (0x145C0, 0x145DF, 1.25),
+    (0x145E0, 0x145FF, 1.10),
+    (0x14600, 0x1461F, 1.60),
+    (0x14620, 0x1463F, 1.30),
+    (0x14640, 0x1465F, 1.60),
+    (0x16800, 0x1681F, 1.10),
+    (0x16820, 0x1683F, 1.20),
+    (0x16840, 0x1687F, 1.15),
+    (0x16880, 0x1689F, 1.45),
+    (0x168A0, 0x168BF, 1.00),
+    (0x168C0, 0x168DF, 1.25),
+    (0x168E0, 0x168FF, 0.95),
+    (0x16900, 0x1691F, 1.00),
+    (0x16920, 0x1693F, 1.15),
+    (0x16940, 0x1695F, 1.20),
+    (0x16960, 0x1697F, 1.45),
+    (0x16980, 0x1699F, 1.00),
+    (0x169A0, 0x169BF, 1.20),
+    (0x169C0, 0x169DF, 1.10),
+    (0x169E0, 0x169FF, 1.00),
+    (0x16A00, 0x16A1F, 1.30),
+    (0x16A20, 0x16A5F, 1.00),
+    (0x16A60, 0x16ABF, 1.05),
+    (0x16AE0, 0x16AFF, 1.05),
+    (0x16B00, 0x16B1F, 0.95),
+    (0x16E40, 0x16E5F, 1.20),
+    (0x1B2A0, 0x1B2BF, 1.10),
+    (0x1B2E0, 0x1B2FF, 1.10),
+    (0x1BC00, 0x1BC1F, 1.25),
+    (0x1BC20, 0x1BC3F, 1.35),
+    (0x1BC60, 0x1BC7F, 0.95),
+    (0x1D400, 0x1D41F, 1.00),
+    (0x1D4A0, 0x1D4BF, 1.00),
+    (0x1D4C0, 0x1D4DF, 1.05),
+    (0x1D4E0, 0x1D4FF, 1.00),
+    (0x1D500, 0x1D51F, 0.95),
+    (0x1D540, 0x1D55F, 1.15),
+    (0x1D560, 0x1D59F, 0.95),
+    (0x1D5A0, 0x1D5DF, 1.00),
+    (0x1D5E0, 0x1D5FF, 1.15),
+    (0x1D600, 0x1D63F, 1.00),
+    (0x1D640, 0x1D65F, 1.15),
+    (0x1D660, 0x1D67F, 1.05),
+    (0x1D6A0, 0x1D6BF, 0.95),
+    (0x1D760, 0x1D79F, 1.00),
+    (0x1DF00, 0x1DF3F, 1.05),
+    (0x1E020, 0x1E07F, 1.05),
+    (0x1E280, 0x1E2BF, 1.05),
+    (0x1E4C0, 0x1E4FF, 1.05),
+    (0x1E7E0, 0x1E7FF, 1.05),
+    (0x1E800, 0x1E81F, 1.35),
+    (0x1E820, 0x1E83F, 1.15),
+    (0x1E840, 0x1E85F, 1.20),
+    (0x1E860, 0x1E89F, 1.25),
+    (0x1E8A0, 0x1E8BF, 1.15),
+    (0x1E8C0, 0x1E8DF, 1.00),
+    (0x1E900, 0x1E91F, 1.00),
+    (0x1EE00, 0x1EE1F, 1.25),
+    (0x1EE40, 0x1EE5F, 1.30),
+    (0x1EE60, 0x1EE7F, 1.20),
+    (0x1EE80, 0x1EEBF, 1.15),
+)
+# Non-ASCII numeric glyphs use a conservative 1.0em floor. The ordered
+# calibration ranges cover every Nd/Nl/No code point whose measured Bold
+# advance exceeds 1.0em in the acceptance browser/font population. Each
+# bound is the strict next 0.05em above the larger of the single-glyph
+# advance and the per-glyph advance of a ten-glyph repeated run.
+_CANVAS_FALLBACK_NUMERIC_WIDTH_UNITS = 1.00
+_CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES = (
+    (0xBC, 0xBE, 1.05),
+    (0xD58, 0xD58, 1.25),
+    (0xD59, 0xD59, 1.15),
+    (0xD5A, 0xD5A, 1.10),
+    (0xD5C, 0xD5C, 1.55),
+    (0xD5D, 0xD5D, 2.05),
+    (0xD5E, 0xD5E, 1.40),
+    (0xD69, 0xD69, 1.05),
+    (0xD6C, 0xD6C, 1.25),
+    (0xD70, 0xD70, 1.25),
+    (0xD72, 0xD72, 1.35),
+    (0xD75, 0xD75, 1.05),
+    (0xD76, 0xD76, 1.40),
+    (0xD77, 0xD77, 1.75),
+    (0xD78, 0xD78, 2.20),
+    (0xDE8, 0xDE8, 1.20),
+    (0xDE9, 0xDE9, 1.55),
+    (0xDEF, 0xDEF, 1.20),
+    (0x1A93, 0x1A93, 1.05),
+    (0x1A99, 0x1A99, 1.05),
+    (0x1B51, 0x1B51, 1.25),
+    (0x1B57, 0x1B57, 1.05),
+    (0x2150, 0x2151, 1.05),
+    (0x2152, 0x2152, 1.50),
+    (0x2153, 0x215E, 1.05),
+    (0x2163, 0x2163, 1.10),
+    (0x2165, 0x2165, 1.10),
+    (0x2166, 0x2166, 1.40),
+    (0x2167, 0x2167, 1.70),
+    (0x2168, 0x2168, 1.15),
+    (0x216A, 0x216A, 1.15),
+    (0x216B, 0x216B, 1.45),
+    (0x2176, 0x2176, 1.25),
+    (0x2177, 0x2177, 1.50),
+    (0x217B, 0x217B, 1.25),
+    (0x217F, 0x217F, 1.05),
+    (0x2180, 0x2180, 1.30),
+    (0x2182, 0x2182, 1.30),
+    (0x2188, 0x2188, 1.25),
+    (0x2189, 0x2189, 1.05),
+    (0x2460, 0x2468, 1.40),
+    (0x24EA, 0x24EA, 1.40),
+    (0x2780, 0x2788, 1.40),
+    (0xA9D3, 0xA9D3, 1.40),
+    (0xA9D7, 0xA9D7, 1.20),
+    (0xA9D8, 0xA9D8, 1.05),
+    (0xA9D9, 0xA9D9, 1.40),
+    (0xA9F9, 0xA9F9, 1.15),
+    (0xAA58, 0xAA58, 1.05),
+    (0xAA59, 0xAA59, 1.10),
+    (0x10169, 0x1016A, 1.05),
+    (0x1016B, 0x1016B, 1.15),
+    (0x1016D, 0x1016D, 1.20),
+    (0x1016E, 0x1016E, 1.40),
+    (0x10177, 0x10177, 1.10),
+    (0x1018A, 0x1018A, 1.05),
+    (0x102E2, 0x102E2, 1.10),
+    (0x102E3, 0x102E3, 1.55),
+    (0x102E6, 0x102E6, 1.05),
+    (0x102F1, 0x102F1, 1.05),
+    (0x102F4, 0x102F4, 1.25),
+    (0x1087E, 0x1087E, 1.15),
+    (0x109BC, 0x109BC, 1.65),
+    (0x109C6, 0x109C6, 1.30),
+    (0x109C9, 0x109C9, 1.30),
+    (0x109CA, 0x109CA, 1.35),
+    (0x109CC, 0x109CC, 1.50),
+    (0x109CD, 0x109CD, 1.30),
+    (0x109CE, 0x109CE, 1.50),
+    (0x109CF, 0x109CF, 1.40),
+    (0x109D2, 0x109DA, 1.60),
+    (0x109DB, 0x109E1, 1.55),
+    (0x109E2, 0x109E2, 1.75),
+    (0x109E3, 0x109E3, 1.70),
+    (0x109E4, 0x109EC, 1.30),
+    (0x109ED, 0x109F5, 1.45),
+    (0x109FC, 0x109FF, 1.05),
+    (0x10B7B, 0x10B7B, 1.20),
+    (0x10BAC, 0x10BAC, 1.20),
+    (0x10BAF, 0x10BAF, 1.25),
+    (0x10E62, 0x10E62, 1.10),
+    (0x10E6D, 0x10E6D, 1.20),
+    (0x10E78, 0x10E78, 1.05),
+    (0x10E7C, 0x10E7C, 1.15),
+    (0x10E7D, 0x10E7E, 1.10),
+    (0x10F20, 0x10F20, 1.05),
+    (0x10F21, 0x10F21, 1.30),
+    (0x10F25, 0x10F25, 1.20),
+    (0x10F54, 0x10F54, 1.65),
+    (0x10FC5, 0x10FCB, 1.05),
+    (0x1105B, 0x1105B, 1.05),
+    (0x111E2, 0x111E2, 1.20),
+    (0x111E3, 0x111E3, 1.35),
+    (0x111E5, 0x111E5, 1.55),
+    (0x111E9, 0x111E9, 1.45),
+    (0x111EA, 0x111EA, 1.40),
+    (0x111ED, 0x111ED, 1.50),
+    (0x111EE, 0x111EE, 1.05),
+    (0x111EF, 0x111EF, 1.10),
+    (0x111F0, 0x111F0, 2.00),
+    (0x111F3, 0x111F3, 1.40),
+    (0x111F4, 0x111F4, 1.15),
+    (0x11734, 0x11734, 1.30),
+    (0x11735, 0x11735, 1.05),
+    (0x11738, 0x11738, 1.30),
+    (0x1173A, 0x1173A, 1.10),
+    (0x1173B, 0x1173B, 1.30),
+    (0x11950, 0x11959, 1.05),
+    (0x11C61, 0x11C61, 1.05),
+    (0x11F50, 0x11F59, 1.05),
+    (0x11FC0, 0x11FC0, 1.85),
+    (0x11FC3, 0x11FC3, 1.35),
+    (0x11FC4, 0x11FC4, 1.10),
+    (0x11FC5, 0x11FC5, 1.35),
+    (0x11FC6, 0x11FC6, 1.45),
+    (0x11FC7, 0x11FC7, 1.35),
+    (0x11FC9, 0x11FC9, 1.40),
+    (0x11FCA, 0x11FCA, 1.30),
+    (0x11FCC, 0x11FCC, 1.90),
+    (0x11FCD, 0x11FCD, 1.10),
+    (0x11FCE, 0x11FCE, 1.55),
+    (0x11FCF, 0x11FCF, 1.10),
+    (0x11FD2, 0x11FD2, 1.15),
+    (0x11FD3, 0x11FD3, 1.30),
+    (0x11FD4, 0x11FD4, 1.05),
+    (0x12401, 0x12401, 1.35),
+    (0x12403, 0x12404, 1.35),
+    (0x12405, 0x12406, 1.70),
+    (0x12407, 0x12407, 2.05),
+    (0x1240C, 0x1240D, 1.20),
+    (0x1240E, 0x1240E, 1.45),
+    (0x12412, 0x12413, 1.15),
+    (0x12414, 0x12414, 1.35),
+    (0x12417, 0x12417, 1.20),
+    (0x12419, 0x1241A, 1.20),
+    (0x1241B, 0x1241C, 1.50),
+    (0x1241D, 0x1241D, 1.80),
+    (0x1241F, 0x1241F, 1.10),
+    (0x12420, 0x12420, 1.55),
+    (0x12422, 0x12422, 1.20),
+    (0x12423, 0x12423, 2.05),
+    (0x12424, 0x12424, 2.90),
+    (0x12425, 0x12426, 2.05),
+    (0x12427, 0x12428, 2.90),
+    (0x12429, 0x1242A, 3.80),
+    (0x1242B, 0x1242B, 4.65),
+    (0x1242C, 0x1242C, 1.15),
+    (0x1242D, 0x1242D, 2.05),
+    (0x1242E, 0x1242E, 2.90),
+    (0x1242F, 0x12430, 2.05),
+    (0x12431, 0x12431, 2.90),
+    (0x12432, 0x12433, 1.15),
+    (0x12435, 0x12435, 1.05),
+    (0x12436, 0x12436, 1.45),
+    (0x12437, 0x12438, 1.05),
+    (0x12439, 0x12439, 1.45),
+    (0x1243A, 0x1243A, 1.05),
+    (0x1243D, 0x1243D, 1.15),
+    (0x12440, 0x12440, 1.05),
+    (0x12441, 0x12441, 1.50),
+    (0x12443, 0x12443, 1.20),
+    (0x12445, 0x12445, 1.50),
+    (0x12447, 0x12447, 1.35),
+    (0x1244D, 0x12450, 1.05),
+    (0x1245A, 0x1245C, 1.15),
+    (0x12461, 0x12461, 1.60),
+    (0x12462, 0x12462, 1.40),
+    (0x12465, 0x12465, 1.25),
+    (0x12466, 0x12466, 1.50),
+    (0x12467, 0x12468, 1.05),
+    (0x16AC0, 0x16AC9, 1.05),
+    (0x1D2C0, 0x1D2D3, 1.05),
+    (0x1E4F0, 0x1E4F9, 1.05),
+    (0x1EC71, 0x1EC71, 1.25),
+    (0x1EC72, 0x1EC72, 1.20),
+    (0x1EC73, 0x1EC73, 1.40),
+    (0x1EC74, 0x1EC74, 1.10),
+    (0x1EC76, 0x1EC76, 1.40),
+    (0x1EC78, 0x1EC78, 1.40),
+    (0x1EC7A, 0x1EC7A, 1.95),
+    (0x1EC7B, 0x1EC7B, 2.00),
+    (0x1EC7C, 0x1EC7C, 1.90),
+    (0x1EC7D, 0x1EC7D, 2.20),
+    (0x1EC7E, 0x1EC7E, 2.00),
+    (0x1EC7F, 0x1EC7F, 1.95),
+    (0x1EC80, 0x1EC80, 2.05),
+    (0x1EC81, 0x1EC81, 1.80),
+    (0x1EC82, 0x1EC82, 1.95),
+    (0x1EC8C, 0x1EC8C, 1.90),
+    (0x1EC8D, 0x1EC8D, 2.00),
+    (0x1EC8E, 0x1EC8E, 1.85),
+    (0x1EC8F, 0x1EC8F, 2.15),
+    (0x1EC90, 0x1EC90, 2.05),
+    (0x1EC91, 0x1EC93, 2.00),
+    (0x1EC94, 0x1EC94, 1.90),
+    (0x1EC95, 0x1EC95, 2.00),
+    (0x1EC96, 0x1EC96, 2.10),
+    (0x1EC97, 0x1EC97, 1.95),
+    (0x1EC98, 0x1EC98, 2.15),
+    (0x1EC99, 0x1EC99, 2.00),
+    (0x1EC9A, 0x1EC9A, 1.95),
+    (0x1EC9B, 0x1EC9B, 2.05),
+    (0x1EC9C, 0x1EC9C, 1.80),
+    (0x1EC9D, 0x1EC9D, 1.90),
+    (0x1EC9E, 0x1EC9E, 1.20),
+    (0x1EC9F, 0x1EC9F, 1.70),
+    (0x1ECA0, 0x1ECA0, 1.30),
+    (0x1ECA1, 0x1ECA1, 1.15),
+    (0x1ECA2, 0x1ECA2, 1.70),
+    (0x1ECB3, 0x1ECB3, 2.00),
+    (0x1ECB4, 0x1ECB4, 1.25),
+    (0x1ED01, 0x1ED2D, 1.05),
+    (0x1ED2F, 0x1ED3D, 1.05),
+)
+
+
+# Rare punctuation/symbol fallback glyphs that exceed the generic 0.9em budget
+# in DejaVu Sans Bold. Values are checked against the headless-Chrome
+# Inter/Arial/sans-serif fallback stack and conservatively rounded upward
+# to 0.05em.
+_CANVAS_WIDE_FALLBACK_WIDTH_RANGES = (
+    (0x00A9, 0x00A9, 1.05),
+    (0x00AE, 0x00AE, 1.05),
+    (0x060A, 0x060A, 1.20),
+    (0x2014, 0x2015, 1.05),
+    (0x2026, 0x2026, 1.05),
+    (0x2030, 0x2030, 1.45),
+    (0x2031, 0x2031, 1.90),
+    (0x203B, 0x203B, 1.00),
+    (0x2042, 0x2042, 1.05),
+    (0x2047, 0x2047, 1.15),
+    (0x2053, 0x2053, 1.05),
+    (0x20A0, 0x20A0, 0.95),
+    (0x20A5, 0x20A5, 1.05),
+    (0x20A7, 0x20A7, 1.55),
+    (0x20A8, 0x20A8, 1.25),
+    (0x20A9, 0x20A9, 1.15),
+    (0x20AA, 0x20AA, 0.95),
+    (0x20AF, 0x20AF, 1.45),
+    (0x2100, 0x2100, 1.15),
+    (0x2101, 0x2101, 1.20),
+    (0x2103, 0x2103, 1.25),
+    (0x2105, 0x2105, 1.10),
+    (0x2106, 0x2106, 1.15),
+    (0x2109, 0x2109, 1.10),
+    (0x2114, 0x2114, 1.00),
+    (0x2116, 0x2116, 1.25),
+    (0x2117, 0x2117, 1.05),
+    (0x2120, 0x2120, 1.05),
+    (0x2121, 0x2121, 1.30),
+    (0x2122, 0x2122, 1.05),
+    (0x213A, 0x213A, 0.95),
+    (0x213B, 0x213B, 1.35),
+    (0x222C, 0x222C, 0.95),
+    (0x222D, 0x222D, 1.30),
+    (0x222F, 0x222F, 1.00),
+    (0x2230, 0x2230, 1.35),
+    (0x2254, 0x2255, 1.10),
+    (0x226A, 0x226B, 1.05),
+    (0x22A2, 0x22A5, 0.95),
+    (0x22A8, 0x22AF, 0.95),
+    (0x22B6, 0x22B7, 1.05),
+    (0x22C8, 0x22CC, 1.05),
+    (0x22D8, 0x22D9, 1.45),
+    (0x22EE, 0x22F1, 1.05),
+    (0x22F2, 0x22F2, 1.20),
+    (0x22FA, 0x22FA, 1.20),
+    (0x2318, 0x2318, 1.00),
+    (0x2324, 0x2325, 1.20),
+    (0x2326, 0x2326, 1.45),
+    (0x2327, 0x2327, 1.20),
+    (0x2328, 0x2328, 1.45),
+    (0x232B, 0x232B, 1.45),
+    (0x2387, 0x2387, 1.20),
+    (0x23CF, 0x23CF, 0.95),
+    (0x25A0, 0x25A9, 0.95),
+    (0x25AC, 0x25AC, 1.05),
+    (0x25AD, 0x25AD, 0.95),
+    (0x25D9, 0x25DB, 1.00),
+    (0x25E7, 0x25EB, 0.95),
+    (0x25EF, 0x25EF, 1.45),
+    (0x25F0, 0x25F3, 0.95),
+    (0x2601, 0x2601, 1.05),
+    (0x260D, 0x260D, 1.05),
+    (0x260E, 0x260F, 1.30),
+    (0x2639, 0x263A, 1.05),
+    (0x263B, 0x263B, 1.10),
+    (0x26A2, 0x26A2, 1.05),
+    (0x26A3, 0x26A3, 1.10),
+    (0x26A4, 0x26A4, 1.20),
+    (0x26A5, 0x26A5, 0.95),
+    (0x27F4, 0x27F4, 1.20),
+    (0x27F5, 0x27F6, 1.45),
+    (0x27F7, 0x27F7, 1.80),
+    (0x27F8, 0x27F9, 1.45),
+    (0x27FA, 0x27FA, 1.80),
+    (0x27FB, 0x27FF, 1.45),
+    (0x29CF, 0x29D5, 1.05),
+    (0x2A00, 0x2A02, 1.05),
+    (0x2A0C, 0x2A0C, 1.70),
+    (0x2B12, 0x2B15, 0.95),
+    (0x2B1A, 0x2B1A, 0.95),
+    (0x2B24, 0x2B24, 1.15),
+    (0xFFFD, 0xFFFD, 1.15),
+)
+_CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS = {
+    0x0085: 0.0,  # NEXT LINE
+    0x00A0: 0.35,  # NO-BREAK SPACE
+    0x1680: 0.50,  # OGHAM SPACE MARK
+    0x2000: 0.60,  # EN QUAD
+    0x2001: 1.12,  # EM QUAD
+    0x2002: 0.55,  # EN SPACE
+    0x2003: 1.05,  # EM SPACE
+    0x2004: 0.35,  # THREE-PER-EM SPACE
+    0x2005: 0.28,  # FOUR-PER-EM SPACE
+    0x2006: 0.20,  # SIX-PER-EM SPACE
+    0x2007: 0.70,  # FIGURE SPACE
+    0x2008: 0.35,  # PUNCTUATION SPACE
+    0x2009: 0.22,  # THIN SPACE
+    0x200A: 0.12,  # HAIR SPACE
+    0x2028: 0.35,  # LINE SEPARATOR
+    0x2029: 0.35,  # PARAGRAPH SEPARATOR
+    0x202F: 0.22,  # NARROW NO-BREAK SPACE
+    0x205F: 0.32,  # MEDIUM MATHEMATICAL SPACE
+    0x3000: 1.05,  # IDEOGRAPHIC SPACE
+}
+
+
+def _canvas_is_grapheme_extend(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        unicodedata.category(character) in {"Mn", "Me"}
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or 0xE0100 <= codepoint <= 0xE01EF
+        or 0x1F3FB <= codepoint <= 0x1F3FF
+        or 0xE0020 <= codepoint <= 0xE007F
+    )
+
+
+def _canvas_is_regional_indicator(character: str) -> bool:
+    return 0x1F1E6 <= ord(character) <= 0x1F1FF
+
+
+def _canvas_xml_compatible_text(value: str) -> str:
+    """Replace XML 1.0-forbidden code points before layout-sensitive processing."""
+
+    return "".join(
+        character if _xml_10_character_allowed(character) else "\uFFFD"
+        for character in value
+    )
+
+
+def _canvas_bounded_xml_compatible_prefix(
+    value: str,
+    *,
+    max_clusters: int | None,
+    max_codepoints: int,
+) -> tuple[str, bool]:
+    """Bound grapheme work while matching the XML text that will be emitted."""
+
+    scan_limit = max(1, max_codepoints) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1
+    source_probe = value[:scan_limit]
+    if any(not _xml_10_character_allowed(character) for character in source_probe):
+        normalized_probe = _canvas_xml_compatible_text(source_probe)
+        prefix, truncated = bounded_grapheme_prefix(
+            normalized_probe,
+            max_clusters=max_clusters,
+            max_codepoints=max_codepoints,
+        )
+        return prefix, truncated or len(value) > scan_limit
+    return bounded_grapheme_prefix(
+        value,
+        max_clusters=max_clusters,
+        max_codepoints=max_codepoints,
+    )
+
+
+def _canvas_collapse_inline_whitespace(value: str) -> str:
+    """Match SVG's default inline space/tab collapsing without removing newlines."""
+
+    return re.sub(r"[ \t]+", " ", value)
+
+
+def _canvas_is_collapsible_inline_whitespace(cluster: str) -> bool:
+    return cluster in {" ", "\t"}
+
+
+def _canvas_has_collapsible_inline_whitespace_prefix(cluster: str) -> bool:
+    return bool(cluster) and cluster[0] in {" ", "\t"}
+
+
+def _canvas_is_single_line_collapsible_whitespace(cluster: str) -> bool:
+    return cluster in {" ", "\t", "\r", "\n", "\r\n"}
+
+
+def _canvas_is_non_collapsible_whitespace(character: str) -> bool:
+    return character.isspace() and character not in {" ", "\t", "\r", "\n"}
+
+
+def _canvas_has_non_collapsible_whitespace(value: str) -> bool:
+    return any(_canvas_is_non_collapsible_whitespace(character) for character in value)
+
+
+def _canvas_has_layout_content(value: str) -> bool:
+    return bool(value.strip(" \t\r\n"))
+
+
+def _canvas_resolve_fsi_opener_normalized(value: str, start_index: int) -> str:
+    """Resolve FSI from an already XML-compatible source."""
+
+    nested_isolates = 0
+    for index in range(start_index + 1, len(value)):
+        character = value[index]
+        bidi_class = unicodedata.bidirectional(character)
+        if bidi_class == "B":
             break
-    if len(lines) > line_count:
-        lines = lines[:line_count]
-    return lines[:line_count]
+        if (
+            character in _CANVAS_BIDI_ISOLATE_OPENERS
+            or character == _CANVAS_BIDI_FSI
+        ):
+            nested_isolates += 1
+            continue
+        if character == _CANVAS_BIDI_PDI:
+            if nested_isolates:
+                nested_isolates -= 1
+                continue
+            break
+        if nested_isolates:
+            continue
+        if bidi_class == "L":
+            return "\u2066"
+        if bidi_class in {"R", "AL"}:
+            return "\u2067"
+    return "\u2066"
+
+
+def _canvas_resolve_fsi_opener(value: str, start_index: int) -> str:
+    """Resolve FSI from its first strong character outside nested isolates."""
+
+    return _canvas_resolve_fsi_opener_normalized(
+        _canvas_xml_compatible_text(value),
+        start_index,
+    )
+
+
+def _canvas_resolve_fsi_opener_bounded(
+    value: str,
+    start_index: int,
+    *,
+    max_scan_codepoints: int,
+) -> tuple[str | None, int]:
+    """Resolve one FSI with a caller-owned total scan budget."""
+
+    nested_isolates = 0
+    scanned = 0
+    index = start_index + 1
+    while index < len(value):
+        if scanned >= max_scan_codepoints:
+            return None, scanned
+        character = value[index]
+        scanned += 1
+        index += 1
+        if not _xml_10_character_allowed(character):
+            character = "�"
+        bidi_class = unicodedata.bidirectional(character)
+        if bidi_class == "B":
+            return "⁦", scanned
+        if (
+            character in _CANVAS_BIDI_ISOLATE_OPENERS
+            or character == _CANVAS_BIDI_FSI
+        ):
+            nested_isolates += 1
+            continue
+        if character == _CANVAS_BIDI_PDI:
+            if nested_isolates:
+                nested_isolates -= 1
+                continue
+            return "⁦", scanned
+        if nested_isolates:
+            continue
+        if bidi_class == "L":
+            return "⁦", scanned
+        if bidi_class in {"R", "AL"}:
+            return "⁧", scanned
+    return "⁦", scanned
+
+
+def _canvas_project_bidi_wrapped_lines(
+    wrapped: Sequence[str],
+    *,
+    fsi_source: str | None = None,
+) -> tuple[list[str], bool]:
+    """Make each wrapped SVG text line an independent bidi-safe paragraph."""
+
+    if not wrapped:
+        return [], False
+
+    wrapped = tuple(_canvas_xml_compatible_text(line) for line in wrapped)
+    if fsi_source is not None:
+        fsi_source = _canvas_xml_compatible_text(fsi_source)
+
+    flattened = "".join(wrapped)
+    fsi_source_cursor = 0
+    remaining_fsi_scan = _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+    stack: list[tuple[str, str, str]] = []
+    projected: list[str] = []
+    cursor = 0
+
+    for line in wrapped:
+        rendered = [entry[0] for entry in stack]
+        for offset, character in enumerate(line):
+            if character in _CANVAS_BIDI_EMBED_OPENERS:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                rendered.append(character)
+                stack.append((character, _CANVAS_BIDI_PDF, "embedding"))
+                continue
+            if character in _CANVAS_BIDI_ISOLATE_OPENERS:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                rendered.append(character)
+                stack.append((character, _CANVAS_BIDI_PDI, "isolate"))
+                continue
+            if character == _CANVAS_BIDI_FSI:
+                if len(stack) >= _CANVAS_MAX_BIDI_SCOPE_DEPTH:
+                    return ["…"], True
+                if fsi_source is None:
+                    resolved, scanned = _canvas_resolve_fsi_opener_bounded(
+                        flattened,
+                        cursor + offset,
+                        max_scan_codepoints=remaining_fsi_scan,
+                    )
+                else:
+                    source_index = fsi_source.find(
+                        _CANVAS_BIDI_FSI, fsi_source_cursor
+                    )
+                    if source_index < 0:
+                        return ["…"], True
+                    fsi_source_cursor = source_index + 1
+                    resolved, scanned = _canvas_resolve_fsi_opener_bounded(
+                        fsi_source,
+                        source_index,
+                        max_scan_codepoints=remaining_fsi_scan,
+                    )
+                remaining_fsi_scan = max(0, remaining_fsi_scan - scanned)
+                if resolved is None:
+                    return ["…"], True
+                rendered.append(resolved)
+                stack.append((resolved, _CANVAS_BIDI_PDI, "isolate"))
+                continue
+
+            if unicodedata.bidirectional(character) == "B":
+                rendered.extend(entry[1] for entry in reversed(stack))
+                stack.clear()
+                rendered.append(character)
+                continue
+
+            rendered.append(character)
+            if character == _CANVAS_BIDI_PDF:
+                if stack and stack[-1][2] == "embedding":
+                    stack.pop()
+                continue
+            if character == _CANVAS_BIDI_PDI:
+                for index in range(len(stack) - 1, -1, -1):
+                    if stack[index][2] == "isolate":
+                        del stack[index:]
+                        break
+
+        rendered.extend(entry[1] for entry in reversed(stack))
+        projected.append("".join(rendered))
+        cursor += len(line)
+
+    return projected, False
+
+
+def _canvas_grapheme_clusters(value: str) -> Iterator[str]:
+    """Yield Unicode extended grapheme clusters without materializing the input."""
+
+    yield from iter_grapheme_clusters(value)
+
+
+def _canvas_has_extended_graphemes(value: str) -> bool:
+    if value.isascii() and "\r" not in value and "\n" not in value:
+        return False
+    return any(len(cluster) > 1 for cluster in _canvas_grapheme_clusters(value))
+
+
+def _canvas_fallback_letter_width_units(character: str) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0x7F or not unicodedata.category(character).startswith("L"):
+        return None
+    width_units = _CANVAS_FALLBACK_LETTER_WIDTH_UNITS
+    for first, last, floor_units in _CANVAS_FALLBACK_LETTER_FLOOR_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            width_units = max(width_units, floor_units)
+            break
+    for first, last, calibrated_units in _CANVAS_WIDE_FALLBACK_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            width_units = max(width_units, calibrated_units)
+            break
+    if codepoint > 0xFFFF:
+        for first, last, calibrated_units in _CANVAS_SUPPLEMENTARY_FALLBACK_LETTER_WIDTH_RANGES:
+            if codepoint < first:
+                break
+            if codepoint <= last:
+                width_units = max(width_units, calibrated_units)
+                break
+    return width_units
+
+
+def _canvas_fallback_numeric_width_units(character: str) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0x7F or unicodedata.category(character) not in {"Nd", "Nl", "No"}:
+        return None
+    width_units = _CANVAS_FALLBACK_NUMERIC_WIDTH_UNITS
+    low = 0
+    high = len(_CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES)
+    while low < high:
+        middle = (low + high) // 2
+        first, last, calibrated_units = _CANVAS_WIDE_FALLBACK_NUMERIC_WIDTH_RANGES[middle]
+        if codepoint < first:
+            high = middle
+        elif codepoint > last:
+            low = middle + 1
+        else:
+            return max(width_units, calibrated_units)
+    return width_units
+
+
+def _canvas_fallback_supplementary_symbol_width_units(
+    character: str,
+) -> float | None:
+    codepoint = ord(character)
+    if codepoint <= 0xFFFF or unicodedata.category(character) != "So":
+        return None
+    index = bisect_right(_CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_STARTS, codepoint) - 1
+    if index < 0:
+        return None
+    _first, last, calibrated_units = _CANVAS_SUPPLEMENTARY_SYMBOL_WIDTH_RANGES[index]
+    return calibrated_units if codepoint <= last else None
+
+
+def _canvas_character_width_units(character: str) -> float:
+    if not _xml_10_character_allowed(character):
+        return _CANVAS_XML_REPLACEMENT_WIDTH_UNITS
+    if _canvas_is_collapsible_inline_whitespace(character):
+        return 0.35
+    if character in {"\r", "\n"}:
+        return 0.0
+    if _canvas_is_non_collapsible_whitespace(character):
+        return _CANVAS_NON_COLLAPSIBLE_WHITESPACE_WIDTH_UNITS.get(
+            ord(character),
+            1.0,
+        )
+    if character in _CANVAS_BOLD_FALLBACK_OPERATORS:
+        return _CANVAS_BOLD_FALLBACK_OPERATOR_WIDTH_UNITS
+    if character in _CANVAS_BOLD_FALLBACK_DEFAULT_CHARS:
+        return _CANVAS_BOLD_FALLBACK_DEFAULT_WIDTH_UNITS
+    if character in _NARROW_CHARS:
+        return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
+    codepoint = ord(character)
+    letter_width = _canvas_fallback_letter_width_units(character)
+    numeric_width = _canvas_fallback_numeric_width_units(character)
+    supplementary_symbol_width = _canvas_fallback_supplementary_symbol_width_units(
+        character
+    )
+    fallback_width = max(
+        letter_width or 0.0,
+        numeric_width or 0.0,
+        supplementary_symbol_width or 0.0,
+    )
+    if unicodedata.category(character) == "Co":
+        return max(_CANVAS_PRIVATE_USE_WIDTH_UNITS, fallback_width)
+    if 0x0400 <= codepoint <= 0x052F:
+        return max(_CANVAS_CYRILLIC_WIDTH_UNITS, fallback_width)
+    if codepoint >= 0x1F000 and is_extended_pictographic(character):
+        return max(_CANVAS_SUPPLEMENTARY_PICTOGRAPHIC_WIDTH_UNITS, fallback_width)
+    if codepoint > 0x7F and unicodedata.east_asian_width(character) in {"W", "F"}:
+        return max(_CANVAS_EAST_ASIAN_WIDE_WIDTH_UNITS, fallback_width)
+    for first, last, width_units in _CANVAS_WIDE_FALLBACK_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            return max(width_units, fallback_width)
+    if letter_width is not None:
+        return letter_width
+    if numeric_width is not None:
+        return numeric_width
+    if supplementary_symbol_width is not None:
+        return supplementary_symbol_width
+    return _character_width_units(
+        character,
+        non_ascii=0.9,
+        uppercase=0.86,
+        default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+    )
+
+
+def _canvas_is_zero_advance_control(character: str) -> bool:
+    codepoint = ord(character)
+    return (
+        character in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        or codepoint in _CANVAS_BIDI_ZERO_ADVANCE_CODEPOINTS
+        or codepoint in _CANVAS_INVISIBLE_ZERO_ADVANCE_CODEPOINTS
+        or 0xFE00 <= codepoint <= 0xFE0F
+        or 0xE0100 <= codepoint <= 0xE01EF
+        or 0xE0020 <= codepoint <= 0xE007F
+    )
+
+
+def _canvas_spacing_mark_cluster_width_units(visible: list[str]) -> float:
+    spacing_marks = [
+        character for character in visible if unicodedata.category(character) == "Mc"
+    ]
+    fallback = sum(_canvas_character_width_units(character) for character in visible)
+    if len(spacing_marks) != 1:
+        return fallback
+
+    base_width = sum(
+        _canvas_character_width_units(character)
+        for character in visible
+        if unicodedata.category(character) != "Mc"
+    )
+    if base_width == 0.0:
+        return fallback
+
+    codepoint = ord(spacing_marks[0])
+    for first, last, calibrated_width in _CANVAS_SPACING_MARK_CLUSTER_WIDTH_RANGES:
+        if first <= codepoint <= last:
+            return max(base_width, min(fallback, calibrated_width))
+    return fallback
+
+
+def _canvas_zwj_uses_shaping_script(cluster: str) -> bool:
+    return any(
+        first <= ord(character) <= last
+        for character in cluster
+        if character not in {_CANVAS_ZWNJ, _CANVAS_ZWJ}
+        for first, last in _CANVAS_ZWJ_SHAPING_SCRIPT_RANGES
+    )
+
+
+def _canvas_shaping_zwj_wide_letter_width_units(character: str) -> float:
+    codepoint = ord(character)
+    for first, last, width_units in _CANVAS_ZWJ_SHAPING_WIDE_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            return width_units
+    return 0.0
+
+
+def _canvas_shaping_zwj_linear_letter_width_units(character: str) -> float:
+    codepoint = ord(character)
+    for first, last, width_units in _CANVAS_ZWJ_LINEAR_FALLBACK_LETTER_WIDTH_RANGES:
+        if codepoint < first:
+            break
+        if codepoint <= last:
+            return width_units
+    return _CANVAS_ZWJ_LINEAR_FALLBACK_DEFAULT_WIDTH_UNITS
+
+
+def _canvas_grapheme_width_units(cluster: str) -> float:
+    if cluster and all(_canvas_is_zero_advance_control(item) for item in cluster):
+        return 0.0
+    visible = [
+        character
+        for character in cluster
+        if not _canvas_is_zero_advance_control(character)
+        and not _canvas_is_grapheme_extend(character)
+    ]
+    if not visible:
+        return _CANVAS_WRAP_DEFAULT_WIDTH_UNITS
+    widths = [
+        (
+            _CANVAS_SPACING_MARK_WIDTH_UNITS
+            if unicodedata.category(character) == "Mc"
+            else _canvas_character_width_units(character)
+        )
+        for character in visible
+    ]
+    if _CANVAS_ZWJ in cluster:
+        if any(is_extended_pictographic(item) for item in cluster):
+            return max(2.0, max(widths))
+        if _canvas_zwj_uses_shaping_script(cluster):
+            shaping_widths = [
+                (
+                    _CANVAS_SPACING_MARK_WIDTH_UNITS
+                    if unicodedata.category(character) == "Mc"
+                    else (
+                        _character_width_units(
+                            character,
+                            non_ascii=0.9,
+                            uppercase=0.86,
+                            default=_CANVAS_WRAP_DEFAULT_WIDTH_UNITS,
+                        )
+                        if unicodedata.category(character).startswith("L")
+                        else _canvas_character_width_units(character)
+                    )
+                )
+                for character in visible
+            ]
+            wide_letter_width = max(
+                (
+                    _canvas_shaping_zwj_wide_letter_width_units(character)
+                    for character in visible
+                ),
+                default=0.0,
+            )
+            shaping_letters = [
+                character
+                for character in visible
+                if unicodedata.category(character).startswith("L")
+            ]
+            linear_fallback_width = (
+                sum(
+                    max(
+                        _canvas_shaping_zwj_linear_letter_width_units(character),
+                        _canvas_character_width_units(character),
+                    )
+                    for character in shaping_letters
+                )
+                if shaping_letters
+                else 0.0
+            )
+            return max(
+                _CANVAS_SCRIPT_ZWJ_MIN_WIDTH_UNITS,
+                max(shaping_widths),
+                wide_letter_width,
+                linear_fallback_width,
+            )
+        return sum(widths)
+    if len(visible) == 2 and all(_canvas_is_regional_indicator(item) for item in visible):
+        return max(2.0, max(widths))
+    if (
+        _CANVAS_EMOJI_PRESENTATION_SELECTOR in cluster or _CANVAS_KEYCAP in cluster
+    ):
+        # VS16/keycap presentation selects the browser emoji fallback rather than
+        # the plain base-glyph fallback. Chromium SVG/Canvas scans bound that
+        # presentation path at 1.25em for the accepted font stacks.
+        return _CANVAS_EMOJI_PRESENTATION_WIDTH_UNITS
+    if any(unicodedata.category(character) == "Mc" for character in visible):
+        return _canvas_spacing_mark_cluster_width_units(visible)
+    return sum(widths)
+
+
+def _canvas_svg_cluster_width_units(
+    cluster: str, *, previous_cluster: str | None
+) -> float:
+    if _canvas_is_collapsible_inline_whitespace(cluster):
+        if (
+            previous_cluster is not None
+            and _canvas_is_collapsible_inline_whitespace(previous_cluster)
+        ):
+            return 0.0
+        return _canvas_grapheme_width_units(" ")
+    return _canvas_grapheme_width_units(cluster)
+
+
+def _canvas_single_line_cluster_width_units(
+    cluster: str, *, previous_cluster: str | None
+) -> float:
+    if _canvas_is_single_line_collapsible_whitespace(cluster):
+        if (
+            previous_cluster is not None
+            and _canvas_is_single_line_collapsible_whitespace(previous_cluster)
+        ):
+            return 0.0
+        return _canvas_grapheme_width_units(" ")
+    return _canvas_grapheme_width_units(cluster)
+
+
+def _estimated_canvas_single_line_width(value: str, *, size: int) -> float:
+    units = 0.0
+    previous_cluster: str | None = None
+    for cluster in _canvas_grapheme_clusters(value):
+        units += _canvas_single_line_cluster_width_units(
+            cluster,
+            previous_cluster=previous_cluster,
+        )
+        previous_cluster = cluster
+    return units * size
+
+
+def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
+    value = _canvas_collapse_inline_whitespace(value)
+    units = sum(
+        _canvas_grapheme_width_units(cluster)
+        for cluster in _canvas_grapheme_clusters(value)
+    )
+    return units * size
+
+
+def _canvas_escaped_text_bytes(value: str) -> int:
+    return len(_canvas_xml(value).encode("utf-8"))
+
+
+def _canvas_ellipsize_to_limits(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int | None = None,
+    single_line_svg_whitespace: bool = False,
+) -> str:
+    ellipsis = "…"
+    ellipsis_width = _estimated_canvas_wrap_width(ellipsis, size=size)
+    ellipsis_bytes = _canvas_escaped_text_bytes(ellipsis)
+    if ellipsis_width > max_width or (
+        max_bytes is not None and ellipsis_bytes > max_bytes
+    ):
+        return ""
+    width_budget = max_width - ellipsis_width
+    byte_budget = None if max_bytes is None else max_bytes - ellipsis_bytes
+    selected: list[str] = []
+    width_used = 0.0
+    bytes_used = 0
+    for cluster in _canvas_grapheme_clusters(value.rstrip(" \t")):
+        width_function = (
+            _canvas_single_line_cluster_width_units
+            if single_line_svg_whitespace
+            else _canvas_svg_cluster_width_units
+        )
+        cluster_width = (
+            width_function(
+                cluster,
+                previous_cluster=selected[-1] if selected else None,
+            )
+            * size
+        )
+        cluster_bytes = _canvas_escaped_text_bytes(cluster)
+        if width_used + cluster_width > width_budget:
+            break
+        if byte_budget is not None and bytes_used + cluster_bytes > byte_budget:
+            break
+        selected.append(cluster)
+        width_used += cluster_width
+        bytes_used += cluster_bytes
+    candidate = "".join(selected).rstrip(" \t")
+    return candidate + ellipsis if candidate else ellipsis
+
+
+def _canvas_ellipsize_to_width(value: str, *, size: int, max_width: float) -> str:
+    return _canvas_ellipsize_to_limits(
+        value,
+        size=size,
+        max_width=max_width,
+    )
+
+
+def _canvas_ellipsize_to_escaped_bytes(value: str, *, max_bytes: int) -> str:
+    value, grapheme_truncated = bounded_grapheme_prefix(
+        value,
+        max_clusters=max(1, max_bytes + 1),
+        max_codepoints=min(
+            _MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+            max(1, max_bytes) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1,
+        ),
+    )
+    if grapheme_truncated:
+        return _canvas_ellipsize_to_limits(
+            value,
+            size=1,
+            max_width=float("inf"),
+            max_bytes=max_bytes,
+        )
+    if _canvas_escaped_text_bytes(value) <= max_bytes:
+        return value
+    return _canvas_ellipsize_to_limits(
+        value,
+        size=1,
+        max_width=float("inf"),
+        max_bytes=max_bytes,
+    )
+
+
+def _canvas_fit_single_line_unprojected(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int,
+) -> tuple[str, bool]:
+    """Fit one Canvas label before bidi-scope projection."""
+
+    if not value:
+        return "", False
+    value, grapheme_truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=max(1, max_bytes + 1),
+        max_codepoints=min(
+            _MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+            max(1, max_bytes) + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1,
+        ),
+    )
+    if grapheme_truncated:
+        return (
+            _canvas_ellipsize_to_limits(
+                value,
+                size=size,
+                max_width=max_width,
+                max_bytes=max_bytes,
+                single_line_svg_whitespace=True,
+            ),
+            True,
+        )
+    if (
+        _estimated_canvas_single_line_width(value, size=size) <= max_width
+        and _canvas_escaped_text_bytes(value) <= max_bytes
+    ):
+        return value, False
+    return (
+        _canvas_ellipsize_to_limits(
+            value,
+            size=size,
+            max_width=max_width,
+            max_bytes=max_bytes,
+            single_line_svg_whitespace=True,
+        ),
+        True,
+    )
+
+
+def _canvas_project_truncated_single_line_bidi(
+    value: str,
+    fitted: str,
+) -> tuple[str, bool]:
+    """Project only the admitted truncated prefix, with bounded FSI lookahead."""
+
+    has_scope_opener = any(
+        character in _CANVAS_BIDI_EMBED_OPENERS
+        or character in _CANVAS_BIDI_ISOLATE_OPENERS
+        or character == _CANVAS_BIDI_FSI
+        for character in fitted
+    )
+    if not has_scope_opener:
+        return fitted, False
+
+    remaining_scan = _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+    source_cursor = 0
+    source_search_limit = min(
+        len(value),
+        _MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+        + MAX_GRAPHEME_CLUSTER_CODEPOINTS
+        + 1,
+    )
+    resolved: list[str] = []
+    for character in fitted:
+        if character != _CANVAS_BIDI_FSI:
+            resolved.append(character)
+            continue
+        source_index = value.find(
+            _CANVAS_BIDI_FSI,
+            source_cursor,
+            source_search_limit,
+        )
+        if source_index < 0:
+            return "…", True
+        source_cursor = source_index + 1
+        opener, scanned = _canvas_resolve_fsi_opener_bounded(
+            value,
+            source_index,
+            max_scan_codepoints=remaining_scan,
+        )
+        remaining_scan = max(0, remaining_scan - scanned)
+        if opener is None:
+            return "…", True
+        resolved.append(opener)
+
+    projected, projection_truncated = _canvas_project_bidi_wrapped_lines(
+        ["".join(resolved)]
+    )
+    return (projected[0] if projected else ""), projection_truncated
+
+
+def _canvas_fit_single_line(
+    value: str,
+    *,
+    size: int,
+    max_width: float,
+    max_bytes: int,
+) -> tuple[str, bool]:
+    """Fit one Canvas label without silent clipping or broken bidi scopes."""
+
+    fitted, truncated = _canvas_fit_single_line_unprojected(
+        value,
+        size=size,
+        max_width=max_width,
+        max_bytes=max_bytes,
+    )
+    if not truncated:
+        return fitted, False
+
+    fitted, bidi_projection_truncated = _canvas_project_truncated_single_line_bidi(
+        value,
+        fitted,
+    )
+    if bidi_projection_truncated:
+        marker = "…"
+        if (
+            _estimated_canvas_single_line_width(marker, size=size) <= max_width
+            and _canvas_escaped_text_bytes(marker) <= max_bytes
+        ):
+            return marker, True
+        return "", True
+
+    if (
+        _estimated_canvas_single_line_width(fitted, size=size) <= max_width
+        and _canvas_escaped_text_bytes(fitted) <= max_bytes
+    ):
+        return fitted, True
+
+    refitted = _canvas_ellipsize_to_limits(
+        fitted,
+        size=size,
+        max_width=max_width,
+        max_bytes=max_bytes,
+        single_line_svg_whitespace=True,
+    )
+    if refitted:
+        reprojected, refit_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            [refitted]
+        )
+        final = reprojected[0] if reprojected else ""
+        if (
+            not refit_projection_truncated
+            and _estimated_canvas_single_line_width(final, size=size) <= max_width
+            and _canvas_escaped_text_bytes(final) <= max_bytes
+        ):
+            return final, True
+
+    marker = "…"
+    if (
+        _estimated_canvas_single_line_width(marker, size=size) <= max_width
+        and _canvas_escaped_text_bytes(marker) <= max_bytes
+    ):
+        return marker, True
+    return "", True
+
+
+def _canvas_wrap_source_line(
+    value: str, *, size: int, max_width: float, max_lines: int
+) -> tuple[list[str], bool]:
+    """Wrap one line incrementally without splitting display graphemes."""
+
+    if max_lines <= 0:
+        return [], bool(value)
+    value = _canvas_collapse_inline_whitespace(value).strip(" \t")
+    if not value:
+        return [], False
+    lines: list[str] = []
+    current: list[str] = []
+    current_width = 0.0
+    last_space_index = -1
+
+    for cluster in _canvas_grapheme_clusters(value):
+        if not current:
+            cluster = cluster.lstrip(" \t")
+            if not cluster:
+                continue
+        cluster_width = (
+            _canvas_svg_cluster_width_units(
+                cluster,
+                previous_cluster=current[-1] if current else None,
+            )
+            * size
+        )
+        while current and current_width + cluster_width > max_width:
+            if last_space_index >= 0:
+                emitted_clusters = current[:last_space_index]
+                break_cluster = current[last_space_index]
+                carry = current[last_space_index + 1 :]
+                carry_prefix = break_cluster.lstrip(" \t")
+                if carry_prefix:
+                    carry.insert(0, carry_prefix)
+            else:
+                emitted_clusters = current
+                carry = []
+            emitted = "".join(emitted_clusters).strip(" \t")
+            if emitted:
+                lines.append(emitted)
+                if len(lines) >= max_lines:
+                    return lines, True
+            carry_text = "".join(carry).strip(" \t")
+            current = list(_canvas_grapheme_clusters(carry_text))
+            current_width = _estimated_canvas_wrap_width(carry_text, size=size)
+            last_space_index = -1
+            for index, item in enumerate(current):
+                if _canvas_has_collapsible_inline_whitespace_prefix(item):
+                    last_space_index = index
+            while current and current_width > max_width:
+                fitted_carry: list[str] = []
+                fitted_width = 0.0
+                for item in current:
+                    item_width = (
+                        _canvas_svg_cluster_width_units(
+                            item,
+                            previous_cluster=(
+                                fitted_carry[-1] if fitted_carry else None
+                            ),
+                        )
+                        * size
+                    )
+                    if fitted_carry and fitted_width + item_width > max_width:
+                        break
+                    if not fitted_carry and item_width > max_width:
+                        if len(lines) < max_lines:
+                            lines.append(item)
+                        return lines, True
+                    fitted_carry.append(item)
+                    fitted_width += item_width
+
+                if not fitted_carry or len(fitted_carry) == len(current):
+                    break
+                emitted_carry = "".join(fitted_carry).strip(" \t")
+                if emitted_carry:
+                    lines.append(emitted_carry)
+                    if len(lines) >= max_lines:
+                        return lines, True
+                current = current[len(fitted_carry) :]
+                carry_text = "".join(current).strip(" \t")
+                current = list(_canvas_grapheme_clusters(carry_text))
+                current_width = _estimated_canvas_wrap_width(carry_text, size=size)
+                last_space_index = -1
+                for index, item in enumerate(current):
+                    if _canvas_has_collapsible_inline_whitespace_prefix(item):
+                        last_space_index = index
+
+            if not current:
+                cluster = cluster.lstrip(" \t")
+                if not cluster:
+                    cluster_width = 0.0
+                    break
+            cluster_width = (
+                _canvas_svg_cluster_width_units(
+                    cluster,
+                    previous_cluster=current[-1] if current else None,
+                )
+                * size
+            )
+        if not cluster:
+            continue
+        if not current and cluster_width > max_width:
+            if len(lines) < max_lines:
+                lines.append(cluster)
+            return lines, True
+        current.append(cluster)
+        current_width += cluster_width
+        if _canvas_has_collapsible_inline_whitespace_prefix(cluster):
+            last_space_index = len(current) - 1
+
+    trailing = "".join(current).strip(" \t")
+    if trailing:
+        if len(lines) >= max_lines:
+            return lines, True
+        lines.append(trailing)
+
+    if (
+        len(lines) >= 2
+        and not any(
+            _canvas_is_collapsible_inline_whitespace(character)
+            for character in value
+        )
+    ):
+        donor = list(_canvas_grapheme_clusters(lines[-2]))
+        fragment = list(_canvas_grapheme_clusters(lines[-1]))
+        while len(fragment) < 4 and len(donor) > 4:
+            candidate = donor[-1] + "".join(fragment)
+            if _estimated_canvas_wrap_width(candidate, size=size) > max_width:
+                break
+            fragment.insert(0, donor.pop())
+        lines[-2] = "".join(donor)
+        lines[-1] = "".join(fragment)
+    return lines, False
+
+def _canvas_adaptive_lines(
+    value: str, *, size: int, max_width: float, max_lines: int
+) -> tuple[list[tuple[str, bool]], bool]:
+    """Wrap visible source text under an explicit line budget."""
+
+    lines: list[tuple[str, bool]] = []
+    paragraph_gap_pending = False
+    for source_line in _canvas_iter_source_lines(value):
+        if len(lines) >= max_lines:
+            return lines, True
+        if not source_line.strip(" \t"):
+            if lines:
+                paragraph_gap_pending = True
+            continue
+        wrapped, source_truncated = _canvas_wrap_source_line(
+            source_line,
+            size=size,
+            max_width=max_width,
+            max_lines=max_lines - len(lines),
+        )
+        projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            wrapped,
+            fsi_source=source_line,
+        )
+        for wrapped_index, line in enumerate(projected):
+            lines.append(
+                (
+                    line,
+                    paragraph_gap_pending and wrapped_index == 0,
+                )
+            )
+            paragraph_gap_pending = False
+        if source_truncated or bidi_projection_truncated:
+            return lines, True
+    return lines, False
+
+
+def _canvas_position_adaptive_lines(
+    lines: Sequence[tuple[str, bool]], *, size: int
+) -> tuple[tuple[str, int], ...]:
+    baseline = size + 12
+    line_height = size + 4
+    paragraph_gap = max(6, size // 2)
+    positioned: list[tuple[str, int]] = []
+    for index, (line, gap_before) in enumerate(lines):
+        if index:
+            baseline += line_height
+            if gap_before:
+                baseline += paragraph_gap
+        positioned.append((line, baseline))
+    return tuple(positioned)
+
+
+def _canvas_truncated_lines(
+    lines: tuple[tuple[str, int], ...], *, size: int, max_width: float
+) -> tuple[tuple[str, int], ...]:
+    if not lines:
+        return ()
+    last_text, last_y = lines[-1]
+    if last_text == "…":
+        return (
+            lines
+            if _estimated_canvas_wrap_width(last_text, size=size) <= max_width
+            else lines[:-1]
+        )
+    marker = _canvas_ellipsize_to_width(
+        last_text,
+        size=size,
+        max_width=max_width,
+    )
+    if not marker:
+        return lines[:-1]
+    return (*lines[:-1], (marker, last_y))
+
+
+def _canvas_limit_text_layout_bytes(
+    layout: _CanvasTextLayout,
+    *,
+    max_width: float,
+    max_bytes: int,
+) -> _CanvasTextLayout:
+    """Bound escaped visible label bytes while preserving grapheme boundaries."""
+
+    remaining = max(0, max_bytes)
+    limited: list[tuple[str, int]] = []
+    byte_truncated = False
+    for line, baseline in layout.lines:
+        projected, bidi_projection_truncated = _canvas_project_bidi_wrapped_lines(
+            [line]
+        )
+        safe_line = projected[0] if projected else ""
+        if bidi_projection_truncated:
+            byte_truncated = True
+        line_bytes = _canvas_escaped_text_bytes(safe_line)
+        if line_bytes <= remaining:
+            limited.append((safe_line, baseline))
+            remaining -= line_bytes
+            continue
+        marker = _canvas_ellipsize_to_limits(
+            line,
+            size=layout.size,
+            max_width=max_width,
+            max_bytes=remaining,
+        )
+        if marker:
+            projected_marker, marker_projection_truncated = (
+                _canvas_project_bidi_wrapped_lines([marker])
+            )
+            safe_marker = projected_marker[0] if projected_marker else ""
+            if marker_projection_truncated:
+                safe_marker = "…"
+            if (
+                safe_marker
+                and _canvas_escaped_text_bytes(safe_marker) <= remaining
+            ):
+                limited.append((safe_marker, baseline))
+            elif (
+                _canvas_escaped_text_bytes("…") <= remaining
+                and _estimated_canvas_wrap_width("…", size=layout.size)
+                <= max_width
+            ):
+                limited.append(("…", baseline))
+        byte_truncated = True
+        break
+    if len(limited) < len(layout.lines):
+        byte_truncated = True
+    return _CanvasTextLayout(
+        size=layout.size,
+        lines=tuple(limited),
+        truncated=layout.truncated or byte_truncated,
+    )
+
+def _canvas_text_probe_cluster_limit(
+    *, max_width: float, max_lines: int, max_bytes: int, min_size: int
+) -> int:
+    """Bound grapheme work to clusters that could affect visible output."""
+
+    minimum_cluster_width = max(
+        0.001,
+        _canvas_character_width_units(" ") * min_size,
+    )
+    clusters_per_line = max(
+        1,
+        math.ceil(max_width / minimum_cluster_width) + 1,
+    )
+    geometry_limit = max(
+        1,
+        max_lines * clusters_per_line + max_lines + 1,
+    )
+    byte_limit = max(1, max_bytes + 1)
+    return min(
+        geometry_limit,
+        byte_limit,
+        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+    )
+
+
+def _canvas_bounded_text_probe_prefix(
+    value: str,
+    *,
+    geometry_cluster_limit: int,
+    work_cluster_limit: int,
+    max_codepoints: int,
+) -> tuple[str, bool]:
+    """Bound probe work without charging control-only clusters to geometry."""
+
+    geometry_prefix, geometry_truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=min(geometry_cluster_limit, work_cluster_limit),
+        max_codepoints=max_codepoints,
+    )
+    if not any(
+        _canvas_is_zero_advance_control(character)
+        or _canvas_character_width_units(character) == 0.0
+        for character in geometry_prefix
+    ):
+        return geometry_prefix, geometry_truncated
+
+    prefix, work_truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=work_cluster_limit,
+        max_codepoints=max_codepoints,
+    )
+    selected: list[str] = []
+    geometry_clusters = 0
+    for cluster in _canvas_grapheme_clusters(prefix):
+        consumes_geometry = _canvas_grapheme_width_units(cluster) > 0.0
+        if consumes_geometry and geometry_clusters >= geometry_cluster_limit:
+            return "".join(selected), True
+        selected.append(cluster)
+        if consumes_geometry:
+            geometry_clusters += 1
+    return prefix, work_truncated
+
+
+def _canvas_text_layout(
+    value: str,
+    width_px: int,
+    height_px: int,
+    *,
+    max_lines: int,
+    max_bytes: int,
+) -> _CanvasTextLayout:
+    """Fit Canvas text inside explicit geometry without changing that geometry."""
+
+    max_width = max(1.0, float(width_px))
+    bottom_limit = max(1, height_px - 5)
+    min_size = 12
+
+    def truncation_marker_line() -> tuple[tuple[str, int], ...]:
+        marker_y = min_size + 12
+        if (
+            marker_y > bottom_limit
+            or _estimated_canvas_wrap_width("…", size=min_size) > max_width
+        ):
+            return ()
+        return (("…", marker_y),)
+
+    had_visible_text = bool(value.strip(" \t\r\n"))
+    height_line_limit = max(1, height_px // (min_size + 4) + 2)
+    effective_max_lines = min(max_lines, height_line_limit)
+    if effective_max_lines <= 0 or max_bytes <= 0:
+        return _CanvasTextLayout(size=16, lines=(), truncated=had_visible_text)
+    probe_cluster_limit = _canvas_text_probe_cluster_limit(
+        max_width=max_width,
+        max_lines=effective_max_lines,
+        max_bytes=max_bytes,
+        min_size=min_size,
+    )
+    probe_work_cluster_limit = min(
+        max(1, max_bytes + 1),
+        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+    )
+    collapsed_probe = _canvas_collapse_inline_whitespace(value)
+    probe_prefix, probe_truncated = _canvas_bounded_text_probe_prefix(
+        collapsed_probe,
+        geometry_cluster_limit=probe_cluster_limit,
+        work_cluster_limit=probe_work_cluster_limit,
+        max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+    )
+    if collapsed_probe == value:
+        value = probe_prefix
+        grapheme_truncated = probe_truncated
+    elif probe_truncated:
+        value = probe_prefix
+        grapheme_truncated = True
+    else:
+        source_prefix, source_truncated = _canvas_bounded_xml_compatible_prefix(
+            value,
+            max_clusters=None,
+            max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+        )
+        if source_truncated:
+            value = probe_prefix
+            grapheme_truncated = probe_truncated
+        else:
+            value = source_prefix
+            grapheme_truncated = False
+    if not value.strip(" \t\r\n"):
+        if not had_visible_text:
+            return _CanvasTextLayout(size=16, lines=(), truncated=False)
+        return _CanvasTextLayout(
+            size=min_size,
+            lines=truncation_marker_line(),
+            truncated=True,
+        )
+
+    if (
+        not _canvas_has_extended_graphemes(value)
+        and not any(_canvas_is_zero_advance_control(character) for character in value)
+        and _canvas_collapse_inline_whitespace(value) == value
+        and not _canvas_has_non_collapsible_whitespace(value)
+    ):
+        legacy, legacy_truncated = _canvas_legacy_lines(
+            value,
+            width_px,
+            max_lines=effective_max_lines,
+        )
+        legacy_positioned = tuple(
+            (line, 28 + index * 20) for index, line in enumerate(legacy)
+        )
+        legacy_width_safe = all(
+            not line or _estimated_canvas_wrap_width(line, size=16) <= max_width
+            for line in legacy
+        )
+        if (
+            not legacy_truncated
+            and legacy_positioned
+            and legacy_width_safe
+            and legacy_positioned[-1][1] <= bottom_limit
+        ):
+            if grapheme_truncated:
+                return _CanvasTextLayout(
+                    size=16,
+                    lines=_canvas_truncated_lines(
+                        legacy_positioned,
+                        size=16,
+                        max_width=max_width,
+                    ),
+                    truncated=True,
+                )
+            return _CanvasTextLayout(size=16, lines=legacy_positioned, truncated=False)
+    else:
+        legacy_truncated = False
+
+    candidate: tuple[tuple[str, int], ...] = ()
+    candidate_truncated = legacy_truncated or grapheme_truncated
+    candidate_size = min_size
+    candidate_sizes = (
+        (min_size,) if grapheme_truncated else range(16, min_size - 1, -1)
+    )
+    for size in candidate_sizes:
+        wrapped, wrapped_truncated = _canvas_adaptive_lines(
+            value,
+            size=size,
+            max_width=max_width,
+            max_lines=effective_max_lines,
+        )
+        candidate = _canvas_position_adaptive_lines(wrapped, size=size)
+        candidate_truncated = wrapped_truncated or grapheme_truncated
+        candidate_size = size
+        if (
+            not wrapped_truncated
+            and not grapheme_truncated
+            and (not candidate or candidate[-1][1] <= bottom_limit)
+        ):
+            return _CanvasTextLayout(size=size, lines=candidate, truncated=False)
+
+    visible = tuple(line for line in candidate if line[1] <= bottom_limit)
+    if not visible:
+        return _CanvasTextLayout(
+            size=min_size,
+            lines=truncation_marker_line(),
+            truncated=True,
+        )
+
+    truncated = candidate_truncated or len(visible) < len(candidate)
+    if truncated:
+        visible = _canvas_truncated_lines(
+            visible,
+            size=candidate_size,
+            max_width=max_width,
+        )
+    return _CanvasTextLayout(
+        size=candidate_size,
+        lines=visible,
+        truncated=truncated,
+    )
 
 
 def render_native_editing_document(document: Mapping[str, Any]) -> str:
@@ -3486,6 +5961,16 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         view_width = 1200
         view_height = 800
 
+    document_title = str(document.get("title", "Schaubild"))
+    rendered_document_title = _canvas_ellipsize_to_escaped_bytes(
+        document_title,
+        max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+    )
+    document_title_truncated_attribute = (
+        ' data-title-truncated="true"'
+        if rendered_document_title != document_title
+        else ""
+    )
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         (
@@ -3494,9 +5979,10 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'width="{view_width}" height="{view_height}" '
             f'data-renderer="schauwerk-native-diagram-v1" '
             f'data-intent="freeform" data-document-mode="json-canvas" '
-            f'data-input-digest="{_canvas_xml(document["source_digest"])}">'
+            f'data-input-digest="{_canvas_xml(document["source_digest"])}"'
+            f'{document_title_truncated_attribute}>'
         ),
-        f"<title>{_canvas_xml(document.get('title', 'Schaubild'))}</title>",
+        f"<title>{_canvas_xml(rendered_document_title)}</title>",
         "<defs>",
     ]
     for index, edge in enumerate(edges):
@@ -3513,8 +5999,39 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             ]
         )
     lines.append("</defs>")
+    canvas_node_render_order = [
+        (node_index, node)
+        for node_index, node in enumerate(nodes)
+        if str(node["type"]) == "group"
+    ] + [
+        (node_index, node)
+        for node_index, node in enumerate(nodes)
+        if str(node["type"]) != "group"
+    ]
+    remaining_canvas_text_lines = _CANVAS_MAX_NODE_TEXT_LINES
+    remaining_canvas_text_bytes = _CANVAS_MAX_EMITTED_TEXT_BYTES
+    remaining_labeled_canvas_items = sum(
+        _canvas_has_layout_content(
+            _canvas_plain_markdown(str(node.get("label", "")))
+            if str(node["type"]) == "text"
+            else str(node.get("label", ""))
+        )
+        for _, node in canvas_node_render_order
+    ) + sum(_canvas_has_layout_content(layout[8]) for layout in edge_layouts)
+
+    def fair_text_byte_budget(*, has_visible_label: bool) -> int:
+        if (
+            not has_visible_label
+            or remaining_canvas_text_bytes <= 0
+            or remaining_labeled_canvas_items <= 0
+        ):
+            return 0
+        return remaining_canvas_text_bytes // remaining_labeled_canvas_items
 
     def append_canvas_node(node: Mapping[str, Any], node_index: int) -> None:
+        nonlocal remaining_canvas_text_lines
+        nonlocal remaining_canvas_text_bytes
+        nonlocal remaining_labeled_canvas_items
         node_type = str(node["type"])
         raw = node.get("source") if isinstance(node.get("source"), Mapping) else {}
         fill, stroke = _canvas_color(raw.get("color"))
@@ -3526,12 +6043,56 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         height = int(node["height"])
         label = str(node.get("label", ""))
         display_label = _canvas_plain_markdown(label) if node_type == "text" else label
+        has_visible_label = _canvas_has_layout_content(display_label)
+        reserve_for_later = max(
+            0,
+            remaining_labeled_canvas_items - (1 if has_visible_label else 0),
+        )
+        node_line_budget = max(
+            0,
+            remaining_canvas_text_lines - reserve_for_later,
+        )
+        node_text_byte_budget = fair_text_byte_budget(
+            has_visible_label=has_visible_label
+        )
+        inner_text_width = max(1.0, float(width - 28))
+        text_layout = _canvas_text_layout(
+            display_label,
+            width - 28,
+            height,
+            max_lines=node_line_budget,
+            max_bytes=node_text_byte_budget,
+        )
+        text_layout = _canvas_limit_text_layout_bytes(
+            text_layout,
+            max_width=inner_text_width,
+            max_bytes=node_text_byte_budget,
+        )
+        remaining_canvas_text_lines = max(
+            0, remaining_canvas_text_lines - len(text_layout.lines)
+        )
+        remaining_canvas_text_bytes = max(
+            0,
+            remaining_canvas_text_bytes
+            - sum(_canvas_escaped_text_bytes(line) for line, _ in text_layout.lines),
+        )
+        if has_visible_label:
+            remaining_labeled_canvas_items = max(
+                0, remaining_labeled_canvas_items - 1
+            )
+        truncated_attribute = (
+            ' data-text-truncated="true"' if text_layout.truncated else ""
+        )
         lines.append(
             f'<g id="native-node-{_canvas_xml(node["id"])}" data-source-kind="node" '
             f'data-source-id="{_canvas_xml(node["id"])}" data-kind="concept" '
-            f'data-canvas-type="{_canvas_xml(node_type)}">'
+            f'data-canvas-type="{_canvas_xml(node_type)}"{truncated_attribute}>'
         )
-        lines.append(f"<title>{_canvas_xml(display_label)}</title>")
+        title_label = _canvas_ellipsize_to_escaped_bytes(
+            display_label,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
+        lines.append(f"<title>{_canvas_xml(title_label)}</title>")
         label_clip_id = f"canvas-node-label-{node_index}"
         lines.append(
             f'<defs><clipPath id="{label_clip_id}">'
@@ -3546,20 +6107,17 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'stroke-width="1.8"{dash}/>'
         )
         text_x = x + 14
-        text_y = y + 28
-        for line_index, line in enumerate(
-            _canvas_wrap(display_label, width - 28, height - 24)
-        ):
+        for line_index, (line, baseline_offset) in enumerate(text_layout.lines):
             weight = "700" if line_index == 0 or node_type == "group" else "500"
             lines.append(
                 f'<text data-node-label="true" x="{text_x}" '
-                f'y="{text_y + line_index * 20}" font-family="Inter, sans-serif" '
-                f'font-size="16" font-weight="{weight}" fill="#172033" '
+                f'y="{y + baseline_offset}" font-family="Inter, sans-serif" '
+                f'font-size="{text_layout.size}" font-weight="{weight}" fill="#172033" '
                 f'clip-path="url(#{label_clip_id})">{_canvas_xml(line)}</text>'
             )
         lines.append("</g>")
 
-    for node_index, node in enumerate(nodes):
+    for node_index, node in canvas_node_render_order:
         if str(node["type"]) == "group":
             append_canvas_node(node, node_index)
 
@@ -3577,6 +6135,48 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         label_height,
     ) in edge_layouts:
         _, stroke = _canvas_color(edge.get("source", {}).get("color"))
+        has_visible_label = _canvas_has_layout_content(label)
+        reserve_for_later = max(
+            0,
+            remaining_labeled_canvas_items - (1 if has_visible_label else 0),
+        )
+        edge_text_byte_budget = fair_text_byte_budget(
+            has_visible_label=has_visible_label
+        )
+        edge_line_budget = max(
+            0,
+            remaining_canvas_text_lines - reserve_for_later,
+        )
+        rendered_edge_label = ""
+        edge_label_truncated = False
+        if has_visible_label:
+            if edge_line_budget <= 0:
+                edge_label_truncated = True
+            else:
+                rendered_edge_label, edge_label_truncated = _canvas_fit_single_line(
+                    label,
+                    size=14,
+                    max_width=max(1.0, float(label_width - 20)),
+                    max_bytes=edge_text_byte_budget,
+                )
+        if rendered_edge_label:
+            remaining_canvas_text_lines = max(0, remaining_canvas_text_lines - 1)
+            remaining_canvas_text_bytes = max(
+                0,
+                remaining_canvas_text_bytes
+                - _canvas_escaped_text_bytes(rendered_edge_label),
+            )
+        if has_visible_label:
+            remaining_labeled_canvas_items = max(
+                0, remaining_labeled_canvas_items - 1
+            )
+        edge_truncated_attribute = (
+            ' data-text-truncated="true"' if edge_label_truncated else ""
+        )
+        edge_title = _canvas_ellipsize_to_escaped_bytes(
+            label,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
         marker_start = (
             f' marker-start="url(#canvas-arrow-{index})"'
             if edge.get("from_end") == "arrow"
@@ -3592,16 +6192,17 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 (
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
-                    f'data-route="{route}" data-lane="{lane:.1f}">'
+                    f'data-route="{route}" data-lane="{lane:.1f}"'
+                    f'{edge_truncated_attribute}>'
                 ),
-                f"<title>{_canvas_xml(label)}</title>",
+                f"<title>{_canvas_xml(edge_title)}</title>",
                 (
                     f'<path d="{path}" fill="none" stroke="{stroke}" stroke-width="2" '
                     f'stroke-linecap="round" stroke-linejoin="round"{marker_start}{marker_end}/>'
                 ),
             ]
         )
-        if label:
+        if has_visible_label:
             clip_id = f"canvas-edge-label-{index}"
             lines.extend(
                 [
@@ -3620,7 +6221,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                         f'<text x="{label_x:.1f}" y="{label_y + 5:.1f}" '
                         f'text-anchor="middle" font-family="Inter, sans-serif" '
                         f'font-size="14" font-weight="600" fill="{stroke}" '
-                        f'clip-path="url(#{clip_id})">{_canvas_xml(label)}</text>'
+                        f'clip-path="url(#{clip_id})">{_canvas_xml(rendered_edge_label)}</text>'
                     ),
                 ]
             )
@@ -3630,7 +6231,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             )
         lines.append("</g>")
 
-    for node_index, node in enumerate(nodes):
+    for node_index, node in canvas_node_render_order:
         if str(node["type"]) != "group":
             append_canvas_node(node, node_index)
 

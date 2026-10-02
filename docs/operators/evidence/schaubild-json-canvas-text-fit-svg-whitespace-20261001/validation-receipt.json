@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-svg-whitespace-validation.v1",
+  "evidence_predecessor_head": "91f0fef452f445015f66291f64dbf24de5c69e57",
+  "functional_head": "15432349737dfbd9c1a019e73d18ef009a7f8817",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-svg-whitespace-20261001/acceptance-receipt.json",
+    "file_sha256": "c2e24e844cd6eeac08700c1969314489b298f1285cdfad3e1558f0424dc4038d"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "91d2d774fd69006557c761dccad19bfa409112adc2e1dfc794851fb49d9b22b4"
+  },
+  "note": "This receipt binds the SVG whitespace-before-grapheme successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, GitHub CI, thread settlement, Captain readiness, merge, or deployment; those remain subsequent gates."
+}

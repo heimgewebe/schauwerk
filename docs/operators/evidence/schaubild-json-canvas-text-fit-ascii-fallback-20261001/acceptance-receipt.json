@@ -1,0 +1,106 @@
+{
+  "accepted_at": "2026-10-01T15:05:13.224710+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "check_evidence": {
+    "ascii_default_regressions_red_before_fix": {
+      "failed_tests": 11,
+      "outcome_receipt_sha256": "6a1b67a3a181080f090371c8eb7e54549f17fd73ef6b02d96988e3a612ccb8b8",
+      "result": "expected_red",
+      "task_id": "7661d95d61064e33a932ac49"
+    },
+    "default_boundary_probe_before_fix": {
+      "dejavu_sans_bold_measured_width_px": 114.531,
+      "estimated_width_px": 112.0,
+      "inner_width_px": 112.0,
+      "label": "bbbbbbbbbb",
+      "rendered_font_size": 16,
+      "rendered_font_weight": 700,
+      "result": "unmarked_fallback_overflow_risk_reproduced",
+      "task_id": "7e9942a25a554ebaa23330fe"
+    },
+    "diff_check": {
+      "outcome_receipt_sha256": "7d98b8880d0f1e610f40a6a71d3a073c527dc4a3a522b12b63fe52feef18e128",
+      "result": "passed",
+      "task_id": "9607f29f66294f208adc6a6c"
+    },
+    "focused_ascii_regressions_after_fix": {
+      "outcome_receipt_sha256": "beb6aa9191c7f1ee351dc707ba743a88ffeff5d4c9af6ce35f9ba1aa4bfa7524",
+      "passed_tests": 18,
+      "task_id": "5bcf0ab8887547139b7b7c01"
+    },
+    "operator_boundary_probe_before_fix": {
+      "estimated_em": 0.7,
+      "label": "++++++++++",
+      "rendered_font_size": 16,
+      "rendered_font_weight": 700,
+      "result": "unmarked_fallback_overflow_risk_reproduced",
+      "task_id": "ca322f83a1f84494be20fa97"
+    },
+    "renderer_modules": {
+      "outcome_receipt_sha256": "80dd78d8f0ae956a74d3d73d654a20bda229fc30b5fe951139b19c91ba3be477",
+      "result": "passed",
+      "task_id": "926b79d711804ef7840e2d55"
+    },
+    "ruff": {
+      "outcome_receipt_sha256": "83ecff52235048b2c8f6221da892cd9b85b0886cbe0de7412b32f07e90500038",
+      "result": "passed",
+      "task_id": "5bcc4491853a47cda6c84d0f"
+    }
+  },
+  "checks": {
+    "bold_fallback_operators_calibrated_to_0_85em": true,
+    "existing_unicode_and_zwj_specializations_preserved": true,
+    "github_ascii_operator_fallback_review_remediated": true,
+    "lowercase_run_reflows_before_fallback_overflow": true,
+    "measured_ascii_default_outliers_calibrated_to_0_72em": true,
+    "plus_run_reflows_before_fallback_overflow": true,
+    "publication_successor_binding_added": true,
+    "review_hardening_parent_left_immutable": true
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment",
+    "universal width safety for arbitrary fonts outside the measured acceptance population"
+  ],
+  "evidence_digest": "e91e3ac01e3adb5e177993ebaaaa9aaaca798ac8604c2828185cb7c2ef765c38",
+  "evidence_predecessor_head": "7ff4e028b281c545fed9045c78af71770ccf1b29",
+  "functional_head": "2048da0ec97914f25c720bf34b48f6c4fa5f0d4b",
+  "github_review_debt": {
+    "comment_id": 4153967306,
+    "disposition": "confirmed_and_remediated_in_functional_head",
+    "reviewed_head": "7ff4e028b281c545fed9045c78af71770ccf1b29",
+    "severity": "P2",
+    "thread_id": "PRRT_kwDOTGqvHc6n4v26",
+    "title": "Budget ASCII operators at their fallback advance",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4153967306"
+  },
+  "measurement_scope": {
+    "bold_font_population": [
+      "Inter Bold",
+      "Liberation Sans Bold (Arial-compatible local resolution)",
+      "DejaVu Sans Bold (sans-serif local fallback)"
+    ],
+    "default_chars": "bdghnpqu{}",
+    "default_floor_em": 0.72,
+    "default_measured_max_em": 0.7158,
+    "operator_chars": "+<=>^~",
+    "operator_floor_em": 0.85,
+    "operator_measured_max_em": 0.8379
+  },
+  "parent_evidence": {
+    "evidence_digest": "2c40d446fa30b20f0e1c2cf09ef155dc431199047eb3c86fe6675b53b5656f89",
+    "file_sha256": "aa8d55c1ed7f3251323522c919fc785b859502d3955babfd2f6d0c2ce8a2afeb",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-review-hardening-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-review-hardening.v1"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ascii-fallback.v1",
+  "scope": "json-canvas-text-fit-bold-fallback-width-hardening",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "77c72ca643a713576f803552d1f68cb1a9244cead6c1c5eb64cf45241618c2bd",
+    "tests/visual/test_native_document.py": "6c20155bbfa99a31b6830545d90067ecaafdae4a645f2daab88ecd13e635f347"
+  }
+}

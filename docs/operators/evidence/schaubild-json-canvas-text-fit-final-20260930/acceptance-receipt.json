@@ -1,0 +1,116 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-final.v1",
+  "scope": "json-canvas-text-fit-final-review-fixes",
+  "accepted_at": "2026-09-30",
+  "functional_head": "4f26a3a3bb5fd272aa7e20e135385c28d2f6e756",
+  "integrated_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "parent_evidence": {
+    "evidence_digest": "580cbf8e0a0eb6fde9c2ed708e207588fbbfaa8202661651321182d03d6e8cdf",
+    "file_sha256": "72773a0a4a67098a0886f77f624292ea674307f22f6a991b57a4576e4b99813c",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-20260930/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit.v1"
+  },
+  "checks": {
+    "historical_text_fit_acceptance_left_immutable": true,
+    "xml_forbidden_controls_normalized_before_bounded_grapheme_layout": true,
+    "single_line_xml_normalization_preserves_work_cap": true,
+    "latin_zwj_uses_base_letter_width": true,
+    "shaping_script_zwj_width_preserved": true,
+    "focused_xml_zwj_and_work_cap_tests_passed": true,
+    "native_document_and_diagram_modules_passed": true,
+    "ruff_passed": true,
+    "browser_smoke_passed": true,
+    "code_suite_excluding_successor_binding_gate_passed": true,
+    "exact_case_browser_readback_passed": true,
+    "visual_readback_passed": true
+  },
+  "check_evidence": {
+    "focused_xml_zwj_and_work_cap_tests_passed": {
+      "job_unit": "grabowski-job-2feb8822a455",
+      "argv_sha256": "977afb82c292bf72d88283190111000247a5aab44cdd1b76b21ad63d6f44cbc2",
+      "finalization_receipt_sha256": "eae127664ff23546a65dd16568fe4343d81b44e66e5f0422037a1563dc423645",
+      "result": "succeeded",
+      "passed_count": 7
+    },
+    "native_document_and_diagram_modules_passed": {
+      "job_unit": "grabowski-job-08e6e9b77239",
+      "argv_sha256": "6471f15915e64b4d82bbb2aed630927897151872a4c8b86d25c0c0c9878a3e0a",
+      "finalization_receipt_sha256": "a3798cc401f0757d9adbff65866fbaa8d3000ccccdd2c57e3a77ab34e586467a",
+      "result": "succeeded"
+    },
+    "ruff_passed": {
+      "job_unit": "grabowski-job-d7b016fd5d56",
+      "argv_sha256": "79cd50d13d9255a24521d7c5c22d358aea43873adf62cf63ee4aba8d56da416f",
+      "finalization_receipt_sha256": "1d5f77f7466885be49bbfb8a00b691dcd48862ac387b5ecb51cfed0cd14b232e",
+      "result": "succeeded"
+    },
+    "browser_smoke_passed": {
+      "job_unit": "grabowski-job-81d4cdf8f973",
+      "argv_sha256": "f42ec0e06172d2fafa423d1d65082b13b52e621b27bc4be870c01ec58ce9a3c0",
+      "finalization_receipt_sha256": "cfdf2bb4d36114617825d1bf7a7368611e78023fd8b6f96d3952012cd066e179",
+      "result": "succeeded",
+      "passed_count": 7,
+      "retry_with_fresh_chrome_profile": true
+    },
+    "code_suite_excluding_successor_binding_gate_passed": {
+      "job_unit": "grabowski-job-fad57e5cee47",
+      "argv_sha256": "6ab6180bc115db62cb3e2cf8161e8b3d99c866ede09b2fade494bf0ce21c427d",
+      "finalization_receipt_sha256": "16fa4b94a27904e91fa9e1d7bea108acffebce4021ca40a88ee53c970f0ed374",
+      "result": "succeeded",
+      "excluded_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    },
+    "exact_case_browser_readback_passed": {
+      "job_unit": "grabowski-job-b5212645800b",
+      "argv_sha256": "c379c34db36f038611ae12713e9c23f825f3913c7354acccfac10dd9360f5a2a",
+      "finalization_receipt_sha256": "db0873fe5d85c3728c67ef453faf5395085d31f17a7c23d9034e50255b238cf9",
+      "result": "succeeded",
+      "long_collapsible_whitespace": {
+        "lines": [
+          "abc",
+          "defxxxxxx…"
+        ],
+        "truncated": true
+      },
+      "xml_raw": {
+        "lines": [
+          "�́�́"
+        ],
+        "truncated": false
+      },
+      "xml_replacement": {
+        "lines": [
+          "�́�́"
+        ],
+        "truncated": false
+      },
+      "latin_zwj": {
+        "lines": [
+          "a‍a‍a‍a‍a‍a‍a‍a‍a‍a‍"
+        ],
+        "truncated": false
+      },
+      "shaping_script_zwj": {
+        "lines": [
+          "ണ്‍ണ്‍ണ്‍ണ്‍"
+        ],
+        "truncated": false
+      },
+      "all_text_boxes_within_node_bounds": true,
+      "screenshot_png_sha256": "399c6c723d24d17f10fd8683bd590258a2bad7b8afb86d0f79fe5966cade9ddc",
+      "screenshot_jpg_sha256": "cf6f41c49a8655bf3d28e5eb9c4bf5da653c4ed8c2714a95611a68884ccec529"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "e0146bb3912c86a8c011b8cb251f0dd198c5d9ed791a3d59c051d57d3a76405d",
+    "tests/visual/test_native_document.py": "75aba0d28e935b0a6c9f4819107fdeecfb630bae35941f85130de93499a29152"
+  },
+  "does_not_establish": [
+    "user visual acceptance of the final JSON Canvas text-fit revision",
+    "independent review of the final JSON Canvas text-fit revision",
+    "GitHub CI success on the later evidence commit",
+    "current-head Codex settlement after the later evidence commit",
+    "Captain merge readiness",
+    "runtime publication or Commonthing deployment"
+  ],
+  "evidence_digest": "f327238d52e68169b93cd895c0ddd24944a2f66e7cbda13ff6f49c2072e14e13"
+}

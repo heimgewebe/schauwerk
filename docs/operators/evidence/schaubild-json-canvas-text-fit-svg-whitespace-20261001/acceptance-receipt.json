@@ -1,0 +1,79 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-svg-whitespace.v1",
+  "scope": "json-canvas-text-fit-svg-whitespace-before-grapheme-wrapping",
+  "accepted_at": "2026-10-01T18:38:06.233659+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "15432349737dfbd9c1a019e73d18ef009a7f8817",
+  "evidence_predecessor_head": "91f0fef452f445015f66291f64dbf24de5c69e57",
+  "parent_evidence": {
+    "evidence_digest": "400c1109dc649ed6b66b8b984bf084e44b3b281bb3e572397c761d0b9c226539",
+    "file_sha256": "c8fb6938106d76c81523fdb78ddbe3d21c82146b23c693cb8ae8b05c88c7edd9",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-numeric-fallback-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-numeric-fallback.v1"
+  },
+  "checks": {
+    "numeric_fallback_parent_left_immutable": true,
+    "github_svg_whitespace_review_remediated": true,
+    "svg_inline_whitespace_collapsed_before_grapheme_segmentation": true,
+    "whitespace_prefixed_extended_grapheme_wrap_carry_preserved": true,
+    "combining_space_carry_regression_preserved": true,
+    "renderer_modules_passed": true,
+    "browser_smoke_passed": true,
+    "exact_case_browser_readback_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "renderer_modules": {
+      "task_id": "a6e1b012a17940b7821286c7",
+      "outcome_receipt_sha256": "c2effd9a1874ed6c2794efb2b25fb04f9a5dbadfccc2dd0b87ed07e70b7c4aff",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "3528daf2ec764674829e55ac",
+      "outcome_receipt_sha256": "471f4edf9908ab7c447b2fa980d41c4c9d525166fae57b4267b417693e01c802",
+      "passed_count": 1606,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    },
+    "browser_smoke": {
+      "task_id": "b233b85ed5dc4aebbd48b444",
+      "outcome_receipt_sha256": "0164201e6a31f70409b2986cced1b7c1c4a21062bbb3b6069ef45ee590530fb1",
+      "passed_count": 7,
+      "result": "passed"
+    },
+    "exact_case_browser_readback": {
+      "task_id": "13c228f284644c49902be5c4",
+      "outcome_receipt_sha256": "7f64d51e625dada8ab7ade5a1d2bccc0d5149c7b93c7ec7a58734dff783f1d55",
+      "source_label": " \\u093e\\t\\u200d\\u094d\\t\\u200d\\u094d\\t\\u200d\\u094d\\t\\u200d\\u094d\\t\\u200d\\u094d",
+      "rendered_label": "ा ‍् ‍् ‍्…",
+      "truncated": true,
+      "all_text_boxes_within_node_bounds": true,
+      "text_right_px": 169.7031,
+      "node_right_px": 216.0,
+      "result": "passed"
+    }
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oEOx0",
+    "comment_id": 4158617787,
+    "reviewed_head": "91f0fef452f445015f66291f64dbf24de5c69e57",
+    "severity": "P2",
+    "title": "Normalize SVG whitespace before grapheme wrapping",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4158617787",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "321b94c5ff9572939bf9831f1bce6415e8aa0c7623a2d37ede9e78d1f0c88a4f",
+    "tests/visual/test_native_document.py": "1059b9738fdae1d119fb1f141267cb5c3f2b7c892825bf3d7e2028364d47746c"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "e7540040504323d0c2ad59878c972e3b8a39fa294f17a4adc54febede9e2fc28"
+}

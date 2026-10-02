@@ -1,0 +1,14 @@
+{
+  "acceptance_receipt": {
+    "file_sha256": "921b22743221abbf17e8574c90387848babb8a080345e8eb1f8211693d4fef5e",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-ascii-fallback-20261001/acceptance-receipt.json"
+  },
+  "evidence_predecessor_head": "7ff4e028b281c545fed9045c78af71770ccf1b29",
+  "functional_head": "2048da0ec97914f25c720bf34b48f6c4fa5f0d4b",
+  "note": "This receipt binds the ASCII fallback-width successor and publication fixture only. It does not establish post-commit full validation, independent-review PASS, Captain readiness, merge, or deployment; those remain subsequent gates.",
+  "publication_fixture": {
+    "file_sha256": "dd95ff88d8ddcb6e25bf6205c86f5b270b75b68219abc280e2c63e5784cb7c4d",
+    "path": "tests/publication/test_publication_fixtures.py"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ascii-fallback-validation.v1"
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-private-use-validation.v1",
+  "evidence_predecessor_head": "86cecc36e7d7df74c317da5b76bb684c962c5ef4",
+  "functional_head": "ca014372ee498e0be0274b4f00106817f265c150",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-private-use-20261002/acceptance-receipt.json",
+    "file_sha256": "1db2658a83933a011dcea83084e5ed92a3e111460f058787796d0f5351b5e4e8"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "ee4ccf0cf301b767322176448f82b55c0c6ad38945c8edc502c7b171fdf66926"
+  },
+  "note": "This receipt binds the private-use fallback-width successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, review settlement, Captain readiness, merge, or deployment."
+}

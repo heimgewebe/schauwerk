@@ -1,0 +1,115 @@
+{
+  "accepted_at": "2026-10-01T17:32:07.300082+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "check_evidence": {
+    "initial_generalization_probe": {
+      "task_id": "bc9a760b6881486fa8535d11",
+      "outcome_receipt_sha256": "1698942e7e03fcae2dc294de43da1d862e0f1990d966ac14a2db87a08132c9e2",
+      "sample_count": 1821,
+      "under_count": 365,
+      "result": "confirmed_initial_range_table_incomplete"
+    },
+    "full_numeric_calibration": {
+      "task_id": "3959137436b341328ed9b3a9",
+      "outcome_receipt_sha256": "e8fbbd3393ada1ac1518bdb5964d7a7cf462f8d0da8df09b2333ea0f7c968a13",
+      "sample_count": 1821,
+      "measured_over_1_0em_count": 417,
+      "calibrated_range_count": 213,
+      "max_measured_em": 4.63699560546875,
+      "max_codepoint": "U+1242B",
+      "result": "passed"
+    },
+    "final_binary_browser_scan": {
+      "task_id": "bfd92fd61a6a41ac9e15c8ce",
+      "outcome_receipt_sha256": "8cda66f652ca698f0800316905e80cb0d3f498f25f4d73768befd388bffd6fa7",
+      "sample_count": 1821,
+      "under_count": 0,
+      "calibrated_range_count": 213,
+      "ranges_sorted_nonoverlap": true,
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "task_id": "0ff8f6f6ffdc4f5daae2297d",
+      "outcome_receipt_sha256": "41d50f3afe53b1c1652049609a4a0b03b344fbd1ebeb4b1b3335684b7aaf996d",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "task_id": "35f900974acf4c31b65b0bea",
+      "outcome_receipt_sha256": "c5438388b527b367f985046d5a0769cb988101ca13b351147fd5ca7e2564f00d",
+      "passed_count": 1605,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "checks": {
+    "ascii_fallback_parent_left_immutable": true,
+    "github_numeric_fallback_review_remediated": true,
+    "all_non_ascii_unicode_numeric_codepoints_measured": true,
+    "single_and_ten_glyph_runs_non_underestimating": true,
+    "calibrated_ranges_sorted_nonoverlap": true,
+    "calibrated_ranges_binary_lookup_exact": true,
+    "representative_bmp_and_supplementary_numeric_regressions_passed": true,
+    "renderer_modules_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment",
+    "universal width safety for arbitrary fonts outside the measured acceptance population"
+  ],
+  "evidence_digest": "400c1109dc649ed6b66b8b984bf084e44b3b281bb3e572397c761d0b9c226539",
+  "evidence_predecessor_head": "3ece0ef7e0e87bad9f68f521226df06cebb937be",
+  "functional_head": "901c843d0f90b1b5f213a43d50d021ce9d77b849",
+  "github_review_debt": {
+    "comment_id": 4157252300,
+    "disposition": "confirmed_and_remediated_in_functional_head",
+    "reviewed_head": "3ece0ef7e0e87bad9f68f521226df06cebb937be",
+    "severity": "P2",
+    "thread_id": "PRRT_kwDOTGqvHc6oA3Mq",
+    "title": "Budget wide Unicode numeric categories at their fallback advance",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4157252300"
+  },
+  "measurement_scope": {
+    "unicode_categories": [
+      "Nd",
+      "Nl",
+      "No"
+    ],
+    "sample_count": 1821,
+    "browser_measurement": "Google Chrome headless CanvasRenderingContext2D.measureText",
+    "bold_font_population": [
+      "Inter Bold",
+      "Liberation Sans Bold (Arial-compatible local resolution)",
+      "DejaVu Sans Bold (sans-serif local fallback)"
+    ],
+    "measured_shapes": [
+      "single glyph",
+      "ten-glyph repeated run normalized per glyph"
+    ],
+    "base_floor_em": 1,
+    "calibration_step_em": 0.05,
+    "calibrated_range_count": 213,
+    "measured_over_base_floor_count": 417,
+    "max_measured_em": 4.63699560546875,
+    "max_codepoint": "U+1242B",
+    "final_under_count": 0,
+    "lookup": "binary search over sorted non-overlapping ranges"
+  },
+  "parent_evidence": {
+    "evidence_digest": "e91e3ac01e3adb5e177993ebaaaa9aaaca798ac8604c2828185cb7c2ef765c38",
+    "file_sha256": "921b22743221abbf17e8574c90387848babb8a080345e8eb1f8211693d4fef5e",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-ascii-fallback-20261001/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-ascii-fallback.v1"
+  },
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-numeric-fallback.v1",
+  "scope": "json-canvas-text-fit-unicode-numeric-fallback-width-hardening",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6cef064de9aa889d2bc851c727cddf6ce5a4912e4bd83d413e39af4b7f8206af",
+    "tests/visual/test_native_document.py": "d9fee9044724268f6b4ba62c767a57877e7d7804fe733c376eb4c77ac1cc2a5b"
+  }
+}

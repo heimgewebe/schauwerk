@@ -112,7 +112,8 @@ Storage.prototype.setItem = function () {
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
-// Timers are deliberate: Chrome --dump-dom virtual time can starve rAF-only waits.
+// Yield to rendering when possible, but keep a timer fallback because Chrome
+// --dump-dom virtual time can also starve rAF-only waits.
 const waitForViewerReady = async (status, canvas, attempts = 200) => {
   for (let index = 0; index < attempts; index += 1) {
     if (
@@ -121,7 +122,10 @@ const waitForViewerReady = async (status, canvas, attempts = 200) => {
     ) {
       return;
     }
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await new Promise((resolve) => {
+      requestAnimationFrame(resolve);
+      setTimeout(resolve, 25);
+    });
   }
   throw new Error("viewer startup readiness timed out");
 };

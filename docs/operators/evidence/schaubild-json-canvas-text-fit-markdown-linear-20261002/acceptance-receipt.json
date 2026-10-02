@@ -1,0 +1,108 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-markdown-linear.v1",
+  "scope": "json-canvas-markdown-link-linearization",
+  "accepted_at": "2026-10-02T07:00:18.889509+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "e609de6bd3510111a3094e2ba0de23f4857ef489",
+  "evidence_predecessor_head": "c080f7c995d9aa722ef9b95b5a4fbda815351880",
+  "parent_evidence": {
+    "evidence_digest": "a3f0d789fbd7d04239214c5cf20d5ed009127fb303b3c89f0278c92e9a467cf2",
+    "file_sha256": "b16249d20ab832c280c8b471efac721d943aa556b1a51a0ef31dffdc2a1cd6b2",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-emoji-presentation-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-emoji-presentation.v1"
+  },
+  "checks": {
+    "emoji_presentation_parent_left_immutable": true,
+    "github_markdown_regex_review_remediated": true,
+    "markdown_link_parser_linearized": true,
+    "legacy_markdown_link_semantics_preserved": true,
+    "large_unmatched_brackets_bounded": true,
+    "focused_regressions_passed": true,
+    "differential_semantics_probe_passed": true,
+    "performance_probe_passed": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "diff_hygiene_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": {
+    "review_id": "PRR_kwDOTGqvHc8AAAABQTWU6w",
+    "reviewed_head": "c080f7c995d9aa722ef9b95b5a4fbda815351880",
+    "author": "chatgpt-codex-connector",
+    "submitted_at": "2026-10-02T06:49:00Z",
+    "severity": "P2",
+    "title": "Bound labels before applying the Markdown link regex",
+    "location": "src/schauwerk/visual/native_diagram.py:_canvas_plain_markdown",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "performance_evidence": {
+    "pre_fix": {
+      "brackets_16000_seconds": 0.6297934519825503,
+      "brackets_32000_seconds": 2.591059697093442
+    },
+    "post_fix": {
+      "brackets_16000_seconds": 0.0002702720230445266,
+      "brackets_32000_seconds": 0.00017774105072021484
+    },
+    "differential_case_count": 12800,
+    "differential_mismatch_count": 0,
+    "claim": "the unmatched-bracket path no longer exhibits the measured quadratic growth and the sampled legacy link-regex semantics are preserved"
+  },
+  "check_evidence": {
+    "pre_fix_reproduction": {
+      "job_unit": "grabowski-job-2447cb961966",
+      "finalization_receipt_sha256": "d3164d0819d16285a8c0b4fe7129b6bd4a9998056366ca8c24b6ead150752fea",
+      "result": "confirmed_quadratic_unmatched_bracket_path"
+    },
+    "focused_regressions": {
+      "job_unit": "grabowski-job-29d07bb5b02d",
+      "finalization_receipt_sha256": "711d729322775a70688d52357b1d8ca9294598b1eef7f56120121833c7eec470",
+      "passed_count": 7,
+      "result": "passed"
+    },
+    "differential_and_performance_probe": {
+      "job_unit": "grabowski-job-66909d7b8ed9",
+      "finalization_receipt_sha256": "03e797a93d873ba294ef81a17093f9c8d3bde802f138e6f4d4f0d4536bcd5a85",
+      "differential_case_count": 12800,
+      "mismatch_count": 0,
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-02856de1729c",
+      "finalization_receipt_sha256": "671ffa6da01ec06549eebd07bc921b52b6b35f31edfa1378bfc37ea363a290e1",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-52284e6b1856",
+      "finalization_receipt_sha256": "13fefb77444594af1bfcf163bb26ef1fdffae351909c9f9da89803da2a99f020",
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "job_unit": "grabowski-job-46ea450dc0b2",
+      "finalization_receipt_sha256": "654c7e23dbc5cec6e83e802724a36eabca611cd8f1115e85fef1080dc0843fbc",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-7e77fe7e4079",
+      "finalization_receipt_sha256": "d472553f749c6f5a177ab4593578d73faf7ca5a802b36c4dfe215207159caf91",
+      "passed_count": 1634,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "649aba2c6ba705a99e70134f4e9e1072d468cd87df07cd37173a8f76e4b884a7",
+    "tests/visual/test_native_document.py": "d2a0d70ca060005c12e4e00bb256329b4863b15dbe5a16dc73d1e70afb9af559"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review debt settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "2106fd4ee95861acbca996728f60a1b551cbb7bcd164eb08484df5ae53470cce"
+}

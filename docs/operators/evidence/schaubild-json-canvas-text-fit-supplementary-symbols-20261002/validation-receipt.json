@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-supplementary-symbols-validation.v1",
+  "evidence_predecessor_head": "e507a028f3291fd78a2d7aac1b8026f7432ef74c",
+  "functional_head": "1bbaa12a488591faf5c653c1be2bcf5c4c2adfad",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-supplementary-symbols-20261002/acceptance-receipt.json",
+    "file_sha256": "e96e9594ba658f806138a676734fd42a05872988b0d3d808d9c7a19f25ef2832"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "0a80fafeedfb4ff4ecc54eff15de2b789473830230534f022aebe877129f1081"
+  },
+  "note": "This receipt binds the supplementary-neutral-symbol successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, review settlement, Captain readiness, merge, or deployment."
+}

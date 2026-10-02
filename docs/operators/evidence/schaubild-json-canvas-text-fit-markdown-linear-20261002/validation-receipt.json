@@ -1,0 +1,14 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-markdown-linear-validation.v1",
+  "evidence_predecessor_head": "c080f7c995d9aa722ef9b95b5a4fbda815351880",
+  "functional_head": "e609de6bd3510111a3094e2ba0de23f4857ef489",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-markdown-linear-20261002/acceptance-receipt.json",
+    "file_sha256": "381617f916603a1cf6c7810db0e35e2dc3f1d361191c1f7915e1e552b5ad315f"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "9dd6bada04ddccad5b9ae5850e63f85ed474e2afb5e7f96fc359090432cae13b"
+  },
+  "note": "This receipt binds the linear Markdown-link successor and publication ownership only. It does not establish exact-successor-head independent review PASS, GitHub CI, review settlement, Captain readiness, merge, or deployment."
+}

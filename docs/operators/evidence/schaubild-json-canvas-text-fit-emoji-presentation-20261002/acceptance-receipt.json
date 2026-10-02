@@ -1,0 +1,124 @@
+{
+  "schema_version": "schauwerk-schaubild-json-canvas-text-fit-emoji-presentation.v1",
+  "scope": "json-canvas-emoji-presentation-width-budget",
+  "accepted_at": "2026-10-02T05:52:17.141446+00:00",
+  "base_main_head": "7a51dfa618a926f88ce14a96144c1bd360f203b5",
+  "functional_head": "cb21e7ee40dbe87b0cbf999aaae989c7c8a1bf74",
+  "evidence_predecessor_head": "927612360df5d11fad57426db96c7f30bc2955b0",
+  "parent_evidence": {
+    "evidence_digest": "fae63cec3c8142a3309911b3a025236b7c850e6f7966b1d6dc9b788e92bf96d8",
+    "file_sha256": "ad798bdfc47e102e68d92a181d2ba8dbf63cf3e91dedcf7ddcc93c79718dd6c7",
+    "path": "docs/operators/evidence/schaubild-json-canvas-text-fit-final-invariants-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-json-canvas-text-fit-final-invariants.v1"
+  },
+  "checks": {
+    "final_invariants_parent_left_immutable": true,
+    "github_emoji_presentation_review_remediated": true,
+    "emoji_presentation_floor_measured_in_chromium": true,
+    "supplementary_vs16_scan_bounded_all_extended_pictographic_candidates": true,
+    "svg_text_measurement_matches_canvas_scan": true,
+    "plain_supplementary_pictographic_floor_preserved": true,
+    "keycap_and_bmp_presentation_paths_covered": true,
+    "focused_regressions_passed": true,
+    "renderer_modules_passed": true,
+    "static_validation_passed": true,
+    "diff_hygiene_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "github_review_debt": {
+    "thread_id": "PRRT_kwDOTGqvHc6oPQ8u",
+    "comment_id": 4163159044,
+    "reviewed_head": "927612360df5d11fad57426db96c7f30bc2955b0",
+    "severity": "P2",
+    "title": "Preserve fallback width for emoji-presentation clusters",
+    "url": "https://github.com/heimgewebe/schauwerk/pull/191#discussion_r4163159044",
+    "disposition": "confirmed_and_remediated_in_functional_head"
+  },
+  "measurement_scope": {
+    "emoji_presentation_floor_em": 1.25,
+    "supplementary_extended_pictographic_codepoint_count": 2678,
+    "chromium_canvas_scan": {
+      "inter_arial_sans_max_em": 1.247706298828125,
+      "inter_arial_sans_max_codepoint": "U+1F004",
+      "dejavu_sans_max_em": 1.247706298828125,
+      "dejavu_sans_max_codepoint": "U+1F004"
+    },
+    "chromium_svg_examples_em": {
+      "copyright_vs16": 1.2478125,
+      "keycap_1": 1.2478125,
+      "sleeping_face_vs16": 1.2478125
+    },
+    "plain_supplementary_pictographic_floor_em": 1.65,
+    "does_not_establish": "universal width safety for arbitrary fonts or rendering engines outside the measured Chromium acceptance population"
+  },
+  "check_evidence": {
+    "original_reproduction": {
+      "job_unit": "grabowski-job-9de7f9481e39",
+      "finalization_receipt_sha256": "80853070985087fcb9f91e8d4574472e8a9fc079f2e230b8a54b47f7c38b19e8",
+      "plain_sleeping_face_em": 1.65,
+      "sleeping_face_vs16_em": 1.0,
+      "result": "confirmed_presentation_under_budget"
+    },
+    "chromium_canvas_examples": {
+      "job_unit": "grabowski-job-4e895a6fa704",
+      "finalization_receipt_sha256": "fef59c7805eac624f0651df4e34086e6635947ef0ad8ac824cc0c81978fe8aa7",
+      "result": "presentation_path_measured"
+    },
+    "chromium_svg_examples": {
+      "job_unit": "grabowski-job-1c5c75a94b88",
+      "finalization_receipt_sha256": "7043805844b5e63f741d9784fe91b07be4bff638a0a02fb4e6095825e3767230",
+      "result": "presentation_path_measured"
+    },
+    "supplementary_vs16_full_scan": {
+      "job_unit": "grabowski-job-34f6a178b12d",
+      "finalization_receipt_sha256": "a36d5e725f83a54a7714fbfb5414dd6cb37f0743d50bbbd10ff08e4122608a5b",
+      "codepoint_count": 2678,
+      "max_measured_em": 1.247706298828125,
+      "floor_em": 1.25,
+      "result": "no_scan_width_exceeds_floor"
+    },
+    "focused_regressions": {
+      "job_unit": "grabowski-job-a9adef88d07a",
+      "finalization_receipt_sha256": "81bc28914046d02cabdaebb1f25b090bc5ea7547538a658a220a08642969bb9e",
+      "passed_count": 15,
+      "result": "passed"
+    },
+    "renderer_modules": {
+      "job_unit": "grabowski-job-1460d56c94c1",
+      "finalization_receipt_sha256": "a78619244e6e2a3dad573e8805b6e179936e7222cadbb056f15171b65eafe029",
+      "result": "passed"
+    },
+    "static_validation": {
+      "job_unit": "grabowski-job-50f6dd89053b",
+      "finalization_receipt_sha256": "a6d61755f4db54192e3bf752c16abd3a78bba8460a551ec0c5336f14f8428cf0",
+      "result": "passed"
+    },
+    "diff_hygiene": {
+      "job_unit": "grabowski-job-65fd93534d3d",
+      "finalization_receipt_sha256": "571ed3bbb21845cf845c235d1d61287a74462e45982074679918452d3f236afd",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "job_unit": "grabowski-job-3a5971b7942e",
+      "finalization_receipt_sha256": "fee2eba4304f9581868f8dd9d71e4c47d20d542cc6d2d0196431ed9c0dc805b8",
+      "passed_count": 1628,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "dd2af6d14f9b605a014e9f023701fcfb6c792109968c55ca28aa4529177aac81",
+    "tests/visual/test_native_document.py": "b6c3ad82599c68b27c06afcf7367a00608a810fd975f0c99286d7730b5410b07"
+  },
+  "does_not_establish": [
+    "independent review PASS for the successor evidence head",
+    "GitHub CI success on the successor evidence head",
+    "all GitHub review threads settled on the successor evidence head",
+    "Captain merge readiness",
+    "merge of PR #191",
+    "runtime deployment"
+  ],
+  "evidence_digest": "a3f0d789fbd7d04239214c5cf20d5ed009127fb303b3c89f0278c92e9a467cf2"
+}

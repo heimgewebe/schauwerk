@@ -1722,11 +1722,20 @@ window.addEventListener("keydown", (event) => {
   if (pendingEdgeOperation) setStatus("Verbindungsaktion abgebrochen");
 });
 
-requestAnimationFrame(() => {
+const startupStatus = status.textContent;
+let startupComplete = false;
+function initializeViewer() {
+  if (startupComplete) return;
+  startupComplete = true;
   const repaired = constrainAllNodesToCanvas();
   const repairPersisted = !repaired || persistOverrides();
-  fit({ announce: repairPersisted });
+  fit({ announce: repairPersisted && status.textContent === startupStatus });
   if (documentEditorHosted) publishDocumentState();
+}
+const startupFallback = setTimeout(initializeViewer, 50);
+requestAnimationFrame(() => {
+  clearTimeout(startupFallback);
+  initializeViewer();
 });
 """
 
