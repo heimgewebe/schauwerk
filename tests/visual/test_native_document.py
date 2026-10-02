@@ -2957,6 +2957,37 @@ def test_canvas_text_layout_drops_ellipsis_that_cannot_fit() -> None:
     )
 
 
+def test_canvas_text_layout_drops_marker_that_cannot_fit_vertically() -> None:
+    tiny = native_diagram._canvas_text_layout(
+        "A",
+        92,
+        1,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    too_short = native_diagram._canvas_text_layout(
+        "A",
+        92,
+        28,
+        max_lines=8,
+        max_bytes=4096,
+    )
+    fitting = native_diagram._canvas_text_layout(
+        "A",
+        92,
+        29,
+        max_lines=8,
+        max_bytes=4096,
+    )
+
+    assert tiny.truncated is True
+    assert tiny.lines == ()
+    assert too_short.truncated is True
+    assert too_short.lines == ()
+    assert fitting.truncated is False
+    assert fitting.lines == (("A", 24),)
+
+
 def test_canvas_wrap_refits_after_stripping_combining_mark_base_space() -> None:
     label = " \u0301BBBB"
 

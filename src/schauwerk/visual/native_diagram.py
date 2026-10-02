@@ -5459,6 +5459,16 @@ def _canvas_text_layout(
     max_width = max(1.0, float(width_px))
     bottom_limit = max(1, height_px - 5)
     min_size = 12
+
+    def truncation_marker_line() -> tuple[tuple[str, int], ...]:
+        marker_y = min_size + 12
+        if (
+            marker_y > bottom_limit
+            or _estimated_canvas_wrap_width("…", size=min_size) > max_width
+        ):
+            return ()
+        return (("…", marker_y),)
+
     had_visible_text = bool(value.strip(" \t\r\n"))
     height_line_limit = max(1, height_px // (min_size + 4) + 2)
     effective_max_lines = min(max_lines, height_line_limit)
@@ -5502,15 +5512,9 @@ def _canvas_text_layout(
     if not value.strip(" \t\r\n"):
         if not had_visible_text:
             return _CanvasTextLayout(size=16, lines=(), truncated=False)
-        marker_y = max(1, min(bottom_limit, min_size + 12))
-        marker = (
-            "…"
-            if _estimated_canvas_wrap_width("…", size=min_size) <= max_width
-            else ""
-        )
         return _CanvasTextLayout(
             size=min_size,
-            lines=((marker, marker_y),) if marker else (),
+            lines=truncation_marker_line(),
             truncated=True,
         )
 
@@ -5577,15 +5581,9 @@ def _canvas_text_layout(
 
     visible = tuple(line for line in candidate if line[1] <= bottom_limit)
     if not visible:
-        marker_y = max(1, min(bottom_limit, min_size + 12))
-        marker = (
-            "…"
-            if _estimated_canvas_wrap_width("…", size=min_size) <= max_width
-            else ""
-        )
         return _CanvasTextLayout(
             size=min_size,
-            lines=((marker, marker_y),) if marker else (),
+            lines=truncation_marker_line(),
             truncated=True,
         )
 
