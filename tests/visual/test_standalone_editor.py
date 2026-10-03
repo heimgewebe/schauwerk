@@ -192,6 +192,26 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'id="legacyEditButton"' in index_html
     assert 'id="legacyFallbackButton"' in index_html
     assert 'id="nativeRetryButton"' in index_html
+    assert 'id="contentEditButton"' in index_html
+    assert 'id="contentDialog"' in index_html
+    assert 'id="contentSaveButton"' in index_html
+    assert "function representationFromContentEditor()" in app_js
+    assert "delete edited.input_digest;" in app_js
+    assert "Bereit · Inhalt und Ansicht bearbeitbar" in app_js
+    assert "{ preserveActiveFrame: true, syncRepresentationTitle: true }" in app_js
+    assert "if (options.syncRepresentationTitle && currentRepresentation?.title)" in app_js
+    title_sync = app_js.index(
+        "if (options.syncRepresentationTitle && currentRepresentation?.title)"
+    )
+    representation_draft_save = app_js.index(
+        "if (!saveNativeDraft(currentRepresentation))",
+        title_sync,
+    )
+    assert title_sync < representation_draft_save
+    assert "currentTitle = safeFilename(currentRepresentation.title);" in app_js
+    assert "elements.title.textContent = currentTitle;" in app_js
+    assert "const syncRepresentationTitle = Boolean(" in app_js
+    assert "{ preserveActiveFrame: true, syncRepresentationTitle }" in app_js
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "frame.inert = false;" in app_js
@@ -225,7 +245,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "frame.inert = true;" in native_source
     assert "currentNativeUrl = activeNativeUrl;" in native_source
     assert "Bestehende Ansicht bleibt sichtbar und gesperrt" in native_source
-    assert "async function retryNativeCanvasRender()" in native_source
+    assert "async function retryNativeRender()" in native_source
     assert "elements.nativeRetryButton.hidden = false;" in native_source
     assert "{ preserveActiveFrame: true }" in app_js
     assert "const previousLaunch = nativeLaunchTail;" in native_source
@@ -253,7 +273,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     export_end = app_js.index("function exportDiagram(format)", export_start)
     export_source = app_js[export_start:export_end]
     canvas_export = export_source.index('if (format === "drawio")')
-    stale_svg_guard = export_source.index("if (currentNativeCanvas && nativeCanvasRenderStale)")
+    stale_svg_guard = export_source.index(
+        "if ((currentNativeCanvas || currentRepresentation) && nativeCanvasRenderStale)"
+    )
     live_svg = export_source.index("serializeNativeFrameSvg({")
     digest_policy = export_source.index("stripInputDigest: currentNativeCanvas", live_svg)
     asset_fallback = export_source.index("const assetUrl =", live_svg)
@@ -504,6 +526,113 @@ if (statusText !== "SVG bereit") throw new Error("server SVG fallback status dri
         text=True,
         capture_output=True,
     )
+
+
+
+
+def test_representation_content_editor_updates_text_without_changing_structure(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    editor_start = app_js.index("function cloneJson(")
+    editor_end = app_js.index("function openRepresentationContentEditor", editor_start)
+    editor_source = app_js[editor_start:editor_end]
+
+    script = r"""
+let currentRepresentation = {
+  schema_version: "schauwerk-representation-input.v1",
+  id: "editable",
+  title: "Original",
+  purpose: "Original purpose",
+  intent: "architecture",
+  groups: [{id: "g", label: "Original group"}],
+  nodes: [
+    {id: "a", label: "A", kind: "system", group: "g", summary: "Old summary"},
+    {id: "b", label: "B", kind: "service", group: null, summary: ""},
+  ],
+  edges: [
+    {id: "ab", from: "a", to: "b", label: "old edge", kind: "flow"},
+  ],
+  requirements: {
+    formal_relations: true,
+    free_spatial_layout: false,
+    portable_offline: false,
+    presentation: false,
+  },
+  requested_formats: ["canvas"],
+  input_digest: "a".repeat(64),
+};
+const original = JSON.parse(JSON.stringify(currentRepresentation));
+const controls = [
+  {value: "Edited title", dataset: {contentKind: "title"}},
+  {value: "Edited purpose", dataset: {contentKind: "purpose"}},
+  {value: "Edited group", dataset: {contentKind: "group-label", contentIndex: "0"}},
+  {value: "Edited A", dataset: {contentKind: "node-label", contentIndex: "0"}},
+  {value: "Edited summary", dataset: {contentKind: "node-summary", contentIndex: "0"}},
+  {value: "Edited relation", dataset: {contentKind: "edge-label", contentIndex: "0"}},
+];
+const elements = {
+  contentFields: {
+    querySelectorAll(selector) {
+      if (selector !== "[data-content-kind]") throw new Error("selector drifted");
+      return controls;
+    },
+  },
+};
+""" + editor_source + r"""
+const edited = representationFromContentEditor();
+if (!edited) throw new Error("edited representation was not produced");
+if (edited.input_digest !== undefined) throw new Error("stale input digest survived edit");
+if (
+  edited.title !== "Edited title"
+  || edited.purpose !== "Edited purpose"
+  || edited.groups[0].label !== "Edited group"
+  || edited.nodes[0].label !== "Edited A"
+  || edited.nodes[0].summary !== "Edited summary"
+  || edited.edges[0].label !== "Edited relation"
+) {
+  throw new Error("content changes were not projected into the representation");
+}
+if (
+  edited.id !== original.id
+  || edited.intent !== original.intent
+  || edited.nodes[0].id !== original.nodes[0].id
+  || edited.nodes[0].kind !== original.nodes[0].kind
+  || edited.nodes[0].group !== original.nodes[0].group
+  || edited.edges[0].from !== original.edges[0].from
+  || edited.edges[0].to !== original.edges[0].to
+  || edited.edges[0].kind !== original.edges[0].kind
+  || edited.requirements.formal_relations !== true
+) {
+  throw new Error("structural representation fields changed");
+}
+if (currentRepresentation.title !== "Original" || currentRepresentation.nodes[0].label !== "A") {
+  throw new Error("content editing mutated the active source in place");
+}
+console.log(JSON.stringify(edited));
+"""
+    completed = subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    edited = json.loads(completed.stdout)
+    normalized = _native_product_input(edited)
+    assert normalized["title"] == "Edited title"
+    assert normalized["groups"][0]["label"] == "Edited group"
+    assert normalized["nodes"][0]["label"] == "Edited A"
+    assert normalized["nodes"][0]["summary"] == "Edited summary"
+    assert normalized["edges"][0]["label"] == "Edited relation"
+    assert re.fullmatch(r"[0-9a-f]{64}", normalized["input_digest"])
+
+
 
 
 def test_native_canvas_document_change_persists_restoreable_native_draft(
@@ -834,7 +963,7 @@ globalThis.fetch = async (_url, options) => {
     },
   };
 };
-await retryNativeCanvasRender();
+await retryNativeRender();
 if (replaceCalls !== 1 || workspaceCalls !== 1) {
   throw new Error("replacement frame was not swapped exactly once after success");
 }
