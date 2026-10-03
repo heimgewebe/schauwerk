@@ -222,6 +222,13 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "let nativeLaunchTail = Promise.resolve();" in app_js
     assert 'let nativeSupersedeToken = "";' in app_js
     assert "let nativeCanvasRenderStale = false;" in app_js
+    assert "let renderedRepresentation = null;" in app_js
+    assert 'let currentNativeInputDigest = "";' in app_js
+    assert "function migrateRepresentationLayoutOverrides(" in app_js
+    assert "const activeRenderedRepresentation = renderedRepresentation;" in app_js
+    assert "const activeNativeInputDigest = currentNativeInputDigest;" in app_js
+    assert "saveNativeDraft(currentRepresentation, recoveryTitle)" in app_js
+    assert "{ syncRepresentationTitle: true }" in app_js
     assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
@@ -635,6 +642,210 @@ console.log(JSON.stringify(edited));
 
 
 
+def test_representation_content_edit_preserves_layout_and_recovers_valid_source(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    support_start = app_js.index("function cloneJson(")
+    support_end = app_js.index("function contentEntry(", support_start)
+    support_source = app_js[support_start:support_end]
+    draft_start = app_js.index("function saveNativeDraft(")
+    draft_end = app_js.index("function saveNativeCanvasDraft(", draft_start)
+    draft_source = app_js[draft_start:draft_end]
+    native_start = app_js.index("function nativeTokenFromUrl")
+    native_end = app_js.index("function loadPendingIntoEditor()", native_start)
+    native_source = app_js[native_start:native_end]
+
+    script = r"""
+const PUBLIC_BASE_PATH = "";
+const NATIVE_API_PATH = "/api/native-viewer";
+const NATIVE_DRAFT_KEY = "native";
+let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
+function nativeCanvasSnapshot(canvas) {
+  return canvas ? JSON.stringify(canvas) : null;
+}
+let pendingExport = null;
+let pendingLoad = null;
+let pendingInitialCollisionSafeLayout = false;
+let pendingCreationDefaults = false;
+let currentXml = null;
+let currentRepresentation = null;
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let editorReady = true;
+let currentTitle = "Original";
+let statusText = "";
+let errorText = "";
+const store = new Map();
+globalThis.localStorage = {
+  getItem(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
+  setItem(key, value) { store.set(String(key), String(value)); },
+};
+function safeFilename(value) {
+  const text = String(value || "Schaubild").trim();
+  return text || "Schaubild";
+}
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
+function clearPreparedDownload() {}
+function setEngineMode() {}
+function setStatus(value) { statusText = String(value); }
+function setError(value) { errorText = String(value); }
+function showWorkspace() {}
+function frame() {
+  return {inert: false, src: "", blur() { this.blurred = true; }};
+}
+const elements = {
+  frame: frame(),
+  legacyFallbackButton: {hidden: true},
+  nativeRetryButton: {hidden: true},
+  restoreButton: {hidden: true},
+  title: {textContent: "Original"},
+};
+function replaceEditorFrame() {
+  const next = frame();
+  elements.frame = next;
+  return next;
+}
+function saveNativeCanvasDraft() { return true; }
+function saveDraft() { return true; }
+""" + support_source + draft_source + native_source + r"""
+const oldDigest = "a".repeat(64);
+const newDigest = "b".repeat(64);
+const oldToken = "a".repeat(32);
+const newToken = "b".repeat(32);
+const valid = {
+  schema_version: "schauwerk-representation-input.v1",
+  title: "Original",
+  nodes: [{id: "n", label: "Old", kind: "system"}],
+  edges: [],
+};
+const edited = {
+  schema_version: "schauwerk-representation-input.v1",
+  title: "Edited",
+  nodes: [{id: "n", label: "New", kind: "system"}],
+  edges: [],
+};
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+store.set(
+  nativeLayoutStorageKey(oldDigest),
+  JSON.stringify({n: {x: 25, y: -15}}),
+);
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + newToken + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: newDigest,
+    };
+  },
+});
+await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+const migrated = JSON.parse(store.get(nativeLayoutStorageKey(newDigest)) || "{}");
+if (migrated?.n?.x !== 25 || migrated?.n?.y !== -15) {
+  throw new Error("representation text edit did not migrate saved layout overrides");
+}
+if (currentNativeInputDigest !== newDigest) {
+  throw new Error("successful representation edit did not advance native input digest");
+}
+if (renderedRepresentation?.title !== "Edited" || currentTitle !== "Edited") {
+  throw new Error("successful representation edit did not commit semantic title state");
+}
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+let fetchStep = 0;
+globalThis.fetch = async () => {
+  fetchStep += 1;
+  if (fetchStep === 1) throw new Error("offline");
+  return {
+    ok: false,
+    status: 422,
+    async json() { return {error: "synthetic invalid candidate"}; },
+  };
+};
+await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+const transientDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  transientDraft.title !== "Edited"
+  || transientDraft.representation?.title !== "Edited"
+) {
+  throw new Error("transient representation draft did not preserve edited title");
+}
+if (renderedRepresentation?.title !== "Original" || currentNativeInputDigest !== oldDigest) {
+  throw new Error("transient failure replaced the last valid representation binding");
+}
+if (elements.nativeRetryButton.hidden) {
+  throw new Error("transient representation failure did not expose retry");
+}
+await retryNativeRender();
+if (fetchStep !== 2) throw new Error("representation retry did not execute exactly once");
+if (
+  currentRepresentation?.title !== "Original"
+  || renderedRepresentation?.title !== "Original"
+  || currentNativeInputDigest !== oldDigest
+) {
+  throw new Error("permanent retry rejection did not restore the last valid representation");
+}
+const restoredDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  restoredDraft.title !== "Original"
+  || restoredDraft.representation?.title !== "Original"
+) {
+  throw new Error("permanent retry rejection left the rejected candidate in local recovery draft");
+}
+if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
+  throw new Error("permanent representation rejection did not report rollback");
+}
+if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
+  throw new Error("permanent representation rejection did not report valid-state restoration");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_canvas_document_change_persists_restoreable_native_draft(
     tmp_path: Path,
 ) -> None:
@@ -830,6 +1041,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }
@@ -1021,6 +1234,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }
@@ -1157,6 +1372,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }

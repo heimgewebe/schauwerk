@@ -1586,6 +1586,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
@@ -1671,6 +1673,30 @@ function parseMessage(data) {
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function nativeLayoutStorageKey(inputDigest) {
+  return `schauwerk.native-viewer.layout.v1.${inputDigest}`;
+}
+
+function migrateRepresentationLayoutOverrides(previousDigest, nextDigest) {
+  if (
+    !/^[0-9a-f]{64}$/.test(String(previousDigest || ""))
+    || !/^[0-9a-f]{64}$/.test(String(nextDigest || ""))
+    || previousDigest === nextDigest
+  ) {
+    return true;
+  }
+  try {
+    const raw = localStorage.getItem(nativeLayoutStorageKey(previousDigest));
+    if (!raw) return true;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
+    localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(parsed));
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 function contentEntry(title) {
@@ -1897,13 +1923,13 @@ function readDraft() {
   }
 }
 
-function saveNativeDraft(representation) {
+function saveNativeDraft(representation, title = currentTitle) {
   if (!representation || typeof representation !== "object") return false;
   currentRepresentation = representation;
   try {
     localStorage.setItem(
       NATIVE_DRAFT_KEY,
-      JSON.stringify({ title: currentTitle, representation, savedAt: Date.now() }),
+      JSON.stringify({ title: safeFilename(title), representation, savedAt: Date.now() }),
     );
     elements.restoreButton.hidden = false;
     return true;
@@ -2137,6 +2163,8 @@ function launchLegacy(load) {
   elements.legacyFallbackButton.hidden = true;
   elements.nativeRetryButton.hidden = true;
   currentNativeUrl = null;
+  currentNativeInputDigest = "";
+  renderedRepresentation = null;
   nativeCanvasRenderStale = false;
   renderedNativeCanvasSnapshot = null;
   setEngineMode("legacy");
@@ -2173,6 +2201,8 @@ async function launchNative(load, options = {}) {
   const activeNativeDocument = currentNativeDocument;
   const activeNativeCanvas = currentNativeCanvas;
   const activeLegacyXml = currentLegacyXml;
+  const activeRenderedRepresentation = renderedRepresentation;
+  const activeNativeInputDigest = currentNativeInputDigest;
   const requestValue = load.nativeRepresentation || load.nativeDocument || load.nativeImport;
   clearPreparedDownload();
   pendingExport = null;
@@ -2189,6 +2219,8 @@ async function launchNative(load, options = {}) {
   elements.nativeRetryButton.hidden = true;
   if (!preserveActiveFrame) {
     currentNativeUrl = null;
+    currentNativeInputDigest = "";
+    renderedRepresentation = null;
     nativeCanvasRenderStale = false;
   } else {
     nativeCanvasRenderStale = true;
@@ -2214,6 +2246,7 @@ async function launchNative(load, options = {}) {
   let releaseLaunchTurn = () => {};
   let permanentRecovery = null;
   let permanentRejectionMessage = "";
+  let representationLayoutMigrationFailed = false;
   nativeLaunchTail = new Promise((resolve) => {
     releaseLaunchTurn = resolve;
   });
@@ -2243,17 +2276,26 @@ async function launchNative(load, options = {}) {
       renderError.nativeStatus = response.status;
       throw renderError;
     }
+    const inputDigest = String(result?.input_digest || "");
     if (
       !result ||
       result.renderer !== "schauwerk-native-diagram-v1" ||
-      !/^[0-9a-f]{64}$/.test(String(result.input_digest || "")) ||
+      !/^[0-9a-f]{64}$/.test(inputDigest) ||
       !/^[0-9a-f]{32}$/.test(nativeToken)
     ) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
+    if (currentRepresentation && preserveActiveFrame) {
+      representationLayoutMigrationFailed = !migrateRepresentationLayoutOverrides(
+        activeNativeInputDigest,
+        inputDigest,
+      );
+    }
     currentNativeUrl = nativeUrl;
+    currentNativeInputDigest = inputDigest;
     nativeCanvasRenderStale = false;
     renderedNativeCanvasSnapshot = nativeCanvasSnapshot(currentNativeCanvas);
+    renderedRepresentation = currentRepresentation ? cloneJson(currentRepresentation) : null;
     if (options.syncRepresentationTitle && currentRepresentation?.title) {
       currentTitle = safeFilename(currentRepresentation.title);
       elements.title.textContent = currentTitle;
@@ -2276,7 +2318,7 @@ async function launchNative(load, options = {}) {
     }
     frame.src = currentNativeUrl;
     setEngineMode("native");
-    setStatus(
+    const readyStatus = (
       currentNativeCanvas
         ? "Bereit · Änderungen werden lokal gesichert"
         : (
@@ -2284,6 +2326,11 @@ async function launchNative(load, options = {}) {
               ? "Bereit · Original bleibt erhalten"
               : "Bereit · Inhalt und Ansicht bearbeitbar"
           )
+    );
+    setStatus(
+      representationLayoutMigrationFailed
+        ? readyStatus + " · gespeicherte Positionen konnten nicht übernommen werden"
+        : readyStatus,
     );
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
@@ -2294,11 +2341,17 @@ async function launchNative(load, options = {}) {
       && (nativeStatus === 413 || nativeStatus === 422)
     );
     if (permanentCandidateRejection) {
-      currentRepresentation = activeRepresentation;
+      currentRepresentation = activeRenderedRepresentation
+        ? cloneJson(activeRenderedRepresentation)
+        : activeRepresentation;
+      renderedRepresentation = activeRenderedRepresentation
+        ? cloneJson(activeRenderedRepresentation)
+        : null;
       currentNativeDocument = activeNativeDocument;
       currentNativeCanvas = activeNativeCanvas;
       currentLegacyXml = activeLegacyXml;
       currentNativeUrl = activeNativeUrl;
+      currentNativeInputDigest = activeNativeInputDigest;
       nativeCanvasRenderStale = true;
       editorReady = true;
       elements.nativeRetryButton.hidden = true;
@@ -2322,6 +2375,9 @@ async function launchNative(load, options = {}) {
         );
       } else {
         nativeCanvasRenderStale = false;
+        const restoredDraftSaved = currentRepresentation
+          ? saveNativeDraft(currentRepresentation, currentTitle)
+          : null;
         if (elements.frame === activeFrame) {
           frame = replaceEditorFrame();
           showWorkspace();
@@ -2330,10 +2386,16 @@ async function launchNative(load, options = {}) {
         setEngineMode("native");
         setError(
           permanentRejectionMessage
-          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv.",
+          + " Die abgelehnte Änderung wurde verworfen; der letzte gültige Dokumentzustand ist wieder aktiv."
+          + (
+              restoredDraftSaved === false
+                ? " Der lokale Entwurf konnte nicht auf diesen Zustand zurückgesetzt werden."
+                : ""
+            ),
         );
         setStatus(
-          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt",
+          "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt"
+          + (restoredDraftSaved === false ? " · lokaler Entwurf nicht aktualisiert" : ""),
         );
         return;
       }
@@ -2352,7 +2414,13 @@ async function launchNative(load, options = {}) {
         );
         recoveryExport = ".canvas-Export enthält den aktuellen Dokumentzustand";
       } else if (currentRepresentation) {
-        nativeDraftSaved = saveNativeDraft(currentRepresentation);
+        const recoveryTitle = (
+          typeof currentRepresentation.title === "string"
+          && currentRepresentation.title.trim()
+        )
+          ? currentRepresentation.title
+          : currentTitle;
+        nativeDraftSaved = saveNativeDraft(currentRepresentation, recoveryTitle);
         recoveryExport = "Quellenexport enthält den aktuellen Inhaltsstand";
       }
       const draftErrorSuffix = (
@@ -2860,10 +2928,13 @@ elements.restoreButton.addEventListener("click", () => {
       });
       return;
     }
-    launch({
-      nativeRepresentation: draft.representation,
-      sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
-    });
+    void launchNative(
+      {
+        nativeRepresentation: draft.representation,
+        sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
+      },
+      { syncRepresentationTitle: true },
+    );
     return;
   }
   try {
