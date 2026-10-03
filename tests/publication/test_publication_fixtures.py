@@ -161,6 +161,9 @@ SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE = (
 SCHAUBILD_CONTENT_EDITING_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-content-editing-20261003"
 )
+SCHAUBILD_CONTENT_EDITING_RECOVERY_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-content-editing-recovery-20261003"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -621,6 +624,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_document.py",
     }
     content_editing_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    content_editing_recovery_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor.py",
     }
@@ -4154,7 +4161,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(content_editing["source_bindings"]) == content_editing_superseded_files
     for name, expected in content_editing["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in content_editing_recovery_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "canonical_representation_content_editable": True,
@@ -4254,6 +4262,117 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in content_editing["does_not_establish"]
     )
 
+    content_editing_recovery = json.loads(
+        (
+            SCHAUBILD_CONTENT_EDITING_RECOVERY_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        content_editing_recovery["schema_version"]
+        == "schauwerk-schaubild-content-editing-recovery.v1"
+    )
+    assert (
+        content_editing_recovery["functional_head"]
+        == "1f69cf0782be9a691db29064be8f176587c0774b"
+    )
+    assert content_editing_recovery["parent_evidence"] == {
+        "evidence_digest": content_editing["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_CONTENT_EDITING_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-content-editing-20261003/acceptance-receipt.json"
+        ),
+        "schema_version": content_editing["schema_version"],
+    }
+    assert content_editing_recovery["evidence_digest"] == digest_mapping(
+        content_editing_recovery, "evidence_digest"
+    )
+    assert (
+        set(content_editing_recovery["source_bindings"])
+        == content_editing_recovery_superseded_files
+    )
+    for name, expected in content_editing_recovery["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert content_editing_recovery["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "dragged_layout_overrides_migrate_across_content_digest": True,
+        "transient_recovery_draft_uses_candidate_title": True,
+        "last_valid_representation_retained_across_retry": True,
+        "permanent_rejection_restores_valid_draft": True,
+        "representation_restore_resyncs_title": True,
+        "structural_edit_scope_unchanged": True,
+        "focused_recovery_tests_passed": True,
+        "relevant_regressions_passed": True,
+        "ruff_passed": True,
+        "github_p2_findings_addressed_locally": True,
+    }
+    recovery_focused = content_editing_recovery["check_evidence"][
+        "focused_recovery_tests"
+    ]
+    assert recovery_focused == {
+        "functional_head": content_editing_recovery["functional_head"],
+        "job_unit": "grabowski-job-0a34792fbb37",
+        "argv_sha256": (
+            "421d8f8717effa0504487ad279df0fff156dc08de7d2e59390bbf2ca3457268a"
+        ),
+        "finalization_receipt_sha256": (
+            "25df003fd59a192edd0883117eb1a57451d3ca2500edf7c2d9b0ab932e21acc6"
+        ),
+        "passed_count": 4,
+        "result": "passed",
+    }
+    recovery_regressions = content_editing_recovery["check_evidence"][
+        "relevant_regressions"
+    ]
+    assert recovery_regressions["functional_head"] == content_editing_recovery[
+        "functional_head"
+    ]
+    assert recovery_regressions["job_unit"] == "grabowski-job-f444abd9b8bb"
+    assert recovery_regressions["argv_sha256"] == (
+        "febde5bfb8a9555ac8e1bc665601cd354dc825992afa0f37e0e11e8c9c580545"
+    )
+    assert recovery_regressions["finalization_receipt_sha256"] == (
+        "fc3d37d23d0242af1c62d8cc90729791ac860adc1bfb82a763387189c56ae5d3"
+    )
+    assert recovery_regressions["passed_count"] == 362
+    assert recovery_regressions["result"] == "passed"
+    recovery_review = content_editing_recovery["check_evidence"][
+        "github_review_findings"
+    ]
+    assert recovery_review["source_head"] == (
+        "46c909f55a79e7e5f5dabf9001be5004667a24db"
+    )
+    assert recovery_review["addressed_by_functional_head"] == (
+        content_editing_recovery["functional_head"]
+    )
+    assert [finding["comment_id"] for finding in recovery_review["findings"]] == [
+        4174293899,
+        4174380757,
+        4174380762,
+    ]
+    assert recovery_review["current_head_rereview_established"] is False
+    recovery_observer = content_editing_recovery["check_evidence"][
+        "independent_readback"
+    ]
+    assert recovery_observer["observer"] == "grosser-adler"
+    assert recovery_observer["head"] == content_editing_recovery["functional_head"]
+    assert recovery_observer["worktree_clean"] is True
+    assert recovery_observer["untracked_present"] is False
+    assert (
+        "GitHub CI success on the recovery successor evidence head"
+        in content_editing_recovery["does_not_establish"]
+    )
+    assert (
+        "current-head Codex rereview settlement"
+        in content_editing_recovery["does_not_establish"]
+    )
+    assert (
+        "user visual acceptance or aesthetic approval of the recovery revision"
+        in content_editing_recovery["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -4286,6 +4405,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in content_editing_recovery_superseded_files:
+            assert content_editing_recovery["source_bindings"][name] == current
         elif name in content_editing_superseded_files:
             assert content_editing["source_bindings"][name] == current
         elif name in smoke_pipefail_superseded_files:
