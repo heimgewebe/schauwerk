@@ -1,0 +1,64 @@
+{
+  "schema_version": "schauwerk-schaubild-edge-label-width.v1",
+  "scope": "json-canvas-edge-label-render-width",
+  "accepted_at": "2026-10-03T12:22:08+00:00",
+  "base_main_head": "736614f0a9d37f8e35572f8d03fbf63a5152abea",
+  "functional_head": "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136",
+  "parent_evidence": {
+    "evidence_digest": "eca9b80eea295e53e059556dd07ddef747582653f4eeaf464fe8e0ad19b030ea",
+    "file_sha256": "3e19d9b05f0793493bef788a899fcb0d90715ad6473e5a3f665f4793e7497d74",
+    "path": "docs/operators/evidence/schaubild-native-smoke-pipefail-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-native-smoke-pipefail.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "ordinary_edge_label_reproduction_fixed": true,
+    "label_box_uses_bounded_render_width_model": true,
+    "existing_long_and_pathological_truncation_regressions_passed": true,
+    "targeted_regressions_passed": true,
+    "exact_functional_head_render_readback_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "targeted_regressions": {
+      "functional_head": "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136",
+      "job_unit": "grabowski-job-c5d25a395568",
+      "finalization_receipt_sha256": "278766482eeae659b873cf306a51227866ac94407dce1d5d179e0ba51fc0d1a2",
+      "passed_count": 4,
+      "result": "passed"
+    },
+    "exact_render_readback": {
+      "functional_head": "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136",
+      "job_unit": "grabowski-job-d5fca91300fe",
+      "finalization_receipt_sha256": "0137baf3d5fe7bbe2785c9b7b25048b0f4d70595a51f455d7c9329a0ce743d05",
+      "label": "trägt bei zu",
+      "rendered_text": "trägt bei zu",
+      "title": "trägt bei zu",
+      "truncated": false,
+      "box_width_px": 132.0,
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136",
+      "job_unit": "grabowski-job-d047c97e7667",
+      "finalization_receipt_sha256": "7cc50cb3d94b0e8a5443a00d5d08332ea1d089c9da9deafd5b923fafd6b82305",
+      "passed_count": 1650,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "0084f39d59298baea472fe495f7a0cbac45bc2e5b8409e5f05afb132279fa0d2",
+    "tests/visual/test_native_document.py": "520ccc98b424d8509b8cf3f5f52e86d24d7ea9b119464d5cf470a3522a262d2d"
+  },
+  "does_not_establish": [
+    "browser-level visual acceptance of the successor",
+    "GitHub CI success on the successor evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "15c7b6961e31bcbbf7ce48049b9d9fcc4c880384471f8adda0b3a351c8f5738d"
+}

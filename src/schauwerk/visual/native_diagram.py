@@ -5130,6 +5130,25 @@ def _estimated_canvas_single_line_width(value: str, *, size: int) -> float:
     return units * size
 
 
+def _canvas_edge_label_box_width(value: str) -> int:
+    """Size an edge-label box from the same bounded width model used to fit it."""
+
+    probe, truncated = _canvas_bounded_xml_compatible_prefix(
+        value,
+        max_clusters=_MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+        max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+    )
+    if truncated:
+        return 260
+    return max(
+        42,
+        min(
+            260,
+            math.ceil(_estimated_canvas_single_line_width(probe, size=14)) + 20,
+        ),
+    )
+
+
 def _estimated_canvas_wrap_width(value: str, *, size: int) -> float:
     value = _canvas_collapse_inline_whitespace(value)
     units = sum(
@@ -5910,7 +5929,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             source, target, edge, lane=lane
         )
         label = str(edge.get("label", ""))
-        label_width = max(42, min(260, len(label) * 8 + 20))
+        label_width = _canvas_edge_label_box_width(label)
         label_height = 28
         edge_layouts.append(
             (

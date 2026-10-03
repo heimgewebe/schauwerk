@@ -1,0 +1,21 @@
+{
+  "schema_version": "schauwerk-schaubild-edge-label-width-validation.v1",
+  "evidence_successor_head": "b96e7aae38185752dc6c48dec103ec7fd8413b25",
+  "functional_head": "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136",
+  "acceptance_receipt": {
+    "path": "docs/operators/evidence/schaubild-edge-label-width-20261003/acceptance-receipt.json",
+    "file_sha256": "c8eb4a1d43ed0563e04733a70b09a55bdc6c0e7e6d870c4b0cba5d62b2f66790"
+  },
+  "publication_fixture": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "file_sha256": "10d852c12346ba98674c0157bdb2e34e6f7dba58a3102abe3d14e0fcc7da5491"
+  },
+  "full_validation": {
+    "job_unit": "grabowski-job-dfd559c9493a",
+    "finalization_receipt_sha256": "b424529a5269213e952679781319b3d07d6aa8af1a3dd290f54ad16b2686a003",
+    "passed_count": 1651,
+    "failed_count": 0,
+    "result": "passed"
+  },
+  "note": "This receipt binds the edge-label-width acceptance, publication successor head, and successful full validation on that exact successor. It does not establish final-head validation after this receipt is added, GitHub CI, Captain readiness, merge, release promotion, or production deployment."
+}

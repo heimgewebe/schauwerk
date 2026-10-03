@@ -155,6 +155,9 @@ SCHAUBILD_UI_CONTROLS_RESIZE_EVIDENCE = (
 SCHAUBILD_NATIVE_SMOKE_PIPEFAIL_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-native-smoke-pipefail-20261003"
 )
+SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-edge-label-width-20261003"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -607,6 +610,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/native_viewer/assets.py",
     }
     json_canvas_text_fit_private_use_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    edge_label_width_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
     }
@@ -3720,7 +3727,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_private_use_superseded_files
     )
     for name, expected in json_canvas_text_fit_private_use["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in edge_label_width_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_private_use["checks"] == {
         "viewer_startup_status_parent_left_immutable": True,
         "github_private_use_review_remediated": True,
@@ -3999,6 +4007,114 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in smoke_pipefail["does_not_establish"]
     )
 
+    edge_label_width = json.loads(
+        (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        edge_label_width["schema_version"]
+        == "schauwerk-schaubild-edge-label-width.v1"
+    )
+    assert (
+        edge_label_width["functional_head"]
+        == "6bdecfd5f9abf20b6b1eb8b3eb240421450bc136"
+    )
+    assert edge_label_width["parent_evidence"] == {
+        "evidence_digest": smoke_pipefail["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_NATIVE_SMOKE_PIPEFAIL_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-native-smoke-pipefail-20261003/acceptance-receipt.json"
+        ),
+        "schema_version": smoke_pipefail["schema_version"],
+    }
+    assert edge_label_width["evidence_digest"] == digest_mapping(
+        edge_label_width, "evidence_digest"
+    )
+    assert set(edge_label_width["source_bindings"]) == edge_label_width_superseded_files
+    for name, expected in edge_label_width["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert edge_label_width["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "ordinary_edge_label_reproduction_fixed": True,
+        "label_box_uses_bounded_render_width_model": True,
+        "existing_long_and_pathological_truncation_regressions_passed": True,
+        "targeted_regressions_passed": True,
+        "exact_functional_head_render_readback_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    edge_label_targeted = edge_label_width["check_evidence"]["targeted_regressions"]
+    assert edge_label_targeted["functional_head"] == edge_label_width["functional_head"]
+    assert edge_label_targeted["job_unit"] == "grabowski-job-c5d25a395568"
+    assert edge_label_targeted["passed_count"] == 4
+    assert edge_label_targeted["result"] == "passed"
+    edge_label_readback = edge_label_width["check_evidence"]["exact_render_readback"]
+    assert edge_label_readback == {
+        "functional_head": edge_label_width["functional_head"],
+        "job_unit": "grabowski-job-d5fca91300fe",
+        "finalization_receipt_sha256": (
+            "0137baf3d5fe7bbe2785c9b7b25048b0f4d70595a51f455d7c9329a0ce743d05"
+        ),
+        "label": "trägt bei zu",
+        "rendered_text": "trägt bei zu",
+        "title": "trägt bei zu",
+        "truncated": False,
+        "box_width_px": 132.0,
+        "result": "passed",
+    }
+    edge_label_pre_validate = edge_label_width["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert edge_label_pre_validate["result"] == "expected_binding_gate_failure"
+    assert edge_label_pre_validate["passed_count"] == 1650
+    assert edge_label_pre_validate["failed_count"] == 1
+    assert (
+        "browser-level visual acceptance of the successor"
+        in edge_label_width["does_not_establish"]
+    )
+
+    edge_label_width_validation = json.loads(
+        (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "validation-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert edge_label_width_validation["schema_version"] == (
+        "schauwerk-schaubild-edge-label-width-validation.v1"
+    )
+    assert edge_label_width_validation["evidence_successor_head"] == (
+        "b96e7aae38185752dc6c48dec103ec7fd8413b25"
+    )
+    assert (
+        edge_label_width_validation["functional_head"]
+        == edge_label_width["functional_head"]
+    )
+    assert edge_label_width_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-edge-label-width-20261003/acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+    }
+    assert edge_label_width_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "10d852c12346ba98674c0157bdb2e34e6f7dba58a3102abe3d14e0fcc7da5491",
+    }
+    assert edge_label_width_validation["full_validation"] == {
+        "job_unit": "grabowski-job-dfd559c9493a",
+        "finalization_receipt_sha256": (
+            "b424529a5269213e952679781319b3d07d6aa8af1a3dd290f54ad16b2686a003"
+        ),
+        "passed_count": 1651,
+        "failed_count": 0,
+        "result": "passed",
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -4037,6 +4153,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert ui_controls_resize["source_bindings"][name] == current
         elif name in ui_controls_superseded_files:
             assert ui_controls["source_bindings"][name] == current
+        elif name in edge_label_width_superseded_files:
+            assert edge_label_width["source_bindings"][name] == current
         elif name in json_canvas_text_fit_private_use_superseded_files:
             assert json_canvas_text_fit_private_use["source_bindings"][name] == current
         elif name in json_canvas_text_fit_supplementary_symbols_superseded_files:
