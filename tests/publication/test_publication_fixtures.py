@@ -158,6 +158,9 @@ SCHAUBILD_NATIVE_SMOKE_PIPEFAIL_EVIDENCE = (
 SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-edge-label-width-20261003"
 )
+SCHAUBILD_CONTENT_EDITING_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-content-editing-20261003"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -616,6 +619,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     edge_label_width_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_document.py",
+    }
+    content_editing_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
     }
     ui_controls_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
@@ -3824,7 +3831,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(ui_controls["source_bindings"]) == ui_controls_superseded_files
     for name, expected in ui_controls["source_bindings"].items():
-        if name not in ui_controls_resize_superseded_files:
+        if name not in (
+            ui_controls_resize_superseded_files | content_editing_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert ui_controls["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -3975,7 +3984,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(smoke_pipefail["source_bindings"]) == smoke_pipefail_superseded_files
     for name, expected in smoke_pipefail["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in content_editing_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert smoke_pipefail["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "merged_main_native_image_failure_observed": True,
@@ -4115,6 +4125,135 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "result": "passed",
     }
 
+    content_editing = json.loads(
+        (SCHAUBILD_CONTENT_EDITING_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert (
+        content_editing["schema_version"]
+        == "schauwerk-schaubild-content-editing.v1"
+    )
+    assert (
+        content_editing["functional_head"]
+        == "81738c302c5f77c24ceae52db9dfe31a7e0619bc"
+    )
+    assert content_editing["parent_evidence"] == {
+        "evidence_digest": edge_label_width["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-edge-label-width-20261003/acceptance-receipt.json"
+        ),
+        "schema_version": edge_label_width["schema_version"],
+    }
+    assert content_editing["evidence_digest"] == digest_mapping(
+        content_editing, "evidence_digest"
+    )
+    assert set(content_editing["source_bindings"]) == content_editing_superseded_files
+    for name, expected in content_editing["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert content_editing["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "canonical_representation_content_editable": True,
+        "text_edit_scope_preserves_structural_semantics": True,
+        "stale_input_digest_removed_before_revalidation": True,
+        "edited_representation_revalidated_and_rerendered": True,
+        "title_syncs_workspace_draft_and_export_basename": True,
+        "representation_retry_and_stale_svg_recovery_extended": True,
+        "focused_tests_passed": True,
+        "relevant_regressions_passed": True,
+        "managed_browser_content_roundtrip_passed": True,
+        "exact_dialog_pixel_readback_passed": True,
+        "responsive_760_readback_passed": True,
+        "pre_successor_full_validate_failed_only_on_expected_binding_gate": True,
+        "publication_successor_binding_added": True,
+    }
+    content_focused = content_editing["check_evidence"]["focused_tests"]
+    assert content_focused == {
+        "functional_head": content_editing["functional_head"],
+        "job_unit": "grabowski-job-1290a14a3985",
+        "argv_sha256": (
+            "efc4a4a993934e65865838fffd03a8c7147096de6054df15af81bc46122d3b73"
+        ),
+        "finalization_receipt_sha256": (
+            "eb92f500f4519b56328ad9645f65cbdedfd98d1e089bda8b500212494b63e09c"
+        ),
+        "passed_count": 3,
+        "result": "passed",
+    }
+    content_regressions = content_editing["check_evidence"]["relevant_regressions"]
+    assert content_regressions["functional_head"] == content_editing["functional_head"]
+    assert content_regressions["job_unit"] == "grabowski-job-4a3a86130724"
+    assert content_regressions["finalization_receipt_sha256"] == (
+        "8a2744e1dfe68b8de726b57bc1ad7410885087de9c7be943041872c0de2f650a"
+    )
+    assert content_regressions["passed_count"] == 361
+    assert content_regressions["result"] == "passed"
+    content_browser = content_editing["check_evidence"][
+        "managed_browser_content_roundtrip"
+    ]
+    assert content_browser["functional_head"] == content_editing["functional_head"]
+    assert content_browser["worker_id"] == "3ea44ef909d44b1facae"
+    assert content_browser["snapshot_id"] == (
+        "bsid2_c9a79df0a7135d7d989799bf357ac0a4914b97d79f64e2c03aed908843143cc4"
+    )
+    assert content_browser["audit_record_sha256"] == (
+        "8104ea2de6ac902a22120ba77517daa61328ca01fec23dd2174d0ebf3e1c7a6c"
+    )
+    assert content_browser["result_label"] == "CONTENT EDIT TITLE PASS"
+    assert content_browser["result"] == "passed"
+    content_visual = content_editing["check_evidence"]["exact_dialog_pixel_readback"]
+    assert content_visual["functional_head"] == content_editing["functional_head"]
+    assert content_visual["job_unit"] == "grabowski-job-c5ef2bc6dbc7"
+    assert content_visual["finalization_receipt_sha256"] == (
+        "e6e0c07eca04f710dd52b47faf766dd8220cc276a26f80899887105a18fbdad0"
+    )
+    assert content_visual["viewport_css_px"] == {"width": 1024, "height": 768}
+    assert content_visual["dialog"]["open"] is True
+    assert content_visual["dialog"]["horizontal_overflow"] is False
+    assert content_visual["fields"]["vertical_scroll_expected"] is True
+    assert content_visual["page_horizontal_overflow"] is False
+    assert content_visual["controls"] == 31
+    assert content_visual["save_visible"] is True
+    assert content_visual["close_visible"] is True
+    assert content_visual["screenshot_sha256"] == (
+        "a38b0897f221f096cad713394f3cf635dab1c0705f89bf2fcf5217f93a674416"
+    )
+    content_responsive = content_editing["check_evidence"]["responsive_760_readback"]
+    assert content_responsive["functional_head"] == content_editing["functional_head"]
+    assert content_responsive["job_unit"] == "grabowski-job-c5ef2bc6dbc7"
+    assert content_responsive["viewport_css_px"] == {"width": 760, "height": 900}
+    assert content_responsive["dialog"]["open"] is True
+    assert content_responsive["dialog"]["horizontal_overflow"] is False
+    assert content_responsive["fields"]["vertical_scroll_expected"] is True
+    assert content_responsive["page_horizontal_overflow"] is False
+    assert content_responsive["controls"] == 31
+    assert content_responsive["save_visible"] is True
+    assert content_responsive["close_visible"] is True
+    assert content_responsive["screenshot_sha256"] == (
+        "25ab49c03a51d6ff7d73bb19b782dfb0cf1e66c47f2d74f7b6eec78d61136851"
+    )
+    content_pre_validate = content_editing["check_evidence"]["pre_successor_full_validate"]
+    assert content_pre_validate["github_workflow_run_id"] == 37143524097
+    assert content_pre_validate["result"] == "expected_binding_gate_failure"
+    assert content_pre_validate["passed_count"] == 1644
+    assert content_pre_validate["failed_count"] == 1
+    assert content_pre_validate["failing_test"] == (
+        "tests/publication/test_publication_fixtures.py::"
+        "test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    )
+    assert (
+        "user visual acceptance or aesthetic approval of the content editor revision"
+        in content_editing["does_not_establish"]
+    )
+    assert (
+        "Commonthing release-lock promotion or production deployment"
+        in content_editing["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -4147,6 +4286,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in content_editing_superseded_files:
+            assert content_editing["source_bindings"][name] == current
         elif name in smoke_pipefail_superseded_files:
             assert smoke_pipefail["source_bindings"][name] == current
         elif name in ui_controls_resize_superseded_files:
