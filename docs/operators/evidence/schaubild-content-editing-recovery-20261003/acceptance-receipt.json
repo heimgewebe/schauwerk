@@ -1,0 +1,104 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-recovery.v1",
+  "scope": "canonical-representation-content-editing-recovery",
+  "accepted_at": "2026-10-03T19:37:33.400120+00:00",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "1f69cf0782be9a691db29064be8f176587c0774b",
+  "parent_evidence": {
+    "evidence_digest": "1f61f7392cc5f384f6de18855963b57815517782bff8074a176b9a3c14d63e1a",
+    "file_sha256": "8b2bc93ec4aaa407ec5e5d22a85581e9849cf994904aa0a7ec5118a019db018e",
+    "path": "docs/operators/evidence/schaubild-content-editing-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "dragged_layout_overrides_migrate_across_content_digest": true,
+    "transient_recovery_draft_uses_candidate_title": true,
+    "last_valid_representation_retained_across_retry": true,
+    "permanent_rejection_restores_valid_draft": true,
+    "representation_restore_resyncs_title": true,
+    "structural_edit_scope_unchanged": true,
+    "focused_recovery_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "ruff_passed": true,
+    "github_p2_findings_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_recovery_tests": {
+      "functional_head": "1f69cf0782be9a691db29064be8f176587c0774b",
+      "job_unit": "grabowski-job-0a34792fbb37",
+      "argv_sha256": "421d8f8717effa0504487ad279df0fff156dc08de7d2e59390bbf2ca3457268a",
+      "finalization_receipt_sha256": "25df003fd59a192edd0883117eb1a57451d3ca2500edf7c2d9b0ab932e21acc6",
+      "passed_count": 4,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "1f69cf0782be9a691db29064be8f176587c0774b",
+      "job_unit": "grabowski-job-f444abd9b8bb",
+      "argv_sha256": "febde5bfb8a9555ac8e1bc665601cd354dc825992afa0f37e0e11e8c9c580545",
+      "finalization_receipt_sha256": "fc3d37d23d0242af1c62d8cc90729791ac860adc1bfb82a763387189c56ae5d3",
+      "passed_count": 362,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "browser tests excluded from this Python regression run"
+      ]
+    },
+    "ruff": {
+      "argv_sha256": "2eea2eeafa68fc2cee41bdc51519cabb980952b5279d8bd9878d09365f345e67",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "github_review_findings": {
+      "source_head": "46c909f55a79e7e5f5dabf9001be5004667a24db",
+      "addressed_by_functional_head": "1f69cf0782be9a691db29064be8f176587c0774b",
+      "findings": [
+        {
+          "comment_id": 4174293899,
+          "severity": "P2",
+          "subject": "preserve dragged layout when applying content edits",
+          "resolution": "migrate the canonical viewer layout override from the last successful input digest to the new validated digest before frame replacement"
+        },
+        {
+          "comment_id": 4174380757,
+          "severity": "P2",
+          "subject": "persist the edited title in recovery drafts",
+          "resolution": "bind transient recovery drafts to the candidate representation title and resync representation title on restore"
+        },
+        {
+          "comment_id": 4174380762,
+          "severity": "P2",
+          "subject": "retain the last valid representation across retries",
+          "resolution": "track the last successfully rendered representation and digest separately; permanent retry rejection restores and re-persists that valid source"
+        }
+      ],
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "1f69cf0782be9a691db29064be8f176587c0774b",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-03T19:37:11.967217Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "f0d71913baa406914f9290bedd3b9424660c605d52fdb0a239453cc1b132a807",
+    "tests/visual/test_standalone_editor.py": "4a6b40b0b8751ab514ae65b5139968573ff20a9607974c21c0a64415e73ba93b"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the recovery revision",
+    "GitHub CI success on the recovery successor evidence head",
+    "current-head Codex rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "ee5a57927cccb937ec212e8aa965d7866e133093b9718d4cb3d843d22586f7be"
+}

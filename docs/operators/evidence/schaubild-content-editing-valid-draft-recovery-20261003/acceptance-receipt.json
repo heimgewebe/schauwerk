@@ -1,0 +1,96 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-valid-draft-recovery.v1",
+  "scope": "canonical-representation-content-editing-valid-draft-recovery",
+  "accepted_at": "2026-10-03T22:03:32Z",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "b38786e132e15a1efa188a940f8a9fdfbf5cdbf4",
+  "parent_evidence": {
+    "evidence_digest": "5618149a32167652d982b59d6b8b5c02d981d263561ea3fe1228583c3b38f958",
+    "file_sha256": "8c4600935ee18b99e0201bca18bcae5a5dfb8c305011a4486cff17f17c8d0157",
+    "path": "docs/operators/evidence/schaubild-content-editing-form-submit-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-form-submit.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "transient_candidate_retains_last_valid_representation": true,
+    "transient_candidate_retains_last_valid_title": true,
+    "invalid_recovery_restore_falls_back_once": true,
+    "valid_fallback_is_revalidated_and_rerendered": true,
+    "invalid_candidate_draft_replaced_by_valid_draft": true,
+    "normal_successful_restore_behavior_preserved": true,
+    "active_frame_retry_recovery_preserved": true,
+    "layout_and_form_submit_semantics_preserved": true,
+    "focused_recovery_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "ruff_passed": true,
+    "github_p2_finding_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_recovery_tests": {
+      "functional_head": "b38786e132e15a1efa188a940f8a9fdfbf5cdbf4",
+      "job_unit": "grabowski-job-3d02019dc0c3",
+      "argv_sha256": "0141e08a56fd70d432d5aff8d47376ee8a302a5d6c0b9db7d443adba2fd34969",
+      "finalization_receipt_sha256": "9c20360fc53feab57ecded6781985e6a49367fd0ec50398cc4d5d51e6a41a791",
+      "passed_count": 3,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "b38786e132e15a1efa188a940f8a9fdfbf5cdbf4",
+      "job_unit": "grabowski-job-073cca4bb3b9",
+      "argv_sha256": "c0fb35a83b0c8aa60f9728fa6ffc1b67f3b6c176df4b3cc5710cd68f19b4740a",
+      "finalization_receipt_sha256": "63665471935e3da3fb049cebfa4dbdfcf09422ae17f916e478dc633a0b01bf9a",
+      "passed_count": 362,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "browser tests excluded from this Python regression run"
+      ]
+    },
+    "ruff": {
+      "job_unit": "grabowski-job-b0cfd472f43e",
+      "argv_sha256": "d2803461fc3693d8857bc5b9015d60e51b0ef6a8127ae630ed1be6600029d5d5",
+      "finalization_receipt_sha256": "bce2e4850696fb11863b8b74aa7d3d48c19b61d0e95eb728f6c6e22d072ee152",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "github_review_finding": {
+      "source_head": "8f23e87569ca0e8886b57e2c8b3e70021f8a93a9",
+      "addressed_by_functional_head": "b38786e132e15a1efa188a940f8a9fdfbf5cdbf4",
+      "findings": [
+        {
+          "comment_id": 4174922822,
+          "severity": "P2",
+          "subject": "keep a valid draft alongside unvalidated recovery edits",
+          "resolution": "store the last validated representation and title alongside a transient candidate; on restored-candidate 413/422, revalidate and render that valid fallback once, replacing the invalid recovery draft"
+        }
+      ],
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "b38786e132e15a1efa188a940f8a9fdfbf5cdbf4",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-03T21:57:10.195928Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "8335d4023b14bf5056030a8c5a9065a89e8688716692f08c81628449a44c024d",
+    "tests/visual/test_standalone_editor.py": "d3da7797f04c0217bda177b3664ffa948c5a138fd08d7ec4f452664824c92943"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the valid-draft recovery revision",
+    "GitHub CI success on the valid-draft recovery successor evidence head",
+    "current-head Codex rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "4321b4fb0d9dfbf00227b75aa829bf3abdd6949633ac625b458101a7d590cab3"
+}

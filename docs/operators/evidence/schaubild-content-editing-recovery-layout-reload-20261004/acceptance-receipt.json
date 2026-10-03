@@ -1,0 +1,105 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-recovery-layout-reload.v1",
+  "scope": "canonical-representation-content-editing-recovery-layout-reload",
+  "accepted_at": "2026-10-03T23:05:04.341168Z",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+  "parent_evidence": {
+    "evidence_digest": "4321b4fb0d9dfbf00227b75aa829bf3abdd6949633ac625b458101a7d590cab3",
+    "file_sha256": "da7cf628caba28f6fd33b4e06856d49d64a7bbf37bbc3cf414ddda1dcdf38f47",
+    "path": "docs/operators/evidence/schaubild-content-editing-valid-draft-recovery-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-valid-draft-recovery.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "transient_recovery_draft_retains_valid_input_digest": true,
+    "successful_reload_candidate_migrates_layout_from_valid_digest": true,
+    "successful_reload_candidate_advances_native_input_digest": true,
+    "same_session_layout_migration_preserved": true,
+    "invalid_recovery_fallback_preserved": true,
+    "json_canvas_recovery_contract_unchanged": true,
+    "structural_edit_scope_unchanged": true,
+    "focused_recovery_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "ruff_passed": true,
+    "git_diff_check_passed": true,
+    "independent_p2_finding_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_recovery_tests": {
+      "functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "job_unit": "grabowski-job-636e445eafa3",
+      "argv_sha256": "9e76d3956c427a371fbd0306fb693eecc1a54c0188c618b9897ac0e0340c2ce7",
+      "finalization_receipt_sha256": "066483b8b84f2669fed06d45d381fe16d53dd922af70d58f72f8c277e1eb14c1",
+      "passed_count": 5,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "job_unit": "grabowski-job-4481d3468521",
+      "argv_sha256": "e6a1018f883e08bd0b0bdfd5cc7a18ea2aee61fe0c2b3c1f66cd006d04761fc5",
+      "finalization_receipt_sha256": "ab7b1ed3902b28ba9a55cfba67c6a6ab0fabc6b11a951d3a3c2d7908e34150c1",
+      "passed_count": 362,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py"
+      ]
+    },
+    "ruff": {
+      "functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "job_unit": "grabowski-job-dbe77daf6617",
+      "argv_sha256": "451517681a2225de1900b605bb560efb343589b5fd619b42b975053c64fc6b2a",
+      "finalization_receipt_sha256": "c9ba81fa0a1f5864c5e1e1230b887f5f80c220b2a1d9119d601c8493d39bf908",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "argv_sha256": "83179ff6b9b54026202766f61a37704b0dbf448f592a0d03818d10380194f454",
+      "result": "passed"
+    },
+    "independent_review_finding": {
+      "source_head": "943c61a9ad2f5f3f4591ccbafdf1fb5e24499490",
+      "addressed_by_functional_head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "job_unit": "grabowski-job-68519e4a85cb",
+      "job_finalization_receipt_sha256": "0efec4e4a78543da992f5a658a45d75fd5b586cd87ec6d0819633759c7329c84",
+      "role_receipt_sha256": "c1194fd304641b0a7cf1aefa1311e8df27c97cf7ea75f4895d47f64cc8c5b180",
+      "review_route": "codex-sol-review-high",
+      "finding": {
+        "severity": "P2",
+        "path": "src/schauwerk/resources/standalone_editor/assets.py",
+        "line": 2311,
+        "subject": "preserve dragged representation layout across recovery reload",
+        "resolution": "persist the last validated input digest with the transient recovery candidate and use it as the layout-migration source when a restored candidate successfully renders under a new digest"
+      },
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-03T23:01:32.564896Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "2e21f21d04576f79649aa73b96ae042206e4e5b3cded3690e9e8fcd25b5ed0f2",
+    "tests/visual/test_standalone_editor.py": "e4d4c13e7ea4f4276a0934881a5ab0c5866471df8477507708bcb3d42e2b6733"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the recovery-layout reload revision",
+    "GitHub CI success on the recovery-layout successor evidence head",
+    "current-head independent rereview settlement",
+    "current-head Codex GitHub rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "e8178e95572211e57da6805d2f63e55c3eab5df07c272172afff8be20ef6b772"
+}
