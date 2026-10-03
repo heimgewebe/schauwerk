@@ -205,6 +205,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'elements.contentDialog.close("cancel")' in app_js
     assert "recoveryFallbackRepresentation: draft.validRepresentation" in app_js
     assert "recoveryFallbackTitle: draft.validTitle" in app_js
+    assert "recoveryLayoutInputDigest: draft.validInputDigest" in app_js
     assert "function representationFromContentEditor()" in app_js
     assert "delete edited.input_digest;" in app_js
     assert "Bereit · Inhalt und Ansicht bearbeitbar" in app_js
@@ -824,8 +825,9 @@ if (
   transientDraft.validTitle !== "Original"
   || transientDraft.validRepresentation?.title !== "Original"
   || transientDraft.validRepresentation?.nodes?.[0]?.label !== "Old"
+  || transientDraft.validInputDigest !== oldDigest
 ) {
-  throw new Error("transient representation draft did not retain the last valid source");
+  throw new Error("transient representation draft did not retain the last valid source and digest");
 }
 if (renderedRepresentation?.title !== "Original" || currentNativeInputDigest !== oldDigest) {
   throw new Error("transient failure replaced the last valid representation binding");
@@ -854,6 +856,47 @@ if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
 }
 if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
   throw new Error("permanent representation rejection did not report valid-state restoration");
+}
+
+store.set(NATIVE_DRAFT_KEY, JSON.stringify(transientDraft));
+currentRepresentation = null;
+renderedRepresentation = null;
+currentNativeInputDigest = "";
+currentNativeUrl = null;
+currentTitle = "Edited";
+editorReady = false;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = "";
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+const reloadDigest = "d".repeat(64);
+const reloadToken = "d".repeat(32);
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + reloadToken + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: reloadDigest,
+    };
+  },
+});
+await launchNative(
+  {nativeRepresentation: cloneJson(transientDraft.representation)},
+  {
+    syncRepresentationTitle: true,
+    recoveryFallbackRepresentation: transientDraft.validRepresentation,
+    recoveryFallbackTitle: transientDraft.validTitle,
+    recoveryLayoutInputDigest: transientDraft.validInputDigest,
+  },
+);
+const reloadMigrated = JSON.parse(store.get(nativeLayoutStorageKey(reloadDigest)) || "{}");
+if (reloadMigrated?.n?.x !== 25 || reloadMigrated?.n?.y !== -15) {
+  throw new Error("successful recovery-draft reload did not migrate saved layout overrides");
+}
+if (currentNativeInputDigest !== reloadDigest) {
+  throw new Error("successful recovery-draft reload did not advance the native input digest");
 }
 
 store.set(NATIVE_DRAFT_KEY, JSON.stringify(transientDraft));

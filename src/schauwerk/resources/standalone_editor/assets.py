@@ -1947,6 +1947,10 @@ function saveNativeDraft(representation, title = currentTitle, recovery = null) 
     draft.validTitle = safeFilename(
       recovery.validTitle || recovery.validRepresentation.title || "Schaubild",
     );
+    const validInputDigest = String(recovery.validInputDigest || "");
+    if (/^[0-9a-f]{64}$/.test(validInputDigest)) {
+      draft.validInputDigest = validInputDigest;
+    }
   }
   try {
     localStorage.setItem(
@@ -2308,9 +2312,15 @@ async function launchNative(load, options = {}) {
     ) {
       throw new Error("Native Renderantwort verletzt den Schaubild-Vertrag.");
     }
-    if (currentRepresentation && preserveActiveFrame) {
+    const representationLayoutSourceDigest = preserveActiveFrame
+      ? activeNativeInputDigest
+      : String(options.recoveryLayoutInputDigest || "");
+    if (
+      currentRepresentation
+      && /^[0-9a-f]{64}$/.test(representationLayoutSourceDigest)
+    ) {
       representationLayoutMigrationFailed = !migrateRepresentationLayoutOverrides(
-        activeNativeInputDigest,
+        representationLayoutSourceDigest,
         inputDigest,
       );
     }
@@ -2487,6 +2497,7 @@ async function launchNative(load, options = {}) {
             ? {
                 validRepresentation: activeRenderedRepresentation,
                 validTitle: activeRenderedRepresentation.title || currentTitle,
+                validInputDigest: activeNativeInputDigest,
               }
             : null,
         );
@@ -3009,6 +3020,7 @@ elements.restoreButton.addEventListener("click", () => {
         syncRepresentationTitle: true,
         recoveryFallbackRepresentation: draft.validRepresentation,
         recoveryFallbackTitle: draft.validTitle,
+        recoveryLayoutInputDigest: draft.validInputDigest,
       },
     );
     return;
