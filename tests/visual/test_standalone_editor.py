@@ -2292,6 +2292,18 @@ def test_runtime_workflow_applies_declared_container_hardening_to_both_smokes() 
     assert workflow.count("--tmpfs /tmp:rw,noexec,nosuid,size=64m") == 2
 
 
+def test_runtime_smoke_buffers_viewer_before_marker_check() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    smoke = (repo_root / "scripts/ci/smoke-native-schaubild-runtime.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'viewer_html_out="$(mktemp)"' in smoke
+    assert '--output "$viewer_html_out"' in smoke
+    assert 'grep -q \'id="nativeViewport"\' "$viewer_html_out"' in smoke
+    assert "| grep -q" not in smoke
+
+
 def test_runtime_publication_requires_exact_manual_dispatch_and_nonconsumer_candidate() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     workflow = (repo_root / ".github/workflows/native-schaubild-image.yml").read_text(
