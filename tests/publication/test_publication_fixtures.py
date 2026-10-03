@@ -4077,6 +4077,44 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in edge_label_width["does_not_establish"]
     )
 
+    edge_label_width_validation = json.loads(
+        (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "validation-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert edge_label_width_validation["schema_version"] == (
+        "schauwerk-schaubild-edge-label-width-validation.v1"
+    )
+    assert edge_label_width_validation["evidence_successor_head"] == (
+        "b96e7aae38185752dc6c48dec103ec7fd8413b25"
+    )
+    assert (
+        edge_label_width_validation["functional_head"]
+        == edge_label_width["functional_head"]
+    )
+    assert edge_label_width_validation["acceptance_receipt"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-edge-label-width-20261003/acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_EDGE_LABEL_WIDTH_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+    }
+    assert edge_label_width_validation["publication_fixture"] == {
+        "path": "tests/publication/test_publication_fixtures.py",
+        "file_sha256": "10d852c12346ba98674c0157bdb2e34e6f7dba58a3102abe3d14e0fcc7da5491",
+    }
+    assert edge_label_width_validation["full_validation"] == {
+        "job_unit": "grabowski-job-dfd559c9493a",
+        "finalization_receipt_sha256": (
+            "b424529a5269213e952679781319b3d07d6aa8af1a3dd290f54ad16b2686a003"
+        ),
+        "passed_count": 1651,
+        "failed_count": 0,
+        "result": "passed",
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
