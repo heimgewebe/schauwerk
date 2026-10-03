@@ -194,7 +194,15 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'id="nativeRetryButton"' in index_html
     assert 'id="contentEditButton"' in index_html
     assert 'id="contentDialog"' in index_html
-    assert 'id="contentSaveButton"' in index_html
+    assert '<form id="contentForm">' in index_html
+    assert 'id="contentCloseButton" value="cancel" type="button"' in index_html
+    assert 'id="contentCancelButton" value="cancel" type="button"' in index_html
+    assert 'id="contentSaveButton" type="submit"' in index_html
+    assert 'contentForm: document.querySelector("#contentForm")' in app_js
+    assert 'elements.contentForm.addEventListener("submit", (event) => {' in app_js
+    assert "event.preventDefault();" in app_js
+    assert 'elements.contentSaveButton.addEventListener("click"' not in app_js
+    assert 'elements.contentDialog.close("cancel")' in app_js
     assert "function representationFromContentEditor()" in app_js
     assert "delete edited.input_digest;" in app_js
     assert "Bereit · Inhalt und Ansicht bearbeitbar" in app_js

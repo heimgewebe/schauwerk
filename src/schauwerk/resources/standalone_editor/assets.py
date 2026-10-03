@@ -139,19 +139,19 @@ INDEX_HTML = r"""<!doctype html>
     </section>
 
     <dialog class="content-dialog" id="contentDialog" aria-labelledby="contentDialogTitle">
-      <form method="dialog">
+      <form id="contentForm">
         <div class="content-dialog-heading">
           <div>
             <p class="panel-kicker">Inhalt bearbeiten</p>
             <h2 id="contentDialogTitle">Texte im Schaubild</h2>
           </div>
-          <button class="button compact ghost" value="cancel" type="submit">Schließen</button>
+          <button class="button compact ghost" id="contentCloseButton" value="cancel" type="button">Schließen</button>
         </div>
         <p class="content-dialog-copy">Titel, Zweck, Gruppen, Elemente und Verbindungen bearbeiten. Struktur, Typen und Zuordnungen bleiben unverändert.</p>
         <div class="content-fields" id="contentFields"></div>
         <div class="content-dialog-actions">
-          <button class="button ghost" value="cancel" type="submit">Abbrechen</button>
-          <button class="button primary" id="contentSaveButton" type="button">Übernehmen</button>
+          <button class="button ghost" id="contentCancelButton" value="cancel" type="button">Abbrechen</button>
+          <button class="button primary" id="contentSaveButton" type="submit">Übernehmen</button>
         </div>
       </form>
     </dialog>
@@ -1553,7 +1553,10 @@ const elements = {
   layoutButton: document.querySelector("#layoutButton"),
   contentEditButton: document.querySelector("#contentEditButton"),
   contentDialog: document.querySelector("#contentDialog"),
+  contentForm: document.querySelector("#contentForm"),
   contentFields: document.querySelector("#contentFields"),
+  contentCloseButton: document.querySelector("#contentCloseButton"),
+  contentCancelButton: document.querySelector("#contentCancelButton"),
   contentSaveButton: document.querySelector("#contentSaveButton"),
   legacyEditButton: document.querySelector("#legacyEditButton"),
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
@@ -1830,10 +1833,12 @@ function openRepresentationContentEditor() {
 }
 
 async function saveRepresentationContentEditor() {
-  if (!elements.contentSaveButton) return;
+  if (!elements.contentSaveButton || elements.contentSaveButton.disabled) return;
   const edited = representationFromContentEditor();
   if (!edited) return;
   elements.contentSaveButton.disabled = true;
+  elements.contentCloseButton.disabled = true;
+  elements.contentCancelButton.disabled = true;
   setError("");
   try {
     await launchNative(
@@ -1856,6 +1861,8 @@ async function saveRepresentationContentEditor() {
     }
   } finally {
     elements.contentSaveButton.disabled = false;
+    elements.contentCloseButton.disabled = false;
+    elements.contentCancelButton.disabled = false;
   }
 }
 
@@ -2955,9 +2962,13 @@ elements.legacyFallbackButton.addEventListener("click", () => {
   launchLegacy({ xml });
 });
 elements.contentEditButton.addEventListener("click", openRepresentationContentEditor);
-elements.contentSaveButton.addEventListener("click", () => {
+elements.contentForm.addEventListener("submit", (event) => {
+  event.preventDefault();
   void saveRepresentationContentEditor();
 });
+for (const control of [elements.contentCloseButton, elements.contentCancelButton]) {
+  control.addEventListener("click", () => elements.contentDialog.close("cancel"));
+}
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
 elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
 elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);
