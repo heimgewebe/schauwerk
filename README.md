@@ -86,13 +86,17 @@ allgemeine Same-Row-/Parallel-Routinggrenze des semantischen Renderers gehärtet
 PYTHONPATH=src python -m schauwerk.visual.standalone_editor serve --port 8765
 ```
 
-Für Representation bleibt die Semantik read-only; Pan, Zoom, Selection und Node-Drag
-arbeiten auf einem lokalen Layout-Overlay. Verbundene Kanten und Beschriftungen werden
-während des Drags live neu geführt. Im JSON-Canvas-Dokumentmodus sind Knoten und Kanten
-zusätzlich bearbeitbar, erstellbar, löschbar und an andere Endpunkte umhängbar; Drag und
-Strukturänderungen aktualisieren den dokumentgebundenen Zustand und können wieder als
-`.canvas` exportiert werden. Native SVG-Ausgabe bleibt verfügbar; PNG bleibt vorerst
-Legacy-Funktion.
+Für Representation ist die Struktursemantik weiterhin read-only. Über „Inhalt“
+lassen sich ausschließlich der Schaubildtitel und -zweck, Gruppenbezeichnungen,
+Knotentitel und -beschreibungen sowie Kantenbeschriftungen bearbeiten. IDs, Knotentypen,
+Gruppenzuordnung, Kantenendpunkte und -typen sowie weitere strukturelle Felder bleiben
+unverändert; jede Textänderung wird erneut serverseitig validiert und nativ gerendert.
+Pan, Zoom, Selection und Node-Drag arbeiten zusätzlich auf einem lokalen Layout-Overlay;
+verbundene Kanten und Beschriftungen werden während des Drags live neu geführt. Im
+JSON-Canvas-Dokumentmodus sind Knoten und Kanten darüber hinaus bearbeitbar, erstellbar,
+löschbar und an andere Endpunkte umhängbar; Drag und Strukturänderungen aktualisieren
+den dokumentgebundenen Zustand und können wieder als `.canvas` exportiert werden.
+Native SVG-Ausgabe bleibt verfügbar; PNG bleibt vorerst Legacy-Funktion.
 
 ## Asset-Fundus
 
