@@ -6,8 +6,9 @@ host_header="127.0.0.1:8765"
 manifest_out="$(mktemp)"
 render_out="$(mktemp)"
 viewer_path_out="$(mktemp)"
+viewer_html_out="$(mktemp)"
 viewer_manifest_out="$(mktemp)"
-trap 'rm -f "$manifest_out" "$render_out" "$viewer_path_out" "$viewer_manifest_out"' EXIT
+trap 'rm -f "$manifest_out" "$render_out" "$viewer_path_out" "$viewer_html_out" "$viewer_manifest_out"' EXIT
 
 for _ in $(seq 1 30); do
   if curl --fail --silent \
@@ -66,7 +67,8 @@ curl --fail --silent \
   --header "Host: $host_header" \
   --header 'X-Forwarded-For: 127.0.0.1' \
   "$base_url$(cat "$viewer_path_out")" \
-  | grep -q 'id="nativeViewport"'
+  --output "$viewer_html_out"
+grep -q 'id="nativeViewport"' "$viewer_html_out"
 
 viewer_manifest_path="$(sed 's/index\.html$/manifest.json/' "$viewer_path_out")"
 curl --fail --silent \

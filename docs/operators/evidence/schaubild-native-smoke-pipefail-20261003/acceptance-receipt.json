@@ -1,0 +1,87 @@
+{
+  "schema_version": "schauwerk-schaubild-native-smoke-pipefail.v1",
+  "scope": "native-schaubild-runtime-smoke-pipe-safety",
+  "accepted_at": "2026-10-03",
+  "functional_head": "b064c164b7bb2fd39fd43e5349dd822f88163f7d",
+  "parent_evidence": {
+    "evidence_digest": "229053238ce73deffab51cabc70f4d261b5a5422d41a2ae3a215e1018cd410dd",
+    "file_sha256": "eedb64bd70ebc3287b62584455e640c27b2bc1dc7a74db27cc32b19096d09001",
+    "path": "docs/operators/evidence/schaubild-ui-controls-resize-20261002/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-ui-controls-resize.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "merged_main_native_image_failure_observed": true,
+    "smoke_exit_23_observed_on_github_runner": true,
+    "viewer_marker_has_large_trailing_response": true,
+    "early_exit_pipe_removed_from_smoke": true,
+    "exact_merged_main_local_image_build_passed": true,
+    "exact_runtime_smoke_passed_locally": true,
+    "targeted_pipe_safety_regression_passed": true,
+    "patched_smoke_twenty_repetitions_passed": true
+  },
+  "check_evidence": {
+    "merged_main_native_image_failure_observed": {
+      "repository": "heimgewebe/schauwerk",
+      "merge_commit": "893b69a8316bd3967be9b633b4bbb70ebf5b8d00",
+      "workflow_run_id": 37076760340,
+      "workflow_job_id": 111068290878,
+      "workflow": "native-schaubild-image",
+      "failed_step": "Smoke PR image",
+      "observed_exit_code": 23,
+      "log_readback_job_unit": "grabowski-job-bcfb453d0a61",
+      "log_readback_finalization_receipt_sha256": "06f44f71061441eddc92208c6adedbf9b0d8000ddcbfddfe9c8f5d3e81253164"
+    },
+    "viewer_marker_has_large_trailing_response": {
+      "job_unit": "grabowski-job-888c5cc051ae",
+      "finalization_receipt_sha256": "890566e931f6e90721bdd022f317176883ef7d9c6f9d06a776d19c22362796b7",
+      "viewer_html_bytes": 31079,
+      "marker_offset_bytes": 2469,
+      "trailing_bytes_after_marker": 28610,
+      "interpretation": "The marker is found early while substantial response data follows, so grep -q may close a streaming pipe before curl finishes writing."
+    },
+    "exact_merged_main_local_image_build_passed": {
+      "job_unit": "grabowski-job-ba198369fc00",
+      "finalization_receipt_sha256": "bd24ee0b038c3ae2298c2a75e7a03d8a48388d4dcd424571ce29fa21c80f518e",
+      "source_commit": "893b69a8316bd3967be9b633b4bbb70ebf5b8d00",
+      "result": "succeeded"
+    },
+    "exact_runtime_smoke_passed_locally": {
+      "job_unit": "grabowski-job-0c7b51ed5013",
+      "finalization_receipt_sha256": "d8a9c7c888fee0bb67bf58167272c7c8e755f62a17254e7199e6c9df06602ef5",
+      "result": "succeeded"
+    },
+    "prepatch_repeat_diagnostic": {
+      "job_unit": "grabowski-job-7f201a4a2155",
+      "finalization_receipt_sha256": "5941f73713fc861bba45bb9b3ef06573ab0bc49a61c20c3c2b430430c800e564",
+      "repetitions": 20,
+      "passed": 20,
+      "interpretation": "Local repetition did not reproduce the GitHub exit-23 event, so the observed production-run failure is treated as timing/platform-sensitive rather than as deterministically reproduced."
+    },
+    "targeted_pipe_safety_regression_passed": {
+      "job_unit": "grabowski-job-180be8ef9d1b",
+      "finalization_receipt_sha256": "a2e9c15452850d598456322282be03fc9bb333e82f30f0cd72fc47f79abb6d82",
+      "result": "succeeded",
+      "passed_count": 1
+    },
+    "patched_smoke_twenty_repetitions_passed": {
+      "job_unit": "grabowski-job-b5ceab1b4fde",
+      "finalization_receipt_sha256": "e1dc154d8ba720410dbf9cf8bf84b84a74af4e255d0e20b291ddb0cf2834351a",
+      "repetitions": 20,
+      "passed": 20,
+      "result": "succeeded"
+    }
+  },
+  "source_bindings": {
+    "scripts/ci/smoke-native-schaubild-runtime.sh": "7e854c2e3bab1199ea09fa901761348c1a1e768405f2ef0067f54f16768daec2",
+    "tests/visual/test_standalone_editor.py": "6dad0ad1b1a3535eda5630fb1f9147d93a0e23797f6e05d04709acce587c8141"
+  },
+  "does_not_establish": [
+    "unique root-cause certainty for the single GitHub Actions exit-23 event",
+    "GitHub CI success on the evidence-successor head",
+    "successful workflow_dispatch publication of the final image",
+    "Commonthing release-lock promotion or production deployment",
+    "user visual acceptance of the production UI"
+  ],
+  "evidence_digest": "eca9b80eea295e53e059556dd07ddef747582653f4eeaf464fe8e0ad19b030ea"
+}
