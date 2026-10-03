@@ -152,6 +152,9 @@ SCHAUBILD_UI_CONTROLS_EVIDENCE = (
 SCHAUBILD_UI_CONTROLS_RESIZE_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-ui-controls-resize-20261002"
 )
+SCHAUBILD_NATIVE_SMOKE_PIPEFAIL_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-native-smoke-pipefail-20261003"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -408,6 +411,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_standalone_editor.py",
     }
+    smoke_pipefail_superseded_files = {
+        "scripts/ci/smoke-native-schaubild-runtime.sh",
+        "tests/visual/test_standalone_editor.py",
+    }
     for name, expected in schaubild_successor["source_bindings"].items():
         if name not in runtime_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -454,7 +461,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
     } | editor_superseded_files
     for name, expected in runtime_successor["source_bindings"].items():
-        if name not in drawio_native_superseded_files:
+        if name not in (drawio_native_superseded_files | smoke_pipefail_superseded_files):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
     drawio_successor = json.loads(
@@ -1348,7 +1355,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_superseded_files
     )
     for name, expected in json_canvas_text_fit["source_bindings"].items():
-        if name not in json_canvas_text_fit_final_superseded_files:
+        if name not in (
+            json_canvas_text_fit_final_superseded_files
+            | smoke_pipefail_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_bytes()
@@ -3926,6 +3936,69 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in ui_controls_resize["does_not_establish"]
     )
 
+    smoke_pipefail = json.loads(
+        (
+            SCHAUBILD_NATIVE_SMOKE_PIPEFAIL_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        smoke_pipefail["schema_version"]
+        == "schauwerk-schaubild-native-smoke-pipefail.v1"
+    )
+    assert (
+        smoke_pipefail["functional_head"]
+        == "b064c164b7bb2fd39fd43e5349dd822f88163f7d"
+    )
+    assert smoke_pipefail["parent_evidence"] == {
+        "evidence_digest": ui_controls_resize["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_UI_CONTROLS_RESIZE_EVIDENCE / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-ui-controls-resize-20261002/acceptance-receipt.json"
+        ),
+        "schema_version": ui_controls_resize["schema_version"],
+    }
+    assert smoke_pipefail["evidence_digest"] == digest_mapping(
+        smoke_pipefail, "evidence_digest"
+    )
+    assert set(smoke_pipefail["source_bindings"]) == smoke_pipefail_superseded_files
+    for name, expected in smoke_pipefail["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert smoke_pipefail["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "merged_main_native_image_failure_observed": True,
+        "smoke_exit_23_observed_on_github_runner": True,
+        "viewer_marker_has_large_trailing_response": True,
+        "early_exit_pipe_removed_from_smoke": True,
+        "exact_merged_main_local_image_build_passed": True,
+        "exact_runtime_smoke_passed_locally": True,
+        "targeted_pipe_safety_regression_passed": True,
+        "patched_smoke_twenty_repetitions_passed": True,
+    }
+    smoke_failure = smoke_pipefail["check_evidence"][
+        "merged_main_native_image_failure_observed"
+    ]
+    assert smoke_failure["merge_commit"] == "893b69a8316bd3967be9b633b4bbb70ebf5b8d00"
+    assert smoke_failure["workflow_run_id"] == 37076760340
+    assert smoke_failure["observed_exit_code"] == 23
+    smoke_repeat = smoke_pipefail["check_evidence"][
+        "patched_smoke_twenty_repetitions_passed"
+    ]
+    assert smoke_repeat["repetitions"] == 20
+    assert smoke_repeat["passed"] == 20
+    assert (
+        "unique root-cause certainty for the single GitHub Actions exit-23 event"
+        in smoke_pipefail["does_not_establish"]
+    )
+    assert (
+        "successful workflow_dispatch publication of the final image"
+        in smoke_pipefail["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -3958,6 +4031,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in smoke_pipefail_superseded_files:
+            assert smoke_pipefail["source_bindings"][name] == current
         elif name in ui_controls_resize_superseded_files:
             assert ui_controls_resize["source_bindings"][name] == current
         elif name in ui_controls_superseded_files:
