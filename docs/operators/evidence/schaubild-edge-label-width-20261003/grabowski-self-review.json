@@ -1,0 +1,69 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "736614f0a9d37f8e35572f8d03fbf63a5152abea",
+  "head_sha": "8d019e225be4dec5e6a7ef54fc8e376325ea2018",
+  "diff_sha256": "d5092de8a9fe885c098c0a59ef9ee5a672c800d1477a0ba277ede03a784dfdc3",
+  "diff_bytes": 15969,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-edge-label-width-20261003/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-edge-label-width-20261003/validation-receipt.json",
+    "src/schauwerk/visual/native_diagram.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_native_document.py"
+  ],
+  "review_focus": [
+    "edge-label box sizing and visible text fitting use the same bounded single-line width model",
+    "ordinary labels that fit below the 260px cap remain complete while long and pathological labels retain controlled truncation",
+    "edge-label width probing remains bounded and falls back conservatively to the existing 260px cap on oversized input",
+    "semantic label and title content remain intact and the fix changes only visible box sizing",
+    "historical publication evidence remains immutable and the changed source hashes are carried only by a successor receipt",
+    "current-head local validation and real Chromium SVG geometry readback show the reproduced label complete and inside its label box"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The initial direct fix idea would have measured the complete unbounded label, which could turn pathological input into unnecessary scan work.",
+      "resolution": "The helper now uses the existing bounded XML-compatible Canvas probe limits and conservatively returns the 260px cap when the probe truncates."
+    },
+    {
+      "iteration": 2,
+      "finding": "The first post-functional full validation correctly failed only because immutable historical publication evidence still bound the predecessor source hashes.",
+      "resolution": "Added a successor acceptance/validation chain and updated the publication fixture to supersede exactly the two changed implementation/test files without rewriting historical receipts."
+    }
+  ],
+  "validation": {
+    "targeted_tests_job_unit": "grabowski-job-c5d25a395568",
+    "targeted_tests_finalization_receipt_sha256": "278766482eeae659b873cf306a51227866ac94407dce1d5d179e0ba51fc0d1a2",
+    "targeted_tests_result": "succeeded",
+    "successor_full_validate_job_unit": "grabowski-job-dfd559c9493a",
+    "successor_full_validate_finalization_receipt_sha256": "b424529a5269213e952679781319b3d07d6aa8af1a3dd290f54ad16b2686a003",
+    "successor_full_validate_passed_count": 1651,
+    "current_head_full_validate_job_unit": "grabowski-job-99ee4fcc3e4a",
+    "current_head_full_validate_finalization_receipt_sha256": "e424a80975c7db341ac5884fee5e514c1d1ed092e887b29e5c4c87a4a0a1d8bd",
+    "current_head_full_validate_passed_count": 1651,
+    "browser_readback_job_unit": "grabowski-job-3b014df2dce2",
+    "browser_readback_finalization_receipt_sha256": "3093a7d00e0b05e379a7ea73aba4b0a4bdaadafd66e64be90a46ca5a2da4e5d5",
+    "browser_readback_result": "succeeded",
+    "browser_readback": {
+      "text": "trägt bei zu",
+      "title": "trägt bei zu",
+      "truncated": false,
+      "fits": true,
+      "text_width_px": 76.953125,
+      "box_width_px": 132.0,
+      "left_inset_px": 27.5234375,
+      "right_inset_px": 27.5234375
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "GitHub CI success on the later self-review commit",
+    "merge readiness after later head changes",
+    "merge to main",
+    "release promotion or Commonthing production deployment"
+  ]
+}
