@@ -1930,13 +1930,28 @@ function readDraft() {
   }
 }
 
-function saveNativeDraft(representation, title = currentTitle) {
+function saveNativeDraft(representation, title = currentTitle, recovery = null) {
   if (!representation || typeof representation !== "object") return false;
   currentRepresentation = representation;
+  const draft = {
+    title: safeFilename(title),
+    representation,
+    savedAt: Date.now(),
+  };
+  if (
+    recovery?.validRepresentation
+    && typeof recovery.validRepresentation === "object"
+    && !Array.isArray(recovery.validRepresentation)
+  ) {
+    draft.validRepresentation = cloneJson(recovery.validRepresentation);
+    draft.validTitle = safeFilename(
+      recovery.validTitle || recovery.validRepresentation.title || "Schaubild",
+    );
+  }
   try {
     localStorage.setItem(
       NATIVE_DRAFT_KEY,
-      JSON.stringify({ title: safeFilename(title), representation, savedAt: Date.now() }),
+      JSON.stringify(draft),
     );
     elements.restoreButton.hidden = false;
     return true;
@@ -2252,6 +2267,7 @@ async function launchNative(load, options = {}) {
   const previousLaunch = nativeLaunchTail;
   let releaseLaunchTurn = () => {};
   let permanentRecovery = null;
+  let permanentRecoveryOptions = null;
   let permanentRejectionMessage = "";
   let representationLayoutMigrationFailed = false;
   nativeLaunchTail = new Promise((resolve) => {
@@ -2347,6 +2363,19 @@ async function launchNative(load, options = {}) {
       && !options.recoveryAttempt
       && (nativeStatus === 413 || nativeStatus === 422)
     );
+    const recoveryFallbackRepresentation = (
+      options.recoveryFallbackRepresentation
+      && typeof options.recoveryFallbackRepresentation === "object"
+      && !Array.isArray(options.recoveryFallbackRepresentation)
+    )
+      ? options.recoveryFallbackRepresentation
+      : null;
+    const permanentRestoreRejection = Boolean(
+      !preserveActiveFrame
+      && !options.recoveryAttempt
+      && recoveryFallbackRepresentation
+      && (nativeStatus === 413 || nativeStatus === 422)
+    );
     if (permanentCandidateRejection) {
       currentRepresentation = activeRenderedRepresentation
         ? cloneJson(activeRenderedRepresentation)
@@ -2406,6 +2435,30 @@ async function launchNative(load, options = {}) {
         );
         return;
       }
+    } else if (permanentRestoreRejection) {
+      permanentRecovery = {
+        nativeRepresentation: cloneJson(recoveryFallbackRepresentation),
+        sourceMetadata: {
+          key: "schauwerkImportFormat",
+          value: "schauwerk-representation-input.v1",
+        },
+      };
+      permanentRecoveryOptions = {
+        syncRepresentationTitle: true,
+        recoveryAttempt: true,
+        recoveryFallbackTitle: options.recoveryFallbackTitle,
+      };
+      permanentRejectionMessage = (
+        error instanceof Error ? error.message : "Gesicherter Inhaltsentwurf wurde abgelehnt."
+      );
+      setEngineMode("native");
+      setError(
+        permanentRejectionMessage
+        + " Der gesicherte Kandidat ist ungültig; der letzte validierte Dokumentzustand wird wiederhergestellt.",
+      );
+      setStatus(
+        "Gesicherter Inhaltsentwurf abgelehnt · letzter gültiger Dokumentzustand wird wiederhergestellt",
+      );
     } else if (preserveActiveFrame) {
       currentNativeUrl = activeNativeUrl;
       nativeCanvasRenderStale = true;
@@ -2427,7 +2480,16 @@ async function launchNative(load, options = {}) {
         )
           ? currentRepresentation.title
           : currentTitle;
-        nativeDraftSaved = saveNativeDraft(currentRepresentation, recoveryTitle);
+        nativeDraftSaved = saveNativeDraft(
+          currentRepresentation,
+          recoveryTitle,
+          activeRenderedRepresentation
+            ? {
+                validRepresentation: activeRenderedRepresentation,
+                validTitle: activeRenderedRepresentation.title || currentTitle,
+              }
+            : null,
+        );
         recoveryExport = "Quellenexport enthält den aktuellen Inhaltsstand";
       }
       const draftErrorSuffix = (
@@ -2492,9 +2554,12 @@ async function launchNative(load, options = {}) {
   }
 
   if (permanentRecovery) {
+    if (permanentRecoveryOptions?.recoveryFallbackTitle) {
+      currentTitle = safeFilename(permanentRecoveryOptions.recoveryFallbackTitle);
+    }
     await launchNative(
       permanentRecovery,
-      { preserveActiveFrame: true, recoveryAttempt: true },
+      permanentRecoveryOptions || { preserveActiveFrame: true, recoveryAttempt: true },
     );
     if (!nativeCanvasRenderStale && editorReady) {
       setError(
@@ -2940,7 +3005,11 @@ elements.restoreButton.addEventListener("click", () => {
         nativeRepresentation: draft.representation,
         sourceMetadata: { key: "schauwerkImportFormat", value: "schauwerk-representation-input.v1" },
       },
-      { syncRepresentationTitle: true },
+      {
+        syncRepresentationTitle: true,
+        recoveryFallbackRepresentation: draft.validRepresentation,
+        recoveryFallbackTitle: draft.validTitle,
+      },
     );
     return;
   }

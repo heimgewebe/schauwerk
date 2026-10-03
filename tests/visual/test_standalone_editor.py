@@ -203,6 +203,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "event.preventDefault();" in app_js
     assert 'elements.contentSaveButton.addEventListener("click"' not in app_js
     assert 'elements.contentDialog.close("cancel")' in app_js
+    assert "recoveryFallbackRepresentation: draft.validRepresentation" in app_js
+    assert "recoveryFallbackTitle: draft.validTitle" in app_js
     assert "function representationFromContentEditor()" in app_js
     assert "delete edited.input_digest;" in app_js
     assert "Bereit · Inhalt und Ansicht bearbeitbar" in app_js
@@ -235,8 +237,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "function migrateRepresentationLayoutOverrides(" in app_js
     assert "const activeRenderedRepresentation = renderedRepresentation;" in app_js
     assert "const activeNativeInputDigest = currentNativeInputDigest;" in app_js
-    assert "saveNativeDraft(currentRepresentation, recoveryTitle)" in app_js
-    assert "{ syncRepresentationTitle: true }" in app_js
+    assert "validRepresentation: activeRenderedRepresentation" in app_js
+    assert "validTitle: activeRenderedRepresentation.title || currentTitle" in app_js
+    assert "syncRepresentationTitle: true," in app_js
     assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
@@ -817,6 +820,13 @@ if (
 ) {
   throw new Error("transient representation draft did not preserve edited title");
 }
+if (
+  transientDraft.validTitle !== "Original"
+  || transientDraft.validRepresentation?.title !== "Original"
+  || transientDraft.validRepresentation?.nodes?.[0]?.label !== "Old"
+) {
+  throw new Error("transient representation draft did not retain the last valid source");
+}
 if (renderedRepresentation?.title !== "Original" || currentNativeInputDigest !== oldDigest) {
   throw new Error("transient failure replaced the last valid representation binding");
 }
@@ -844,6 +854,67 @@ if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
 }
 if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
   throw new Error("permanent representation rejection did not report valid-state restoration");
+}
+
+store.set(NATIVE_DRAFT_KEY, JSON.stringify(transientDraft));
+currentRepresentation = null;
+renderedRepresentation = null;
+currentNativeInputDigest = "";
+currentNativeUrl = null;
+currentTitle = "Edited";
+editorReady = false;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = "";
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+let restoreFetchStep = 0;
+globalThis.fetch = async () => {
+  restoreFetchStep += 1;
+  if (restoreFetchStep === 1) {
+    return {
+      ok: false,
+      status: 422,
+      async json() { return {error: "synthetic invalid restored candidate"}; },
+    };
+  }
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        url: "/native/" + oldToken + "/index.html",
+        renderer: "schauwerk-native-diagram-v1",
+        input_digest: oldDigest,
+      };
+    },
+  };
+};
+await launchNative(
+  {nativeRepresentation: cloneJson(transientDraft.representation)},
+  {
+    syncRepresentationTitle: true,
+    recoveryFallbackRepresentation: transientDraft.validRepresentation,
+    recoveryFallbackTitle: transientDraft.validTitle,
+  },
+);
+if (restoreFetchStep !== 2) {
+  throw new Error("rejected restored recovery candidate did not fall back exactly once");
+}
+if (
+  currentRepresentation?.title !== "Original"
+  || renderedRepresentation?.title !== "Original"
+  || currentTitle !== "Original"
+  || currentNativeInputDigest !== oldDigest
+) {
+  throw new Error("reload recovery did not restore the last valid representation");
+}
+const reloadRecoveredDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  reloadRecoveredDraft.title !== "Original"
+  || reloadRecoveredDraft.representation?.title !== "Original"
+  || reloadRecoveredDraft.validRepresentation !== undefined
+) {
+  throw new Error("reload recovery did not replace the invalid candidate draft with the valid source");
 }
 """
     subprocess.run(
