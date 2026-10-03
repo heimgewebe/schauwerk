@@ -803,6 +803,57 @@ def test_native_document_long_edge_label_is_clipped_to_reserved_box() -> None:
     assert clip_rect.attrib["height"] == visible_rect.attrib["height"]
 
 
+def test_native_document_ordinary_edge_label_is_not_truncated_by_box_heuristic() -> None:
+    label = "trägt bei zu"
+    source = {
+        "nodes": [
+            {
+                "id": "a",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "A",
+            },
+            {
+                "id": "b",
+                "type": "text",
+                "x": 360,
+                "y": 0,
+                "width": 120,
+                "height": 80,
+                "text": "B",
+            },
+        ],
+        "edges": [
+            {
+                "id": "ordinary-edge",
+                "fromNode": "a",
+                "toNode": "b",
+                "label": label,
+            }
+        ],
+    }
+
+    root = ET.fromstring(
+        render_native_editing_document(
+            json_canvas_to_editing_document(source, title="Ordinary edge label")
+        )
+    )
+    edge = next(
+        element
+        for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "ordinary-edge"
+    )
+    text = next(child for child in edge if child.tag == f"{SVG_NS}text")
+    visible_rect = next(child for child in edge if child.tag == f"{SVG_NS}rect")
+
+    assert "data-text-truncated" not in edge.attrib
+    assert text.text == label
+    assert float(visible_rect.attrib["width"]) <= 260.0
+
+
 def test_native_document_marks_pathological_edge_grapheme_as_truncated() -> None:
     label = "e" + "\u0301" * (MAX_GRAPHEME_CLUSTER_CODEPOINTS + 4096)
     source = {
