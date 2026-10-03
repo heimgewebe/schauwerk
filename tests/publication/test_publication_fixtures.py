@@ -172,6 +172,11 @@ SCHAUBILD_CONTENT_EDITING_VALID_DRAFT_RECOVERY_EVIDENCE = (
     / "docs/operators/evidence/"
     "schaubild-content-editing-valid-draft-recovery-20261003"
 )
+SCHAUBILD_CONTENT_EDITING_RECOVERY_LAYOUT_RELOAD_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/"
+    "schaubild-content-editing-recovery-layout-reload-20261004"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -644,6 +649,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
     }
     content_editing_valid_draft_recovery_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    content_editing_recovery_layout_reload_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor.py",
     }
@@ -4564,7 +4573,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_valid_draft_recovery_superseded_files
     )
     for name, expected in content_editing_valid_draft_recovery["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in content_editing_recovery_layout_reload_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_valid_draft_recovery["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "transient_candidate_retains_last_valid_representation": True,
@@ -4624,6 +4634,138 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert valid_draft_observer["worktree_clean"] is True
     assert valid_draft_observer["untracked_present"] is False
 
+    content_editing_recovery_layout_reload = json.loads(
+        (
+            SCHAUBILD_CONTENT_EDITING_RECOVERY_LAYOUT_RELOAD_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        content_editing_recovery_layout_reload["schema_version"]
+        == "schauwerk-schaubild-content-editing-recovery-layout-reload.v1"
+    )
+    assert (
+        content_editing_recovery_layout_reload["functional_head"]
+        == "340f3fa77fa96e319fbdb9f1457ba2b2fe437c74"
+    )
+    assert content_editing_recovery_layout_reload["parent_evidence"] == {
+        "evidence_digest": content_editing_valid_draft_recovery["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_CONTENT_EDITING_VALID_DRAFT_RECOVERY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-content-editing-valid-draft-recovery-20261003/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": content_editing_valid_draft_recovery["schema_version"],
+    }
+    assert content_editing_recovery_layout_reload["evidence_digest"] == digest_mapping(
+        content_editing_recovery_layout_reload, "evidence_digest"
+    )
+    assert (
+        set(content_editing_recovery_layout_reload["source_bindings"])
+        == content_editing_recovery_layout_reload_superseded_files
+    )
+    for name, expected in content_editing_recovery_layout_reload[
+        "source_bindings"
+    ].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert content_editing_recovery_layout_reload["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "transient_recovery_draft_retains_valid_input_digest": True,
+        "successful_reload_candidate_migrates_layout_from_valid_digest": True,
+        "successful_reload_candidate_advances_native_input_digest": True,
+        "same_session_layout_migration_preserved": True,
+        "invalid_recovery_fallback_preserved": True,
+        "json_canvas_recovery_contract_unchanged": True,
+        "structural_edit_scope_unchanged": True,
+        "focused_recovery_tests_passed": True,
+        "relevant_regressions_passed": True,
+        "ruff_passed": True,
+        "git_diff_check_passed": True,
+        "independent_p2_finding_addressed_locally": True,
+    }
+    recovery_layout_focused = content_editing_recovery_layout_reload[
+        "check_evidence"
+    ]["focused_recovery_tests"]
+    assert recovery_layout_focused["job_unit"] == "grabowski-job-636e445eafa3"
+    assert recovery_layout_focused["argv_sha256"] == (
+        "9e76d3956c427a371fbd0306fb693eecc1a54c0188c618b9897ac0e0340c2ce7"
+    )
+    assert recovery_layout_focused["finalization_receipt_sha256"] == (
+        "066483b8b84f2669fed06d45d381fe16d53dd922af70d58f72f8c277e1eb14c1"
+    )
+    assert recovery_layout_focused["passed_count"] == 5
+    assert recovery_layout_focused["result"] == "passed"
+    recovery_layout_regressions = content_editing_recovery_layout_reload[
+        "check_evidence"
+    ]["relevant_regressions"]
+    assert recovery_layout_regressions["job_unit"] == "grabowski-job-4481d3468521"
+    assert recovery_layout_regressions["argv_sha256"] == (
+        "e6a1018f883e08bd0b0bdfd5cc7a18ea2aee61fe0c2b3c1f66cd006d04761fc5"
+    )
+    assert recovery_layout_regressions["finalization_receipt_sha256"] == (
+        "ab7b1ed3902b28ba9a55cfba67c6a6ab0fabc6b11a951d3a3c2d7908e34150c1"
+    )
+    assert recovery_layout_regressions["passed_count"] == 362
+    assert recovery_layout_regressions["result"] == "passed"
+    recovery_layout_ruff = content_editing_recovery_layout_reload["check_evidence"][
+        "ruff"
+    ]
+    assert recovery_layout_ruff["job_unit"] == "grabowski-job-dbe77daf6617"
+    assert recovery_layout_ruff["argv_sha256"] == (
+        "451517681a2225de1900b605bb560efb343589b5fd619b42b975053c64fc6b2a"
+    )
+    assert recovery_layout_ruff["finalization_receipt_sha256"] == (
+        "c9ba81fa0a1f5864c5e1e1230b887f5f80c220b2a1d9119d601c8493d39bf908"
+    )
+    assert recovery_layout_ruff["result"] == "passed"
+    recovery_layout_diff = content_editing_recovery_layout_reload["check_evidence"][
+        "git_diff_check"
+    ]
+    assert recovery_layout_diff["argv_sha256"] == (
+        "83179ff6b9b54026202766f61a37704b0dbf448f592a0d03818d10380194f454"
+    )
+    assert recovery_layout_diff["result"] == "passed"
+    recovery_layout_review = content_editing_recovery_layout_reload[
+        "check_evidence"
+    ]["independent_review_finding"]
+    assert recovery_layout_review["source_head"] == (
+        "943c61a9ad2f5f3f4591ccbafdf1fb5e24499490"
+    )
+    assert recovery_layout_review["addressed_by_functional_head"] == (
+        content_editing_recovery_layout_reload["functional_head"]
+    )
+    assert recovery_layout_review["job_unit"] == "grabowski-job-68519e4a85cb"
+    assert recovery_layout_review["job_finalization_receipt_sha256"] == (
+        "0efec4e4a78543da992f5a658a45d75fd5b586cd87ec6d0819633759c7329c84"
+    )
+    assert recovery_layout_review["role_receipt_sha256"] == (
+        "c1194fd304641b0a7cf1aefa1311e8df27c97cf7ea75f4895d47f64cc8c5b180"
+    )
+    assert recovery_layout_review["finding"]["severity"] == "P2"
+    assert recovery_layout_review["finding"]["path"] == (
+        "src/schauwerk/resources/standalone_editor/assets.py"
+    )
+    assert recovery_layout_review["current_head_rereview_established"] is False
+    recovery_layout_observer = content_editing_recovery_layout_reload[
+        "check_evidence"
+    ]["independent_readback"]
+    assert recovery_layout_observer["observer"] == "grosser-adler"
+    assert recovery_layout_observer["head"] == (
+        content_editing_recovery_layout_reload["functional_head"]
+    )
+    assert recovery_layout_observer["worktree_clean"] is True
+    assert recovery_layout_observer["untracked_present"] is False
+    assert (
+        "current-head independent rereview settlement"
+        in content_editing_recovery_layout_reload["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -4656,6 +4798,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in content_editing_recovery_layout_reload_superseded_files:
+            assert content_editing_recovery_layout_reload["source_bindings"][name] == current
         elif name in content_editing_valid_draft_recovery_superseded_files:
             assert content_editing_valid_draft_recovery["source_bindings"][name] == current
         elif name in content_editing_form_submit_superseded_files:
