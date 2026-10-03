@@ -164,6 +164,9 @@ SCHAUBILD_CONTENT_EDITING_EVIDENCE = (
 SCHAUBILD_CONTENT_EDITING_RECOVERY_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-content-editing-recovery-20261003"
 )
+SCHAUBILD_CONTENT_EDITING_FORM_SUBMIT_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-content-editing-form-submit-20261003"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -628,6 +631,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
     }
     content_editing_recovery_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    content_editing_form_submit_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor.py",
     }
@@ -4294,7 +4301,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_recovery_superseded_files
     )
     for name, expected in content_editing_recovery["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in content_editing_form_submit_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "dragged_layout_overrides_migrate_across_content_digest": True,
@@ -4373,6 +4381,143 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in content_editing_recovery["does_not_establish"]
     )
 
+    content_editing_form_submit = json.loads(
+        (
+            SCHAUBILD_CONTENT_EDITING_FORM_SUBMIT_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        content_editing_form_submit["schema_version"]
+        == "schauwerk-schaubild-content-editing-form-submit.v1"
+    )
+    assert (
+        content_editing_form_submit["functional_head"]
+        == "13de99b581e7fa820e1db5935674f9c881d08904"
+    )
+    assert content_editing_form_submit["parent_evidence"] == {
+        "evidence_digest": content_editing_recovery["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_CONTENT_EDITING_RECOVERY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-content-editing-recovery-20261003/acceptance-receipt.json"
+        ),
+        "schema_version": content_editing_recovery["schema_version"],
+    }
+    assert content_editing_form_submit["evidence_digest"] == digest_mapping(
+        content_editing_form_submit, "evidence_digest"
+    )
+    assert (
+        set(content_editing_form_submit["source_bindings"])
+        == content_editing_form_submit_superseded_files
+    )
+    for name, expected in content_editing_form_submit["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert content_editing_form_submit["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "cancel_controls_are_non_submit_buttons": True,
+        "form_submit_is_the_only_save_action": True,
+        "implicit_form_submission_routes_to_save": True,
+        "explicit_cancel_does_not_mutate_active_title": True,
+        "submitted_title_rerenders_and_persists": True,
+        "structural_edit_scope_unchanged": True,
+        "recovery_and_layout_semantics_preserved": True,
+        "focused_content_recovery_tests_passed": True,
+        "relevant_regressions_passed": True,
+        "browser_dom_form_contract_passed": True,
+        "ruff_passed": True,
+        "github_p2_finding_addressed_locally": True,
+    }
+    form_submit_focused = content_editing_form_submit["check_evidence"][
+        "focused_content_recovery_tests"
+    ]
+    assert form_submit_focused == {
+        "functional_head": content_editing_form_submit["functional_head"],
+        "job_unit": "grabowski-job-cfecab65e86f",
+        "argv_sha256": (
+            "b5953f84c136f86fa89e5ac2cde0c35691dba3dd7b15e11cc792d2264ceaac91"
+        ),
+        "finalization_receipt_sha256": (
+            "1021c97060f6c194d4cabde4c797d995e51ad379f3916d68110bd47b5c68660d"
+        ),
+        "passed_count": 3,
+        "result": "passed",
+    }
+    form_submit_regressions = content_editing_form_submit["check_evidence"][
+        "relevant_regressions"
+    ]
+    assert form_submit_regressions["functional_head"] == (
+        content_editing_form_submit["functional_head"]
+    )
+    assert form_submit_regressions["job_unit"] == "grabowski-job-650fbbec3406"
+    assert form_submit_regressions["argv_sha256"] == (
+        "c0a631659d87aa204e6e066920528ae6c0a74a843f062e7aad9ee4fd82cf52e7"
+    )
+    assert form_submit_regressions["finalization_receipt_sha256"] == (
+        "178bc6983ad081782b16b2cc205660c63c50b1efa2855124882bf5676e0f9ef3"
+    )
+    assert form_submit_regressions["passed_count"] == 362
+    assert form_submit_regressions["result"] == "passed"
+    form_submit_browser = content_editing_form_submit["check_evidence"][
+        "browser_dom_form_contract"
+    ]
+    assert form_submit_browser["functional_head"] == (
+        content_editing_form_submit["functional_head"]
+    )
+    assert form_submit_browser["job_unit"] == "grabowski-job-2ba8528a3c5a"
+    assert form_submit_browser["argv_sha256"] == (
+        "91d3ca38227df881961f1c8c56660e6dae9875ecebb315b8926cf232e76a7401"
+    )
+    assert form_submit_browser["finalization_receipt_sha256"] == (
+        "8ca40af895093cebbfbfa1de5004d8267d700a04b204da92c709b7ec27c492f8"
+    )
+    assert form_submit_browser["native_render_post_count"] == 2
+    assert form_submit_browser["result"] == "passed"
+    form_submit_ruff = content_editing_form_submit["check_evidence"]["ruff"]
+    assert form_submit_ruff["job_unit"] == "grabowski-job-26fcfe94bd6c"
+    assert form_submit_ruff["argv_sha256"] == (
+        "22a1ae3fc19fccb1103745ccee4d29b0ce9474af3fd43396c7b263d4f4de2220"
+    )
+    assert form_submit_ruff["finalization_receipt_sha256"] == (
+        "edc22c46ebe1b835645d1655a848a53faf55e86345c6ac20a7785493ebfed5c8"
+    )
+    assert form_submit_ruff["result"] == "passed"
+    form_submit_review = content_editing_form_submit["check_evidence"][
+        "github_review_finding"
+    ]
+    assert form_submit_review["source_head"] == (
+        "fbf5072ef2108f5c6637ecc906f7569cb4c963aa"
+    )
+    assert form_submit_review["addressed_by_functional_head"] == (
+        content_editing_form_submit["functional_head"]
+    )
+    assert [finding["comment_id"] for finding in form_submit_review["findings"]] == [
+        4174576979
+    ]
+    assert form_submit_review["current_head_rereview_established"] is False
+    form_submit_observer = content_editing_form_submit["check_evidence"][
+        "independent_readback"
+    ]
+    assert form_submit_observer["observer"] == "grosser-adler"
+    assert (
+        form_submit_observer["head"]
+        == content_editing_form_submit["functional_head"]
+    )
+    assert form_submit_observer["worktree_clean"] is True
+    assert form_submit_observer["untracked_present"] is False
+    assert (
+        "current-head Codex rereview settlement"
+        in content_editing_form_submit["does_not_establish"]
+    )
+    assert (
+        "user visual acceptance or aesthetic approval of the form-submit revision"
+        in content_editing_form_submit["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -4405,6 +4550,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert successor["source_bindings"][name] == current
         elif name in oauth_superseded_files:
             assert oauth_successor["source_bindings"][name] == current
+        elif name in content_editing_form_submit_superseded_files:
+            assert content_editing_form_submit["source_bindings"][name] == current
         elif name in content_editing_recovery_superseded_files:
             assert content_editing_recovery["source_bindings"][name] == current
         elif name in content_editing_superseded_files:

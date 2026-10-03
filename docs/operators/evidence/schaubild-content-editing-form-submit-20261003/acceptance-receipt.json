@@ -1,0 +1,111 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-form-submit.v1",
+  "scope": "canonical-representation-content-editing-form-submit",
+  "accepted_at": "2026-10-03T20:10:40.574030Z",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "13de99b581e7fa820e1db5935674f9c881d08904",
+  "parent_evidence": {
+    "evidence_digest": "ee5a57927cccb937ec212e8aa965d7866e133093b9718d4cb3d843d22586f7be",
+    "file_sha256": "54f0d8485c3f6fca3eb76b92f37dc4c5411116c57e6424e6dac0eed48c72c614",
+    "path": "docs/operators/evidence/schaubild-content-editing-recovery-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-recovery.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "cancel_controls_are_non_submit_buttons": true,
+    "form_submit_is_the_only_save_action": true,
+    "implicit_form_submission_routes_to_save": true,
+    "explicit_cancel_does_not_mutate_active_title": true,
+    "submitted_title_rerenders_and_persists": true,
+    "structural_edit_scope_unchanged": true,
+    "recovery_and_layout_semantics_preserved": true,
+    "focused_content_recovery_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "browser_dom_form_contract_passed": true,
+    "ruff_passed": true,
+    "github_p2_finding_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_content_recovery_tests": {
+      "functional_head": "13de99b581e7fa820e1db5935674f9c881d08904",
+      "job_unit": "grabowski-job-cfecab65e86f",
+      "argv_sha256": "b5953f84c136f86fa89e5ac2cde0c35691dba3dd7b15e11cc792d2264ceaac91",
+      "finalization_receipt_sha256": "1021c97060f6c194d4cabde4c797d995e51ad379f3916d68110bd47b5c68660d",
+      "passed_count": 3,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "13de99b581e7fa820e1db5935674f9c881d08904",
+      "job_unit": "grabowski-job-650fbbec3406",
+      "argv_sha256": "c0a631659d87aa204e6e066920528ae6c0a74a843f062e7aad9ee4fd82cf52e7",
+      "finalization_receipt_sha256": "178bc6983ad081782b16b2cc205660c63c50b1efa2855124882bf5676e0f9ef3",
+      "passed_count": 362,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "browser tests excluded from this Python regression run"
+      ]
+    },
+    "browser_dom_form_contract": {
+      "functional_head": "13de99b581e7fa820e1db5935674f9c881d08904",
+      "job_unit": "grabowski-job-2ba8528a3c5a",
+      "argv_sha256": "91d3ca38227df881961f1c8c56660e6dae9875ecebb315b8926cf232e76a7401",
+      "finalization_receipt_sha256": "8ca40af895093cebbfbfa1de5004d8267d700a04b204da92c709b7ec27c492f8",
+      "native_render_post_count": 2,
+      "result": "passed",
+      "assertions": [
+        "explicit cancel closes without changing the active representation title",
+        "form submission saves and rerenders the edited title",
+        "saved title remains present when the content dialog is reopened",
+        "save is the only submit button",
+        "close and cancel controls are type=button"
+      ]
+    },
+    "ruff": {
+      "job_unit": "grabowski-job-26fcfe94bd6c",
+      "argv_sha256": "22a1ae3fc19fccb1103745ccee4d29b0ce9474af3fd43396c7b263d4f4de2220",
+      "finalization_receipt_sha256": "edc22c46ebe1b835645d1655a848a53faf55e86345c6ac20a7785493ebfed5c8",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "github_review_finding": {
+      "source_head": "fbf5072ef2108f5c6637ecc906f7569cb4c963aa",
+      "addressed_by_functional_head": "13de99b581e7fa820e1db5935674f9c881d08904",
+      "findings": [
+        {
+          "comment_id": 4174576979,
+          "severity": "P2",
+          "subject": "prevent Enter from discarding content edits",
+          "resolution": "make close/cancel explicit non-submit controls and route the content form submit event through the sole save path"
+        }
+      ],
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "13de99b581e7fa820e1db5935674f9c881d08904",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-03T20:08:42.052298Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "07b18b4ef7532a086fb6e5818f2529135898e73eb1260a5f2ca66413dbfcc6de",
+    "tests/visual/test_standalone_editor.py": "151e88a558a529782648fcb0c06839a52c747725304a7b33c0b9d3adea56818a"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the form-submit revision",
+    "GitHub CI success on the form-submit successor evidence head",
+    "current-head Codex rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "5618149a32167652d982b59d6b8b5c02d981d263561ea3fe1228583c3b38f958"
+}
