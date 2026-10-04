@@ -1,0 +1,205 @@
+{
+  "schema_version": "schauwerk-schaubild-single-workspace-review-fixes.v1",
+  "scope": "schaubild-single-workspace-review-fixes-legacy-clearance-visible-status",
+  "accepted_at": "2026-10-04T13:39:52+00:00",
+  "base_product_head": "e568c49117dba012ea12116517c2d252c2ce941d",
+  "functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+  "parent_evidence": {
+    "evidence_digest": "d209bf1095ba18ffafd001e70983f31f89f3920a06a826fba061998ebf534289",
+    "file_sha256": "ce60966e77bf1ba68237298b1fbc27550cfb4860a5933808e0493065f446e5d1",
+    "path": "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-exports.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "advisory_review_findings_reproduced_and_addressed": true,
+    "legacy_close_overlay_clears_embedded_editor": true,
+    "legacy_export_dock_clears_embedded_editor": true,
+    "legacy_redundant_host_edit_controls_hidden": true,
+    "workspace_status_visible_in_legacy_mode": true,
+    "workspace_status_visible_in_native_mode": true,
+    "native_full_height_workspace_preserved": true,
+    "exact_head_focused_regressions_passed": true,
+    "exact_head_legacy_browser_readback_passed": true,
+    "exact_head_native_browser_readback_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "advisory_review_findings": {
+      "source_head": "e568c49117dba012ea12116517c2d252c2ce941d",
+      "job_unit": "grabowski-job-a43119981060",
+      "job_finalization_receipt_sha256": "04955bebaedeb1e4ff68727fa908b57596696f2cdc741736e30cce9d768e6bf1",
+      "role_receipt_sha256": "b2a7f1e422ca76407b5c1efa7cb0c73709dff020cc245135f255f2aed9cd85c8",
+      "structured_decision_review_valid": false,
+      "failure_classification": "invalid_review_output",
+      "findings": [
+        {
+          "id": "F1",
+          "subject": "legacy close overlay and host dock could cover embedded draw.io controls/canvas",
+          "disposition": "confirmed_and_addressed_in_functional_head"
+        },
+        {
+          "id": "F2",
+          "subject": "workspace status and export/local-save feedback were hidden with the parent topline",
+          "disposition": "confirmed_and_addressed_in_functional_head"
+        }
+      ],
+      "addressed_by_functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "does_not_establish": [
+        "decision-bound reviewer PASS",
+        "independent review settlement"
+      ]
+    },
+    "focused_regressions": {
+      "functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "job_id": "922084aab5b3",
+      "finalization_receipt_sha256": "7f33e29dc8b427763903e92021d21c30a3a7c7b982cd7e958839826f46d6679d",
+      "argv_sha256": "afbcc677ba5b4f57854a39082bffb3f0afcf5c6be3041f0cd6234bc00ea89d3b",
+      "passed_count": 128,
+      "result": "passed"
+    },
+    "legacy_browser_readback": {
+      "functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "job_id": "2bc59770ed54",
+      "finalization_receipt_sha256": "24098f3b444dc91ca1914ab074ec97eda662c86142cfbf42eebad63098d2f6f7",
+      "screenshot_sha256": "323a1051018e50377f017b0793ba22b35a995aac6873e18dc003102a893d9797",
+      "viewport": {
+        "width": 1366,
+        "height": 1024
+      },
+      "metrics": {
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "width": 1310,
+          "height": 960,
+          "right": 1310,
+          "bottom": 960
+        },
+        "export_dock": {
+          "x": 1166,
+          "y": 962,
+          "width": 190,
+          "height": 54,
+          "right": 1356,
+          "bottom": 1016
+        },
+        "close_control": {
+          "x": 1318,
+          "y": 8,
+          "width": 40,
+          "height": 38,
+          "right": 1358,
+          "bottom": 46
+        },
+        "status": {
+          "x": 10,
+          "y": 987,
+          "width": 286,
+          "height": 29,
+          "right": 296,
+          "bottom": 1016
+        },
+        "visible_host_controls": [
+          "Projekt",
+          "PNG",
+          "SVG"
+        ],
+        "no_close_overlap": true,
+        "no_dock_overlap": true,
+        "status_visible": true
+      },
+      "result": "passed"
+    },
+    "native_browser_readback": {
+      "functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "job_id": "fc98033a9693",
+      "finalization_receipt_sha256": "16b7477ffb730363ae21db03ac4bba8efb4c4480c9166a115ed11297a2a0565c",
+      "screenshot_sha256": "c3ff0aa51429cca4a2c285199170466d71f1067074a53f709341ac4b62cdf79c",
+      "viewport": {
+        "width": 1366,
+        "height": 1024
+      },
+      "metrics": {
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "width": 1366,
+          "height": 1024,
+          "right": 1366,
+          "bottom": 1024
+        },
+        "export_dock": {
+          "x": 1162,
+          "y": 926,
+          "width": 194,
+          "height": 54,
+          "right": 1356,
+          "bottom": 980
+        },
+        "close_control": {
+          "x": 1318,
+          "y": 8,
+          "width": 40,
+          "height": 38,
+          "right": 1358,
+          "bottom": 46
+        },
+        "status": {
+          "x": 10,
+          "y": 951,
+          "width": 253,
+          "height": 29,
+          "right": 263,
+          "bottom": 980
+        },
+        "visible_host_controls": [
+          "Inhalt",
+          "Quelle",
+          "SVG"
+        ],
+        "status_visible": true
+      },
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "job_id": "735bbead629d",
+      "finalization_receipt_sha256": "9e8a0ee36d2cabcf5c1b4f5af342d7516b16d8a9968a90c2e683ccda9c7622e8",
+      "argv_sha256": "72f2506fd221945d3af5c9e5594c12b7c95ed2599be315fa0903052275fbd48a",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1653,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "git_diff_check": {
+      "base_sha": "e568c49117dba012ea12116517c2d252c2ce941d",
+      "head_sha": "81ae81e2b196b605aa07dbf81329147f449008da",
+      "diff_sha256": "5e20f112b880cd37f13fa2dadbaf3b288ce9111b3ff0b5159098113016497415",
+      "diff_bytes": 7919,
+      "argv_sha256": "87544d619e85a3bf3431823e6734ef5e7f6ba534d3f96a40893963aef1ae1cb4",
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "5a82a51b850bda2f045f14d07675e47f1fbbe7e4632e76ba18800837fa08b99c",
+    "tests/visual/test_standalone_editor.py": "537f33cf6dbcf9975839a349db18f7d2074874dc9ff36b2a7337a70961a3f0f0",
+    "tests/visual/test_standalone_editor_font_controls.py": "a1ce3bceb5978bc359d2712e56b7ec98c36a4374c17c9b2db037ae7cf2806748",
+    "tests/visual/test_standalone_editor_product_ui.py": "2307e6d1f2e94cd1259534122dc4cfe9ba83b7a23fac9a0338a6e84141e3ec30"
+  },
+  "does_not_establish": [
+    "user post-change visual acceptance or aesthetic approval of this review-fix revision",
+    "decision-bound independent reviewer settlement on the review-fix revision",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "0be47943b43ea36dbe30960ae3423aa5815413306e113d0b2316405f1d7096b5"
+}
