@@ -148,6 +148,7 @@ INDEX_HTML = r"""<!doctype html>
           <button class="button compact ghost" id="contentCloseButton" value="cancel" type="button">Schließen</button>
         </div>
         <p class="content-dialog-copy">Titel, Zweck, Gruppen, Elemente und Verbindungen bearbeiten. Struktur, Typen und Zuordnungen bleiben unverändert.</p>
+        <p class="content-dialog-feedback" id="contentDialogFeedback" role="alert" hidden></p>
         <div class="content-fields" id="contentFields"></div>
         <div class="content-dialog-actions">
           <button class="button ghost" id="contentCancelButton" value="cancel" type="button">Abbrechen</button>
@@ -536,7 +537,7 @@ h1 {
 .content-dialog form {
   max-height: min(86vh, 860px);
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
 }
 .content-dialog-heading,
 .content-dialog-actions {
@@ -560,6 +561,15 @@ h1 {
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.5;
+}
+.content-dialog-feedback {
+  margin: 12px 20px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 .content-fields {
   min-height: 0;
@@ -1555,6 +1565,7 @@ const elements = {
   contentDialog: document.querySelector("#contentDialog"),
   contentForm: document.querySelector("#contentForm"),
   contentFields: document.querySelector("#contentFields"),
+  contentDialogFeedback: document.querySelector("#contentDialogFeedback"),
   contentCloseButton: document.querySelector("#contentCloseButton"),
   contentCancelButton: document.querySelector("#contentCancelButton"),
   contentSaveButton: document.querySelector("#contentSaveButton"),
@@ -1714,7 +1725,15 @@ function contentEntry(title) {
 
 function appendContentField(
   container,
-  { label, value, kind, index = null, multiline = false, maximum = null },
+  {
+    label,
+    value,
+    kind,
+    index = null,
+    multiline = false,
+    maximum = null,
+    required = false,
+  },
 ) {
   const wrapper = document.createElement("label");
   wrapper.className = "content-field";
@@ -1722,6 +1741,7 @@ function appendContentField(
   caption.textContent = label;
   const control = document.createElement(multiline ? "textarea" : "input");
   if (!multiline) control.type = "text";
+  control.required = Boolean(required);
   control.value = String(value ?? "");
   control.dataset.contentKind = kind;
   if (index !== null) control.dataset.contentIndex = String(index);
@@ -1738,12 +1758,14 @@ function renderRepresentationContentEditor(representation) {
     label: "Titel",
     value: representation.title,
     kind: "title",
+    required: true,
     maximum: 160,
   });
   appendContentField(overview, {
     label: "Zweck",
     value: representation.purpose,
     kind: "purpose",
+    required: true,
     multiline: true,
     maximum: 500,
   });
@@ -1755,6 +1777,7 @@ function renderRepresentationContentEditor(representation) {
       label: "Bezeichnung",
       value: group.label,
       kind: "group-label",
+      required: true,
       index,
       maximum: 100,
     });
@@ -1767,6 +1790,7 @@ function renderRepresentationContentEditor(representation) {
       label: "Titel",
       value: node.label,
       kind: "node-label",
+      required: true,
       index,
       maximum: 120,
     });
@@ -1787,6 +1811,7 @@ function renderRepresentationContentEditor(representation) {
       label: "Beschriftung",
       value: edge.label,
       kind: "edge-label",
+      required: true,
       index,
       maximum: 120,
     });
@@ -1817,6 +1842,12 @@ function representationFromContentEditor() {
   return edited;
 }
 
+function setContentDialogFeedback(message) {
+  const text = String(message || "").trim();
+  elements.contentDialogFeedback.textContent = text;
+  elements.contentDialogFeedback.hidden = !text;
+}
+
 function openRepresentationContentEditor() {
   if (
     activeEngine !== "native"
@@ -1827,6 +1858,7 @@ function openRepresentationContentEditor() {
     return;
   }
   setError("");
+  setContentDialogFeedback("");
   const first = renderRepresentationContentEditor(currentRepresentation);
   elements.contentDialog.showModal();
   first?.focus({ preventScroll: true });
@@ -1840,8 +1872,9 @@ async function saveRepresentationContentEditor() {
   elements.contentCloseButton.disabled = true;
   elements.contentCancelButton.disabled = true;
   setError("");
+  setContentDialogFeedback("");
   try {
-    await launchNative(
+    const outcome = await launchNative(
       {
         nativeRepresentation: edited,
         sourceMetadata: {
@@ -1852,12 +1885,24 @@ async function saveRepresentationContentEditor() {
       { preserveActiveFrame: true, syncRepresentationTitle: true },
     );
     if (
-      currentRepresentation === edited
+      outcome?.ok === true
+      && outcome?.draftSaved === true
+      && currentRepresentation === edited
       && editorReady
       && !nativeCanvasRenderStale
       && typeof elements.contentDialog?.close === "function"
     ) {
+      setContentDialogFeedback("");
       elements.contentDialog.close();
+    } else {
+      setContentDialogFeedback(
+        outcome?.errorMessage
+        || (
+          outcome?.ok === true
+            ? "Änderung ist aktiv, konnte aber nicht lokal gespeichert werden."
+            : "Änderung konnte nicht gespeichert werden."
+        ),
+      );
     }
   } finally {
     elements.contentSaveButton.disabled = false;
@@ -2274,6 +2319,7 @@ async function launchNative(load, options = {}) {
   let permanentRecoveryOptions = null;
   let permanentRejectionMessage = "";
   let representationLayoutMigrationFailed = false;
+  let launchOutcome = null;
   nativeLaunchTail = new Promise((resolve) => {
     releaseLaunchTurn = resolve;
   });
@@ -2333,8 +2379,10 @@ async function launchNative(load, options = {}) {
       currentTitle = safeFilename(currentRepresentation.title);
       elements.title.textContent = currentTitle;
     }
+    let nativeDraftSaved = null;
     if (currentRepresentation) {
-      if (!saveNativeDraft(currentRepresentation)) {
+      nativeDraftSaved = saveNativeDraft(currentRepresentation);
+      if (!nativeDraftSaved) {
         setStatus("Bereit · Quelle nicht lokal speicherbar");
       }
     } else if (currentNativeDocument && currentNativeCanvas) {
@@ -2360,14 +2408,36 @@ async function launchNative(load, options = {}) {
               : "Bereit · Inhalt und Ansicht bearbeitbar"
           )
     );
-    setStatus(
-      representationLayoutMigrationFailed
-        ? readyStatus + " · gespeicherte Positionen konnten nicht übernommen werden"
-        : readyStatus,
-    );
+    if (nativeDraftSaved === false) {
+      setStatus("Bereit · Quelle nicht lokal speicherbar");
+    } else {
+      setStatus(
+        representationLayoutMigrationFailed
+          ? readyStatus + " · gespeicherte Positionen konnten nicht übernommen werden"
+          : readyStatus,
+      );
+    }
+    launchOutcome = {
+      ok: true,
+      draftSaved: currentRepresentation ? nativeDraftSaved === true : null,
+      errorMessage: (
+        nativeDraftSaved === false
+          ? "Änderung ist aktiv, konnte aber nicht lokal gespeichert werden. Vor dem Neuladen erneut versuchen."
+          : ""
+      ),
+    };
+    return launchOutcome;
   } catch (error) {
     if (loadIntent !== loadIntentGeneration) return;
     const nativeStatus = Number(error?.nativeStatus || 0);
+    const launchErrorMessage = (
+      error instanceof Error ? error.message : "Native Änderung konnte nicht gespeichert werden."
+    );
+    launchOutcome = {
+      ok: false,
+      draftSaved: null,
+      errorMessage: launchErrorMessage,
+    };
     const permanentCandidateRejection = (
       preserveActiveFrame
       && !options.recoveryAttempt
@@ -2443,7 +2513,7 @@ async function launchNative(load, options = {}) {
           "Native Änderung abgelehnt · letzter gültiger Dokumentzustand wiederhergestellt"
           + (restoredDraftSaved === false ? " · lokaler Entwurf nicht aktualisiert" : ""),
         );
-        return;
+        return launchOutcome;
       }
     } else if (permanentRestoreRejection) {
       permanentRecovery = {
@@ -2529,7 +2599,7 @@ async function launchNative(load, options = {}) {
         "Native Änderung nicht neu gerendert · „Neu rendern“ zum Wiederholen"
         + draftStatusSuffix,
       );
-      return;
+      return launchOutcome;
     } else {
       editorReady = false;
       currentNativeUrl = null;
@@ -2582,6 +2652,7 @@ async function launchNative(load, options = {}) {
       );
     }
   }
+  return launchOutcome;
 }
 
 async function retryNativeRender() {
@@ -3046,6 +3117,11 @@ elements.contentEditButton.addEventListener("click", openRepresentationContentEd
 elements.contentForm.addEventListener("submit", (event) => {
   event.preventDefault();
   void saveRepresentationContentEditor();
+});
+elements.contentDialog.addEventListener("cancel", (event) => {
+  if (!elements.contentSaveButton.disabled) return;
+  event.preventDefault();
+  setContentDialogFeedback("Änderung wird noch gespeichert.");
 });
 for (const control of [elements.contentCloseButton, elements.contentCancelButton]) {
   control.addEventListener("click", () => elements.contentDialog.close("cancel"));

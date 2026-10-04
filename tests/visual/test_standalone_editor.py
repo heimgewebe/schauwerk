@@ -215,7 +215,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         "if (options.syncRepresentationTitle && currentRepresentation?.title)"
     )
     representation_draft_save = app_js.index(
-        "if (!saveNativeDraft(currentRepresentation))",
+        "nativeDraftSaved = saveNativeDraft(currentRepresentation)",
         title_sync,
     )
     assert title_sync < representation_draft_save
@@ -654,6 +654,138 @@ console.log(JSON.stringify(edited));
 
 
 
+def test_representation_content_save_feedback_and_persistence_gate(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    index_html = (output / "index.html").read_text(encoding="utf-8")
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="contentDialogFeedback" role="alert"' in index_html
+    assert 'contentDialogFeedback: document.querySelector("#contentDialogFeedback")' in app_js
+    assert "control.required = Boolean(required);" in app_js
+    for required_kind in ("title", "purpose", "group-label", "node-label", "edge-label"):
+        needle = f'kind: "{required_kind}",'
+        start = app_js.index(needle)
+        assert "required: true" in app_js[start : start + 220]
+    node_summary_start = app_js.index('kind: "node-summary",')
+    assert "required: true" not in app_js[node_summary_start : node_summary_start + 220]
+    assert 'elements.contentDialog.addEventListener("cancel", (event) => {' in app_js
+    assert "if (!elements.contentSaveButton.disabled) return;" in app_js
+    assert "event.preventDefault();" in app_js
+
+    save_start = app_js.index("async function saveRepresentationContentEditor()")
+    save_end = app_js.index("function parseFontSize(", save_start)
+    save_source = app_js[save_start:save_end]
+
+    script = r"""
+let currentRepresentation = {title: "Original"};
+let editorReady = true;
+let nativeCanvasRenderStale = false;
+const edited = {title: "Edited"};
+let launchOutcome = null;
+let closeCount = 0;
+const feedback = {hidden: true, textContent: ""};
+const elements = {
+  contentSaveButton: {disabled: false},
+  contentCloseButton: {disabled: false},
+  contentCancelButton: {disabled: false},
+  contentDialog: {
+    close() { closeCount += 1; },
+  },
+  contentDialogFeedback: feedback,
+};
+function representationFromContentEditor() { return edited; }
+function setError() {}
+function setContentDialogFeedback(message) {
+  const text = String(message || "");
+  feedback.textContent = text;
+  feedback.hidden = !text;
+}
+async function launchNative() {
+  if (launchOutcome?.ok) currentRepresentation = edited;
+  else currentRepresentation = {title: "Original"};
+  return launchOutcome;
+}
+""" + save_source + r"""
+launchOutcome = {
+  ok: false,
+  draftSaved: null,
+  errorMessage: "nodes[0].label must not be empty",
+};
+await saveRepresentationContentEditor();
+if (closeCount !== 0) throw new Error("server rejection closed the content dialog");
+if (feedback.hidden || !feedback.textContent.includes("nodes[0].label must not be empty")) {
+  throw new Error("server rejection was not exposed inside the dialog");
+}
+if (elements.contentSaveButton.disabled) throw new Error("save control remained disabled after rejection");
+
+launchOutcome = {
+  ok: true,
+  draftSaved: false,
+  errorMessage: "Änderung ist aktiv, konnte aber nicht lokal gespeichert werden.",
+};
+await saveRepresentationContentEditor();
+if (closeCount !== 0) throw new Error("memory-only content edit closed the content dialog");
+if (feedback.hidden || !feedback.textContent.includes("nicht lokal gespeichert")) {
+  throw new Error("local persistence failure was not exposed inside the dialog");
+}
+
+launchOutcome = {ok: true, draftSaved: true, errorMessage: ""};
+await saveRepresentationContentEditor();
+if (closeCount !== 1) throw new Error("fully persisted content edit did not close the dialog");
+if (!feedback.hidden || feedback.textContent !== "") {
+  throw new Error("successful content edit left stale dialog feedback");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    cancel_start = app_js.index('elements.contentDialog.addEventListener("cancel", (event) => {')
+    cancel_end = app_js.index(
+        'for (const control of [elements.contentCloseButton, elements.contentCancelButton])',
+        cancel_start,
+    )
+    cancel_source = app_js[cancel_start:cancel_end]
+    cancel_script = r"""
+let cancelHandler = null;
+let feedbackText = "";
+const elements = {
+  contentSaveButton: {disabled: true},
+  contentDialog: {
+    addEventListener(type, handler) {
+      if (type !== "cancel") throw new Error("unexpected dialog event");
+      cancelHandler = handler;
+    },
+  },
+};
+function setContentDialogFeedback(message) { feedbackText = String(message || ""); }
+""" + cancel_source + r"""
+if (typeof cancelHandler !== "function") throw new Error("cancel handler was not registered");
+let prevented = 0;
+cancelHandler({preventDefault() { prevented += 1; }});
+if (prevented !== 1 || !feedbackText.includes("gespeichert")) {
+  throw new Error("Escape was not blocked while content save was in flight");
+}
+elements.contentSaveButton.disabled = false;
+cancelHandler({preventDefault() { prevented += 1; }});
+if (prevented !== 1) throw new Error("Escape remained blocked after content save finished");
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", cancel_script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_representation_content_edit_preserves_layout_and_recovers_valid_source(
     tmp_path: Path,
 ) -> None:
@@ -958,6 +1090,44 @@ if (
   || reloadRecoveredDraft.validRepresentation !== undefined
 ) {
   throw new Error("reload recovery did not replace the invalid candidate draft with the valid source");
+}
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+const originalSetItem = globalThis.localStorage.setItem;
+globalThis.localStorage.setItem = () => { throw new Error("synthetic quota"); };
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + "e".repeat(32) + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: "e".repeat(64),
+    };
+  },
+});
+const memoryOnlyOutcome = await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+globalThis.localStorage.setItem = originalSetItem;
+if (
+  memoryOnlyOutcome?.ok !== true
+  || memoryOnlyOutcome?.draftSaved !== false
+  || !memoryOnlyOutcome?.errorMessage?.includes("nicht lokal gespeichert")
+) {
+  throw new Error("local draft failure was not returned as a memory-only launch outcome");
+}
+if (!statusText.includes("Quelle nicht lokal speicherbar")) {
+  throw new Error("local draft failure warning was overwritten by the ready status");
 }
 """
     subprocess.run(
