@@ -829,6 +829,11 @@ body.workspace-active.engine-legacy .topline {
   .product-badge,
   .status,
   .format-strip span { background: rgba(31, 34, 45, 0.72); color: var(--muted); }
+  body.workspace-active .status {
+    color: var(--ink);
+    background: var(--surface-raised);
+    border-color: var(--line-strong);
+  }
   .paste-box textarea { color: var(--ink); background: rgba(18, 20, 28, 0.82); box-shadow: none; }
   .paste-box textarea:focus { background: #161821; }
   .button { color: #e9eaf1; background: #20232e; }

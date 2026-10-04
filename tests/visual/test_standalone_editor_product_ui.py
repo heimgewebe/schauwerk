@@ -95,3 +95,12 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" not in mobile_css
     assert "body.workspace-active.engine-legacy .editor-stage {" in mobile_css
     assert "max-width: min(78vw, 520px);" in mobile_css
+
+    dark_css = styles_css[styles_css.index("@media (prefers-color-scheme: dark)") :]
+    dark_status = dark_css[
+        dark_css.index("body.workspace-active .status {")
+        : dark_css.index(".paste-box textarea")
+    ]
+    assert "color: var(--ink);" in dark_status
+    assert "background: var(--surface-raised);" in dark_status
+    assert "border-color: var(--line-strong);" in dark_status
