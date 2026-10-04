@@ -719,7 +719,7 @@ body.editor-focus .editor-stage {
   flex: 1 1 auto;
   min-height: 0;
   height: auto;
-  padding: max(60px, calc(env(safe-area-inset-top) + 52px)) 0 0;
+  padding: 0;
 }
 body.editor-focus .editor-wrap { min-height: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
 body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
@@ -2141,6 +2141,8 @@ function showStart() {
 }
 
 function showWorkspace() {
+  const enteringWorkspace = elements.workspace.hidden;
+  if (enteringWorkspace) setEditorFocus(true);
   elements.startView.hidden = true;
   elements.workspace.hidden = false;
   elements.title.textContent = currentTitle;
@@ -2629,6 +2631,7 @@ async function launchNative(load, options = {}) {
         }
       }
       currentLegacyXml = null;
+      setEditorFocus(false);
       elements.workspace.hidden = true;
       elements.startView.hidden = false;
       if (fallbackXml) {

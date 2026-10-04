@@ -328,6 +328,12 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert show_start_source.index("replaceEditorFrame();") < show_start_source.index("elements.workspace.hidden = true;")
     assert "elements.sourceInput.focus({ preventScroll: true });" in show_start_source
     assert "pendingInitialCollisionSafeLayout = false;" in show_start_source
+    show_workspace = app_js.index("function showWorkspace()")
+    show_workspace_end = app_js.index("function prepareInput(", show_workspace)
+    show_workspace_source = app_js[show_workspace:show_workspace_end]
+    assert "const enteringWorkspace = elements.workspace.hidden;" in show_workspace_source
+    assert "if (enteringWorkspace) setEditorFocus(true);" in show_workspace_source
+    assert "setEditorFocus(false);\n      elements.workspace.hidden = true;" in app_js
     load_event_start = app_js.index('if (message.event === "load")')
     load_event_end = app_js.index('if (message.event === "autosave"', load_event_start)
     load_event_source = app_js[load_event_start:load_event_end]
@@ -859,6 +865,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
+function setEditorFocus() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() {}
@@ -1424,6 +1431,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
+function setEditorFocus() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() { workspaceCalls += 1; }
@@ -1614,6 +1622,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
+function setEditorFocus() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() {
@@ -1755,6 +1764,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
+function setEditorFocus() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() { workspaceCalls += 1; }

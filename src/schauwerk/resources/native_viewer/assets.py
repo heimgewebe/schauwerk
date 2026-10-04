@@ -248,6 +248,7 @@ button:focus-visible {
 .document-editor-hosted .viewer-bar {
   min-height: 50px;
   grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+  padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));
 }
 .document-editor-hosted .viewer-title { display: none; }
 .document-editor-hosted .viewer-heading { gap: 0; }
