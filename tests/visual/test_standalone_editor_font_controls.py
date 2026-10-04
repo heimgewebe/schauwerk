@@ -74,6 +74,10 @@ def test_single_workspace_keeps_legacy_exports_clear_of_editor_chrome(
     assert "left: max(8px, env(safe-area-inset-left));" in mobile_css
     assert "right: max(8px, env(safe-area-inset-right));" in mobile_css
     assert "min-height: 42px;" in mobile_css
+    assert "body.workspace-active .topline," in mobile_css
+    assert "body.workspace-active.engine-legacy .topline {" in mobile_css
+    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" in mobile_css
+    assert "max-width: min(78vw, 520px);" in mobile_css
 
     for control_id in (
         "fontDecreaseButton",

@@ -721,11 +721,14 @@ body.workspace-active.engine-legacy .topline {
   .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
   .brand-copy small { display: none; }
   .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
-  body.workspace-active .topline {
+  body.workspace-active .topline,
+  body.workspace-active.engine-legacy .topline {
     min-height: 0;
     padding: 0;
+    bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));
   }
   body.workspace-active .status {
+    max-width: min(78vw, 520px);
     border: 1px solid var(--line);
     padding: 6px 9px;
     background: rgba(255, 255, 255, 0.9);

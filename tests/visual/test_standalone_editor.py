@@ -184,6 +184,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "body.workspace-active.engine-legacy .editor-stage {" in styles_css
     assert "padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));" in styles_css
     assert "padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));" in styles_css
+    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" in styles_css
+    assert "max-width: min(78vw, 520px);" in styles_css
     assert ".workspace-close {" in styles_css
     assert "position: fixed;" in styles_css
     assert "height: 100dvh" in styles_css

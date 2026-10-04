@@ -80,3 +80,7 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "max-width: none;" in mobile_css
     assert ".font-controls { max-width: 100%; flex-wrap: nowrap; }" in mobile_css
     assert ".workspace-tools,\n  .workspace-output { gap: 4px; }" in mobile_css
+    assert "body.workspace-active .topline," in mobile_css
+    assert "body.workspace-active.engine-legacy .topline {" in mobile_css
+    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" in mobile_css
+    assert "max-width: min(78vw, 520px);" in mobile_css
