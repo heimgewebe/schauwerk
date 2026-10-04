@@ -1,0 +1,85 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T13:48:10Z",
+  "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "head_sha": "27d60b58abc7c7ef992ff5f4ff29ed8c58917adf",
+  "diff_sha256": "1477647f8a6b4f197310ccd5225fcbb6549c2e354693e88c79200daf9df1c58e",
+  "diff_bytes": 72852,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/acceptance-receipt.json",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "the product keeps exactly one full-height workspace; no compact-mode or fullscreen-toggle state is reintroduced",
+    "legacy draw.io keeps a narrow right close-control clearance and a bottom host-export clearance so parent chrome never covers embedded editor controls or canvas",
+    "legacy mode exposes only the required host export actions while redundant host edit controls stay hidden in the full workspace",
+    "the parent status live region remains visible in both legacy and native workspaces, so export failures and local-persistence warnings are visible and screen-reader announceable",
+    "native mode still fills the complete 1366x1024 viewport and preserves Inhalt, Quelle/Canvas and SVG actions without covering its bottom status line",
+    "historical single-workspace acceptance remains immutable; the review-fix successor alone binds the corrected product and visual-test revisions",
+    "publication-fixture precedence resolves the current four source hashes through the newest review-fix successor without weakening unrelated historical bindings",
+    "the exact reviewed head passes Ruff, compile, registry validation and the complete 1654-test repository suite"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "Independent advisory review of the prior head identified two material UI regressions: the legacy close/export overlays could cover draw.io and the only host status live region was hidden for the entire workspace.",
+      "resolution": "Reproduced both from the source contract and corrected them rather than treating the review transport's invalid JSON wrapper as a reason to ignore the findings."
+    },
+    {
+      "iteration": 2,
+      "finding": "Simply restoring the old right-side legacy clearance would still leave the new multi-control host dock over the embedded draw.io canvas.",
+      "resolution": "Reduced legacy host chrome to Project/PNG/SVG and reserved both a 56px right clearance and 64px bottom clearance. Exact Chromium geometry proves frame right 1310 < close left 1318 and frame bottom 960 < dock top 962."
+    },
+    {
+      "iteration": 3,
+      "finding": "Keeping the top header hidden also hides role=status feedback, so export/local-save failures can become silent even if the canvas itself is correct.",
+      "resolution": "Converted the existing header into a pointer-free status overlay in workspace mode, hiding only brand/badge. Exact legacy and native readbacks both show the status region visible while retaining full native frame height."
+    },
+    {
+      "iteration": 4,
+      "finding": "Changing the four accepted source revisions invalidated the prior single-workspace source bindings and initially caused exactly one full-suite publication binding failure.",
+      "resolution": "Added a new immutable successor receipt and publication binding, then reran the full exact-head validation successfully: Ruff, compile, registry and 1654 tests all pass."
+    }
+  ],
+  "validation": {
+    "focused_regressions_job_id": "922084aab5b3",
+    "focused_regressions_finalization_receipt_sha256": "7f33e29dc8b427763903e92021d21c30a3a7c7b982cd7e958839826f46d6679d",
+    "focused_regressions_passed_count": 128,
+    "legacy_browser_readback_job_id": "2bc59770ed54",
+    "legacy_browser_readback_finalization_receipt_sha256": "24098f3b444dc91ca1914ab074ec97eda662c86142cfbf42eebad63098d2f6f7",
+    "legacy_browser_screenshot_sha256": "323a1051018e50377f017b0793ba22b35a995aac6873e18dc003102a893d9797",
+    "native_browser_readback_job_id": "fc98033a9693",
+    "native_browser_readback_finalization_receipt_sha256": "16b7477ffb730363ae21db03ac4bba8efb4c4480c9166a115ed11297a2a0565c",
+    "native_browser_screenshot_sha256": "c3ff0aa51429cca4a2c285199170466d71f1067074a53f709341ac4b62cdf79c",
+    "exact_head_full_validate_job_id": "4d862e51c771",
+    "exact_head_full_validate_finalization_receipt_sha256": "c0daf9a79eb317ff737682a748c96336975eac88e01eb74fce6937791156c4fe",
+    "exact_head_full_validate_passed_count": 1654,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "27d60b58abc7c7ef992ff5f4ff29ed8c58917adf",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T13:46:20.486282Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the final self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

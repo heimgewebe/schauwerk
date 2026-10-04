@@ -27,7 +27,6 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten" in index_html
 
     for class_name in (
-        "workspace-leading",
         "workspace-tools",
         "workspace-output",
         "font-controls",
@@ -35,18 +34,42 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     ):
         assert f'class="{class_name}' in index_html
 
+    assert 'class="workspace-leading"' not in index_html
+    assert 'id="backButton"' not in index_html
+    assert 'id="fullscreenButton"' not in index_html
+    assert 'id="workspaceCloseButton"' in index_html
+    assert 'id="projectButton"' in index_html
+    assert 'data-export="png"' in index_html
+    assert 'data-export="svg"' in index_html
+
     assert "[hidden] { display: none !important; }" in styles_css
-    assert "grid-template-columns: minmax(0, 1fr) auto auto auto;" in styles_css
-    assert "@media (max-width: 1180px)" in styles_css
-    assert "@media (max-width: 760px)" in styles_css
+    assert "body.workspace-active .topline {" in styles_css
+    assert "body.workspace-active .topline { display: none; }" not in styles_css
+    assert "body.workspace-active .status {" in styles_css
+    assert "--workspace-dock-height: 0px;" in styles_css
+    assert "body.workspace-active.engine-legacy .editor-stage {" in styles_css
+    assert "body.workspace-active.engine-legacy .font-controls," in styles_css
+    assert "body.editor-focus" not in styles_css
     assert ".workspace-bar { overflow-x: auto; }" not in styles_css
     assert ".workspace-tools,\n.workspace-output" in styles_css
     assert "flex-wrap: wrap;" in styles_css
+    assert "position: absolute;" in styles_css
+    assert "bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));" in styles_css
+    assert ".workspace-close {" in styles_css
+    assert "position: fixed;" in styles_css
     assert ".button:disabled {" in styles_css
+
     assert "fontControls.hidden = native;" in app_js
     assert "elements.layoutButton.hidden = native;" in app_js
     assert "pngButton.hidden = native;" in app_js
     assert 'elements.projectButton.textContent = "Canvas";' in app_js
+    assert "function setWorkspaceActive(active)" in app_js
+    assert "setWorkspaceActive(true);" in app_js
+    assert 'elements.workspaceCloseButton.addEventListener("click", showStart);' in app_js
+    assert "toggleEditorFullscreen" not in app_js
+    assert "function syncWorkspaceDockHeight()" in app_js
+    assert 'document.body.style.setProperty("--workspace-dock-height"' in app_js
+    assert 'new ResizeObserver(() => queueWorkspaceDockHeightSync())' in app_js
 
     mobile_css = styles_css[
         styles_css.index("@media (max-width: 760px)") : styles_css.index(
@@ -55,12 +78,29 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     ]
     assert "font-size: clamp(2.85rem, 13.2vw, 4rem)" in mobile_css
     assert "min-height: 160px" in mobile_css
-    assert ".workspace-leading {" in mobile_css
-    assert "grid-column: 1;" in mobile_css
-    assert ".font-controls {" in mobile_css
-    assert "grid-column: 2;" in mobile_css
-    assert "grid-row: 1;" in mobile_css
-    assert ".workspace-tools {" in mobile_css
-    assert "grid-row: 2;" in mobile_css
-    assert ".workspace-output {" in mobile_css
-    assert "flex-wrap: nowrap;" in mobile_css
+    assert ".workspace-bar {" in mobile_css
+    assert "left: max(8px, env(safe-area-inset-left));" in mobile_css
+    assert "right: max(8px, env(safe-area-inset-right));" in mobile_css
+    assert "max-width: none;" in mobile_css
+    assert ".font-controls { max-width: 100%; flex-wrap: nowrap; }" in mobile_css
+    assert ".workspace-tools,\n  .workspace-output { gap: 4px; }" in mobile_css
+    assert "body.workspace-active .topline," in mobile_css
+    assert "body.workspace-active.engine-legacy .topline {" in mobile_css
+    assert (
+        "--workspace-dock-bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));"
+        in mobile_css
+    )
+    assert "var(--workspace-dock-height)" in mobile_css
+    assert "var(--workspace-overlay-gap)" in mobile_css
+    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" not in mobile_css
+    assert "body.workspace-active.engine-legacy .editor-stage {" in mobile_css
+    assert "max-width: min(78vw, 520px);" in mobile_css
+
+    dark_css = styles_css[styles_css.index("@media (prefers-color-scheme: dark)") :]
+    dark_status = dark_css[
+        dark_css.index("body.workspace-active .status {")
+        : dark_css.index(".paste-box textarea")
+    ]
+    assert "color: var(--ink);" in dark_status
+    assert "background: var(--surface-raised);" in dark_status
+    assert "border-color: var(--line-strong);" in dark_status

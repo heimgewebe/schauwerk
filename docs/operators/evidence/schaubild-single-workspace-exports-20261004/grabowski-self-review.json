@@ -1,0 +1,76 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T12:57:10Z",
+  "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "head_sha": "4763e46e923f633556622a8460b3c685b4413a19",
+  "diff_sha256": "dc7fceae4a0be9f285f176358def845f45eb6fc5742a3c3c6de9ce5e6b912ee7",
+  "diff_bytes": 50141,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "the redundant compact workspace and fullscreen-toggle state are removed rather than hidden behind a second mode",
+    "the single workspace fills the viewport while preserving native viewer controls, local persistence behavior, and engine-specific edit capabilities",
+    "source or Canvas, SVG, legacy PNG, and prepared-download actions remain reachable from the full-height workspace according to the existing engine capability contract",
+    "the close action is a separate accessible top-right overlay and does not reintroduce a top-height or right-side content gutter",
+    "the floating host export dock leaves the native bottom status bar clear and remains inside the viewport at a landscape-tablet width narrower than the supplied screenshots",
+    "native mode hides unsupported or redundant host controls while legacy mode retains the existing font, layout, project, PNG, and SVG actions",
+    "historical acceptance receipts remain immutable and only a successor receipt binds the four newly changed product/test revisions",
+    "the publication fixture resolves current hashes through the newest successor without weakening unrelated historical bindings",
+    "the exact successor head passes lint, compile, registry validation, and the complete test suite"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "Keeping both compact and fullscreen states would preserve duplicate navigation and export chrome even though fullscreen is already the default product path.",
+      "resolution": "Removed the compact workspace contract and fullscreen toggle entirely, leaving one full-height workspace plus one explicit close action."
+    },
+    {
+      "iteration": 2,
+      "finding": "A first-pass floating export dock could have overlapped the native viewer bottom status bar, so a legacy-only screenshot was insufficient evidence.",
+      "resolution": "Placed the dock above the status area and performed an actual native-mode Chromium readback at 1366x1024; the dock ended at y=980, leaving 44 px of bottom clearance while the editor frame still filled 1366x1024."
+    },
+    {
+      "iteration": 3,
+      "finding": "The first full validation after the product change failed only because immutable historical UI evidence still bound the predecessor product-UI test hash.",
+      "resolution": "Added a new successor acceptance receipt and exact publication-fixture binding, left all parent evidence immutable, and reran the entire repository validation suite successfully on the successor head."
+    }
+  ],
+  "validation": {
+    "focused_visual_regressions_job_id": "26cbea2a092a",
+    "focused_visual_regressions_finalization_receipt_sha256": "6130613025edd65d3744b6108299a8bfe7013da3d2b495486aa6d9299f10bf84",
+    "focused_visual_regressions_passed_count": 128,
+    "native_browser_readback_job_id": "05fb9c0187ff",
+    "native_browser_readback_finalization_receipt_sha256": "1a0c9855ad10000143faedee30874b9246c03bfcba2ce40b30bba94fe2c983c1",
+    "native_browser_screenshot_sha256": "b7b0f2ee18730eb3d4f638b6d652f4e25d82905be24f9ab3d37f4338243d6a71",
+    "successor_full_validate_job_id": "90a6b2068d80",
+    "successor_full_validate_finalization_receipt_sha256": "57cdd7d8990e19f18f96110310bead22a6d82b536103178b69f68d98f845d669",
+    "successor_full_validate_passed_count": 1654,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "4763e46e923f633556622a8460b3c685b4413a19",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T12:57:03.296460Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "GitHub CI success on the later self-review commit",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

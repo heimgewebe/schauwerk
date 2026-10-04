@@ -1,0 +1,92 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T15:00:30Z",
+  "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "head_sha": "b970cce0330e10481f109c527821f7c2d067a541",
+  "diff_sha256": "3d070921e415b56dfa263c7dc893480c6c81c014ae78eb9ecfdbcd01e9e25081",
+  "diff_bytes": 95339,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/grabowski-self-review.json",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "correctness of the single full-height workspace and removal of the retired compact/fullscreen-toggle mode",
+    "regression risk across native and legacy editors, especially close-control, export-dock and live-status geometry",
+    "mobile 760px behavior keeps the status live region vertically clear of the full-width action dock in both native and legacy modes",
+    "legacy draw.io preserves explicit right and bottom clearance while native mode still uses the entire editor viewport",
+    "export availability remains engine-specific and reachable: native Inhalt/Quelle/SVG and legacy Projekt/PNG/SVG",
+    "tests bind the responsive status clearance instead of only selector presence, and the publication successor owns the four revised product/test hashes",
+    "security and integration boundaries remain unchanged: no new origins, privileges, persistence authority, provider coupling or cross-repository writes",
+    "the exact reviewed head passes Ruff, compile, registry validation and all 1654 repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The original single-workspace revision removed the legacy overlay clearance and hid the only host status live region.",
+      "resolution": "Confirmed and fixed those defects in the first review-fix revision, with native and legacy browser geometry readbacks."
+    },
+    {
+      "iteration": 2,
+      "finding": "GitHub Codex on d6af307 found that the 760px full-width dock still occupied the same vertical slot as the status overlay.",
+      "resolution": "Moved the workspace status to a separate mobile vertical slot and increased its usable width without changing the dock or native full-height canvas."
+    },
+    {
+      "iteration": 3,
+      "finding": "The exact decision-bound Grok review independently reproduced the same mobile status/dock collision as a material finding.",
+      "resolution": "Bound that finding to d6af307 and verified the adc1674 fix at 760x900 in both engine modes: status bottom 796 is above native dock top 802 and legacy dock top 836."
+    },
+    {
+      "iteration": 4,
+      "finding": "Changing the four accepted source/test revisions invalidated the prior review-fix source bindings.",
+      "resolution": "Added an immutable mobile-status successor receipt and publication-fixture precedence instead of rewriting historical evidence."
+    },
+    {
+      "iteration": 5,
+      "finding": "A full validation before the successor binding failed exactly on the expected historical binding gate.",
+      "resolution": "After adding the successor binding, reran the complete validation on b970cce: Ruff, compile, registry validation and 1654 tests all passed."
+    }
+  ],
+  "validation": {
+    "focused_regressions_job_id": "e164df021296",
+    "focused_regressions_finalization_receipt_sha256": "c41b1866d3ea336fb1f2e1bc390b74ebc5d12b5a4f869f9d4ee59b4da510f924",
+    "focused_regressions_passed_count": 128,
+    "mobile_legacy_browser_job_id": "c32ad1e889b1",
+    "mobile_legacy_browser_finalization_receipt_sha256": "a954184282939a619613b6b385fb7d8c88c1293e66a15a697b8450530a54ca59",
+    "mobile_legacy_screenshot_sha256": "fb6f144cb25f09739dc20e6eece61cef86effb3e137a1b1a156fb854276529ed",
+    "mobile_native_browser_job_id": "e59161b84632",
+    "mobile_native_browser_finalization_receipt_sha256": "d2a2181c8915c80456df2ef8b1b67cca7b806c4bd5266cc7102fbbcafaf664cf",
+    "mobile_native_screenshot_sha256": "00aa39eb455ed8e03ab84b1adc19a43fa503f20f86d72afcaad5ac6a4740fb77",
+    "exact_head_full_validate_job_id": "ca66fb976864",
+    "exact_head_full_validate_finalization_receipt_sha256": "9941c58e1655e08836d19a07b666c23e87685b5491cf9a8d88e9a0b81bc401f8",
+    "exact_head_full_validate_passed_count": 1654,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "b970cce0330e10481f109c527821f7c2d067a541",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T14:59:42.335390Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the later self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "schema_version": "schauwerk-schaubild-single-workspace-exports.v1",
+  "scope": "schaubild-single-full-height-workspace-with-host-exports",
+  "accepted_at": "2026-10-04T12:44:58+00:00",
+  "base_main_head": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "functional_head": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+  "parent_evidence": {
+    "evidence_digest": "bc7a2363f8f8be755dab26e2e1a6cb21e1653a31ce4cf0c005297ac9451cbcd9",
+    "file_sha256": "615e92925c3da239506684cdbd6860cad0c29dcab6f0de063d8e01bfed617d70",
+    "path": "docs/operators/evidence/schaubild-focus-default-review-fixes-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-focus-default-review-fixes.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "compact_workspace_removed": true,
+    "single_full_height_workspace_only": true,
+    "exports_available_in_full_workspace": true,
+    "close_control_is_separate_top_right_overlay": true,
+    "native_export_dock_clears_bottom_status_bar": true,
+    "exact_head_focused_visual_regressions_passed": true,
+    "exact_head_native_browser_readback_passed": true,
+    "exact_head_full_validate_failed_only_on_successor_binding_gate": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "focused_visual_regressions": {
+      "functional_head": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "job_id": "26cbea2a092a",
+      "finalization_receipt_sha256": "6130613025edd65d3744b6108299a8bfe7013da3d2b495486aa6d9299f10bf84",
+      "argv_sha256": "afbcc677ba5b4f57854a39082bffb3f0afcf5c6be3041f0cd6234bc00ea89d3b",
+      "passed_count": 128,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_ai_handoff.py",
+        "tests/visual/test_standalone_editor_defaults.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py"
+      ]
+    },
+    "native_browser_readback": {
+      "functional_head": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "job_id": "05fb9c0187ff",
+      "finalization_receipt_sha256": "1a0c9855ad10000143faedee30874b9246c03bfcba2ce40b30bba94fe2c983c1",
+      "screenshot_sha256": "b7b0f2ee18730eb3d4f638b6d652f4e25d82905be24f9ab3d37f4338243d6a71",
+      "viewport": {
+        "width": 1366,
+        "height": 1024
+      },
+      "metrics": {
+        "frame": {
+          "x": 0,
+          "y": 0,
+          "width": 1366,
+          "height": 1024,
+          "right": 1366,
+          "bottom": 1024
+        },
+        "export_dock": {
+          "x": 1162,
+          "y": 926,
+          "width": 194,
+          "height": 54,
+          "right": 1356,
+          "bottom": 980
+        },
+        "close_control": {
+          "x": 1318,
+          "y": 8,
+          "width": 40,
+          "height": 38,
+          "right": 1358,
+          "bottom": 46
+        },
+        "visible_host_controls": [
+          "Inhalt",
+          "Quelle",
+          "SVG"
+        ],
+        "bottom_status_clearance_px": 44
+      },
+      "observations": {
+        "workspace_fills_viewport": true,
+        "compact_parent_header_absent": true,
+        "native_toolbar_remains_visible": true,
+        "export_actions_visible_in_full_workspace": true,
+        "export_dock_does_not_cover_bottom_status_bar": true,
+        "close_control_visible_top_right": true
+      },
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "job_id": "475be3d17d5e",
+      "finalization_receipt_sha256": "fa74e4350aec3376ed8d6649a43ea9c46e3fe610c05d0ed8704500aef4291dfe",
+      "argv_sha256": "72f2506fd221945d3af5c9e5594c12b7c95ed2599be315fa0903052275fbd48a",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1653,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "checkpoint": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T12:40:32.588127Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+      "head_sha": "896f34348da2e15489b0155d12661bdfe01c0b5e",
+      "diff_sha256": "f19ad1210e3495bc0f0302f216613454268abf6efcf41824aff1f0c2dc6fe010",
+      "diff_bytes": 31413,
+      "argv_sha256": "4f69d2e36a08f7e6a42ab2e3c151762592e18ab0a95a7ab804e9e401b8a9987f",
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "386b0c8d2b6f462fe92b4f917db8edaeab1e586fa95a4e2d5953ca5952d375bd",
+    "tests/visual/test_standalone_editor.py": "a237b2d784316e2b57b2d9fd8f495ee59d21c65632ec174047d494761ffccdb4",
+    "tests/visual/test_standalone_editor_font_controls.py": "7ac3cde263d661d9e6e7f0bfc8f3cdc12f41e4ce639f393a537270a7ecbb1d61",
+    "tests/visual/test_standalone_editor_product_ui.py": "3c195a1ff44ed32e868beae5d5a6e4a40cd71e75695890ea720c411aeeacfb37"
+  },
+  "does_not_establish": [
+    "user post-change visual acceptance or aesthetic approval of this exact revision",
+    "independent review or reviewer settlement",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "d209bf1095ba18ffafd001e70983f31f89f3920a06a826fba061998ebf534289"
+}

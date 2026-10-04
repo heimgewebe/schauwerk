@@ -1,0 +1,96 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T18:35:00Z",
+  "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "head_sha": "8e070816f1e83ff27e3a81aefaed865fb966fdda",
+  "diff_sha256": "d8c21353ab06bd39a6753851a141f7ec022455f8c34d947f170d9f5fc8bcd51f",
+  "diff_bytes": 149283,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-wrapped-dock-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-wrapped-dock-20261004/grabowski-self-review.json",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "single full-height workspace remains the only work mode; removed compact/fullscreen-toggle behavior does not return",
+    "actual-height dock measurement continues to separate live status from one-row and wrapped two-row export controls",
+    "dark-mode mobile status now overrides the light mobile status surface with existing dark theme surface, ink and border variables at sufficient selector specificity",
+    "native and legacy dark-mode browser readbacks retain the 8 px status-to-dock separation with prepared downloads visible",
+    "legacy draw.io continues to reserve the measured dock height and right-side close clearance",
+    "engine-specific exports remain available and no export, persistence or editor authority semantics changed",
+    "new immutable dark-status successor supersedes only the two revised source/test bindings while predecessor receipts remain byte-immutable",
+    "publication fixture resolves current accepted bytes through dark-status before wrapped-dock evidence",
+    "no new external origin, privilege, persistence authority, cross-repository write, provider dependency or active content surface was introduced",
+    "exact evidence head passes Ruff, compile, registry validation and all 1656 repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "Current-head Codex found that the <=760px mobile status rule retained a light rgba(255,255,255,.9) background in dark mode while inheriting muted dark-theme text.",
+      "resolution": "Reproduced on 01e4259 at 320x740: computed background rgba(255,255,255,.9), text rgb(162,166,181), confirming the P2 rather than treating it as stale review noise."
+    },
+    {
+      "iteration": 2,
+      "finding": "A generic dark .status rule was insufficient because the mobile body.workspace-active .status selector had higher specificity.",
+      "resolution": "Added a later body.workspace-active .status override inside the existing dark-mode media query using var(--surface-raised), var(--ink) and var(--line-strong), without introducing a separate color system."
+    },
+    {
+      "iteration": 3,
+      "finding": "The dark-mode correction could have disturbed the wrapped-dock geometry or only fixed native mode.",
+      "resolution": "Re-read native and legacy at 320x740 with prepared downloads visible: both compute the dark surface/light ink, keep zero overlap and 8 px status-to-dock gap; legacy also preserves 8 px frame-to-dock and frame-to-close clearance."
+    },
+    {
+      "iteration": 4,
+      "finding": "The dark fix changes accepted implementation bytes and therefore invalidates the previous wrapped-dock source binding for assets.py and the product UI test.",
+      "resolution": "Created a new immutable dark-status successor receipt for exactly those two revised files and changed publication precedence without modifying historical receipts."
+    },
+    {
+      "iteration": 5,
+      "finding": "The complete cumulative PR diff could regress unrelated import, content editing, export, persistence or publication contracts despite focused checks.",
+      "resolution": "Ran complete make validate on exact head 8e07081: Ruff, compile and registry validation passed and all 1656 tests passed."
+    }
+  ],
+  "validation": {
+    "functional_head": "1cefe05c2c46af180b024cb32bf2cccef10d7397",
+    "focused_regressions_job_id": "84604d065ec0",
+    "focused_regressions_finalization_receipt_sha256": "5cacec786c0593c176058973af7d4fc6356cfce72542a2a55cf62de251d7c024",
+    "dark_native_browser_job_id": "a14cd91ea742",
+    "dark_native_browser_finalization_receipt_sha256": "8de6a36c00571228605b2e690e75364d85a15ef47d405c5f7102be9e8086cba3",
+    "dark_legacy_browser_job_id": "ec9a4f77a3d7",
+    "dark_legacy_browser_finalization_receipt_sha256": "53ba2dee6a54e8cfe33e7eec951f7daff72b9f76edd11cecec5aeef286595455",
+    "exact_head_full_validate_job_id": "b85d468d1e5d",
+    "exact_head_full_validate_finalization_receipt_sha256": "b206d2474bdc476a6610427f95aea707f7aabdf694ec1a52f47626b71e99b97b",
+    "exact_head_full_validate_passed_count": 1656,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "8e070816f1e83ff27e3a81aefaed865fb966fdda",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "observed_at": "2026-10-04T18:34:56.387407Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the later self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "GitHub current-head reviewer settlement and review-thread resolution",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

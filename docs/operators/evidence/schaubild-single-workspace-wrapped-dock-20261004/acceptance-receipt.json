@@ -1,0 +1,222 @@
+{
+  "schema_version": "schauwerk-schaubild-single-workspace-wrapped-dock.v1",
+  "scope": "schaubild-single-workspace-actual-height-mobile-dock-clearance",
+  "accepted_at": "2026-10-04T17:00:38+00:00",
+  "base_product_head": "4d49b1c925d00a7edccc0804bd9636c0af1be4b0",
+  "functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+  "parent_evidence": {
+    "evidence_digest": "87c372b92e3ddf22519b0faf35d6bed264adb6848ff2eb6cd12afa9dc5a49e08",
+    "file_sha256": "aae803ad85c4c64075f9b4b3fcab97e8944f23e503540247757f7d679103a5f8",
+    "path": "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-mobile-status.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "current_head_review_threads_reproduced_and_addressed": true,
+    "wrapped_download_state_reproduced_at_320px": true,
+    "runtime_dock_height_tracks_actual_layout": true,
+    "mobile_status_clears_wrapped_dock_native": true,
+    "mobile_status_clears_wrapped_dock_legacy": true,
+    "legacy_editor_reserves_wrapped_dock_height": true,
+    "native_full_height_workspace_preserved": true,
+    "exact_head_focused_regressions_passed": true,
+    "exact_head_browser_readbacks_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "review_findings": {
+      "source_head": "4d49b1c925d00a7edccc0804bd9636c0af1be4b0",
+      "github_codex": [
+        {
+          "thread_id": "PRRT_kwDOTGqvHc6ozaGf",
+          "comment_id": 4178041831,
+          "severity": "P2",
+          "subject": "mobile status must remain clear of the full-width dock",
+          "disposition": "covered_by_actual_height_clearance_and_exact_head_readbacks"
+        },
+        {
+          "thread_id": "PRRT_kwDOTGqvHc6ozzLp",
+          "comment_id": 4178200305,
+          "severity": "P2",
+          "subject": "wrapped mobile export dock with visible download link can cover status",
+          "disposition": "reproduced_and_addressed_in_functional_head"
+        }
+      ],
+      "pre_fix_reproduction": {
+        "context_head": "4d49b1c925d00a7edccc0804bd9636c0af1be4b0",
+        "job_id": "ddc5a6b6c740",
+        "finalization_receipt_sha256": "4268cef5fa28183a2cc73cb739ea5397a803d4d08ad070ba715c686975be780c",
+        "viewport": {
+          "width": 320,
+          "height": 740
+        },
+        "dock_height_px": 102,
+        "status_dock_overlap_px": 28,
+        "download_label": "Quelle speichern",
+        "result": "reproduced"
+      },
+      "addressed_by_functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3"
+    },
+    "focused_regressions": {
+      "functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+      "job_id": "dbabb954d081",
+      "finalization_receipt_sha256": "1aeae4c1cceaa78402bdbe14867fc901a3567ab3531e458afe81de671fe08659",
+      "argv_sha256": "afbcc677ba5b4f57854a39082bffb3f0afcf5c6be3041f0cd6234bc00ea89d3b",
+      "passed_count": 130,
+      "result": "passed"
+    },
+    "browser_readbacks": {
+      "functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+      "job_id": "f90025a3a24f",
+      "finalization_receipt_sha256": "eb4ad90d980a24cc110320e920507ec9451f2e31c5798f2402493067f2ec6e93",
+      "argv_sha256": "077b396025a001254736b158f9ec1696070c4c3ae926cd134e9644eaec4f3c9e",
+      "states": {
+        "native_320": {
+          "viewport": {
+            "width": 320,
+            "height": 740
+          },
+          "dock": {
+            "height": 102,
+            "top": 596,
+            "bottom": 698
+          },
+          "status": {
+            "bottom": 588
+          },
+          "download_label": "Quelle speichern",
+          "dock_height_css": "102px",
+          "status_clears_dock": true,
+          "status_dock_overlap_px": 0,
+          "screenshot_sha256": "6bb7a1db22ca23fe351155b3d1a6a309ea70e58041d7d769c7f5046829e14703"
+        },
+        "native_760": {
+          "viewport": {
+            "width": 760,
+            "height": 900
+          },
+          "dock": {
+            "height": 56,
+            "top": 802,
+            "bottom": 858
+          },
+          "status": {
+            "bottom": 794
+          },
+          "download_label": "Quelle speichern",
+          "dock_height_css": "56px",
+          "status_clears_dock": true,
+          "status_dock_overlap_px": 0,
+          "screenshot_sha256": "846b8d410b8959a7afd0b621eadffeb73e2bb5d15d16e44be62682df7708cee2"
+        },
+        "legacy_320": {
+          "viewport": {
+            "width": 320,
+            "height": 740
+          },
+          "dock": {
+            "height": 101,
+            "top": 631,
+            "bottom": 732
+          },
+          "status": {
+            "bottom": 623
+          },
+          "frame": {
+            "right": 264,
+            "bottom": 623
+          },
+          "close": {
+            "left": 272
+          },
+          "download_label": "Projekt speichern",
+          "dock_height_css": "101px",
+          "status_clears_dock": true,
+          "frame_clears_dock": true,
+          "frame_clears_close": true,
+          "status_dock_overlap_px": 0,
+          "screenshot_sha256": "adfa88bd3cdf6544d682e840cd6a49760fa91a8ae58f2b418ecfb0f492711f14"
+        },
+        "legacy_760": {
+          "viewport": {
+            "width": 760,
+            "height": 900
+          },
+          "dock": {
+            "height": 56,
+            "top": 836,
+            "bottom": 892
+          },
+          "status": {
+            "bottom": 828
+          },
+          "frame": {
+            "right": 704,
+            "bottom": 828
+          },
+          "close": {
+            "left": 712
+          },
+          "download_label": "Projekt speichern",
+          "dock_height_css": "56px",
+          "status_clears_dock": true,
+          "frame_clears_dock": true,
+          "frame_clears_close": true,
+          "status_dock_overlap_px": 0,
+          "screenshot_sha256": "2641b32a7d74fe10170498394e9109b0be3bf5d0d01b7f8d7c662ffe39a4b0cd"
+        }
+      },
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+      "job_id": "6ac8e7353627",
+      "finalization_receipt_sha256": "a1a2b1a49d735633872a907c37beb90ee58163a9dabd86b1785dd7d1caac844f",
+      "argv_sha256": "72f2506fd221945d3af5c9e5594c12b7c95ed2599be315fa0903052275fbd48a",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1655,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T16:57:02.696144Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "4d49b1c925d00a7edccc0804bd9636c0af1be4b0",
+      "head_sha": "0fbd1e5373fd79c388b28756001de2c16b76b7a3",
+      "diff_sha256": "70b101cd60a76cf619b4345945cfa5b9f9e5415724808b8bfd3d007d0f962af8",
+      "diff_bytes": 17576,
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "5dee26a12eebe3c9273aa71d8bf5050a0a97583e21aa3b05c2d119acb1dc2e56",
+    "tests/visual/test_standalone_editor.py": "79082c02eb0a9972c1981ac4652a93eabe6c1f413f3f275d2cfd264e5a461bc8",
+    "tests/visual/test_standalone_editor_font_controls.py": "cfed628cdfa7e9d6430ea8a88b57094285c565245d5da496c0602c5ab72b139f",
+    "tests/visual/test_standalone_editor_product_ui.py": "ec34c0df48a30598a3ef9f02f09c44eb6b158ed0de1261195599462d5449e354"
+  },
+  "does_not_establish": [
+    "user post-change visual acceptance or aesthetic approval of this wrapped-dock revision",
+    "GitHub current-head reviewer settlement after the two recorded P2 threads",
+    "decision-bound independent reviewer PASS on the later successor-evidence head",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "51e127983b37259f4a2015d64c2902770b89dab6dae1a1f09fa20d768da47504"
+}
