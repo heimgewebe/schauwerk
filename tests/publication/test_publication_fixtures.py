@@ -190,6 +190,9 @@ SCHAUBILD_CONTENT_EDITING_RECOVERY_SAVE_HARDENING_EVIDENCE = (
 SCHAUBILD_FOCUS_DEFAULT_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-focus-default-20261004"
 )
+SCHAUBILD_FOCUS_DEFAULT_REVIEW_FIX_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-focus-default-review-fixes-20261004"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -695,6 +698,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_font_controls.py",
     }
+    focus_default_review_fix_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -1187,6 +1198,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | json_canvas_text_fit_superseded_files
             | ui_controls_superseded_files
             | focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_successor["checks"] == {
@@ -1261,6 +1273,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | json_canvas_text_fit_superseded_files
             | ui_controls_superseded_files
             | focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_review_fix["checks"] == {
@@ -1336,6 +1349,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             json_canvas_text_fit_viewer_startup_superseded_files
             | ui_controls_superseded_files
             | focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert final_ui_fix["checks"] == {
@@ -1436,6 +1450,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             json_canvas_text_fit_final_superseded_files
             | smoke_pipefail_superseded_files
             | focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -3899,6 +3914,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             ui_controls_resize_superseded_files
             | content_editing_superseded_files
             | focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert ui_controls["checks"] == {
@@ -3986,7 +4002,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ui_controls_resize_superseded_files
     )
     for name, expected in ui_controls_resize["source_bindings"].items():
-        if name not in focus_default_superseded_files:
+        if name not in (
+            focus_default_superseded_files | focus_default_review_fix_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert ui_controls_resize["checks"] == {
         "parent_acceptance_left_immutable": True,
@@ -4987,7 +5005,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in content_editing_recovery_save_hardening[
         "source_bindings"
     ].items():
-        if name not in focus_default_superseded_files:
+        if name not in (
+            focus_default_superseded_files | focus_default_review_fix_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery_save_hardening["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -5122,7 +5142,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(focus_default["source_bindings"]) == focus_default_superseded_files
     for name, expected in focus_default["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in focus_default_review_fix_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert focus_default["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "focus_mode_default_on_workspace_entry": True,
@@ -5169,6 +5190,101 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert "independent review or reviewer settlement" in focus_default["does_not_establish"]
 
+    focus_default_review_fix = json.loads(
+        (
+            SCHAUBILD_FOCUS_DEFAULT_REVIEW_FIX_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        focus_default_review_fix["schema_version"]
+        == "schauwerk-schaubild-focus-default-review-fixes.v1"
+    )
+    assert (
+        focus_default_review_fix["functional_head"]
+        == "6c693670d050907856e2988e6018420aaa0d3b64"
+    )
+    assert focus_default_review_fix["parent_evidence"] == {
+        "evidence_digest": focus_default["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_FOCUS_DEFAULT_EVIDENCE / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-focus-default-20261004/acceptance-receipt.json"
+        ),
+        "schema_version": focus_default["schema_version"],
+    }
+    assert focus_default_review_fix["evidence_digest"] == digest_mapping(
+        focus_default_review_fix, "evidence_digest"
+    )
+    assert (
+        set(focus_default_review_fix["source_bindings"])
+        == focus_default_review_fix_superseded_files
+    )
+    for name, expected in focus_default_review_fix["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert focus_default_review_fix["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "current_pr_p2_findings_reproduced_and_addressed": True,
+        "canonical_embedded_native_toolbar_reserves_close_overlay_width": True,
+        "legacy_focus_toolbar_kept_clear_without_top_height_gutter": True,
+        "legacy_focus_hides_redundant_host_font_controls": True,
+        "post_product_change_is_test_contract_only": True,
+        "relevant_visual_regressions_passed": True,
+        "native_canonical_browser_readback_passed": True,
+        "legacy_browser_readback_passed": True,
+        "exact_head_full_validate_failed_only_on_successor_binding_gate": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    review_findings = focus_default_review_fix["check_evidence"]["github_review_findings"]
+    assert review_findings["pull_request"] == 201
+    assert review_findings["review_id"] == 5405057099
+    assert review_findings["source_head"] == "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4"
+    assert review_findings["addressed_by_product_fix_head"] == (
+        focus_default_review_fix["product_fix_head"]
+    )
+    assert [finding["comment_id"] for finding in review_findings["findings"]] == [
+        4176769631,
+        4176769635,
+    ]
+    assert review_findings["current_head_rereview_established"] is False
+    native_readback = focus_default_review_fix["check_evidence"][
+        "native_canonical_browser_readback"
+    ]
+    assert native_readback["task_id"] == "e2289e8c5fe1410e93191a45"
+    assert native_readback["result"] == "passed"
+    assert native_readback["metrics"]["toolbar_padding_right_px"] == 58.0
+    assert native_readback["metrics"]["controls_right_px"] <= (
+        native_readback["metrics"]["toolbar_right_px"] - 50.0
+    )
+    legacy_readback = focus_default_review_fix["check_evidence"][
+        "legacy_browser_readback"
+    ]
+    assert legacy_readback["task_id"] == "9b5ecba41cfb4dcdb9acf9d6"
+    assert legacy_readback["result"] == "passed"
+    assert legacy_readback["metrics"]["editor_frame_top_px"] == 0.0
+    assert legacy_readback["metrics"]["editor_frame_right_px"] < (
+        legacy_readback["metrics"]["close_left_px"]
+    )
+    assert legacy_readback["metrics"]["host_font_controls_display"] == "none"
+    pre_successor = focus_default_review_fix["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert pre_successor["functional_head"] == focus_default_review_fix["functional_head"]
+    assert pre_successor["task_id"] == "cff48fcadcee41efb95f5466"
+    assert pre_successor["passed_count"] == 1653
+    assert pre_successor["failed_count"] == 1
+    assert pre_successor["failure_class"] == "expected_successor_binding_gate"
+    assert (
+        "current-head GitHub reviewer settlement after the two recorded P2 findings"
+        in focus_default_review_fix["does_not_establish"]
+    )
+    assert (
+        "independent review of the review-fix revision"
+        in focus_default_review_fix["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -5197,7 +5313,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in focus_default_superseded_files:
+        if name in focus_default_review_fix_superseded_files:
+            assert focus_default_review_fix["source_bindings"][name] == current
+        elif name in focus_default_superseded_files:
             assert focus_default["source_bindings"][name] == current
         elif name in codeql_superseded_files:
             assert successor["source_bindings"][name] == current
