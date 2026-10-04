@@ -206,6 +206,10 @@ SCHAUBILD_SINGLE_WORKSPACE_WRAPPED_DOCK_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-wrapped-dock-20261004"
 )
+SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -741,6 +745,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    single_workspace_dark_status_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
     }
     editor_successor = json.loads(
@@ -5744,7 +5752,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_wrapped_dock_superseded_files
     )
     for name, expected in single_workspace_wrapped_dock["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in single_workspace_dark_status_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_wrapped_dock["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_head_review_threads_reproduced_and_addressed": True,
@@ -5843,6 +5852,131 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_wrapped_dock["does_not_establish"]
     )
 
+    single_workspace_dark_status = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_dark_status["schema_version"]
+        == "schauwerk-schaubild-single-workspace-dark-status.v1"
+    )
+    assert (
+        single_workspace_dark_status["functional_head"]
+        == "1cefe05c2c46af180b024cb32bf2cccef10d7397"
+    )
+    assert single_workspace_dark_status["parent_evidence"] == {
+        "evidence_digest": single_workspace_wrapped_dock["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_WRAPPED_DOCK_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-wrapped-dock-20261004/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_wrapped_dock["schema_version"],
+    }
+    assert single_workspace_dark_status["evidence_digest"] == digest_mapping(
+        single_workspace_dark_status, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_dark_status["source_bindings"])
+        == single_workspace_dark_status_superseded_files
+    )
+    for name, expected in single_workspace_dark_status["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert single_workspace_dark_status["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "current_head_dark_mode_p2_reproduced_and_addressed": True,
+        "mobile_dark_status_uses_dark_surface_native": True,
+        "mobile_dark_status_uses_dark_surface_legacy": True,
+        "mobile_dark_status_uses_high_contrast_text_native": True,
+        "mobile_dark_status_uses_high_contrast_text_legacy": True,
+        "wrapped_dock_clearance_preserved_native": True,
+        "wrapped_dock_clearance_preserved_legacy": True,
+        "legacy_editor_clearances_preserved": True,
+        "exact_head_focused_regressions_passed": True,
+        "exact_head_dark_browser_readbacks_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    dark_finding = single_workspace_dark_status["check_evidence"]["review_finding"]
+    assert dark_finding["source_head"] == "01e425933d1fd3c93d7651f23fda9ec16c4592ab"
+    assert dark_finding["thread_id"] == "PRRT_kwDOTGqvHc6o1H7r"
+    assert dark_finding["comment_id"] == 4178743939
+    assert dark_finding["pre_fix_reproduction"]["computed_status"] == {
+        "background": "rgba(255, 255, 255, 0.9)",
+        "color": "rgb(162, 166, 181)",
+        "border_color": "rgb(44, 47, 59)",
+    }
+    assert dark_finding["addressed_by_functional_head"] == (
+        single_workspace_dark_status["functional_head"]
+    )
+    dark_focused = single_workspace_dark_status["check_evidence"][
+        "focused_regressions"
+    ]
+    assert dark_focused["job_id"] == "84604d065ec0"
+    assert dark_focused["passed_count"] == 130
+    assert dark_focused["result"] == "passed"
+    for key, job_id in (
+        ("dark_native_browser_readback", "a14cd91ea742"),
+        ("dark_legacy_browser_readback", "ec9a4f77a3d7"),
+    ):
+        readback = single_workspace_dark_status["check_evidence"][key]
+        assert readback["job_id"] == job_id
+        assert readback["computed_status"] == {
+            "background": "rgba(24, 26, 36, 0.92)",
+            "color": "rgb(240, 241, 247)",
+            "border_color": "rgb(58, 62, 75)",
+        }
+        assert readback["status_dock_gap_px"] == 8
+        assert readback["status_dock_overlap_px"] == 0
+        assert readback["result"] == "passed"
+    dark_legacy = single_workspace_dark_status["check_evidence"][
+        "dark_legacy_browser_readback"
+    ]
+    assert dark_legacy["frame_dock_gap_px"] == 8
+    assert dark_legacy["frame_close_gap_px"] == 8
+    dark_pre_successor = single_workspace_dark_status["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert dark_pre_successor["job_id"] == "abfbbd741027"
+    assert dark_pre_successor["passed_count"] == 1655
+    assert dark_pre_successor["failed_count"] == 1
+    assert (
+        dark_pre_successor["failure_class"]
+        == "expected_successor_binding_gate"
+    )
+    dark_observer = single_workspace_dark_status["check_evidence"][
+        "independent_observer_readback"
+    ]
+    assert dark_observer["observer"] == "grosser-adler"
+    assert dark_observer["functional_head"] == (
+        single_workspace_dark_status["functional_head"]
+    )
+    assert dark_observer["worktree_clean"] is True
+    assert dark_observer["untracked_present"] is False
+    assert dark_observer["finding_count"] == 0
+    assert dark_observer["projection_complete"] is True
+    dark_diff = single_workspace_dark_status["check_evidence"]["git_diff_check"]
+    assert dark_diff["base_sha"] == "01e425933d1fd3c93d7651f23fda9ec16c4592ab"
+    assert dark_diff["head_sha"] == single_workspace_dark_status["functional_head"]
+    assert dark_diff["diff_sha256"] == (
+        "8f1a759281f778770ff89339adcb13349cf7a5d5fa60b9299ac94fd073405f12"
+    )
+    assert dark_diff["result"] == "passed"
+    assert (
+        "decision-bound independent reviewer PASS on the later successor-evidence head"
+        in single_workspace_dark_status["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -5871,7 +6005,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_wrapped_dock_superseded_files:
+        if name in single_workspace_dark_status_superseded_files:
+            assert single_workspace_dark_status["source_bindings"][name] == current
+        elif name in single_workspace_wrapped_dock_superseded_files:
             assert single_workspace_wrapped_dock["source_bindings"][name] == current
         elif name in single_workspace_mobile_status_superseded_files:
             assert single_workspace_mobile_status["source_bindings"][name] == current
