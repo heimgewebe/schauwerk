@@ -157,7 +157,12 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     styles_css = (output / "styles.css").read_text(encoding="utf-8")
     assert "KI-Ergebnis hier einfügen" in index_html
     assert 'id="downloadLink" hidden' in index_html
-    assert 'id="fullscreenButton"' in index_html
+    assert 'id="workspaceCloseButton"' in index_html
+    assert index_html.index('id="workspaceCloseButton"') > index_html.index("</nav>")
+    assert 'id="fullscreenButton"' not in index_html
+    assert 'id="projectButton"' in index_html
+    assert 'data-export="png"' in index_html
+    assert 'data-export="svg"' in index_html
     assert 'id="fontDefaultInput" type="number" min="8" max="72" step="1"' in index_html
     assert 'id="fontDecreaseButton"' in index_html
     assert 'id="fontPanelButton"' in index_html
@@ -171,16 +176,14 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "Legacy leer" not in index_html
     assert "Technischer Kompatibilitätsmodus:" in index_html
     assert "<code>.canvas</code>/JSON Canvas" in index_html
-    assert 'aria-pressed="false"' in index_html
-    assert 'aria-label="Vollbildmodus aktivieren"' in index_html
-    assert "body.editor-focus .topline" in styles_css
-    assert (
-        "body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output)"
-        in styles_css
-    )
-    assert "body.editor-focus .workspace-output > :not(.fullscreen-toggle)" in styles_css
+    assert 'aria-label="Arbeitsfläche schließen und zum Start zurückkehren"' in index_html
+    assert "body.workspace-active .topline" in styles_css
+    assert "bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));" in styles_css
+    assert ".workspace-close {" in styles_css
+    assert "position: fixed;" in styles_css
     assert "height: 100dvh" in styles_css
-    assert 'fullscreenButton: document.querySelector("#fullscreenButton")' in app_js
+    assert 'workspaceCloseButton: document.querySelector("#workspaceCloseButton")' in app_js
+    assert 'fullscreenButton: document.querySelector("#fullscreenButton")' not in app_js
     assert 'if (detected.kind === "drawio")' in app_js
     assert 'schema_version: NATIVE_IMPORT_SCHEMA' in app_js
     assert 'format: "drawio-xml"' in app_js
@@ -220,7 +223,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     )
     assert title_sync < representation_draft_save
     assert "currentTitle = safeFilename(currentRepresentation.title);" in app_js
-    assert "elements.title.textContent = currentTitle;" in app_js
+    assert "elements.title.textContent = currentTitle;" not in app_js
     assert "const syncRepresentationTitle = Boolean(" in app_js
     assert "{ preserveActiveFrame: true, syncRepresentationTitle }" in app_js
     assert "function replaceEditorFrame()" in app_js
@@ -306,9 +309,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "SVG aus aktueller nativer Darstellung bereit" in export_source
     assert "releaseLaunchTurn();" in native_source
     assert 'pendingInitialCollisionSafeLayout = load?.sourceMetadata?.value === "mermaid";' in launch_source
-    assert "function toggleEditorFullscreen()" in app_js
-    assert "const active = !editorFocusActive;" in app_js
-    assert "setEditorFocus(active);" in app_js
+    assert "function setWorkspaceActive(active)" in app_js
+    assert 'classList.toggle("workspace-active", Boolean(active))' in app_js
+    assert "toggleEditorFullscreen" not in app_js
+    assert "editorFocusActive" not in app_js
     assert "requestFullscreen" not in app_js
     assert "exitFullscreen" not in app_js
     assert "fullscreenElement" not in app_js
@@ -319,7 +323,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     show_start = app_js.index("function showStart()")
     show_start_end = app_js.index("function showWorkspace()", show_start)
     show_start_source = app_js[show_start:show_start_end]
-    assert "setEditorFocus(false);" in show_start_source
+    assert "setWorkspaceActive(false);" in show_start_source
     assert "invalidateLoadIntents();" in show_start_source
     assert "pendingLoad = null;" in show_start_source
     assert "pendingExport = null;" in show_start_source
@@ -331,9 +335,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     show_workspace = app_js.index("function showWorkspace()")
     show_workspace_end = app_js.index("function prepareInput(", show_workspace)
     show_workspace_source = app_js[show_workspace:show_workspace_end]
-    assert "const enteringWorkspace = elements.workspace.hidden;" in show_workspace_source
-    assert "if (enteringWorkspace) setEditorFocus(true);" in show_workspace_source
-    assert "setEditorFocus(false);\n      elements.workspace.hidden = true;" in app_js
+    assert "setWorkspaceActive(true);" in show_workspace_source
+    assert "enteringWorkspace" not in show_workspace_source
+    assert "setWorkspaceActive(false);\n      elements.workspace.hidden = true;" in app_js
+    assert 'elements.workspaceCloseButton.addEventListener("click", showStart);' in app_js
     load_event_start = app_js.index('if (message.event === "load")')
     load_event_end = app_js.index('if (message.event === "autosave"', load_event_start)
     load_event_source = app_js[load_event_start:load_event_end]
@@ -865,7 +870,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
-function setEditorFocus() {}
+function setWorkspaceActive() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() {}
@@ -1431,7 +1436,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
-function setEditorFocus() {}
+function setWorkspaceActive() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() { workspaceCalls += 1; }
@@ -1622,7 +1627,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
-function setEditorFocus() {}
+function setWorkspaceActive() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() {
@@ -1764,7 +1769,7 @@ function invalidateLoadIntents() {
 }
 function clearPreparedDownload() {}
 function setEngineMode() {}
-function setEditorFocus() {}
+function setWorkspaceActive() {}
 function setStatus(value) { statusText = String(value); }
 function setError(value) { errorText = String(value); }
 function showWorkspace() { workspaceCalls += 1; }

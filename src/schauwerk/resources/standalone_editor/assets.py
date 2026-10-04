@@ -94,14 +94,6 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
-        <div class="workspace-leading">
-          <button class="button compact ghost icon-button" id="backButton" type="button" aria-label="Zurück zum Start">←</button>
-          <div class="document-meta">
-            <span class="document-kicker">Arbeitsfläche</span>
-            <strong class="document-title" id="documentTitle">Schaubild</strong>
-          </div>
-        </div>
-
         <div class="font-controls" role="group" aria-label="Schriftgröße">
           <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
           <button class="button compact tool-button" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Text</button>
@@ -121,9 +113,9 @@ INDEX_HTML = r"""<!doctype html>
           <button class="button compact output-button" data-export="png" type="button">PNG</button>
           <button class="button compact output-button" data-export="svg" type="button">SVG</button>
           <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
-          <button class="button compact fullscreen-toggle" id="fullscreenButton" type="button" aria-pressed="false" aria-label="Vollbildmodus aktivieren" title="Fokusmodus für die Bearbeitung">Fokus</button>
         </div>
       </nav>
+      <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Arbeitsfläche schließen">×</button>
 
       <div class="editor-stage">
         <div class="editor-wrap">
@@ -466,33 +458,34 @@ h1 {
 }
 .boundary-note code { font-size: 0.72rem; }
 
-.workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.workspace-bar {
+.workspace {
+  flex: 1;
+  min-height: 0;
+  height: 100vh;
+  height: 100dvh;
   position: relative;
-  z-index: 5;
-  min-height: 62px;
-  padding: 10px 12px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-bar {
+  position: absolute;
+  z-index: 20;
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  max-width: min(880px, calc(100vw - 20px));
+  min-height: 0;
+  padding: 6px;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(251, 251, 253, 0.92);
-  backdrop-filter: blur(22px) saturate(145%);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid rgba(133, 150, 180, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px) saturate(145%);
 }
-.workspace-leading { min-width: 0; display: flex; align-items: center; gap: 9px; }
-.document-meta { min-width: 0; display: grid; gap: 2px; }
-.document-kicker { color: #8a8d99; font-size: 0.6rem; }
-.document-title {
-  min-width: 0;
-  max-width: min(31vw, 440px);
-  overflow: hidden;
-  color: var(--ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.9rem;
-}
-.icon-button { width: 36px; padding-inline: 0 !important; font-size: 1.02rem !important; }
 .font-controls {
   display: inline-flex;
   align-items: center;
@@ -513,10 +506,28 @@ h1 {
   flex-wrap: wrap;
   gap: 5px;
 }
-.workspace-tools,
-.workspace-output { padding-left: 10px; border-left: 1px solid var(--line); }
+.workspace-bar .button.compact,
+.workspace-bar .download-link { min-height: 40px; }
 .output-button { min-width: 46px; color: var(--muted); }
-.fullscreen-toggle { white-space: nowrap; }
+.workspace-close {
+  position: fixed;
+  z-index: 21;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  width: 40px;
+  padding-inline: 0 !important;
+  color: #f7f9fc;
+  background: rgba(24, 34, 52, 0.90);
+  border-color: rgba(133, 150, 180, 0.55);
+  font-size: 1.35rem !important;
+  font-weight: 500;
+  line-height: 1;
+}
+.workspace-close:hover {
+  color: #fff;
+  background: rgba(24, 34, 52, 0.98);
+  border-color: rgba(133, 150, 180, 0.78);
+}
 .download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .download-link[hidden] { display: none; }
 
@@ -633,114 +644,33 @@ h1 {
 .editor-stage {
   flex: 1;
   min-height: 0;
-  padding: 12px;
+  padding: 0;
   display: flex;
   background: linear-gradient(rgba(99, 91, 255, 0.018), rgba(99, 91, 255, 0)), #eceef4;
 }
 .editor-wrap {
   flex: 1;
   min-width: 0;
-  min-height: 520px;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
-  border: 1px solid #d8dae4;
-  border-radius: 16px;
+  border: 0;
+  border-radius: 0;
   background: #fff;
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
 }
-.editor-wrap iframe { width: 100%; height: 100%; min-height: 520px; display: block; border: 0; background: #fff; }
+.editor-wrap iframe { width: 100%; height: 100%; min-height: 0; display: block; border: 0; background: #fff; }
 
-body.editor-focus { overflow: hidden; }
-body.editor-focus .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
-body.editor-focus .topline { display: none; }
-body.editor-focus .workspace { position: relative; height: 100vh; height: 100dvh; min-height: 0; }
-body.editor-focus .workspace-bar {
-  position: absolute;
-  z-index: 20;
-  top: max(8px, env(safe-area-inset-top));
-  right: max(8px, env(safe-area-inset-right));
-  min-height: 0;
-  width: auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  backdrop-filter: none;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output) { display: none; }
-body.editor-focus .workspace-output {
-  display: flex;
-  width: auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  flex-wrap: nowrap;
-  pointer-events: none;
-}
-body.editor-focus .workspace-output > :not(.fullscreen-toggle) { display: none; }
-body.editor-focus .workspace-bar > .font-controls {
-  display: none;
-  padding: 3px;
-  border: 1px solid rgba(133, 150, 180, 0.55);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.20);
-  backdrop-filter: blur(12px);
-  pointer-events: auto;
-}
-body.editor-focus .font-controls .button { min-height: 40px; padding-inline: 8px; }
-body.editor-focus .fullscreen-toggle {
-  position: relative;
-  width: 40px;
-  min-height: 40px;
-  padding: 0;
-  overflow: hidden;
-  color: transparent;
-  background: rgba(24, 34, 52, 0.88);
-  border-color: rgba(133, 150, 180, 0.55);
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.20);
-  backdrop-filter: blur(12px);
-  pointer-events: auto;
-}
-body.editor-focus .fullscreen-toggle::after {
-  content: "×";
-  display: grid;
-  place-items: center;
-  position: absolute;
-  inset: 0;
-  color: #f7f9fc;
-  font-size: 1.5rem;
-  font-weight: 400;
-  line-height: 1;
-}
-body.editor-focus .editor-stage {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: auto;
-  padding: 0;
-}
-body.editor-focus.engine-legacy .editor-stage {
-  padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));
-}
-body.editor-focus .editor-wrap { min-height: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
-body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
+body.workspace-active { overflow: hidden; }
+body.workspace-active .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
+body.workspace-active .topline { display: none; }
 
 @media (max-width: 1180px) {
   .start-layout { grid-template-columns: minmax(0, 0.78fr) minmax(400px, 1.22fr); gap: 42px; }
   h1 { font-size: clamp(3rem, 7.8vw, 5.8rem); }
-  .workspace-bar { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
-  .workspace-leading { grid-column: 1; grid-row: 1; }
-  .workspace-output { grid-column: 2; grid-row: 1; }
-  .font-controls { grid-column: 1; grid-row: 2; width: fit-content; }
-  .workspace-tools { grid-column: 2; grid-row: 2; }
-  .workspace-tools,
-  .workspace-output { border-left: 0; padding-left: 0; }
 }
 
 @media (max-width: 1024px) {
-  .workspace-bar > .font-controls { order: -2; }
   .product-badge { display: none; }
 }
 
@@ -775,46 +705,19 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   .font-default-control { align-items: flex-start; flex-direction: column; gap: 8px; }
 
   .workspace-bar {
-    padding: 8px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 7px 8px;
-  }
-  .workspace-leading {
-    grid-column: 1;
-    grid-row: 1;
-    padding-bottom: 0;
-    border-bottom: 0;
-  }
-  .document-kicker { display: none; }
-  .document-title { max-width: 108px; }
-  .font-controls {
-    grid-column: 2;
-    grid-row: 1;
-    width: auto;
-    max-width: 100%;
-    flex-wrap: nowrap;
-  }
-  .font-controls .button { min-width: 32px; padding-inline: 7px; }
-  .workspace-tools {
-    grid-column: 1;
-    grid-row: 2;
-    align-self: center;
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-  }
-  .workspace-output {
-    grid-column: 2;
-    grid-row: 2;
-    justify-content: flex-end;
-    padding-top: 0;
-    flex-wrap: nowrap;
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));
+    max-width: none;
     gap: 4px;
   }
-  .workspace-output .button { padding-inline: 8px; }
-  .editor-stage { padding: 6px; }
-  .editor-wrap { min-height: calc(100dvh - 190px); border-radius: 11px; }
-  .editor-wrap iframe { min-height: calc(100dvh - 190px); }
+  .font-controls { max-width: 100%; flex-wrap: nowrap; }
+  .font-controls .button { min-width: 34px; padding-inline: 7px; }
+  .workspace-tools,
+  .workspace-output { gap: 4px; }
+  .workspace-bar .button.compact,
+  .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
+
 }
 
 @media (max-width: 420px) {
@@ -867,7 +770,6 @@ body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
   .font-controls .button:hover { background: #292c37; }
   .editor-stage { background: #11131a; }
   .editor-wrap { border-color: #2b2e39; background: #fff; }
-  body.editor-focus .workspace-bar > .font-controls { background: rgba(24, 34, 52, 0.94); }
 }
 """
 
@@ -1560,9 +1462,7 @@ const elements = {
   error: document.querySelector("#error"),
   frame: document.querySelector("#editorFrame"),
   status: document.querySelector("#status"),
-  title: document.querySelector("#documentTitle"),
   homeLink: document.querySelector("#homeLink"),
-  backButton: document.querySelector("#backButton"),
   layoutButton: document.querySelector("#layoutButton"),
   contentEditButton: document.querySelector("#contentEditButton"),
   contentDialog: document.querySelector("#contentDialog"),
@@ -1576,7 +1476,7 @@ const elements = {
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
-  fullscreenButton: document.querySelector("#fullscreenButton"),
+  workspaceCloseButton: document.querySelector("#workspaceCloseButton"),
   fontDefaultInput: document.querySelector("#fontDefaultInput"),
   fontDecreaseButton: document.querySelector("#fontDecreaseButton"),
   fontPanelButton: document.querySelector("#fontPanelButton"),
@@ -1597,7 +1497,6 @@ let currentTitle = "Schaubild";
 let pendingExport = null;
 let preparedDownloadUrl = null;
 let editorReady = false;
-let editorFocusActive = false;
 let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
@@ -2099,29 +1998,13 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.hidden = false;
 }
 
-function setEditorFocus(active) {
-  editorFocusActive = Boolean(active);
-  document.body.classList.toggle("editor-focus", editorFocusActive);
-  elements.fullscreenButton.setAttribute("aria-pressed", String(editorFocusActive));
-  elements.fullscreenButton.setAttribute(
-    "aria-label",
-    editorFocusActive ? "Vollbildmodus beenden" : "Vollbildmodus aktivieren",
-  );
-  elements.fullscreenButton.textContent = editorFocusActive ? "Beenden" : "Vollbild";
-  elements.fullscreenButton.title = editorFocusActive
-    ? "Vollbildmodus beenden"
-    : "Vollbildmodus für die Bearbeitung";
-}
-
-function toggleEditorFullscreen() {
-  const active = !editorFocusActive;
-  setEditorFocus(active);
-  setStatus(active ? "Vollbildmodus aktiv" : "Vollbildmodus beendet");
+function setWorkspaceActive(active) {
+  document.body.classList.toggle("workspace-active", Boolean(active));
 }
 
 function showStart() {
   invalidateLoadIntents();
-  setEditorFocus(false);
+  setWorkspaceActive(false);
   if (elements.contentDialog?.open) {
     elements.contentDialog.close();
   }
@@ -2146,11 +2029,9 @@ function showStart() {
 }
 
 function showWorkspace() {
-  const enteringWorkspace = elements.workspace.hidden;
-  if (enteringWorkspace) setEditorFocus(true);
   elements.startView.hidden = true;
   elements.workspace.hidden = false;
-  elements.title.textContent = currentTitle;
+  setWorkspaceActive(true);
 }
 
 function prepareInput(raw, title = "Schaubild") {
@@ -2389,7 +2270,6 @@ async function launchNative(load, options = {}) {
     renderedRepresentation = currentRepresentation ? cloneJson(currentRepresentation) : null;
     if (options.syncRepresentationTitle && currentRepresentation?.title) {
       currentTitle = safeFilename(currentRepresentation.title);
-      elements.title.textContent = currentTitle;
     }
     let nativeDraftSaved = null;
     if (currentRepresentation) {
@@ -2636,7 +2516,7 @@ async function launchNative(load, options = {}) {
         }
       }
       currentLegacyXml = null;
-      setEditorFocus(false);
+      setWorkspaceActive(false);
       elements.workspace.hidden = true;
       elements.startView.hidden = false;
       if (fallbackXml) {
@@ -3175,7 +3055,7 @@ elements.fontAllButton.addEventListener("click", () => {
 elements.downloadLink.addEventListener("click", () => {
   if (preparedDownloadUrl !== null) setStatus("Speichern gestartet");
 });
-elements.fullscreenButton.addEventListener("click", toggleEditorFullscreen);
+elements.workspaceCloseButton.addEventListener("click", showStart);
 
 elements.layoutButton.addEventListener("click", () => {
   if (!editorReady) return;
@@ -3185,7 +3065,6 @@ elements.layoutButton.addEventListener("click", () => {
 document.querySelectorAll("[data-export]").forEach((button) => {
   button.addEventListener("click", () => exportDiagram(button.dataset.export));
 });
-elements.backButton.addEventListener("click", showStart);
 elements.homeLink.addEventListener("click", (event) => { event.preventDefault(); showStart(); });
 
 elements.startView.addEventListener("dragover", (event) => { event.preventDefault(); });
