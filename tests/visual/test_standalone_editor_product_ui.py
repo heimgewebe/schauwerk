@@ -46,6 +46,7 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "body.workspace-active .topline {" in styles_css
     assert "body.workspace-active .topline { display: none; }" not in styles_css
     assert "body.workspace-active .status {" in styles_css
+    assert "--workspace-dock-height: 0px;" in styles_css
     assert "body.workspace-active.engine-legacy .editor-stage {" in styles_css
     assert "body.workspace-active.engine-legacy .font-controls," in styles_css
     assert "body.editor-focus" not in styles_css
@@ -66,6 +67,9 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert "setWorkspaceActive(true);" in app_js
     assert 'elements.workspaceCloseButton.addEventListener("click", showStart);' in app_js
     assert "toggleEditorFullscreen" not in app_js
+    assert "function syncWorkspaceDockHeight()" in app_js
+    assert 'document.body.style.setProperty("--workspace-dock-height"' in app_js
+    assert 'new ResizeObserver(() => queueWorkspaceDockHeightSync())' in app_js
 
     mobile_css = styles_css[
         styles_css.index("@media (max-width: 760px)") : styles_css.index(
@@ -82,5 +86,12 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert ".workspace-tools,\n  .workspace-output { gap: 4px; }" in mobile_css
     assert "body.workspace-active .topline," in mobile_css
     assert "body.workspace-active.engine-legacy .topline {" in mobile_css
-    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" in mobile_css
+    assert (
+        "--workspace-dock-bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));"
+        in mobile_css
+    )
+    assert "var(--workspace-dock-height)" in mobile_css
+    assert "var(--workspace-overlay-gap)" in mobile_css
+    assert "bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));" not in mobile_css
+    assert "body.workspace-active.engine-legacy .editor-stage {" in mobile_css
     assert "max-width: min(78vw, 520px);" in mobile_css

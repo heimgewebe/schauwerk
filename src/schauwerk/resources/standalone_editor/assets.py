@@ -471,7 +471,7 @@ h1 {
   position: absolute;
   z-index: 20;
   right: max(10px, env(safe-area-inset-right));
-  bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  bottom: var(--workspace-dock-bottom, max(44px, calc(env(safe-area-inset-bottom) + 36px)));
   max-width: min(880px, calc(100vw - 20px));
   min-height: 0;
   padding: 6px;
@@ -661,7 +661,12 @@ h1 {
 }
 .editor-wrap iframe { width: 100%; height: 100%; min-height: 0; display: block; border: 0; background: #fff; }
 
-body.workspace-active { overflow: hidden; }
+body.workspace-active {
+  overflow: hidden;
+  --workspace-dock-height: 0px;
+  --workspace-dock-bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  --workspace-overlay-gap: 8px;
+}
 body.workspace-active .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
 body.workspace-active .topline {
   position: fixed;
@@ -692,9 +697,12 @@ body.workspace-active.engine-legacy .editor-stage {
   padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));
   padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));
 }
+body.workspace-active.engine-legacy {
+  --workspace-dock-bottom: max(8px, env(safe-area-inset-bottom));
+}
 body.workspace-active.engine-legacy .workspace-bar,
 body.workspace-active.engine-legacy .topline {
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: var(--workspace-dock-bottom);
 }
 
 @media (max-width: 1180px) {
@@ -721,11 +729,21 @@ body.workspace-active.engine-legacy .topline {
   .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
   .brand-copy small { display: none; }
   .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
+  body.workspace-active {
+    --workspace-dock-bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));
+  }
+  body.workspace-active.engine-legacy {
+    --workspace-dock-bottom: max(8px, env(safe-area-inset-bottom));
+  }
   body.workspace-active .topline,
   body.workspace-active.engine-legacy .topline {
     min-height: 0;
     padding: 0;
-    bottom: max(104px, calc(env(safe-area-inset-bottom) + 96px));
+    bottom: calc(
+      var(--workspace-dock-bottom)
+      + var(--workspace-dock-height)
+      + var(--workspace-overlay-gap)
+    );
   }
   body.workspace-active .status {
     max-width: min(78vw, 520px);
@@ -751,7 +769,7 @@ body.workspace-active.engine-legacy .topline {
   .workspace-bar {
     left: max(8px, env(safe-area-inset-left));
     right: max(8px, env(safe-area-inset-right));
-    bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));
+    bottom: var(--workspace-dock-bottom);
     max-width: none;
     gap: 4px;
   }
@@ -761,6 +779,13 @@ body.workspace-active.engine-legacy .topline {
   .workspace-output { gap: 4px; }
   .workspace-bar .button.compact,
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
+  body.workspace-active.engine-legacy .editor-stage {
+    padding-bottom: calc(
+      var(--workspace-dock-bottom)
+      + var(--workspace-dock-height)
+      + var(--workspace-overlay-gap)
+    );
+  }
 
 }
 
@@ -1496,6 +1521,7 @@ const PRODUCT_DEFAULT_EDGE_FONT_SIZE = 22;
 const elements = {
   startView: document.querySelector("#startView"),
   workspace: document.querySelector("#workspace"),
+  workspaceBar: document.querySelector(".workspace-bar"),
   sourceInput: document.querySelector("#sourceInput"),
   openPasteButton: document.querySelector("#openPasteButton"),
   fileButton: document.querySelector("#fileButton"),
@@ -1558,6 +1584,19 @@ function invalidateLoadIntents() {
 }
 
 function setStatus(message) { elements.status.textContent = message; }
+function syncWorkspaceDockHeight() {
+  if (!(elements.workspaceBar instanceof HTMLElement)) return;
+  const height = Math.ceil(elements.workspaceBar.getBoundingClientRect().height);
+  if (!Number.isFinite(height) || height < 0) return;
+  document.body.style.setProperty("--workspace-dock-height", String(height) + "px");
+}
+function queueWorkspaceDockHeightSync() {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(syncWorkspaceDockHeight);
+  } else {
+    syncWorkspaceDockHeight();
+  }
+}
 function setError(message) {
   elements.error.textContent = message || "";
   elements.error.hidden = !message;
@@ -1611,6 +1650,7 @@ function setEngineMode(mode) {
     elements.projectButton.textContent = "Projekt";
     elements.projectButton.title = "Bearbeitbares draw.io-Projekt speichern";
   }
+  queueWorkspaceDockHeightSync();
 }
 
 function safeFilename(value) {
@@ -2031,6 +2071,7 @@ function clearPreparedDownload() {
   elements.downloadLink.removeAttribute("href");
   elements.downloadLink.removeAttribute("download");
   elements.downloadLink.textContent = "Datei speichern";
+  queueWorkspaceDockHeightSync();
 }
 
 function prepareDownload(blob, filename, label) {
@@ -2040,10 +2081,12 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.download = filename;
   elements.downloadLink.textContent = `${label} speichern`;
   elements.downloadLink.hidden = false;
+  queueWorkspaceDockHeightSync();
 }
 
 function setWorkspaceActive(active) {
   document.body.classList.toggle("workspace-active", Boolean(active));
+  if (active) queueWorkspaceDockHeightSync();
 }
 
 function showStart() {
@@ -3124,6 +3167,15 @@ elements.sourceInput.addEventListener("keydown", (event) => {
 
 preferredNodeFontSize = readFontPreference();
 elements.fontDefaultInput.value = String(preferredNodeFontSize);
+
+const workspaceDockResizeObserver = typeof ResizeObserver === "function"
+  ? new ResizeObserver(() => queueWorkspaceDockHeightSync())
+  : null;
+if (elements.workspaceBar instanceof HTMLElement) {
+  workspaceDockResizeObserver?.observe(elements.workspaceBar);
+  window.addEventListener("resize", queueWorkspaceDockHeightSync);
+  queueWorkspaceDockHeightSync();
+}
 
 const initialQuery = new URLSearchParams(window.location.search);
 if (initialQuery.get("new") === "1") {
