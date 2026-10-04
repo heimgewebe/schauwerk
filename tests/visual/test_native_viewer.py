@@ -366,7 +366,9 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         'if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;'
         in app
     )
-    assert "const documentEditorHosted = documentMode && window.parent !== window;" in app
+    assert "const embeddedNativeViewer = window.parent !== window;" in app
+    assert "const documentEditorHosted = documentMode && embeddedNativeViewer;" in app
+    assert 'classList.toggle("embedded-native-viewer", embeddedNativeViewer)' in app
     assert "if (documentEditorHosted)" in app
     assert "Bearbeiten in Schaubild" in app
     assert "else if (persistOverrides())" in app

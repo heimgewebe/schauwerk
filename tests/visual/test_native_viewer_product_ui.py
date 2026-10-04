@@ -50,8 +50,11 @@ def test_native_viewer_uses_product_language_and_wrapping_toolbar(tmp_path: Path
     assert ".controls { overflow-x: auto;" not in css
     assert "flex-wrap: wrap;" in css
     assert "button:disabled {" in css
+    assert ".embedded-native-viewer .viewer-bar {" in css
     assert ".document-editor-hosted .viewer-bar {" in css
     assert "padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));" in css
+    assert "const embeddedNativeViewer = window.parent !== window;" in app
+    assert 'document.body.classList.toggle("embedded-native-viewer", embeddedNativeViewer);' in app
     assert 'document.body.classList.toggle("document-editor-hosted", documentEditorHosted);' in app
     assert "function updateDocumentToolbarState()" in app
     assert '"Ansicht angepasst"' in app

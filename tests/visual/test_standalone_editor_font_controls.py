@@ -5,13 +5,14 @@ from pathlib import Path
 from schauwerk.visual.standalone_editor import build_standalone_editor
 
 
-def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
+def test_focus_mode_maximizes_workspace_without_covering_legacy_toolbar(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "editor"
     build_standalone_editor(output)
     index_html = (output / "index.html").read_text(encoding="utf-8")
     styles_css = (output / "styles.css").read_text(encoding="utf-8")
+    app_js = (output / "app.js").read_text(encoding="utf-8")
 
     hide_selector = (
         "body.editor-focus .workspace-bar > :not(.font-controls):not(.workspace-output)"
@@ -36,7 +37,7 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
         styles_css.index(f"{show_selector} {{")
         : styles_css.index("body.editor-focus .font-controls .button")
     ]
-    assert "display: inline-flex;" in focus_controls
+    assert "display: none;" in focus_controls
     assert "pointer-events: auto;" in focus_controls
     focus_stage_selector = "body.editor-focus .editor-stage"
     focus_stage = styles_css[
@@ -44,6 +45,18 @@ def test_font_controls_remain_reachable_in_focus_and_narrow_layouts(
         : styles_css.index("body.editor-focus .editor-wrap {")
     ]
     assert "padding: 0;" in focus_stage
+    legacy_stage_selector = "body.editor-focus.engine-legacy .editor-stage"
+    assert f"{legacy_stage_selector} {{" in styles_css
+    legacy_stage = styles_css[
+        styles_css.index(f"{legacy_stage_selector} {{")
+        : styles_css.index("body.editor-focus .editor-wrap {")
+    ]
+    assert (
+        "padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));"
+        in legacy_stage
+    )
+    assert 'document.body.classList.toggle("engine-native", native);' in app_js
+    assert 'document.body.classList.toggle("engine-legacy", !native);' in app_js
     dark_override = (
         f"{show_selector} {{ background: rgba(24, 34, 52, 0.94); }}"
     )

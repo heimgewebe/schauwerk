@@ -681,7 +681,7 @@ body.editor-focus .workspace-output {
 }
 body.editor-focus .workspace-output > :not(.fullscreen-toggle) { display: none; }
 body.editor-focus .workspace-bar > .font-controls {
-  display: inline-flex;
+  display: none;
   padding: 3px;
   border: 1px solid rgba(133, 150, 180, 0.55);
   border-radius: 11px;
@@ -720,6 +720,9 @@ body.editor-focus .editor-stage {
   min-height: 0;
   height: auto;
   padding: 0;
+}
+body.editor-focus.engine-legacy .editor-stage {
+  padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));
 }
 body.editor-focus .editor-wrap { min-height: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
 body.editor-focus .editor-wrap iframe { min-height: 0; height: 100%; }
@@ -1620,6 +1623,8 @@ function setError(message) {
 function setEngineMode(mode) {
   activeEngine = mode === "native" ? "native" : "legacy";
   const native = activeEngine === "native";
+  document.body.classList.toggle("engine-native", native);
+  document.body.classList.toggle("engine-legacy", !native);
   elements.legacyEditButton.hidden = !(native && Boolean(currentLegacyXml));
   elements.contentEditButton.hidden = !(native && Boolean(currentRepresentation));
   if (
