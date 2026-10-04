@@ -192,6 +192,37 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'id="legacyEditButton"' in index_html
     assert 'id="legacyFallbackButton"' in index_html
     assert 'id="nativeRetryButton"' in index_html
+    assert 'id="contentEditButton"' in index_html
+    assert 'id="contentDialog"' in index_html
+    assert '<form id="contentForm">' in index_html
+    assert 'id="contentCloseButton" value="cancel" type="button"' in index_html
+    assert 'id="contentCancelButton" value="cancel" type="button"' in index_html
+    assert 'id="contentSaveButton" type="submit"' in index_html
+    assert 'contentForm: document.querySelector("#contentForm")' in app_js
+    assert 'elements.contentForm.addEventListener("submit", (event) => {' in app_js
+    assert "event.preventDefault();" in app_js
+    assert 'elements.contentSaveButton.addEventListener("click"' not in app_js
+    assert 'elements.contentDialog.close("cancel")' in app_js
+    assert "recoveryFallbackRepresentation: draft.validRepresentation" in app_js
+    assert "recoveryFallbackTitle: draft.validTitle" in app_js
+    assert "recoveryLayoutInputDigest: draft.validInputDigest" in app_js
+    assert "function representationFromContentEditor()" in app_js
+    assert "delete edited.input_digest;" in app_js
+    assert "Bereit · Inhalt und Ansicht bearbeitbar" in app_js
+    assert "{ preserveActiveFrame: true, syncRepresentationTitle: true }" in app_js
+    assert "if (options.syncRepresentationTitle && currentRepresentation?.title)" in app_js
+    title_sync = app_js.index(
+        "if (options.syncRepresentationTitle && currentRepresentation?.title)"
+    )
+    representation_draft_save = app_js.index(
+        "nativeDraftSaved = saveNativeDraft(currentRepresentation)",
+        title_sync,
+    )
+    assert title_sync < representation_draft_save
+    assert "currentTitle = safeFilename(currentRepresentation.title);" in app_js
+    assert "elements.title.textContent = currentTitle;" in app_js
+    assert "const syncRepresentationTitle = Boolean(" in app_js
+    assert "{ preserveActiveFrame: true, syncRepresentationTitle }" in app_js
     assert "function replaceEditorFrame()" in app_js
     assert "const frame = previous.cloneNode(false);" in app_js
     assert "frame.inert = false;" in app_js
@@ -202,6 +233,14 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "let nativeLaunchTail = Promise.resolve();" in app_js
     assert 'let nativeSupersedeToken = "";' in app_js
     assert "let nativeCanvasRenderStale = false;" in app_js
+    assert "let renderedRepresentation = null;" in app_js
+    assert 'let currentNativeInputDigest = "";' in app_js
+    assert "function migrateRepresentationLayoutOverrides(" in app_js
+    assert "const activeRenderedRepresentation = renderedRepresentation;" in app_js
+    assert "const activeNativeInputDigest = currentNativeInputDigest;" in app_js
+    assert "validRepresentation: activeRenderedRepresentation" in app_js
+    assert "validTitle: activeRenderedRepresentation.title || currentTitle" in app_js
+    assert "syncRepresentationTitle: true," in app_js
     assert "let pendingInitialCollisionSafeLayout = false;" in app_js
     assert "function invalidateLoadIntents()" in app_js
     assert "const loadIntent = invalidateLoadIntents();" in app_js
@@ -225,7 +264,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "frame.inert = true;" in native_source
     assert "currentNativeUrl = activeNativeUrl;" in native_source
     assert "Bestehende Ansicht bleibt sichtbar und gesperrt" in native_source
-    assert "async function retryNativeCanvasRender()" in native_source
+    assert "async function retryNativeRender()" in native_source
     assert "elements.nativeRetryButton.hidden = false;" in native_source
     assert "{ preserveActiveFrame: true }" in app_js
     assert "const previousLaunch = nativeLaunchTail;" in native_source
@@ -253,7 +292,9 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     export_end = app_js.index("function exportDiagram(format)", export_start)
     export_source = app_js[export_start:export_end]
     canvas_export = export_source.index('if (format === "drawio")')
-    stale_svg_guard = export_source.index("if (currentNativeCanvas && nativeCanvasRenderStale)")
+    stale_svg_guard = export_source.index(
+        "if ((currentNativeCanvas || currentRepresentation) && nativeCanvasRenderStale)"
+    )
     live_svg = export_source.index("serializeNativeFrameSvg({")
     digest_policy = export_source.index("stripInputDigest: currentNativeCanvas", live_svg)
     asset_fallback = export_source.index("const assetUrl =", live_svg)
@@ -506,6 +547,644 @@ if (statusText !== "SVG bereit") throw new Error("server SVG fallback status dri
     )
 
 
+
+
+def test_representation_content_editor_updates_text_without_changing_structure(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    editor_start = app_js.index("function cloneJson(")
+    editor_end = app_js.index("function openRepresentationContentEditor", editor_start)
+    editor_source = app_js[editor_start:editor_end]
+
+    script = r"""
+let currentRepresentation = {
+  schema_version: "schauwerk-representation-input.v1",
+  id: "editable",
+  title: "Original",
+  purpose: "Original purpose",
+  intent: "architecture",
+  groups: [{id: "g", label: "Original group"}],
+  nodes: [
+    {id: "a", label: "A", kind: "system", group: "g", summary: "Old summary"},
+    {id: "b", label: "B", kind: "service", group: null, summary: ""},
+  ],
+  edges: [
+    {id: "ab", from: "a", to: "b", label: "old edge", kind: "flow"},
+  ],
+  requirements: {
+    formal_relations: true,
+    free_spatial_layout: false,
+    portable_offline: false,
+    presentation: false,
+  },
+  requested_formats: ["canvas"],
+  input_digest: "a".repeat(64),
+};
+const original = JSON.parse(JSON.stringify(currentRepresentation));
+const controls = [
+  {value: "Edited title", dataset: {contentKind: "title"}},
+  {value: "Edited purpose", dataset: {contentKind: "purpose"}},
+  {value: "Edited group", dataset: {contentKind: "group-label", contentIndex: "0"}},
+  {value: "Edited A", dataset: {contentKind: "node-label", contentIndex: "0"}},
+  {value: "Edited summary", dataset: {contentKind: "node-summary", contentIndex: "0"}},
+  {value: "Edited relation", dataset: {contentKind: "edge-label", contentIndex: "0"}},
+];
+const elements = {
+  contentFields: {
+    querySelectorAll(selector) {
+      if (selector !== "[data-content-kind]") throw new Error("selector drifted");
+      return controls;
+    },
+  },
+};
+""" + editor_source + r"""
+const edited = representationFromContentEditor();
+if (!edited) throw new Error("edited representation was not produced");
+if (edited.input_digest !== undefined) throw new Error("stale input digest survived edit");
+if (
+  edited.title !== "Edited title"
+  || edited.purpose !== "Edited purpose"
+  || edited.groups[0].label !== "Edited group"
+  || edited.nodes[0].label !== "Edited A"
+  || edited.nodes[0].summary !== "Edited summary"
+  || edited.edges[0].label !== "Edited relation"
+) {
+  throw new Error("content changes were not projected into the representation");
+}
+if (
+  edited.id !== original.id
+  || edited.intent !== original.intent
+  || edited.nodes[0].id !== original.nodes[0].id
+  || edited.nodes[0].kind !== original.nodes[0].kind
+  || edited.nodes[0].group !== original.nodes[0].group
+  || edited.edges[0].from !== original.edges[0].from
+  || edited.edges[0].to !== original.edges[0].to
+  || edited.edges[0].kind !== original.edges[0].kind
+  || edited.requirements.formal_relations !== true
+) {
+  throw new Error("structural representation fields changed");
+}
+if (currentRepresentation.title !== "Original" || currentRepresentation.nodes[0].label !== "A") {
+  throw new Error("content editing mutated the active source in place");
+}
+console.log(JSON.stringify(edited));
+"""
+    completed = subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    edited = json.loads(completed.stdout)
+    normalized = _native_product_input(edited)
+    assert normalized["title"] == "Edited title"
+    assert normalized["groups"][0]["label"] == "Edited group"
+    assert normalized["nodes"][0]["label"] == "Edited A"
+    assert normalized["nodes"][0]["summary"] == "Edited summary"
+    assert normalized["edges"][0]["label"] == "Edited relation"
+    assert re.fullmatch(r"[0-9a-f]{64}", normalized["input_digest"])
+
+
+
+
+def test_representation_content_save_feedback_and_persistence_gate(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    index_html = (output / "index.html").read_text(encoding="utf-8")
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="contentDialogFeedback" role="alert"' in index_html
+    assert 'contentDialogFeedback: document.querySelector("#contentDialogFeedback")' in app_js
+    assert "control.required = Boolean(required);" in app_js
+    for required_kind in ("title", "purpose", "group-label", "node-label", "edge-label"):
+        needle = f'kind: "{required_kind}",'
+        start = app_js.index(needle)
+        assert "required: true" in app_js[start : start + 220]
+    node_summary_start = app_js.index('kind: "node-summary",')
+    assert "required: true" not in app_js[node_summary_start : node_summary_start + 220]
+    assert 'elements.contentDialog.addEventListener("cancel", (event) => {' in app_js
+    assert "if (!elements.contentSaveButton.disabled) return;" in app_js
+    assert "event.preventDefault();" in app_js
+
+    save_start = app_js.index("async function saveRepresentationContentEditor()")
+    save_end = app_js.index("function parseFontSize(", save_start)
+    save_source = app_js[save_start:save_end]
+
+    script = r"""
+let currentRepresentation = {title: "Original"};
+let editorReady = true;
+let nativeCanvasRenderStale = false;
+const edited = {title: "Edited"};
+let launchOutcome = null;
+let closeCount = 0;
+const feedback = {hidden: true, textContent: ""};
+const elements = {
+  contentSaveButton: {disabled: false},
+  contentCloseButton: {disabled: false},
+  contentCancelButton: {disabled: false},
+  contentFields: {inert: false},
+  contentDialog: {
+    close() { closeCount += 1; },
+  },
+  contentDialogFeedback: feedback,
+};
+function representationFromContentEditor() { return edited; }
+function setError() {}
+function setContentDialogFeedback(message) {
+  const text = String(message || "");
+  feedback.textContent = text;
+  feedback.hidden = !text;
+}
+async function launchNative() {
+  if (!elements.contentFields.inert) {
+    throw new Error("content fields remained editable while save was in flight");
+  }
+  if (launchOutcome?.ok) currentRepresentation = edited;
+  else currentRepresentation = {title: "Original"};
+  return launchOutcome;
+}
+""" + save_source + r"""
+launchOutcome = {
+  ok: false,
+  draftSaved: null,
+  errorMessage: "nodes[0].label must not be empty",
+};
+await saveRepresentationContentEditor();
+if (closeCount !== 0) throw new Error("server rejection closed the content dialog");
+if (feedback.hidden || !feedback.textContent.includes("nodes[0].label must not be empty")) {
+  throw new Error("server rejection was not exposed inside the dialog");
+}
+if (elements.contentSaveButton.disabled) throw new Error("save control remained disabled after rejection");
+if (elements.contentFields.inert) throw new Error("content fields remained inert after rejection");
+
+launchOutcome = {
+  ok: true,
+  draftSaved: false,
+  errorMessage: "Änderung ist aktiv, konnte aber nicht lokal gespeichert werden.",
+};
+await saveRepresentationContentEditor();
+if (closeCount !== 0) throw new Error("memory-only content edit closed the content dialog");
+if (feedback.hidden || !feedback.textContent.includes("nicht lokal gespeichert")) {
+  throw new Error("local persistence failure was not exposed inside the dialog");
+}
+
+launchOutcome = {ok: true, draftSaved: true, errorMessage: ""};
+await saveRepresentationContentEditor();
+if (closeCount !== 1) throw new Error("fully persisted content edit did not close the dialog");
+if (!feedback.hidden || feedback.textContent !== "") {
+  throw new Error("successful content edit left stale dialog feedback");
+}
+if (elements.contentFields.inert) {
+  throw new Error("content fields remained inert after successful save");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    cancel_start = app_js.index('elements.contentDialog.addEventListener("cancel", (event) => {')
+    cancel_end = app_js.index(
+        'for (const control of [elements.contentCloseButton, elements.contentCancelButton])',
+        cancel_start,
+    )
+    cancel_source = app_js[cancel_start:cancel_end]
+    cancel_script = r"""
+let cancelHandler = null;
+let feedbackText = "";
+const elements = {
+  contentSaveButton: {disabled: true},
+  contentDialog: {
+    addEventListener(type, handler) {
+      if (type !== "cancel") throw new Error("unexpected dialog event");
+      cancelHandler = handler;
+    },
+  },
+};
+function setContentDialogFeedback(message) { feedbackText = String(message || ""); }
+""" + cancel_source + r"""
+if (typeof cancelHandler !== "function") throw new Error("cancel handler was not registered");
+let prevented = 0;
+cancelHandler({preventDefault() { prevented += 1; }});
+if (prevented !== 1 || !feedbackText.includes("gespeichert")) {
+  throw new Error("Escape was not blocked while content save was in flight");
+}
+elements.contentSaveButton.disabled = false;
+cancelHandler({preventDefault() { prevented += 1; }});
+if (prevented !== 1) throw new Error("Escape remained blocked after content save finished");
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", cancel_script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
+def test_representation_content_edit_preserves_layout_and_recovers_valid_source(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app_js = (output / "app.js").read_text(encoding="utf-8")
+    support_start = app_js.index("function cloneJson(")
+    support_end = app_js.index("function contentEntry(", support_start)
+    support_source = app_js[support_start:support_end]
+    draft_start = app_js.index("function saveNativeDraft(")
+    draft_end = app_js.index("function saveNativeCanvasDraft(", draft_start)
+    draft_source = app_js[draft_start:draft_end]
+    native_start = app_js.index("function nativeTokenFromUrl")
+    native_end = app_js.index("function loadPendingIntoEditor()", native_start)
+    native_source = app_js[native_start:native_end]
+
+    script = r"""
+const PUBLIC_BASE_PATH = "";
+const NATIVE_API_PATH = "/api/native-viewer";
+const NATIVE_DRAFT_KEY = "native";
+let loadIntentGeneration = 0;
+let nativeLaunchTail = Promise.resolve();
+let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+let nativeCanvasRenderStale = false;
+let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
+function nativeCanvasSnapshot(canvas) {
+  return canvas ? JSON.stringify(canvas) : null;
+}
+let pendingExport = null;
+let pendingLoad = null;
+let pendingInitialCollisionSafeLayout = false;
+let pendingCreationDefaults = false;
+let currentXml = null;
+let currentRepresentation = null;
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
+let currentLegacyXml = null;
+let pendingLegacyFallback = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let editorReady = true;
+let currentTitle = "Original";
+let statusText = "";
+let errorText = "";
+const store = new Map();
+globalThis.localStorage = {
+  getItem(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
+  setItem(key, value) { store.set(String(key), String(value)); },
+  removeItem(key) { store.delete(String(key)); },
+};
+function safeFilename(value) {
+  const text = String(value || "Schaubild").trim();
+  return text || "Schaubild";
+}
+function invalidateLoadIntents() {
+  loadIntentGeneration += 1;
+  return loadIntentGeneration;
+}
+function clearPreparedDownload() {}
+function setEngineMode() {}
+function setStatus(value) { statusText = String(value); }
+function setError(value) { errorText = String(value); }
+function showWorkspace() {}
+function frame() {
+  return {inert: false, src: "", blur() { this.blurred = true; }};
+}
+const elements = {
+  frame: frame(),
+  legacyFallbackButton: {hidden: true},
+  nativeRetryButton: {hidden: true},
+  restoreButton: {hidden: true},
+  title: {textContent: "Original"},
+};
+function replaceEditorFrame() {
+  const next = frame();
+  elements.frame = next;
+  return next;
+}
+function saveNativeCanvasDraft() { return true; }
+function saveDraft() { return true; }
+""" + support_source + draft_source + native_source + r"""
+const oldDigest = "a".repeat(64);
+const newDigest = "b".repeat(64);
+const oldToken = "a".repeat(32);
+const newToken = "b".repeat(32);
+const valid = {
+  schema_version: "schauwerk-representation-input.v1",
+  title: "Original",
+  nodes: [{id: "n", label: "Old", kind: "system"}],
+  edges: [],
+};
+const edited = {
+  schema_version: "schauwerk-representation-input.v1",
+  title: "Edited",
+  nodes: [{id: "n", label: "New", kind: "system"}],
+  edges: [],
+};
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+store.set(
+  nativeLayoutStorageKey(oldDigest),
+  JSON.stringify({n: {x: 25, y: -15}}),
+);
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + newToken + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: newDigest,
+    };
+  },
+});
+await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+const migrated = JSON.parse(store.get(nativeLayoutStorageKey(newDigest)) || "{}");
+if (migrated?.n?.x !== 25 || migrated?.n?.y !== -15) {
+  throw new Error("representation text edit did not migrate saved layout overrides");
+}
+if (currentNativeInputDigest !== newDigest) {
+  throw new Error("successful representation edit did not advance native input digest");
+}
+if (renderedRepresentation?.title !== "Edited" || currentTitle !== "Edited") {
+  throw new Error("successful representation edit did not commit semantic title state");
+}
+
+// Resetting positions removes the active source key. Returning to a previously
+// rendered semantic digest must carry that absence by clearing stale overrides.
+store.delete(nativeLayoutStorageKey(newDigest));
+if (!migrateRepresentationLayoutOverrides(newDigest, oldDigest)) {
+  throw new Error("empty layout migration reported failure");
+}
+if (store.has(nativeLayoutStorageKey(oldDigest))) {
+  throw new Error("empty source layout did not clear stale target-digest overrides");
+}
+store.set(
+  nativeLayoutStorageKey(oldDigest),
+  JSON.stringify({n: {x: 25, y: -15}}),
+);
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+let fetchStep = 0;
+globalThis.fetch = async () => {
+  fetchStep += 1;
+  if (fetchStep === 1) throw new Error("offline");
+  return {
+    ok: false,
+    status: 422,
+    async json() { return {error: "synthetic invalid candidate"}; },
+  };
+};
+await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+const transientDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  transientDraft.title !== "Edited"
+  || transientDraft.representation?.title !== "Edited"
+) {
+  throw new Error("transient representation draft did not preserve edited title");
+}
+if (
+  transientDraft.validTitle !== "Original"
+  || transientDraft.validRepresentation?.title !== "Original"
+  || transientDraft.validRepresentation?.nodes?.[0]?.label !== "Old"
+  || transientDraft.validInputDigest !== oldDigest
+) {
+  throw new Error("transient representation draft did not retain the last valid source and digest");
+}
+if (renderedRepresentation?.title !== "Original" || currentNativeInputDigest !== oldDigest) {
+  throw new Error("transient failure replaced the last valid representation binding");
+}
+if (elements.nativeRetryButton.hidden) {
+  throw new Error("transient representation failure did not expose retry");
+}
+await retryNativeRender();
+if (fetchStep !== 2) throw new Error("representation retry did not execute exactly once");
+if (
+  currentRepresentation?.title !== "Original"
+  || renderedRepresentation?.title !== "Original"
+  || currentNativeInputDigest !== oldDigest
+) {
+  throw new Error("permanent retry rejection did not restore the last valid representation");
+}
+const restoredDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  restoredDraft.title !== "Original"
+  || restoredDraft.representation?.title !== "Original"
+) {
+  throw new Error("permanent retry rejection left the rejected candidate in local recovery draft");
+}
+if (!errorText.includes("abgelehnte Änderung wurde verworfen")) {
+  throw new Error("permanent representation rejection did not report rollback");
+}
+if (!statusText.includes("letzter gültiger Dokumentzustand wiederhergestellt")) {
+  throw new Error("permanent representation rejection did not report valid-state restoration");
+}
+
+store.set(NATIVE_DRAFT_KEY, JSON.stringify(transientDraft));
+currentRepresentation = null;
+renderedRepresentation = null;
+currentNativeInputDigest = "";
+currentNativeUrl = null;
+currentTitle = "Edited";
+editorReady = false;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = "";
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+const reloadDigest = "d".repeat(64);
+const reloadToken = "d".repeat(32);
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + reloadToken + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: reloadDigest,
+    };
+  },
+});
+await launchNative(
+  {nativeRepresentation: cloneJson(transientDraft.representation)},
+  {
+    syncRepresentationTitle: true,
+    recoveryFallbackRepresentation: transientDraft.validRepresentation,
+    recoveryFallbackTitle: transientDraft.validTitle,
+    recoveryLayoutInputDigest: transientDraft.validInputDigest,
+  },
+);
+const reloadMigrated = JSON.parse(store.get(nativeLayoutStorageKey(reloadDigest)) || "{}");
+if (reloadMigrated?.n?.x !== 25 || reloadMigrated?.n?.y !== -15) {
+  throw new Error("successful recovery-draft reload did not migrate saved layout overrides");
+}
+if (currentNativeInputDigest !== reloadDigest) {
+  throw new Error("successful recovery-draft reload did not advance the native input digest");
+}
+
+store.set(NATIVE_DRAFT_KEY, JSON.stringify(transientDraft));
+currentRepresentation = null;
+renderedRepresentation = null;
+currentNativeInputDigest = "";
+currentNativeUrl = null;
+currentTitle = "Edited";
+editorReady = false;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = "";
+elements.frame = frame();
+elements.nativeRetryButton.hidden = true;
+let restoreFetchStep = 0;
+globalThis.fetch = async () => {
+  restoreFetchStep += 1;
+  if (restoreFetchStep === 1) {
+    return {
+      ok: false,
+      status: 422,
+      async json() { return {error: "synthetic invalid restored candidate"}; },
+    };
+  }
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        url: "/native/" + oldToken + "/index.html",
+        renderer: "schauwerk-native-diagram-v1",
+        input_digest: oldDigest,
+      };
+    },
+  };
+};
+await launchNative(
+  {nativeRepresentation: cloneJson(transientDraft.representation)},
+  {
+    syncRepresentationTitle: true,
+    recoveryFallbackRepresentation: transientDraft.validRepresentation,
+    recoveryFallbackTitle: transientDraft.validTitle,
+  },
+);
+if (restoreFetchStep !== 2) {
+  throw new Error("rejected restored recovery candidate did not fall back exactly once");
+}
+if (
+  currentRepresentation?.title !== "Original"
+  || renderedRepresentation?.title !== "Original"
+  || currentTitle !== "Original"
+  || currentNativeInputDigest !== oldDigest
+) {
+  throw new Error("reload recovery did not restore the last valid representation");
+}
+const reloadRecoveredDraft = JSON.parse(store.get(NATIVE_DRAFT_KEY) || "{}");
+if (
+  reloadRecoveredDraft.title !== "Original"
+  || reloadRecoveredDraft.representation?.title !== "Original"
+  || reloadRecoveredDraft.validRepresentation !== undefined
+) {
+  throw new Error("reload recovery did not replace the invalid candidate draft with the valid source");
+}
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+const originalSetItem = globalThis.localStorage.setItem;
+globalThis.localStorage.setItem = () => { throw new Error("synthetic quota"); };
+globalThis.fetch = async () => ({
+  ok: true,
+  status: 200,
+  async json() {
+    return {
+      url: "/native/" + "e".repeat(32) + "/index.html",
+      renderer: "schauwerk-native-diagram-v1",
+      input_digest: "e".repeat(64),
+    };
+  },
+});
+const memoryOnlyOutcome = await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+globalThis.localStorage.setItem = originalSetItem;
+if (
+  memoryOnlyOutcome?.ok !== true
+  || memoryOnlyOutcome?.draftSaved !== false
+  || !memoryOnlyOutcome?.errorMessage?.includes("nicht lokal gespeichert")
+) {
+  throw new Error("local draft failure was not returned as a memory-only launch outcome");
+}
+if (!statusText.includes("Quelle nicht lokal speicherbar")) {
+  throw new Error("local draft failure warning was overwritten by the ready status");
+}
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+globalThis.localStorage.setItem = () => { throw new Error("synthetic quota"); };
+globalThis.fetch = async () => { throw new Error("synthetic offline"); };
+const combinedFailureOutcome = await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+globalThis.localStorage.setItem = originalSetItem;
+if (
+  combinedFailureOutcome?.ok !== false
+  || combinedFailureOutcome?.draftSaved !== false
+  || !combinedFailureOutcome?.errorMessage?.includes("nicht lokal")
+) {
+  throw new Error("render plus local-draft failure did not expose persistence loss");
+}
+"""
+    subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
 def test_native_canvas_document_change_persists_restoreable_native_draft(
     tmp_path: Path,
 ) -> None:
@@ -701,6 +1380,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }
@@ -834,7 +1515,7 @@ globalThis.fetch = async (_url, options) => {
     },
   };
 };
-await retryNativeCanvasRender();
+await retryNativeRender();
 if (replaceCalls !== 1 || workspaceCalls !== 1) {
   throw new Error("replacement frame was not swapped exactly once after success");
 }
@@ -892,6 +1573,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }
@@ -1028,6 +1711,8 @@ let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 let nativeCanvasRenderStale = false;
 let renderedNativeCanvasSnapshot = null;
+let renderedRepresentation = null;
+let currentNativeInputDigest = "";
 function nativeCanvasSnapshot(canvas) {
   return canvas ? JSON.stringify(canvas) : null;
 }

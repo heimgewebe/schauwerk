@@ -1,0 +1,126 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-save-feedback.v1",
+  "scope": "canonical-representation-content-editing-save-feedback",
+  "accepted_at": "2026-10-04T02:59:26Z",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+  "parent_evidence": {
+    "evidence_digest": "e8178e95572211e57da6805d2f63e55c3eab5df07c272172afff8be20ef6b772",
+    "file_sha256": "f528de9fbf502dace45f5aaa5e12180088de31cc24bc67ca7fbc3ebe33538966",
+    "path": "docs/operators/evidence/schaubild-content-editing-recovery-layout-reload-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-recovery-layout-reload.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "content_dialog_has_visible_role_alert_feedback": true,
+    "server_required_content_fields_use_native_required_validation": true,
+    "server_rejection_keeps_dialog_open_and_exposes_message": true,
+    "transient_failure_keeps_dialog_open_and_exposes_message": true,
+    "local_draft_failure_keeps_dialog_open": true,
+    "local_draft_failure_preserves_unsaved_warning": true,
+    "fully_persisted_save_closes_dialog": true,
+    "escape_cancel_blocked_while_save_in_flight": true,
+    "escape_cancel_restored_after_save": true,
+    "launch_outcome_distinguishes_render_from_draft_persistence": true,
+    "layout_and_recovery_semantics_preserved": true,
+    "structural_edit_scope_unchanged": true,
+    "focused_save_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "ruff_passed": true,
+    "git_diff_check_passed": true,
+    "current_head_review_findings_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_save_tests": {
+      "functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "job_unit": "grabowski-job-a63b776701b3",
+      "argv_sha256": "002cc366adcc9008b3952c1de65371831d08eb4a3974c0829bd8c95674785d91",
+      "finalization_receipt_sha256": "d8aab024dd2ad23235498b90c347d3cf77745f3154a98ceb5cbb83bac0b7d377",
+      "passed_count": 3,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "job_unit": "grabowski-job-7b7b0dd044c0",
+      "argv_sha256": "718d8d703096c2b8cc4298ccc89b8328c0cb83915bf0a50800df373a5c38aec7",
+      "finalization_receipt_sha256": "8ca563b698167aaa392a063752a359cc756558737d1a0e01e26791e2cf79d4fb",
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py"
+      ]
+    },
+    "ruff": {
+      "functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "job_unit": "grabowski-job-e25b30ba3932",
+      "argv_sha256": "25a737880deaf478d726380c221b9eaa407f4aee0ab68c0f102be939f1f98ba7",
+      "finalization_receipt_sha256": "4c0c2b2e1556a9219ccf701422ad10dc7ab1a666cceab39809e61df999b9a3ca",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "argv_sha256": "1fc0f7e9a1d10b09e848b3f6cc5e99d8db617e87345068bfcc5c5752f1a6b6e7",
+      "result": "passed"
+    },
+    "github_review_finding": {
+      "source_head": "c644ebceb125868fc7b7694dd6bb799bbcd22764",
+      "addressed_by_functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "review_id": 5403413131,
+      "finding": {
+        "comment_id": 4175355203,
+        "severity": "P2",
+        "subject": "preserve the failed-draft warning after content edits",
+        "resolution": "launchNative returns draft persistence outcome; the save dialog stays open and exposes a visible alert when local draft persistence fails instead of overwriting the warning and closing"
+      },
+      "current_head_rereview_established": false
+    },
+    "independent_review_findings": {
+      "source_head": "c644ebceb125868fc7b7694dd6bb799bbcd22764",
+      "addressed_by_functional_head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "job_unit": "grabowski-job-e98b85776cea",
+      "job_finalization_receipt_sha256": "eead9a100c912dbcb039015979dc42d4020664ccca65dbbff44ffd5bb178f33b",
+      "role_receipt_sha256": "e30fc35a98d6b86e31488229d871bb9911e0d73635475edd23592879525d72db",
+      "review_route": "claude-opus-5.5-high",
+      "findings": [
+        {
+          "severity": "P2",
+          "subject": "rejected or failed content saves leave the modal open with no visible reason",
+          "resolution": "add role=alert feedback inside the dialog, mirror launch failure messages into it, and mark server-nonempty fields required"
+        },
+        {
+          "severity": "P3",
+          "subject": "Escape can close the dialog while a save is in flight",
+          "resolution": "prevent the native dialog cancel event while the save control is disabled and cover both blocked and restored Escape behavior"
+        }
+      ],
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "a296fa03cc2d01c3eb90f95f8299ebe78daad9b1",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-04T02:56:53.076973Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "00b8bf54975db0b4e6b4652b57612ce84b141c14394914d1bbfa39f5657a8a42",
+    "tests/visual/test_standalone_editor.py": "930404aa31d3352810c68e86b096d831fa991cbb1e5a7af0ce26c110fc2b5558"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the content-save feedback revision",
+    "GitHub CI success on the content-save feedback successor evidence head",
+    "current-head independent rereview settlement",
+    "current-head GitHub Codex rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "79bb151ddb45a11244f8ad4c2743f8db8c03cb314b5777ad62d11571d91e0d03"
+}

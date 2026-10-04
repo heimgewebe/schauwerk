@@ -1,0 +1,162 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing.v1",
+  "scope": "canonical-representation-content-editing",
+  "accepted_at": "2026-10-03T18:34:36.703555+00:00",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+  "parent_evidence": {
+    "evidence_digest": "15c7b6961e31bcbbf7ce48049b9d9fcc4c880384471f8adda0b3a351c8f5738d",
+    "file_sha256": "c8eb4a1d43ed0563e04733a70b09a55bdc6c0e7e6d870c4b0cba5d62b2f66790",
+    "path": "docs/operators/evidence/schaubild-edge-label-width-20261003/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-edge-label-width.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "canonical_representation_content_editable": true,
+    "text_edit_scope_preserves_structural_semantics": true,
+    "stale_input_digest_removed_before_revalidation": true,
+    "edited_representation_revalidated_and_rerendered": true,
+    "title_syncs_workspace_draft_and_export_basename": true,
+    "representation_retry_and_stale_svg_recovery_extended": true,
+    "focused_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "managed_browser_content_roundtrip_passed": true,
+    "exact_dialog_pixel_readback_passed": true,
+    "responsive_760_readback_passed": true,
+    "pre_successor_full_validate_failed_only_on_expected_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "focused_tests": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "job_unit": "grabowski-job-1290a14a3985",
+      "argv_sha256": "efc4a4a993934e65865838fffd03a8c7147096de6054df15af81bc46122d3b73",
+      "finalization_receipt_sha256": "eb92f500f4519b56328ad9645f65cbdedfd98d1e089bda8b500212494b63e09c",
+      "passed_count": 3,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "job_unit": "grabowski-job-4a3a86130724",
+      "argv_sha256": "7b4bf41b4a1f5bd0004fa63e19bb37145c2b84756b3e63d5d5de09b1532fdfa0",
+      "finalization_receipt_sha256": "8a2744e1dfe68b8de726b57bc1ad7410885087de9c7be943041872c0de2f650a",
+      "passed_count": 361,
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py",
+        "browser tests excluded from this Python regression run"
+      ]
+    },
+    "managed_browser_content_roundtrip": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "worker_id": "3ea44ef909d44b1facae",
+      "snapshot_id": "bsid2_c9a79df0a7135d7d989799bf357ac0a4914b97d79f64e2c03aed908843143cc4",
+      "audit_record_sha256": "8104ea2de6ac902a22120ba77517daa61328ca01fec23dd2174d0ebf3e1c7a6c",
+      "audit_timestamp": "2026-10-03T18:34:36.703555+00:00",
+      "result_label": "CONTENT EDIT TITLE PASS",
+      "verified_behaviors": [
+        "canonical representation opens with content editor",
+        "title purpose node summary and edge text edits rerender",
+        "workspace title follows edited representation title",
+        "local draft stores edited outer and semantic title",
+        "stale input_digest is not persisted"
+      ],
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "github_workflow_run_id": 37143524097,
+      "python_version": "3.12",
+      "passed_count": 1644,
+      "failed_count": 1,
+      "result": "expected_binding_gate_failure",
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "expected_previous_binding_sha256": "7f21dfe1af14c823737593e4cdfa0fc77821a62666cec81e20415ed887ab0986",
+      "observed_current_sha256": "6cb676116cb0b983300b61dc862750aedb70e29f66b78cde766a4819475bbf9b"
+    },
+    "exact_dialog_pixel_readback": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "job_unit": "grabowski-job-c5ef2bc6dbc7",
+      "argv_sha256": "b7cbed6fcd44ad9e19bb5c8778716fcfd7418077a924a0081bd162ee03823637",
+      "finalization_receipt_sha256": "e6e0c07eca04f710dd52b47faf766dd8220cc276a26f80899887105a18fbdad0",
+      "result": "passed",
+      "viewport_css_px": {
+        "width": 1024,
+        "height": 768
+      },
+      "dialog": {
+        "open": true,
+        "left_px": 132.0,
+        "top_px": 53.765625,
+        "right_px": 892.0,
+        "bottom_px": 714.234375,
+        "width_px": 760.0,
+        "height_px": 660.46875,
+        "client_width_px": 743,
+        "scroll_width_px": 743,
+        "horizontal_overflow": false
+      },
+      "fields": {
+        "client_width_px": 728,
+        "scroll_width_px": 728,
+        "client_height_px": 446,
+        "scroll_height_px": 3519,
+        "vertical_scroll_expected": true
+      },
+      "controls": 31,
+      "save_visible": true,
+      "close_visible": true,
+      "page_horizontal_overflow": false,
+      "screenshot_sha256": "a38b0897f221f096cad713394f3cf635dab1c0705f89bf2fcf5217f93a674416"
+    },
+    "responsive_760_readback": {
+      "functional_head": "81738c302c5f77c24ceae52db9dfe31a7e0619bc",
+      "job_unit": "grabowski-job-c5ef2bc6dbc7",
+      "finalization_receipt_sha256": "e6e0c07eca04f710dd52b47faf766dd8220cc276a26f80899887105a18fbdad0",
+      "result": "passed",
+      "viewport_css_px": {
+        "width": 760,
+        "height": 900
+      },
+      "dialog": {
+        "open": true,
+        "left_px": 19.0,
+        "top_px": 63.0,
+        "right_px": 741.0,
+        "bottom_px": 837.0,
+        "width_px": 722.0,
+        "height_px": 774.0,
+        "client_width_px": 705,
+        "scroll_width_px": 705,
+        "horizontal_overflow": false
+      },
+      "fields": {
+        "client_width_px": 690,
+        "scroll_width_px": 690,
+        "client_height_px": 560,
+        "scroll_height_px": 3519,
+        "vertical_scroll_expected": true
+      },
+      "controls": 31,
+      "save_visible": true,
+      "close_visible": true,
+      "page_horizontal_overflow": false,
+      "screenshot_sha256": "25ab49c03a51d6ff7d73bb19b782dfb0cf1e66c47f2d74f7b6eec78d61136851"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "6cb676116cb0b983300b61dc862750aedb70e29f66b78cde766a4819475bbf9b",
+    "tests/visual/test_standalone_editor.py": "b6efad482e489e1a4484373de2c37c40a78a900678d115397a13e644117fd963"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the content editor revision",
+    "GitHub CI success on the successor evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "1f61f7392cc5f384f6de18855963b57815517782bff8074a176b9a3c14d63e1a"
+}

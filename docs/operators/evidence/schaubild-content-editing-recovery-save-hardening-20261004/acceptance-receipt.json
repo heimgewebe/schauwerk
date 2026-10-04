@@ -1,0 +1,127 @@
+{
+  "schema_version": "schauwerk-schaubild-content-editing-recovery-save-hardening.v1",
+  "scope": "canonical-representation-content-editing-recovery-save-hardening",
+  "accepted_at": "2026-10-04T04:01:00Z",
+  "base_main_head": "556fa735936b4ca8574f8f602c7174c23e0562a0",
+  "functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+  "parent_evidence": {
+    "evidence_digest": "79bb151ddb45a11244f8ad4c2743f8db8c03cb314b5777ad62d11571d91e0d03",
+    "file_sha256": "960cab662c2492bd9fe9b58d7afbd78882f300d2c3672b3af33d4801f0436fe6",
+    "path": "docs/operators/evidence/schaubild-content-editing-save-feedback-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-save-feedback.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "combined_render_and_local_draft_failure_exposes_persistence_loss": true,
+    "combined_failure_launch_outcome_binds_draft_saved_false": true,
+    "layout_reset_clears_stale_target_digest_overrides": true,
+    "content_fields_are_inert_while_save_is_in_flight": true,
+    "content_fields_are_reenabled_after_save": true,
+    "content_dialog_feedback_contract_preserved": true,
+    "server_validation_remains_authoritative": true,
+    "layout_and_recovery_semantics_preserved": true,
+    "structural_edit_scope_unchanged": true,
+    "focused_hardening_tests_passed": true,
+    "relevant_regressions_passed": true,
+    "ruff_passed": true,
+    "git_diff_check_passed": true,
+    "exact_head_independent_findings_addressed_locally": true
+  },
+  "check_evidence": {
+    "focused_hardening_tests": {
+      "functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "job_unit": "grabowski-job-8b16a49c2254",
+      "argv_sha256": "d497d73d9aa272647ac05aa2bff523ca46f9ee2c249a7945560e68ddd2f1895b",
+      "finalization_receipt_sha256": "daa181494fcd1ec9fc882a6805a43c2fe4515ba4ab5324b199c2cf44d75cb621",
+      "passed_count": 3,
+      "result": "passed"
+    },
+    "relevant_regressions": {
+      "functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "job_unit": "grabowski-job-626a18625785",
+      "argv_sha256": "56a11f0dd53d491170156730b4dd92419811e4dd1c22ef951b6655076b97f7cd",
+      "finalization_receipt_sha256": "7496a344c5428b2c0c72573d296722458ba2354dc1634beff69d4030b19efc62",
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_native_canvas_editor.py",
+        "tests/visual/test_native_document.py"
+      ]
+    },
+    "ruff": {
+      "functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "job_unit": "grabowski-job-03b4f886f2f4",
+      "argv_sha256": "afba15ce35a0f9747ba46bbf213025cd2ff55e6f6642940ada8ed1cdb4a4db8b",
+      "finalization_receipt_sha256": "43ce8646b864cb062036b9ab5abe579851060ae28d6fdb7fa6af61bf1635e261",
+      "files": [
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py"
+      ],
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "argv_sha256": "88f60d1fe46f92cfd100e440f36ce27980a18144d707a71c2b67193157b583d4",
+      "result": "passed"
+    },
+    "independent_codex_finding": {
+      "source_head": "cda2a303824da71128b8885308726ad52df7d5af",
+      "addressed_by_functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "job_unit": "grabowski-job-887b30e2fed3",
+      "job_finalization_receipt_sha256": "13adf47216bccd6b54f5832ecd78f2fdc3e9ebfe5f4a115c2386d26d76a7d624",
+      "role_receipt_sha256": "c27946dcf4be9dcb485b994a1a617c161165a94abf24b52500441fa3a7a52f02",
+      "review_route": "codex-sol-review-high",
+      "finding": {
+        "severity": "P2",
+        "subject": "transient render failures discard the local-draft persistence outcome",
+        "resolution": "propagate transient recovery draft persistence into launchOutcome and include an explicit local-persistence warning when rendering and local draft storage both fail"
+      },
+      "current_head_rereview_established": false
+    },
+    "independent_claude_findings": {
+      "source_head": "cda2a303824da71128b8885308726ad52df7d5af",
+      "addressed_by_functional_head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "job_unit": "grabowski-job-272917de5165",
+      "job_finalization_receipt_sha256": "c9ba78a20f9ec84e2ccb182c2116e63e1050f47d11ce7f7d4aa14dc3c72855ea",
+      "role_receipt_sha256": "41b7d7578afc3bccf90021dca3e98d01adac8f7ece1266c978efaa731f60cd9f",
+      "review_route": "claude-opus-5.5-high",
+      "findings": [
+        {
+          "id": "F1",
+          "severity": "medium",
+          "subject": "layout migration can bring back positions the user explicitly reset",
+          "resolution": "if the source digest has no layout key, remove the target digest key so reset/no-overrides state migrates exactly"
+        },
+        {
+          "id": "F2",
+          "severity": "low",
+          "subject": "text typed while a content save is in flight is silently thrown away",
+          "resolution": "mark contentFields inert for the complete save request and clear inert in finally"
+        }
+      ],
+      "current_head_rereview_established": false
+    },
+    "independent_readback": {
+      "observer": "grosser-adler",
+      "head": "ae91b379f55a27ba05e6765425729eec8cd8ab3d",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-04T03:59:37.031178Z"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "04310354ef73736c87956ddcbd7ccdf7d3c2d26cf4683f78148b5fd3eabba945",
+    "tests/visual/test_standalone_editor.py": "4a3e855089f9a784fdbc853b51c088935fe40ad4e5f92aec6c484d7cd3fcbfdf"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of the recovery/save hardening revision",
+    "GitHub CI success on the recovery/save hardening successor evidence head",
+    "current-head independent rereview settlement",
+    "current-head GitHub Codex rereview settlement",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "124ebdcffe029ac1ae9051ec711ba336986471fc8be2d024df19b5d6567e54e1"
+}
