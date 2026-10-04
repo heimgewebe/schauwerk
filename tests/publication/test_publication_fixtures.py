@@ -199,6 +199,9 @@ SCHAUBILD_SINGLE_WORKSPACE_EXPORTS_EVIDENCE = (
 SCHAUBILD_SINGLE_WORKSPACE_REVIEW_FIX_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004"
 )
+SCHAUBILD_SINGLE_WORKSPACE_MOBILE_STATUS_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -719,6 +722,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor_product_ui.py",
     }
     single_workspace_review_fix_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    single_workspace_mobile_status_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_font_controls.py",
@@ -5468,7 +5477,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_review_fix_superseded_files
     )
     for name, expected in single_workspace_review_fix["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in single_workspace_mobile_status_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_review_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "advisory_review_findings_reproduced_and_addressed": True,
@@ -5544,6 +5554,148 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_review_fix["does_not_establish"]
     )
 
+    single_workspace_mobile_status = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_MOBILE_STATUS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_mobile_status["schema_version"]
+        == "schauwerk-schaubild-single-workspace-mobile-status.v1"
+    )
+    assert (
+        single_workspace_mobile_status["functional_head"]
+        == "adc16745e90d9b0b90d96080cbf059f672092794"
+    )
+    assert single_workspace_mobile_status["parent_evidence"] == {
+        "evidence_digest": single_workspace_review_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_REVIEW_FIX_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-review-fixes-20261004/acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_review_fix["schema_version"],
+    }
+    assert single_workspace_mobile_status["evidence_digest"] == digest_mapping(
+        single_workspace_mobile_status, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_mobile_status["source_bindings"])
+        == single_workspace_mobile_status_superseded_files
+    )
+    for name, expected in single_workspace_mobile_status["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert single_workspace_mobile_status["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "current_head_p2_reproduced_and_addressed": True,
+        "decision_bound_review_finding_reproduced_and_addressed": True,
+        "mobile_status_clears_full_width_dock_native": True,
+        "mobile_status_clears_full_width_dock_legacy": True,
+        "native_full_height_workspace_preserved": True,
+        "legacy_close_and_dock_clearances_preserved": True,
+        "exact_head_focused_regressions_passed": True,
+        "exact_head_mobile_native_browser_readback_passed": True,
+        "exact_head_mobile_legacy_browser_readback_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    mobile_findings = single_workspace_mobile_status["check_evidence"][
+        "review_findings"
+    ]
+    assert mobile_findings["source_head"] == (
+        "d6af3079cc393bc2e723b3eb06593dde6f9935f4"
+    )
+    assert mobile_findings["github_codex"]["comment_id"] == 4178041831
+    assert mobile_findings["github_codex"]["severity"] == "P2"
+    assert mobile_findings["decision_bound_grok"]["job_id"] == "6070e07c4fe9"
+    assert mobile_findings["decision_bound_grok"]["verdict"] == "NEEDS_CHANGE"
+    assert mobile_findings["decision_bound_grok"]["finding_id"] == "F1"
+    assert mobile_findings["addressed_by_functional_head"] == (
+        single_workspace_mobile_status["functional_head"]
+    )
+    mobile_focused = single_workspace_mobile_status["check_evidence"][
+        "focused_regressions"
+    ]
+    assert mobile_focused["job_id"] == "e164df021296"
+    assert mobile_focused["passed_count"] == 128
+    assert mobile_focused["result"] == "passed"
+    mobile_legacy = single_workspace_mobile_status["check_evidence"][
+        "mobile_legacy_browser_readback"
+    ]
+    assert mobile_legacy["job_id"] == "c32ad1e889b1"
+    assert mobile_legacy["viewport"] == {"width": 760, "height": 900}
+    assert mobile_legacy["metrics"]["status_clears_dock"] is True
+    assert mobile_legacy["metrics"]["frame_clears_dock"] is True
+    assert mobile_legacy["metrics"]["frame_clears_close"] is True
+    assert mobile_legacy["metrics"]["visible_host_controls"] == [
+        "Projekt",
+        "PNG",
+        "SVG",
+    ]
+    assert mobile_legacy["screenshot_sha256"] == (
+        "fb6f144cb25f09739dc20e6eece61cef86effb3e137a1b1a156fb854276529ed"
+    )
+    assert mobile_legacy["result"] == "passed"
+    mobile_native = single_workspace_mobile_status["check_evidence"][
+        "mobile_native_browser_readback"
+    ]
+    assert mobile_native["job_id"] == "e59161b84632"
+    assert mobile_native["viewport"] == {"width": 760, "height": 900}
+    assert mobile_native["metrics"]["frame"] == {
+        "x": 0,
+        "y": 0,
+        "width": 760,
+        "height": 900,
+        "right": 760,
+        "bottom": 900,
+    }
+    assert mobile_native["metrics"]["status_clears_dock"] is True
+    assert mobile_native["metrics"]["visible_host_controls"] == [
+        "Inhalt",
+        "Quelle",
+        "SVG",
+    ]
+    assert mobile_native["screenshot_sha256"] == (
+        "00aa39eb455ed8e03ab84b1adc19a43fa503f20f86d72afcaad5ac6a4740fb77"
+    )
+    assert mobile_native["result"] == "passed"
+    mobile_pre_successor = single_workspace_mobile_status["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert mobile_pre_successor["passed_count"] == 1653
+    assert mobile_pre_successor["failed_count"] == 1
+    assert (
+        mobile_pre_successor["failure_class"]
+        == "expected_successor_binding_gate"
+    )
+    mobile_observer = single_workspace_mobile_status["check_evidence"][
+        "independent_observer_readback"
+    ]
+    assert mobile_observer["observer"] == "grosser-adler"
+    assert mobile_observer["functional_head"] == (
+        single_workspace_mobile_status["functional_head"]
+    )
+    assert mobile_observer["finding_count"] == 0
+    assert mobile_observer["projection_complete"] is True
+    assert mobile_observer["result"] == "passed"
+    mobile_diff = single_workspace_mobile_status["check_evidence"]["git_diff_check"]
+    assert mobile_diff["diff_sha256"] == (
+        "cb4d60299e491b380d73a00098ed8415ce92bf9ed9c0133a300a7773332f9469"
+    )
+    assert mobile_diff["result"] == "passed"
+    assert (
+        "decision-bound independent reviewer PASS on the mobile-status successor revision"
+        in single_workspace_mobile_status["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -5572,7 +5724,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_review_fix_superseded_files:
+        if name in single_workspace_mobile_status_superseded_files:
+            assert single_workspace_mobile_status["source_bindings"][name] == current
+        elif name in single_workspace_review_fix_superseded_files:
             assert single_workspace_review_fix["source_bindings"][name] == current
         elif name in single_workspace_exports_superseded_files:
             assert single_workspace_exports["source_bindings"][name] == current
