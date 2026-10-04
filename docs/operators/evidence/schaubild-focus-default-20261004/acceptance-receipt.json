@@ -1,0 +1,93 @@
+{
+  "schema_version": "schauwerk-schaubild-focus-default.v1",
+  "scope": "schaubild-focus-workspace-default-and-full-height",
+  "accepted_at": "2026-10-04T08:44:37+00:00",
+  "base_main_head": "76c4815233fe677928af8ea3c7c6404db36254e4",
+  "functional_head": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+  "parent_evidence": {
+    "evidence_digest": "124ebdcffe029ac1ae9051ec711ba336986471fc8be2d024df19b5d6567e54e1",
+    "file_sha256": "4309eb50532bcfb26685449eacd8824ac11129b866536aa90217ed746137bd5b",
+    "path": "docs/operators/evidence/schaubild-content-editing-recovery-save-hardening-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-content-editing-recovery-save-hardening.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "focus_mode_default_on_workspace_entry": true,
+    "explicit_focus_exit_not_overridden_by_internal_rerender": true,
+    "focus_stage_vertical_gutter_removed": true,
+    "close_control_remains_visible_overlay": true,
+    "hosted_native_toolbar_reserves_close_overlay_width": true,
+    "exact_head_relevant_visual_regressions_passed": true,
+    "exact_head_visual_readback_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "relevant_visual_regressions": {
+      "functional_head": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+      "task_id": "851799a745ac4a3e95e727ba",
+      "outcome_receipt_sha256": "65260b0ab7ef09a81ee0ac8afa2fc87f103d6296c2841772d35ffa46d251ff90",
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py"
+      ]
+    },
+    "visual_readback": {
+      "functional_head": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+      "task_id": "abd527f3698f458c80060221",
+      "outcome_receipt_sha256": "7a55630d7809c360a852c54828930d3fee7d8be243b4d3d8c19e85877281c237",
+      "screenshot_sha256": "877add2d3114a29df62d59c42d78c6d583922a387310ec62f4041a661ddaba58",
+      "viewport": {
+        "width": 1480,
+        "height": 1024
+      },
+      "harness": "static focus-state projection from exact-head assets with local native viewer",
+      "observations": {
+        "vertical_focus_gutter_present": false,
+        "close_control_visible_top_right": true,
+        "native_toolbar_visible": true,
+        "workspace_uses_full_height": true
+      },
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+      "task_id": "b5d510f4b2b6450d92200cb7",
+      "outcome_receipt_sha256": "dfb57b0d3a418181cf8a65a5e7967c3036fe58560c5bd77d906a0fb477189d2c",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1653,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "git_diff_check": {
+      "base_sha": "76c4815233fe677928af8ea3c7c6404db36254e4",
+      "head_sha": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+      "argv_sha256": "7c7a0914403f7957663be24dde0b196bc1222a39d0750114b0c2586c81079be9",
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7fa1e6bf317622d716f8b3734ce2a654c614b5905e246410f1c35cea7a186b16",
+    "src/schauwerk/resources/standalone_editor/assets.py": "e93e4ba32a2e74fbe1be203cafddff4afb583bf2b89baa57cbfb487f3acc969d",
+    "tests/visual/test_native_viewer_product_ui.py": "f703be7dd5b59e893866964a513d2fd921a3475879884d4ba33ec74dac1b057f",
+    "tests/visual/test_standalone_editor.py": "7d68ded19b5fc41282661e2f4f1447cd93f4fa8808b8ade043895bd8bb27a5bd",
+    "tests/visual/test_standalone_editor_font_controls.py": "dd5f643b0185e9f9cfc51902ba4b2528f410701e184cc11c9fd8365f2dbd423b"
+  },
+  "does_not_establish": [
+    "user visual acceptance or aesthetic approval of this revision",
+    "independent review or reviewer settlement",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "3bb7d8ffc34372c4aabc3d0b35e3991c5356086fa76a3fe834b466e8000fb85b"
+}
