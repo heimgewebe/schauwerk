@@ -193,6 +193,9 @@ SCHAUBILD_FOCUS_DEFAULT_EVIDENCE = (
 SCHAUBILD_FOCUS_DEFAULT_REVIEW_FIX_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-focus-default-review-fixes-20261004"
 )
+SCHAUBILD_SINGLE_WORKSPACE_EXPORTS_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-exports-20261004"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -706,6 +709,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_viewer_product_ui.py",
         "tests/visual/test_standalone_editor_font_controls.py",
     }
+    single_workspace_exports_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -1199,6 +1208,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | ui_controls_superseded_files
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_successor["checks"] == {
@@ -1274,6 +1284,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | ui_controls_superseded_files
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert product_ui_review_fix["checks"] == {
@@ -1350,6 +1361,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | ui_controls_superseded_files
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert final_ui_fix["checks"] == {
@@ -1451,6 +1463,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | smoke_pipefail_superseded_files
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -3915,6 +3928,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | content_editing_superseded_files
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert ui_controls["checks"] == {
@@ -4003,7 +4017,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in ui_controls_resize["source_bindings"].items():
         if name not in (
-            focus_default_superseded_files | focus_default_review_fix_superseded_files
+            focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert ui_controls_resize["checks"] == {
@@ -5006,7 +5022,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "source_bindings"
     ].items():
         if name not in (
-            focus_default_superseded_files | focus_default_review_fix_superseded_files
+            focus_default_superseded_files
+            | focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery_save_hardening["checks"] == {
@@ -5142,7 +5160,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(focus_default["source_bindings"]) == focus_default_superseded_files
     for name, expected in focus_default["source_bindings"].items():
-        if name not in focus_default_review_fix_superseded_files:
+        if name not in (
+            focus_default_review_fix_superseded_files
+            | single_workspace_exports_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert focus_default["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -5222,7 +5243,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == focus_default_review_fix_superseded_files
     )
     for name, expected in focus_default_review_fix["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in single_workspace_exports_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert focus_default_review_fix["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "current_pr_p2_findings_reproduced_and_addressed": True,
@@ -5285,6 +5307,121 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in focus_default_review_fix["does_not_establish"]
     )
 
+    single_workspace_exports = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_EXPORTS_EVIDENCE / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_exports["schema_version"]
+        == "schauwerk-schaubild-single-workspace-exports.v1"
+    )
+    assert (
+        single_workspace_exports["functional_head"]
+        == "896f34348da2e15489b0155d12661bdfe01c0b5e"
+    )
+    assert single_workspace_exports["parent_evidence"] == {
+        "evidence_digest": focus_default_review_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_FOCUS_DEFAULT_REVIEW_FIX_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-focus-default-review-fixes-20261004/acceptance-receipt.json"
+        ),
+        "schema_version": focus_default_review_fix["schema_version"],
+    }
+    assert single_workspace_exports["evidence_digest"] == digest_mapping(
+        single_workspace_exports, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_exports["source_bindings"])
+        == single_workspace_exports_superseded_files
+    )
+    for name, expected in single_workspace_exports["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert single_workspace_exports["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "compact_workspace_removed": True,
+        "single_full_height_workspace_only": True,
+        "exports_available_in_full_workspace": True,
+        "close_control_is_separate_top_right_overlay": True,
+        "native_export_dock_clears_bottom_status_bar": True,
+        "exact_head_focused_visual_regressions_passed": True,
+        "exact_head_native_browser_readback_passed": True,
+        "exact_head_full_validate_failed_only_on_successor_binding_gate": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    single_workspace_focused = single_workspace_exports["check_evidence"][
+        "focused_visual_regressions"
+    ]
+    assert single_workspace_focused["functional_head"] == (
+        single_workspace_exports["functional_head"]
+    )
+    assert single_workspace_focused["job_id"] == "26cbea2a092a"
+    assert single_workspace_focused["passed_count"] == 128
+    assert single_workspace_focused["result"] == "passed"
+    single_workspace_readback = single_workspace_exports["check_evidence"][
+        "native_browser_readback"
+    ]
+    assert single_workspace_readback["functional_head"] == (
+        single_workspace_exports["functional_head"]
+    )
+    assert single_workspace_readback["job_id"] == "05fb9c0187ff"
+    assert single_workspace_readback["screenshot_sha256"] == (
+        "b7b0f2ee18730eb3d4f638b6d652f4e25d82905be24f9ab3d37f4338243d6a71"
+    )
+    assert single_workspace_readback["metrics"]["frame"] == {
+        "x": 0,
+        "y": 0,
+        "width": 1366,
+        "height": 1024,
+        "right": 1366,
+        "bottom": 1024,
+    }
+    assert single_workspace_readback["metrics"]["export_dock"]["bottom"] == 980
+    assert single_workspace_readback["metrics"]["bottom_status_clearance_px"] == 44
+    assert single_workspace_readback["metrics"]["visible_host_controls"] == [
+        "Inhalt",
+        "Quelle",
+        "SVG",
+    ]
+    assert single_workspace_readback["result"] == "passed"
+    single_workspace_pre_successor = single_workspace_exports["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert single_workspace_pre_successor["passed_count"] == 1653
+    assert single_workspace_pre_successor["failed_count"] == 1
+    assert (
+        single_workspace_pre_successor["failure_class"]
+        == "expected_successor_binding_gate"
+    )
+    single_workspace_observer = single_workspace_exports["check_evidence"][
+        "independent_observer_readback"
+    ]
+    assert single_workspace_observer["observer"] == "grosser-adler"
+    assert single_workspace_observer["functional_head"] == (
+        single_workspace_exports["functional_head"]
+    )
+    assert single_workspace_observer["worktree_clean"] is True
+    assert single_workspace_observer["untracked_present"] is False
+    assert single_workspace_observer["finding_count"] == 0
+    assert single_workspace_observer["result"] == "passed"
+    single_workspace_diff = single_workspace_exports["check_evidence"]["git_diff_check"]
+    assert single_workspace_diff["diff_sha256"] == (
+        "f19ad1210e3495bc0f0302f216613454268abf6efcf41824aff1f0c2dc6fe010"
+    )
+    assert single_workspace_diff["result"] == "passed"
+    assert (
+        "independent review or reviewer settlement"
+        in single_workspace_exports["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -5313,7 +5450,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in focus_default_review_fix_superseded_files:
+        if name in single_workspace_exports_superseded_files:
+            assert single_workspace_exports["source_bindings"][name] == current
+        elif name in focus_default_review_fix_superseded_files:
             assert focus_default_review_fix["source_bindings"][name] == current
         elif name in focus_default_superseded_files:
             assert focus_default["source_bindings"][name] == current
