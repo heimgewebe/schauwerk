@@ -1,0 +1,92 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T18:03:00Z",
+  "base_sha": "b74ab63e1a5aa81baecc7a30ee4376b8add1417b",
+  "head_sha": "c4dadce60903bb3a32f09f29492549303aa455a8",
+  "diff_sha256": "5f5fe15a1c8ab3b1d616f7366d20b2323d87b8ce9b6418ca04033859a73ffef0",
+  "diff_bytes": 128045,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-exports-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-mobile-status-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-review-fixes-20261004/grabowski-self-review.json",
+    "docs/operators/evidence/schaubild-single-workspace-wrapped-dock-20261004/acceptance-receipt.json",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py"
+  ],
+  "review_focus": [
+    "correctness of the single full-height workspace with the compact/fullscreen-toggle mode still removed",
+    "runtime measurement of the actual wrapped workspace dock height rather than another fixed mobile offset",
+    "status live-region clearance for one-row and two-row docks with the download link both hidden and visible",
+    "legacy draw.io dynamically reserves both right-side close clearance and the actual bottom dock height while native mode remains full-height",
+    "320x740 and 760x900 browser geometry in native and legacy modes, including post-export wrapped download controls",
+    "engine-specific export availability remains unchanged: native Inhalt/Quelle/SVG and legacy Projekt/PNG/SVG plus prepared download",
+    "publication successor binding supersedes the four revised product/test hashes without rewriting historical acceptance",
+    "security and integration boundaries remain unchanged: no new origin, privilege, persistence authority, provider coupling or cross-repository mutation",
+    "exact reviewed head passes Ruff, compile, registry validation and all 1656 repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The current-head Codex threads identified that a full-width mobile action dock could still obscure the status region, especially after the prepared download link increases dock height.",
+      "resolution": "Reproduced the material case at 320x740 on 4d49b1c: the two-row native dock measured 102 px and overlapped the status region by 28 px."
+    },
+    {
+      "iteration": 2,
+      "finding": "A larger fixed bottom offset would only move the failure boundary and would not cover future dock-height changes.",
+      "resolution": "Replaced the fixed mobile status offset with an actual-height invariant: ResizeObserver publishes the dock height as a CSS variable, and status position is computed from dock bottom, measured height and an 8 px gap."
+    },
+    {
+      "iteration": 3,
+      "finding": "Legacy draw.io also needs canvas clearance when the export dock grows after a prepared download appears.",
+      "resolution": "Bound the legacy editor-stage bottom padding to the same measured dock-height variable while preserving explicit right-side close clearance."
+    },
+    {
+      "iteration": 4,
+      "finding": "The final responsive state needed direct geometry evidence, not selector-only tests.",
+      "resolution": "Browser readbacks covered native and legacy at 320x740 and 760x900 before and after export: wrapped states have zero status/dock overlap, 8 px status-to-dock clearance, and legacy retains 8 px frame-to-dock and frame-to-close clearance."
+    },
+    {
+      "iteration": 5,
+      "finding": "Changing the four accepted implementation/test revisions invalidated the prior mobile-status source bindings.",
+      "resolution": "Added a new immutable wrapped-dock successor receipt plus publication-fixture precedence; then reran the complete exact-head validation with Ruff, compile, registry validation and 1656 tests passing."
+    }
+  ],
+  "validation": {
+    "focused_regressions_job_id": "dbabb954d081",
+    "focused_regressions_finalization_receipt_sha256": "1aeae4c1cceaa78402bdbe14867fc901a3567ab3531e458afe81de671fe08659",
+    "focused_regressions_passed_count": 130,
+    "browser_readback_job_id": "f90025a3a24f",
+    "browser_readback_finalization_receipt_sha256": "eb4ad90d980a24cc110320e920507ec9451f2e31c5798f2402493067f2ec6e93",
+    "exact_head_full_validate_job_id": "ac60b82414df",
+    "exact_head_full_validate_finalization_receipt_sha256": "f1108cd6bc54622005610d57231faa80dc29f0d575230707ea0ce22cdee7c87d",
+    "exact_head_full_validate_passed_count": 1656,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "c4dadce60903bb3a32f09f29492549303aa455a8",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-04T18:02:27.050079Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the later self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "GitHub current-head reviewer settlement after the two recorded P2 threads",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}
