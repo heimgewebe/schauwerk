@@ -1,0 +1,139 @@
+{
+  "schema_version": "schauwerk-schaubild-focus-default-review-fixes.v1",
+  "scope": "schaubild-focus-overlay-review-fixes",
+  "accepted_at": "2026-10-04T09:19:08+00:00",
+  "base_evidence_head": "325d7e16c9685b2d6d37d6f370a5ad18e97ce773",
+  "product_fix_head": "7ea112c9803eb36db31eda0b533c369934397e1a",
+  "functional_head": "6c693670d050907856e2988e6018420aaa0d3b64",
+  "parent_evidence": {
+    "evidence_digest": "3bb7d8ffc34372c4aabc3d0b35e3991c5356086fa76a3fe834b466e8000fb85b",
+    "file_sha256": "8ff1cbedf25d4dd6ac9c45950f711a1cc7e8550e18705588c7f47eee88d83f45",
+    "path": "docs/operators/evidence/schaubild-focus-default-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-focus-default.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "current_pr_p2_findings_reproduced_and_addressed": true,
+    "canonical_embedded_native_toolbar_reserves_close_overlay_width": true,
+    "legacy_focus_toolbar_kept_clear_without_top_height_gutter": true,
+    "legacy_focus_hides_redundant_host_font_controls": true,
+    "post_product_change_is_test_contract_only": true,
+    "relevant_visual_regressions_passed": true,
+    "native_canonical_browser_readback_passed": true,
+    "legacy_browser_readback_passed": true,
+    "exact_head_full_validate_failed_only_on_successor_binding_gate": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "github_review_findings": {
+      "pull_request": 201,
+      "review_id": 5405057099,
+      "source_head": "10436f06b8216a8930f5f0c16e2b8c7b8592e2c4",
+      "addressed_by_product_fix_head": "7ea112c9803eb36db31eda0b533c369934397e1a",
+      "current_head_rereview_established": false,
+      "findings": [
+        {
+          "comment_id": 4176769631,
+          "severity": "P2",
+          "subject": "canonical non-document native viewer did not reserve the parent close-overlay width",
+          "resolution": "apply the close-overlay right inset to every embedded native viewer while retaining document-only editing controls"
+        },
+        {
+          "comment_id": 4176769635,
+          "severity": "P2",
+          "subject": "legacy compatibility focus could overlay host controls on the diagrams.net toolbar",
+          "resolution": "hide redundant host font controls in focus and reserve only a narrow right-side close strip without restoring the removed top gutter"
+        }
+      ]
+    },
+    "relevant_visual_regressions": {
+      "task_id": "4339974a2796409d95ab9a27",
+      "outcome_receipt_sha256": "2d0a32ebfa8e8b446e25ad7773c973551051ef9d23ff59bebc55be0b19cf358a",
+      "result": "passed",
+      "scope": [
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py"
+      ]
+    },
+    "native_canonical_browser_readback": {
+      "product_fix_head": "7ea112c9803eb36db31eda0b533c369934397e1a",
+      "task_id": "e2289e8c5fe1410e93191a45",
+      "outcome_receipt_sha256": "b63d32b2f2dfe0a25ca5850041aedcc484c551582e52db8147383a4b09729709",
+      "screenshot_sha256": "5084875d9daeb724cd880faf2785b6721d40e7bdf48490bb15b39767ecaa7bf6",
+      "metrics": {
+        "body_class": "embedded-native-viewer",
+        "toolbar_padding_right_px": 58.0,
+        "controls_right_px": 1407.0,
+        "toolbar_right_px": 1465.0
+      },
+      "result": "passed"
+    },
+    "legacy_browser_readback": {
+      "product_fix_head": "7ea112c9803eb36db31eda0b533c369934397e1a",
+      "task_id": "9b5ecba41cfb4dcdb9acf9d6",
+      "outcome_receipt_sha256": "9c17029699e316d5d8fa249755acff2b4df39b7ba9c1b06da5c75b31c71a3191",
+      "screenshot_sha256": "0c0ef0c192a73de4bda8e7ab71b3c23ab39b97d02809f51711e3c2c0f1daa13b",
+      "metrics": {
+        "editor_frame_top_px": 0.0,
+        "editor_frame_right_px": 1424.0,
+        "close_left_px": 1432.0,
+        "close_right_px": 1472.0,
+        "host_font_controls_display": "none",
+        "viewport_width_px": 1480,
+        "viewport_height_px": 881
+      },
+      "result": "passed"
+    },
+    "post_product_contract_change": {
+      "from_head": "7ea112c9803eb36db31eda0b533c369934397e1a",
+      "to_head": "6c693670d050907856e2988e6018420aaa0d3b64",
+      "changed_files": [
+        "tests/visual/test_native_canvas_editor.py"
+      ],
+      "classification": "test_contract_only"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "6c693670d050907856e2988e6018420aaa0d3b64",
+      "task_id": "cff48fcadcee41efb95f5466",
+      "outcome_receipt_sha256": "fd59a43348b2d2faeb4291502899c7cf86a74a14fd13d0458d64da504d5790b3",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1653,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "git_diff_check": {
+      "base_sha": "325d7e16c9685b2d6d37d6f370a5ad18e97ce773",
+      "head_sha": "6c693670d050907856e2988e6018420aaa0d3b64",
+      "diff_sha256": "7166a911f14176751be06e8e50e2de157c8f55a8afecc57fceedc10bd06f9b3a",
+      "diff_bytes": 8159,
+      "argv_sha256": "24451712a7efedf624c0dcaf98ab0e5e9ea4a900229fcf241a663fda4790c8cd",
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "cf98db788f374fc93157dcb093a103b1047a09c3b44a18f85392657443c3c6be",
+    "src/schauwerk/resources/standalone_editor/assets.py": "6dfb3add25d492d09f227e08e2d991edea04dbfeddc3f935ea50b390b55a64ab",
+    "tests/visual/test_native_canvas_editor.py": "e3842997f3ef254d545072b242c0a06e1d51aaac8cce937714a9a9c6e8641a4a",
+    "tests/visual/test_native_viewer.py": "4a3b058f5fe1f49db4b422dfdf11dff3153ed7d7c30e25a1e54b7ba454486bb5",
+    "tests/visual/test_native_viewer_product_ui.py": "affef88ef2da14273f5ce6bf55ecf58ac844f389d5833b339a1e938e8a09a6f2",
+    "tests/visual/test_standalone_editor_font_controls.py": "d98ce8ada62b534188556bbef30bf29297b3242862485072b40e13f1857adfa7"
+  },
+  "does_not_establish": [
+    "current-head GitHub reviewer settlement after the two recorded P2 findings",
+    "independent review of the review-fix revision",
+    "user visual acceptance or aesthetic approval of the review-fix revision",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "bc7a2363f8f8be755dab26e2e1a6cb21e1653a31ce4cf0c005297ac9451cbcd9"
+}

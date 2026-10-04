@@ -210,8 +210,13 @@ def test_integrated_native_canvas_endpoint_preserves_layout_and_serves_editing_c
         viewer_app_response = connection.getresponse()
         viewer_app = viewer_app_response.read().decode("utf-8")
         assert viewer_app_response.status == 200
+        assert "const embeddedNativeViewer = window.parent !== window;" in viewer_app
         assert (
-            "const documentEditorHosted = documentMode && window.parent !== window;"
+            "const documentEditorHosted = documentMode && embeddedNativeViewer;"
+            in viewer_app
+        )
+        assert (
+            'document.body.classList.toggle("embedded-native-viewer", embeddedNativeViewer);'
             in viewer_app
         )
         assert "if (documentEditorHosted) {" in viewer_app

@@ -245,6 +245,9 @@ button:focus-visible {
   background: transparent;
 }
 
+.embedded-native-viewer .viewer-bar {
+  padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));
+}
 .document-editor-hosted .viewer-bar {
   min-height: 50px;
   grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
@@ -817,7 +820,9 @@ if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
   throw new Error("Native viewer embedded model is incomplete");
 }
 const documentMode = sourceModel.schema_version === "schauwerk-native-editing-document.v1";
-const documentEditorHosted = documentMode && window.parent !== window;
+const embeddedNativeViewer = window.parent !== window;
+const documentEditorHosted = documentMode && embeddedNativeViewer;
+document.body.classList.toggle("embedded-native-viewer", embeddedNativeViewer);
 document.body.classList.toggle("document-editor-hosted", documentEditorHosted);
 
 const inputDigest = svg.dataset.inputDigest || "";

@@ -1,0 +1,78 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-04T09:29:00Z",
+  "base_sha": "76c4815233fe677928af8ea3c7c6404db36254e4",
+  "head_sha": "4615875a49a07b8e960218b51150df347c5b2c5c",
+  "diff_sha256": "ec1a1c0f5658888030e39d7495db454c679a997630bb65e54af668020af9f8ec",
+  "diff_bytes": 39153,
+  "reviewed_files": [
+    "docs/operators/evidence/schaubild-focus-default-20261004/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-focus-default-review-fixes-20261004/acceptance-receipt.json",
+    "src/schauwerk/resources/native_viewer/assets.py",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_native_canvas_editor.py",
+    "tests/visual/test_native_viewer.py",
+    "tests/visual/test_native_viewer_product_ui.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py"
+  ],
+  "review_focus": [
+    "workspace enters focus mode only on transition from start view and explicit focus exit is not reasserted by internal rerenders",
+    "focus mode removes the former top-height gutter while preserving an accessible close overlay",
+    "canonical embedded native viewers reserve only the close-overlay toolbar footprint without enabling document-only editing controls",
+    "legacy compatibility mode keeps the diagrams.net toolbar clear using a narrow right-side reserve and hides redundant host font controls only while focus mode is active",
+    "the two current PR P2 findings are reproduced, addressed on the product-fix head, and covered by targeted browser geometry readbacks",
+    "historical acceptance receipts remain immutable and successor bindings carry every newly changed source/test revision",
+    "publication fixture ownership resolves current source hashes to the newest successor without weakening unrelated historical bindings",
+    "current successor evidence head passes lint, compile, registry validation, and the complete test suite"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The initial native toolbar reserve was scoped only to documentEditorHosted, leaving canonical non-document native viewers exposed to the parent close overlay.",
+      "resolution": "Separated embeddedNativeViewer from documentEditorHosted and applied only the right inset to every embedded native viewer while keeping edit controls document-only."
+    },
+    {
+      "iteration": 2,
+      "finding": "Removing the old vertical focus gutter exposed the legacy diagrams.net toolbar to host focus controls.",
+      "resolution": "Removed host font controls from focus mode and reserved a narrow right-side strip for the close overlay instead of restoring any top-height gutter."
+    },
+    {
+      "iteration": 3,
+      "finding": "The first review-fix full validation exposed a stale native-canvas contract assertion and then the expected immutable publication binding gate.",
+      "resolution": "Updated the contract-only test to the new embedded-viewer predicate, added a successor acceptance packet without rewriting the parent, and reran the full suite on the exact successor evidence head."
+    }
+  ],
+  "validation": {
+    "relevant_visual_regressions_task_id": "4339974a2796409d95ab9a27",
+    "relevant_visual_regressions_outcome_receipt_sha256": "2d0a32ebfa8e8b446e25ad7773c973551051ef9d23ff59bebc55be0b19cf358a",
+    "native_canonical_browser_task_id": "e2289e8c5fe1410e93191a45",
+    "native_canonical_browser_outcome_receipt_sha256": "b63d32b2f2dfe0a25ca5850041aedcc484c551582e52db8147383a4b09729709",
+    "legacy_browser_task_id": "9b5ecba41cfb4dcdb9acf9d6",
+    "legacy_browser_outcome_receipt_sha256": "9c17029699e316d5d8fa249755acff2b4df39b7ba9c1b06da5c75b31c71a3191",
+    "successor_full_validate_task_id": "8ec5d28ec5e548a1b47496d1",
+    "successor_full_validate_outcome_receipt_sha256": "e5fedb8eab09a1d761b210c8fd8a4b99b885552054e69001baa5df8d70d6fbc7",
+    "successor_full_validate_passed_count": 1654,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "4615875a49a07b8e960218b51150df347c5b2c5c",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-04T09:28:22.071658Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "current-head GitHub reviewer settlement after the two earlier P2 findings",
+    "GitHub CI success on the later self-review commit",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}
