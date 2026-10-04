@@ -43,7 +43,11 @@ def test_product_shell_is_coherent_and_responsive(tmp_path: Path) -> None:
     assert 'data-export="svg"' in index_html
 
     assert "[hidden] { display: none !important; }" in styles_css
-    assert "body.workspace-active .topline { display: none; }" in styles_css
+    assert "body.workspace-active .topline {" in styles_css
+    assert "body.workspace-active .topline { display: none; }" not in styles_css
+    assert "body.workspace-active .status {" in styles_css
+    assert "body.workspace-active.engine-legacy .editor-stage {" in styles_css
+    assert "body.workspace-active.engine-legacy .font-controls," in styles_css
     assert "body.editor-focus" not in styles_css
     assert ".workspace-bar { overflow-x: auto; }" not in styles_css
     assert ".workspace-tools,\n.workspace-output" in styles_css

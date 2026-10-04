@@ -5,7 +5,7 @@ from pathlib import Path
 from schauwerk.visual.standalone_editor import build_standalone_editor
 
 
-def test_single_workspace_preserves_legacy_controls_and_exports(
+def test_single_workspace_keeps_legacy_exports_clear_of_editor_chrome(
     tmp_path: Path,
 ) -> None:
     output = tmp_path / "editor"
@@ -19,7 +19,14 @@ def test_single_workspace_preserves_legacy_controls_and_exports(
     assert 'id="fullscreenButton"' not in index_html
     assert "toggleEditorFullscreen" not in app_js
 
-    assert "body.workspace-active .topline { display: none; }" in styles_css
+    assert "body.workspace-active .topline {" in styles_css
+    assert "body.workspace-active .topline { display: none; }" not in styles_css
+    assert (
+        "body.workspace-active .brand,\n"
+        "body.workspace-active .product-badge { display: none; }"
+        in styles_css
+    )
+    assert "body.workspace-active .status {" in styles_css
     assert ".workspace-bar {" in styles_css
     assert "bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));" in styles_css
     assert ".workspace-close {" in styles_css
@@ -37,6 +44,26 @@ def test_single_workspace_preserves_legacy_controls_and_exports(
     assert 'pngButton.hidden = native;' in app_js
     assert 'elements.projectButton.textContent = "Canvas";' in app_js
     assert 'elements.workspaceCloseButton.addEventListener("click", showStart);' in app_js
+
+    legacy_controls = styles_css[
+        styles_css.index("body.workspace-active.engine-legacy .font-controls,")
+        : styles_css.index("body.workspace-active.engine-legacy .editor-stage {")
+    ]
+    assert (
+        "body.workspace-active.engine-legacy .workspace-tools { display: none; }"
+        in legacy_controls
+    )
+    legacy_stage = styles_css[
+        styles_css.index("body.workspace-active.engine-legacy .editor-stage {")
+        : styles_css.index("body.workspace-active.engine-legacy .workspace-bar,")
+    ]
+    assert "padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));" in legacy_stage
+    assert "padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));" in legacy_stage
+    legacy_overlay = styles_css[
+        styles_css.index("body.workspace-active.engine-legacy .workspace-bar,")
+        : styles_css.index("@media (max-width: 1180px)")
+    ]
+    assert "bottom: max(8px, env(safe-area-inset-bottom));" in legacy_overlay
 
     assert "@media (max-width: 760px)" in styles_css
     mobile_css = styles_css[

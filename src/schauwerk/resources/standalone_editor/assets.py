@@ -663,7 +663,39 @@ h1 {
 
 body.workspace-active { overflow: hidden; }
 body.workspace-active .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
-body.workspace-active .topline { display: none; }
+body.workspace-active .topline {
+  position: fixed;
+  z-index: 20;
+  left: max(10px, env(safe-area-inset-left));
+  right: auto;
+  top: auto;
+  bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+body.workspace-active .brand,
+body.workspace-active .product-badge { display: none; }
+body.workspace-active .topline-meta { margin-left: 0; }
+body.workspace-active .status {
+  max-width: min(42vw, 520px);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(12px);
+}
+body.workspace-active.engine-legacy .font-controls,
+body.workspace-active.engine-legacy .workspace-tools { display: none; }
+body.workspace-active.engine-legacy .editor-stage {
+  padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));
+  padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));
+}
+body.workspace-active.engine-legacy .workspace-bar,
+body.workspace-active.engine-legacy .topline {
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
 
 @media (max-width: 1180px) {
   .start-layout { grid-template-columns: minmax(0, 0.78fr) minmax(400px, 1.22fr); gap: 42px; }
@@ -689,6 +721,15 @@ body.workspace-active .topline { display: none; }
   .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
   .brand-copy small { display: none; }
   .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
+  body.workspace-active .topline {
+    min-height: 0;
+    padding: 0;
+  }
+  body.workspace-active .status {
+    border: 1px solid var(--line);
+    padding: 6px 9px;
+    background: rgba(255, 255, 255, 0.9);
+  }
   .start-card { padding: 27px 12px 22px; }
   .start-layout { gap: 20px; }
   h1 { margin-top: 9px; font-size: clamp(2.85rem, 13.2vw, 4rem); line-height: 0.92; }

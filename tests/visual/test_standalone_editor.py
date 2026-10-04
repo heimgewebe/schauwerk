@@ -177,8 +177,13 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "Technischer Kompatibilitätsmodus:" in index_html
     assert "<code>.canvas</code>/JSON Canvas" in index_html
     assert 'aria-label="Arbeitsfläche schließen und zum Start zurückkehren"' in index_html
-    assert "body.workspace-active .topline" in styles_css
+    assert "body.workspace-active .topline {" in styles_css
+    assert "body.workspace-active .topline { display: none; }" not in styles_css
+    assert "body.workspace-active .status {" in styles_css
     assert "bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));" in styles_css
+    assert "body.workspace-active.engine-legacy .editor-stage {" in styles_css
+    assert "padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));" in styles_css
+    assert "padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));" in styles_css
     assert ".workspace-close {" in styles_css
     assert "position: fixed;" in styles_css
     assert "height: 100dvh" in styles_css
