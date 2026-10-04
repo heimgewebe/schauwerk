@@ -1703,7 +1703,10 @@ function migrateRepresentationLayoutOverrides(previousDigest, nextDigest) {
   }
   try {
     const raw = localStorage.getItem(nativeLayoutStorageKey(previousDigest));
-    if (!raw) return true;
+    if (!raw) {
+      localStorage.removeItem(nativeLayoutStorageKey(nextDigest));
+      return true;
+    }
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return false;
     localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(parsed));
@@ -1871,6 +1874,7 @@ async function saveRepresentationContentEditor() {
   elements.contentSaveButton.disabled = true;
   elements.contentCloseButton.disabled = true;
   elements.contentCancelButton.disabled = true;
+  elements.contentFields.inert = true;
   setError("");
   setContentDialogFeedback("");
   try {
@@ -1908,6 +1912,7 @@ async function saveRepresentationContentEditor() {
     elements.contentSaveButton.disabled = false;
     elements.contentCloseButton.disabled = false;
     elements.contentCancelButton.disabled = false;
+    elements.contentFields.inert = false;
   }
 }
 
@@ -2587,6 +2592,15 @@ async function launchNative(load, options = {}) {
           ? " · Entwurf lokal gesichert"
           : (nativeDraftSaved === false ? " · Entwurf lokal nicht speicherbar" : "")
       );
+      if (nativeDraftSaved !== null) {
+        launchOutcome.draftSaved = nativeDraftSaved;
+      }
+      if (nativeDraftSaved === false) {
+        launchOutcome.errorMessage = (
+          launchErrorMessage
+          + " Der aktuelle Stand konnte nicht lokal gespeichert werden."
+        );
+      }
       setError(
         (error instanceof Error ? error.message : "Native Änderung konnte nicht gerendert werden.")
         + " Bestehende Ansicht bleibt sichtbar und gesperrt; "

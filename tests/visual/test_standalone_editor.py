@@ -693,6 +693,7 @@ const elements = {
   contentSaveButton: {disabled: false},
   contentCloseButton: {disabled: false},
   contentCancelButton: {disabled: false},
+  contentFields: {inert: false},
   contentDialog: {
     close() { closeCount += 1; },
   },
@@ -706,6 +707,9 @@ function setContentDialogFeedback(message) {
   feedback.hidden = !text;
 }
 async function launchNative() {
+  if (!elements.contentFields.inert) {
+    throw new Error("content fields remained editable while save was in flight");
+  }
   if (launchOutcome?.ok) currentRepresentation = edited;
   else currentRepresentation = {title: "Original"};
   return launchOutcome;
@@ -722,6 +726,7 @@ if (feedback.hidden || !feedback.textContent.includes("nodes[0].label must not b
   throw new Error("server rejection was not exposed inside the dialog");
 }
 if (elements.contentSaveButton.disabled) throw new Error("save control remained disabled after rejection");
+if (elements.contentFields.inert) throw new Error("content fields remained inert after rejection");
 
 launchOutcome = {
   ok: true,
@@ -739,6 +744,9 @@ await saveRepresentationContentEditor();
 if (closeCount !== 1) throw new Error("fully persisted content edit did not close the dialog");
 if (!feedback.hidden || feedback.textContent !== "") {
   throw new Error("successful content edit left stale dialog feedback");
+}
+if (elements.contentFields.inert) {
+  throw new Error("content fields remained inert after successful save");
 }
 """
     subprocess.run(
@@ -839,6 +847,7 @@ const store = new Map();
 globalThis.localStorage = {
   getItem(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
   setItem(key, value) { store.set(String(key), String(value)); },
+  removeItem(key) { store.delete(String(key)); },
 };
 function safeFilename(value) {
   const text = String(value || "Schaubild").trim();
@@ -921,6 +930,20 @@ if (currentNativeInputDigest !== newDigest) {
 if (renderedRepresentation?.title !== "Edited" || currentTitle !== "Edited") {
   throw new Error("successful representation edit did not commit semantic title state");
 }
+
+// Resetting positions removes the active source key. Returning to a previously
+// rendered semantic digest must carry that absence by clearing stale overrides.
+store.delete(nativeLayoutStorageKey(newDigest));
+if (!migrateRepresentationLayoutOverrides(newDigest, oldDigest)) {
+  throw new Error("empty layout migration reported failure");
+}
+if (store.has(nativeLayoutStorageKey(oldDigest))) {
+  throw new Error("empty source layout did not clear stale target-digest overrides");
+}
+store.set(
+  nativeLayoutStorageKey(oldDigest),
+  JSON.stringify({n: {x: 25, y: -15}}),
+);
 
 currentRepresentation = cloneJson(valid);
 renderedRepresentation = cloneJson(valid);
@@ -1128,6 +1151,30 @@ if (
 }
 if (!statusText.includes("Quelle nicht lokal speicherbar")) {
   throw new Error("local draft failure warning was overwritten by the ready status");
+}
+
+currentRepresentation = cloneJson(valid);
+renderedRepresentation = cloneJson(valid);
+currentNativeInputDigest = oldDigest;
+currentNativeUrl = "/native/" + oldToken + "/index.html";
+currentTitle = "Original";
+editorReady = true;
+nativeCanvasRenderStale = false;
+nativeSupersedeToken = oldToken;
+elements.frame = frame();
+globalThis.localStorage.setItem = () => { throw new Error("synthetic quota"); };
+globalThis.fetch = async () => { throw new Error("synthetic offline"); };
+const combinedFailureOutcome = await launchNative(
+  {nativeRepresentation: cloneJson(edited)},
+  {preserveActiveFrame: true, syncRepresentationTitle: true},
+);
+globalThis.localStorage.setItem = originalSetItem;
+if (
+  combinedFailureOutcome?.ok !== false
+  || combinedFailureOutcome?.draftSaved !== false
+  || !combinedFailureOutcome?.errorMessage?.includes("nicht lokal")
+) {
+  throw new Error("render plus local-draft failure did not expose persistence loss");
 }
 """
     subprocess.run(
