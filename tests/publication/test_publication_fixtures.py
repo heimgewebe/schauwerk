@@ -214,6 +214,10 @@ SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005"
 )
+SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-fit-clearance-20261005"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -764,6 +768,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_font_controls.py",
         "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_fit_clearance_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -6079,6 +6089,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_max_canvas_superseded_files
     )
     for name, expected in single_workspace_max_canvas["source_bindings"].items():
+        if name in single_workspace_fit_clearance_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_max_canvas["checks"]["single_workspace_only_after_open"] is True
     assert (
@@ -6131,6 +6143,90 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "result": "passed",
     }
 
+    single_workspace_fit_clearance = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_fit_clearance["schema_version"]
+        == "schauwerk-schaubild-single-workspace-fit-clearance.v1"
+    )
+    assert (
+        single_workspace_fit_clearance["functional_head"]
+        == "fc0e1844efa945adccdc1e0a92296c44a778bd8b"
+    )
+    assert single_workspace_fit_clearance["parent_evidence"] == {
+        "evidence_digest": single_workspace_max_canvas["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-max-canvas-20261005/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_max_canvas["schema_version"],
+    }
+    assert single_workspace_fit_clearance["evidence_digest"] == digest_mapping(
+        single_workspace_fit_clearance, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_fit_clearance["source_bindings"])
+        == single_workspace_fit_clearance_superseded_files
+    )
+    for name, expected in single_workspace_fit_clearance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    fit_finding = single_workspace_fit_clearance["check_evidence"]["review_finding"]
+    assert fit_finding["thread_id"] == "PRRT_kwDOTGqvHc6o8b6l"
+    assert fit_finding["comment_id"] == 4181740632
+    fit_contract = single_workspace_fit_clearance["check_evidence"]["fit_contract"]
+    assert fit_contract["standalone_padding_px"] == 48
+    assert fit_contract["embedded_padding_px"] == {
+        "top": 60,
+        "right": 48,
+        "bottom": 104,
+        "left": 48,
+    }
+    fit_focused = single_workspace_fit_clearance["check_evidence"][
+        "exact_head_focused_regressions"
+    ]
+    assert fit_focused["job_id"] == "3f1962c08238436abf2a98f2"
+    assert fit_focused["passed_count"] == 30
+    assert fit_focused["result"] == "passed"
+    fit_smoke = single_workspace_fit_clearance["check_evidence"][
+        "exact_head_browser_smoke"
+    ]
+    assert fit_smoke["job_id"] == "b66b2fa8ad2c4633979458da"
+    assert fit_smoke["passed_count"] == 7
+    fit_visual = single_workspace_fit_clearance["check_evidence"]["visual_readback"]
+    for state in ("native_desktop_light", "native_mobile_dark"):
+        assert fit_visual["states"][state]["host_clearance_px"] > 8
+        assert fit_visual["states"][state]["native_toolbar_clearance_px"] > 6
+    fit_tablet = single_workspace_fit_clearance["check_evidence"][
+        "tablet_visual_readback"
+    ]
+    assert fit_tablet["viewport"] == {"width": 1024, "height": 768}
+    assert fit_tablet["host_clearance_px"] > 8
+    assert fit_tablet["native_toolbar_clearance_px"] > 6
+    fit_pre = single_workspace_fit_clearance["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert fit_pre["passed_count"] == 1658
+    assert fit_pre["failed_count"] == 1
+    assert fit_pre["failure_class"] == "expected_successor_binding_gate"
+    assert single_workspace_fit_clearance["check_evidence"]["git_diff_check"] == {
+        "base_sha": "1e1be1742147a5dbb72dc82ed3c3fe75a2258844",
+        "head_sha": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+        "diff_sha256": "4d8262a605f32cd7d7b1209dd946b983e5b7b3cd5078011fb8bf9832b13904f7",
+        "diff_bytes": 8188,
+        "result": "passed",
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6159,7 +6255,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_max_canvas_superseded_files:
+        if name in single_workspace_fit_clearance_superseded_files:
+            assert single_workspace_fit_clearance["source_bindings"][name] == current
+        elif name in single_workspace_max_canvas_superseded_files:
             assert single_workspace_max_canvas["source_bindings"][name] == current
         elif name in single_workspace_dark_status_superseded_files:
             assert single_workspace_dark_status["source_bindings"][name] == current
