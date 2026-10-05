@@ -944,6 +944,7 @@ const activePointers = new Map();
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
+const FIT_OVERLAY_CLEARANCE = 8;
 const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({
   top: 60,
   right: VIEWPORT_FIT_PADDING,
@@ -952,6 +953,26 @@ const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({
 });
 
 function setStatus(message) { status.textContent = message; }
+
+function standaloneViewportFitPadding() {
+  const barRect = document.querySelector(".viewer-bar")?.getBoundingClientRect();
+  const footRect = document.querySelector(".viewer-foot")?.getBoundingClientRect();
+  const top = Math.max(
+    VIEWPORT_FIT_PADDING,
+    Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE,
+  );
+  const bottom = Math.max(
+    VIEWPORT_FIT_PADDING,
+    Math.ceil(viewport.clientHeight - (footRect?.top ?? viewport.clientHeight))
+      + FIT_OVERLAY_CLEARANCE,
+  );
+  return {
+    top,
+    right: VIEWPORT_FIT_PADDING,
+    bottom,
+    left: VIEWPORT_FIT_PADDING,
+  };
+}
 
 function readOverrides() {
   try {
@@ -1454,12 +1475,15 @@ function contentSize() {
 
 function fit({ announce = true } = {}) {
   const content = contentSize();
+  const fitPadding = embeddedNativeViewer
+    ? EMBEDDED_VIEWPORT_FIT_PADDING
+    : standaloneViewportFitPadding();
   view = fitView(
     content.width,
     content.height,
     viewport.clientWidth,
     viewport.clientHeight,
-    embeddedNativeViewer ? EMBEDDED_VIEWPORT_FIT_PADDING : VIEWPORT_FIT_PADDING,
+    fitPadding,
   );
   autoFitActive = true;
   applyView();

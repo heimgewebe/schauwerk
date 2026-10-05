@@ -75,13 +75,13 @@ def test_native_viewer_uses_compact_accessible_overlay_controls(tmp_path: Path) 
     assert "function updateDocumentToolbarState()" in app
     assert "control.hidden = !visible;" in app
     assert "const VIEWPORT_FIT_PADDING = 48;" in app
+    assert "const FIT_OVERLAY_CLEARANCE = 8;" in app
     assert "const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({" in app
     assert "top: 60," in app
     assert "bottom: 104," in app
-    assert (
-        "embeddedNativeViewer ? EMBEDDED_VIEWPORT_FIT_PADDING : VIEWPORT_FIT_PADDING,"
-        in app
-    )
+    assert "function standaloneViewportFitPadding()" in app
+    assert "const fitPadding = embeddedNativeViewer" in app
+    assert ": standaloneViewportFitPadding();" in app
     assert '"Ansicht angepasst"' in app
     assert '"Positionen zurückgesetzt"' in app
     assert "Semantik unverändert" not in app

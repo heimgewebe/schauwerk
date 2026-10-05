@@ -23,6 +23,10 @@ BROWSER_SMOKE_TESTS = (
     ),
     (
         "tests/visual/test_native_viewer_browser.py::"
+        "test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_document_browser_drag_updates_edge_and_document_state"
     ),
     (

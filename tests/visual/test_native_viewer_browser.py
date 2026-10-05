@@ -1334,3 +1334,182 @@ try {
     assert (
         'data-empty-canvas-browser-regression="fail"' not in completed.stdout
     ), completed.stdout
+
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [
+        (1366, 900),
+        (390, 844),
+    ],
+)
+def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
+    tmp_path: Path,
+    width: int,
+    height: int,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for standalone fit regression")
+        raise AssertionError("unreachable")
+
+    source = {
+        "nodes": [
+            {
+                "id": "top",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 220,
+                "height": 120,
+                "text": "Top",
+            },
+            {
+                "id": "bottom",
+                "type": "text",
+                "x": 0,
+                "y": 1280,
+                "width": 220,
+                "height": 120,
+                "text": "Bottom",
+            },
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(
+        source,
+        title="Standalone Fit Clearance Browser Probe",
+    )
+    output = tmp_path / "standalone-fit-viewer"
+    build_native_viewer(document, output)
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    probe = r"""
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 240) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+try {
+  const canvas = document.querySelector("#nativeCanvas");
+  const svg = document.querySelector("#nativeDiagram");
+  const fitButton = document.querySelector("#fitView");
+  const bar = document.querySelector(".viewer-bar");
+  const foot = document.querySelector(".viewer-foot");
+  if (
+    !(canvas instanceof HTMLElement) ||
+    !(svg instanceof SVGSVGElement) ||
+    !(fitButton instanceof HTMLButtonElement) ||
+    !(bar instanceof HTMLElement) ||
+    !(foot instanceof HTMLElement)
+  ) {
+    throw new Error("standalone fit probe DOM contract missing");
+  }
+  await waitUntil(
+    () => canvas.style.transform.includes("scale("),
+    "standalone viewer did not become fit-ready",
+  );
+  fitButton.click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  const box = svg.viewBox.baseVal;
+  const ns = "http://www.w3.org/2000/svg";
+  const marker = (y) => {
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", String(box.x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", "1");
+    rect.setAttribute("height", "1");
+    svg.appendChild(rect);
+    return rect.getBoundingClientRect();
+  };
+  const topBoundary = marker(box.y);
+  const bottomBoundary = marker(box.y + box.height - 1);
+  const barRect = bar.getBoundingClientRect();
+  const footRect = foot.getBoundingClientRect();
+  const topClearance = topBoundary.top - barRect.bottom;
+  const bottomClearance = footRect.top - bottomBoundary.bottom;
+  if (topClearance < 8) {
+    throw new Error(
+      "standalone fit overlaps viewer toolbar: clearance="
+        + topClearance.toFixed(2)
+        + "px",
+    );
+  }
+  if (bottomClearance < 8) {
+    throw new Error(
+      "standalone fit overlaps viewer footer: clearance="
+        + bottomClearance.toFixed(2)
+        + "px",
+    );
+  }
+  document.documentElement.dataset.standaloneFitClearanceRegression = "pass";
+  document.documentElement.dataset.standaloneFitTopClearance =
+    topClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitBottomClearance =
+    bottomClearance.toFixed(2);
+} catch (error) {
+  document.documentElement.dataset.standaloneFitClearanceRegression = "fail";
+  document.documentElement.dataset.standaloneFitClearanceError =
+    error instanceof Error ? error.message : String(error);
+}
+</script>
+"""
+    index_path.write_text(
+        index.replace(app_tag, app_tag + probe, 1),
+        encoding="utf-8",
+    )
+
+    class QuietStandaloneFitHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietStandaloneFitHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome,
+                    "--headless=new",
+                    f"--user-data-dir={tmp_path / f'standalone-fit-chrome-{width}x{height}'}",
+                    "--no-first-run",
+                    "--disable-gpu",
+                    "--disable-dev-shm-usage",
+                    "--no-sandbox",
+                    "--run-all-compositor-stages-before-draw",
+                    f"--window-size={width},{height}",
+                    "--virtual-time-budget=12000",
+                    "--dump-dom",
+                    f"http://127.0.0.1:{port}/",
+                ],
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser(
+                "Google Chrome standalone fit probe did not become usable in time"
+            )
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert (
+        'data-standalone-fit-clearance-regression="pass"' in completed.stdout
+    ), completed.stdout
+    assert (
+        'data-standalone-fit-clearance-regression="fail"' not in completed.stdout
+    ), completed.stdout
