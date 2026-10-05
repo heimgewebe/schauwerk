@@ -1,0 +1,104 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-05T07:27:30Z",
+  "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+  "head_sha": "32c511972e429b270c1effaf0530d8b99cae93e7",
+  "diff_sha256": "9254795d9af25968cd8fb4520648d417e11f62324cfffceffd93f97729585eb9",
+  "diff_bytes": 100765,
+  "reviewed_files": [
+    "Makefile",
+    "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005/acceptance-receipt.json",
+    "src/schauwerk/resources/native_viewer/assets.py",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_native_viewer.py",
+    "tests/visual/test_native_viewer_product_ui.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py",
+    "tests/visual/test_standalone_editor_single_workspace.py"
+  ],
+  "review_focus": [
+    "opening a Schaubild enters one workspace only; no compact/fullscreen product-state or Fullscreen API path is reintroduced",
+    "outer workspace, iframe and Native viewer stage use the full available viewport while controls remain overlays rather than layout-reserving chrome",
+    "Legacy no longer reserves fixed right or bottom host gutters and therefore receives the same maximum workspace geometry without pretending to have Native capabilities",
+    "engine-specific export truth remains asymmetric: Native exposes Canvas/source-or-original plus SVG with PNG unavailable; Legacy exposes Projekt, PNG and SVG",
+    "the Export and Werkzeug controls are compact details popovers and do not create dynamic dock-height or ResizeObserver layout state",
+    "choosing Project/Canvas, PNG or SVG closes the Export popover before export while the resulting prepared download remains reachable in the same workspace",
+    "Native edit controls are contextual and collapsible; fit/reset/zoom remain reachable and fit uses a 48 px viewport safety margin around overlay chrome",
+    "responsive behavior keeps touch targets usable on tablet/mobile and preserves dark-mode status contrast without reducing the canvas rectangle",
+    "the real-browser regression covers desktop, tablet and mobile geometry and verifies the post-export closed-popover state",
+    "the exact functional revision received Native/Legacy light/dark browser readback with real Legacy ready-state handshake and preserved capability asymmetry",
+    "the new immutable successor receipt binds the exact nine changed product/test/CI revisions and leaves all historical acceptance receipts byte-immutable",
+    "publication precedence skips superseded hashes only for the exact max-canvas binding set and still verifies current hashes through the new successor",
+    "no new external origin, privilege, persistence authority, provider dependency, cross-repository write or image-production path is introduced",
+    "the clean evidence head passes Ruff, compile, registry validation, git diff check and all 1659 repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The remaining product problem was not a missing browser Fullscreen implementation but persistent chrome and legacy gutters consuming the apparent workspace.",
+      "resolution": "Kept a single workspace state, removed the dynamic dock/gutter mechanics, and changed both the host shell and Native viewer chrome to compact overlays while retaining a clear Zurück action."
+    },
+    {
+      "iteration": 2,
+      "finding": "Moving Native controls into overlays creates a new risk that fit-to-content can place diagram content directly under those controls.",
+      "resolution": "Bound fit-to-content to VIEWPORT_FIT_PADDING = 48 and exercised fit/reset/edit reachability in the real-browser single-workspace regression."
+    },
+    {
+      "iteration": 3,
+      "finding": "Maximizing Legacy and Native together could accidentally invent symmetric export capabilities or hide a capability that only one engine provides.",
+      "resolution": "Preserved explicit engine truth: Native Canvas/source/original plus SVG and no PNG; Legacy Projekt plus PNG and SVG. Browser readback verifies these states separately."
+    },
+    {
+      "iteration": 4,
+      "finding": "An opened Export popover remained visible after selecting an export, unnecessarily covering the canvas even though export succeeded.",
+      "resolution": "The final functional revision closes the containing details element before starting Project/Canvas or PNG/SVG export; exact-head Native and Legacy readbacks prove the download still appears while the menu remains closed."
+    },
+    {
+      "iteration": 5,
+      "finding": "Changing accepted implementation and test bytes invalidated several historical source bindings even though those historical receipts must remain immutable.",
+      "resolution": "Added a new digest-bound max-canvas successor and restricted historical hash skips to the exact nine superseded paths, then passed the publication gate and the complete 1659-test suite on the clean evidence head."
+    }
+  ],
+  "validation": {
+    "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+    "evidence_head": "32c511972e429b270c1effaf0530d8b99cae93e7",
+    "focused_regressions_job_id": "04d5eaa80cdb4e7585dfc800",
+    "focused_regressions_finalization_receipt_sha256": "d8ef36f324a18a6aea8d8a185680f0caf9d4c53f8db5f5b17679cea2b33b1edf",
+    "focused_regressions_passed_count": 32,
+    "browser_smoke_job_id": "cbb7f605fc3f4e0d9bca42d9",
+    "browser_smoke_finalization_receipt_sha256": "a92d6047197f2ced02f251a883b2e839f44fd86fbe20ea529d09fd4d546275c0",
+    "browser_smoke_passed_count": 7,
+    "visual_readback_job_id": "5f176639c0064efda87292ca",
+    "visual_readback_finalization_receipt_sha256": "75271db13e0e0e6fdffc3bc133965fe649aecddc576bd0e225b8ae97807533e5",
+    "functional_successor_validate_job_id": "0ebad912ee22484792059480",
+    "functional_successor_validate_finalization_receipt_sha256": "19ea075ac1347fb14b8e1d3dc0a8c2d8bbe99dbf0759566ba68e45013436fb34",
+    "functional_successor_validate_passed_count": 1659,
+    "evidence_head_validate_job_id": "d75e8f3fb2504e8e9ff45c60",
+    "evidence_head_validate_finalization_receipt_sha256": "3013487a8eed04385e59f335f07be217c82359b554b3392430dcaf1aec2e2544",
+    "evidence_head_validate_passed_count": 1659,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "32c511972e429b270c1effaf0530d8b99cae93e7",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-05T07:24:34.450074Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the later self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "GitHub current-head reviewer settlement and review-thread resolution",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}
