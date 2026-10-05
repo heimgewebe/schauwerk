@@ -163,6 +163,9 @@ try {
     () => !document.querySelector("#downloadLink").hidden,
     "native SVG export did not prepare a download in the same workspace",
   );
+  if (exportMenu.open) {
+    throw new Error("export popover stayed open after choosing an export action");
+  }
   const barRect = document.querySelector(".workspace-bar").getBoundingClientRect();
   const downloadRect = document.querySelector("#downloadLink").getBoundingClientRect();
   if (barRect.height > 54 || downloadRect.height < 40) {

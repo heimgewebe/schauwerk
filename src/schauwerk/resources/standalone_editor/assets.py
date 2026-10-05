@@ -3117,7 +3117,11 @@ for (const control of [elements.contentCloseButton, elements.contentCancelButton
   control.addEventListener("click", () => elements.contentDialog.close("cancel"));
 }
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
-elements.projectButton.addEventListener("click", () => exportDiagram("drawio"));
+elements.projectButton.addEventListener("click", () => {
+  const menu = elements.projectButton.closest("details");
+  if (menu) menu.open = false;
+  exportDiagram("drawio");
+});
 elements.fontDefaultInput.addEventListener("change", applyFontPreferenceInput);
 elements.fontDecreaseButton.addEventListener("click", () => {
   if (!editorReady) return setStatus("Editor ist noch nicht bereit");
@@ -3151,7 +3155,11 @@ elements.layoutButton.addEventListener("click", () => {
   setStatus("Layout wird berechnet …");
 });
 document.querySelectorAll("[data-export]").forEach((button) => {
-  button.addEventListener("click", () => exportDiagram(button.dataset.export));
+  button.addEventListener("click", () => {
+    const menu = button.closest("details");
+    if (menu) menu.open = false;
+    exportDiagram(button.dataset.export);
+  });
 });
 elements.homeLink.addEventListener("click", (event) => { event.preventDefault(); showStart(); });
 
