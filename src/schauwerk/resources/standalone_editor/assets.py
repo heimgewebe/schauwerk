@@ -94,28 +94,36 @@ INDEX_HTML = r"""<!doctype html>
 
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
-        <div class="font-controls" role="group" aria-label="Schriftgröße">
-          <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
-          <button class="button compact tool-button" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Text</button>
-          <button class="button compact tool-button" id="fontIncreaseButton" type="button" aria-label="Schriftgröße der Auswahl vergrößern" title="Ausgewählte Beschriftungen vergrößern">A+</button>
-          <button class="button compact tool-button" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alles</button>
-        </div>
+        <details class="workspace-menu workspace-tools-menu" name="workspace-menu">
+          <summary class="button compact">Werkzeuge</summary>
+          <div class="workspace-popover workspace-tools-popover">
+            <div class="font-controls" role="group" aria-label="Schriftgröße">
+              <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
+              <button class="button compact tool-button" id="fontPanelButton" type="button" title="Textformatierung für die Auswahl öffnen">Text</button>
+              <button class="button compact tool-button" id="fontIncreaseButton" type="button" aria-label="Schriftgröße der Auswahl vergrößern" title="Ausgewählte Beschriftungen vergrößern">A+</button>
+              <button class="button compact tool-button" id="fontAllButton" type="button" title="Gesamtes Schaubild auswählen und Textformatierung öffnen">Alles</button>
+            </div>
+            <div class="workspace-tools">
+              <button class="button compact" id="layoutButton" type="button">Ordnen</button>
+              <button class="button compact" id="contentEditButton" type="button" hidden>Inhalt</button>
+              <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
+              <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
+            </div>
+          </div>
+        </details>
 
-        <div class="workspace-tools">
-          <button class="button compact" id="layoutButton" type="button">Ordnen</button>
-          <button class="button compact" id="contentEditButton" type="button" hidden>Inhalt</button>
-          <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
-          <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
-        </div>
+        <details class="workspace-menu workspace-export-menu" name="workspace-menu">
+          <summary class="button compact">Export</summary>
+          <div class="workspace-popover workspace-output">
+            <button class="button compact" id="projectButton" type="button">Projekt</button>
+            <button class="button compact output-button" data-export="png" type="button">PNG</button>
+            <button class="button compact output-button" data-export="svg" type="button">SVG</button>
+          </div>
+        </details>
 
-        <div class="workspace-output">
-          <button class="button compact" id="projectButton" type="button">Projekt</button>
-          <button class="button compact output-button" data-export="png" type="button">PNG</button>
-          <button class="button compact output-button" data-export="svg" type="button">SVG</button>
-          <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
-        </div>
+        <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
+        <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Zurück zum Start">Zurück</button>
       </nav>
-      <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Arbeitsfläche schließen">×</button>
 
       <div class="editor-stage">
         <div class="editor-wrap">
@@ -470,20 +478,49 @@ h1 {
 .workspace-bar {
   position: absolute;
   z-index: 20;
-  right: max(10px, env(safe-area-inset-right));
-  bottom: var(--workspace-dock-bottom, max(44px, calc(env(safe-area-inset-bottom) + 36px)));
-  max-width: min(880px, calc(100vw - 20px));
-  min-height: 0;
-  padding: 6px;
+  right: max(8px, env(safe-area-inset-right));
+  bottom: var(--workspace-bar-bottom, max(8px, env(safe-area-inset-bottom)));
+  min-height: 44px;
+  max-width: calc(100vw - 16px);
+  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
   border: 1px solid rgba(133, 150, 180, 0.45);
-  border-radius: 14px;
+  border-radius: 13px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px) saturate(145%);
+}
+.workspace-menu { position: relative; min-width: 0; }
+.workspace-menu > summary {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.workspace-menu > summary::-webkit-details-marker { display: none; }
+.workspace-menu[open] > summary {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+.workspace-popover {
+  position: absolute;
+  z-index: 22;
+  right: 0;
+  bottom: calc(100% + 7px);
+  width: max-content;
+  max-width: min(560px, calc(100vw - 16px));
+  padding: 6px;
+  border: 1px solid rgba(133, 150, 180, 0.45);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(14px) saturate(145%);
 }
 .font-controls {
@@ -506,29 +543,35 @@ h1 {
   flex-wrap: wrap;
   gap: 5px;
 }
+.workspace-tools-popover { display: grid; gap: 6px; }
 .workspace-bar .button.compact,
-.workspace-bar .download-link { min-height: 40px; }
+.workspace-bar .download-link,
+.workspace-menu > summary { min-height: 40px; }
 .output-button { min-width: 46px; color: var(--muted); }
+body.engine-legacy .workspace-tools-menu,
+body.engine-native .workspace-tools-menu:not(:has(.workspace-tools > :not([hidden]))) {
+  display: none;
+}
 .workspace-close {
-  position: fixed;
-  z-index: 21;
-  top: max(8px, env(safe-area-inset-top));
-  right: max(8px, env(safe-area-inset-right));
-  width: 40px;
-  padding-inline: 0 !important;
-  color: #f7f9fc;
-  background: rgba(24, 34, 52, 0.90);
-  border-color: rgba(133, 150, 180, 0.55);
-  font-size: 1.35rem !important;
-  font-weight: 500;
-  line-height: 1;
+  min-width: 58px;
+  color: var(--muted);
+  background: transparent;
 }
 .workspace-close:hover {
-  color: #fff;
-  background: rgba(24, 34, 52, 0.98);
-  border-color: rgba(133, 150, 180, 0.78);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
 }
-.download-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.download-link {
+  max-width: min(180px, 34vw);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: none;
+}
 .download-link[hidden] { display: none; }
 
 .content-dialog {
@@ -663,18 +706,22 @@ h1 {
 
 body.workspace-active {
   overflow: hidden;
-  --workspace-dock-height: 0px;
-  --workspace-dock-bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  --workspace-bar-bottom: max(8px, env(safe-area-inset-bottom));
+  --workspace-bar-height: 44px;
   --workspace-overlay-gap: 8px;
 }
 body.workspace-active .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
 body.workspace-active .topline {
   position: fixed;
   z-index: 20;
-  left: max(10px, env(safe-area-inset-left));
+  left: max(8px, env(safe-area-inset-left));
   right: auto;
   top: auto;
-  bottom: max(44px, calc(env(safe-area-inset-bottom) + 36px));
+  bottom: calc(
+    var(--workspace-bar-bottom)
+    + var(--workspace-bar-height)
+    + var(--workspace-overlay-gap)
+  );
   width: auto;
   min-height: 0;
   padding: 0;
@@ -690,19 +737,6 @@ body.workspace-active .status {
   max-width: min(42vw, 520px);
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.14);
   backdrop-filter: blur(12px);
-}
-body.workspace-active.engine-legacy .font-controls,
-body.workspace-active.engine-legacy .workspace-tools { display: none; }
-body.workspace-active.engine-legacy .editor-stage {
-  padding-right: max(56px, calc(env(safe-area-inset-right) + 48px));
-  padding-bottom: max(64px, calc(env(safe-area-inset-bottom) + 56px));
-}
-body.workspace-active.engine-legacy {
-  --workspace-dock-bottom: max(8px, env(safe-area-inset-bottom));
-}
-body.workspace-active.engine-legacy .workspace-bar,
-body.workspace-active.engine-legacy .topline {
-  bottom: var(--workspace-dock-bottom);
 }
 
 @media (max-width: 1180px) {
@@ -729,24 +763,8 @@ body.workspace-active.engine-legacy .topline {
   .brand-mark { width: 34px; height: 34px; border-radius: 11px; }
   .brand-copy small { display: none; }
   .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
-  body.workspace-active {
-    --workspace-dock-bottom: max(42px, calc(env(safe-area-inset-bottom) + 34px));
-  }
-  body.workspace-active.engine-legacy {
-    --workspace-dock-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-  body.workspace-active .topline,
-  body.workspace-active.engine-legacy .topline {
-    min-height: 0;
-    padding: 0;
-    bottom: calc(
-      var(--workspace-dock-bottom)
-      + var(--workspace-dock-height)
-      + var(--workspace-overlay-gap)
-    );
-  }
   body.workspace-active .status {
-    max-width: min(78vw, 520px);
+    max-width: min(72vw, 520px);
     border: 1px solid var(--line);
     padding: 6px 9px;
     background: rgba(255, 255, 255, 0.9);
@@ -767,25 +785,22 @@ body.workspace-active.engine-legacy .topline {
   .font-default-control { align-items: flex-start; flex-direction: column; gap: 8px; }
 
   .workspace-bar {
-    left: max(8px, env(safe-area-inset-left));
-    right: max(8px, env(safe-area-inset-right));
-    bottom: var(--workspace-dock-bottom);
-    max-width: none;
-    gap: 4px;
+    left: auto;
+    right: max(6px, env(safe-area-inset-right));
+    bottom: var(--workspace-bar-bottom);
+    max-width: calc(100vw - 12px);
+    gap: 3px;
   }
-  .font-controls { max-width: 100%; flex-wrap: nowrap; }
-  .font-controls .button { min-width: 34px; padding-inline: 7px; }
-  .workspace-tools,
-  .workspace-output { gap: 4px; }
+  .workspace-menu > summary,
   .workspace-bar .button.compact,
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
-  body.workspace-active.engine-legacy .editor-stage {
-    padding-bottom: calc(
-      var(--workspace-dock-bottom)
-      + var(--workspace-dock-height)
-      + var(--workspace-overlay-gap)
-    );
-  }
+  .workspace-popover { max-width: calc(100vw - 12px); padding: 5px; }
+  .font-controls { max-width: 100%; flex-wrap: nowrap; }
+  .font-controls .button { min-width: 38px; min-height: 42px; padding-inline: 7px; }
+  .workspace-tools,
+  .workspace-output { gap: 4px; }
+  .download-link { max-width: min(150px, 38vw); }
+
 
 }
 
@@ -798,7 +813,6 @@ body.workspace-active.engine-legacy .topline {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
-
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
@@ -825,7 +839,8 @@ body.workspace-active.engine-legacy .topline {
       var(--bg);
   }
   .topline,
-  .workspace-bar { background: rgba(16, 18, 25, 0.82); }
+  .workspace-bar,
+  .workspace-popover { background: rgba(16, 18, 25, 0.88); }
   .product-badge,
   .status,
   .format-strip span { background: rgba(31, 34, 45, 0.72); color: var(--muted); }
@@ -1183,7 +1198,6 @@ export function isSchauwerkRepresentation(value) {
     Array.isArray(value.groups)
   );
 }
-
 function isCanvasNode(node) {
   if (
     !node ||
@@ -1526,7 +1540,6 @@ const PRODUCT_DEFAULT_EDGE_FONT_SIZE = 22;
 const elements = {
   startView: document.querySelector("#startView"),
   workspace: document.querySelector("#workspace"),
-  workspaceBar: document.querySelector(".workspace-bar"),
   sourceInput: document.querySelector("#sourceInput"),
   openPasteButton: document.querySelector("#openPasteButton"),
   fileButton: document.querySelector("#fileButton"),
@@ -1589,19 +1602,6 @@ function invalidateLoadIntents() {
 }
 
 function setStatus(message) { elements.status.textContent = message; }
-function syncWorkspaceDockHeight() {
-  if (!(elements.workspaceBar instanceof HTMLElement)) return;
-  const height = Math.ceil(elements.workspaceBar.getBoundingClientRect().height);
-  if (!Number.isFinite(height) || height < 0) return;
-  document.body.style.setProperty("--workspace-dock-height", String(height) + "px");
-}
-function queueWorkspaceDockHeightSync() {
-  if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(syncWorkspaceDockHeight);
-  } else {
-    syncWorkspaceDockHeight();
-  }
-}
 function setError(message) {
   elements.error.textContent = message || "";
   elements.error.hidden = !message;
@@ -1655,7 +1655,6 @@ function setEngineMode(mode) {
     elements.projectButton.textContent = "Projekt";
     elements.projectButton.title = "Bearbeitbares draw.io-Projekt speichern";
   }
-  queueWorkspaceDockHeightSync();
 }
 
 function safeFilename(value) {
@@ -2076,7 +2075,6 @@ function clearPreparedDownload() {
   elements.downloadLink.removeAttribute("href");
   elements.downloadLink.removeAttribute("download");
   elements.downloadLink.textContent = "Datei speichern";
-  queueWorkspaceDockHeightSync();
 }
 
 function prepareDownload(blob, filename, label) {
@@ -2086,12 +2084,10 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.download = filename;
   elements.downloadLink.textContent = `${label} speichern`;
   elements.downloadLink.hidden = false;
-  queueWorkspaceDockHeightSync();
 }
 
 function setWorkspaceActive(active) {
   document.body.classList.toggle("workspace-active", Boolean(active));
-  if (active) queueWorkspaceDockHeightSync();
 }
 
 function showStart() {
@@ -3172,15 +3168,6 @@ elements.sourceInput.addEventListener("keydown", (event) => {
 
 preferredNodeFontSize = readFontPreference();
 elements.fontDefaultInput.value = String(preferredNodeFontSize);
-
-const workspaceDockResizeObserver = typeof ResizeObserver === "function"
-  ? new ResizeObserver(() => queueWorkspaceDockHeightSync())
-  : null;
-if (elements.workspaceBar instanceof HTMLElement) {
-  workspaceDockResizeObserver?.observe(elements.workspaceBar);
-  window.addEventListener("resize", queueWorkspaceDockHeightSync);
-  queueWorkspaceDockHeightSync();
-}
 
 const initialQuery = new URLSearchParams(window.location.search);
 if (initialQuery.get("new") === "1") {

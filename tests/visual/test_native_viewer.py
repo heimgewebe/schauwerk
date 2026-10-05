@@ -381,6 +381,21 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "edgeReattach = null;" in escape_handler
     assert "Verbindungsaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
+    assert '<details class="edit-controls document-only" hidden>' in index
+    assert "<summary>Bearbeiten</summary>" in index
+    assert 'id="resetLayout" class="icon-control"' in index
+    assert 'aria-label="Positionen zurücksetzen"' in index
+    assert ".viewer-stage {" in styles
+    viewer_stage = styles[
+        styles.index(".viewer-stage {") : styles.index(".viewer-stage.is-panning")
+    ]
+    assert "position: absolute;" in viewer_stage
+    assert "inset: 0;" in viewer_stage
+    assert ".viewer-foot {" in styles
+    assert ".edit-menu {" in styles
+    assert "const VIEWPORT_FIT_PADDING = 48;" in app
+    assert "VIEWPORT_FIT_PADDING," in app
+    assert "control.hidden = !visible;" in app
 
 
 def test_native_viewer_document_bundle_preserves_collapsible_whitespace_semantics(

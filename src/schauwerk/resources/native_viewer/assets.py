@@ -29,16 +29,19 @@ INDEX_HTML = r"""<!doctype html>
           <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
-          <button id="resetLayout" type="button">Positionen zurücksetzen</button>
+          <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
-        <div class="edit-controls document-only" role="group" aria-label="Bearbeiten" hidden>
-          <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
-          <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
-          <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
-          <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
-          <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
-          <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
-        </div>
+        <details class="edit-controls document-only" hidden>
+          <summary>Bearbeiten</summary>
+          <div class="edit-menu" role="group" aria-label="Bearbeiten">
+            <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
+            <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
+            <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
+            <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
+            <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
+            <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -147,29 +150,39 @@ button:focus-visible {
 .destructive-control { color: var(--danger); }
 
 .viewer-shell {
+  position: relative;
   height: 100vh;
   height: 100dvh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
 }
 .viewer-bar {
-  position: relative;
-  z-index: 2;
-  min-height: 58px;
-  padding: max(7px, env(safe-area-inset-top)) max(9px, env(safe-area-inset-right)) 7px max(9px, env(safe-area-inset-left));
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  backdrop-filter: blur(18px) saturate(140%);
+  position: absolute;
+  z-index: 3;
+  top: max(7px, env(safe-area-inset-top));
+  left: max(7px, env(safe-area-inset-left));
+  right: max(7px, env(safe-area-inset-right));
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
 }
 .viewer-heading {
   min-width: 0;
+  max-width: min(42vw, 460px);
+  padding: 4px 6px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
+  pointer-events: auto;
 }
 .viewer-title {
   min-width: 0;
@@ -191,7 +204,7 @@ button:focus-visible {
 }
 .status {
   min-width: 0;
-  max-width: min(36vw, 420px);
+  max-width: min(30vw, 360px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -206,59 +219,109 @@ button:focus-visible {
 .controls {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  pointer-events: auto;
 }
-.view-controls,
-.edit-controls {
+.view-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 3px;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: var(--surface-soft);
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
 }
 .controls output {
-  min-width: 52px;
+  min-width: 48px;
   text-align: center;
   color: var(--muted);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
-.view-controls button,
-.edit-controls button {
+.view-controls button {
   border-color: transparent;
   background: transparent;
 }
-.view-controls button:hover,
-.edit-controls button:hover {
+.view-controls button:hover {
   border-color: var(--line);
   background: #fff;
 }
-.view-controls button:disabled:hover,
-.edit-controls button:disabled:hover {
+.view-controls button:disabled:hover {
   border-color: transparent;
   background: transparent;
 }
-
-.embedded-native-viewer .viewer-bar {
-  padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));
+.edit-controls {
+  position: relative;
+  min-width: 0;
 }
-.document-editor-hosted .viewer-bar {
-  min-height: 50px;
-  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+.edit-controls > summary {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+  color: #343746;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+.edit-controls > summary::-webkit-details-marker { display: none; }
+.edit-controls[open] > summary {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+.edit-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: max-content;
+  max-width: min(520px, calc(100vw - 14px));
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+.edit-menu button {
+  border-color: transparent;
+  background: transparent;
+}
+.edit-menu button:hover {
+  border-color: var(--line);
+  background: #fff;
 }
 .document-editor-hosted .viewer-title { display: none; }
-.document-editor-hosted .viewer-heading { gap: 0; }
-.document-editor-hosted .status { max-width: min(28vw, 320px); }
-.document-editor-hosted .controls { justify-content: flex-end; }
+.document-editor-hosted .viewer-heading {
+  max-width: min(32vw, 320px);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.document-editor-hosted .status { max-width: min(32vw, 320px); }
 
 .viewer-stage {
-  position: relative;
+  position: absolute;
+  inset: 0;
   min-height: 0;
   overflow: hidden;
   background:
@@ -321,64 +384,71 @@ button:focus-visible {
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .viewer-foot {
-  min-height: 34px;
-  padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  position: absolute;
+  z-index: 3;
+  left: max(7px, env(safe-area-inset-left));
+  bottom: max(7px, env(safe-area-inset-bottom));
+  min-height: 0;
+  max-width: calc(100vw - 14px);
+  padding: 6px 8px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   color: var(--muted);
   background: var(--surface);
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
   font-size: 0.68rem;
+  pointer-events: none;
 }
 .viewer-foot span:first-child {
   color: var(--ink);
   font-weight: 700;
 }
 .viewer-foot span:last-child { margin-left: auto; }
+.document-editor-hosted .viewer-foot span:not(:first-child) { display: none; }
 
 @media (max-width: 980px) {
-  .viewer-bar {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-  }
-  .viewer-heading { justify-content: space-between; }
-  .status { max-width: 52vw; }
-  .controls { justify-content: flex-start; }
-  .document-editor-hosted .viewer-bar {
-    grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
-    align-items: center;
-  }
-  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
-  .document-editor-hosted .controls { justify-content: flex-end; }
+  .viewer-bar { gap: 6px; }
+  .viewer-heading { max-width: min(46vw, 360px); }
+  .status { max-width: min(42vw, 300px); }
+  .controls { gap: 4px; }
+  .document-editor-hosted .viewer-heading { max-width: min(30vw, 240px); }
+  .document-editor-hosted .status { max-width: min(30vw, 240px); }
 }
 @media (max-width: 620px) {
-  .viewer-bar { gap: 6px; padding-inline: 7px; }
+  button { min-width: 42px; min-height: 42px; }
+  .viewer-bar {
+    top: max(6px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left));
+    right: max(6px, env(safe-area-inset-right));
+    gap: 4px;
+  }
   .viewer-heading .eyebrow { display: none; }
+  .viewer-heading { max-width: 34vw; }
   .status {
-    max-width: 58vw;
-    border: 0;
-    padding-inline: 0;
-    background: transparent;
+    max-width: 100%;
+    padding-inline: 7px;
   }
-  .controls { gap: 4px; }
-  .document-editor-hosted .viewer-bar { grid-template-columns: minmax(0, 1fr); }
-  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
-  .document-editor-hosted .status { max-width: 100%; }
-  .document-editor-hosted .controls { justify-content: flex-start; }
-  .view-controls,
-  .edit-controls {
-    width: 100%;
-    padding: 2px;
+  .controls { margin-left: auto; gap: 3px; }
+  .view-controls { padding: 2px; gap: 2px; }
+  .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
+  .edit-menu { max-width: calc(100vw - 12px); }
+  .viewer-foot {
+    left: max(6px, env(safe-area-inset-left));
+    bottom: max(6px, env(safe-area-inset-bottom));
+    max-width: calc(100vw - 12px);
   }
-  .view-controls button,
-  .edit-controls button { flex: 1 1 auto; }
-  .viewer-foot { gap: 8px; }
-  .viewer-foot span:nth-child(2) { display: none; }
 }
 @media (max-width: 430px) {
+  .document-editor-hosted .viewer-heading { display: none; }
+  .document-editor-hosted .controls output { display: none; }
+  .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
@@ -401,7 +471,9 @@ button:focus-visible {
   button { color: #e9eaf2; background: #242733; }
   button:hover { border-color: #4d5262; background: #2b2f3c; }
   .view-controls button:hover,
-  .edit-controls button:hover { background: #292d39; }
+  .edit-menu button:hover { background: #292d39; }
+  .edit-controls > summary,
+  .edit-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }
@@ -846,6 +918,7 @@ let gesture = null;
 const activePointers = new Map();
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
+const VIEWPORT_FIT_PADDING = 48;
 
 function setStatus(message) { status.textContent = message; }
 
@@ -1232,8 +1305,15 @@ function constrainAllNodesToCanvas() {
   return changed;
 }
 
-function setDocumentControlState(control, enabled, enabledTitle, disabledTitle) {
+function setDocumentControlState(
+  control,
+  enabled,
+  enabledTitle,
+  disabledTitle,
+  visible = enabled,
+) {
   if (!(control instanceof HTMLButtonElement)) return;
+  control.hidden = !visible;
   control.disabled = !enabled;
   control.title = enabled ? enabledTitle : disabledTitle;
 }
@@ -1247,6 +1327,7 @@ function updateDocumentToolbarState() {
     true,
     "Element hinzufügen",
     "Element hinzufügen",
+    true,
   );
   setDocumentControlState(
     addEdgeButton,
@@ -1342,7 +1423,13 @@ function contentSize() {
 
 function fit({ announce = true } = {}) {
   const content = contentSize();
-  view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
+  view = fitView(
+    content.width,
+    content.height,
+    viewport.clientWidth,
+    viewport.clientHeight,
+    VIEWPORT_FIT_PADDING,
+  );
   autoFitActive = true;
   applyView();
   if (announce) setStatus("Ansicht angepasst");
@@ -1703,16 +1790,6 @@ function deleteSelection() {
 
 if (documentEditorHosted) {
   if (editControls instanceof HTMLElement) editControls.hidden = false;
-  for (const control of [
-    addNodeButton,
-    addEdgeButton,
-    editTextButton,
-    reattachSourceButton,
-    reattachTargetButton,
-    deleteSelectionButton,
-  ]) {
-    if (control instanceof HTMLButtonElement) control.hidden = false;
-  }
   if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Text · Elemente & Verbindungen";
   if (authorityHint) authorityHint.textContent = "Dokument wird lokal gesichert";
   updateDocumentToolbarState();
