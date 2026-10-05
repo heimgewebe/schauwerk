@@ -210,6 +210,10 @@ SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004"
 )
+SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -751,6 +755,17 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
     }
+    single_workspace_max_canvas_superseded_files = {
+        "Makefile",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -774,6 +789,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             draft_restore_superseded_files
             | product_ui_superseded_files
@@ -1126,6 +1143,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
     for name, expected in draft_restore_successor["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             product_ui_superseded_files | json_canvas_text_fit_superseded_files
         ):
@@ -1237,6 +1256,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(product_ui_successor["source_bindings"]) == expected_product_ui_bindings
     for name, expected in product_ui_successor["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             product_ui_review_fix_superseded_files
             | final_ui_fix_superseded_files
@@ -1314,6 +1335,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(product_ui_review_fix["source_bindings"]) == expected_review_fix_bindings
     for name, expected in product_ui_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             final_ui_fix_superseded_files
             | json_canvas_text_fit_superseded_files
@@ -1392,6 +1415,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(final_ui_fix["source_bindings"]) == final_ui_fix_superseded_files
     for name, expected in final_ui_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_viewer_startup_superseded_files
             | ui_controls_superseded_files
@@ -1494,6 +1519,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_superseded_files
     )
     for name, expected in json_canvas_text_fit["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_final_superseded_files
             | smoke_pipefail_superseded_files
@@ -3666,6 +3693,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_viewer_startup_superseded_files
     )
     for name, expected in json_canvas_text_fit_viewer_startup["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_viewer_startup_status_superseded_files
             | ui_controls_superseded_files
@@ -3767,6 +3796,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_viewer_startup_status[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in ui_controls_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_viewer_startup_status["checks"] == {
@@ -3959,6 +3990,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(ui_controls["source_bindings"]) == ui_controls_superseded_files
     for name, expected in ui_controls["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             ui_controls_resize_superseded_files
             | content_editing_superseded_files
@@ -4052,6 +4085,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ui_controls_resize_superseded_files
     )
     for name, expected in ui_controls_resize["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             focus_default_superseded_files
             | focus_default_review_fix_superseded_files
@@ -4121,6 +4156,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(smoke_pipefail["source_bindings"]) == smoke_pipefail_superseded_files
     for name, expected in smoke_pipefail["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert smoke_pipefail["checks"] == {
@@ -4291,6 +4328,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(content_editing["source_bindings"]) == content_editing_superseded_files
     for name, expected in content_editing["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing["checks"] == {
@@ -4424,6 +4463,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_recovery_superseded_files
     )
     for name, expected in content_editing_recovery["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_form_submit_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery["checks"] == {
@@ -4539,6 +4580,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_form_submit_superseded_files
     )
     for name, expected in content_editing_form_submit["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_valid_draft_recovery_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_form_submit["checks"] == {
@@ -4678,6 +4721,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_valid_draft_recovery_superseded_files
     )
     for name, expected in content_editing_valid_draft_recovery["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_layout_reload_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_valid_draft_recovery["checks"] == {
@@ -4778,6 +4823,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in content_editing_recovery_layout_reload[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_save_feedback_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery_layout_reload["checks"] == {
@@ -4909,6 +4956,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_save_feedback_superseded_files
     )
     for name, expected in content_editing_save_feedback["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_save_hardening_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_save_feedback["checks"] == {
@@ -5057,6 +5106,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in content_editing_recovery_save_hardening[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             focus_default_superseded_files
             | focus_default_review_fix_superseded_files
@@ -5196,6 +5247,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(focus_default["source_bindings"]) == focus_default_superseded_files
     for name, expected in focus_default["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
@@ -5279,6 +5332,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == focus_default_review_fix_superseded_files
     )
     for name, expected in focus_default_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_exports_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert focus_default_review_fix["checks"] == {
@@ -5378,6 +5433,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_exports_superseded_files
     )
     for name, expected in single_workspace_exports["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_review_fix_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_exports["checks"] == {
@@ -5495,6 +5552,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_review_fix_superseded_files
     )
     for name, expected in single_workspace_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_mobile_status_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_review_fix["checks"] == {
@@ -5608,6 +5667,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_mobile_status_superseded_files
     )
     for name, expected in single_workspace_mobile_status["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_wrapped_dock_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_mobile_status["checks"] == {
@@ -5752,6 +5813,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_wrapped_dock_superseded_files
     )
     for name, expected in single_workspace_wrapped_dock["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_dark_status_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_wrapped_dock["checks"] == {
@@ -5889,6 +5952,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_dark_status_superseded_files
     )
     for name, expected in single_workspace_dark_status["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_dark_status["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -5977,6 +6042,95 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_dark_status["does_not_establish"]
     )
 
+    single_workspace_max_canvas = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_max_canvas["schema_version"]
+        == "schauwerk-schaubild-single-workspace-max-canvas.v1"
+    )
+    assert (
+        single_workspace_max_canvas["functional_head"]
+        == "eea29caf4f212125e734894a479d612fe9e9ef42"
+    )
+    assert single_workspace_max_canvas["parent_evidence"] == {
+        "evidence_digest": single_workspace_dark_status["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-dark-status-20261004/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_dark_status["schema_version"],
+    }
+    assert single_workspace_max_canvas["evidence_digest"] == digest_mapping(
+        single_workspace_max_canvas, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_max_canvas["source_bindings"])
+        == single_workspace_max_canvas_superseded_files
+    )
+    for name, expected in single_workspace_max_canvas["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert single_workspace_max_canvas["checks"]["single_workspace_only_after_open"] is True
+    assert (
+        single_workspace_max_canvas["checks"]["export_popover_closes_after_export_action"]
+        is True
+    )
+    assert (
+        single_workspace_max_canvas["checks"]["engine_specific_export_capabilities_preserved"]
+        is True
+    )
+    max_focused = single_workspace_max_canvas["check_evidence"]["focused_regressions"]
+    assert max_focused["job_id"] == "04d5eaa80cdb4e7585dfc800"
+    assert max_focused["passed_count"] == 32
+    assert max_focused["result"] == "passed"
+    max_smoke = single_workspace_max_canvas["check_evidence"]["browser_smoke"]
+    assert max_smoke["job_id"] == "cbb7f605fc3f4e0d9bca42d9"
+    assert max_smoke["passed_count"] == 7
+    assert max_smoke["result"] == "passed"
+    max_visual = single_workspace_max_canvas["check_evidence"]["visual_readback"]
+    assert max_visual["job_id"] == "5f176639c0064efda87292ca"
+    assert max_visual["result"] == "passed"
+    for state in (
+        "native_desktop_light",
+        "native_mobile_dark",
+        "legacy_desktop_light",
+        "legacy_mobile_dark",
+    ):
+        assert max_visual["states"][state]["export_menu_open_after_action"] is False
+        assert max_visual["states"][state]["download_visible_after_action"] is True
+        assert max_visual["states"][state]["result"] == "passed"
+    max_pre = single_workspace_max_canvas["check_evidence"]["pre_successor_full_validate"]
+    assert max_pre["job_id"] == "41156c29cdd5425581d5ba3a"
+    assert max_pre["passed_count"] == 1658
+    assert max_pre["failed_count"] == 1
+    assert max_pre["failure_class"] == "expected_successor_binding_gate"
+    max_observer = single_workspace_max_canvas["check_evidence"][
+        "independent_observer_readback"
+    ]
+    assert max_observer["observer"] == "grosser-adler"
+    assert max_observer["functional_head"] == single_workspace_max_canvas["functional_head"]
+    assert max_observer["worktree_clean"] is True
+    assert max_observer["untracked_present"] is False
+    assert max_observer["finding_count"] == 0
+    assert max_observer["result"] == "passed"
+    assert single_workspace_max_canvas["check_evidence"]["git_diff_check"] == {
+        "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+        "head_sha": "eea29caf4f212125e734894a479d612fe9e9ef42",
+        "diff_sha256": "67abebb2c17a6ccd3e73dbbe4da373737f86a6000d83b332be106df5b11690d1",
+        "diff_bytes": 71784,
+        "result": "passed",
+    }
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6005,7 +6159,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_dark_status_superseded_files:
+        if name in single_workspace_max_canvas_superseded_files:
+            assert single_workspace_max_canvas["source_bindings"][name] == current
+        elif name in single_workspace_dark_status_superseded_files:
             assert single_workspace_dark_status["source_bindings"][name] == current
         elif name in single_workspace_wrapped_dock_superseded_files:
             assert single_workspace_wrapped_dock["source_bindings"][name] == current
