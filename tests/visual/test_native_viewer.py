@@ -394,7 +394,13 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert ".viewer-foot {" in styles
     assert ".edit-menu {" in styles
     assert "const VIEWPORT_FIT_PADDING = 48;" in app
-    assert "VIEWPORT_FIT_PADDING," in app
+    assert "const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({" in app
+    assert "top: 60," in app
+    assert "bottom: 104," in app
+    assert (
+        "embeddedNativeViewer ? EMBEDDED_VIEWPORT_FIT_PADDING : VIEWPORT_FIT_PADDING,"
+        in app
+    )
     assert "control.hidden = !visible;" in app
 
 
@@ -642,6 +648,19 @@ if (!(
   Number.isFinite(fitted.x) &&
   Number.isFinite(fitted.y)
 )) throw new Error('fit math invalid');
+const insetFitted = m.fitView(
+  220,
+  1400,
+  390,
+  844,
+  {{top: 60, right: 48, bottom: 104, left: 48}},
+);
+if (
+  insetFitted.y < 60 - 1e-9 ||
+  insetFitted.y + 1400 * insetFitted.scale > 844 - 104 + 1e-9 ||
+  insetFitted.x < 48 - 1e-9 ||
+  insetFitted.x + 220 * insetFitted.scale > 390 - 48 + 1e-9
+) throw new Error('asymmetric fit inset drifted');
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],

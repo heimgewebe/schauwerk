@@ -59,10 +59,12 @@ try {
   const source = {
     nodes: [
       {id: "a", type: "text", x: 0, y: 0, width: 220, height: 120, text: "Alpha"},
-      {id: "b", type: "text", x: 320, y: 0, width: 220, height: 120, text: "Beta"},
+      {id: "b", type: "text", x: 0, y: 640, width: 220, height: 120, text: "Beta"},
+      {id: "c", type: "text", x: 0, y: 1280, width: 220, height: 120, text: "Gamma"},
     ],
     edges: [
       {id: "ab", fromNode: "a", toNode: "b", toEnd: "arrow", label: "verbindet"},
+      {id: "bc", fromNode: "b", toNode: "c", toEnd: "arrow", label: "führt zu"},
     ],
   };
   document.querySelector("#sourceInput").value = JSON.stringify(source);
@@ -126,7 +128,33 @@ try {
     throw new Error("native canvas stage is still reduced by permanent header/footer chrome");
   }
 
+  exportMenu.open = false;
   viewer.querySelector("#fitView").click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const fittedItems = Array.from(
+    viewer.querySelectorAll('[data-source-kind="node"], [data-source-kind="edge"]')
+  ).map((element) => element.getBoundingClientRect());
+  if (!fittedItems.length) {
+    throw new Error("native fit produced no measurable graph content");
+  }
+  const fittedTop = frameRect.top + Math.min(...fittedItems.map((rect) => rect.top));
+  const fittedBottom = frameRect.top + Math.max(...fittedItems.map((rect) => rect.bottom));
+  const fitBarRect = document.querySelector(".workspace-bar").getBoundingClientRect();
+  const fitStatusRect = document.querySelector("#status").getBoundingClientRect();
+  const hostChromeTop = Math.min(fitBarRect.top, fitStatusRect.top);
+  const hostChromeClearance = hostChromeTop - fittedBottom;
+  if (hostChromeClearance < 8) {
+    throw new Error(
+      `fitted native content overlaps host chrome: clearance=${hostChromeClearance.toFixed(2)}px`
+    );
+  }
+  const nativeBarBottom = frameRect.top + viewer.querySelector(".viewer-bar").getBoundingClientRect().bottom;
+  const nativeBarClearance = fittedTop - nativeBarBottom;
+  if (nativeBarClearance < 6) {
+    throw new Error(
+      `fitted native content overlaps native toolbar: clearance=${nativeBarClearance.toFixed(2)}px`
+    );
+  }
   viewer.querySelector("#resetLayout").click();
   const editMenu = viewer.querySelector(".edit-controls");
   if (editMenu.hidden) {
@@ -184,6 +212,8 @@ try {
 
   document.documentElement.dataset.singleWorkspaceBrowserRegression = "pass";
   document.documentElement.dataset.singleWorkspaceViewport = `${innerWidth}x${innerHeight}`;
+  document.documentElement.dataset.singleWorkspaceFitClearance = hostChromeClearance.toFixed(2);
+  document.documentElement.dataset.singleWorkspaceNativeBarClearance = nativeBarClearance.toFixed(2);
 } catch (error) {
   document.documentElement.dataset.singleWorkspaceBrowserRegression = "fail";
   document.documentElement.dataset.singleWorkspaceBrowserRegressionError = String(

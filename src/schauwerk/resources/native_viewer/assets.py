@@ -531,12 +531,36 @@ export function screenDeltaToSvg(view, dx, dy) {
 export function fitView(contentWidth, contentHeight, viewportWidth, viewportHeight, padding = 28) {
   const width = Math.max(1, finite(contentWidth, 1));
   const height = Math.max(1, finite(contentHeight, 1));
-  const availableWidth = Math.max(1, finite(viewportWidth, 1) - 2 * Math.max(0, finite(padding)));
-  const availableHeight = Math.max(1, finite(viewportHeight, 1) - 2 * Math.max(0, finite(padding)));
+  const viewportWidthValue = finite(viewportWidth, 1);
+  const viewportHeightValue = finite(viewportHeight, 1);
+  const uniformPadding = Math.max(0, finite(padding));
+  const insetPadding = (
+    padding && typeof padding === "object" && !Array.isArray(padding)
+      ? {
+          top: Math.max(0, finite(padding.top)),
+          right: Math.max(0, finite(padding.right)),
+          bottom: Math.max(0, finite(padding.bottom)),
+          left: Math.max(0, finite(padding.left)),
+        }
+      : {
+          top: uniformPadding,
+          right: uniformPadding,
+          bottom: uniformPadding,
+          left: uniformPadding,
+        }
+  );
+  const availableWidth = Math.max(
+    1,
+    viewportWidthValue - insetPadding.left - insetPadding.right,
+  );
+  const availableHeight = Math.max(
+    1,
+    viewportHeightValue - insetPadding.top - insetPadding.bottom,
+  );
   const scale = clampScale(Math.min(availableWidth / width, availableHeight / height));
   return {
-    x: (finite(viewportWidth, 1) - width * scale) / 2,
-    y: (finite(viewportHeight, 1) - height * scale) / 2,
+    x: insetPadding.left + (availableWidth - width * scale) / 2,
+    y: insetPadding.top + (availableHeight - height * scale) / 2,
     scale,
   };
 }
@@ -919,6 +943,12 @@ const activePointers = new Map();
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
+const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({
+  top: 60,
+  right: VIEWPORT_FIT_PADDING,
+  bottom: 104,
+  left: VIEWPORT_FIT_PADDING,
+});
 
 function setStatus(message) { status.textContent = message; }
 
@@ -1428,7 +1458,7 @@ function fit({ announce = true } = {}) {
     content.height,
     viewport.clientWidth,
     viewport.clientHeight,
-    VIEWPORT_FIT_PADDING,
+    embeddedNativeViewer ? EMBEDDED_VIEWPORT_FIT_PADDING : VIEWPORT_FIT_PADDING,
   );
   autoFitActive = true;
   applyView();
