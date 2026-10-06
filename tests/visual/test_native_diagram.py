@@ -2753,8 +2753,20 @@ def test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor() -> 
     for index, node in enumerate(raw["nodes"]):
         node["group"] = "g0" if index < 2 else "g1"
     raw["edges"] = [
-        {"id": "cross_down", "from": "n0", "to": "n3", "label": "zweizeilige prozessbeziehung mit langem text", "kind": "flow"},
-        {"id": "cross_up", "from": "n2", "to": "n1", "label": "zweizeilige gegenbeziehung mit langem text", "kind": "flow"},
+        {
+            "id": "cross_down",
+            "from": "n0",
+            "to": "n3",
+            "label": "zweizeilige prozessbeziehung mit langem text",
+            "kind": "flow",
+        },
+        {
+            "id": "cross_up",
+            "from": "n2",
+            "to": "n1",
+            "label": "zweizeilige gegenbeziehung mit langem text",
+            "kind": "flow",
+        },
     ]
     root = _parse(render_native_diagram(raw))
     nodes = _node_boxes(root)
@@ -2765,7 +2777,10 @@ def test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor() -> 
         x, y, width, height = labels[edge_id]
         assert upper_bottom < y
         assert y + height < lower_top
-        assert all(not _boxes_overlap((x, y, width, height), node_box) for node_box in nodes.values())
+        assert all(
+            not _boxes_overlap((x, y, width, height), node_box)
+            for node_box in nodes.values()
+        )
 
 
 def test_opposite_direction_adjacent_process_edges_use_stable_label_lanes() -> None:
