@@ -210,6 +210,10 @@ SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004"
 )
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-20261005"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -750,6 +754,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_dark_status_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    process_feedback_routing_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -1500,6 +1508,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
+            | process_feedback_routing_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -4183,7 +4192,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(edge_label_width["source_bindings"]) == edge_label_width_superseded_files
     for name, expected in edge_label_width["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert edge_label_width["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "ordinary_edge_label_reproduction_fixed": True,
@@ -5977,6 +5987,88 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_dark_status["does_not_establish"]
     )
 
+    process_feedback_routing = json.loads(
+        (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert process_feedback_routing["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing.v1"
+    )
+    assert process_feedback_routing["functional_head"] == (
+        "6fc31855eb300a654428981e955cefb9e2a5b248"
+    )
+    assert process_feedback_routing["parent_evidence"] == {
+        "evidence_digest": single_workspace_dark_status["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-dark-status-20261004/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_dark_status["schema_version"],
+    }
+    assert process_feedback_routing["evidence_digest"] == digest_mapping(
+        process_feedback_routing, "evidence_digest"
+    )
+    assert set(process_feedback_routing["source_bindings"]) == (
+        process_feedback_routing_superseded_files
+    )
+    for name, expected in process_feedback_routing["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert process_feedback_routing["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "global_process_detours_localized": True,
+        "true_long_and_risk_outer_gutters_preserved": True,
+        "process_feedback_path_stays_local": True,
+        "collision_free_process_feedback_label_stays_local": True,
+        "node_collision_free_feedback_label": True,
+        "edge_label_collision_free_feedback_label": True,
+        "collision_footer_fallback_preserved": True,
+        "exact_head_real_18_node_regression_passed": True,
+        "complete_native_diagram_suite_passed": True,
+        "ruff_compile_registry_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "exact_head_browser_pixel_readback_accepted": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    visual = process_feedback_routing["check_evidence"]["visual_readback"]
+    assert visual["result"] == "accepted"
+    assert visual["source_svg_sha256"] == (
+        "a97a0b900da36c653e81ac568f8e34eb4cd47434ce84305a1958d843c86a2f6f"
+    )
+    assert visual["browser_png_sha256"] == (
+        "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91"
+    )
+    assert visual["canvas"] == {"width": 2588.0, "height": 1118.0}
+    assert visual["node_count"] == 18
+    assert visual["max_node_right"] == 2436.0
+    assert visual["right_canvas_reserve_px"] == 152.0
+    assert visual["feedback"] == {
+        "edge_id": "e_revision_planung",
+        "label": "neue Planung",
+        "route": "feedback-return",
+        "label_box": [1565.5, 399.5, 118.0, 29.0],
+        "label_center_y": 414.0,
+        "label_bottom": 428.5,
+        "path_max_x": 2146.0,
+        "revision_right": 2134.0,
+        "qualitaet_left": 2186.0,
+        "node_collision": False,
+        "overlapping_edge_labels": [],
+    }
+    assert (
+        "five-pass self-review on the later successor-evidence head"
+        in process_feedback_routing["does_not_establish"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6005,7 +6097,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_dark_status_superseded_files:
+        if name in process_feedback_routing_superseded_files:
+            assert process_feedback_routing["source_bindings"][name] == current
+        elif name in single_workspace_dark_status_superseded_files:
             assert single_workspace_dark_status["source_bindings"][name] == current
         elif name in single_workspace_wrapped_dock_superseded_files:
             assert single_workspace_wrapped_dock["source_bindings"][name] == current
