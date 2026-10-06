@@ -2810,6 +2810,75 @@ def test_local_group_long_branch_rejects_gutter_when_label_cannot_fit() -> None:
 
 
 
+
+def test_local_group_long_branch_clears_target_corridor_label() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {
+            "id": "long",
+            "from": "n0",
+            "to": "n5",
+            "label": "lange lokale beziehung",
+            "kind": "flow",
+        },
+        {
+            "id": "short",
+            "from": "n1",
+            "to": "n5",
+            "label": "kurze zielbeziehung im korridor",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, str], dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_paths(root), _edge_label_boxes(root), root
+
+    forward_paths, forward_labels, root = geometry(edges)
+    reverse_paths, reverse_labels, _ = geometry(list(reversed(edges)))
+    assert forward_paths == reverse_paths
+    assert forward_labels == reverse_labels
+
+    nodes = _node_boxes(root)
+    for label_box in forward_labels.values():
+        assert all(
+            not _boxes_overlap(label_box, node_box)
+            for node_box in nodes.values()
+        )
+    assert not _boxes_overlap(forward_labels["long"], forward_labels["short"])
+
+    short_left, short_top, short_width, short_height = forward_labels["short"]
+    short_right = short_left + short_width
+    short_bottom = short_top + short_height
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(
+            r"L ([-0-9.]+) ([-0-9.]+)",
+            forward_paths["long"],
+        )
+    ]
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        horizontal_hit = (
+            y1 == y2
+            and short_top < y1 < short_bottom
+            and max(min(x1, x2), short_left) < min(max(x1, x2), short_right)
+        )
+        vertical_hit = (
+            x1 == x2
+            and short_left < x1 < short_right
+            and max(min(y1, y2), short_top) < min(max(y1, y2), short_bottom)
+        )
+        assert not horizontal_hit
+        assert not vertical_hit
+
+
 def test_opposite_direction_adjacent_process_edges_use_stable_label_lanes() -> None:
     raw = _minimal_process_model(12)
     edges = [
