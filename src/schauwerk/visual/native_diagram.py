@@ -1215,6 +1215,7 @@ def _edge_geometry(
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
+    process_adjacent_route_y: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
     generic_self_loop_gutter_x: float | None = None,
@@ -1741,7 +1742,11 @@ def _edge_geometry(
                     else (source_corridor_y + target_corridor_y) / 2
                 )
             return path, label_x, label_y, route
-        corridor_y = (start_y + end_y) / 2 + lane_offset
+        corridor_y = (
+            process_adjacent_route_y
+            if process_adjacent_route_y is not None
+            else (start_y + end_y) / 2 + lane_offset
+        )
         control_one = (start_x, corridor_y)
         control_two = (end_x, corridor_y)
     elif source_x < target_x:
@@ -1858,6 +1863,7 @@ def _render_edge(
     process_adjacent_count: int = 0,
     process_adjacent_label_x: float | None = None,
     process_adjacent_label_y: float | None = None,
+    process_adjacent_route_y: float | None = None,
     row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
@@ -1963,6 +1969,7 @@ def _render_edge(
         long_vertical_gutter_x=long_vertical_gutter_x,
         long_vertical_label_y=long_vertical_label_y,
         process_branch_gutter_x=process_branch_gutter_x,
+        process_adjacent_route_y=process_adjacent_route_y,
         narrative_parallel_gutter_x=narrative_parallel_gutter_x,
         narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
         generic_self_loop_gutter_x=generic_self_loop_gutter_x,
@@ -2000,6 +2007,8 @@ def _render_edge(
     if same_process_row:
         # A first-row gutter label shares the header rail's safe vertical slot;
         # centering a wrapped box on the path could cover the purpose block.
+        if process_adjacent_label_x is not None:
+            label_x = process_adjacent_label_x
         row_top = min(source_position[1], target_position[1])
         if process_adjacent_label_y is not None:
             label_y = process_adjacent_label_y
@@ -2657,6 +2666,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_x: dict[str, float] = {}
     process_adjacent_label_y: dict[str, float] = {}
+    process_adjacent_route_y: dict[str, float] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     process_outer_label_right = max(
         (right for _, _, right, _ in packed_process_label_bounds),
@@ -2748,15 +2758,162 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             available_height = lower_top - upper_bottom
             if any(item[3] + 4 > available_height for item in movable_items):
                 return False
+
             corridor_center = (upper_bottom + lower_top) / 2
             candidates: list[tuple[float, str, float]] = []
-            for _, edge_id, label_width, _, _ in movable_items:
+            candidate_heights: dict[str, int] = {}
+            for _, edge_id, label_width, label_height, _ in movable_items:
                 edge = edges_by_id[edge_id]
                 source = positions[str(edge["from"])]
                 target = positions[str(edge["to"])]
                 upper = source if source[1] <= target[1] else target
                 preferred_x = upper[0] + _NODE_WIDTH / 2
                 candidates.append((preferred_x, edge_id, label_width))
+                candidate_heights[edge_id] = label_height
+
+            def direct_process_cubic(
+                edge_id: str,
+                route_y: float | None = None,
+            ) -> tuple[
+                tuple[float, float],
+                tuple[float, float],
+                tuple[float, float],
+                tuple[float, float],
+            ]:
+                edge = edges_by_id[edge_id]
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                slot = process_adjacent_slot.get(edge_id)
+                count = process_adjacent_count.get(edge_id, 0)
+                if slot is not None and count > 1:
+                    centered_slot = slot - (count - 1) / 2
+                    lane = int(centered_slot * _PROCESS_LANE_STEP)
+                else:
+                    lane = (
+                        (process_lane_ranks[edge_id] % 5) - 2
+                    ) * _PROCESS_LANE_STEP
+
+                if source[1] != target[1]:
+                    start_x = source[0] + _NODE_WIDTH / 2
+                    end_x = target[0] + _NODE_WIDTH / 2
+                    if source[1] < target[1]:
+                        start_y = source[1] + _NODE_HEIGHT
+                        end_y = target[1]
+                    else:
+                        start_y = source[1]
+                        end_y = target[1] + _NODE_HEIGHT
+                    lane_offset = max(-8.0, min(8.0, lane / 2))
+                    resolved_route_y = (
+                        route_y
+                        if route_y is not None
+                        else (start_y + end_y) / 2 + lane_offset
+                    )
+                    return (
+                        (float(start_x), float(start_y)),
+                        (float(start_x), float(resolved_route_y)),
+                        (float(end_x), float(resolved_route_y)),
+                        (float(end_x), float(end_y)),
+                    )
+
+                start_y = end_y = source[1] + _NODE_HEIGHT / 2
+                if source[0] < target[0]:
+                    start_x = source[0] + _NODE_WIDTH
+                    end_x = target[0]
+                    reach = max(52.0, (end_x - start_x) * 0.42)
+                    control_one = (start_x + reach, start_y + lane)
+                    control_two = (end_x - reach, end_y + lane)
+                else:
+                    start_x = source[0]
+                    end_x = target[0] + _NODE_WIDTH
+                    reach = max(52.0, (start_x - end_x) * 0.42)
+                    control_one = (start_x - reach, start_y + lane)
+                    control_two = (end_x + reach, end_y + lane)
+                return (
+                    (float(start_x), float(start_y)),
+                    (float(control_one[0]), float(control_one[1])),
+                    (float(control_two[0]), float(control_two[1])),
+                    (float(end_x), float(end_y)),
+                )
+
+            candidate_boxes = {
+                edge_id: (
+                    candidate_x - label_width / 2,
+                    corridor_center - candidate_heights[edge_id] / 2,
+                    label_width,
+                    float(candidate_heights[edge_id]),
+                )
+                for candidate_x, edge_id, label_width in candidates
+            }
+            candidate_route_y: dict[str, float] = {}
+            for _, edge_id, _ in candidates:
+                edge = edges_by_id[edge_id]
+                points = direct_process_cubic(edge_id)
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                if source[1] == target[1]:
+                    endpoints = {str(edge["from"]), str(edge["to"])}
+                    if any(
+                        node_id not in endpoints
+                        and _cubic_hull_intersects_box(
+                            points,
+                            (
+                                float(node_x),
+                                float(node_y),
+                                float(_NODE_WIDTH),
+                                float(_NODE_HEIGHT),
+                            ),
+                        )
+                        for node_id, (node_x, node_y) in positions.items()
+                    ):
+                        return False
+                    if any(
+                        peer_id != edge_id
+                        and _cubic_hull_intersects_box(points, peer_box)
+                        for peer_id, peer_box in candidate_boxes.items()
+                    ):
+                        return False
+                    continue
+
+                peer_boxes = [
+                    peer_box
+                    for peer_id, peer_box in candidate_boxes.items()
+                    if peer_id != edge_id
+                ]
+                if not any(
+                    _cubic_hull_intersects_box(points, peer_box)
+                    for peer_box in peer_boxes
+                ):
+                    continue
+
+                lower_route_y = float(upper_bottom)
+                upper_route_y = float(lower_top)
+                default_route_y = points[1][1]
+                route_candidates = [
+                    lower_route_y + step / 2
+                    for step in range(
+                        int(round((upper_route_y - lower_route_y) * 2)) + 1
+                    )
+                ]
+                route_candidates.sort(
+                    key=lambda value: (abs(value - default_route_y), value)
+                )
+                safe_route_y = next(
+                    (
+                        value
+                        for value in route_candidates
+                        if not any(
+                            _cubic_hull_intersects_box(
+                                direct_process_cubic(edge_id, value),
+                                peer_box,
+                            )
+                            for peer_box in peer_boxes
+                        )
+                    ),
+                    None,
+                )
+                if safe_route_y is None:
+                    return False
+                candidate_route_y[edge_id] = safe_route_y
 
             def separated(
                 first_x: float,
@@ -2793,6 +2950,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             process_adjacent_label_y.update(
                 {edge_id: corridor_center for _, edge_id, _ in candidates}
             )
+            process_adjacent_route_y.update(candidate_route_y)
             return True
 
         for corridor, items in corridor_groups.items():
@@ -3627,6 +3785,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 process_adjacent_count=process_adjacent_count.get(str(edge["id"]), 0),
                 process_adjacent_label_x=process_adjacent_label_x.get(str(edge["id"])),
                 process_adjacent_label_y=process_adjacent_label_y.get(str(edge["id"])),
+                process_adjacent_route_y=process_adjacent_route_y.get(str(edge["id"])),
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),

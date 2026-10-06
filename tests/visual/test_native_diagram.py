@@ -11,6 +11,7 @@ import pytest
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
 from schauwerk.visual.native_diagram import (
     _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE,
+    _cubic_hull_intersects_box,
     _ellipsize_to_width,
     _estimated_wrap_width,
     _rebalance_single_word_lines,
@@ -90,6 +91,30 @@ def _edge_paths(root: ET.Element) -> dict[str, str]:
         assert path is not None
         paths[edge.attrib["data-source-id"]] = path.attrib["d"]
     return paths
+
+
+def _cubic_path_intersects_box(
+    path: str,
+    box: tuple[float, float, float, float],
+) -> bool:
+    match = re.fullmatch(
+        (
+            r"M ([-0-9.]+) ([-0-9.]+) "
+            r"C ([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+)"
+        ),
+        path,
+    )
+    assert match is not None
+    values = [float(value) for value in match.groups()]
+    points = (
+        (values[0], values[1]),
+        (values[2], values[3]),
+        (values[4], values[5]),
+        (values[6], values[7]),
+    )
+    return _cubic_hull_intersects_box(points, box)
 
 
 def _point_on_box_boundary(
@@ -2782,6 +2807,149 @@ def test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor() -> 
             for node_box in nodes.values()
         )
 
+    paths = _edge_paths(root)
+    assert not _cubic_path_intersects_box(
+        paths["cross_down"], labels["cross_up"]
+    )
+    assert not _cubic_path_intersects_box(
+        paths["cross_up"], labels["cross_down"]
+    )
+
+
+def test_grouped_same_row_span_routes_around_intermediate_card() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [
+        {"id": "g0", "label": "G0"},
+        {"id": "g1", "label": "G1"},
+        {"id": "g2", "label": "G2"},
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 2}"
+    edges = [
+        {
+            "id": "span",
+            "from": "n1",
+            "to": "n5",
+            "label": "lange gleiche zeile",
+            "kind": "flow",
+        },
+        {
+            "id": "vertical",
+            "from": "n3",
+            "to": "n2",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(ordered_edges: list[dict]) -> tuple[str, str, ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        edge = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == "span"
+        )
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        return edge.attrib["data-route"], path.attrib["d"], root
+
+    forward_route, forward_path, root = geometry(edges)
+    reverse_route, reverse_path, _ = geometry(list(reversed(edges)))
+    assert (forward_route, forward_path) == (reverse_route, reverse_path)
+    assert forward_route == "process-row-gutter"
+    nodes = _node_boxes(root)
+    line_xs = [
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", forward_path)
+    ]
+    assert max(line_xs) > max(x + width for x, _, width, _ in nodes.values())
+
+
+def test_grouped_same_row_horizontal_pack_applies_packed_x_positions() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    edges = [
+        {
+            "id": "wide",
+            "from": "n0",
+            "to": "n2",
+            "label": "W" * 120,
+            "kind": "flow",
+        },
+        {
+            "id": "short",
+            "from": "n2",
+            "to": "n0",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], dict[str, str]]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    forward_labels, forward_paths = geometry(edges)
+    reverse_labels, reverse_paths = geometry(list(reversed(edges)))
+    assert forward_labels == reverse_labels
+    assert forward_paths == reverse_paths
+    assert not _boxes_overlap(forward_labels["wide"], forward_labels["short"])
+
+
+def test_grouped_crossing_adjacent_relations_use_safe_local_lanes() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    edges = [
+        {
+            "id": "cross_up",
+            "from": "n1",
+            "to": "n2",
+            "label": "short relation",
+            "kind": "flow",
+        },
+        {
+            "id": "cross_down",
+            "from": "n0",
+            "to": "n3",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, str],
+        dict[str, tuple[float, float, float, float]],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_paths(root), _edge_label_boxes(root), root
+
+    forward_paths, forward_labels, root = geometry(edges)
+    reverse_paths, reverse_labels, _ = geometry(list(reversed(edges)))
+    assert forward_paths == reverse_paths
+    assert forward_labels == reverse_labels
+    assert " L " not in forward_paths["cross_up"]
+    assert " L " not in forward_paths["cross_down"]
+    assert not _cubic_path_intersects_box(
+        forward_paths["cross_up"], forward_labels["cross_down"]
+    )
+    assert not _cubic_path_intersects_box(
+        forward_paths["cross_down"], forward_labels["cross_up"]
+    )
 
 def test_local_group_long_branch_rejects_gutter_when_label_cannot_fit() -> None:
     raw = _minimal_process_model(6)
