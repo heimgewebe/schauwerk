@@ -2670,6 +2670,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         def try_horizontal_adjacent_pack(
             movable_items: Sequence[tuple[float, str, float, int, bool]],
             fixed_items: Sequence[tuple[float, str, float, int, bool]],
+            corridor: tuple[int, int],
         ) -> bool:
             """Keep an overcrowded row corridor local when x-space is available."""
             if (
@@ -2678,6 +2679,11 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 or any(item[4] for item in movable_items)
             ):
                 return False
+            upper_bottom, lower_top = corridor
+            available_height = lower_top - upper_bottom
+            if any(item[3] + 4 > available_height for item in movable_items):
+                return False
+            corridor_center = (upper_bottom + lower_top) / 2
             candidates: list[tuple[float, str, float]] = []
             for _, edge_id, label_width, _, _ in movable_items:
                 edge = edges_by_id[edge_id]
@@ -2718,6 +2724,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
 
             process_adjacent_label_x.update(
                 {edge_id: candidate_x for candidate_x, edge_id, _ in candidates}
+            )
+            process_adjacent_label_y.update(
+                {edge_id: corridor_center for _, edge_id, _ in candidates}
             )
             return True
 
@@ -2770,7 +2779,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             movable.append(item)
                         else:
                             retained.append(item)
-                    if try_horizontal_adjacent_pack(movable, retained):
+                    if try_horizontal_adjacent_pack(movable, retained, corridor):
                         continue
                     # Movable and conflicting anchored occupants share the
                     # existing deterministic outer-gutter allocator.
@@ -2798,7 +2807,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     for _, edge_id, _, label_height, _ in cluster:
                         process_adjacent_label_y[edge_id] = cursor_y + label_height / 2
                         cursor_y += label_height + 8
-                elif not try_horizontal_adjacent_pack(cluster, ()):
+                elif not try_horizontal_adjacent_pack(cluster, (), corridor):
                     unsafe_adjacent_branches.update(item[1] for item in cluster)
                     unsafe_corridors.add(corridor)
 
