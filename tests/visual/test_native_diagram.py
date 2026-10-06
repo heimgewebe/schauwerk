@@ -2783,6 +2783,33 @@ def test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor() -> 
         )
 
 
+def test_local_group_long_branch_rejects_gutter_when_label_cannot_fit() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    raw["edges"] = [
+        {
+            "id": "long",
+            "from": "n0",
+            "to": "n5",
+            "label": "W" * 120,
+            "kind": "flow",
+        }
+    ]
+    root = _parse(render_native_diagram(raw))
+    nodes = _node_boxes(root)
+    label = _edge_label_boxes(root)["long"]
+    assert all(not _boxes_overlap(label, node_box) for node_box in nodes.values())
+    path = _edge_paths(root)["long"]
+    path_xs = [
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    ]
+    assert max(path_xs) > max(x + width for x, _, width, _ in nodes.values())
+
+
+
 def test_opposite_direction_adjacent_process_edges_use_stable_label_lanes() -> None:
     raw = _minimal_process_model(12)
     edges = [
@@ -3017,6 +3044,57 @@ def test_process_feedback_non_self_loop_avoids_occupied_adjacent_branch_corridor
     nodes = _node_boxes(root)
     max_node_bottom = max(y + height for _, y, _, height in nodes.values())
     assert forward["feedback_non_self"][1] >= max_node_bottom + 10
+
+
+def test_grouped_feedback_path_uses_safe_lane_when_corridor_label_is_crossed() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    raw["edges"] = [
+        {
+            "id": "feedback",
+            "from": "n2",
+            "to": "n0",
+            "label": "rückmeldung",
+            "kind": "feedback",
+        },
+        {
+            "id": "branch",
+            "from": "n2",
+            "to": "n1",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+    first = _parse(render_native_diagram(raw))
+    raw["edges"].reverse()
+    second = _parse(render_native_diagram(raw))
+    assert _edge_label_boxes(first) == _edge_label_boxes(second)
+    assert _edge_paths(first) == _edge_paths(second)
+
+    labels = _edge_label_boxes(first)
+    paths = _edge_paths(first)
+    nodes = _node_boxes(first)
+    feedback_box = labels["feedback"]
+    branch_box = labels["branch"]
+    assert not _boxes_overlap(feedback_box, branch_box)
+    assert feedback_box[1] > max(y + height for _, y, _, height in nodes.values())
+
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", paths["feedback"])
+    ]
+    branch_left, branch_top, branch_width, branch_height = branch_box
+    branch_right = branch_left + branch_width
+    branch_bottom = branch_top + branch_height
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        if y1 != y2 or not (branch_top < y1 < branch_bottom):
+            continue
+        assert max(min(x1, x2), branch_left) >= min(
+            max(x1, x2), branch_right
+        )
+
 
 
 def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:

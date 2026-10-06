@@ -984,6 +984,8 @@ def _process_local_group_branch_gutter_x(
         candidates[(source_group_id, target_group_id)].append(str(edge["id"]))
 
     gutters: dict[str, float] = {}
+    edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
+    lane_ranks = _stable_lane_ranks(model)
     clearance = 8.0
     for (source_group_id, target_group_id), edge_ids in sorted(candidates.items()):
         source_right = max(
@@ -1000,9 +1002,41 @@ def _process_local_group_branch_gutter_x(
             continue
 
         center_x = (source_right + target_left) / 2
+        proposed: dict[str, float] = {}
         for slot, edge_id in enumerate(ordered_ids):
             centered_slot = slot - (len(ordered_ids) - 1) / 2
-            gutters[edge_id] = center_x + centered_slot * _PROCESS_LANE_STEP
+            proposed[edge_id] = center_x + centered_slot * _PROCESS_LANE_STEP
+        def label_overlaps_node(edge_id: str) -> bool:
+            edge = edges_by_id[edge_id]
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            metrics = _edge_label_metrics(edge, positions, "process")
+            lane = ((lane_ranks[edge_id] % 5) - 2) * _PROCESS_LANE_STEP
+            lane_offset = max(-8.0, min(8.0, lane / 2))
+            if source[1] < target[1]:
+                label_y = (
+                    source[1]
+                    + _NODE_HEIGHT
+                    + process_row_gap / 2
+                    + lane_offset
+                )
+            else:
+                label_y = source[1] - process_row_gap / 2 + lane_offset
+            label_left = proposed[edge_id] - metrics.width / 2
+            label_right = proposed[edge_id] + metrics.width / 2
+            label_top = label_y - metrics.height / 2
+            label_bottom = label_y + metrics.height / 2
+            return any(
+                label_left < node_x + _NODE_WIDTH
+                and label_right > node_x
+                and label_top < node_y + _NODE_HEIGHT
+                and label_bottom > node_y
+                for node_x, node_y in positions.values()
+            )
+
+        if any(label_overlaps_node(edge_id) for edge_id in ordered_ids):
+            continue
+        gutters.update(proposed)
 
     return gutters
 
@@ -1189,6 +1223,8 @@ def _edge_geometry(
     feedback_label_y: float | None = None,
     max_node_bottom: float = 0.0,
     preserve_same_row_feedback_footer: bool = True,
+    feedback_path_y: float | None = None,
+    feedback_path_footer: bool = False,
     obstacle_positions: Sequence[tuple[int, int]] = (),
 ) -> tuple[str, float, float, str]:
     source_x, source_y = source
@@ -1253,10 +1289,35 @@ def _edge_geometry(
             start_y = end_y = source_y + _NODE_HEIGHT
             source_corridor_y = target_corridor_y = start_y + process_row_gap / 2
             start_bend = end_bend = bend
+        label_corridor_y = source_corridor_y
+        if feedback_path_y is not None and source_y == target_y:
+            source_corridor_y = target_corridor_y = feedback_path_y
         gutter_x = min(
             canvas_width - 16.0,
             max(source_x, target_x) + node_width + _CORRIDOR_GUTTER_OFFSET,
         )
+        if (
+            feedback_label_y is not None
+            and feedback_path_footer
+            and source_y == target_y
+            and source_x > target_x
+        ):
+            target_channel_x = max(
+                16.0, target_x - _CORRIDOR_GUTTER_OFFSET
+            )
+            path = (
+                f"M {start_x:.1f} {start_y:.1f} "
+                f"C {start_x:.1f} {start_y + start_bend:.1f}, "
+                f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                f"L {gutter_x:.1f} {feedback_label_y:.1f} "
+                f"L {target_channel_x:.1f} {feedback_label_y:.1f} "
+                f"L {target_channel_x:.1f} {target_corridor_y:.1f} "
+                f"L {end_x:.1f} {target_corridor_y:.1f} "
+                f"C {end_x:.1f} {target_corridor_y:.1f}, "
+                f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
+            )
+            return path, gutter_x, feedback_label_y, route
         if feedback_label_y is not None:
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
@@ -1285,7 +1346,7 @@ def _edge_geometry(
             if source_y == target_y and source_x > target_x
             else (start_x + gutter_x) / 2
         )
-        return path, label_x, source_corridor_y, route
+        return path, label_x, label_corridor_y, route
     elif kind == "feedback" and intent != "process":
         route = "feedback-return"
         upper_bottom = min(source_y, target_y) + _NODE_HEIGHT
@@ -1806,6 +1867,8 @@ def _render_edge(
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
     force_feedback_footer: bool = False,
+    feedback_path_y: float | None = None,
+    force_feedback_path_footer: bool = False,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -1908,6 +1971,8 @@ def _render_edge(
         feedback_label_y=feedback_label_y,
         max_node_bottom=max_node_bottom,
         preserve_same_row_feedback_footer=preserve_same_row_feedback_footer,
+        feedback_path_y=feedback_path_y,
+        feedback_path_footer=force_feedback_path_footer,
         obstacle_positions=tuple(
             position
             for node_id, position in positions.items()
@@ -3132,6 +3197,8 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     )
     feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
     feedback_footer_ids: set[str] = set()
+    feedback_path_y: dict[str, float] = {}
+    feedback_path_footer_ids: set[str] = set()
     if intent == "process" and occupied_process_adjacent_corridors:
         for edge in feedback_edges:
             source = positions[str(edge["from"])]
@@ -3189,7 +3256,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_footer_ids.add(edge_id)
                 continue
             metrics = _edge_label_metrics(edge, positions, intent)
-            _, feedback_label_x, _, _ = _edge_geometry(
+            _, feedback_label_x, feedback_label_y, _ = _edge_geometry(
                 source,
                 target,
                 self_loop=edge["from"] == edge["to"],
@@ -3205,19 +3272,34 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             )
             feedback_left = feedback_label_x - metrics.width / 2
             feedback_right = feedback_label_x + metrics.width / 2
+            feedback_top = feedback_label_y - metrics.height / 2
+            feedback_bottom = feedback_label_y + metrics.height / 2
             collision = False
+            feedback_segment_left = min(
+                source[0] + _NODE_WIDTH / 2,
+                target[0] + _NODE_WIDTH / 2,
+            )
+            feedback_segment_right = min(
+                width - 16.0,
+                max(source[0], target[0])
+                + _NODE_WIDTH
+                + _CORRIDOR_GUTTER_OFFSET,
+            )
+            blocked_by_corridor: dict[tuple[int, int], list[tuple[float, float]]] = (
+                defaultdict(list)
+            )
             for corridor in shared_corridors:
                 for (
                     natural_x,
                     occupant_id,
                     occupant_width,
-                    _,
+                    occupant_height,
                     _,
                 ) in corridor_groups.get(corridor, ()):
                     occupant_edge = edges_by_id[occupant_id]
                     if occupant_edge["from"] == occupant_edge["to"]:
                         collision = True
-                        break
+                        continue
                     occupant_x = process_adjacent_label_x.get(
                         occupant_id, natural_x
                     )
@@ -3227,15 +3309,77 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             + 8
                             + occupant_width / 2
                         )
+                    if occupant_id in process_adjacent_label_y:
+                        occupant_y = process_adjacent_label_y[occupant_id]
+                    elif corridor[1] - corridor[0] >= occupant_height + 8:
+                        occupant_y = (corridor[0] + corridor[1]) / 2
+                    else:
+                        occupant_y = adjacent_route_y(occupant_id, corridor)
+                    occupant_left = occupant_x - occupant_width / 2
+                    occupant_right = occupant_x + occupant_width / 2
+                    occupant_top = occupant_y - occupant_height / 2
+                    occupant_bottom = occupant_y + occupant_height / 2
                     if (
-                        feedback_left < occupant_x + occupant_width / 2 + 8
-                        and feedback_right > occupant_x - occupant_width / 2 - 8
+                        feedback_left < occupant_right
+                        and feedback_right > occupant_left
+                        and feedback_top < occupant_bottom
+                        and feedback_bottom > occupant_top
                     ):
                         collision = True
-                        break
-                if collision:
-                    break
-            if collision:
+                    if (
+                        feedback_segment_left < occupant_right + 2
+                        and feedback_segment_right > occupant_left - 2
+                    ):
+                        blocked_by_corridor[corridor].append(
+                            (occupant_top - 2, occupant_bottom + 2)
+                        )
+
+            path_collision = False
+            for corridor in shared_corridors:
+                blocked = sorted(blocked_by_corridor.get(corridor, ()))
+                if not blocked:
+                    continue
+                lower = corridor[0] + 2
+                upper = corridor[1] - 2
+                merged: list[tuple[float, float]] = []
+                for block_start, block_end in blocked:
+                    block_start = max(lower, block_start)
+                    block_end = min(upper, block_end)
+                    if block_end <= lower or block_start >= upper:
+                        continue
+                    if merged and block_start <= merged[-1][1]:
+                        merged[-1] = (merged[-1][0], max(merged[-1][1], block_end))
+                    else:
+                        merged.append((block_start, block_end))
+                gaps: list[tuple[float, float]] = []
+                cursor = lower
+                for block_start, block_end in merged:
+                    if cursor < block_start:
+                        gaps.append((cursor, block_start))
+                    cursor = max(cursor, block_end)
+                if cursor < upper:
+                    gaps.append((cursor, upper))
+                if not gaps:
+                    path_collision = True
+                    continue
+                preferred = (corridor[0] + corridor[1]) / 2
+                candidate = min(
+                    (
+                        min(max(preferred, gap_start), gap_end)
+                        for gap_start, gap_end in gaps
+                        if gap_end - gap_start >= 2
+                    ),
+                    key=lambda value: (abs(value - preferred), value),
+                    default=None,
+                )
+                if candidate is None:
+                    path_collision = True
+                else:
+                    feedback_path_y[edge_id] = candidate
+            if path_collision:
+                feedback_footer_ids.add(edge_id)
+                feedback_path_footer_ids.add(edge_id)
+            elif collision:
                 feedback_footer_ids.add(edge_id)
     feedback_count = len(feedback_edges)
     feedback_base_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
@@ -3282,12 +3426,18 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     if intent == "process" and feedback_count == 1:
         edge = feedback_edges[0]
         edge_id = str(edge["id"])
+        source = positions[str(edge["from"])]
+        target = positions[str(edge["to"])]
+        preserve_local_footer = (
+            edge["from"] != edge["to"]
+            and _preserve_same_row_process_feedback_return(
+                source, target, positions
+            )
+        )
         if edge_id not in feedback_footer_ids:
             # Packed labels occupy their rendered rectangles, not every row
             # corridor in the diagram. Check the unforced feedback label after
             # canvas sizing so the accepted reverse return uses its real footer.
-            source = positions[str(edge["from"])]
-            target = positions[str(edge["to"])]
             metrics = _edge_label_metrics(edge, positions, intent)
             _, label_x, label_y, _ = _edge_geometry(
                 source,
@@ -3299,10 +3449,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 canvas_height=height,
                 intent=intent,
                 process_row_gap=process_row_gap,
-                preserve_same_row_feedback_footer=(
-                    edge["from"] != edge["to"]
-                    and _preserve_same_row_process_feedback_return(source, target, positions)
-                ),
+                preserve_same_row_feedback_footer=preserve_local_footer,
             )
             half_width = metrics.width / 2
             half_height = metrics.height / 2
@@ -3489,6 +3636,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
                 force_feedback_footer=str(edge["id"]) in feedback_footer_ids,
+                feedback_path_y=feedback_path_y.get(str(edge["id"])),
+                force_feedback_path_footer=(
+                    str(edge["id"]) in feedback_path_footer_ids
+                ),
             )
         )
     for node in model["nodes"]:
