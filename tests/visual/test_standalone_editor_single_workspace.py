@@ -182,10 +182,33 @@ try {
   );
   const textDialog = viewer.querySelector("#textDialog");
   if (textDialog?.open) textDialog.close();
-  if (viewer.querySelector("#addEdge").hidden || viewer.querySelector("#editText").hidden) {
+  const addEdgeButton = viewer.querySelector("#addEdge");
+  if (addEdgeButton.hidden || viewer.querySelector("#editText").hidden) {
     throw new Error("selection-dependent native edit actions stayed hidden");
   }
 
+  addEdgeButton.click();
+  await waitUntil(
+    () => viewer.querySelector("#status").textContent.trim() === "Ziel für die neue Verbindung auswählen",
+    "native process status did not report the pending edge action",
+  );
+  const nativeStatusRect = viewer.querySelector("#status").getBoundingClientRect();
+  if (nativeStatusRect.width < 1 || nativeStatusRect.height < 1) {
+    throw new Error("native process status is not visible in the hosted workspace");
+  }
+  frame.contentWindow.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown", {
+    key: "Escape",
+    bubbles: true,
+  }));
+  await waitUntil(
+    () => viewer.querySelector("#status").textContent.trim() === "Verbindungsaktion abgebrochen",
+    "native edge action did not cancel cleanly",
+  );
+
+  exportMenu.open = true;
+  if (!exportMenu.open) {
+    throw new Error("export popover could not be opened before export");
+  }
   svgButton.click();
   await waitUntil(
     () => !document.querySelector("#downloadLink").hidden,
@@ -198,6 +221,22 @@ try {
   const downloadRect = document.querySelector("#downloadLink").getBoundingClientRect();
   if (barRect.height > 54 || downloadRect.height < 40) {
     throw new Error("prepared download expanded the compact workspace chrome");
+  }
+  const toolsMenu = document.querySelector(".workspace-tools-menu");
+  if (!toolsMenu.hidden && getComputedStyle(toolsMenu).display !== "none") {
+    toolsMenu.open = true;
+    const toolsPopoverRect = toolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
+    if (toolsPopoverRect.left < -0.5 || toolsPopoverRect.right > innerWidth + 0.5) {
+      throw new Error(
+        "workspace tools popover leaves viewport: left=" +
+        toolsPopoverRect.left.toFixed(2) +
+        " right=" +
+        toolsPopoverRect.right.toFixed(2) +
+        " viewport=" +
+        innerWidth
+      );
+    }
+    toolsMenu.open = false;
   }
   const stageAfterExport = stage.getBoundingClientRect();
   if (!almost(stageAfterExport.width, innerWidth) || !almost(stageAfterExport.height, innerHeight)) {

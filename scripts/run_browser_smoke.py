@@ -37,6 +37,10 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
     ),
+    (
+        "tests/visual/test_standalone_editor_single_workspace.py::"
+        "test_single_workspace_browser_uses_full_canvas_and_keeps_native_actions_reachable"
+    ),
 )
 MAX_ATTEMPTS = 2
 

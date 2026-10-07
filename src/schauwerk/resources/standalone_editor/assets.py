@@ -794,7 +794,13 @@ body.workspace-active .status {
   .workspace-menu > summary,
   .workspace-bar .button.compact,
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
-  .workspace-popover { max-width: calc(100vw - 12px); padding: 5px; }
+  .workspace-popover {
+    position: fixed;
+    right: max(6px, env(safe-area-inset-right));
+    bottom: calc(var(--workspace-bar-bottom) + var(--workspace-bar-height) + 7px);
+    max-width: calc(100vw - 12px);
+    padding: 5px;
+  }
   .font-controls { max-width: 100%; flex-wrap: nowrap; }
   .font-controls .button { min-width: 38px; min-height: 42px; padding-inline: 7px; }
   .workspace-tools,
