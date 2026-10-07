@@ -69,7 +69,17 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
     ]
     assert "min-height: 42px;" in mobile_css
     assert "max-width: calc(100vw - 12px);" in mobile_css
-    assert ".workspace-popover { max-width: calc(100vw - 12px); padding: 5px; }" in mobile_css
+    assert "body.workspace-active { --workspace-bar-height: 52px; }" in mobile_css
+    popover_start = mobile_css.index(".workspace-popover {")
+    popover_rule = mobile_css[popover_start : mobile_css.index("}", popover_start) + 1]
+    assert "position: fixed;" in popover_rule
+    assert "right: max(6px, env(safe-area-inset-right));" in popover_rule
+    assert (
+        "bottom: calc(var(--workspace-bar-bottom) + var(--workspace-bar-height) + 7px);"
+        in popover_rule
+    )
+    assert "max-width: calc(100vw - 12px);" in popover_rule
+    assert "padding: 5px;" in popover_rule
 
     for control_id in (
         "fontDecreaseButton",

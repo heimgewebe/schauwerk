@@ -784,6 +784,7 @@ body.workspace-active .status {
   .primary-actions .button.primary { grid-column: 1 / -1; }
   .font-default-control { align-items: flex-start; flex-direction: column; gap: 8px; }
 
+  body.workspace-active { --workspace-bar-height: 52px; }
   .workspace-bar {
     left: auto;
     right: max(6px, env(safe-area-inset-right));

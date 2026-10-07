@@ -236,6 +236,13 @@ try {
         innerWidth
       );
     }
+    const toolsPopoverGap = barRect.top - toolsPopoverRect.bottom;
+    if (toolsPopoverGap < 6) {
+      throw new Error(
+        "workspace tools popover overlaps workspace bar: gap=" +
+        toolsPopoverGap.toFixed(2)
+      );
+    }
     toolsMenu.open = false;
   }
   const stageAfterExport = stage.getBoundingClientRect();
