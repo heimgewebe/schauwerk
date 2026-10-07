@@ -398,12 +398,16 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({" in app
     assert "top: 60," in app
     assert "bottom: 104," in app
+    assert "function viewportFitPadding(minimumPadding)" in app
     assert "function standaloneViewportFitPadding()" in app
+    assert "function embeddedViewportFitPadding()" in app
+    assert "return viewportFitPadding(EMBEDDED_VIEWPORT_FIT_PADDING);" in app
     assert 'document.querySelector(".viewer-bar")?.getBoundingClientRect()' in app
     assert 'document.querySelector(".viewer-foot")?.getBoundingClientRect()' in app
     assert "Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE" in app
     assert "viewport.clientHeight - (footRect?.top ?? viewport.clientHeight)" in app
     assert "const fitPadding = embeddedNativeViewer" in app
+    assert "? embeddedViewportFitPadding()" in app
     assert ": standaloneViewportFitPadding();" in app
     assert "control.hidden = !visible;" in app
 

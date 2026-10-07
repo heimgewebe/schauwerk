@@ -954,24 +954,37 @@ const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({
 
 function setStatus(message) { status.textContent = message; }
 
-function standaloneViewportFitPadding() {
+function viewportFitPadding(minimumPadding) {
   const barRect = document.querySelector(".viewer-bar")?.getBoundingClientRect();
   const footRect = document.querySelector(".viewer-foot")?.getBoundingClientRect();
   const top = Math.max(
-    VIEWPORT_FIT_PADDING,
+    minimumPadding.top,
     Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE,
   );
   const bottom = Math.max(
-    VIEWPORT_FIT_PADDING,
+    minimumPadding.bottom,
     Math.ceil(viewport.clientHeight - (footRect?.top ?? viewport.clientHeight))
       + FIT_OVERLAY_CLEARANCE,
   );
   return {
     top,
-    right: VIEWPORT_FIT_PADDING,
+    right: minimumPadding.right,
     bottom,
-    left: VIEWPORT_FIT_PADDING,
+    left: minimumPadding.left,
   };
+}
+
+function standaloneViewportFitPadding() {
+  return viewportFitPadding({
+    top: VIEWPORT_FIT_PADDING,
+    right: VIEWPORT_FIT_PADDING,
+    bottom: VIEWPORT_FIT_PADDING,
+    left: VIEWPORT_FIT_PADDING,
+  });
+}
+
+function embeddedViewportFitPadding() {
+  return viewportFitPadding(EMBEDDED_VIEWPORT_FIT_PADDING);
 }
 
 function readOverrides() {
@@ -1476,7 +1489,7 @@ function contentSize() {
 function fit({ announce = true } = {}) {
   const content = contentSize();
   const fitPadding = embeddedNativeViewer
-    ? EMBEDDED_VIEWPORT_FIT_PADDING
+    ? embeddedViewportFitPadding()
     : standaloneViewportFitPadding();
   view = fitView(
     content.width,
