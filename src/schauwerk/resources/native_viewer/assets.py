@@ -518,16 +518,17 @@ export function panBy(view, dx, dy) {
   return { ...current, x: current.x + finite(dx), y: current.y + finite(dy) };
 }
 
-export function interactionScale(startScale, requestedScale) {
+export function interactionScale(startScale, requestedScale, minimumScale = startScale) {
   const requested = finite(requestedScale, startScale);
-  return startScale < MIN_SCALE
-    ? Math.max(startScale, Math.min(MAX_SCALE, requested))
-    : clampScale(requested);
+  // A fitted scale below 25% is the floor for the full zoom/pinch session,
+  // not a new floor to ratchet upward on every interaction.
+  const floor = Math.min(MIN_SCALE, Math.max(Number.MIN_VALUE, finite(minimumScale, startScale)));
+  return Math.max(floor, Math.min(MAX_SCALE, requested));
 }
 
-export function zoomAt(view, requestedScale, anchor) {
+export function zoomAt(view, requestedScale, anchor, minimumScale = view.scale) {
   const current = normalizeView(view);
-  const scale = interactionScale(current.scale, requestedScale);
+  const scale = interactionScale(current.scale, requestedScale, minimumScale);
   const anchorX = finite(anchor?.x);
   const anchorY = finite(anchor?.y);
   const diagramX = (anchorX - current.x) / current.scale;
@@ -873,6 +874,7 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 """
 
 APP_JS = r"""import {
+  MIN_SCALE,
   clampScale,
   fitView,
   interactionScale,
@@ -948,6 +950,7 @@ const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
 let view = { x: 0, y: 0, scale: 1 };
+let fitScaleFloor = MIN_SCALE;
 let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
@@ -1517,13 +1520,14 @@ function fit({ announce = true } = {}) {
     viewport.clientHeight,
     fitPadding,
   );
+  fitScaleFloor = Math.min(MIN_SCALE, view.scale);
   autoFitActive = true;
   applyView();
 }
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-  const next = zoomAt(view, view.scale * factor, point);
+  const next = zoomAt(view, view.scale * factor, point, fitScaleFloor);
   if (factor < 1 && next.scale >= view.scale) return;
   autoFitActive = false;
   view = next;
@@ -1572,6 +1576,7 @@ function updatePinch() {
   const scale = interactionScale(
     gesture.startScale,
     gesture.startScale * (distance / gesture.startDistance),
+    fitScaleFloor,
   );
   autoFitActive = false;
   view = {

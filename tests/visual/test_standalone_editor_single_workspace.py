@@ -199,6 +199,10 @@ try {
         + " expected=" + (fitScale * 1.2).toFixed(9)
       );
     }
+    viewer.querySelector("#zoomOut").click();
+    if (Math.abs(scaleNow() - fitScale) > 1e-6) {
+      throw new Error("zoom-in then zoom-out cannot restore sub-minimum fit scale");
+    }
     viewer.querySelector("#fitView").click();
     const pinchViewport = viewer.querySelector("#nativeViewport");
     // Chrome synthetic pointer IDs need the existing viewer-test capture shim.
@@ -233,6 +237,15 @@ try {
       );
     }
     fireTouch("pointerup", 32, 310, 420);
+    fireTouch("pointerup", 31, 130, 420);
+    // Starting a second gesture must not ratchet the zoom floor upward.
+    fireTouch("pointerdown", 31, 130, 420);
+    fireTouch("pointerdown", 32, 310, 420);
+    fireTouch("pointermove", 32, 270, 420);
+    if (Math.abs(scaleNow() - fitScale) > 1e-6) {
+      throw new Error("separate inward pinch cannot undo earlier outward pinch");
+    }
+    fireTouch("pointerup", 32, 270, 420);
     fireTouch("pointerup", 31, 130, 420);
     viewer.querySelector("#fitView").click();
   }
@@ -431,7 +444,20 @@ try {
         + legacyPopoverGap.toFixed(2)
       );
     }
+    const hostStatus = document.querySelector("body.workspace-active .status");
+    const statusRect = hostStatus.getBoundingClientRect();
+    const statusVisible = getComputedStyle(hostStatus).visibility === "visible";
+    const intersectionWidth = Math.min(statusRect.right, legacyPopover.right)
+      - Math.max(statusRect.left, legacyPopover.left);
+    const intersectionHeight = Math.min(statusRect.bottom, legacyPopover.bottom)
+      - Math.max(statusRect.top, legacyPopover.top);
+    if (statusVisible && intersectionWidth > 0.5 && intersectionHeight > 0.5) {
+      throw new Error("mobile export menu overlaps visible host status pill");
+    }
     legacyExportMenu.open = false;
+    if (getComputedStyle(hostStatus).visibility !== "visible") {
+      throw new Error("host status did not reappear after closing export menu");
+    }
   }
   if (
     document.querySelector("#projectButton").textContent.trim() !== "Projekt"

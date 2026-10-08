@@ -825,6 +825,13 @@ body.workspace-active .status {
 
 }
 
+@media (max-width: 520px) {
+  /* Host status must not sit behind an open mobile menu; restore on close. */
+  body.workspace-active:has(.workspace-menu[open]) .topline {
+    visibility: hidden;
+  }
+}
+
 @media (max-width: 420px) {
   .primary-actions { grid-template-columns: minmax(0, 1fr); }
   .primary-actions .button.primary { grid-column: auto; }

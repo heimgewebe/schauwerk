@@ -706,6 +706,12 @@ if (
   Math.abs(smoothZoom.scale - tallFitted.scale * 1.2) > 1e-9 ||
   smoothZoom.scale >= m.MIN_SCALE
 ) throw new Error('first zoom-in snapped from fitted subfloor view to interactive minimum');
+const restoredScale = m.interactionScale(smoothZoom.scale, tallFitted.scale, tallFitted.scale);
+const smoothBack = m.zoomAt(smoothZoom, tallFitted.scale, tallAnchor, tallFitted.scale);
+if (
+  Math.abs(restoredScale - tallFitted.scale) > 1e-9 ||
+  Math.abs(smoothBack.scale - tallFitted.scale) > 1e-9
+) throw new Error('zoom-in followed by zoom-out cannot restore original fitted scale');
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],
