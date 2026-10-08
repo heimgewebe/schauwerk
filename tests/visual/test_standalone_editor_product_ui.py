@@ -48,6 +48,9 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     assert "body.editor-focus" not in styles_css
     assert ".fullscreen-toggle" not in styles_css
     assert ".workspace-bar { overflow-x: auto; }" not in styles_css
+    # A :has() rule must not invalidate the legacy fallback in older Safari.
+    assert "body.engine-legacy .workspace-tools-menu {\n  display: none;\n}" in styles_css
+    assert "body.engine-legacy .workspace-tools-menu,\n" not in styles_css
 
     assert "fontControls.hidden = native;" in app_js
     assert "elements.layoutButton.hidden = native;" in app_js

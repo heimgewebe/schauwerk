@@ -557,7 +557,10 @@ h1 {
 .workspace-bar .download-link,
 .workspace-menu > summary { min-height: 40px; }
 .output-button { min-width: 46px; color: var(--muted); }
-body.engine-legacy .workspace-tools-menu,
+/* Keep the legacy fallback valid when :has() is unsupported (older Safari). */
+body.engine-legacy .workspace-tools-menu {
+  display: none;
+}
 body.engine-native .workspace-tools-menu:not(:has(.workspace-tools > :not([hidden]))) {
   display: none;
 }
@@ -813,6 +816,8 @@ body.workspace-active .status {
   .workspace-menu > summary,
   .workspace-bar .button.compact,
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
+  /* The Back label must not shrink behind other controls on notched screens. */
+  .workspace-bar .workspace-close { flex-shrink: 0; }
   .workspace-bar .workspace-menu > summary {
     width: 100%;
     min-width: 0;

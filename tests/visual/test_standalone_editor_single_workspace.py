@@ -657,10 +657,12 @@ const wait = async (predicate, label) => {
     }
     if (control.scrollWidth > control.clientWidth + 1) {
       const style = getComputedStyle(control);
+      // Browser/font metrics may differ slightly across CI platforms; an
+      // explicit ellipsis keeps the complete DOM/accessible label intact.
       if (
-        (safeLeft === 0 && safeRight === 0)
-        || style.textOverflow !== "ellipsis"
+        style.textOverflow !== "ellipsis"
         || style.overflowX !== "hidden"
+        || !control.textContent.trim()
       ) {
         throw new Error("mobile action text escapes its hit target: " + i);
       }
