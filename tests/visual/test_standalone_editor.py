@@ -161,7 +161,10 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert index_html.index('id="workspaceCloseButton"') < index_html.index("</nav>")
     assert '<details class="workspace-menu workspace-tools-menu" name="workspace-menu">' in index_html
     assert '<details class="workspace-menu workspace-export-menu" name="workspace-menu">' in index_html
-    assert '<summary class="button compact">Export</summary>' in index_html
+    assert (
+        '<summary class="button compact"><span class="workspace-menu-label">'
+        'Export</span></summary>'
+    ) in index_html
     assert 'id="fullscreenButton"' not in index_html
     assert 'id="projectButton"' in index_html
     assert 'data-export="png"' in index_html
