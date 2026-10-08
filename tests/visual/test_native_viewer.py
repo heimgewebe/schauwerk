@@ -401,7 +401,15 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "function viewportFitPadding(minimumPadding)" in app
     assert "function standaloneViewportFitPadding()" in app
     assert "function embeddedViewportFitPadding()" in app
-    assert "return viewportFitPadding(EMBEDDED_VIEWPORT_FIT_PADDING);" in app
+    assert "const frameRect = window.frameElement?.getBoundingClientRect();" in app
+    assert "const host = window.parent.document;" in app
+    assert 'host.body.classList.contains("workspace-active")' in app
+    assert "Math.ceil(frameRect.bottom - rect.top) + FIT_OVERLAY_CLEARANCE" in app
+    assert "return viewportFitPadding({ ...EMBEDDED_VIEWPORT_FIT_PADDING, bottom });" in app
+    embedded_fit_body = app.split("function embeddedViewportFitPadding() {", 1)[1].split(
+        "\nfunction readOverrides()", 1
+    )[0]
+    assert "catch (_)" in embedded_fit_body
     assert 'document.querySelector(".viewer-bar")?.getBoundingClientRect()' in app
     assert 'document.querySelector(".viewer-foot")?.getBoundingClientRect()' in app
     assert "Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE" in app
