@@ -718,6 +718,59 @@ const wait = async (predicate, label) => {
     throw new Error("mobile export popover enters the safe area");
   }
   exportMenu.open = false;
+
+  // The active native-editing prompt must remain visible and clear of controls.
+  document.querySelector("#workspaceCloseButton").click();
+  await wait(
+    () => document.querySelector("#workspace").hidden
+      && !document.querySelector("#startView").hidden,
+    "could not return to start for hosted native-editor status check",
+  );
+  document.querySelector("#sourceInput").value = JSON.stringify({
+    nodes: [
+      {id: "a", type: "text", x: 0, y: 0, width: 220, height: 120, text: "Alpha"},
+      {id: "b", type: "text", x: 20, y: 600, width: 220, height: 120, text: "Beta"},
+    ],
+    edges: [],
+  });
+  document.querySelector("#openPasteButton").click();
+  await wait(() => {
+    const frame = document.querySelector("#editorFrame");
+    return !document.querySelector("#workspace").hidden
+      && frame?.contentDocument?.body?.classList.contains("document-editor-hosted")
+      && frame.contentDocument.querySelector('[data-source-id="a"]');
+  }, "editable native diagram did not load");
+  const nativeFrame = document.querySelector("#editorFrame");
+  const nativeDoc = nativeFrame.contentDocument;
+  const nativeStatus = nativeDoc.querySelector("#status");
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  nativeStatus.textContent = "Ziel f\u00fcr die neue Verbindung ausw\u00e4hlen";
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const promptRect = nativeStatus.getBoundingClientRect();
+  const nativeControlsRect = nativeDoc.querySelector(".controls").getBoundingClientRect();
+  const promptIntersectionX = Math.max(0,
+    Math.min(promptRect.right, nativeControlsRect.right)
+    - Math.max(promptRect.left, nativeControlsRect.left));
+  const promptIntersectionY = Math.max(0,
+    Math.min(promptRect.bottom, nativeControlsRect.bottom)
+    - Math.max(promptRect.top, nativeControlsRect.top));
+  if (promptIntersectionX > 0.5 && promptIntersectionY > 0.5) {
+    throw new Error("native editing process instruction is hidden under zoom/edit controls");
+  }
+  if (
+    nativeStatus.scrollWidth > nativeStatus.clientWidth + 1
+    || nativeStatus.scrollHeight > nativeStatus.clientHeight + 1
+    || (innerWidth <= 360 && promptRect.width < 160)
+  ) {
+    throw new Error("native editing process instruction is too narrow or clipped");
+  }
+  const nativeStage = nativeDoc.querySelector(".viewer-stage").getBoundingClientRect();
+  if (
+    Math.abs(nativeStage.width - innerWidth) > 1
+    || Math.abs(nativeStage.height - innerHeight) > 1
+  ) {
+    throw new Error("native editing process status reduced the full canvas viewport");
+  }
   document.documentElement.dataset.mobileBar320Smoke = "pass";
 })().catch((error) => {
   document.documentElement.dataset.mobileBar320Smoke = "fail";

@@ -457,6 +457,28 @@ button:focus-visible {
   .viewer-foot span:last-child { display: none; }
 }
 
+@media (max-width: 360px) {
+  /* A live editing instruction must not sit underneath zoom/edit controls. */
+  .document-editor-hosted .viewer-bar { flex-wrap: wrap; gap: 4px; }
+  .document-editor-hosted .controls {
+    order: 0;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .document-editor-hosted .viewer-heading {
+    order: 1;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 2px;
+  }
+  .document-editor-hosted .status {
+    width: fit-content;
+    max-width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
