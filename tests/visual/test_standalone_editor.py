@@ -1906,8 +1906,14 @@ if (nativeCanvasDraftVersions.join(",") !== "2") {
     )
 
 
+@pytest.mark.parametrize(
+    ("width", "height"),
+    [(1366, 900), (390, 844)],
+)
 def test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry(
     tmp_path: Path,
+    width: int,
+    height: int,
 ) -> None:
     chrome = (
         shutil.which("google-chrome")
@@ -2030,6 +2036,18 @@ try {
     throw new Error("failed rebuild lost the latest document export contract");
   }
 
+  const recoveryButton = document.querySelector("#nativeRetryButton");
+  const recoveryRect = recoveryButton.getBoundingClientRect();
+  const recoveryHit = document.elementFromPoint(
+    recoveryRect.left + recoveryRect.width / 2,
+    recoveryRect.top + recoveryRect.height / 2
+  );
+  if (
+    recoveryRect.width < 42 || recoveryRect.height < 40 ||
+    !(recoveryHit === recoveryButton || recoveryButton.contains(recoveryHit))
+  ) {
+    throw new Error("native recovery button is hidden behind collapsed tools or another overlay");
+  }
   document.querySelector("#nativeRetryButton").click();
 
   await waitUntil(() => {
@@ -2128,6 +2146,7 @@ try {
                 "--disable-dev-shm-usage",
                 "--no-sandbox",
                 "--run-all-compositor-stages-before-draw",
+                f"--window-size={width},{height}",
                 "--virtual-time-budget=18000",
                 "--dump-dom",
                 f"http://127.0.0.1:{port}/",

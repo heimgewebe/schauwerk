@@ -669,6 +669,32 @@ if (
   insetFitted.x < 48 - 1e-9 ||
   insetFitted.x + 220 * insetFitted.scale > 390 - 48 + 1e-9
 ) throw new Error('asymmetric fit inset drifted');
+const tallFitted = m.fitView(
+  220, 4000, 390, 844,
+  {{top: 60, right: 48, bottom: 104, left: 48}},
+);
+if (!(tallFitted.scale > 0 && tallFitted.scale < m.MIN_SCALE)) {{
+  throw new Error('auto fit could not zoom below interactive floor');
+}}
+if (
+  tallFitted.y < 60 - 1e-9 ||
+  tallFitted.y + 4000 * tallFitted.scale > 844 - 104 + 1e-9 ||
+  m.normalizeView(tallFitted).scale !== tallFitted.scale
+) throw new Error('tall auto fit clipped or drifted on normalized interaction');
+const tallAnchor = {{x: 195, y: 422}};
+const tallZoomed = m.zoomAt(tallFitted, m.MIN_SCALE, tallAnchor);
+const diagramBefore = {{
+  x: (tallAnchor.x - tallFitted.x) / tallFitted.scale,
+  y: (tallAnchor.y - tallFitted.y) / tallFitted.scale,
+}};
+const diagramAfter = {{
+  x: (tallAnchor.x - tallZoomed.x) / tallZoomed.scale,
+  y: (tallAnchor.y - tallZoomed.y) / tallZoomed.scale,
+}};
+if (
+  Math.abs(diagramBefore.x - diagramAfter.x) > 1e-7 ||
+  Math.abs(diagramBefore.y - diagramAfter.y) > 1e-7
+) throw new Error('zoom anchor jumps after subfloor fit');
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],

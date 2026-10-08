@@ -1336,16 +1336,18 @@ try {
     ), completed.stdout
 
 @pytest.mark.parametrize(
-    ("width", "height"),
+    ("width", "height", "bottom_y"),
     [
-        (1366, 900),
-        (390, 844),
+        (1366, 900, 1280),
+        (390, 844, 1280),
+        (390, 844, 4000),
     ],
 )
 def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     tmp_path: Path,
     width: int,
     height: int,
+    bottom_y: int,
 ) -> None:
     chrome = _chrome()
     if chrome is None:
@@ -1367,7 +1369,7 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
                 "id": "bottom",
                 "type": "text",
                 "x": 0,
-                "y": 1280,
+                "y": bottom_y,
                 "width": 220,
                 "height": 120,
                 "text": "Bottom",

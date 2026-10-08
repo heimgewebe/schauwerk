@@ -107,10 +107,11 @@ INDEX_HTML = r"""<!doctype html>
               <button class="button compact" id="layoutButton" type="button">Ordnen</button>
               <button class="button compact" id="contentEditButton" type="button" hidden>Inhalt</button>
               <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
-              <button class="button compact ghost" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
             </div>
           </div>
         </details>
+
+        <button class="button compact primary workspace-retry" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
 
         <details class="workspace-menu workspace-export-menu" name="workspace-menu">
           <summary class="button compact">Export</summary>
@@ -494,6 +495,14 @@ h1 {
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.18);
   backdrop-filter: blur(14px) saturate(145%);
 }
+.workspace-retry {
+  position: absolute;
+  z-index: 23;
+  right: 0;
+  bottom: calc(100% + 8px);
+  white-space: nowrap;
+}
+.workspace-retry[hidden] { display: none; }
 .workspace-menu { position: relative; min-width: 0; }
 .workspace-menu > summary {
   min-height: 40px;
@@ -709,6 +718,9 @@ body.workspace-active {
   --workspace-bar-bottom: max(8px, env(safe-area-inset-bottom));
   --workspace-bar-height: 44px;
   --workspace-overlay-gap: 8px;
+}
+body.workspace-active.engine-legacy {
+  --workspace-bar-bottom: max(48px, calc(env(safe-area-inset-bottom) + 40px));
 }
 body.workspace-active .app-shell { height: 100vh; height: 100dvh; min-height: 0; }
 body.workspace-active .topline {

@@ -16,18 +16,22 @@ from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_stan
 
 
 @pytest.mark.parametrize(
-    ("width", "height"),
+    ("width", "height", "bottom_y"),
     [
-        (1366, 900),
-        (1024, 768),
-        (431, 844),
-        (390, 844),
+        (1366, 900, 1280),
+        (1024, 768, 1280),
+        (844, 390, 1280),
+        (768, 1024, 1280),
+        (431, 844, 1280),
+        (390, 844, 1280),
+        (390, 844, 4000),
     ],
 )
 def test_single_workspace_browser_uses_full_canvas_and_keeps_native_actions_reachable(
     tmp_path: Path,
     width: int,
     height: int,
+    bottom_y: int,
 ) -> None:
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
         pytest.skip("single-workspace browser geometry is covered on the Python 3.12 CI lane")
@@ -61,7 +65,7 @@ try {
     nodes: [
       {id: "a", type: "text", x: 0, y: 0, width: 220, height: 120, text: "Alpha"},
       {id: "b", type: "text", x: 0, y: 640, width: 220, height: 120, text: "Beta"},
-      {id: "c", type: "text", x: 0, y: 1280, width: 220, height: 120, text: "Gamma"},
+      {id: "c", type: "text", x: 0, y: __BOTTOM_Y__, width: 220, height: 120, text: "Gamma"},
     ],
     edges: [
       {id: "ab", fromNode: "a", toNode: "b", toEnd: "arrow", label: "verbindet"},
@@ -156,6 +160,21 @@ try {
       `fitted native content overlaps native toolbar: clearance=${nativeBarClearance.toFixed(2)}px`
     );
   }
+  if (source.nodes.some((node) => node.y >= 4000)) {
+    const canvas = viewer.querySelector("#nativeCanvas");
+    const scaleNow = () => Number(
+      canvas.style.transform.match(/scale\(([^)]+)\)/)?.[1],
+    );
+    const fitScale = scaleNow();
+    if (!(fitScale > 0 && fitScale < 0.25)) {
+      throw new Error("tall diagram was not fitted below interactive zoom minimum");
+    }
+    viewer.querySelector("#zoomOut").click();
+    if (scaleNow() > fitScale + 1e-9) {
+      throw new Error("zoom-out increased scale after sub-minimum auto-fit");
+    }
+    viewer.querySelector("#fitView").click();
+  }
   viewer.querySelector("#resetLayout").click();
   const editMenu = viewer.querySelector(".edit-controls");
   if (editMenu.hidden) {
@@ -189,6 +208,9 @@ try {
   }
 
   addEdgeButton.click();
+  if (editMenu.open) {
+    throw new Error("native edit popover still overlays canvas during target selection");
+  }
   await waitUntil(
     () => viewer.querySelector("#status").textContent.trim() === "Ziel für die neue Verbindung auswählen",
     "native process status did not report the pending edge action",
@@ -197,7 +219,7 @@ try {
   if (nativeStatusRect.width < 1 || nativeStatusRect.height < 1) {
     throw new Error("native process status is not visible in the hosted workspace");
   }
-  if (innerWidth <= 620) {
+  if (innerWidth <= 980) {
     const statusStyle = frame.contentWindow.getComputedStyle(viewer.querySelector("#status"));
     const nativeStatus = viewer.querySelector("#status");
     if (
@@ -313,6 +335,32 @@ try {
     legacyToolsMenu.open = false;
   }
 
+  document.querySelector("#blankButton").click();
+  await waitUntil(
+    () => !document.querySelector("#workspace").hidden
+      && document.body.classList.contains("engine-legacy")
+      && document.querySelector("#editorFrame").src.startsWith("https://embed.diagrams.net"),
+    "legacy compatibility workspace did not open",
+  );
+  const legacyStage = document.querySelector(".editor-stage").getBoundingClientRect();
+  const legacyFrame = document.querySelector("#editorFrame").getBoundingClientRect();
+  const legacyBar = document.querySelector(".workspace-bar").getBoundingClientRect();
+  if (
+    !almost(legacyStage.width, innerWidth) || !almost(legacyStage.height, innerHeight)
+    || !almost(legacyFrame.width, innerWidth) || !almost(legacyFrame.height, innerHeight)
+  ) {
+    throw new Error("legacy canvas lost full viewport geometry");
+  }
+  if (innerHeight - legacyBar.bottom < 40) {
+    throw new Error("legacy host action bar overlaps the draw.io footer strip");
+  }
+  if (
+    document.querySelector("#projectButton").textContent.trim() !== "Projekt"
+    || document.querySelector('[data-export="png"]').hidden
+  ) {
+    throw new Error("legacy export capabilities changed");
+  }
+
   document.documentElement.dataset.singleWorkspaceBrowserRegression = "pass";
   document.documentElement.dataset.singleWorkspaceViewport = `${innerWidth}x${innerHeight}`;
   document.documentElement.dataset.singleWorkspaceFitClearance = hostChromeClearance.toFixed(2);
@@ -324,6 +372,8 @@ try {
   );
 }
 """
+    assert probe_js.count("__BOTTOM_Y__") == 1
+    probe_js = probe_js.replace("__BOTTOM_Y__", str(bottom_y))
     (output / "single-workspace-browser.js").write_text(probe_js, encoding="utf-8")
     index_path = output / "index.html"
     index = index_path.read_text(encoding="utf-8")

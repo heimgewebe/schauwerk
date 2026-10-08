@@ -416,7 +416,14 @@ button:focus-visible {
   .status { max-width: min(42vw, 300px); }
   .controls { gap: 4px; }
   .document-editor-hosted .viewer-heading { max-width: min(30vw, 240px); }
-  .document-editor-hosted .status { max-width: min(30vw, 240px); }
+  .document-editor-hosted .status {
+    max-width: min(30vw, 240px);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
 }
 @media (max-width: 620px) {
   button { min-width: 42px; min-height: 42px; }
@@ -431,13 +438,6 @@ button:focus-visible {
   .status {
     max-width: 100%;
     padding-inline: 7px;
-  }
-  .document-editor-hosted .status {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
-    line-height: 1.3;
   }
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
@@ -505,10 +505,11 @@ export function clampScale(value) {
 }
 
 export function normalizeView(value = {}) {
+  const scale = finite(value.scale, 1);
   return {
     x: finite(value.x),
     y: finite(value.y),
-    scale: clampScale(value.scale),
+    scale: scale > 0 ? Math.min(MAX_SCALE, scale) : MIN_SCALE,
   };
 }
 
@@ -565,7 +566,7 @@ export function fitView(contentWidth, contentHeight, viewportWidth, viewportHeig
     1,
     viewportHeightValue - insetPadding.top - insetPadding.bottom,
   );
-  const scale = clampScale(Math.min(availableWidth / width, availableHeight / height));
+  const scale = Math.min(MAX_SCALE, availableWidth / width, availableHeight / height);
   return {
     x: insetPadding.left + (availableWidth - width * scale) / 2,
     y: insetPadding.top + (availableHeight - height * scale) / 2,
@@ -1512,8 +1513,10 @@ function fit({ announce = true } = {}) {
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+  const requested = clampScale(view.scale * factor);
+  if (factor < 1 && requested > view.scale) return;
   autoFitActive = false;
-  view = zoomAt(view, clampScale(view.scale * factor), point);
+  view = zoomAt(view, requested, point);
   applyView();
 }
 
@@ -1891,6 +1894,7 @@ if (documentEditorHosted) {
       return;
     }
     edgeCreateSource = selectedId;
+    if (editControls instanceof HTMLDetailsElement) editControls.open = false;
     setStatus("Ziel für die neue Verbindung auswählen");
   });
   editTextButton?.addEventListener("click", openTextEditor);
@@ -1901,6 +1905,7 @@ if (documentEditorHosted) {
     }
     edgeCreateSource = null;
     edgeReattach = { edgeId: selectedEdgeId, endpoint };
+    if (editControls instanceof HTMLDetailsElement) editControls.open = false;
     setStatus(
       endpoint === "from"
         ? "Neuen Anfang auswählen"
