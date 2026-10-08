@@ -689,6 +689,10 @@ const wait = async (predicate, label) => {
   if (download.getAttribute("aria-label") !== "Originalprojekt speichern") {
     throw new Error("compact download lacks its full accessible name");
   }
+  if (innerWidth <= 420
+      && getComputedStyle(download, "::after").content !== '"Speichern"') {
+    throw new Error("small viewport download lacks its visible short caption");
+  }
   const stage = document.querySelector(".editor-stage").getBoundingClientRect();
   if (Math.abs(stage.width - innerWidth) > 1 || Math.abs(stage.height - innerHeight) > 1) {
     throw new Error("mobile action bar reduced the actual canvas viewport");

@@ -856,14 +856,7 @@ body.workspace-active .status {
   .primary-actions { grid-template-columns: minmax(0, 1fr); }
   .primary-actions .button.primary { grid-column: auto; }
   .workspace-output { gap: 3px; }
-}
-
-@media (max-width: 360px) {
-  /* Preserve the full-size Canvas while keeping narrow action targets separate. */
-  .workspace-bar .workspace-menu { flex-shrink: 1; }
-  .workspace-bar .workspace-menu > summary,
-  .workspace-bar .workspace-close { padding-inline: 5px; }
-  .workspace-bar .workspace-menu > summary { font-size: 0.78rem; }
+  /* Use an unambiguous short caption when the full label cannot fit. */
   .workspace-bar .download-link {
     flex: 0 0 78px;
     max-width: 78px;
@@ -877,6 +870,14 @@ body.workspace-active .status {
     content: "Speichern";
     font-size: 0.72rem;
   }
+}
+
+@media (max-width: 360px) {
+  /* Preserve the full-size Canvas while keeping narrow action targets separate. */
+  .workspace-bar .workspace-menu { flex-shrink: 1; }
+  .workspace-bar .workspace-menu > summary,
+  .workspace-bar .workspace-close { padding-inline: 5px; }
+  .workspace-bar .workspace-menu > summary { font-size: 0.78rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
