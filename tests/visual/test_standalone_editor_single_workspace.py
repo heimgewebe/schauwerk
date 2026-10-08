@@ -20,6 +20,7 @@ from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_stan
     [
         (1366, 900),
         (1024, 768),
+        (431, 844),
         (390, 844),
     ],
 )
@@ -196,7 +197,7 @@ try {
   if (nativeStatusRect.width < 1 || nativeStatusRect.height < 1) {
     throw new Error("native process status is not visible in the hosted workspace");
   }
-  if (innerWidth <= 430) {
+  if (innerWidth <= 620) {
     const statusStyle = frame.contentWindow.getComputedStyle(viewer.querySelector("#status"));
     const nativeStatus = viewer.querySelector("#status");
     if (

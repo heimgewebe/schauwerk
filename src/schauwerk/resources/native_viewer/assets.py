@@ -432,6 +432,13 @@ button:focus-visible {
     max-width: 100%;
     padding-inline: 7px;
   }
+  .document-editor-hosted .status {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
@@ -444,14 +451,7 @@ button:focus-visible {
 }
 @media (max-width: 430px) {
   .document-editor-hosted .viewer-heading { max-width: min(34vw, 128px); }
-  .document-editor-hosted .status {
-    max-width: 100%;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    overflow-wrap: anywhere;
-    line-height: 1.3;
-  }
+  .document-editor-hosted .status { max-width: 100%; }
   .document-editor-hosted .controls output { display: none; }
   .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
