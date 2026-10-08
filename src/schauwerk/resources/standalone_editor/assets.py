@@ -803,6 +803,8 @@ body.workspace-active .status {
     bottom: var(--workspace-bar-bottom);
     max-width: calc(100vw - 12px);
     gap: 3px;
+    /* Preserve viewport anchoring for the fixed mobile menu popovers. */
+    backdrop-filter: none;
   }
   .workspace-menu > summary,
   .workspace-bar .button.compact,

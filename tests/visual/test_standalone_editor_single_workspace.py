@@ -333,9 +333,9 @@ try {
       );
     }
     const toolsPopoverGap = barRect.top - toolsPopoverRect.bottom;
-    if (toolsPopoverGap < 6) {
+    if (toolsPopoverGap < 6 || (innerWidth <= 760 && toolsPopoverGap > 14)) {
       throw new Error(
-        "workspace tools popover overlaps workspace bar: gap=" +
+        "workspace tools popover is detached from workspace bar: gap=" +
         toolsPopoverGap.toFixed(2)
       );
     }
@@ -416,6 +416,22 @@ try {
   }
   if (innerHeight - legacyBar.bottom < 40) {
     throw new Error("legacy host action bar overlaps the draw.io footer strip");
+  }
+  if (innerWidth <= 760) {
+    const legacyExportMenu = document.querySelector(".workspace-export-menu");
+    legacyExportMenu.open = true;
+    const legacyPopover = legacyExportMenu.querySelector(".workspace-popover").getBoundingClientRect();
+    const legacyPopoverGap = legacyBar.top - legacyPopover.bottom;
+    if (
+      legacyPopoverGap < 6 || legacyPopoverGap > 14 ||
+      legacyPopover.left < -0.5 || legacyPopover.right > innerWidth + 0.5
+    ) {
+      throw new Error(
+        "legacy export popover is detached or outside viewport: gap="
+        + legacyPopoverGap.toFixed(2)
+      );
+    }
+    legacyExportMenu.open = false;
   }
   if (
     document.querySelector("#projectButton").textContent.trim() !== "Projekt"
