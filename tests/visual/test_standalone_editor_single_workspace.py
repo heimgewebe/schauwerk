@@ -196,6 +196,18 @@ try {
   if (nativeStatusRect.width < 1 || nativeStatusRect.height < 1) {
     throw new Error("native process status is not visible in the hosted workspace");
   }
+  if (innerWidth <= 430) {
+    const statusStyle = frame.contentWindow.getComputedStyle(viewer.querySelector("#status"));
+    const nativeStatus = viewer.querySelector("#status");
+    if (
+      statusStyle.whiteSpace !== "normal" ||
+      statusStyle.textOverflow === "ellipsis" ||
+      nativeStatus.scrollWidth > nativeStatus.clientWidth + 1 ||
+      nativeStatus.scrollHeight > nativeStatus.clientHeight + 1
+    ) {
+      throw new Error("native process instruction is clipped or ellipsized on mobile");
+    }
+  }
   frame.contentWindow.dispatchEvent(new frame.contentWindow.KeyboardEvent("keydown", {
     key: "Escape",
     bubbles: true,
@@ -255,6 +267,50 @@ try {
     () => document.querySelector("#workspace").hidden && !document.querySelector("#startView").hidden,
     "back action did not return to start view",
   );
+
+  if (innerWidth <= 420) {
+    const drawioSource = '<mxGraphModel><root><mxCell id="0"/>'
+      + '<mxCell id="1" parent="0"/>'
+      + '<mxCell id="a" value="Ali" vertex="1" parent="1">'
+      + '<mxGeometry x="20" y="20" width="140" height="60" as="geometry"/>'
+      + '</mxCell></root></mxGraphModel>';
+    document.querySelector("#sourceInput").value = drawioSource;
+    document.querySelector("#openPasteButton").click();
+    await waitUntil(
+      () => !document.querySelector("#workspace").hidden
+        && document.querySelector("#projectButton").textContent.trim() === "Original"
+        && document.querySelector("#editorFrame").src.includes("/native/"),
+      "draw.io original import did not enter native workspace",
+    );
+    const originalMenu = document.querySelector(".workspace-export-menu");
+    originalMenu.open = true;
+    document.querySelector("#projectButton").click();
+    await waitUntil(
+      () => document.querySelector("#downloadLink").textContent.trim()
+        === "Originalprojekt speichern"
+        && !document.querySelector("#downloadLink").hidden,
+      "draw.io original download did not become available",
+    );
+    const legacyToolsMenu = document.querySelector(".workspace-tools-menu");
+    if (legacyToolsMenu.hidden || getComputedStyle(legacyToolsMenu).display === "none") {
+      throw new Error("draw.io compatibility tools menu not visible");
+    }
+    legacyToolsMenu.open = true;
+    const bar = document.querySelector(".workspace-bar").getBoundingClientRect();
+    const popover = legacyToolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
+    const compatibility = document.querySelector("#legacyEditButton").getBoundingClientRect();
+    if (
+      popover.left < -0.5 || popover.right > innerWidth + 0.5 ||
+      compatibility.left < -0.5 || compatibility.right > innerWidth + 0.5 ||
+      bar.top - popover.bottom < 6
+    ) {
+      throw new Error(
+        "draw.io tools popover clipped after original export: left="
+        + popover.left.toFixed(2) + " gap=" + (bar.top - popover.bottom).toFixed(2)
+      );
+    }
+    legacyToolsMenu.open = false;
+  }
 
   document.documentElement.dataset.singleWorkspaceBrowserRegression = "pass";
   document.documentElement.dataset.singleWorkspaceViewport = `${innerWidth}x${innerHeight}`;

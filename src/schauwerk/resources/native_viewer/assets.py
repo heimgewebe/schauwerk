@@ -444,7 +444,14 @@ button:focus-visible {
 }
 @media (max-width: 430px) {
   .document-editor-hosted .viewer-heading { max-width: min(34vw, 128px); }
-  .document-editor-hosted .status { max-width: 100%; }
+  .document-editor-hosted .status {
+    max-width: 100%;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
+  }
   .document-editor-hosted .controls output { display: none; }
   .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
