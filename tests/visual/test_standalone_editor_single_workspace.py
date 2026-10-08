@@ -395,7 +395,7 @@ try {
     originalMenu.open = true;
     document.querySelector("#projectButton").click();
     await waitUntil(
-      () => document.querySelector("#downloadLink").textContent.trim()
+      () => document.querySelector("#downloadLink .download-caption")?.textContent.trim()
         === "Originalprojekt speichern"
         && !document.querySelector("#downloadLink").hidden,
       "draw.io original download did not become available",
@@ -624,14 +624,22 @@ const wait = async (predicate, label) => {
   document.querySelector("#projectButton").click();
   const download = document.querySelector("#downloadLink");
   await wait(
-    () => !download.hidden && download.textContent.trim() === "Originalprojekt speichern",
+    () => !download.hidden && download.querySelector(".download-caption")?.textContent.trim()
+      === "Originalprojekt speichern",
     "prepared original download did not appear",
   );
   const fullDownloadCaption = download.querySelector(".download-caption");
+  const shortCaption = download.querySelector(".download-short-caption");
   if (!fullDownloadCaption
       || fullDownloadCaption.textContent.trim() !== "Originalprojekt speichern"
-      || getComputedStyle(fullDownloadCaption).display !== "none") {
-    throw new Error("narrow original caption still occupies flex layout");
+      || getComputedStyle(fullDownloadCaption).display !== "none"
+      || !shortCaption || shortCaption.textContent.trim() !== "Speichern"
+      || getComputedStyle(shortCaption).display !== "block") {
+    throw new Error("mobile original download captions have incorrect visibility");
+  }
+  const shortStyle = getComputedStyle(shortCaption);
+  if (shortStyle.textOverflow !== "ellipsis" || shortStyle.overflowX !== "hidden") {
+    throw new Error("mobile short caption does not own controlled text truncation");
   }
   const safeLeft = __LEFT__;
   const safeRight = __RIGHT__;
@@ -706,9 +714,14 @@ const wait = async (predicate, label) => {
   if (download.getAttribute("aria-label") !== "Originalprojekt speichern") {
     throw new Error("compact download lacks its full accessible name");
   }
-  if (innerWidth <= 420
-      && getComputedStyle(download, "::after").content !== '"Speichern"') {
-    throw new Error("small viewport download lacks its visible short caption");
+  if (innerWidth <= 420 && getComputedStyle(download, "::after").content !== "none") {
+    throw new Error("anonymous flex pseudo-caption can escape narrow hit target");
+  }
+  const visibleShort = shortCaption.getBoundingClientRect();
+  const downloadRect = download.getBoundingClientRect();
+  if (visibleShort.width < 20 || visibleShort.left < downloadRect.left - 0.5
+      || visibleShort.right > downloadRect.right + 0.5) {
+    throw new Error("real short caption is clipped outside download action");
   }
   const stage = document.querySelector(".editor-stage").getBoundingClientRect();
   if (Math.abs(stage.width - innerWidth) > 1 || Math.abs(stage.height - innerHeight) > 1) {

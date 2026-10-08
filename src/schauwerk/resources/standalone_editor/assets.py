@@ -122,7 +122,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
         </details>
 
-        <a class="button compact primary download-link" id="downloadLink" hidden><span class="download-caption">Datei speichern</span></a>
+        <a class="button compact primary download-link" id="downloadLink" hidden><span class="download-caption">Datei speichern</span><span class="download-short-caption" aria-hidden="true">Speichern</span></a>
         <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Zurück zum Start">Zurück</button>
       </nav>
 
@@ -589,13 +589,16 @@ body.engine-legacy .workspace-tools-menu {
   white-space: nowrap;
   text-decoration: none;
 }
-.download-link > .download-caption {
+.download-link > .download-caption,
+.download-link > .download-short-caption {
   display: block;
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.download-link > .download-short-caption { display: none; }
 .download-link[hidden] { display: none; }
 
 .content-dialog {
@@ -887,8 +890,8 @@ body.workspace-active .status {
   }
   /* Remove the full label from layout, not just its font size. */
   .workspace-bar .download-link > .download-caption { display: none; }
-  .workspace-bar .download-link::after {
-    content: "Speichern";
+  .workspace-bar .download-link > .download-short-caption {
+    display: block;
     font-size: 0.72rem;
   }
 }
