@@ -234,6 +234,10 @@ SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-popover-anchoring-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -822,6 +826,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_popover_anchoring_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -6663,6 +6671,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_fit_retry_superseded_files
     )
     for name, expected in fit_retry["source_bindings"].items():
+        if name in single_workspace_popover_anchoring_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(fit_retry["checks"].values())
     fit_checks = fit_retry["check_evidence"]
@@ -6769,6 +6779,111 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         stress["readback_json_sha256"]
     )
 
+    popover_anchor = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert popover_anchor["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-popover-anchoring.v1"
+    )
+    assert popover_anchor["functional_head"] == (
+        "36d9d7c2ad50797a4bfa38e39b6f354398fe3089"
+    )
+    assert popover_anchor["parent_evidence"] == {
+        "evidence_digest": fit_retry["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-fit-retry-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": fit_retry["schema_version"],
+    }
+    assert popover_anchor["evidence_digest"] == digest_mapping(
+        popover_anchor, "evidence_digest"
+    )
+    assert set(popover_anchor["source_bindings"]) == (
+        single_workspace_popover_anchoring_superseded_files
+    )
+    for name, expected in popover_anchor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(popover_anchor["checks"].values())
+    pop_checks = popover_anchor["check_evidence"]
+    prev = pop_checks["independent_review"]
+    assert prev["reviewed_head"] == popover_anchor["base_product_head"]
+    assert prev["verdict"] == "NEEDS_CHANGE"
+    assert prev["new_head_review_required"] is True
+    red = pop_checks["red_before"]
+    green = pop_checks["green_after"]
+    assert red["head"] == popover_anchor["base_product_head"]
+    assert red["result"] == "failed"
+    assert red["normal_mode_and_600px_gap_px"] == 56
+    assert green["head"] == popover_anchor["functional_head"]
+    assert green["mobile_390_px_gap"] == 7
+    assert green["mobile_600_px_gap"] == 7
+    assert green["result"] == "passed"
+    full = pop_checks["pre_successor_full_validate"]
+    assert full["head"] == popover_anchor["functional_head"]
+    assert full["passed_count"] == 1667
+    assert full["failed_count"] == 1
+    assert full["failure_class"] == "expected_successor_binding_gate"
+    smoke = pop_checks["functional_browser_smoke"]
+    assert smoke["head"] == popover_anchor["functional_head"]
+    assert smoke["passed_count"] == 18
+    assert smoke["failed_count"] == 0
+    assert smoke["result"] == "passed"
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    visual = pop_checks["visual_readback"]
+    assert hashlib.sha256(readback_bytes).hexdigest() == visual["sha256"]
+    report = json.loads(readback_bytes)
+    assert report["functional_head"] == popover_anchor["functional_head"]
+    assert set(report["cases"]) == {"legacy-dark-mobile", "legacy-dark-tablet"}
+    for case in report["cases"].values():
+        assert case["beforeCss"]["barBackdrop"] == "none"
+        assert case["beforeCss"]["position"] == "fixed"
+        assert 6 <= case["exportGap"] <= 14
+        assert abs(case["delta"]["x"]) < 1e-6
+        assert abs(case["delta"]["y"]) < 1e-6
+        assert case["exportPopover"]["right"] <= case["viewport"]["width"] + 0.5
+        assert case["beforeHit"] == "BUTTON"
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["case_count"] == 2
+    assert visual["result"] == "passed"
+    assert pop_checks["visual_acceptance"]["decision"] == "accepted"
+    assert pop_checks["visual_acceptance"]["head"] == (
+        popover_anchor["functional_head"]
+    )
+    assert pop_checks["observer"]["observed_head"] == (
+        popover_anchor["functional_head"]
+    )
+    assert pop_checks["observer"]["worktree_clean"] is True
+    assert pop_checks["git_diff_check"] == {
+        "base_sha": "559a89a86e793863b544397d89db6f2db8643256",
+        "head_sha": popover_anchor["functional_head"],
+        "diff_sha256": "a6c87f9c7be42043887e468f9d29366e447af6e4752079c2405fd92da40c5867",
+        "diff_bytes": 2269,
+        "result": "passed",
+    }
+    self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert self_review["functional_head"] == popover_anchor["functional_head"]
+    assert len(self_review["passes"]) == 5
+    assert self_review["visual_readback_json_sha256"] == visual["sha256"]
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6797,7 +6912,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_fit_retry_superseded_files:
+        if name in single_workspace_popover_anchoring_superseded_files:
+            assert popover_anchor["source_bindings"][name] == current
+        elif name in single_workspace_fit_retry_superseded_files:
             assert fit_retry["source_bindings"][name] == current
         elif name in single_workspace_zoom_continuity_superseded_files:
             assert zoom_continuity["source_bindings"][name] == current
