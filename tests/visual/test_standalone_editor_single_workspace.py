@@ -25,6 +25,7 @@ from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_stan
         (431, 844, 1280),
         (390, 844, 1280),
         (390, 844, 4000),
+        (390, 844, 5000),
     ],
 )
 def test_single_workspace_browser_uses_full_canvas_and_keeps_native_actions_reachable(
@@ -143,6 +144,13 @@ try {
     growingStatus.style.fontSize = "17px";
     growingStatus.style.lineHeight = "42px";
   }
+  if (source.nodes.some((node) => node.y >= 5000)) {
+    document.body.style.setProperty("--workspace-bar-bottom", "44px");
+    const hostBarBottom = document.querySelector(".workspace-bar").getBoundingClientRect().bottom;
+    if (Math.abs(innerHeight - hostBarBottom - 44) > 1) {
+      throw new Error("safe-area test did not move host bar 44 CSS px");
+    }
+  }
   viewer.querySelector("#fitView").click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const fittedItems = Array.from(
@@ -248,6 +256,7 @@ try {
     fireTouch("pointerup", 32, 270, 420);
     fireTouch("pointerup", 31, 130, 420);
     viewer.querySelector("#fitView").click();
+    document.body.style.removeProperty("--workspace-bar-bottom");
   }
   viewer.querySelector("#resetLayout").click();
   const editMenu = viewer.querySelector(".edit-controls");

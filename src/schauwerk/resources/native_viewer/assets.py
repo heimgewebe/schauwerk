@@ -1003,7 +1003,28 @@ function standaloneViewportFitPadding() {
 }
 
 function embeddedViewportFitPadding() {
-  return viewportFitPadding(EMBEDDED_VIEWPORT_FIT_PADDING);
+  // The host moves its status and workspace bar for bottom safe-area insets.
+  // Read actual overlay bounds instead of adding a fixed gutter on all devices.
+  let bottom = EMBEDDED_VIEWPORT_FIT_PADDING.bottom;
+  try {
+    const frameRect = window.frameElement?.getBoundingClientRect();
+    const host = window.parent.document;
+    if (frameRect && host.body.classList.contains("workspace-active")) {
+      for (const selector of [".topline", ".workspace-bar"]) {
+        const overlay = host.querySelector(selector);
+        const rect = overlay?.getBoundingClientRect();
+        if (rect && rect.width > 0 && rect.height > 0) {
+          bottom = Math.max(
+            bottom,
+            Math.ceil(frameRect.bottom - rect.top) + FIT_OVERLAY_CLEARANCE,
+          );
+        }
+      }
+    }
+  } catch (_) {
+    // A cross-origin embed has no access to Schauwerk host overlay geometry.
+  }
+  return viewportFitPadding({ ...EMBEDDED_VIEWPORT_FIT_PADDING, bottom });
 }
 
 function readOverrides() {
