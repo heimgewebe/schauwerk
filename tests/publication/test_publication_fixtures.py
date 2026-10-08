@@ -222,6 +222,10 @@ SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-review-closure-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -790,6 +794,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_native_viewer_product_ui.py",
         "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_review_hardening_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -6114,6 +6126,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (
             single_workspace_fit_clearance_superseded_files
             | single_workspace_review_closure_superseded_files
+            | single_workspace_review_hardening_superseded_files
         ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -6205,7 +6218,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_fit_clearance_superseded_files
     )
     for name, expected in single_workspace_fit_clearance["source_bindings"].items():
-        if name in single_workspace_review_closure_superseded_files:
+        if name in (
+            single_workspace_review_closure_superseded_files
+            | single_workspace_review_hardening_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     fit_finding = single_workspace_fit_clearance["check_evidence"]["review_finding"]
@@ -6290,6 +6306,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_review_closure_superseded_files
     )
     for name, expected in review_closure["source_bindings"].items():
+        if name in single_workspace_review_hardening_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_closure["checks"].values())
     review_evidence = review_closure["check_evidence"]
@@ -6347,6 +6365,139 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert len(review_self["passes"]) == 5
     assert review_self["visual_readback_json_sha256"] == visual["readback_json_sha256"]
 
+    review_hardening = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_hardening["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-review-hardening.v1"
+    )
+    assert review_hardening["functional_head"] == (
+        "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70"
+    )
+    assert review_hardening["parent_evidence"] == {
+        "evidence_digest": review_closure["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-review-closure-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": review_closure["schema_version"],
+    }
+    assert review_hardening["evidence_digest"] == digest_mapping(
+        review_hardening, "evidence_digest"
+    )
+    assert set(review_hardening["source_bindings"]) == (
+        single_workspace_review_hardening_superseded_files
+    )
+    for name, expected in review_hardening["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(review_hardening["checks"].values())
+    hardening_evidence = review_hardening["check_evidence"]
+    pre = hardening_evidence["pre_successor_full_validate"]
+    assert pre["functional_head"] == review_hardening["functional_head"]
+    assert pre["task_id"] == "19a093ab49ca425abc7c967b"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = hardening_evidence["exact_head_browser_smoke"]
+    assert browser["functional_head"] == review_hardening["functional_head"]
+    assert browser["task_id"] == "50d7e5e805f64d4e9387b9fb"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual_info = hardening_evidence["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual_info["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    visual_report = json.loads(visual_bytes)
+    assert visual_report["head"] == review_hardening["functional_head"]
+    assert len(visual_report["cases"]) == visual_info["case_count"] == 8
+    for key in ("native-desktop-light", "native-tablet-light",
+                "native-mobile-dark", "native-tall-mobile-dark"):
+        case = visual_report["cases"][key]
+        assert case["hostClearance"] >= 8
+        assert case["nativeClearance"] >= 6
+        assert case["frame"]["width"] == case["viewport"]["width"]
+        assert case["stage"]["height"] == case["viewport"]["height"]
+    for key in ("process-status-mobile-dark", "process-status-431-dark",
+                "process-status-landscape-dark"):
+        status = visual_report["cases"][key]["processStatus"]
+        assert status["text"] == "Ziel für die neue Verbindung auswählen"
+        assert status["whiteSpace"] == "normal"
+        assert status["textOverflow"] == "clip"
+        assert status["scrollWidth"] <= status["clientWidth"] + 1
+        assert status["scrollHeight"] <= status["clientHeight"] + 1
+    drawio = visual_report["cases"]["drawio-export-mobile-dark"]
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    assert drawio["exportClosed"] is True
+    for case in visual_report["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual_info["result"] == "passed"
+    legacy_info = hardening_evidence["legacy_readback"]
+    legacy_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+        / "legacy-visual-readback.json"
+    ).read_bytes()
+    assert legacy_info["readback_json_sha256"] == hashlib.sha256(
+        legacy_bytes
+    ).hexdigest()
+    legacy_report = json.loads(legacy_bytes)
+    assert legacy_report["functional_head"] == review_hardening["functional_head"]
+    assert len(legacy_report["cases"]) == legacy_info["case_count"] == 1
+    legacy_mobile = legacy_report["cases"]["legacy-dark-mobile"]
+    assert legacy_mobile["viewport"]["height"] - legacy_mobile["bar"]["bottom"] >= 40
+    assert legacy_mobile["exportGap"] >= 6
+    assert len(legacy_mobile["screenshot_sha256"]) == 64
+    assert legacy_info["result"] == "passed"
+    assert hardening_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert hardening_evidence["visual_acceptance"]["functional_head"] == (
+        review_hardening["functional_head"]
+    )
+    assert hardening_evidence["independent_observer_readback"][
+        "observed_head"
+    ] == review_hardening["functional_head"]
+    assert hardening_evidence["independent_observer_readback"][
+        "worktree_clean"
+    ] is True
+    assert hardening_evidence["git_diff_check"] == {
+        "base_sha": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+        "head_sha": review_hardening["functional_head"],
+        "diff_sha256": "e9a0f548f108401337a65f2e8b6a9b111b56c51550e205a76def29945e3481a5",
+        "diff_bytes": 14660,
+        "result": "passed",
+    }
+    hardening_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert hardening_self_review["functional_head"] == (
+        review_hardening["functional_head"]
+    )
+    assert len(hardening_self_review["iterations"]) == 5
+    assert hardening_self_review["visual_readback_json_sha256"] == (
+        visual_info["readback_json_sha256"]
+    )
+    assert hardening_self_review["legacy_visual_readback_json_sha256"] == (
+        legacy_info["readback_json_sha256"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6375,7 +6526,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_review_closure_superseded_files:
+        if name in single_workspace_review_hardening_superseded_files:
+            assert review_hardening["source_bindings"][name] == current
+        elif name in single_workspace_review_closure_superseded_files:
             assert review_closure["source_bindings"][name] == current
         elif name in single_workspace_fit_clearance_superseded_files:
             assert single_workspace_fit_clearance["source_bindings"][name] == current
