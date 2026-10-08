@@ -250,6 +250,10 @@ SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_TEST_CONTRACT_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-safe-area-test-contract-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-mobile-320-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -856,6 +860,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     single_workspace_safe_area_test_contract_superseded_files = {
         "tests/visual/test_native_viewer.py",
+    }
+    single_workspace_mobile_320_superseded_files = {
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -6359,7 +6369,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_review_closure_superseded_files
     )
     for name, expected in review_closure["source_bindings"].items():
-        if name in single_workspace_review_hardening_superseded_files:
+        if name in (
+            single_workspace_review_hardening_superseded_files
+            | single_workspace_mobile_320_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_closure["checks"].values())
@@ -6949,6 +6962,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (
             single_workspace_safe_area_fit_superseded_files
             | single_workspace_safe_area_test_contract_superseded_files
+            | single_workspace_mobile_320_superseded_files
         ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -7033,6 +7047,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_safe_area_fit_superseded_files
     )
     for name, expected in safe_area_receipt["source_bindings"].items():
+        if name in single_workspace_mobile_320_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(safe_area_receipt["checks"].values())
     safe_evidence = safe_area_receipt["check_evidence"]
@@ -7125,6 +7141,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         safe_area_receipt["source_bindings"]
     )
     for name, expected in test_contract["unchanged_production_source_bindings"].items():
+        if name in single_workspace_mobile_320_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(test_contract["checks"].values())
     contract_checks = test_contract["check_evidence"]
@@ -7138,6 +7156,73 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert inherited["parent_visual_readback_sha256"] == (
         safe_area_receipt["visual_readback"]["sha256"]
     )
+
+    mobile_path = SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / "acceptance-receipt.json"
+    mobile = json.loads(mobile_path.read_text(encoding="utf-8"))
+    assert mobile["schema_version"] == "schauwerk-schaubild-single-workspace-mobile-320.v1"
+    assert mobile["functional_head"] == "de0ba2e47c88d7992a429cf6d882d45d05851b69"
+    assert mobile["base_product_head"] == "359588eb2132c09cef9d2aca7d45d06f52410abe"
+    assert mobile["parent_evidence"] == {
+        "evidence_digest": test_contract["evidence_digest"],
+        "file_sha256": hashlib.sha256(test_contract_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-safe-area-test-contract-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": test_contract["schema_version"],
+    }
+    assert mobile["evidence_digest"] == digest_mapping(mobile, "evidence_digest")
+    assert set(mobile["source_bindings"]) == single_workspace_mobile_320_superseded_files
+    for name, expected in mobile["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(mobile["checks"].values())
+    m_checks = mobile["check_evidence"]
+    assert m_checks["red_before"]["result"] == "failed"
+    assert "overlap" in m_checks["red_before"]["failure"]
+    assert m_checks["targeted_green"]["result"] == "passed"
+    assert m_checks["canonical_browser_smoke"]["passed_count"] == 20
+    assert m_checks["canonical_browser_smoke"]["failed_count"] == 0
+    assert m_checks["runner_filter_parity"]["passed_count"] == 3
+    assert m_checks["pre_successor_validate"]["passed_count"] == 1669
+    assert m_checks["pre_successor_validate"]["failed_count"] == 1
+    assert m_checks["pre_successor_validate"]["ruff_passed"] is True
+    assert m_checks["post_import_sort_lint"]["result"] == "passed"
+    assert m_checks["visual_acceptance"]["decision"] == "accepted"
+    m_visual = mobile["visual_readback"]
+    visual_data = (
+        SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / "visual-readback.json"
+    ).read_bytes()
+    assert hashlib.sha256(visual_data).hexdigest() == m_visual["sha256"]
+    m_report = json.loads(visual_data)
+    assert m_report["schema_version"] == "schauwerk-pr203-mobile-320-visual-readback.v1"
+    assert m_report["functional_head"] == mobile["functional_head"]
+    assert m_visual["case_count"] == 2
+    assert {case["width"] for case in m_report["cases"]} == {320, 390}
+    assert set(m_visual["screenshot_bindings"]) == {
+        "readback-320x700.png", "readback-390x844.png",
+    }
+    for case in m_report["cases"]:
+        width = case["width"]
+        height = 700 if width == 320 else 844
+        assert case["height"] == height and case["scrollWidth"] == width
+        assert case["bar"]["height"] <= 54 and not case["overlap"]
+        assert len(case["controls"]) == 4
+        for control in case["controls"]:
+            rect = control["rect"]
+            assert rect["width"] >= 38 and rect["height"] >= 40
+            assert rect["left"] >= -0.5 and rect["right"] <= width + 0.5
+        if width == 320:
+            download = next(i for i in case["controls"] if i["name"] == "download")
+            assert download["ariaLabel"] == "Originalprojekt speichern"
+            assert "Speichern" in download["pseudoContent"]
+        shot = f"readback-{width}x{height}.png"
+        png = (SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / shot).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        sha = hashlib.sha256(png).hexdigest()
+        assert sha == case["screenshot_sha256"] == m_visual["screenshot_bindings"][shot]["sha256"]
+        assert len(png) == case["screenshot_bytes"]
+        assert len(png) == m_visual["screenshot_bindings"][shot]["bytes"]
+        assert m_visual["screenshot_bindings"][shot]["viewport_css_px"] == [width, height]
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -7167,7 +7252,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_safe_area_test_contract_superseded_files:
+        if name in single_workspace_mobile_320_superseded_files:
+            assert mobile["source_bindings"][name] == current
+        elif name in single_workspace_safe_area_test_contract_superseded_files:
             assert test_contract["source_bindings"][name] == current
         elif name in single_workspace_safe_area_fit_superseded_files:
             assert safe_area_receipt["source_bindings"][name] == current
