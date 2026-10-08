@@ -801,7 +801,11 @@ body.workspace-active .status {
     left: auto;
     right: max(6px, env(safe-area-inset-right));
     bottom: var(--workspace-bar-bottom);
-    max-width: calc(100vw - 12px);
+    /* Both side insets reduce the actual usable width on notched screens. */
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left))
+      - max(6px, env(safe-area-inset-right))
+    );
     gap: 3px;
     /* Preserve viewport anchoring for the fixed mobile menu popovers. */
     backdrop-filter: none;
@@ -809,11 +813,22 @@ body.workspace-active .status {
   .workspace-menu > summary,
   .workspace-bar .button.compact,
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
+  .workspace-bar .workspace-menu > summary {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .workspace-popover {
     position: fixed;
     right: max(6px, env(safe-area-inset-right));
     bottom: calc(var(--workspace-bar-bottom) + var(--workspace-bar-height) + 7px);
-    max-width: calc(100vw - 12px);
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left))
+      - max(6px, env(safe-area-inset-right))
+    );
     padding: 5px;
   }
   .font-controls { max-width: 100%; flex-wrap: nowrap; }
@@ -840,9 +855,10 @@ body.workspace-active .status {
 
 @media (max-width: 360px) {
   /* Preserve the full-size Canvas while keeping narrow action targets separate. */
-  .workspace-bar .workspace-menu { flex-shrink: 0; }
+  .workspace-bar .workspace-menu { flex-shrink: 1; }
   .workspace-bar .workspace-menu > summary,
-  .workspace-bar .workspace-close { padding-inline: 6px; }
+  .workspace-bar .workspace-close { padding-inline: 5px; }
+  .workspace-bar .workspace-menu > summary { font-size: 0.78rem; }
   .workspace-bar .download-link {
     flex: 0 0 78px;
     max-width: 78px;

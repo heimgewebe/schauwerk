@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import shutil
-import socket
 import subprocess
 import sys
 import threading
@@ -553,10 +552,24 @@ try {
     assert 'data-single-workspace-browser-regression="fail"' not in completed.stdout, completed.stdout
 
 
+@pytest.mark.parametrize(
+    ("width", "height", "inset_left", "inset_right"),
+    [
+        (320, 700, 0, 0),
+        (320, 700, 44, 0),
+        (320, 700, 0, 44),
+        (390, 844, 44, 0),
+        (390, 844, 0, 44),
+    ],
+)
 def test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable(
     tmp_path: Path,
+    width: int,
+    height: int,
+    inset_left: int,
+    inset_right: int,
 ) -> None:
-    """Validate true 320 CSS pixels: desktop headless --window-size alone clamps to 500px."""
+    """Use actual CDP CSS viewports, including simulated left/right screen safe areas."""
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
         pytest.skip("mobile browser smoke runs only in the Python 3.12 CI lane")
 
@@ -574,6 +587,15 @@ def test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable
 
     output = tmp_path / "editor"
     build_standalone_editor(output)
+    # Chrome desktop does not expose hardware-notch env() values; substitute
+    # the exact CSS safe-area values in the isolated build, never the repo.
+    styles_path = output / "styles.css"
+    styles = styles_path.read_text(encoding="utf-8")
+    assert "env(safe-area-inset-left)" in styles
+    assert "env(safe-area-inset-right)" in styles
+    styles = styles.replace("env(safe-area-inset-left)", f"{inset_left}px")
+    styles = styles.replace("env(safe-area-inset-right)", f"{inset_right}px")
+    styles_path.write_text(styles, encoding="utf-8")
     probe_js = r"""
 const wait = async (predicate, label) => {
   for (let attempt = 0; attempt < 350; attempt += 1) {
@@ -603,8 +625,10 @@ const wait = async (predicate, label) => {
     () => !download.hidden && download.textContent.trim() === "Originalprojekt speichern",
     "prepared original download did not appear",
   );
-  if (innerWidth !== 320 || innerHeight !== 700) {
-    throw new Error("Chrome did not use the requested 320x700 CSS viewport");
+  const safeLeft = __LEFT__;
+  const safeRight = __RIGHT__;
+  if (innerWidth !== __WIDTH__ || innerHeight !== __HEIGHT__) {
+    throw new Error("Chrome did not use the requested CSS viewport");
   }
   const toolsMenu = document.querySelector(".workspace-tools-menu");
   const bar = document.querySelector(".workspace-bar");
@@ -616,18 +640,30 @@ const wait = async (predicate, label) => {
   ];
   const rects = controls.map((control) => control.getBoundingClientRect());
   const barRect = bar.getBoundingClientRect();
-  if (barRect.height > 54 || barRect.left < -0.5 || barRect.right > innerWidth + 0.5) {
-    throw new Error("mobile workspace action bar is oversized or clipped");
+  if (
+    barRect.height > 54
+    || barRect.left < safeLeft - 0.5
+    || barRect.right > innerWidth - safeRight + 0.5
+  ) {
+    throw new Error("mobile workspace action bar enters the left/right safe area");
   }
   for (let i = 0; i < controls.length; i += 1) {
     const rect = rects[i];
     const control = controls[i];
     if (rect.width < 38 || rect.height < 40
-        || rect.left < -0.5 || rect.right > innerWidth + 0.5) {
+        || rect.left < safeLeft - 0.5
+        || rect.right > innerWidth - safeRight + 0.5) {
       throw new Error("mobile action is clipped or too small: " + i);
     }
     if (control.scrollWidth > control.clientWidth + 1) {
-      throw new Error("mobile action text overflows its hit target: " + i);
+      const style = getComputedStyle(control);
+      if (
+        (safeLeft === 0 && safeRight === 0)
+        || style.textOverflow !== "ellipsis"
+        || style.overflowX !== "hidden"
+      ) {
+        throw new Error("mobile action text escapes its hit target: " + i);
+      }
     }
     const hit = document.elementFromPoint(
       rect.left + rect.width / 2, rect.top + rect.height / 2,
@@ -658,8 +694,12 @@ const wait = async (predicate, label) => {
   toolsMenu.open = true;
   const popover = toolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
   const gap = barRect.top - popover.bottom;
-  if (gap < 6 || gap > 14 || popover.left < -0.5 || popover.right > innerWidth + 0.5) {
-    throw new Error("mobile tools popover is clipped or detached from the bar");
+  if (
+    gap < 6 || gap > 14
+    || popover.left < safeLeft - 0.5
+    || popover.right > innerWidth - safeRight + 0.5
+  ) {
+    throw new Error("mobile tools popover enters the safe area or detaches from the bar");
   }
   const status = document.querySelector("body.workspace-active .status");
   if (getComputedStyle(status).visibility !== "hidden") {
@@ -669,12 +709,27 @@ const wait = async (predicate, label) => {
   if (getComputedStyle(status).visibility !== "visible") {
     throw new Error("mobile status did not return after menu close");
   }
+  exportMenu.open = true;
+  const exportPopover = exportMenu.querySelector(".workspace-popover").getBoundingClientRect();
+  if (
+    exportPopover.left < safeLeft - 0.5
+    || exportPopover.right > innerWidth - safeRight + 0.5
+  ) {
+    throw new Error("mobile export popover enters the safe area");
+  }
+  exportMenu.open = false;
   document.documentElement.dataset.mobileBar320Smoke = "pass";
 })().catch((error) => {
   document.documentElement.dataset.mobileBar320Smoke = "fail";
   document.documentElement.dataset.mobileBar320Error = String(error?.message || error);
 });
 """
+    probe_js = (
+        probe_js.replace("__WIDTH__", str(width))
+        .replace("__HEIGHT__", str(height))
+        .replace("__LEFT__", str(inset_left))
+        .replace("__RIGHT__", str(inset_right))
+    )
     (output / "mobile-bar-320.js").write_text(probe_js, encoding="utf-8")
     index = output / "index.html"
     index.write_text(
@@ -689,16 +744,15 @@ const wait = async (predicate, label) => {
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        debug_port = probe.getsockname()[1]
+    chrome_profile = tmp_path / "chrome-profile"
+    debug_port_file = chrome_profile / "DevToolsActivePort"
     proc = subprocess.Popen(
         [
             chrome, "--headless=new", "--no-first-run", "--disable-gpu",
             "--disable-dev-shm-usage", "--no-sandbox",
-            "--remote-allow-origins=*",
-            f"--remote-debugging-port={debug_port}",
-            f"--user-data-dir={tmp_path / 'chrome-profile'}",
+            "--remote-allow-origins=http://localhost",
+            "--remote-debugging-port=0",
+            f"--user-data-dir={chrome_profile}",
             "about:blank",
         ],
         stdout=subprocess.DEVNULL,
@@ -706,14 +760,19 @@ const wait = async (predicate, label) => {
     )
     try:
         tab = None
-        for _ in range(75):
+        for _ in range(100):
             try:
+                # Chrome owns port selection; no temporary free-port race.
+                port_text = debug_port_file.read_text(encoding="utf-8").splitlines()[0]
+                debug_port = int(port_text)
+                if not 1 <= debug_port <= 65535:
+                    raise ValueError("invalid Chrome debugging port")
                 with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
                     tabs = json.load(response)
                 tab = next((item for item in tabs if item.get("type") == "page"), None)
                 if tab:
                     break
-            except (OSError, TimeoutError, ValueError):
+            except (OSError, TimeoutError, ValueError, IndexError):
                 pass
             time.sleep(0.12)
         assert tab, "Chrome DevTools page was not ready"
@@ -728,17 +787,20 @@ const wait = async (predicate, label) => {
                 ws.send(json.dumps({
                     "id": expected_id, "method": method, "params": parameters or {},
                 }))
-                for _ in range(400):
-                    message = json.loads(ws.recv(timeout=15))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    timeout = min(10, max(0.1, deadline - time.monotonic()))
+                    message = json.loads(ws.recv(timeout=timeout))
                     if message.get("id") == expected_id:
                         assert "error" not in message, message.get("error")
                         return message.get("result", {})
-                raise AssertionError("Chrome DevTools call did not complete: " + method)
+                raise AssertionError("Chrome DevTools response timed out: " + method)
 
             cdp("Page.enable")
             cdp("Runtime.enable")
             cdp("Emulation.setDeviceMetricsOverride", {
-                "width": 320, "height": 700, "deviceScaleFactor": 1, "mobile": False,
+                "width": width, "height": height,
+                "deviceScaleFactor": 1, "mobile": False,
             })
             cdp("Page.navigate", {"url": f"http://127.0.0.1:{server.server_address[1]}/"})
             for _ in range(120):
