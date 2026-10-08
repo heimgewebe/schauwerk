@@ -270,6 +270,10 @@ SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-late-review-menus-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-download-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -909,6 +913,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_ci_download_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -7494,7 +7503,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_independent_remediation_superseded_files
     )
     for name, expected in independent_remediation["source_bindings"].items():
-        if name in single_workspace_late_review_menus_superseded_files:
+        if name in (
+            single_workspace_late_review_menus_superseded_files
+            | single_workspace_ci_download_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(independent_remediation["checks"].values())
@@ -7612,6 +7624,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_late_review_menus_superseded_files
     )
     for name, expected in late_menus["source_bindings"].items():
+        if name in single_workspace_ci_download_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(late_menus["checks"].values())
     finding_ids = {item["thread_id"] for item in
@@ -7663,6 +7677,91 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         native_assets["styles.css"].encode("utf-8")
     ).hexdigest() == visual["native_source_css_sha256"]
 
+    # The current mobile download caption has a new production revision; the
+    # previous accepted screenshots remain immutable and do not inherit PASS.
+    download_path = SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE / "acceptance-receipt.json"
+    ci_download = json.loads(download_path.read_text(encoding="utf-8"))
+    assert ci_download["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-download.v1"
+    )
+    assert ci_download["functional_head"] == (
+        "3f04561d3a1376e052e075b191b92b1f9bd6900e"
+    )
+    assert ci_download["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-late-review-menus-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": late_menus["schema_version"],
+        "file_sha256": hashlib.sha256(late_path.read_bytes()).hexdigest(),
+        "evidence_digest": late_menus["evidence_digest"],
+    }
+    assert ci_download["evidence_digest"] == digest_mapping(
+        ci_download, "evidence_digest"
+    )
+    assert set(ci_download["source_bindings"]) == (
+        single_workspace_ci_download_superseded_files
+    )
+    for name, expected in ci_download["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(ci_download["checks"].values())
+    checks = ci_download["check_evidence"]
+    assert checks["prior_remote_red"]["python"] == "3.12"
+    assert checks["prior_remote_red"]["failed_cases"] == 5
+    assert checks["prior_remote_red"]["job_id"] == 113534469036
+    assert checks["local_browser_green"]["case_count"] == 27
+    assert checks["local_browser_green"]["failed_count"] == 0
+    assert checks["static_green"]["test_count"] == 2
+    assert checks["visual_acceptance"]["decision"] == "accepted"
+    final_info = ci_download["visual_readback"]
+    assert final_info["case_count"] == len(final_info["screenshots"]) == 5
+    final_raw = (ROOT / final_info["path"]).read_bytes()
+    assert hashlib.sha256(final_raw).hexdigest() == final_info["sha256"]
+    final_visual = json.loads(final_raw)
+    assert final_visual["functional_head"] == ci_download["functional_head"]
+    assert final_visual["schema_version"] == final_info["schema_version"]
+    assert len(final_visual["cases"]) == 5
+    for name, expected in final_visual["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert {
+        (c["width"], c["height"], c["simulated_safe_inset"]["left"],
+         c["simulated_safe_inset"]["right"])
+        for c in final_visual["cases"]
+    } == {
+        (320, 700, 0, 0), (320, 700, 0, 44), (320, 700, 44, 0),
+        (390, 844, 0, 44), (390, 844, 44, 0),
+    }
+    for case in final_visual["cases"]:
+        image = final_info["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert len(png) == image["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == image["sha256"] == case[
+            "screenshot_sha256"
+        ]
+        geometry = case["geometry"]
+        assert geometry["caption_display"] == "none"
+        assert geometry["download_scroll_width"] <= geometry["download_client_width"] + 1
+        assert geometry["aria"] == geometry["label"] == "Originalprojekt speichern"
+        assert geometry["short"] == '"Speichern"'
+        left = case["simulated_safe_inset"]["left"]
+        right = case["simulated_safe_inset"]["right"]
+        assert geometry["bar"]["left"] >= left - 0.5
+        assert geometry["bar"]["right"] <= case["width"] - right + 0.5
+        assert geometry["popover"]["left"] >= left - 0.5
+        assert geometry["popover"]["right"] <= case["width"] - right + 0.5
+        assert abs(geometry["stage"]["width"] - case["width"]) < 1
+        assert abs(geometry["stage"]["height"] - case["height"]) < 1
+    from schauwerk.resources.native_viewer.assets import ASSETS as native_css_bundle
+
+    assert hashlib.sha256(
+        native_css_bundle["styles.css"].encode("utf-8")
+    ).hexdigest() == final_info["native_css_sha256"]
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -7691,7 +7790,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_late_review_menus_superseded_files:
+        if name in single_workspace_ci_download_superseded_files:
+            assert ci_download["source_bindings"][name] == current
+        elif name in single_workspace_late_review_menus_superseded_files:
             assert late_menus["source_bindings"][name] == current
         elif name in single_workspace_independent_remediation_superseded_files:
             assert independent_remediation["source_bindings"][name] == current
