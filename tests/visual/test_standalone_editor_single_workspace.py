@@ -336,10 +336,12 @@ try {
   }
 
   document.querySelector("#blankButton").click();
+  // The external legacy iframe navigation runs in requestAnimationFrame; Chrome
+  // virtual time can delay it. Host/footer geometry does not depend on that navigation.
   await waitUntil(
     () => !document.querySelector("#workspace").hidden
       && document.body.classList.contains("engine-legacy")
-      && document.querySelector("#editorFrame").src.startsWith("https://embed.diagrams.net"),
+      && document.querySelector("#editorFrame") instanceof HTMLIFrameElement,
     "legacy compatibility workspace did not open",
   );
   const legacyStage = document.querySelector(".editor-stage").getBoundingClientRect();
