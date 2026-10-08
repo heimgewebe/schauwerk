@@ -246,6 +246,10 @@ SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_FIT_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-safe-area-fit-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_TEST_CONTRACT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-safe-area-test-contract-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -849,6 +853,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_safe_area_fit_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_safe_area_test_contract_superseded_files = {
+        "tests/visual/test_native_viewer.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -6939,7 +6946,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_final_review_superseded_files
     )
     for name, expected in final_review["source_bindings"].items():
-        if name in single_workspace_safe_area_fit_superseded_files:
+        if name in (
+            single_workspace_safe_area_fit_superseded_files
+            | single_workspace_safe_area_test_contract_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(final_review["checks"].values())
@@ -7080,6 +7090,55 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert binding["bytes"] == len(picture)
         assert binding["viewport_css_px"] == [width, height]
 
+    test_contract_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_TEST_CONTRACT_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    test_contract = json.loads(test_contract_path.read_text(encoding="utf-8"))
+    assert test_contract["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-safe-area-test-contract.v1"
+    )
+    assert test_contract["functional_head"] == (
+        "ae92461eb3d94701327151c6b6de18863c5c4e78"
+    )
+    assert test_contract["base_product_head"] == (
+        "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9"
+    )
+    assert test_contract["parent_evidence"] == {
+        "evidence_digest": safe_area_receipt["evidence_digest"],
+        "file_sha256": hashlib.sha256(safe_area_receipt_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-safe-area-fit-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": safe_area_receipt["schema_version"],
+    }
+    assert test_contract["evidence_digest"] == digest_mapping(
+        test_contract, "evidence_digest"
+    )
+    assert set(test_contract["source_bindings"]) == (
+        single_workspace_safe_area_test_contract_superseded_files
+    )
+    for name, expected in test_contract["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert test_contract["unchanged_production_source_bindings"] == (
+        safe_area_receipt["source_bindings"]
+    )
+    for name, expected in test_contract["unchanged_production_source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(test_contract["checks"].values())
+    contract_checks = test_contract["check_evidence"]
+    assert contract_checks["old_static_test_failure"]["passed_count"] == 1668
+    assert contract_checks["old_static_test_failure"]["failed_count"] == 1
+    assert contract_checks["new_geometry_contract_test"]["result"] == "passed"
+    assert contract_checks["pre_successor_source_digest_gate"]["result"] == "failed"
+    inherited = contract_checks["visual_acceptance_inheritance"]
+    assert inherited["decision"] == "inherited_from_parent"
+    assert inherited["parent_functional_head"] == safe_area_receipt["functional_head"]
+    assert inherited["parent_visual_readback_sha256"] == (
+        safe_area_receipt["visual_readback"]["sha256"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -7108,7 +7167,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_safe_area_fit_superseded_files:
+        if name in single_workspace_safe_area_test_contract_superseded_files:
+            assert test_contract["source_bindings"][name] == current
+        elif name in single_workspace_safe_area_fit_superseded_files:
             assert safe_area_receipt["source_bindings"][name] == current
         elif name in single_workspace_final_review_superseded_files:
             assert final_review["source_bindings"][name] == current
