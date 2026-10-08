@@ -695,6 +695,11 @@ if (
   Math.abs(diagramBefore.x - diagramAfter.x) > 1e-7 ||
   Math.abs(diagramBefore.y - diagramAfter.y) > 1e-7
 ) throw new Error('zoom anchor jumps after subfloor fit');
+const smoothZoom = m.zoomAt(tallFitted, tallFitted.scale * 1.2, tallAnchor);
+if (
+  Math.abs(smoothZoom.scale - tallFitted.scale * 1.2) > 1e-9 ||
+  smoothZoom.scale >= m.MIN_SCALE
+) throw new Error('first zoom-in snapped from fitted subfloor view to interactive minimum');
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],

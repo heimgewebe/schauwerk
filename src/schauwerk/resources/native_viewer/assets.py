@@ -518,9 +518,16 @@ export function panBy(view, dx, dy) {
   return { ...current, x: current.x + finite(dx), y: current.y + finite(dy) };
 }
 
+export function interactionScale(startScale, requestedScale) {
+  const requested = finite(requestedScale, startScale);
+  return startScale < MIN_SCALE
+    ? Math.max(startScale, Math.min(MAX_SCALE, requested))
+    : clampScale(requested);
+}
+
 export function zoomAt(view, requestedScale, anchor) {
   const current = normalizeView(view);
-  const scale = clampScale(requestedScale);
+  const scale = interactionScale(current.scale, requestedScale);
   const anchorX = finite(anchor?.x);
   const anchorY = finite(anchor?.y);
   const diagramX = (anchorX - current.x) / current.scale;
@@ -868,6 +875,7 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 APP_JS = r"""import {
   clampScale,
   fitView,
+  interactionScale,
   liveEdgeGeometry,
   nodeOffset,
   panBy,
@@ -1513,10 +1521,10 @@ function fit({ announce = true } = {}) {
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-  const requested = clampScale(view.scale * factor);
-  if (factor < 1 && requested > view.scale) return;
+  const next = zoomAt(view, view.scale * factor, point);
+  if (factor < 1 && next.scale >= view.scale) return;
   autoFitActive = false;
-  view = zoomAt(view, requested, point);
+  view = next;
   applyView();
 }
 
@@ -1559,7 +1567,10 @@ function updatePinch() {
   const [first, second] = pointers;
   const distance = Math.hypot(second.x - first.x, second.y - first.y);
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
-  const scale = clampScale(gesture.startScale * (distance / gesture.startDistance));
+  const scale = interactionScale(
+    gesture.startScale,
+    gesture.startScale * (distance / gesture.startDistance),
+  );
   autoFitActive = false;
   view = {
     x: midpoint.x - gesture.diagramPoint.x * scale,

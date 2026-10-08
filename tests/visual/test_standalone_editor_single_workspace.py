@@ -174,6 +174,51 @@ try {
       throw new Error("zoom-out increased scale after sub-minimum auto-fit");
     }
     viewer.querySelector("#fitView").click();
+    viewer.querySelector("#zoomIn").click();
+    if (Math.abs(scaleNow() - fitScale * 1.2) > 1e-6) {
+      throw new Error(
+        "zoom-in snapped to interactive minimum instead of advancing smoothly"
+        + " fit=" + fitScale.toFixed(9)
+        + " actual=" + scaleNow().toFixed(9)
+        + " expected=" + (fitScale * 1.2).toFixed(9)
+      );
+    }
+    viewer.querySelector("#fitView").click();
+    const pinchViewport = viewer.querySelector("#nativeViewport");
+    // Chrome synthetic pointer IDs need the existing viewer-test capture shim.
+    frame.contentWindow.Element.prototype.setPointerCapture = function () {};
+    frame.contentWindow.Element.prototype.releasePointerCapture = function () {};
+    const fireTouch = (type, id, x, y) => pinchViewport.dispatchEvent(
+      new frame.contentWindow.PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: id,
+        pointerType: "touch",
+        clientX: x,
+        clientY: y,
+        button: 0,
+        buttons: type === "pointerup" ? 0 : 1,
+        isPrimary: id === 31,
+      }),
+    );
+    fireTouch("pointerdown", 31, 130, 420);
+    fireTouch("pointerdown", 32, 270, 420);
+    fireTouch("pointermove", 32, 250, 420);
+    if (scaleNow() > fitScale + 1e-9) {
+      throw new Error("inward pinch increased sub-minimum fitted zoom");
+    }
+    fireTouch("pointermove", 32, 310, 420);
+    if (Math.abs(scaleNow() - fitScale * (180 / 140)) > 1e-6) {
+      throw new Error(
+        "outward pinch jumped to the manual zoom floor instead of scaling smoothly"
+        + " fit=" + fitScale.toFixed(9)
+        + " actual=" + scaleNow().toFixed(9)
+        + " expected=" + (fitScale * (180 / 140)).toFixed(9)
+      );
+    }
+    fireTouch("pointerup", 32, 310, 420);
+    fireTouch("pointerup", 31, 130, 420);
+    viewer.querySelector("#fitView").click();
   }
   viewer.querySelector("#resetLayout").click();
   const editMenu = viewer.querySelector(".edit-controls");
