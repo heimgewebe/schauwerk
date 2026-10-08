@@ -1,14 +1,18 @@
 # ruff: noqa: E501
 from __future__ import annotations
 
+import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import threading
+import time
 from functools import partial
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from urllib.request import urlopen
 
 import pytest
 
@@ -547,3 +551,219 @@ try {
     assert completed.returncode == 0, completed.stderr
     assert 'data-single-workspace-browser-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-single-workspace-browser-regression="fail"' not in completed.stdout, completed.stdout
+
+
+def test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable(
+    tmp_path: Path,
+) -> None:
+    """Validate true 320 CSS pixels: desktop headless --window-size alone clamps to 500px."""
+    if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
+        pytest.skip("mobile browser smoke runs only in the Python 3.12 CI lane")
+
+    from websockets.sync.client import connect
+
+    chrome = (
+        shutil.which("google-chrome")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+    )
+    if chrome is None:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome/Chromium is required for the mobile 320px browser smoke")
+        pytest.skip("Chrome/Chromium is unavailable")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    probe_js = r"""
+const wait = async (predicate, label) => {
+  for (let attempt = 0; attempt < 350; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+(async () => {
+  const xml = '<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>'
+    + '<mxCell id="a" value="Ali" vertex="1" parent="1">'
+    + '<mxGeometry x="20" y="20" width="140" height="60" as="geometry"/>'
+    + '</mxCell></root></mxGraphModel>';
+  document.querySelector("#sourceInput").value = xml;
+  document.querySelector("#openPasteButton").click();
+  await wait(
+    () => !document.querySelector("#workspace").hidden
+      && document.querySelector("#projectButton").textContent.trim() === "Original"
+      && document.querySelector("#editorFrame").src.includes("/native/"),
+    "native draw.io import did not become ready",
+  );
+  const exportMenu = document.querySelector(".workspace-export-menu");
+  exportMenu.open = true;
+  document.querySelector("#projectButton").click();
+  const download = document.querySelector("#downloadLink");
+  await wait(
+    () => !download.hidden && download.textContent.trim() === "Originalprojekt speichern",
+    "prepared original download did not appear",
+  );
+  if (innerWidth !== 320 || innerHeight !== 700) {
+    throw new Error("Chrome did not use the requested 320x700 CSS viewport");
+  }
+  const toolsMenu = document.querySelector(".workspace-tools-menu");
+  const bar = document.querySelector(".workspace-bar");
+  const controls = [
+    toolsMenu.querySelector("summary"),
+    exportMenu.querySelector("summary"),
+    download,
+    document.querySelector("#workspaceCloseButton"),
+  ];
+  const rects = controls.map((control) => control.getBoundingClientRect());
+  const barRect = bar.getBoundingClientRect();
+  if (barRect.height > 54 || barRect.left < -0.5 || barRect.right > innerWidth + 0.5) {
+    throw new Error("mobile workspace action bar is oversized or clipped");
+  }
+  for (let i = 0; i < controls.length; i += 1) {
+    const rect = rects[i];
+    const control = controls[i];
+    if (rect.width < 38 || rect.height < 40
+        || rect.left < -0.5 || rect.right > innerWidth + 0.5) {
+      throw new Error("mobile action is clipped or too small: " + i);
+    }
+    if (control.scrollWidth > control.clientWidth + 1) {
+      throw new Error("mobile action text overflows its hit target: " + i);
+    }
+    const hit = document.elementFromPoint(
+      rect.left + rect.width / 2, rect.top + rect.height / 2,
+    );
+    if (!hit || !control.contains(hit)) {
+      throw new Error("mobile action is not the top pointer hit: " + i);
+    }
+    for (let j = 0; j < i; j += 1) {
+      const other = rects[j];
+      const overlapWidth = Math.max(
+        0, Math.min(rect.right, other.right) - Math.max(rect.left, other.left),
+      );
+      const overlapHeight = Math.max(
+        0, Math.min(rect.bottom, other.bottom) - Math.max(rect.top, other.top),
+      );
+      if (overlapWidth > 0.5 && overlapHeight > 0.5) {
+        throw new Error("mobile action touch targets overlap: " + i + "/" + j);
+      }
+    }
+  }
+  if (download.getAttribute("aria-label") !== "Originalprojekt speichern") {
+    throw new Error("compact download lacks its full accessible name");
+  }
+  const stage = document.querySelector(".editor-stage").getBoundingClientRect();
+  if (Math.abs(stage.width - innerWidth) > 1 || Math.abs(stage.height - innerHeight) > 1) {
+    throw new Error("mobile action bar reduced the actual canvas viewport");
+  }
+  toolsMenu.open = true;
+  const popover = toolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
+  const gap = barRect.top - popover.bottom;
+  if (gap < 6 || gap > 14 || popover.left < -0.5 || popover.right > innerWidth + 0.5) {
+    throw new Error("mobile tools popover is clipped or detached from the bar");
+  }
+  const status = document.querySelector("body.workspace-active .status");
+  if (getComputedStyle(status).visibility !== "hidden") {
+    throw new Error("mobile status overlaps the open tools menu");
+  }
+  toolsMenu.open = false;
+  if (getComputedStyle(status).visibility !== "visible") {
+    throw new Error("mobile status did not return after menu close");
+  }
+  document.documentElement.dataset.mobileBar320Smoke = "pass";
+})().catch((error) => {
+  document.documentElement.dataset.mobileBar320Smoke = "fail";
+  document.documentElement.dataset.mobileBar320Error = String(error?.message || error);
+});
+"""
+    (output / "mobile-bar-320.js").write_text(probe_js, encoding="utf-8")
+    index = output / "index.html"
+    index.write_text(
+        index.read_text(encoding="utf-8").replace(
+            "</body>", '<script type="module" src="mobile-bar-320.js"></script></body>',
+        ),
+        encoding="utf-8",
+    )
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(_EditorRequestHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        debug_port = probe.getsockname()[1]
+    proc = subprocess.Popen(
+        [
+            chrome, "--headless=new", "--no-first-run", "--disable-gpu",
+            "--disable-dev-shm-usage", "--no-sandbox",
+            "--remote-allow-origins=*",
+            f"--remote-debugging-port={debug_port}",
+            f"--user-data-dir={tmp_path / 'chrome-profile'}",
+            "about:blank",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        tab = None
+        for _ in range(75):
+            try:
+                with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
+                    tabs = json.load(response)
+                tab = next((item for item in tabs if item.get("type") == "page"), None)
+                if tab:
+                    break
+            except (OSError, TimeoutError, ValueError):
+                pass
+            time.sleep(0.12)
+        assert tab, "Chrome DevTools page was not ready"
+
+        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
+            message_id = 0
+
+            def cdp(method: str, parameters: dict | None = None) -> dict:
+                nonlocal message_id
+                message_id += 1
+                expected_id = message_id
+                ws.send(json.dumps({
+                    "id": expected_id, "method": method, "params": parameters or {},
+                }))
+                for _ in range(400):
+                    message = json.loads(ws.recv(timeout=15))
+                    if message.get("id") == expected_id:
+                        assert "error" not in message, message.get("error")
+                        return message.get("result", {})
+                raise AssertionError("Chrome DevTools call did not complete: " + method)
+
+            cdp("Page.enable")
+            cdp("Runtime.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": 320, "height": 700, "deviceScaleFactor": 1, "mobile": False,
+            })
+            cdp("Page.navigate", {"url": f"http://127.0.0.1:{server.server_address[1]}/"})
+            for _ in range(120):
+                evaluated = cdp("Runtime.evaluate", {
+                    "expression": (
+                        "({state:document.documentElement.dataset.mobileBar320Smoke||'',"
+                        "error:document.documentElement.dataset.mobileBar320Error||''})"
+                    ),
+                    "returnByValue": True,
+                })
+                result = evaluated.get("result", {}).get("value", {})
+                if result.get("state") == "fail":
+                    pytest.fail(str(result.get("error")))
+                if result.get("state") == "pass":
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail("real 320px mobile bar probe did not finish")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

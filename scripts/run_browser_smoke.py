@@ -45,6 +45,10 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_standalone_editor_single_workspace.py::"
         "test_single_workspace_browser_uses_full_canvas_and_keeps_native_actions_reachable"
     ),
+    (
+        "tests/visual/test_standalone_editor_single_workspace.py::"
+        "test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable"
+    ),
 )
 MAX_ATTEMPTS = 2
 

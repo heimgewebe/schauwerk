@@ -838,6 +838,26 @@ body.workspace-active .status {
   .workspace-output { gap: 3px; }
 }
 
+@media (max-width: 360px) {
+  /* Preserve the full-size Canvas while keeping narrow action targets separate. */
+  .workspace-bar .workspace-menu { flex-shrink: 0; }
+  .workspace-bar .workspace-menu > summary,
+  .workspace-bar .workspace-close { padding-inline: 6px; }
+  .workspace-bar .download-link {
+    flex: 0 0 78px;
+    max-width: 78px;
+    min-width: 0;
+    padding-inline: 4px;
+    font-size: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  .workspace-bar .download-link::after {
+    content: "Speichern";
+    font-size: 0.72rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
@@ -2102,6 +2122,7 @@ function clearPreparedDownload() {
   elements.downloadLink.hidden = true;
   elements.downloadLink.removeAttribute("href");
   elements.downloadLink.removeAttribute("download");
+  elements.downloadLink.removeAttribute("aria-label");
   elements.downloadLink.textContent = "Datei speichern";
 }
 
@@ -2111,6 +2132,7 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.href = preparedDownloadUrl;
   elements.downloadLink.download = filename;
   elements.downloadLink.textContent = `${label} speichern`;
+  elements.downloadLink.setAttribute("aria-label", `${label} speichern`);
   elements.downloadLink.hidden = false;
 }
 
