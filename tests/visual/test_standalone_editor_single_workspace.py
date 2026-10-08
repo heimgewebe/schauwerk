@@ -627,6 +627,12 @@ const wait = async (predicate, label) => {
     () => !download.hidden && download.textContent.trim() === "Originalprojekt speichern",
     "prepared original download did not appear",
   );
+  const fullDownloadCaption = download.querySelector(".download-caption");
+  if (!fullDownloadCaption
+      || fullDownloadCaption.textContent.trim() !== "Originalprojekt speichern"
+      || getComputedStyle(fullDownloadCaption).display !== "none") {
+    throw new Error("narrow original caption still occupies flex layout");
+  }
   const safeLeft = __LEFT__;
   const safeRight = __RIGHT__;
   if (innerWidth !== __WIDTH__ || innerHeight !== __HEIGHT__) {

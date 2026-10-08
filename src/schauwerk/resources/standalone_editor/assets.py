@@ -122,7 +122,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
         </details>
 
-        <a class="button compact primary download-link" id="downloadLink" hidden>Datei speichern</a>
+        <a class="button compact primary download-link" id="downloadLink" hidden><span class="download-caption">Datei speichern</span></a>
         <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Zurück zum Start">Zurück</button>
       </nav>
 
@@ -589,6 +589,13 @@ body.engine-legacy .workspace-tools-menu {
   white-space: nowrap;
   text-decoration: none;
 }
+.download-link > .download-caption {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .download-link[hidden] { display: none; }
 
 .content-dialog {
@@ -875,10 +882,11 @@ body.workspace-active .status {
     max-width: 78px;
     min-width: 0;
     padding-inline: 4px;
-    font-size: 0;
     overflow: hidden;
     white-space: nowrap;
   }
+  /* Remove the full label from layout, not just its font size. */
+  .workspace-bar .download-link > .download-caption { display: none; }
   .workspace-bar .download-link::after {
     content: "Speichern";
     font-size: 0.72rem;
@@ -1647,6 +1655,7 @@ const elements = {
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
+  downloadCaption: document.querySelector("#downloadLink .download-caption"),
   workspaceCloseButton: document.querySelector("#workspaceCloseButton"),
   fontDefaultInput: document.querySelector("#fontDefaultInput"),
   fontDecreaseButton: document.querySelector("#fontDecreaseButton"),
@@ -2177,7 +2186,7 @@ function clearPreparedDownload() {
   elements.downloadLink.removeAttribute("href");
   elements.downloadLink.removeAttribute("download");
   elements.downloadLink.removeAttribute("aria-label");
-  elements.downloadLink.textContent = "Datei speichern";
+  elements.downloadCaption.textContent = "Datei speichern";
 }
 
 function prepareDownload(blob, filename, label) {
@@ -2185,7 +2194,7 @@ function prepareDownload(blob, filename, label) {
   preparedDownloadUrl = URL.createObjectURL(blob);
   elements.downloadLink.href = preparedDownloadUrl;
   elements.downloadLink.download = filename;
-  elements.downloadLink.textContent = `${label} speichern`;
+  elements.downloadCaption.textContent = `${label} speichern`;
   elements.downloadLink.setAttribute("aria-label", `${label} speichern`);
   elements.downloadLink.hidden = false;
 }

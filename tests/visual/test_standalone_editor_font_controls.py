@@ -117,6 +117,7 @@ def test_prepared_download_stays_inside_compact_workspace_without_reflow_state(
     app_js = (output / "app.js").read_text(encoding="utf-8")
 
     assert 'id="downloadLink" hidden' in index_html
+    assert '<span class="download-caption">Datei speichern</span>' in index_html
     clear_download = app_js[
         app_js.index("function clearPreparedDownload()")
         : app_js.index("function prepareDownload(")
@@ -128,7 +129,7 @@ def test_prepared_download_stays_inside_compact_workspace_without_reflow_state(
 
     assert "elements.downloadLink.hidden = true;" in clear_download
     assert "elements.downloadLink.hidden = false;" in prepare_download
-    assert "elements.downloadLink.textContent = `${label} speichern`;" in prepare_download
+    assert "elements.downloadCaption.textContent = `${label} speichern`;" in prepare_download
     assert "queueWorkspaceDockHeightSync" not in clear_download
     assert "queueWorkspaceDockHeightSync" not in prepare_download
     assert "style.setProperty" not in clear_download
