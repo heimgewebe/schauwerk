@@ -288,7 +288,13 @@ button:focus-visible {
   top: calc(100% + 6px);
   right: 0;
   width: max-content;
-  max-width: min(520px, calc(100vw - 14px));
+  max-width: min(
+    520px,
+    calc(
+      100vw - max(7px, env(safe-area-inset-left))
+      - max(7px, env(safe-area-inset-right))
+    )
+  );
   padding: 5px;
   display: flex;
   align-items: center;
@@ -442,7 +448,12 @@ button:focus-visible {
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
-  .edit-menu { max-width: calc(100vw - 12px); }
+  .edit-menu {
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left))
+      - max(6px, env(safe-area-inset-right))
+    );
+  }
   .viewer-foot {
     left: max(6px, env(safe-area-inset-left));
     bottom: max(6px, env(safe-area-inset-bottom));

@@ -1690,7 +1690,14 @@ function setError(message) {
   elements.error.hidden = !message;
 }
 
-function syncWorkspaceMenuOpenState() {
+function syncWorkspaceMenuOpenState(event) {
+  // Safari and other older engines may ignore exclusive <details name> groups.
+  const opened = event?.target;
+  if (opened instanceof HTMLDetailsElement && opened.open && !opened.hidden) {
+    for (const menu of document.querySelectorAll(".workspace-menu")) {
+      if (menu !== opened && menu.open) menu.open = false;
+    }
+  }
   const hasOpenMenu = [...document.querySelectorAll(".workspace-menu")]
     .some((menu) => menu.open && !menu.hidden);
   document.body.classList.toggle("workspace-menu-open", hasOpenMenu);

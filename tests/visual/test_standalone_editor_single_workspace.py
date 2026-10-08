@@ -713,6 +713,23 @@ const wait = async (predicate, label) => {
     () => document.body.classList.contains("workspace-menu-open"),
     "menu-open fallback did not update without :has()",
   );
+  // The isolated page deliberately omits details[name], emulating engines
+  // without native mutual exclusion. JS must close the first menu itself.
+  exportMenu.open = true;
+  await wait(
+    () => !toolsMenu.open && exportMenu.open,
+    "unsupported details[name] left both workspace menus open",
+  );
+  exportMenu.open = false;
+  await wait(
+    () => !document.body.classList.contains("workspace-menu-open"),
+    "closing sibling popover did not restore status",
+  );
+  toolsMenu.open = true;
+  await wait(
+    () => document.body.classList.contains("workspace-menu-open"),
+    "tools popover did not reopen after sibling closure",
+  );
   const popover = toolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
   const gap = barRect.top - popover.bottom;
   if (
@@ -836,8 +853,11 @@ const wait = async (predicate, label) => {
     )
     (output / "mobile-bar-320.js").write_text(probe_js, encoding="utf-8")
     index = output / "index.html"
+    original_markup = index.read_text(encoding="utf-8")
+    assert original_markup.count(' name="workspace-menu"') == 2
+    without_native_exclusivity = original_markup.replace(' name="workspace-menu"', "")
     index.write_text(
-        index.read_text(encoding="utf-8").replace(
+        without_native_exclusivity.replace(
             "</body>", '<script type="module" src="mobile-bar-320.js"></script></body>',
         ),
         encoding="utf-8",

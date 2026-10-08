@@ -1343,6 +1343,7 @@ try {
         (390, 844, 4000, 0, 0, 0),
         (390, 844, 0, 3000, 80, 64),
         (320, 700, 0, 3000, 64, 80),
+        (640, 720, 0, 3000, 80, 80),
     ],
 )
 def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
@@ -1475,6 +1476,31 @@ try {
         + "px",
     );
   }
+  // Emulate the widest selection menu (even combinations of available
+  // actions). Every actual contextual subset must also fit within safe edges.
+  const safeLeft = __SAFE_LEFT__;
+  const safeRight = __SAFE_RIGHT__;
+  if (safeLeft || safeRight) {
+    const editControls = document.querySelector(".edit-controls");
+    const editMenu = document.querySelector(".edit-menu");
+    if (!(editControls instanceof HTMLDetailsElement) || !(editMenu instanceof HTMLElement)) {
+      throw new Error("native edit-menu DOM contract missing");
+    }
+    editControls.hidden = false;
+    editControls.open = true;
+    editMenu.querySelectorAll("button").forEach((button) => { button.hidden = false; });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const menuRect = editMenu.getBoundingClientRect();
+    if (menuRect.width < 90
+        || menuRect.left < safeLeft - 0.5
+        || menuRect.right > window.innerWidth - safeRight + 0.5) {
+      throw new Error(
+        "native edit menu enters horizontal safe area: "
+          + menuRect.left.toFixed(2) + "/"
+          + menuRect.right.toFixed(2),
+      );
+    }
+  }
   document.documentElement.dataset.standaloneFitClearanceRegression = "pass";
   document.documentElement.dataset.standaloneFitTopClearance =
     topClearance.toFixed(2);
@@ -1491,6 +1517,10 @@ try {
 }
 </script>
 """
+    probe = (
+        probe.replace("__SAFE_LEFT__", str(safe_left))
+        .replace("__SAFE_RIGHT__", str(safe_right))
+    )
     index_path.write_text(
         index.replace(app_tag, app_tag + probe, 1),
         encoding="utf-8",
