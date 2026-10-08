@@ -72,7 +72,12 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     assert "min-height: 160px" in mobile_css
     assert ".workspace-bar {" in mobile_css
     assert "right: max(6px, env(safe-area-inset-right));" in mobile_css
-    assert "max-width: calc(100vw - 12px);" in mobile_css
+    assert mobile_css.count(
+        "100vw - max(6px, env(safe-area-inset-left))"
+    ) == 2
+    assert mobile_css.count(
+        "- max(6px, env(safe-area-inset-right))"
+    ) == 2
     assert "min-height: 42px;" in mobile_css
 
     dark_css = styles_css[styles_css.index("@media (prefers-color-scheme: dark)") :]
