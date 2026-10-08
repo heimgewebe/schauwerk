@@ -1,0 +1,213 @@
+{
+  "check_evidence": {
+    "browser_smoke": {
+      "failed_count": 0,
+      "passed_count": 26,
+      "result": "passed",
+      "source_identity": "product change 8ac8849 plus test-only 0ef33d9",
+      "task_id": "83520734fe20460a8ee64fab"
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 2,
+      "failures": [
+        "expected immutable historical SHA supersession",
+        "obsolete Export exact DOM assertion, separately repaired at 0ef33d9"
+      ],
+      "full_validate_pass_claim": false,
+      "passed_count": 1674,
+      "task_id": "ee5790c0ff444717801f94db"
+    },
+    "prior_visual_invalid": {
+      "finding": "Old parent final images had the installed older Native bundle, not the checked-out head. Do not inherit their visual Acceptance.",
+      "parent_mutation": false,
+      "review_job_unit": "grabowski-job-f85948e6b564",
+      "review_verdict": "NEEDS_CHANGE"
+    },
+    "side_fit_green": {
+      "cases": [
+        {
+          "clearance_left_px": 8,
+          "clearance_right_px": 8,
+          "simulated_safe_area": {
+            "left": 80,
+            "right": 64
+          },
+          "viewport_css": [
+            390,
+            844
+          ]
+        },
+        {
+          "clearance_left_px": 8,
+          "clearance_right_px": 8,
+          "simulated_safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "viewport_css": [
+            320,
+            700
+          ]
+        }
+      ],
+      "result": "passed",
+      "task_id": "edc2f2b15a1043b6886b47c0"
+    },
+    "side_fit_red": {
+      "cases": [
+        {
+          "clearance_left_px": -32,
+          "clearance_right_px": -16,
+          "simulated_safe_area": {
+            "left": 80,
+            "right": 64
+          },
+          "viewport_css": [
+            390,
+            844
+          ]
+        },
+        {
+          "clearance_left_px": -16,
+          "clearance_right_px": -32,
+          "simulated_safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "viewport_css": [
+            320,
+            700
+          ]
+        }
+      ],
+      "functional_head": "7b3761b5ec6410213d9bad6cab23132981bf416e",
+      "task_id": "4df865761059458283bcbaa3"
+    },
+    "targeted_static": {
+      "failed_count": 0,
+      "passed_count": 29,
+      "result": "passed",
+      "task_id": "fff5eb0bf53e41c8a1680dd1"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "no physical Safari or iOS verification",
+        "screenshots do not establish all 320/390 retry workflow states",
+        "side-notch >48px native fit acceptance is geometric CDP, not a photographic capture"
+      ],
+      "method": "manual visual readback of all five actual PNGs; CSS digest-bound Native subprocess proven by hash and reset text",
+      "scope": "five actual source-matched 320/390px host screen captures, real native reset icon/floating toolbar, action labels and popup safe areas; separate from technical tests"
+    }
+  },
+  "checks": {
+    "browser_smoke_26_passed": true,
+    "five_visual_pngs_sha256_verified": true,
+    "native_child_source_sha256_verified": true,
+    "parent_receipt_immutable": true,
+    "side_fit_red_green_reproducible": true,
+    "source_sha256_exact": true,
+    "targeted_static_29_passed": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "full suite PASS on successor evidence head",
+    "GitHub CI on published final head",
+    "formal independent decision-review PASS",
+    "GitHub review threads resolved",
+    "Captain merge clearance",
+    "physical Safari/iOS behavior",
+    "deployment"
+  ],
+  "evidence_digest": "ca8aac3aadf5af0524371141ced119c6a8604d1e663cccd7c6a68aa0e655a5e9",
+  "functional_head": "0ef33d9e65d04019171b7c1df848367240d2250d",
+  "parent_evidence": {
+    "evidence_digest": "63358b149d00dce782a03bc73353d865417eca0341cf685489ff17711eb199eb",
+    "file_sha256": "793ae320e55ed233f509bf32e78a69b09bd7d2c05c46f9bf43ea06cae5fd3675",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-font-legacy-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-ci-font-legacy.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-independent-remediation.v1",
+  "scope": "PR203 accurate native child visuals, horizontal notch fit, native tools/browser fallback, label ellipsis, retry/status collision",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "c9790ed300ba3d0c0718c0ef3496956a32baed814f97e9cd7cd84953f2e49ac7",
+    "src/schauwerk/resources/standalone_editor/assets.py": "5ca38e565eaeb759dd7b2c61ec92ad1dc47afeb01d14498aa84695bcf6bc3f2d",
+    "tests/visual/test_native_viewer.py": "c8726ea892a5669eb50da780ad86971715f2f3cd75478a317646bcc59e226e91",
+    "tests/visual/test_native_viewer_browser.py": "ed4ed066e11e6e32c82b315233e3113e1b1de33833715f8d434d2ab50bdfab9e",
+    "tests/visual/test_standalone_editor.py": "b5293fec47355dce50600e6c906eb3e86f321142d535f34ac45eb6f20a90b15b",
+    "tests/visual/test_standalone_editor_font_controls.py": "12d572e5dc75ce73f5bdf88c2ef0d1926fe1e8349ed86bde80872a5a7bee0217",
+    "tests/visual/test_standalone_editor_product_ui.py": "7e089bacd9d76dcec1a161326241395e8cf98bbf53b368287a973a773698b5d6",
+    "tests/visual/test_standalone_editor_single_workspace.py": "447335b4cd4deea7212305321a4878f994ea3ca9cf10e0c0e7fdc58d7bef1b48"
+  },
+  "visual_readback": {
+    "case_count": 5,
+    "native_child_pythonpath": "/home/alex/repos/.grabowski-worktrees/schauwerk-pr203-postreview-20261008/src",
+    "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+    "path": "docs/operators/evidence/schaubild-single-workspace-independent-remediation-20261008/visual-final-readback.json",
+    "schema_version": "schauwerk-pr203-independent-remediation-host-visual.v1",
+    "screenshots": {
+      "final-320x700-left0-right0.png": {
+        "bytes": 26084,
+        "safe_area_simulated": {
+          "left": 0,
+          "right": 0
+        },
+        "sha256": "7810d9efaf126a1c2d96e632f348f23265846ea5826fdb6c0fd37d93cd7fbd55",
+        "viewport_css": [
+          320,
+          700
+        ]
+      },
+      "final-320x700-left0-right44.png": {
+        "bytes": 26040,
+        "safe_area_simulated": {
+          "left": 0,
+          "right": 44
+        },
+        "sha256": "c062e3580115430b933cd8c285cc33978ebbe42a25d30c6d351e92e70626ca78",
+        "viewport_css": [
+          320,
+          700
+        ]
+      },
+      "final-320x700-left44-right0.png": {
+        "bytes": 26377,
+        "safe_area_simulated": {
+          "left": 44,
+          "right": 0
+        },
+        "sha256": "382b6df9bda121fa6bc54186a9b95ae6c7dc6cff0b9ae687a024b6cc89513bf3",
+        "viewport_css": [
+          320,
+          700
+        ]
+      },
+      "final-390x844-left0-right44.png": {
+        "bytes": 32107,
+        "safe_area_simulated": {
+          "left": 0,
+          "right": 44
+        },
+        "sha256": "3cea95a5bbc5be96627ca892a7f9b05db37604982145c764ea2d1d8928821ff8",
+        "viewport_css": [
+          390,
+          844
+        ]
+      },
+      "final-390x844-left44-right0.png": {
+        "bytes": 32179,
+        "safe_area_simulated": {
+          "left": 44,
+          "right": 0
+        },
+        "sha256": "b98d815cd4d290ae4c1313efa4b60cec61dc3244b34948fdb079684d3a08432b",
+        "viewport_css": [
+          390,
+          844
+        ]
+      }
+    },
+    "sha256": "0097b9f9a7585fd99e7f79d02768b06ea0cdd879821becce2cd865a129ea1f66",
+    "source_mode": "checked_out_package"
+  }
+}
