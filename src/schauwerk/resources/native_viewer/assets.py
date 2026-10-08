@@ -1007,12 +1007,18 @@ function viewportFitPadding(minimumPadding) {
     Math.ceil(viewport.clientHeight - (footRect?.top ?? viewport.clientHeight))
       + FIT_OVERLAY_CLEARANCE,
   );
-  return {
-    top,
-    right: minimumPadding.right,
-    bottom,
-    left: minimumPadding.left,
-  };
+  // Measure the same safe-area-shifted bar used by the viewer controls.
+  // A fixed 48px margin can otherwise fit nodes under a landscape notch.
+  const left = Math.max(
+    minimumPadding.left,
+    Math.ceil(barRect?.left || 0) + FIT_OVERLAY_CLEARANCE,
+  );
+  const right = Math.max(
+    minimumPadding.right,
+    Math.ceil(viewport.clientWidth - (barRect?.right ?? viewport.clientWidth))
+      + FIT_OVERLAY_CLEARANCE,
+  );
+  return { top, right, bottom, left };
 }
 
 function standaloneViewportFitPadding() {

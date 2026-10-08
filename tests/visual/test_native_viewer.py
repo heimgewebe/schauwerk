@@ -413,6 +413,9 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert 'document.querySelector(".viewer-bar")?.getBoundingClientRect()' in app
     assert 'document.querySelector(".viewer-foot")?.getBoundingClientRect()' in app
     assert "Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE" in app
+    assert "Math.ceil(barRect?.left || 0) + FIT_OVERLAY_CLEARANCE" in app
+    assert "viewport.clientWidth - (barRect?.right ?? viewport.clientWidth)" in app
+    assert "return { top, right, bottom, left };" in app
     assert "viewport.clientHeight - (footRect?.top ?? viewport.clientHeight)" in app
     assert "const fitPadding = embeddedNativeViewer" in app
     assert "? embeddedViewportFitPadding()" in app

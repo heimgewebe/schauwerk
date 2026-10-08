@@ -27,8 +27,14 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
         '<details class="workspace-menu workspace-export-menu" name="workspace-menu">'
         in index_html
     )
-    assert '<summary class="button compact">Werkzeuge</summary>' in index_html
-    assert '<summary class="button compact">Export</summary>' in index_html
+    assert (
+        '<summary class="button compact"><span class="workspace-menu-label">'
+        'Werkzeuge</span></summary>'
+    ) in index_html
+    assert (
+        '<summary class="button compact"><span class="workspace-menu-label">'
+        'Export</span></summary>'
+    ) in index_html
     assert index_html.index('id="workspaceCloseButton"') < index_html.index("</nav>")
     assert ">Zurück</button>" in index_html
 

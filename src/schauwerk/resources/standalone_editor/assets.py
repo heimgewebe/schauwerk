@@ -95,7 +95,7 @@ INDEX_HTML = r"""<!doctype html>
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
         <details class="workspace-menu workspace-tools-menu" name="workspace-menu">
-          <summary class="button compact">Werkzeuge</summary>
+          <summary class="button compact"><span class="workspace-menu-label">Werkzeuge</span></summary>
           <div class="workspace-popover workspace-tools-popover">
             <div class="font-controls" role="group" aria-label="Schriftgröße">
               <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
@@ -114,7 +114,7 @@ INDEX_HTML = r"""<!doctype html>
         <button class="button compact primary workspace-retry" id="nativeRetryButton" type="button" hidden>Neu rendern</button>
 
         <details class="workspace-menu workspace-export-menu" name="workspace-menu">
-          <summary class="button compact">Export</summary>
+          <summary class="button compact"><span class="workspace-menu-label">Export</span></summary>
           <div class="workspace-popover workspace-output">
             <button class="button compact" id="projectButton" type="button">Projekt</button>
             <button class="button compact output-button" data-export="png" type="button">PNG</button>
@@ -513,6 +513,13 @@ h1 {
   cursor: pointer;
   user-select: none;
 }
+.workspace-menu-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .workspace-menu > summary::-webkit-details-marker { display: none; }
 .workspace-menu[open] > summary {
   border-color: var(--line-strong);
@@ -561,9 +568,7 @@ h1 {
 body.engine-legacy .workspace-tools-menu {
   display: none;
 }
-body.engine-native .workspace-tools-menu:not(:has(.workspace-tools > :not([hidden]))) {
-  display: none;
-}
+.workspace-tools-menu[hidden] { display: none; }
 .workspace-close {
   min-width: 58px;
   color: var(--muted);
@@ -818,6 +823,10 @@ body.workspace-active .status {
   .workspace-bar .download-link { min-height: 42px; padding-inline: 9px; }
   /* The Back label must not shrink behind other controls on notched screens. */
   .workspace-bar .workspace-close { flex-shrink: 0; }
+  /* Retry has its own row above the single-line host status pill. */
+  .workspace-bar .workspace-retry {
+    bottom: calc(100% + var(--workspace-overlay-gap) + 48px);
+  }
   .workspace-bar .workspace-menu > summary {
     width: 100%;
     min-width: 0;
@@ -847,6 +856,10 @@ body.workspace-active .status {
 
 @media (max-width: 520px) {
   /* Host status must not sit behind an open mobile menu; restore on close. */
+  body.workspace-active.workspace-menu-open .topline {
+    visibility: hidden;
+  }
+  /* Keep the immediate CSS path on engines supporting :has(). */
   body.workspace-active:has(.workspace-menu[open]) .topline {
     visibility: hidden;
   }
@@ -1677,6 +1690,12 @@ function setError(message) {
   elements.error.hidden = !message;
 }
 
+function syncWorkspaceMenuOpenState() {
+  const hasOpenMenu = [...document.querySelectorAll(".workspace-menu")]
+    .some((menu) => menu.open && !menu.hidden);
+  document.body.classList.toggle("workspace-menu-open", hasOpenMenu);
+}
+
 function setEngineMode(mode) {
   activeEngine = mode === "native" ? "native" : "legacy";
   const native = activeEngine === "native";
@@ -1703,6 +1722,12 @@ function setEngineMode(mode) {
     control.disabled = native;
   }
   elements.layoutButton.hidden = native;
+  const toolsMenu = document.querySelector(".workspace-tools-menu");
+  if (toolsMenu instanceof HTMLDetailsElement) {
+    toolsMenu.hidden = !native || !(currentRepresentation || currentLegacyXml);
+    if (toolsMenu.hidden) toolsMenu.open = false;
+  }
+  syncWorkspaceMenuOpenState();
 
   const pngButton = document.querySelector('[data-export="png"]');
   if (pngButton instanceof HTMLButtonElement) {
@@ -2165,6 +2190,10 @@ function setWorkspaceActive(active) {
 function showStart() {
   invalidateLoadIntents();
   setWorkspaceActive(false);
+  for (const menu of document.querySelectorAll(".workspace-menu[open]")) {
+    menu.open = false;
+  }
+  syncWorkspaceMenuOpenState();
   if (elements.contentDialog?.open) {
     elements.contentDialog.close();
   }
@@ -3188,6 +3217,9 @@ elements.contentDialog.addEventListener("cancel", (event) => {
 for (const control of [elements.contentCloseButton, elements.contentCancelButton]) {
   control.addEventListener("click", () => elements.contentDialog.close("cancel"));
 }
+document.querySelectorAll(".workspace-menu").forEach((menu) => {
+  menu.addEventListener("toggle", syncWorkspaceMenuOpenState);
+});
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
 elements.projectButton.addEventListener("click", () => {
   const menu = elements.projectButton.closest("details");

@@ -51,6 +51,14 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     # A :has() rule must not invalidate the legacy fallback in older Safari.
     assert "body.engine-legacy .workspace-tools-menu {\n  display: none;\n}" in styles_css
     assert "body.engine-legacy .workspace-tools-menu,\n" not in styles_css
+    assert ".workspace-tools-menu[hidden] { display: none; }" in styles_css
+    assert "body.engine-native .workspace-tools-menu:not(:has(" not in styles_css
+    assert ".workspace-menu-label {" in styles_css
+    assert "text-overflow: ellipsis;" in styles_css
+    assert 'toolsMenu.hidden = !native || !(currentRepresentation || currentLegacyXml);' in app_js
+    assert 'menu.addEventListener("toggle", syncWorkspaceMenuOpenState);' in app_js
+    # Unsupported :has() must not invalidate the independent class fallback.
+    assert "body.workspace-active.workspace-menu-open .topline {" in styles_css
 
     assert "fontControls.hidden = native;" in app_js
     assert "elements.layoutButton.hidden = native;" in app_js
@@ -82,6 +90,7 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
         "- max(6px, env(safe-area-inset-right))"
     ) == 2
     assert "min-height: 42px;" in mobile_css
+    assert "bottom: calc(100% + var(--workspace-overlay-gap) + 48px);" in mobile_css
 
     dark_css = styles_css[styles_css.index("@media (prefers-color-scheme: dark)") :]
     assert ".workspace-popover { background: rgba(16, 18, 25, 0.88); }" in dark_css

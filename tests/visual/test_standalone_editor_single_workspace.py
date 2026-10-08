@@ -595,6 +595,8 @@ def test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable
     assert "env(safe-area-inset-right)" in styles
     styles = styles.replace("env(safe-area-inset-left)", f"{inset_left}px")
     styles = styles.replace("env(safe-area-inset-right)", f"{inset_right}px")
+    # Simulate a browser without :has() in this isolated Chrome build.
+    styles = styles.replace(":has(", ":unsupported-pseudo(")
     styles_path.write_text(styles, encoding="utf-8")
     probe_js = r"""
 const wait = async (predicate, label) => {
@@ -631,6 +633,22 @@ const wait = async (predicate, label) => {
     throw new Error("Chrome did not use the requested CSS viewport");
   }
   const toolsMenu = document.querySelector(".workspace-tools-menu");
+  if (toolsMenu.hidden) {
+    throw new Error("native draw.io tools menu was hidden despite compatibility action");
+  }
+  for (const label of [
+    toolsMenu.querySelector(".workspace-menu-label"),
+    exportMenu.querySelector(".workspace-menu-label"),
+  ]) {
+    if (!label || !label.textContent.trim()) {
+      throw new Error("mobile action has no accessible text label");
+    }
+    const style = getComputedStyle(label);
+    if (style.display !== "block" || style.textOverflow !== "ellipsis"
+        || style.overflowX !== "hidden") {
+      throw new Error("mobile summary uses ineffective flex-box text truncation");
+    }
+  }
   const bar = document.querySelector(".workspace-bar");
   const controls = [
     toolsMenu.querySelector("summary"),
@@ -655,17 +673,10 @@ const wait = async (predicate, label) => {
         || rect.right > innerWidth - safeRight + 0.5) {
       throw new Error("mobile action is clipped or too small: " + i);
     }
+    // A flex container must not pass merely because it declares ellipsis:
+    // the inner block span now owns the actual text clipping.
     if (control.scrollWidth > control.clientWidth + 1) {
-      const style = getComputedStyle(control);
-      // Browser/font metrics may differ slightly across CI platforms; an
-      // explicit ellipsis keeps the complete DOM/accessible label intact.
-      if (
-        style.textOverflow !== "ellipsis"
-        || style.overflowX !== "hidden"
-        || !control.textContent.trim()
-      ) {
-        throw new Error("mobile action text escapes its hit target: " + i);
-      }
+      throw new Error("mobile action text escapes its hit target: " + i);
     }
     const hit = document.elementFromPoint(
       rect.left + rect.width / 2, rect.top + rect.height / 2,
@@ -698,6 +709,10 @@ const wait = async (predicate, label) => {
     throw new Error("mobile action bar reduced the actual canvas viewport");
   }
   toolsMenu.open = true;
+  await wait(
+    () => document.body.classList.contains("workspace-menu-open"),
+    "menu-open fallback did not update without :has()",
+  );
   const popover = toolsMenu.querySelector(".workspace-popover").getBoundingClientRect();
   const gap = barRect.top - popover.bottom;
   if (
@@ -712,6 +727,10 @@ const wait = async (predicate, label) => {
     throw new Error("mobile status overlaps the open tools menu");
   }
   toolsMenu.open = false;
+  await wait(
+    () => !document.body.classList.contains("workspace-menu-open"),
+    "menu-closed fallback did not restore status",
+  );
   if (getComputedStyle(status).visibility !== "visible") {
     throw new Error("mobile status did not return after menu close");
   }
@@ -724,6 +743,28 @@ const wait = async (predicate, label) => {
     throw new Error("mobile export popover enters the safe area");
   }
   exportMenu.open = false;
+  await wait(
+    () => !document.body.classList.contains("workspace-menu-open"),
+    "export menu did not close",
+  );
+
+  // An active native retry and the host status require distinct overlay rows.
+  const retry = document.querySelector("#nativeRetryButton");
+  const priorStatus = status.textContent;
+  retry.hidden = false;
+  status.textContent = "Native Änderung nicht neu gerendert · Neu rendern zum Wiederholen";
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const statusRect = status.getBoundingClientRect();
+  const retryRect = retry.getBoundingClientRect();
+  const collisionWidth = Math.max(0,
+    Math.min(statusRect.right, retryRect.right) - Math.max(statusRect.left, retryRect.left));
+  const collisionHeight = Math.max(0,
+    Math.min(statusRect.bottom, retryRect.bottom) - Math.max(statusRect.top, retryRect.top));
+  if (collisionWidth > 0.5 && collisionHeight > 0.5) {
+    throw new Error("native retry button covers workspace error status");
+  }
+  retry.hidden = true;
+  status.textContent = priorStatus;
 
   // The active native-editing prompt must remain visible and clear of controls.
   document.querySelector("#workspaceCloseButton").click();
@@ -749,6 +790,10 @@ const wait = async (predicate, label) => {
   const nativeFrame = document.querySelector("#editorFrame");
   const nativeDoc = nativeFrame.contentDocument;
   const nativeStatus = nativeDoc.querySelector("#status");
+  const emptyNativeTools = document.querySelector(".workspace-tools-menu");
+  if (!emptyNativeTools.hidden || getComputedStyle(emptyNativeTools).display !== "none") {
+    throw new Error("native canvas shows an empty tools menu without :has()");
+  }
   await new Promise((resolve) => setTimeout(resolve, 200));
   nativeStatus.textContent = "Ziel f\u00fcr die neue Verbindung ausw\u00e4hlen";
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));

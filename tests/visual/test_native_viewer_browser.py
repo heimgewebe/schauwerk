@@ -1336,11 +1336,13 @@ try {
     ), completed.stdout
 
 @pytest.mark.parametrize(
-    ("width", "height", "bottom_y"),
+    ("width", "height", "bottom_y", "right_x", "safe_left", "safe_right"),
     [
-        (1366, 900, 1280),
-        (390, 844, 1280),
-        (390, 844, 4000),
+        (1366, 900, 1280, 0, 0, 0),
+        (390, 844, 1280, 0, 0, 0),
+        (390, 844, 4000, 0, 0, 0),
+        (390, 844, 0, 3000, 80, 64),
+        (320, 700, 0, 3000, 64, 80),
     ],
 )
 def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
@@ -1348,6 +1350,9 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     width: int,
     height: int,
     bottom_y: int,
+    right_x: int,
+    safe_left: int,
+    safe_right: int,
 ) -> None:
     chrome = _chrome()
     if chrome is None:
@@ -1368,7 +1373,7 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
             {
                 "id": "bottom",
                 "type": "text",
-                "x": 0,
+                "x": right_x,
                 "y": bottom_y,
                 "width": 220,
                 "height": 120,
@@ -1383,6 +1388,16 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     )
     output = tmp_path / "standalone-fit-viewer"
     build_native_viewer(document, output)
+    # Emulate CSS safe-area values in the isolated build only.
+    styles_path = output / "styles.css"
+    styles = styles_path.read_text(encoding="utf-8")
+    assert "env(safe-area-inset-left)" in styles
+    assert "env(safe-area-inset-right)" in styles
+    styles_path.write_text(
+        styles.replace("env(safe-area-inset-left)", f"{safe_left}px")
+        .replace("env(safe-area-inset-right)", f"{safe_right}px"),
+        encoding="utf-8",
+    )
     index_path = output / "index.html"
     index = index_path.read_text(encoding="utf-8")
     app_tag = '<script type="module" src="app.js"></script>'
@@ -1421,21 +1436,31 @@ try {
 
   const box = svg.viewBox.baseVal;
   const ns = "http://www.w3.org/2000/svg";
-  const marker = (y) => {
+  const marker = (x, y) => {
     const rect = document.createElementNS(ns, "rect");
-    rect.setAttribute("x", String(box.x));
+    rect.setAttribute("x", String(x));
     rect.setAttribute("y", String(y));
     rect.setAttribute("width", "1");
     rect.setAttribute("height", "1");
     svg.appendChild(rect);
     return rect.getBoundingClientRect();
   };
-  const topBoundary = marker(box.y);
-  const bottomBoundary = marker(box.y + box.height - 1);
+  const topBoundary = marker(box.x, box.y);
+  const bottomBoundary = marker(box.x, box.y + box.height - 1);
+  const leftBoundary = marker(box.x, box.y + box.height / 2);
+  const rightBoundary = marker(box.x + box.width - 1, box.y + box.height / 2);
   const barRect = bar.getBoundingClientRect();
   const footRect = foot.getBoundingClientRect();
   const topClearance = topBoundary.top - barRect.bottom;
   const bottomClearance = footRect.top - bottomBoundary.bottom;
+  const leftClearance = leftBoundary.left - barRect.left;
+  const rightClearance = barRect.right - rightBoundary.right;
+  if (leftClearance < 7.5 || rightClearance < 7.5) {
+    throw new Error(
+      "standalone fit enters horizontal safe area: "
+        + leftClearance.toFixed(2) + "/" + rightClearance.toFixed(2),
+    );
+  }
   if (topClearance < 8) {
     throw new Error(
       "standalone fit overlaps viewer toolbar: clearance="
@@ -1455,6 +1480,10 @@ try {
     topClearance.toFixed(2);
   document.documentElement.dataset.standaloneFitBottomClearance =
     bottomClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitLeftClearance =
+    leftClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitRightClearance =
+    rightClearance.toFixed(2);
 } catch (error) {
   document.documentElement.dataset.standaloneFitClearanceRegression = "fail";
   document.documentElement.dataset.standaloneFitClearanceError =
