@@ -258,6 +258,10 @@ SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-side-safearea-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-font-legacy-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -876,6 +880,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
         "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    single_workspace_ci_font_legacy_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
         "tests/visual/test_standalone_editor_product_ui.py",
     }
     editor_successor = json.loads(
@@ -7276,6 +7285,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_side_safearea_superseded_files
     )
     for name, expected in side_safearea["source_bindings"].items():
+        if name in single_workspace_ci_font_legacy_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(side_safearea["checks"].values())
     sc = side_safearea["check_evidence"]
@@ -7338,6 +7349,89 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert sha == prompt_binding["screenshots"][filename]["sha256"]
         assert len(png) == prompt_binding["screenshots"][filename]["bytes"]
 
+    # A new immutable child supersedes only the three files changed after the
+    # accepted side-safearea revision. The parent receipt remains untouched.
+    ci_path = SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE / "acceptance-receipt.json"
+    ci_font_legacy = json.loads(ci_path.read_text(encoding="utf-8"))
+    assert ci_font_legacy["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-font-legacy.v1"
+    )
+    assert ci_font_legacy["functional_head"] == (
+        "7ddd57ca724bf775afacc819dfb10c5ccdc037b3"
+    )
+    assert ci_font_legacy["capture_checkout_head"] == (
+        "728c737ca16c8fe0a4b87c8f05e62acdbd564b4d"
+    )
+    assert ci_font_legacy["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-side-safearea-20261008/acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(side_receipt_path.read_bytes()).hexdigest(),
+        "evidence_digest": side_safearea["evidence_digest"],
+        "schema_version": side_safearea["schema_version"],
+    }
+    assert ci_font_legacy["evidence_digest"] == digest_mapping(
+        ci_font_legacy, "evidence_digest"
+    )
+    assert set(ci_font_legacy["source_bindings"]) == (
+        single_workspace_ci_font_legacy_superseded_files
+    )
+    for name, expected in ci_font_legacy["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(ci_font_legacy["checks"].values())
+    assert (
+        ci_font_legacy["check_evidence"]["prior_remote_ci_red"]["failed_parameterized_cases"]
+        == 5
+    )
+    green = ci_font_legacy["check_evidence"]["browser_green"]
+    assert green["passed_count"] == 24 and green["failed_count"] == 0
+    assert ci_font_legacy["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    before = ci_font_legacy["visual_readbacks"]["before"]
+    after = ci_font_legacy["visual_readbacks"]["after"]
+    assert before["case_count"] == after["case_count"] == 5
+    expected_cases = {
+        (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    for metadata, is_final in ((before, False), (after, True)):
+        payload = (ROOT / metadata["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == metadata["sha256"]
+        report = json.loads(payload)
+        assert report["functional_head"] == (
+            ci_font_legacy["functional_head"] if is_final
+            else ci_font_legacy["capture_checkout_head"]
+        )
+        assert {
+            (case["width"], case["height"],
+             case["simulated_safe_inset"]["left"], case["simulated_safe_inset"]["right"])
+            for case in report["cases"]
+        } == expected_cases
+        for case in report["cases"]:
+            png = (SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE
+                   / case["screenshot_file"]).read_bytes()
+            assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+            assert hashlib.sha256(png).hexdigest() == case["screenshot_sha256"]
+            assert len(png) == case["screenshot_bytes"]
+            if not is_final:
+                continue
+            inset = case["simulated_safe_inset"]
+            geometry = case["geometry"]
+            assert geometry["short"] == '"Speichern"'
+            assert geometry["aria"] == "Originalprojekt speichern"
+            assert geometry["bar"]["left"] >= inset["left"] - 0.5
+            assert geometry["bar"]["right"] <= case["width"] - inset["right"] + 0.5
+            assert geometry["popover"]["left"] >= inset["left"] - 0.5
+            assert geometry["popover"]["right"] <= case["width"] - inset["right"] + 0.5
+            assert abs(geometry["stage"]["width"] - case["width"]) < 1
+            assert abs(geometry["stage"]["height"] - case["height"]) < 1
+            assert all(
+                item["width"] >= 38 and item["height"] >= 40
+                and item["left"] >= inset["left"] - 0.5
+                and item["right"] <= case["width"] - inset["right"] + 0.5
+                for item in geometry["controls"]
+            )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -7366,7 +7460,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_side_safearea_superseded_files:
+        if name in single_workspace_ci_font_legacy_superseded_files:
+            assert ci_font_legacy["source_bindings"][name] == current
+        elif name in single_workspace_side_safearea_superseded_files:
             assert side_safearea["source_bindings"][name] == current
         elif name in single_workspace_mobile_320_superseded_files:
             assert mobile["source_bindings"][name] == current
