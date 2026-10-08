@@ -1503,6 +1503,9 @@ function contentSize() {
 }
 
 function fit({ announce = true } = {}) {
+  // Status text can wrap and grow the overlay bar (notably on CI/mobile).
+  // Measure fit insets only after the final status is in layout.
+  if (announce) setStatus("Ansicht angepasst");
   const content = contentSize();
   const fitPadding = embeddedNativeViewer
     ? embeddedViewportFitPadding()
@@ -1516,7 +1519,6 @@ function fit({ announce = true } = {}) {
   );
   autoFitActive = true;
   applyView();
-  if (announce) setStatus("Ansicht angepasst");
 }
 
 function zoomBy(factor, anchor = null) {

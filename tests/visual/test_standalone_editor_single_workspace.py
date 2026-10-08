@@ -134,6 +134,15 @@ try {
   }
 
   exportMenu.open = false;
+  // Emulate a runner/font-dependent status reflow during the first fit.
+  const statusGrowthProbe = source.nodes.some((node) => node.y >= 4000);
+  const growingStatus = viewer.querySelector("#status");
+  if (statusGrowthProbe) {
+    growingStatus.textContent = "OK";
+    growingStatus.style.maxWidth = "110px";
+    growingStatus.style.fontSize = "17px";
+    growingStatus.style.lineHeight = "42px";
+  }
   viewer.querySelector("#fitView").click();
   await new Promise((resolve) => setTimeout(resolve, 20));
   const fittedItems = Array.from(
@@ -159,6 +168,13 @@ try {
     throw new Error(
       `fitted native content overlaps native toolbar: clearance=${nativeBarClearance.toFixed(2)}px`
     );
+  }
+  if (statusGrowthProbe) {
+    if (growingStatus.textContent.trim() !== "Ansicht angepasst") {
+      throw new Error("status growth probe did not trigger final fit instruction");
+    }
+    growingStatus.removeAttribute("style");
+    viewer.querySelector("#fitView").click();
   }
   if (source.nodes.some((node) => node.y >= 4000)) {
     const canvas = viewer.querySelector("#nativeCanvas");

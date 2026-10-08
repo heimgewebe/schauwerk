@@ -497,7 +497,7 @@ h1 {
 }
 .workspace-retry {
   position: absolute;
-  z-index: 23;
+  z-index: 21;
   right: 0;
   bottom: calc(100% + 8px);
   white-space: nowrap;

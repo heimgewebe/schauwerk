@@ -409,6 +409,12 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "const fitPadding = embeddedNativeViewer" in app
     assert "? embeddedViewportFitPadding()" in app
     assert ": standaloneViewportFitPadding();" in app
+    fit_body = app.split("function fit({ announce = true } = {}) {", 1)[1].split(
+        "\nfunction zoomBy(", 1
+    )[0]
+    assert fit_body.index('if (announce) setStatus("Ansicht angepasst");') < (
+        fit_body.index("const fitPadding = embeddedNativeViewer")
+    )
     assert "control.hidden = !visible;" in app
 
 

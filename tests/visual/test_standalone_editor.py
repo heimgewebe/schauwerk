@@ -2036,6 +2036,20 @@ try {
     throw new Error("failed rebuild lost the latest document export contract");
   }
 
+  const exportMenu = document.querySelector(".workspace-export-menu");
+  exportMenu.open = true;
+  const svgAction = document.querySelector('[data-export="svg"]');
+  if (!svgAction.hidden) {
+    const svgRect = svgAction.getBoundingClientRect();
+    const svgHit = document.elementFromPoint(
+      svgRect.left + svgRect.width / 2,
+      svgRect.top + svgRect.height / 2
+    );
+    if (!(svgHit === svgAction || svgAction.contains(svgHit))) {
+      throw new Error("failed rebuild retry overlaps the visible SVG export action");
+    }
+  }
+  exportMenu.open = false;
   const recoveryButton = document.querySelector("#nativeRetryButton");
   const recoveryRect = recoveryButton.getBoundingClientRect();
   const recoveryHit = document.elementFromPoint(
