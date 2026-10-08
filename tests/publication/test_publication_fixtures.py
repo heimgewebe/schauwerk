@@ -226,6 +226,10 @@ SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-zoom-continuity-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -802,6 +806,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_zoom_continuity_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -6399,6 +6408,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_review_hardening_superseded_files
     )
     for name, expected in review_hardening["source_bindings"].items():
+        if name in single_workspace_zoom_continuity_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_hardening["checks"].values())
     hardening_evidence = review_hardening["check_evidence"]
@@ -6498,6 +6509,110 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         legacy_info["readback_json_sha256"]
     )
 
+    zoom_continuity = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert zoom_continuity["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-zoom-continuity.v1"
+    )
+    assert zoom_continuity["functional_head"] == (
+        "eca81dc0ba825e4ad3477322361f376498034393"
+    )
+    assert zoom_continuity["parent_evidence"] == {
+        "evidence_digest": review_hardening["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-review-hardening-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": review_hardening["schema_version"],
+    }
+    assert zoom_continuity["evidence_digest"] == digest_mapping(
+        zoom_continuity, "evidence_digest"
+    )
+    assert set(zoom_continuity["source_bindings"]) == (
+        single_workspace_zoom_continuity_superseded_files
+    )
+    for name, expected in zoom_continuity["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(zoom_continuity["checks"].values())
+    zoom_evidence = zoom_continuity["check_evidence"]
+    assert zoom_evidence["prior_current_head_independent_review"][
+        "verdict"
+    ] == "NEEDS_CHANGE"
+    assert zoom_evidence["prior_current_head_independent_review"][
+        "does_not_establish_new_head_pass"
+    ] is True
+    pre = zoom_evidence["pre_successor_full_validate"]
+    assert pre["functional_head"] == zoom_continuity["functional_head"]
+    assert pre["task_id"] == "ed292ad461274cafa9695c1d"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = zoom_evidence["exact_head_browser_smoke"]
+    assert browser["functional_head"] == zoom_continuity["functional_head"]
+    assert browser["task_id"] == "a4893f78088046478a89c65c"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual_info = zoom_evidence["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual_info["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    readback = json.loads(visual_bytes)
+    assert readback["head"] == zoom_continuity["functional_head"]
+    assert len(readback["cases"]) == visual_info["case_count"] == 8
+    touch = readback["cases"]["native-tall-mobile-dark"]["touchPinch"]
+    assert touch == visual_info["pinch_scales"]
+    assert 0 < touch["initial"] < 0.25
+    assert touch["inward"] <= touch["initial"] + 1e-6
+    assert touch["outward"] > touch["initial"]
+    assert abs(touch["outward"] - touch["expectedOutward"]) <= 1e-6
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual_info["result"] == "passed"
+    assert zoom_evidence["visual_acceptance"]["result"] == "accepted"
+    assert zoom_evidence["visual_acceptance"]["functional_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert zoom_evidence["independent_observer_readback"]["observed_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert zoom_evidence["independent_observer_readback"]["worktree_clean"] is True
+    assert zoom_evidence["git_diff_check"] == {
+        "base_sha": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+        "head_sha": zoom_continuity["functional_head"],
+        "diff_sha256": "c33c7aeb11e738afc90a694c54ff5276f3d55c18299dff9f750383463dd3a9f8",
+        "diff_bytes": 5459,
+        "result": "passed",
+    }
+    zoom_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert zoom_self_review["functional_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert len(zoom_self_review["passes"]) == 5
+    assert zoom_self_review["visual_readback_json_sha256"] == (
+        visual_info["readback_json_sha256"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6526,7 +6641,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_review_hardening_superseded_files:
+        if name in single_workspace_zoom_continuity_superseded_files:
+            assert zoom_continuity["source_bindings"][name] == current
+        elif name in single_workspace_review_hardening_superseded_files:
             assert review_hardening["source_bindings"][name] == current
         elif name in single_workspace_review_closure_superseded_files:
             assert review_closure["source_bindings"][name] == current
