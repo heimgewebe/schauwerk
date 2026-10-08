@@ -230,6 +230,10 @@ SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-zoom-continuity-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -811,6 +815,13 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_zoom_continuity_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_fit_retry_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -6408,7 +6419,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_review_hardening_superseded_files
     )
     for name, expected in review_hardening["source_bindings"].items():
-        if name in single_workspace_zoom_continuity_superseded_files:
+        if name in (
+            single_workspace_zoom_continuity_superseded_files
+            | single_workspace_fit_retry_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_hardening["checks"].values())
@@ -6543,6 +6557,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_zoom_continuity_superseded_files
     )
     for name, expected in zoom_continuity["source_bindings"].items():
+        if name in single_workspace_fit_retry_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(zoom_continuity["checks"].values())
     zoom_evidence = zoom_continuity["check_evidence"]
@@ -6613,6 +6629,146 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         visual_info["readback_json_sha256"]
     )
 
+    fit_retry = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert fit_retry["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-fit-retry.v1"
+    )
+    assert fit_retry["functional_head"] == (
+        "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549"
+    )
+    assert fit_retry["parent_evidence"] == {
+        "evidence_digest": zoom_continuity["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-zoom-continuity-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": zoom_continuity["schema_version"],
+    }
+    assert fit_retry["evidence_digest"] == digest_mapping(
+        fit_retry, "evidence_digest"
+    )
+    assert set(fit_retry["source_bindings"]) == (
+        single_workspace_fit_retry_superseded_files
+    )
+    for name, expected in fit_retry["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(fit_retry["checks"].values())
+    fit_checks = fit_retry["check_evidence"]
+    assert fit_checks["confirmed_ci_failure"]["observed_clearance_px"] == -7.13
+    assert fit_checks["confirmed_ci_failure"][
+        "retry_with_clean_chrome_profile_also_failed"
+    ] is True
+    growth = fit_checks["status_growth_reproduction"]
+    assert growth["before_head"] == fit_retry["base_product_head"]
+    assert growth["after_head"] == fit_retry["functional_head"]
+    assert growth["before_native_clearance_px"] < 0
+    assert growth["after_native_clearance_px"] >= 6
+    assert growth["bar_height_change_px"] >= 60
+    assert growth["result"] == "passed"
+    review = fit_checks["prior_independent_review"]
+    assert review["reviewed_head"] == fit_retry["base_product_head"]
+    assert review["verdict"] == "NEEDS_CHANGE"
+    assert review["does_not_prove_new_head_pass"] is True
+    recovery = fit_checks["recovery_export_hit_tests"]
+    assert recovery["widths"] == [390, 1366]
+    assert recovery["result"] == "passed"
+    pre = fit_checks["pre_successor_full_validate"]
+    assert pre["functional_head"] == fit_retry["functional_head"]
+    assert pre["task_id"] == "bd0aa682b31c4c76adadd4a3"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = fit_checks["exact_head_browser_smoke"]
+    assert browser["functional_head"] == fit_retry["functional_head"]
+    assert browser["task_id"] == "3838d87b0af54d9890204cab"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual = fit_checks["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    readback = json.loads(visual_bytes)
+    assert readback["head"] == fit_retry["functional_head"]
+    assert len(readback["cases"]) == visual["case_count"] == 8
+    for key in ("native-desktop-light", "native-tablet-light",
+                "native-mobile-dark", "native-tall-mobile-dark"):
+        case = readback["cases"][key]
+        assert case["hostClearance"] >= 8
+        assert case["nativeClearance"] >= 6
+        assert case["frame"]["width"] == case["viewport"]["width"]
+        assert case["stage"]["height"] == case["viewport"]["height"]
+    drawio = readback["cases"]["drawio-export-mobile-dark"]
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["result"] == "passed"
+    stress = fit_checks["status_growth_readback"]
+    stress_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+        / "status-growth-readback.json"
+    ).read_bytes()
+    assert stress["readback_json_sha256"] == hashlib.sha256(
+        stress_bytes
+    ).hexdigest()
+    stress_report = json.loads(stress_bytes)
+    assert stress_report["head"] == fit_retry["functional_head"]
+    assert len(stress_report["cases"]) == stress["case_count"] == 1
+    status_growth = stress_report["cases"]["status-growth-tall-mobile"]
+    assert status_growth["nativeClearance"] >= 6
+    assert status_growth["fitStatus"]["barAfterBottom"] - (
+        status_growth["fitStatus"]["barBeforeBottom"]
+    ) >= 60
+    assert status_growth["fitStatus"]["text"] == "Ansicht angepasst"
+    assert stress["result"] == "passed"
+    assert fit_checks["visual_acceptance"]["decision"] == "accepted"
+    assert fit_checks["visual_acceptance"]["functional_head"] == (
+        fit_retry["functional_head"]
+    )
+    assert fit_checks["independent_observer_readback"][
+        "observed_head"
+    ] == fit_retry["functional_head"]
+    assert fit_checks["independent_observer_readback"]["worktree_clean"] is True
+    assert fit_checks["git_diff_check"] == {
+        "base_sha": "888415a1a812133875a02f565d831fde61acff3e",
+        "head_sha": fit_retry["functional_head"],
+        "diff_sha256": "a04f5d33f0e2fee02cfd228ae1015b61079e2625196fe015e117d35550a1470b",
+        "diff_bytes": 4655,
+        "result": "passed",
+    }
+    fit_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert fit_self_review["functional_head"] == fit_retry["functional_head"]
+    assert len(fit_self_review["passes"]) == 5
+    assert fit_self_review["visual_readback_json_sha256"] == (
+        visual["readback_json_sha256"]
+    )
+    assert fit_self_review["status_growth_readback_json_sha256"] == (
+        stress["readback_json_sha256"]
+    )
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6641,7 +6797,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_zoom_continuity_superseded_files:
+        if name in single_workspace_fit_retry_superseded_files:
+            assert fit_retry["source_bindings"][name] == current
+        elif name in single_workspace_zoom_continuity_superseded_files:
             assert zoom_continuity["source_bindings"][name] == current
         elif name in single_workspace_review_hardening_superseded_files:
             assert review_hardening["source_bindings"][name] == current
