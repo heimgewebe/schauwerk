@@ -266,6 +266,10 @@ SCHAUBILD_SINGLE_WORKSPACE_INDEPENDENT_REMEDIATION_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-independent-remediation-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-late-review-menus-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -900,6 +904,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor_product_ui.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
         "tests/visual/test_standalone_editor.py",
+    }
+    single_workspace_late_review_menus_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -7484,6 +7494,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_independent_remediation_superseded_files
     )
     for name, expected in independent_remediation["source_bindings"].items():
+        if name in single_workspace_late_review_menus_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(independent_remediation["checks"].values())
     independent_checks = independent_remediation["check_evidence"]
@@ -7571,6 +7583,86 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         (390, 844, 44, 0),
     }
 
+    # The preceding visual acceptance is immutable; this child binds the
+    # exact later source revision and only four newly superseded SHA keys.
+    late_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    late_menus = json.loads(late_path.read_text(encoding="utf-8"))
+    assert late_menus["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-late-review-menus.v1"
+    )
+    assert late_menus["functional_head"] == (
+        "884968fcdfb9759644ec26692ac1c8f8acb04fc9"
+    )
+    assert late_menus["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/schaubild-single-workspace-independent-"
+            "remediation-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": independent_remediation["schema_version"],
+        "file_sha256": hashlib.sha256(independent_path.read_bytes()).hexdigest(),
+        "evidence_digest": independent_remediation["evidence_digest"],
+    }
+    assert late_menus["evidence_digest"] == digest_mapping(
+        late_menus, "evidence_digest"
+    )
+    assert set(late_menus["source_bindings"]) == (
+        single_workspace_late_review_menus_superseded_files
+    )
+    for name, expected in late_menus["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(late_menus["checks"].values())
+    finding_ids = {item["thread_id"] for item in
+                   late_menus["check_evidence"]["codex_review_findings"]}
+    assert finding_ids == {
+        "PRRT_kwDOTGqvHc6qjHXz",
+        "PRRT_kwDOTGqvHc6qjHYA",
+    }
+    assert late_menus["check_evidence"]["unsupported_details_red"]["failed_cases"] == 5
+    green = late_menus["check_evidence"]["focused_green"]
+    assert green["native_cases"] == 6 and green["details_cases"] == 5
+    browser = late_menus["check_evidence"]["browser_smoke"]
+    assert browser["passed_count"] == 27 and browser["failed_count"] == 0
+    assert late_menus["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    red = late_menus["check_evidence"]["native_menu_red"]["cases"]
+    assert all(item["left"] < 0 for item in red) and len(red) == 2
+    visual = late_menus["visual_readback"]
+    assert visual["case_count"] == 3 and len(visual["screenshots"]) == 3
+    content = (ROOT / visual["path"]).read_bytes()
+    assert hashlib.sha256(content).hexdigest() == visual["sha256"]
+    report = json.loads(content)
+    assert report["functional_head"] == late_menus["functional_head"]
+    assert report["schema_version"] == visual["schema_version"]
+    assert len(report["cases"]) == 3
+    assert {(tuple(c["viewport"]),c["safe_insets"]["left"],c["safe_insets"]["right"])
+            for c in report["cases"]} == {
+        ((390,844),80,64), ((320,700),64,80), ((640,720),80,80),
+    }
+    for case in report["cases"]:
+        entry = visual["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert len(png) == entry["size"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == entry["sha256"] == case[
+            "screenshot_sha256"
+        ]
+        assert case["edit_menu_safe_left_clearance"] >= 0
+        assert case["edit_menu_safe_right_clearance"] >= 0
+        assert case["menu"]["left"] >= case["safe_insets"]["left"]
+        assert case["menu"]["right"] <= case["viewport"][0] - case[
+            "safe_insets"
+        ]["right"]
+    from schauwerk.resources.native_viewer.assets import ASSETS as native_assets
+
+    assert hashlib.sha256(
+        native_assets["styles.css"].encode("utf-8")
+    ).hexdigest() == visual["native_source_css_sha256"]
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -7599,7 +7691,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_independent_remediation_superseded_files:
+        if name in single_workspace_late_review_menus_superseded_files:
+            assert late_menus["source_bindings"][name] == current
+        elif name in single_workspace_independent_remediation_superseded_files:
             assert independent_remediation["source_bindings"][name] == current
         elif name in single_workspace_ci_font_legacy_superseded_files:
             assert ci_font_legacy["source_bindings"][name] == current
