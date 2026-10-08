@@ -218,6 +218,10 @@ SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-fit-clearance-20261005"
 )
+SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-review-closure-20261008"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -776,6 +780,18 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_viewer_product_ui.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
+    single_workspace_review_closure_superseded_files = {
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_browser_smoke_runner.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -799,7 +815,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
-        if name in single_workspace_max_canvas_superseded_files:
+        if name in (
+            single_workspace_max_canvas_superseded_files
+            | single_workspace_review_closure_superseded_files
+        ):
             continue
         if name not in (
             draft_restore_superseded_files
@@ -4095,7 +4114,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ui_controls_resize_superseded_files
     )
     for name, expected in ui_controls_resize["source_bindings"].items():
-        if name in single_workspace_max_canvas_superseded_files:
+        if name in (
+            single_workspace_max_canvas_superseded_files
+            | single_workspace_review_closure_superseded_files
+        ):
             continue
         if name not in (
             focus_default_superseded_files
@@ -6089,7 +6111,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_max_canvas_superseded_files
     )
     for name, expected in single_workspace_max_canvas["source_bindings"].items():
-        if name in single_workspace_fit_clearance_superseded_files:
+        if name in (
+            single_workspace_fit_clearance_superseded_files
+            | single_workspace_review_closure_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_max_canvas["checks"]["single_workspace_only_after_open"] is True
@@ -6180,6 +6205,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_fit_clearance_superseded_files
     )
     for name, expected in single_workspace_fit_clearance["source_bindings"].items():
+        if name in single_workspace_review_closure_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     fit_finding = single_workspace_fit_clearance["check_evidence"]["review_finding"]
     assert fit_finding["thread_id"] == "PRRT_kwDOTGqvHc6o8b6l"
@@ -6227,6 +6254,99 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "result": "passed",
     }
 
+    review_closure = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_closure["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-review-closure.v1"
+    )
+    assert (
+        review_closure["functional_head"]
+        == "8fe4d77638e66178a58e7503f3db8b716557efd1"
+    )
+    assert review_closure["parent_evidence"] == {
+        "evidence_digest": single_workspace_fit_clearance["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-fit-clearance-20261005/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_fit_clearance["schema_version"],
+    }
+    assert review_closure["evidence_digest"] == digest_mapping(
+        review_closure, "evidence_digest"
+    )
+    assert (
+        set(review_closure["source_bindings"])
+        == single_workspace_review_closure_superseded_files
+    )
+    for name, expected in review_closure["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(review_closure["checks"].values())
+    review_evidence = review_closure["check_evidence"]
+    pre_validate = review_evidence["pre_successor_full_validate"]
+    assert pre_validate["functional_head"] == review_closure["functional_head"]
+    assert pre_validate["task_id"] == "b93f619d6783470fa502dc60"
+    assert pre_validate["passed_count"] == 1662
+    assert pre_validate["failed_count"] == 1
+    assert pre_validate["failure_class"] == "expected_successor_binding_gate"
+    browser = review_evidence["browser_smoke"]
+    assert browser["functional_head"] == review_closure["functional_head"]
+    assert browser["task_id"] == "78b2146cf6374642b8601961"
+    assert browser["passed_count"] == 13
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual = review_evidence["visual_readback"]
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual["readback_json_sha256"] == hashlib.sha256(readback_bytes).hexdigest()
+    readback = json.loads(readback_bytes)
+    assert readback["head"] == review_closure["functional_head"]
+    assert len(readback["cases"]) == 6
+    for case in ("process-status-mobile-dark", "process-status-431-dark"):
+        process = readback["cases"][case]["processStatus"]
+        assert process["text"] == "Ziel für die neue Verbindung auswählen"
+        assert process["whiteSpace"] == "normal"
+        assert process["textOverflow"] == "clip"
+        assert process["scrollWidth"] <= process["clientWidth"] + 1
+        assert process["scrollHeight"] <= process["clientHeight"] + 1
+    drawio = readback["cases"]["drawio-export-mobile-dark"]
+    assert drawio["exportClosed"] is True
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    for case in ("native-desktop-light", "native-tablet-light", "native-mobile-dark"):
+        measured = readback["cases"][case]
+        assert measured["hostClearance"] >= 8
+        assert measured["nativeClearance"] >= 6
+        assert measured["stage"]["width"] == measured["viewport"]["width"]
+        assert measured["stage"]["height"] == measured["viewport"]["height"]
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["result"] == "passed"
+    assert review_evidence["git_diff_check"]["result"] == "passed"
+
+    review_self = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_self["functional_head"] == review_closure["functional_head"]
+    assert len(review_self["passes"]) == 5
+    assert review_self["visual_readback_json_sha256"] == visual["readback_json_sha256"]
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6255,7 +6375,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_fit_clearance_superseded_files:
+        if name in single_workspace_review_closure_superseded_files:
+            assert review_closure["source_bindings"][name] == current
+        elif name in single_workspace_fit_clearance_superseded_files:
             assert single_workspace_fit_clearance["source_bindings"][name] == current
         elif name in single_workspace_max_canvas_superseded_files:
             assert single_workspace_max_canvas["source_bindings"][name] == current

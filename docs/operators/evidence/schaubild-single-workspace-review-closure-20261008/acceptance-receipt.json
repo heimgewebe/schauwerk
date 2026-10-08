@@ -1,0 +1,101 @@
+{
+  "accepted_at": "2026-10-08T04:27:35+00:00",
+  "base_product_head": "d088aa2b5978c0db346b462ad80f4c6dbbab2b96",
+  "check_evidence": {
+    "browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+      "lifecycle_receipt_sha256": "397d2e112a8e968acd4ebf66b3e4d5e2e481e7f4b84d127d00643879b5447ffc",
+      "passed_count": 13,
+      "result": "passed",
+      "task_id": "78b2146cf6374642b8601961"
+    },
+    "git_diff_check": {
+      "base_sha": "d088aa2b5978c0db346b462ad80f4c6dbbab2b96",
+      "diff_bytes": 24998,
+      "diff_sha256": "792af9ddf27095be07533e341d8d39fa05b45aacb91eab466a85cd6c67350cf8",
+      "head_sha": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "functional_head": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+      "lifecycle_receipt_sha256": "7381ca324ade0a834ad8119d45f35e1ecff98f1f5463ed06c9df09f441e4e968",
+      "passed_count": 1662,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "b93f619d6783470fa502dc60"
+    },
+    "review_findings": [
+      "mobile native process and guard text ellipsized in hosted status",
+      "mobile workspace tool popover overflow after original export",
+      "mobile fixed-position popover overlapped 52px high workspace bar",
+      "standalone and hosted native fit require live overlay clearances",
+      "new workspace Chromium regressions must be selected in CI",
+      "asset changes require a new digest-bound successor rather than historical receipt edits"
+    ],
+    "visual_readback": {
+      "functional_head": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-review-closure-20261008/visual-readback.json",
+      "readback_json_sha256": "63017dd45a938127a6a77a4f1f4938488e7a4a3cdba214fb1b6a4fdcb19edef4",
+      "result": "passed",
+      "task_id": "ca08788f0365405da7b7f94b",
+      "viewports": [
+        "1366x900 light native",
+        "1024x768 light native",
+        "390x844 dark native",
+        "390x844 dark process",
+        "431x844 dark process",
+        "390x844 dark drawio original export"
+      ]
+    }
+  },
+  "checks": {
+    "browser_smoke_runner_includes_new_workspace_regressions": true,
+    "engine_specific_export_capabilities_preserved": true,
+    "exact_functional_browser_smoke_passed": true,
+    "exact_functional_visual_readback_passed": true,
+    "historical_parent_receipt_left_immutable": true,
+    "mobile_bar_height_matches_real_controls": true,
+    "mobile_drawio_original_export_tools_popover_unclipped": true,
+    "mobile_native_process_instruction_visible_in_full": true,
+    "mobile_native_toolbar_and_host_chrome_clearance_passed": true,
+    "new_successor_binds_exact_ten_source_revisions": true,
+    "pre_successor_validate_failed_only_on_expected_digest_binding_gate": true,
+    "single_full_viewport_workspace_preserved": true
+  },
+  "does_not_establish": [
+    "user post-change aesthetic approval beyond the recorded operator visual acceptance",
+    "GitHub CI success on the later successor evidence head",
+    "decision-bound independent reviewer PASS on the later successor evidence head",
+    "all remote review threads settled after publication",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime deployment",
+    "independent observer clean-head confirmation of this final evidence revision"
+  ],
+  "evidence_digest": "13ad5fc3ab685b4d3762ec23a2dcd3f19ef8850988a6fec0232cb4cdb999892a",
+  "functional_head": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+  "parent_evidence": {
+    "evidence_digest": "0a43dab22e843f2ed920d6ad423d9e924218ddf79547c8eda0a03b9046a31f2d",
+    "file_sha256": "09c52d5156c7fd88a8061845a07e54de603b95ee742976b011d20ac7e5d9145c",
+    "path": "docs/operators/evidence/schaubild-single-workspace-fit-clearance-20261005/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-fit-clearance.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-review-closure.v1",
+  "scope": "schaubild-single-workspace-mobile-process-status-popover-fit-browser-review-closure",
+  "source_bindings": {
+    "Makefile": "d65208983502087e6c57c7329a5fabd8e93145adc5420d8e6070fa14a6d36eba",
+    "scripts/run_browser_smoke.py": "270e75f52567b4b40def2eda8b373ed1c1f630e8b5d062d91ad3fcd29404e6ca",
+    "src/schauwerk/resources/native_viewer/assets.py": "5530745b2f654f5a3a917cb147f7a794794f9bc6f272aafd8efcb1d3f44692b6",
+    "src/schauwerk/resources/standalone_editor/assets.py": "a2469de314542be99ce36f7d15d5965c563cfc1d21b53316bfdbc7660a574630",
+    "tests/visual/test_browser_smoke_runner.py": "0180f09dfc68bcd0931eaf04782afb9a83ce761a197c26bb6d3dc0ba37a54170",
+    "tests/visual/test_native_viewer.py": "ff63b945bac1b5888e0b01870bedec693a75114391579ad57d2b2d524d34a1a5",
+    "tests/visual/test_native_viewer_browser.py": "2c81cb0e6e1cb60711b2116195b18ee18ca11866244cc7eccb7c314cde5b5536",
+    "tests/visual/test_native_viewer_product_ui.py": "c2276f272b278de41e276ca40dd75608546e391cf7afeb8bbf62cad5398d48db",
+    "tests/visual/test_standalone_editor_font_controls.py": "9b63c9fd5734835385b8ff2d57c7b39114abe2e0f1b89ebe0ed5712bbc15a137",
+    "tests/visual/test_standalone_editor_single_workspace.py": "f8b128bc4a8fe37c08d8615e91dd2a16a0cad3833a0c63ca52e20048957760de"
+  }
+}

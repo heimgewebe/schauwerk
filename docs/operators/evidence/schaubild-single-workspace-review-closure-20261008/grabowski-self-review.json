@@ -1,0 +1,45 @@
+{
+  "base_sha": "d088aa2b5978c0db346b462ad80f4c6dbbab2b96",
+  "diff_sha256": "792af9ddf27095be07533e341d8d39fa05b45aacb91eab466a85cd6c67350cf8",
+  "does_not_establish": [
+    "independent review",
+    "final GitHub CI",
+    "Captain merge gate",
+    "deployment"
+  ],
+  "functional_head": "8fe4d77638e66178a58e7503f3db8b716557efd1",
+  "kind": "grabowski_self_review",
+  "passes": [
+    {
+      "focus": "UX surface and capabilities",
+      "number": 1,
+      "result": "single workspace still fills viewport; legacy/native exports retained"
+    },
+    {
+      "focus": "mobile process status",
+      "number": 2,
+      "result": "390px and 431px process instructions wrap without truncation; screenshots inspected"
+    },
+    {
+      "focus": "overlay fit and popover",
+      "number": 3,
+      "result": "native mobile clearance 43.35 px and drawio tool popover gap 16px"
+    },
+    {
+      "focus": "regression coverage and test path",
+      "number": 4,
+      "result": "13/13 Chromium smoke; 1662 passing pre-successor tests and exactly one expected hash-binding gate"
+    },
+    {
+      "focus": "source binding and scope",
+      "number": 5,
+      "result": "ten changed files SHA-bound to immutable successor; historical parent bytes unchanged"
+    }
+  ],
+  "review_mode": "bounded five-pass functional and evidence self-review",
+  "reviewed_at": "2026-10-08T04:27:35+00:00",
+  "schema_version": 1,
+  "source_file_count": 10,
+  "verdict": "PASS for functional review only, not merge approval",
+  "visual_readback_json_sha256": "63017dd45a938127a6a77a4f1f4938488e7a4a3cdba214fb1b6a4fdcb19edef4"
+}
