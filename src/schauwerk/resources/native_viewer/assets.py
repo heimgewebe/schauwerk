@@ -158,8 +158,8 @@ button:focus-visible {
   position: absolute;
   z-index: 3;
   top: max(7px, env(safe-area-inset-top));
-  left: max(7px, env(safe-area-inset-left));
-  right: max(7px, env(safe-area-inset-right));
+  left: max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+  right: max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px));
   min-height: 0;
   padding: 0;
   display: flex;
@@ -396,12 +396,12 @@ button:focus-visible {
 .viewer-foot {
   position: absolute;
   z-index: 3;
-  left: max(7px, env(safe-area-inset-left));
-  bottom: max(7px, env(safe-area-inset-bottom));
+  left: max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+  bottom: max(7px, env(safe-area-inset-bottom), var(--host-footer-bottom, 0px));
   min-height: 0;
   max-width: calc(
-    100vw - max(7px, env(safe-area-inset-left))
-    - max(7px, env(safe-area-inset-right))
+    100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+    - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
   );
   padding: 6px 8px;
   display: flex;
@@ -446,8 +446,8 @@ button:focus-visible {
   button { min-width: 42px; min-height: 42px; }
   .viewer-bar {
     top: max(6px, env(safe-area-inset-top));
-    left: max(6px, env(safe-area-inset-left));
-    right: max(6px, env(safe-area-inset-right));
+    left: max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+    right: max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px));
     flex-wrap: wrap;
     gap: 4px;
   }
@@ -462,16 +462,16 @@ button:focus-visible {
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
   .edit-menu {
     max-width: calc(
-      100vw - max(6px, env(safe-area-inset-left))
-      - max(6px, env(safe-area-inset-right))
+      100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
     );
   }
   .viewer-foot {
-    left: max(6px, env(safe-area-inset-left));
-    bottom: max(6px, env(safe-area-inset-bottom));
+    left: max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+    bottom: max(6px, env(safe-area-inset-bottom), var(--host-footer-bottom, 0px));
     max-width: calc(
-      100vw - max(6px, env(safe-area-inset-left))
-      - max(6px, env(safe-area-inset-right))
+      100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
     );
   }
 }
@@ -1062,6 +1062,33 @@ function standaloneViewportFitPadding() {
   });
 }
 
+function syncEmbeddedHostOverlays() {
+  if (!embeddedNativeViewer) return;
+  try {
+    const frame = window.frameElement?.getBoundingClientRect();
+    const host = window.parent.document;
+    if (!frame || !host.body.classList.contains("workspace-active")) return;
+    const bar = host.querySelector(".workspace-bar")?.getBoundingClientRect();
+    const status = host.querySelector(".topline")?.getBoundingClientRect();
+    if (!bar || !status || !bar.width || !status.width) return;
+    const margins = {
+      "--host-safe-left": Math.ceil(Math.max(0, status.left - frame.left)),
+      "--host-safe-right": Math.ceil(Math.max(0, frame.right - bar.right)),
+      // Native selection must remain above both host status and action bar.
+      "--host-footer-bottom": Math.ceil(Math.max(0, frame.bottom - Math.min(bar.top, status.top)))
+        + FIT_OVERLAY_CLEARANCE,
+    };
+    for (const [name, px] of Object.entries(margins)) {
+      const value = px + "px";
+      if (document.documentElement.style.getPropertyValue(name) !== value) {
+        document.documentElement.style.setProperty(name, value);
+      }
+    }
+  } catch (_) {
+    // Cross-origin embedding cannot read the hosting overlays.
+  }
+}
+
 function embeddedViewportFitPadding() {
   // The host moves its status and workspace bar for bottom safe-area insets.
   // Read actual overlay bounds instead of adding a fixed gutter on all devices.
@@ -1587,6 +1614,7 @@ function contentSize() {
 }
 
 function fit({ announce = true } = {}) {
+  syncEmbeddedHostOverlays();
   // Status text can wrap and grow the overlay bar (notably on CI/mobile).
   // Measure fit insets only after the final status is in layout.
   if (announce) setStatus("Ansicht angepasst");
@@ -1619,6 +1647,7 @@ function releasePointerAutoFitIfIdle() {
 }
 
 function fitAfterLayoutChange() {
+  syncEmbeddedHostOverlays();
   if (autoFitActive) fit({ announce: false });
   else if (activePointers.size && pointerAutoFitBefore) pointerFitPending = true;
 }
@@ -2109,6 +2138,8 @@ zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
 window.addEventListener("resize", fitAfterLayoutChange);
+// The embedded parent layout can settle after native module initialization.
+window.addEventListener("load", fitAfterLayoutChange, { once: true });
 // A longer live status can grow this overlay after the previous auto-fit.
 // Keep automatic clearance synchronized, without changing manual zoom or pan.
 const viewerBar = document.querySelector(".viewer-bar");

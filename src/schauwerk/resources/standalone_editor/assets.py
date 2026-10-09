@@ -95,7 +95,7 @@ INDEX_HTML = r"""<!doctype html>
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
         <details class="workspace-menu workspace-tools-menu" name="workspace-menu">
-          <summary class="button compact"><span class="workspace-menu-label">Werkzeuge</span></summary>
+          <summary class="button compact" aria-label="Werkzeuge" title="Werkzeuge"><span class="workspace-menu-label">Tools</span></summary>
           <div class="workspace-popover workspace-tools-popover">
             <div class="font-controls" role="group" aria-label="Schriftgröße">
               <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
@@ -876,13 +876,21 @@ body.workspace-active .status {
 }
 
 @media (max-width: 420px) {
+  .workspace-bar .workspace-menu > summary {
+    padding-inline: 3px;
+    font-size: 0.68rem;
+  }
+  .workspace-bar .workspace-close {
+    min-width: 50px;
+    padding-inline: 5px;
+  }
   .primary-actions { grid-template-columns: minmax(0, 1fr); }
   .primary-actions .button.primary { grid-column: auto; }
   .workspace-output { gap: 3px; }
   /* Use an unambiguous short caption when the full label cannot fit. */
   .workspace-bar .download-link {
-    flex: 0 0 78px;
-    max-width: 78px;
+    flex: 0 0 68px;
+    max-width: 68px;
     min-width: 0;
     padding-inline: 4px;
     overflow: hidden;

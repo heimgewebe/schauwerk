@@ -662,6 +662,11 @@ const wait = async (predicate, label) => {
         || style.overflowX !== "hidden") {
       throw new Error("mobile summary uses ineffective flex-box text truncation");
     }
+    if (label.scrollWidth > label.clientWidth + 1) {
+      throw new Error("P2: mobile menu label is visibly shortened: "
+        + label.textContent.trim() + ", available=" + label.clientWidth
+        + ", needed=" + label.scrollWidth);
+    }
   }
   const bar = document.querySelector(".workspace-bar");
   const controls = [
@@ -826,6 +831,48 @@ const wait = async (predicate, label) => {
   const nativeFrame = document.querySelector("#editorFrame");
   const nativeDoc = nativeFrame.contentDocument;
   const nativeStatus = nativeDoc.querySelector("#status");
+  // Real hosted geometry: the iframe's env(safe-area-*) can differ from host.
+  const nativeFrameRect = nativeFrame.getBoundingClientRect();
+  const nativeInteractiveControls = [
+    nativeDoc.querySelector("#zoomOut"),
+    nativeDoc.querySelector("#zoomIn"),
+    nativeDoc.querySelector("#fitView"),
+    nativeDoc.querySelector("#resetLayout"),
+    nativeDoc.querySelector(".edit-controls > summary"),
+  ];
+  const hostedSafeLeft = __LEFT__;
+  const hostedSafeRight = __RIGHT__;
+  for (const nativeControl of nativeInteractiveControls) {
+    if (!nativeControl || !nativeControl.getClientRects().length) continue;
+    const nativeRect = nativeControl.getBoundingClientRect();
+    if (nativeFrameRect.left + nativeRect.left < hostedSafeLeft - 0.5
+        || nativeFrameRect.left + nativeRect.right > innerWidth - hostedSafeRight + 0.5) {
+      throw new Error("P2: embedded Native control enters host horizontal safe area: "
+        + (nativeControl.id || nativeControl.tagName) + " "
+        + (nativeFrameRect.left + nativeRect.left).toFixed(1) + "/"
+        + (nativeFrameRect.left + nativeRect.right).toFixed(1)
+        + " host-right=" + document.querySelector(".workspace-bar").getBoundingClientRect().right.toFixed(1)
+        + " child-right-var=" + nativeDoc.documentElement.style.getPropertyValue("--host-safe-right")
+        + " child-left-var=" + nativeDoc.documentElement.style.getPropertyValue("--host-safe-left")
+        + " frame=" + nativeFrameRect.left.toFixed(1) + "/" + nativeFrameRect.right.toFixed(1));
+    }
+  }
+  const nativeSelectionFooter = nativeDoc.querySelector(".viewer-foot");
+  const nativeFooterRect = nativeSelectionFooter.getBoundingClientRect();
+  if (nativeFrameRect.left + nativeFooterRect.left < hostedSafeLeft - 0.5
+      || nativeFrameRect.left + nativeFooterRect.right > innerWidth - hostedSafeRight + 0.5) {
+    throw new Error("P2: embedded Native selection footer enters host safe area");
+  }
+  const hostToolbarRect = document.querySelector(".workspace-bar").getBoundingClientRect();
+  const footerOverlapWidth = Math.max(0,
+    Math.min(nativeFrameRect.left + nativeFooterRect.right, hostToolbarRect.right)
+    - Math.max(nativeFrameRect.left + nativeFooterRect.left, hostToolbarRect.left));
+  const footerOverlapHeight = Math.max(0,
+    Math.min(nativeFrameRect.top + nativeFooterRect.bottom, hostToolbarRect.bottom)
+    - Math.max(nativeFrameRect.top + nativeFooterRect.top, hostToolbarRect.top));
+  if (footerOverlapWidth > 0.5 && footerOverlapHeight > 0.5) {
+    throw new Error("P2: host workspace toolbar obscures Native selection footer");
+  }
   const emptyNativeTools = document.querySelector(".workspace-tools-menu");
   if (!emptyNativeTools.hidden || getComputedStyle(emptyNativeTools).display !== "none") {
     throw new Error("native canvas shows an empty tools menu without :has()");
