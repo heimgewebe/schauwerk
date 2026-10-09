@@ -295,8 +295,8 @@ button:focus-visible {
   max-width: min(
     520px,
     calc(
-      100vw - max(7px, env(safe-area-inset-left))
-      - max(7px, env(safe-area-inset-right))
+      100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
     )
   );
   padding: 5px;
@@ -1070,12 +1070,19 @@ function syncEmbeddedHostOverlays() {
     if (!frame || !host.body.classList.contains("workspace-active")) return;
     const bar = host.querySelector(".workspace-bar")?.getBoundingClientRect();
     const status = host.querySelector(".topline")?.getBoundingClientRect();
+    const retry = host.querySelector("#nativeRetryButton");
+    const retryRect = retry && !retry.hidden ? retry.getBoundingClientRect() : null;
     if (!bar || !status || !bar.width || !status.width) return;
+    const overlayTop = Math.min(
+      bar.top,
+      status.top,
+      retryRect?.height > 0 ? retryRect.top : Infinity,
+    );
     const margins = {
       "--host-safe-left": Math.ceil(Math.max(0, status.left - frame.left)),
       "--host-safe-right": Math.ceil(Math.max(0, frame.right - bar.right)),
       // Native selection must remain above both host status and action bar.
-      "--host-footer-bottom": Math.ceil(Math.max(0, frame.bottom - Math.min(bar.top, status.top)))
+      "--host-footer-bottom": Math.ceil(Math.max(0, frame.bottom - overlayTop))
         + FIT_OVERLAY_CLEARANCE,
     };
     for (const [name, px] of Object.entries(margins)) {
@@ -1097,7 +1104,7 @@ function embeddedViewportFitPadding() {
     const frameRect = window.frameElement?.getBoundingClientRect();
     const host = window.parent.document;
     if (frameRect && host.body.classList.contains("workspace-active")) {
-      for (const selector of [".topline", ".workspace-bar"]) {
+      for (const selector of [".topline", ".workspace-bar", "#nativeRetryButton"]) {
         const overlay = host.querySelector(selector);
         const rect = overlay?.getBoundingClientRect();
         if (rect && rect.width > 0 && rect.height > 0) {
@@ -2164,6 +2171,18 @@ window.addEventListener("load", fitAfterLayoutChange, { once: true });
 const viewerBar = document.querySelector(".viewer-bar");
 if (viewerBar && typeof ResizeObserver === "function") {
   new ResizeObserver(fitAfterLayoutChange).observe(viewerBar);
+}
+// The absolutely positioned host retry row cannot resize the native toolbar.
+// Its visibility changes must remeasure host clearance while auto-fit owns view.
+if (embeddedNativeViewer && typeof MutationObserver === "function") {
+  try {
+    const retry = window.parent.document.querySelector("#nativeRetryButton");
+    if (retry) {
+      new MutationObserver(fitAfterLayoutChange).observe(
+        retry, { attributes: true, attributeFilter: ["hidden"] },
+      );
+    }
+  } catch (_) { /* cross-origin host is not observable */ }
 }
 resetLayout.addEventListener("click", () => {
   overrides = {};

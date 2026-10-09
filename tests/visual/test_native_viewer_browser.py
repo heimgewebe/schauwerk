@@ -1338,14 +1338,15 @@ try {
     ), completed.stdout
 
 @pytest.mark.parametrize(
-    ("width", "height", "bottom_y", "right_x", "safe_left", "safe_right"),
+    ("width", "height", "bottom_y", "right_x", "safe_left", "safe_right", "host_only"),
     [
-        (1366, 900, 1280, 0, 0, 0),
-        (390, 844, 1280, 0, 0, 0),
-        (390, 844, 4000, 0, 0, 0),
-        (390, 844, 0, 3000, 80, 64),
-        (320, 700, 0, 3000, 64, 80),
-        (640, 720, 0, 3000, 80, 80),
+        (1366, 900, 1280, 0, 0, 0, False),
+        (390, 844, 1280, 0, 0, 0, False),
+        (390, 844, 4000, 0, 0, 0, False),
+        (390, 844, 0, 3000, 80, 64, False),
+        (320, 700, 0, 3000, 64, 80, False),
+        (640, 720, 0, 3000, 80, 80, False),
+        (621, 720, 0, 3000, 80, 80, True),
     ],
 )
 def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
@@ -1356,6 +1357,7 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     right_x: int,
     safe_left: int,
     safe_right: int,
+    host_only: bool,
 ) -> None:
     from websockets.sync.client import connect
 
@@ -1399,8 +1401,8 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     assert "env(safe-area-inset-left)" in styles
     assert "env(safe-area-inset-right)" in styles
     styles_path.write_text(
-        styles.replace("env(safe-area-inset-left)", f"{safe_left}px")
-        .replace("env(safe-area-inset-right)", f"{safe_right}px"),
+        styles.replace("env(safe-area-inset-left)", f"{0 if host_only else safe_left}px")
+        .replace("env(safe-area-inset-right)", f"{0 if host_only else safe_right}px"),
         encoding="utf-8",
     )
     index_path = output / "index.html"
@@ -1436,6 +1438,11 @@ try {
     () => canvas.style.transform.includes("scale("),
     "standalone viewer did not become fit-ready",
   );
+  if (__HOST_ONLY__) {
+    document.documentElement.style.setProperty("--host-safe-left", "__SAFE_LEFT__px");
+    document.documentElement.style.setProperty("--host-safe-right", "__SAFE_RIGHT__px");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
   fitButton.click();
   await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -1556,6 +1563,7 @@ try {
         .replace("__SAFE_RIGHT__", str(safe_right))
         .replace("__WIDTH__", str(width))
         .replace("__HEIGHT__", str(height))
+        .replace("__HOST_ONLY__", "true" if host_only else "false")
     )
     index_path.write_text(
         index.replace(app_tag, app_tag + probe, 1),

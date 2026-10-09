@@ -898,6 +898,30 @@ const wait = async (predicate, label) => {
   if (!emptyNativeTools.hidden || getComputedStyle(emptyNativeTools).display !== "none") {
     throw new Error("native canvas shows an empty tools menu without :has()");
   }
+  // A failed in-place Native rebuild can expose a persistent Retry row.
+  // Its upper bound must reserve fitted diagram content, not just the host status.
+  nativeDoc.querySelector("#fitView").click();
+  const retryFit = document.querySelector("#nativeRetryButton");
+  const retrySvg = nativeDoc.querySelector("#nativeDiagram");
+  const retryBounds = retrySvg.viewBox.baseVal;
+  const retryMarker = nativeDoc.createElementNS("http://www.w3.org/2000/svg", "rect");
+  retryMarker.setAttribute("x", String(retryBounds.x + retryBounds.width / 2));
+  retryMarker.setAttribute("y", String(retryBounds.y + retryBounds.height - 1));
+  retryMarker.setAttribute("width", "1");
+  retryMarker.setAttribute("height", "1");
+  retrySvg.appendChild(retryMarker);
+  retryFit.hidden = false;
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  const visibleRetry = retryFit.getBoundingClientRect();
+  const contentBottom = nativeFrame.getBoundingClientRect().top
+    + retryMarker.getBoundingClientRect().bottom;
+  const retryClearance = visibleRetry.top - contentBottom;
+  if (visibleRetry.width < 1 || retryClearance < 8) {
+    throw new Error("P2: persistent retry row masks fitted Native diagram: "
+      + retryClearance.toFixed(2) + "px");
+  }
+  retryFit.hidden = true;
+  retryMarker.remove();
   await new Promise((resolve) => setTimeout(resolve, 200));
   // Live CSS viewport, real editable JSON canvas and actual production limit message.
   nativeDoc.querySelector("#fitView").click();

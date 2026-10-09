@@ -8817,10 +8817,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         safe = case["safe_area"]
         key = (stage, width, height, safe["left"], safe["right"])
         assert key in {
-            (k, w, h, l, r)
-            for k in ("tools", "native")
+            (kind, w, h, inset_left, inset_right)
+            for kind in ("tools", "native")
             for w, h in ((320, 700), (390, 844))
-            for l, r in ((44, 0), (0, 44))
+            for inset_left, inset_right in ((44, 0), (0, 44))
         }
         assert key not in seen_pinch_cases
         seen_pinch_cases.add(key)
