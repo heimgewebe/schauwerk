@@ -876,7 +876,8 @@ body.workspace-active .status {
 }
 
 @media (max-width: 420px) {
-  .workspace-bar .workspace-menu > summary {
+  .workspace-bar .workspace-menu > summary.button.compact {
+    min-width: 42px;
     padding-inline: 0;
     font-size: 0.78rem;
   }
@@ -888,7 +889,7 @@ body.workspace-active .status {
   .primary-actions .button.primary { grid-column: auto; }
   .workspace-output { gap: 3px; }
   /* Use an unambiguous short caption when the full label cannot fit. */
-  .workspace-bar .download-link {
+  .workspace-bar .download-link.button.compact {
     flex: 0 0 68px;
     max-width: 68px;
     min-width: 0;
@@ -905,9 +906,8 @@ body.workspace-active .status {
 }
 
 @media (max-width: 360px) {
-  /* Preserve the full-size Canvas while keeping narrow action targets separate. */
+  /* Allow compact menus to shrink without reducing the canvas. */
   .workspace-bar .workspace-menu { flex-shrink: 1; }
-  .workspace-bar .workspace-close { padding-inline: 5px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2204,7 +2204,7 @@ function prepareDownload(blob, filename, label) {
   elements.downloadLink.href = preparedDownloadUrl;
   elements.downloadLink.download = filename;
   elements.downloadCaption.textContent = `${label} speichern`;
-  elements.downloadLink.setAttribute("aria-label", `${label} speichern`);
+  elements.downloadLink.setAttribute("aria-label", `Speichern: ${label}`);
   elements.downloadLink.hidden = false;
 }
 

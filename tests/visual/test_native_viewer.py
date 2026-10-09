@@ -358,7 +358,10 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "function updateIncidentEdges(sourceId)" in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
-    assert 'gesture = { kind: "pinch"' in app
+    assert 'kind: "pinch",' in app
+    assert 'startMidpoint: midpoint,' in app
+    assert 'moved: false,' in app
+    assert 'Math.abs(distance - gesture.startDistance) < DRAG_THRESHOLD_PX' in app
     assert 'pointers.some((pointer) => !pointer.background)' not in app
     assert 'if (gesture?.kind === "drag")' in app
     assert 'const DRAG_THRESHOLD_PX = 4;' in app

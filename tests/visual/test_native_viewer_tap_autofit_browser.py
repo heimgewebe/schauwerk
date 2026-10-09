@@ -180,6 +180,26 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
             expect_resized(True, "background tap with 2px jitter")
 
             setup()
+            pointer(background, "pointerdown", 82, dx=-70, pointer_type="touch")
+            pointer(background, "pointerdown", 83, dx=70, pointer_type="touch")
+            pinch_before_jitter = transform()
+            pointer(background, "pointermove", 83, dx=71, dy=1, pointer_type="touch")
+            assert transform() == pinch_before_jitter, (
+                "Sub-threshold two-finger jitter changed view during tap"
+            )
+            pointer(background, "pointerup", 83, dx=71, dy=1, pointer_type="touch")
+            pointer(background, "pointerup", 82, dx=-70, pointer_type="touch")
+            expect_resized(True, "two-finger tap with pinch jitter")
+
+            setup()
+            pointer(background, "pointerdown", 84, dx=-70, pointer_type="touch")
+            pointer(background, "pointerdown", 85, dx=70, pointer_type="touch")
+            pointer(background, "pointermove", 85, dx=95, pointer_type="touch")
+            pointer(background, "pointerup", 85, dx=95, pointer_type="touch")
+            pointer(background, "pointerup", 84, dx=-70, pointer_type="touch")
+            expect_resized(False, "confirmed pinch view change")
+
+            setup()
             pointer(background, "pointerdown", 74)
             pointer(background, "pointercancel", 74)
             expect_resized(True, "motionless pointer cancellation")

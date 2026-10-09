@@ -1691,7 +1691,14 @@ function startPinchIfPossible() {
   }
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const diagramPoint = { x: (midpoint.x - view.x) / view.scale, y: (midpoint.y - view.y) / view.scale };
-  gesture = { kind: "pinch", startDistance: distance, startScale: view.scale, diagramPoint };
+  gesture = {
+    kind: "pinch",
+    startDistance: distance,
+    startScale: view.scale,
+    startMidpoint: midpoint,
+    diagramPoint,
+    moved: false,
+  };
   viewport.classList.add("is-panning");
   return true;
 }
@@ -1703,6 +1710,13 @@ function updatePinch() {
   const [first, second] = pointers;
   const distance = Math.hypot(second.x - first.x, second.y - first.y);
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
+  if (!gesture.moved
+      && Math.abs(distance - gesture.startDistance) < DRAG_THRESHOLD_PX
+      && Math.hypot(
+        midpoint.x - gesture.startMidpoint.x,
+        midpoint.y - gesture.startMidpoint.y,
+      ) < DRAG_THRESHOLD_PX) return;
+  gesture.moved = true;
   const scale = interactionScale(
     gesture.startScale,
     gesture.startScale * (distance / gesture.startDistance),

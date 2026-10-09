@@ -641,6 +641,13 @@ const wait = async (predicate, label) => {
   if (shortStyle.textOverflow !== "ellipsis" || shortStyle.overflowX !== "hidden") {
     throw new Error("mobile short caption does not own controlled text truncation");
   }
+  if (shortCaption.scrollWidth > shortCaption.clientWidth + 1) {
+    throw new Error("P2: visible Speichern caption is shortened: "
+      + shortCaption.clientWidth + "/" + shortCaption.scrollWidth);
+  }
+  if (!(download.getAttribute("aria-label") || "").startsWith(shortCaption.textContent.trim())) {
+    throw new Error("P2: accessible save name lacks visible Speichern prefix");
+  }
   const safeLeft = __LEFT__;
   const safeRight = __RIGHT__;
   if (innerWidth !== __WIDTH__ || innerHeight !== __HEIGHT__) {
@@ -730,7 +737,7 @@ const wait = async (predicate, label) => {
       }
     }
   }
-  if (download.getAttribute("aria-label") !== "Originalprojekt speichern") {
+  if (download.getAttribute("aria-label") !== "Speichern: Originalprojekt") {
     throw new Error("compact download lacks its full accessible name");
   }
   if (innerWidth <= 420 && getComputedStyle(download, "::after").content !== "none") {
