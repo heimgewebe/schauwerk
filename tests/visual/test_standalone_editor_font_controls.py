@@ -28,8 +28,8 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
         in index_html
     )
     assert (
-        '<summary class="button compact"><span class="workspace-menu-label">'
-        'Werkzeuge</span></summary>'
+        '<summary class="button compact" aria-label="Werkzeuge" title="Werkzeuge">'
+        '<span class="workspace-menu-label">Tools</span></summary>'
     ) in index_html
     assert (
         '<summary class="button compact"><span class="workspace-menu-label">'
