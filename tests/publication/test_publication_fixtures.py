@@ -282,6 +282,10 @@ SCHAUBILD_SINGLE_WORKSPACE_MOBILE_PROMPT_WIDTH_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009"
 )
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-status-autofit-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -937,6 +941,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     single_workspace_mobile_prompt_width_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
+    }
+    single_workspace_status_autofit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -7806,7 +7814,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_ci_caption_safearea_superseded_files
     )
     for name, expected in final["source_bindings"].items():
-        if name in single_workspace_mobile_prompt_width_superseded_files:
+        if name in single_workspace_status_autofit_superseded_files:
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(final["checks"].values())
@@ -7848,7 +7856,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
         assert css_binding == old_final_native_css_sha
         for name, sha in readback["source_bindings"].items():
-            if name in single_workspace_mobile_prompt_width_superseded_files:
+            if name in single_workspace_status_autofit_superseded_files:
                 continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         seen_cases = set()
@@ -7951,6 +7959,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_mobile_prompt_width_superseded_files
     )
     for name, sha in prompt_acceptance["source_bindings"].items():
+        if name in single_workspace_status_autofit_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(prompt_acceptance["checks"].values())
     prompt_checks = prompt_acceptance["check_evidence"]
@@ -7987,6 +7997,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         )
         assert actual_css_binding == native_css_sha
         for name, sha in readback["source_bindings"].items():
+            if name in single_workspace_status_autofit_superseded_files:
+                continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         covered = set()
         for case in readback["cases"]:
@@ -8056,6 +8068,89 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                 assert geom["host_bar"]["left"] >= area["left"] - 0.5
                 assert geom["host_bar"]["right"] <= usable_right + 0.5
         assert covered == prompt_expected_cases[kind]
+    # The 088269c status-autofit revision supersedes two exact source/test SHA
+    # bindings without inheriting the prior prompt-width visual acceptance.
+    status_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    status_acceptance = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-status-autofit.v1"
+    )
+    assert status_acceptance["functional_head"] == (
+        "088269c96f8bdb63b3f7fe0ae964e5c4ddbd5394"
+    )
+    assert status_acceptance["parent_evidence"] == {
+        "path": str(prompt_path.relative_to(ROOT)),
+        "schema_version": prompt_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(prompt_path.read_bytes()).hexdigest(),
+        "evidence_digest": prompt_acceptance["evidence_digest"],
+    }
+    assert status_acceptance["evidence_digest"] == digest_mapping(
+        status_acceptance, "evidence_digest"
+    )
+    assert set(status_acceptance["source_bindings"]) == (
+        single_workspace_status_autofit_superseded_files
+    )
+    for name, expected in status_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(status_acceptance["checks"].values())
+    assert status_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
+        "e481f696f319476c9a94416b"
+    )
+    assert status_acceptance["check_evidence"]["focused_browser_green"]["passed_count"] == 2
+    assert status_acceptance["check_evidence"]["focused_browser_green"]["failed_count"] == 0
+    assert status_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    status_meta = status_acceptance["visual_readbacks"]["status_fit"]
+    assert set(status_acceptance["visual_readbacks"]) == {"status_fit"}
+    status_raw = (ROOT / status_meta["path"]).read_bytes()
+    assert hashlib.sha256(status_raw).hexdigest() == status_meta["sha256"]
+    status_readback = json.loads(status_raw)
+    assert status_readback["schema_version"] == status_meta["schema_version"]
+    assert status_readback["functional_head"] == status_acceptance["functional_head"]
+    assert status_readback["source_bindings"] == status_acceptance["source_bindings"]
+    assert status_meta["native_css_sha256"] == native_css_sha
+    assert status_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(status_readback["cases"]) == status_meta["case_count"] == 4
+    expected_status_cases = {
+        (320, 700, 0, 0), (320, 700, 44, 0),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    covered_status_cases = set()
+    for case in status_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in expected_status_cases and key not in covered_status_cases
+        covered_status_cases.add(key)
+        bound = status_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert bound["safe_area"] == area and bound["viewport"] == [width, height]
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geometry = case["geometry"]
+        assert geometry["status_text"].startswith("Produktgrenze erreicht")
+        assert geometry["bar_after"]["bottom"] - geometry["bar_before"]["bottom"] > 1
+        assert geometry["clearance_after"] >= 8
+        assert geometry["status_scroll_width"] <= geometry["status_client_width"] + 1
+        assert geometry["status_scroll_height"] <= geometry["status_client_height"] + 1
+        assert geometry["overlap_area"] <= 0.5
+        assert geometry["visibility"] == "visible"
+        assert abs(geometry["stage"]["width"] - width) < 1
+        assert abs(geometry["stage"]["height"] - height) < 1
+        assert geometry["host_bar"]["left"] >= area["left"] - 0.5
+        assert geometry["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert covered_status_cases == expected_status_cases
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -8084,7 +8179,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_mobile_prompt_width_superseded_files:
+        if name in single_workspace_status_autofit_superseded_files:
+            assert status_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_mobile_prompt_width_superseded_files:
             assert prompt_acceptance["source_bindings"][name] == current
         elif name in single_workspace_ci_caption_safearea_superseded_files:
             assert final["source_bindings"][name] == current
