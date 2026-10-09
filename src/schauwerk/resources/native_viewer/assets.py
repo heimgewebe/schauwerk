@@ -1012,6 +1012,7 @@ const activePointers = new Map();
 // Restore automatic fitting after a motionless pointer sequence, never after a manual view change.
 let pointerAutoFitBefore = null;
 let pointerChangedView = false;
+let pointerMovedNode = false;
 let pointerFitPending = false;
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
@@ -1607,12 +1608,13 @@ function fit({ announce = true } = {}) {
 
 function releasePointerAutoFitIfIdle() {
   if (activePointers.size || gesture) return;
-  if (pointerAutoFitBefore && !pointerChangedView) {
+  if (pointerAutoFitBefore && !pointerChangedView && !pointerMovedNode) {
     autoFitActive = true;
     if (pointerFitPending) fit({ announce: false });
   }
   pointerAutoFitBefore = null;
   pointerChangedView = false;
+  pointerMovedNode = false;
   pointerFitPending = false;
 }
 
@@ -1653,6 +1655,7 @@ function startPinchIfPossible() {
         gesture.rollbackOffset.y,
       );
       applyNodeTransform(gesture.sourceId);
+      pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     }
     nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
@@ -1758,6 +1761,7 @@ viewport.addEventListener("pointerdown", (event) => {
   if (activePointers.size === 0) {
     pointerAutoFitBefore = autoFitActive;
     pointerChangedView = false;
+    pointerMovedNode = false;
     pointerFitPending = false;
   }
   autoFitActive = false;
@@ -1892,7 +1896,7 @@ viewport.addEventListener("pointermove", (event) => {
     const screenDy = event.clientY - gesture.startY;
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
     gesture.moved = true;
-    pointerChangedView = true;
+    pointerMovedNode = true;
     const delta = screenDeltaToSvg(view, screenDx, screenDy);
     setNodeOffset(
       gesture.sourceId,
@@ -1923,6 +1927,7 @@ function finishPointer(event) {
         endedGesture.rollbackOffset.y,
       );
       applyNodeTransform(endedGesture.sourceId);
+      pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     } else if (endedGesture.moved) {
       if (documentEditorHosted) {

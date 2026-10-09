@@ -188,6 +188,20 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
             pointer(background, "pointermove", 77, dx=24)
             pointer(background, "pointerup", 77, dx=24)
             expect_resized(False, "confirmed node drag")
+
+            setup()
+            pointer(node, "pointerdown", 78)
+            pointer(background, "pointermove", 78, dx=24)
+            pointer(background, "pointercancel", 78, dx=24)
+            expect_resized(True, "fully rolled-back node drag")
+
+            setup()
+            pointer(node, "pointerdown", 79)
+            pointer(background, "pointermove", 79, dx=24)
+            pointer(background, "pointerdown", 80, dx=80)
+            pointer(background, "pointerup", 80, dx=80)
+            pointer(background, "pointerup", 79, dx=24)
+            expect_resized(True, "drag-to-pinch rollback without view change")
     finally:
         proc.terminate()
         try:
