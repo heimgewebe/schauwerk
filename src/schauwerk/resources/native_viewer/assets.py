@@ -1891,6 +1891,7 @@ viewport.addEventListener("pointerdown", (event) => {
     startX: event.clientX,
     startY: event.clientY,
     startView: { ...view },
+    moved: false,
   };
   viewport.classList.add("is-panning");
 });
@@ -1912,11 +1913,14 @@ viewport.addEventListener("pointermove", (event) => {
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
   if (gesture.kind === "pan") {
-    if (event.clientX !== gesture.startX || event.clientY !== gesture.startY) {
-      pointerChangedView = true;
-    }
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    // Touch jitter during a tap is not manual viewport navigation.
+    if (!gesture.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+    gesture.moved = true;
+    pointerChangedView = true;
     autoFitActive = false;
-    view = panBy(gesture.startView, event.clientX - gesture.startX, event.clientY - gesture.startY);
+    view = panBy(gesture.startView, dx, dy);
     applyView();
     return;
   }
@@ -1981,6 +1985,7 @@ function finishPointer(event) {
         startX: pointer.clientX,
         startY: pointer.clientY,
         startView: { ...view },
+        moved: false,
       };
       viewport.classList.add("is-panning");
     } else {

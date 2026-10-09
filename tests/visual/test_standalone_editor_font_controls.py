@@ -28,7 +28,7 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
         in index_html
     )
     assert (
-        '<summary class="button compact" aria-label="Werkzeuge" title="Werkzeuge">'
+        '<summary class="button compact" aria-label="Tools (Werkzeuge)" title="Werkzeuge">'
         '<span class="workspace-menu-label">Tools</span></summary>'
     ) in index_html
     assert (
@@ -36,6 +36,10 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
         'Export</span></summary>'
     ) in index_html
     assert index_html.index('id="workspaceCloseButton"') < index_html.index("</nav>")
+    assert (
+        'id="workspaceCloseButton" type="button" aria-label="Zurück zum Start"'
+        in index_html
+    )
     assert ">Zurück</button>" in index_html
 
     assert ".workspace-bar {" in styles_css

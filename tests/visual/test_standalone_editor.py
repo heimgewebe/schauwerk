@@ -182,7 +182,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "Legacy leer" not in index_html
     assert "Technischer Kompatibilitätsmodus:" in index_html
     assert "<code>.canvas</code>/JSON Canvas" in index_html
-    assert 'aria-label="Arbeitsfläche schließen und zum Start zurückkehren"' in index_html
+    assert 'aria-label="Zurück zum Start"' in index_html
     assert "body.workspace-active .topline {" in styles_css
     assert "body.workspace-active .topline { display: none; }" not in styles_css
     assert "body.workspace-active .status {" in styles_css

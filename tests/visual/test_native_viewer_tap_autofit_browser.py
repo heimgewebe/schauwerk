@@ -113,7 +113,10 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
                 else:
                     assert after == before, f"{label}: manual view was unexpectedly auto-fitted"
 
-            def pointer(target: str, event: str, pointer_id: int, dx: int = 0, dy: int = 0):
+            def pointer(
+                target: str, event: str, pointer_id: int, dx: int = 0,
+                dy: int = 0, pointer_type: str = "mouse",
+            ):
                 expr = f"""(() => {{
                   const viewport = document.querySelector('#nativeViewport');
                   const target = {target};
@@ -122,7 +125,7 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
                   const x = (rect.left + rect.right) / 2 + {dx};
                   const y = (rect.top + rect.bottom) / 2 + {dy};
                   target.dispatchEvent(new PointerEvent('{event}', {{
-                    pointerId: {pointer_id}, pointerType: 'mouse',
+                    pointerId: {pointer_id}, pointerType: '{pointer_type}',
                     clientX: x, clientY: y, bubbles: true, cancelable: true,
                     button: 0, buttons: {0 if event in ('pointerup', 'pointercancel') else 1},
                   }}));
@@ -165,6 +168,16 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
             pointer(background, "pointerdown", 73)
             pointer(background, "pointerup", 73)
             expect_resized(True, "background tap")
+
+            setup()
+            pointer(background, "pointerdown", 81, pointer_type="touch")
+            before_jitter = transform()
+            pointer(background, "pointermove", 81, dx=2, dy=1, pointer_type="touch")
+            assert transform() == before_jitter, (
+                "Touch-tap jitter moved the viewport before pan threshold"
+            )
+            pointer(background, "pointerup", 81, dx=2, dy=1, pointer_type="touch")
+            expect_resized(True, "background tap with 2px jitter")
 
             setup()
             pointer(background, "pointerdown", 74)

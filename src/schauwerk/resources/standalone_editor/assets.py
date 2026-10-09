@@ -95,7 +95,7 @@ INDEX_HTML = r"""<!doctype html>
     <section class="workspace" id="workspace" hidden>
       <nav class="workspace-bar" aria-label="Schaubildaktionen">
         <details class="workspace-menu workspace-tools-menu" name="workspace-menu">
-          <summary class="button compact" aria-label="Werkzeuge" title="Werkzeuge"><span class="workspace-menu-label">Tools</span></summary>
+          <summary class="button compact" aria-label="Tools (Werkzeuge)" title="Werkzeuge"><span class="workspace-menu-label">Tools</span></summary>
           <div class="workspace-popover workspace-tools-popover">
             <div class="font-controls" role="group" aria-label="Schriftgröße">
               <button class="button compact tool-button" id="fontDecreaseButton" type="button" aria-label="Schriftgröße der Auswahl verkleinern" title="Ausgewählte Beschriftungen verkleinern">A−</button>
@@ -123,7 +123,7 @@ INDEX_HTML = r"""<!doctype html>
         </details>
 
         <a class="button compact primary download-link" id="downloadLink" hidden><span class="download-caption">Datei speichern</span><span class="download-short-caption" aria-hidden="true">Speichern</span></a>
-        <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Arbeitsfläche schließen und zum Start zurückkehren" title="Zurück zum Start">Zurück</button>
+        <button class="button compact workspace-close" id="workspaceCloseButton" type="button" aria-label="Zurück zum Start" title="Zurück zum Start">Zurück</button>
       </nav>
 
       <div class="editor-stage">
@@ -877,8 +877,8 @@ body.workspace-active .status {
 
 @media (max-width: 420px) {
   .workspace-bar .workspace-menu > summary {
-    padding-inline: 3px;
-    font-size: 0.68rem;
+    padding-inline: 0;
+    font-size: 0.78rem;
   }
   .workspace-bar .workspace-close {
     min-width: 50px;
@@ -907,9 +907,7 @@ body.workspace-active .status {
 @media (max-width: 360px) {
   /* Preserve the full-size Canvas while keeping narrow action targets separate. */
   .workspace-bar .workspace-menu { flex-shrink: 1; }
-  .workspace-bar .workspace-menu > summary,
   .workspace-bar .workspace-close { padding-inline: 5px; }
-  .workspace-bar .workspace-menu > summary { font-size: 0.78rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

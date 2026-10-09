@@ -667,6 +667,20 @@ const wait = async (predicate, label) => {
         + label.textContent.trim() + ", available=" + label.clientWidth
         + ", needed=" + label.scrollWidth);
     }
+    const summary = label.closest("summary");
+    const visibleName = label.textContent.trim();
+    const accessibleName = (summary?.getAttribute("aria-label") || visibleName).trim();
+    if (!accessibleName.startsWith(visibleName)) {
+      throw new Error("P2: mobile menu accessible name lacks visible label: "
+        + accessibleName + " / " + visibleName);
+    }
+    if (!summary || parseFloat(getComputedStyle(summary).fontSize) < 12) {
+      throw new Error("P2: mobile menu font is too small at " + innerWidth + "px");
+    }
+  }
+  const close = document.querySelector("#workspaceCloseButton");
+  if (!close?.getAttribute("aria-label")?.startsWith(close.textContent.trim())) {
+    throw new Error("P2: Back button accessible name lacks visible label");
   }
   const bar = document.querySelector(".workspace-bar");
   const controls = [
