@@ -314,6 +314,10 @@ SCHAUBILD_SINGLE_WORKSPACE_PINCH_SAVE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-pinch-save-20261009"
 )
+SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-host-retry-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1011,6 +1015,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_tap_autofit_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_host_retry_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -7604,6 +7613,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_ci_download_superseded_files
             | single_workspace_review_p2_superseded_files
             | single_workspace_pinch_save_superseded_files
+            | single_workspace_host_retry_superseded_files
         ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -7828,7 +7838,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in final_visual["source_bindings"].items():
         if name in (single_workspace_ci_caption_safearea_superseded_files
                     | single_workspace_review_p2_superseded_files
-                    | single_workspace_pinch_save_superseded_files):
+                    | single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert {
@@ -7890,7 +7901,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in final["source_bindings"].items():
         if name in (single_workspace_status_autofit_superseded_files
                     | single_workspace_embedded_host_superseded_files
-                    | single_workspace_review_p2_superseded_files):
+                    | single_workspace_review_p2_superseded_files
+                    | single_workspace_host_retry_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(final["checks"].values())
@@ -7942,7 +7954,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             if name in (single_workspace_status_autofit_superseded_files
                         | single_workspace_embedded_host_superseded_files
                         | single_workspace_review_p2_superseded_files
-                        | single_workspace_pinch_save_superseded_files):
+                        | single_workspace_pinch_save_superseded_files
+                        | single_workspace_host_retry_superseded_files):
                 continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         seen_cases = set()
@@ -8048,7 +8061,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_status_autofit_superseded_files
                     | single_workspace_embedded_host_superseded_files
                     | single_workspace_review_p2_superseded_files
-                    | single_workspace_pinch_save_superseded_files):
+                    | single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(prompt_acceptance["checks"].values())
@@ -8089,7 +8103,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             if name in (single_workspace_status_autofit_superseded_files
                         | single_workspace_embedded_host_superseded_files
                         | single_workspace_review_p2_superseded_files
-                        | single_workspace_pinch_save_superseded_files):
+                        | single_workspace_pinch_save_superseded_files
+                        | single_workspace_host_retry_superseded_files):
                 continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         covered = set()
@@ -8675,7 +8690,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_review_p2_superseded_files
     )
     for name, expected in review_p2_acceptance["source_bindings"].items():
-        if name in single_workspace_pinch_save_superseded_files:
+        if name in (single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_p2_acceptance["checks"].values())
@@ -8791,6 +8807,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_pinch_save_superseded_files
     )
     for path, expected in pinch_save_acceptance["source_bindings"].items():
+        if path in single_workspace_host_retry_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
     assert all(pinch_save_acceptance["checks"].values())
     p2_checks = pinch_save_acceptance["check_evidence"]
@@ -8905,6 +8923,93 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             )
             assert overlap_x * overlap_y <= 0.5
     assert len(seen_pinch_cases) == 8
+
+    # Exact successor for 621px host-safe Native menu and 320/390px host retry.
+    # Parent bytes remain immutable; the latest receipt binds three changed files.
+    host_retry_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE / "acceptance-receipt.json"
+    )
+    host_retry_acceptance = json.loads(
+        host_retry_path.read_text(encoding="utf-8")
+    )
+    assert host_retry_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-host-retry.v1"
+    )
+    assert host_retry_acceptance["functional_head"] == (
+        "6fa626d6fc073d622131339fa97f2e7d65d390dd"
+    )
+    assert host_retry_acceptance["parent_evidence"] == {
+        "path": str(pinch_save_path.relative_to(ROOT)),
+        "schema_version": pinch_save_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(pinch_save_path.read_bytes()).hexdigest(),
+        "evidence_digest": pinch_save_acceptance["evidence_digest"],
+    }
+    assert host_retry_acceptance["evidence_digest"] == digest_mapping(
+        host_retry_acceptance, "evidence_digest"
+    )
+    assert set(host_retry_acceptance["source_bindings"]) == (
+        single_workspace_host_retry_superseded_files
+    )
+    for path, sha in host_retry_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == sha
+    assert all(host_retry_acceptance["checks"].values())
+    assert host_retry_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert host_retry_acceptance["check_evidence"]["full_chromium_green"]["passed_count"] == 29
+    assert host_retry_acceptance["check_evidence"]["visual_capture_green"]["case_count"] == 3
+    assert set(host_retry_acceptance["visual_readbacks"]) == {"host_retry"}
+    host_retry_meta = host_retry_acceptance["visual_readbacks"]["host_retry"]
+    assert host_retry_meta["case_count"] == 3
+    host_retry_raw = (ROOT / host_retry_meta["path"]).read_bytes()
+    assert hashlib.sha256(host_retry_raw).hexdigest() == host_retry_meta["sha256"]
+    host_retry_readback = json.loads(host_retry_raw)
+    assert host_retry_readback["schema_version"] == host_retry_meta["schema_version"]
+    assert host_retry_readback["functional_head"] == host_retry_acceptance["functional_head"]
+    assert host_retry_readback["source_bindings"] == host_retry_acceptance["source_bindings"]
+    assert len(host_retry_readback["cases"]) == 3
+    seen_host_retry = set()
+    for case in host_retry_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["simulated_safe_area"]
+        kind = case["kind"]
+        key = (kind, width, height, safe["left"], safe["right"])
+        assert key in {
+            ("desktop-menu", 621, 720, 80, 80),
+            ("embedded-retry", 390, 844, 44, 0),
+            ("embedded-retry", 320, 700, 0, 44),
+        }
+        assert key not in seen_host_retry
+        seen_host_retry.add(key)
+        shot = host_retry_meta["screenshots"][case["screenshot_file"]]
+        assert shot["kind"] == kind and shot["viewport"] == [width, height]
+        assert shot["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == shot["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == shot["sha256"] == case["screenshot_sha256"]
+        sidecar = (
+            SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(sidecar).hexdigest() == case["geometry_sha256"]
+        assert shot["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(sidecar) == case["geometry"]
+        geom = case["geometry"]
+        assert geom["pass"] is True
+        if kind == "desktop-menu":
+            assert geom["childEnvironment"] == {"left": 0, "right": 0}
+            assert geom["hostSafe"] == {"left": 80, "right": 80}
+            assert geom["menu"]["left"] >= 80
+            assert geom["menu"]["right"] <= width - 80
+        else:
+            assert geom["retry"]["width"] > 0
+            assert geom["retryClearance"] >= 8
+            assert geom["retry"]["top"] - geom["fittedContentBottom"] == geom["retryClearance"]
+    assert len(seen_host_retry) == 3
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -8933,7 +9038,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_pinch_save_superseded_files:
+        if name in single_workspace_host_retry_superseded_files:
+            assert host_retry_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_pinch_save_superseded_files:
             assert pinch_save_acceptance["source_bindings"][name] == current
         elif name in single_workspace_review_p2_superseded_files:
             assert review_p2_acceptance["source_bindings"][name] == current
