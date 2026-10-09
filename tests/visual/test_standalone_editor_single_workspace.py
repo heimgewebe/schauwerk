@@ -903,6 +903,61 @@ const wait = async (predicate, label) => {
         clientX: x, clientY: y,
       })
     );
+    // Interruptions must not commit canceled edits or allow background re-fit
+    // while the user's pointer gesture has already taken ownership.
+    const limitsNow = JSON.parse(nativeDoc.querySelector("#nativeLimits").textContent);
+    const longStatus = "Produktgrenze erreicht · maximal " + limitsNow.max_edges
+      + " Kanten und " + limitsNow.max_routing_pairs + " Routing-Paare";
+    const resetFit = async () => {
+      nativeDoc.querySelector("#fitView").click();
+      await waitFrame();
+    };
+    await resetFit();
+    const holdView = dragCanvas.style.transform;
+    fireDrag(dragNode, "pointerdown", startX, startY);
+    nativeStatus.textContent = longStatus;
+    await waitFrame();
+    if (dragCanvas.style.transform !== holdView) {
+      throw new Error("pre-threshold node hold allowed status re-fit: "
+        + holdView + " => " + dragCanvas.style.transform);
+    }
+    fireDrag(dragViewport, "pointercancel", startX, startY);
+    await resetFit();
+
+    const startNodeOffset = dragNode.getAttribute("transform");
+    const startNodeLeft = dragNode.getBoundingClientRect().left;
+    fireDrag(dragNode, "pointerdown", startX, startY);
+    fireDrag(dragViewport, "pointermove", startX + 24, startY + 3);
+    await waitFrame();
+    if (dragNode.getBoundingClientRect().left < startNodeLeft + 8) {
+      throw new Error("cancel test did not perform a real node drag");
+    }
+    fireDrag(dragViewport, "pointercancel", startX + 24, startY + 3);
+    await waitFrame();
+    if (dragNode.getAttribute("transform") !== startNodeOffset) {
+      throw new Error("pointercancel committed a moved node instead of rollback");
+    }
+    await resetFit();
+
+    const touch = (type, id, cx, cy) => dragViewport.dispatchEvent(
+      new nativeWin.PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: id, pointerType: "touch",
+        isPrimary: id === 82, button: 0, buttons: type === "pointerup" ? 0 : 1,
+        clientX: cx, clientY: cy,
+      })
+    );
+    const pinchBefore = dragCanvas.style.transform;
+    touch("pointerdown", 82, 120, 420);
+    touch("pointerdown", 83, 255, 420);
+    nativeStatus.textContent = longStatus;
+    await waitFrame();
+    if (dragCanvas.style.transform !== pinchBefore) {
+      throw new Error("pinch initiation allowed status re-fit before pointer movement");
+    }
+    touch("pointerup", 83, 255, 420);
+    touch("pointerup", 82, 120, 420);
+    await resetFit();
+
     fireDrag(dragNode, "pointerdown", startX, startY);
     fireDrag(dragViewport, "pointermove", startX + 24, startY + 3);
     await waitFrame();
