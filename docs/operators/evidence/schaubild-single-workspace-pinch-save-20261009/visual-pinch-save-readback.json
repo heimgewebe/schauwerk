@@ -1,0 +1,1695 @@
+{
+  "capture_method": "Desktop Chromium/CDP CSS viewport 320x700/390x844, simulated host safe insets 44px on one side; not physical iOS/Safari",
+  "capture_test_sha256": "6fb13872a0b57e176a82bad93efd0e1c9a1bfcefaeb20015fb946b0a812b88b0",
+  "cases": [
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 692,
+            "height": 52,
+            "left": 78.046875,
+            "right": 314,
+            "top": 640,
+            "width": 235.953125,
+            "x": 78.046875,
+            "y": 640
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 83.046875,
+                "right": 125.046875,
+                "top": 645,
+                "width": 42,
+                "x": 83.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 32,
+              "text": "Tools",
+              "textScrollWidth": 32
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 128.046875,
+                "right": 170.046875,
+                "top": 645,
+                "width": 42,
+                "x": 128.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Speichern: Originalprojekt",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 173.046875,
+                "right": 241.046875,
+                "top": 645,
+                "width": 68,
+                "x": 173.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 56,
+              "text": "Speichern",
+              "textScrollWidth": 56
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 244.046875,
+                "right": 309,
+                "top": 645,
+                "width": 64.953125,
+                "x": 244.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": false,
+          "controls": [
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 87.359375,
+                "right": 129.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 37,
+                "height": 14,
+                "left": 131.359375,
+                "right": 179.359375,
+                "top": 23,
+                "width": 48
+              },
+              "name": "zoomValue"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 181.359375,
+                "right": 223.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 225.359375,
+                "right": 311,
+                "top": 9,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 95,
+                "height": 42,
+                "left": 269,
+                "right": 311,
+                "top": 53,
+                "width": 42
+              },
+              "name": "resetLayout"
+            }
+          ],
+          "footer": {
+            "bottom": 596,
+            "height": 28,
+            "left": 44,
+            "right": 140.625,
+            "top": 568,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "44px",
+          "safeRight": "6px"
+        },
+        "window": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "tools-320x700-left44-right0.json",
+      "geometry_sha256": "f6645086d0722841874598110d427322cad0791743aafa264690fd2177bc33f0",
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 30528,
+      "screenshot_file": "tools-320x700-left44-right0.png",
+      "screenshot_sha256": "992c695d5796edd5faf1ee77eda546dae1b97ad3550d79cb10b96313c43ef8b9",
+      "stage": "tools",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 692,
+            "height": 52,
+            "left": 40.046875,
+            "right": 276,
+            "top": 640,
+            "width": 235.953125,
+            "x": 40.046875,
+            "y": 640
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 45.046875,
+                "right": 87.046875,
+                "top": 645,
+                "width": 42,
+                "x": 45.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 32,
+              "text": "Tools",
+              "textScrollWidth": 32
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 90.046875,
+                "right": 132.046875,
+                "top": 645,
+                "width": 42,
+                "x": 90.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Speichern: Originalprojekt",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 135.046875,
+                "right": 203.046875,
+                "top": 645,
+                "width": 68,
+                "x": 135.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 56,
+              "text": "Speichern",
+              "textScrollWidth": 56
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 206.046875,
+                "right": 271,
+                "top": 645,
+                "width": 64.953125,
+                "x": 206.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": false,
+          "controls": [
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 49.359375,
+                "right": 91.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 37,
+                "height": 14,
+                "left": 93.359375,
+                "right": 141.359375,
+                "top": 23,
+                "width": 48
+              },
+              "name": "zoomValue"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 143.359375,
+                "right": 185.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 187.359375,
+                "right": 273,
+                "top": 9,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 95,
+                "height": 42,
+                "left": 231,
+                "right": 273,
+                "top": 53,
+                "width": 42
+              },
+              "name": "resetLayout"
+            }
+          ],
+          "footer": {
+            "bottom": 596,
+            "height": 28,
+            "left": 8,
+            "right": 104.625,
+            "top": 568,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "8px",
+          "safeRight": "44px"
+        },
+        "window": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "tools-320x700-left0-right44.json",
+      "geometry_sha256": "82662050eb5fe05a89a4a66b52e00bfe87ee94f0ec89e67357bdaabff583c743",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 31041,
+      "screenshot_file": "tools-320x700-left0-right44.png",
+      "screenshot_sha256": "e2623795c2986a434fe71c85988e680fe191a76d031be55777a96701c25871d6",
+      "stage": "tools",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 148.046875,
+            "right": 384,
+            "top": 784,
+            "width": 235.953125,
+            "x": 148.046875,
+            "y": 784
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 153.046875,
+                "right": 195.046875,
+                "top": 789,
+                "width": 42,
+                "x": 153.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 32,
+              "text": "Tools",
+              "textScrollWidth": 32
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 198.046875,
+                "right": 240.046875,
+                "top": 789,
+                "width": 42,
+                "x": 198.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Speichern: Originalprojekt",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 243.046875,
+                "right": 311.046875,
+                "top": 789,
+                "width": 68,
+                "x": 243.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 56,
+              "text": "Speichern",
+              "textScrollWidth": 56
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 314.046875,
+                "right": 379,
+                "top": 789,
+                "width": 64.953125,
+                "x": 314.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": false,
+          "controls": [
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 113.359375,
+                "right": 155.359375,
+                "top": 49,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 77,
+                "height": 14,
+                "left": 157.359375,
+                "right": 205.359375,
+                "top": 63,
+                "width": 48
+              },
+              "name": "zoomValue"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 207.359375,
+                "right": 249.359375,
+                "top": 49,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 251.359375,
+                "right": 337,
+                "top": 49,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 339,
+                "right": 381,
+                "top": 49,
+                "width": 42
+              },
+              "name": "resetLayout"
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "height": 28,
+            "left": 44,
+            "right": 140.625,
+            "top": 712,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "44px",
+          "safeRight": "6px"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "tools-390x844-left44-right0.json",
+      "geometry_sha256": "5363ddd29fa53390cbbcd6334f0c6402b8b05ef4dbf46075e5c72931cb61c0b2",
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 32787,
+      "screenshot_file": "tools-390x844-left44-right0.png",
+      "screenshot_sha256": "a0f1da25619bc728a8e9a42b68c223d5f19027fd75b6e85a0b2e0a83c70dc2c4",
+      "stage": "tools",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 110.046875,
+            "right": 346,
+            "top": 784,
+            "width": 235.953125,
+            "x": 110.046875,
+            "y": 784
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 115.046875,
+                "right": 157.046875,
+                "top": 789,
+                "width": 42,
+                "x": 115.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 32,
+              "text": "Tools",
+              "textScrollWidth": 32
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 160.046875,
+                "right": 202.046875,
+                "top": 789,
+                "width": 42,
+                "x": 160.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Speichern: Originalprojekt",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 205.046875,
+                "right": 273.046875,
+                "top": 789,
+                "width": 68,
+                "x": 205.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 56,
+              "text": "Speichern",
+              "textScrollWidth": 56
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 276.046875,
+                "right": 341,
+                "top": 789,
+                "width": 64.953125,
+                "x": 276.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": false,
+          "controls": [
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 75.359375,
+                "right": 117.359375,
+                "top": 49,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 77,
+                "height": 14,
+                "left": 119.359375,
+                "right": 167.359375,
+                "top": 63,
+                "width": 48
+              },
+              "name": "zoomValue"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 169.359375,
+                "right": 211.359375,
+                "top": 49,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 213.359375,
+                "right": 299,
+                "top": 49,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 91,
+                "height": 42,
+                "left": 301,
+                "right": 343,
+                "top": 49,
+                "width": 42
+              },
+              "name": "resetLayout"
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "height": 28,
+            "left": 8,
+            "right": 104.625,
+            "top": 712,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "8px",
+          "safeRight": "44px"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "tools-390x844-left0-right44.json",
+      "geometry_sha256": "29bce32fae10b1bc9bbf6cdcd604160a592aed29f50c40c60e3c3cb63363bbff",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 33076,
+      "screenshot_file": "tools-390x844-left0-right44.png",
+      "screenshot_sha256": "4026b9e58192878aed0ced07da30026f9c62a18f8aa4f7574cc1fa816e3ac1f0",
+      "stage": "tools",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 692,
+            "height": 52,
+            "left": 194.046875,
+            "right": 314,
+            "top": 640,
+            "width": 119.953125,
+            "x": 194.046875,
+            "y": 640
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 0,
+              "text": "Tools",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 199.046875,
+                "right": 241.046875,
+                "top": 645,
+                "width": 42,
+                "x": 199.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Datei speichernSpeichern",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 13.12,
+              "hidden": true,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 0,
+              "text": "Datei speichernSpeichern",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 244.046875,
+                "right": 309,
+                "top": 645,
+                "width": 64.953125,
+                "x": 244.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": true,
+          "controls": [
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 93.359375,
+                "right": 135.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 137.359375,
+                "right": 179.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 181.359375,
+                "right": 267,
+                "top": 9,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 269,
+                "right": 311,
+                "top": 9,
+                "width": 42
+              },
+              "name": "resetLayout"
+            },
+            {
+              "box": {
+                "bottom": 99,
+                "height": 42,
+                "left": 227.46875,
+                "right": 314,
+                "top": 57,
+                "width": 86.53125
+              },
+              "name": "SUMMARY"
+            }
+          ],
+          "footer": {
+            "bottom": 596,
+            "height": 28,
+            "left": 44,
+            "right": 140.625,
+            "top": 568,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "44px",
+          "safeRight": "6px"
+        },
+        "window": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "native-320x700-left44-right0.json",
+      "geometry_sha256": "61bbd966e2403f019807dfa7e42218b0f98fa2812d5310fd5d1aaf4407bd46fa",
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 23159,
+      "screenshot_file": "native-320x700-left44-right0.png",
+      "screenshot_sha256": "b0333198f6f1ccd33b18fe896ee3268502f9a7d139c2546c9efd74c4156df044",
+      "stage": "native",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 692,
+            "height": 52,
+            "left": 156.046875,
+            "right": 276,
+            "top": 640,
+            "width": 119.953125,
+            "x": 156.046875,
+            "y": 640
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 0,
+              "text": "Tools",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 161.046875,
+                "right": 203.046875,
+                "top": 645,
+                "width": 42,
+                "x": 161.046875,
+                "y": 645
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Datei speichernSpeichern",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 13.12,
+              "hidden": true,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 0,
+              "text": "Datei speichernSpeichern",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 687,
+                "height": 42,
+                "left": 206.046875,
+                "right": 271,
+                "top": 645,
+                "width": 64.953125,
+                "x": 206.046875,
+                "y": 645
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": true,
+          "controls": [
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 55.359375,
+                "right": 97.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 99.359375,
+                "right": 141.359375,
+                "top": 9,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 143.359375,
+                "right": 229,
+                "top": 9,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 51,
+                "height": 42,
+                "left": 231,
+                "right": 273,
+                "top": 9,
+                "width": 42
+              },
+              "name": "resetLayout"
+            },
+            {
+              "box": {
+                "bottom": 99,
+                "height": 42,
+                "left": 189.46875,
+                "right": 276,
+                "top": 57,
+                "width": 86.53125
+              },
+              "name": "SUMMARY"
+            }
+          ],
+          "footer": {
+            "bottom": 596,
+            "height": 28,
+            "left": 8,
+            "right": 104.625,
+            "top": 568,
+            "width": 96.625
+          },
+          "frame": {
+            "bottom": 700,
+            "height": 700,
+            "left": 0,
+            "right": 320,
+            "top": 0,
+            "width": 320,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "8px",
+          "safeRight": "44px"
+        },
+        "window": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "native-320x700-left0-right44.json",
+      "geometry_sha256": "5b7fb68be29f9c0e2b35331e885b8d6b1aa4bc4351a59fb3e939b0cdec85123a",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 23445,
+      "screenshot_file": "native-320x700-left0-right44.png",
+      "screenshot_sha256": "ad46b8979c283aacd899279efe2041eff58e9208055e09351dd88bd4d4aa7832",
+      "stage": "native",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 264.046875,
+            "right": 384,
+            "top": 784,
+            "width": 119.953125,
+            "x": 264.046875,
+            "y": 784
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 0,
+              "text": "Tools",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 269.046875,
+                "right": 311.046875,
+                "top": 789,
+                "width": 42,
+                "x": 269.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Datei speichernSpeichern",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 13.12,
+              "hidden": true,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 0,
+              "text": "Datei speichernSpeichern",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 314.046875,
+                "right": 379,
+                "top": 789,
+                "width": 64.953125,
+                "x": 314.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": true,
+          "controls": [
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 73.828125,
+                "right": 115.828125,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 117.828125,
+                "right": 159.828125,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 161.828125,
+                "right": 247.46875,
+                "top": 69.375,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 249.46875,
+                "right": 291.46875,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "resetLayout"
+            },
+            {
+              "box": {
+                "bottom": 108.375,
+                "height": 42,
+                "left": 297.46875,
+                "right": 384,
+                "top": 66.375,
+                "width": 86.53125
+              },
+              "name": "SUMMARY"
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "height": 28,
+            "left": 44,
+            "right": 142.359375,
+            "top": 712,
+            "width": 98.359375
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "44px",
+          "safeRight": "6px"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "native-390x844-left44-right0.json",
+      "geometry_sha256": "4cf758f9f79429cc45f1cab2962d9492b7b13559cf9ba352fce5683caed533d8",
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 27080,
+      "screenshot_file": "native-390x844-left44-right0.png",
+      "screenshot_sha256": "84534b1724660cac40c341b05446a0e9683b279401f4f0034c9973d2f00eeaec",
+      "stage": "native",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 226.046875,
+            "right": 346,
+            "top": 784,
+            "width": 119.953125,
+            "x": 226.046875,
+            "y": 784
+          },
+          "actions": [
+            {
+              "accessible": "Tools (Werkzeuge)",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-tools-menu > summary",
+              "spanWidth": 0,
+              "text": "Tools",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Export",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 231.046875,
+                "right": 273.046875,
+                "top": 789,
+                "width": 42,
+                "x": 231.046875,
+                "y": 789
+              },
+              "fontPx": 12.48,
+              "hidden": false,
+              "paddingLeft": "0px",
+              "paddingRight": "0px",
+              "selector": ".workspace-export-menu > summary",
+              "spanWidth": 40,
+              "text": "Export",
+              "textScrollWidth": 40
+            },
+            {
+              "accessible": "Datei speichernSpeichern",
+              "box": {
+                "bottom": 0,
+                "height": 0,
+                "left": 0,
+                "right": 0,
+                "top": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+              },
+              "fontPx": 13.12,
+              "hidden": true,
+              "paddingLeft": "4px",
+              "paddingRight": "4px",
+              "selector": "#downloadLink",
+              "spanWidth": 0,
+              "text": "Datei speichernSpeichern",
+              "textScrollWidth": 0
+            },
+            {
+              "accessible": "Zurück zum Start",
+              "box": {
+                "bottom": 831,
+                "height": 42,
+                "left": 276.046875,
+                "right": 341,
+                "top": 789,
+                "width": 64.953125,
+                "x": 276.046875,
+                "y": 789
+              },
+              "fontPx": 13.12,
+              "hidden": false,
+              "paddingLeft": "9px",
+              "paddingRight": "9px",
+              "selector": "#workspaceCloseButton",
+              "spanWidth": 63,
+              "text": "Zurück",
+              "textScrollWidth": 63
+            }
+          ],
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          }
+        },
+        "native": {
+          "active": true,
+          "controls": [
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 35.828125,
+                "right": 77.828125,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "zoomOut"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 79.828125,
+                "right": 121.828125,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "zoomIn"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 123.828125,
+                "right": 209.46875,
+                "top": 69.375,
+                "width": 85.640625
+              },
+              "name": "fitView"
+            },
+            {
+              "box": {
+                "bottom": 111.375,
+                "height": 42,
+                "left": 211.46875,
+                "right": 253.46875,
+                "top": 69.375,
+                "width": 42
+              },
+              "name": "resetLayout"
+            },
+            {
+              "box": {
+                "bottom": 108.375,
+                "height": 42,
+                "left": 259.46875,
+                "right": 346,
+                "top": 66.375,
+                "width": 86.53125
+              },
+              "name": "SUMMARY"
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "height": 28,
+            "left": 8,
+            "right": 106.359375,
+            "top": 712,
+            "width": 98.359375
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "safeLeft": "8px",
+          "safeRight": "44px"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "native-390x844-left0-right44.json",
+      "geometry_sha256": "1fa8815db5db7df9d809205cdc1946acbc3e87a37937ed73ee2578a669783458",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 27322,
+      "screenshot_file": "native-390x844-left0-right44.png",
+      "screenshot_sha256": "d00185e5395155bdf20762436f05abbe0f2ac97c56fbba1b623bf26337e469f4",
+      "stage": "native",
+      "viewport": [
+        390,
+        844
+      ]
+    }
+  ],
+  "functional_head": "7d906571d24cd73d788251ff529b140fa238604f",
+  "schema_version": "schauwerk-pr203-pinch-save-chromium-cdp.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1dd9ad2c0d77a9068289a422e3811979242cf4e7dd6faa1f5f9e031aa6917366",
+    "src/schauwerk/resources/standalone_editor/assets.py": "6b928aa2f2f1d729cbc79609bb2e17182a44b0ad3aa9c0357d2be1648a4d7ce4",
+    "tests/visual/test_native_viewer.py": "ef08658fb3456b83c900ae01a195d86efb69e3861833345dcfe2a459d30700ee",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "22fc6bc1399bd0665de79f003e1dc2f1d8395ba1461157bc9c317f4de14f24d7",
+    "tests/visual/test_standalone_editor_single_workspace.py": "a83a56e297663096526709e5feb924769b5f7eb265d23845bcc855aac7be88bc"
+  }
+}
