@@ -1,0 +1,216 @@
+{
+  "check_evidence": {
+    "before_unaccepted": [
+      {
+        "acceptance": "not inherited; non-production intermediate",
+        "file_sha256": "6bf5278431f2213f2028e8149d79bfd93b71c523105fd29ceeeb5732cb78551d",
+        "functional_head": "ebfdfcd63cd57e7a4db7c02f956f401601f9509e",
+        "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-block-20261009/visual-final-readback.json"
+      },
+      {
+        "acceptance": "not inherited; non-production intermediate",
+        "file_sha256": "eb33383876835939e97e54290c1dbb94932117c744e00980e0a560cae0e38f4d",
+        "functional_head": "40c028c0b94f28cd51f69014ca4743c66bd1b566",
+        "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-probe-20261009/visual-final-readback.json"
+      },
+      {
+        "acceptance": "not inherited; non-production intermediate",
+        "file_sha256": "e599def49a19935e6599b82896d05f81b130eaef7f4f7542719f39b8e4bf6260",
+        "functional_head": "40c028c0b94f28cd51f69014ca4743c66bd1b566",
+        "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-probe-20261009/visual-native-readback.json"
+      }
+    ],
+    "host_capture": {
+      "case_count": 5,
+      "task_id": "c2656e4169654d4d93c004d6"
+    },
+    "native_capture": {
+      "case_count": 3,
+      "task_id": "b359e24063224032bc04437e"
+    },
+    "native_green": {
+      "failed_count": 0,
+      "passed_count": 6,
+      "task_id": "57e3fb82b8df4e90b9b53ade",
+      "viewport_method": "CDP real CSS viewport"
+    },
+    "native_p2_red_first": [
+      {
+        "error": "zoomOut -30.64/11.36 in 320px left64/right80",
+        "task_id": "4087d4ca412149759e15c2dd"
+      },
+      {
+        "error": "footer 64.00/372.00 in 320px left64/right80",
+        "task_id": "f82733066a554456b26a40f7"
+      }
+    ],
+    "prior_remote_ci_failure": {
+      "error": "mobile action text escapes its hit target: 2",
+      "failed_cases": 5,
+      "head": "c22bf20a2f490f3f7178a6a827ddf048207a9c9c",
+      "job_id": 113565219579,
+      "python": "3.12"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chromium with emulated CSS viewports and simulated env() insets; no physical iOS/Safari acceptance",
+        "No GitHub Python-3.12 PASS at acceptance time",
+        "Native contextual menu shows synthesized widest all-actions state, while supported actual actions are tested in regression",
+        "No general acceptance of unrelated text-size choices or historical images"
+      ],
+      "method": "Actual direct visual readback of all eight final screenshots; technical geometry and digests verified separately",
+      "scope": "Five 320/390 mobile host download-caption views plus three 320/390/640 Native worst-case side safe-area views"
+    }
+  },
+  "checks": {
+    "checkout_native_styles_for_both_capture_paths": true,
+    "direct_visual_acceptance": true,
+    "eight_png_sha256_and_dimensions": true,
+    "exact_parent_digest": true,
+    "five_source_revisions_bound": true,
+    "host_caption_accessibility_and_geometry": true,
+    "native_safearea_and_compact_controls": true,
+    "previous_intermediate_is_not_accepted": true
+  },
+  "does_not_establish": [
+    "remote GitHub required CI passing on this local functional revision",
+    "independent exact-head decision review",
+    "Captain approval or merge",
+    "deployment",
+    "physical Safari/iOS behavior"
+  ],
+  "evidence_digest": "22532f31f6fa10951066e25bb2668c9294bdcc76d8d16a215acb01d80dcaca76",
+  "functional_head": "d6e10ec63c9999f3b21a0a313d762cba341dc14b",
+  "parent_evidence": {
+    "evidence_digest": "94cbf63416a1da83ddbe818fc202b9484f1e4bdd96b186593acadb1f17bae67c",
+    "file_sha256": "8657b76662f2f7959deaa84af7d8bcff1ac3b22bf2cd4ffefb0029d8aea25bb9",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-download-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-ci-download.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-ci-caption-safearea.v1",
+  "scope": "Mobile Download caption and Native standalone safe-area toolbar/selection footer on actual emulated CSS viewports, no wider product acceptance",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "abe9389878351c891f4e71f1676a9a0981e845609b0f5c237ae75a4d71632d81",
+    "src/schauwerk/resources/standalone_editor/assets.py": "c3145d196cd0522d8884ad33570849df93960bb9ccd55fcdb4867470afea3fa4",
+    "tests/visual/test_native_viewer_browser.py": "c53444924fa4fc63a2c141bc0dfc1336a1f85ec1fa2b69dde446cb3df260c536",
+    "tests/visual/test_standalone_editor_font_controls.py": "c54334d0a47b9708ef13ecce538e029e4d0639a047a596f3049575e4491fbf11",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0170d53ce13316b904daa52aa1e1c482195486f6804182a23be4fc0e6a27b4a7"
+  },
+  "visual_readbacks": {
+    "host": {
+      "case_count": 5,
+      "native_styles_sha256": "fc436baa580cc092af427d23070d9856f0b334a329f5ad405acfbc474a1d154b",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-final-20261009/visual-final-readback.json",
+      "schema_version": "schauwerk-pr203-ci-caption-safearea-visual.v1",
+      "screenshots": {
+        "final-320x700-left0-right0.png": {
+          "bytes": 28960,
+          "safe_area": {
+            "left": 0,
+            "right": 0
+          },
+          "sha256": "561156e87be3b969a63ae7867b31a55e4cd9e2161898aadcadd994d8d4fda01c",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-320x700-left0-right44.png": {
+          "bytes": 29029,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "f2b79a12b1f686e7fff80590f14c35d4fc4832d7c86d4631db1f77ae44f5b62d",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-320x700-left44-right0.png": {
+          "bytes": 29226,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "f5a6c221a1bcbb65239a39317de11f6d3d289290d2a9faa44e24a87437b33fd0",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-390x844-left0-right44.png": {
+          "bytes": 33203,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "e66864c74dbdea69b82c790f145e0853f8a98ed65706aeccec2b21e58d3d8763",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "final-390x844-left44-right0.png": {
+          "bytes": 33278,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "08f6970414d72717258d2afefcf83594cfb90b47384b8c9acba319c8222183a3",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "5b3438cf01cd7f82c87588ee3590c4d523e5a91082b1efc81883d338eda836d4"
+    },
+    "native": {
+      "case_count": 3,
+      "native_styles_sha256": "fc436baa580cc092af427d23070d9856f0b334a329f5ad405acfbc474a1d154b",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-final-20261009/visual-native-readback.json",
+      "schema_version": "schauwerk-pr203-native-safearea-cdp-visual.v1",
+      "screenshots": {
+        "native-320x700-left64-right80.png": {
+          "bytes": 23305,
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "d269b1b35d8fe31e820027d5967322d9a519cef0d956f1fca85fe0a6b4089150",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "native-390x844-left80-right64.png": {
+          "bytes": 27727,
+          "safe_area": {
+            "left": 80,
+            "right": 64
+          },
+          "sha256": "2dd02256366719bb5a6a3783390bb498e7f36e2c0d9918f6a2609acc2af65ed3",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "native-640x720-left80-right80.png": {
+          "bytes": 35532,
+          "safe_area": {
+            "left": 80,
+            "right": 80
+          },
+          "sha256": "d35cb1d6784ef5d305340ab9e9f51a85f2f1254b2f42cccdd116f92724895a26",
+          "viewport": [
+            640,
+            720
+          ]
+        }
+      },
+      "sha256": "067c277b7dc70b7e1731310ea818b1a5c69ed71ca68273cec0db5fb10abd427f"
+    }
+  }
+}

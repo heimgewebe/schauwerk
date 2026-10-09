@@ -274,6 +274,10 @@ SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-ci-download-20261008"
 )
+SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-final-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -917,6 +921,13 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     single_workspace_ci_download_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_ci_caption_safearea_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
         "tests/visual/test_standalone_editor_font_controls.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
@@ -7624,7 +7635,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_late_review_menus_superseded_files
     )
     for name, expected in late_menus["source_bindings"].items():
-        if name in single_workspace_ci_download_superseded_files:
+        if name in (
+            single_workspace_ci_download_superseded_files
+            | single_workspace_ci_caption_safearea_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(late_menus["checks"].values())
@@ -7671,11 +7685,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert case["menu"]["right"] <= case["viewport"][0] - case[
             "safe_insets"
         ]["right"]
-    from schauwerk.resources.native_viewer.assets import ASSETS as native_assets
-
-    assert hashlib.sha256(
-        native_assets["styles.css"].encode("utf-8")
-    ).hexdigest() == visual["native_source_css_sha256"]
+    # Keep the predecessor's immutable native stylesheet digest distinct from
+    # the successor's changed production stylesheet.
+    assert visual["native_source_css_sha256"] == (
+        "1af50ed47c7c4046b569ac53b4f322f23f71ed1057280e67dee5602f1ad8710e"
+    )
 
     # The current mobile download caption has a new production revision; the
     # previous accepted screenshots remain immutable and do not inherit PASS.
@@ -7704,6 +7718,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_ci_download_superseded_files
     )
     for name, expected in ci_download["source_bindings"].items():
+        if name in single_workspace_ci_caption_safearea_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(ci_download["checks"].values())
     checks = ci_download["check_evidence"]
@@ -7723,6 +7739,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert final_visual["schema_version"] == final_info["schema_version"]
     assert len(final_visual["cases"]) == 5
     for name, expected in final_visual["source_bindings"].items():
+        if name in single_workspace_ci_caption_safearea_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert {
         (c["width"], c["height"], c["simulated_safe_inset"]["left"],
@@ -7756,11 +7774,143 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert geometry["popover"]["right"] <= case["width"] - right + 0.5
         assert abs(geometry["stage"]["width"] - case["width"]) < 1
         assert abs(geometry["stage"]["height"] - case["height"]) < 1
-    from schauwerk.resources.native_viewer.assets import ASSETS as native_css_bundle
+    assert final_info["native_css_sha256"] == visual["native_source_css_sha256"]
 
-    assert hashlib.sha256(
-        native_css_bundle["styles.css"].encode("utf-8")
-    ).hexdigest() == final_info["native_css_sha256"]
+    # Accept only the exact final post-caption + Native safe-area revision.
+    final_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    final = json.loads(final_path.read_text(encoding="utf-8"))
+    assert final["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-caption-safearea.v1"
+    )
+    assert final["functional_head"] == (
+        "d6e10ec63c9999f3b21a0a313d762cba341dc14b"
+    )
+    assert final["parent_evidence"] == {
+        "path": str(download_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(download_path.read_bytes()).hexdigest(),
+        "evidence_digest": ci_download["evidence_digest"],
+        "schema_version": ci_download["schema_version"],
+    }
+    assert final["evidence_digest"] == digest_mapping(final, "evidence_digest")
+    assert set(final["source_bindings"]) == (
+        single_workspace_ci_caption_safearea_superseded_files
+    )
+    for name, expected in final["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(final["checks"].values())
+    assert final["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert final["check_evidence"]["native_green"]["passed_count"] == 6
+    assert final["check_evidence"]["prior_remote_ci_failure"]["python"] == "3.12"
+    assert final["check_evidence"]["prior_remote_ci_failure"]["failed_cases"] == 5
+    from schauwerk.resources.native_viewer.assets import ASSETS as current_native
+
+    native_css_sha = hashlib.sha256(
+        current_native["styles.css"].encode("utf-8")
+    ).hexdigest()
+    assert native_css_sha != final_info["native_css_sha256"]
+    expected_cases = {
+        "host": {
+            (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+            (390, 844, 44, 0), (390, 844, 0, 44),
+        },
+        "native": {
+            (320, 700, 64, 80), (390, 844, 80, 64), (640, 720, 80, 80),
+        },
+    }
+    for kind, meta in final["visual_readbacks"].items():
+        assert kind in expected_cases
+        payload = (ROOT / meta["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == meta["sha256"]
+        readback = json.loads(payload)
+        assert readback["schema_version"] == meta["schema_version"]
+        assert readback["functional_head"] == final["functional_head"]
+        assert len(readback["cases"]) == meta["case_count"] == len(
+            meta["screenshots"]
+        )
+        assert meta["native_styles_sha256"] == native_css_sha
+        css_binding = (
+            readback["native_child_styles_sha256"]
+            if kind == "host" else readback["native_styles_sha256"]
+        )
+        assert css_binding == native_css_sha
+        for name, sha in readback["source_bindings"].items():
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        seen_cases = set()
+        for case in readback["cases"]:
+            area = (
+                case["simulated_safe_inset"]
+                if kind == "host" else case["safe_area"]
+            )
+            width, height = case["width"], case["height"]
+            seen_cases.add((width, height, area["left"], area["right"]))
+            entry = meta["screenshots"][case["screenshot_file"]]
+            assert entry["viewport"] == [width, height]
+            assert entry["safe_area"] == area
+            png = (
+                SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE
+                / case["screenshot_file"]
+            ).read_bytes()
+            assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+            assert int.from_bytes(png[16:20], "big") == width
+            assert int.from_bytes(png[20:24], "big") == height
+            assert len(png) == entry["bytes"] == case["screenshot_bytes"]
+            assert (
+                hashlib.sha256(png).hexdigest()
+                == entry["sha256"]
+                == case["screenshot_sha256"]
+            )
+            geom = case["geometry"]
+            assert geom["bar"]["left"] >= area["left"] - 0.5
+            assert geom["bar"]["right"] <= width - area["right"] + 0.5
+            assert abs(geom["stage"]["width"] - width) < 1
+            assert abs(geom["stage"]["height"] - height) < 1
+            if kind == "host":
+                assert geom["short"] == "Speichern"
+                assert geom["short_display"] == "block"
+                assert geom["caption_display"] == "none"
+                assert geom["aria"] == geom["label"] == "Originalprojekt speichern"
+                assert geom["pseudo_content"] == "none"
+                assert geom["download_scroll_width"] <= geom["download_client_width"] + 1
+                assert geom["short_scroll_width"] <= geom["short_client_width"] + 1
+                assert geom["popover"]["left"] >= area["left"] - 0.5
+                assert geom["popover"]["right"] <= width - area["right"] + 0.5
+                assert all(
+                    item["left"] >= area["left"] - 0.5
+                    and item["right"] <= width - area["right"] + 0.5
+                    for item in geom["controls"]
+                )
+            else:
+                assert geom["footer"]["left"] >= area["left"] - 0.5
+                assert geom["footer"]["right"] <= width - area["right"] + 0.5
+                assert geom["edit_menu"]["left"] >= area["left"] - 0.5
+                assert geom["edit_menu"]["right"] <= width - area["right"] + 0.5
+                assert all(
+                    item["left"] >= area["left"] - 0.5
+                    and item["right"] <= width - area["right"] + 0.5
+                    for item in geom["targets"]
+                )
+                assert geom["selection_text_length"] >= 100
+                if width == 390:
+                    assert geom["view"]["height"] <= 100
+        assert seen_cases == expected_cases[kind]
+    # Rejected/staging screenshots are bound as historical bytes, never granted
+    # the final acceptance or treated as a current source.
+    unaccepted = final["check_evidence"]["before_unaccepted"]
+    assert len(unaccepted) == 3
+    for predecessor in unaccepted:
+        raw_before = (ROOT / predecessor["path"]).read_bytes()
+        assert hashlib.sha256(raw_before).hexdigest() == predecessor["file_sha256"]
+        observed = json.loads(raw_before)
+        assert observed["functional_head"] == predecessor["functional_head"]
+        assert "not inherited" in predecessor["acceptance"]
+        for case in observed["cases"]:
+            image = (ROOT / predecessor["path"]).parent / case["screenshot_file"]
+            assert hashlib.sha256(image.read_bytes()).hexdigest() == (
+                case["screenshot_sha256"]
+            )
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -7790,7 +7940,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_ci_download_superseded_files:
+        if name in single_workspace_ci_caption_safearea_superseded_files:
+            assert final["source_bindings"][name] == current
+        elif name in single_workspace_ci_download_superseded_files:
             assert ci_download["source_bindings"][name] == current
         elif name in single_workspace_late_review_menus_superseded_files:
             assert late_menus["source_bindings"][name] == current
