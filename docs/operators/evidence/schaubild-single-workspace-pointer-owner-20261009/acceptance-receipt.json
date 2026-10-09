@@ -1,0 +1,102 @@
+{
+  "check_evidence": {
+    "capture_task": {
+      "case_count": 2,
+      "task_id": "618adac3ebc04b6b91b7163f"
+    },
+    "focused_browser_green": {
+      "checks": [
+        "held background pan pre-move",
+        "drag-to-pinch offset and status rollback",
+        "node hold and pinch auto-fit stability",
+        "ongoing node drag unchanged view"
+      ],
+      "failed_count": 0,
+      "passed_count": 3,
+      "task_id": "0d295e7c4e2e4c83810bfe5c"
+    },
+    "prior_local_red": {
+      "message": "held background pan allowed auto-fit before first move",
+      "task_id": "f8f11e18f2b94371a4f2b8c5",
+      "view_after": "translate(171.867px, 151px) scale(0.111216)",
+      "view_before": "translate(169.668px, 95px) scale(0.12179)"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with emulated CSS viewport and simulated host safe insets; not physical iOS/Safari",
+        "Native pointer events are deliberately synthesized in source-bound CDP harness; functional browser regression separately exercises mid-drag scheduling",
+        "This is a new visual acceptance; no earlier acceptance was inherited"
+      ],
+      "method": "Both fresh 390x844 Chrome CDP PNGs visually inspected: active drag text unobstructed, nodes and controls separated, full viewport and host navigation preserved. Separate browser tests cover background pan hold, pinch takeover rollback, and earlier gesture paths."
+    }
+  },
+  "checks": {
+    "drag_status_grows_toolbar": true,
+    "drag_transform_stable_across_frames": true,
+    "exact_parent_immutable": true,
+    "full_canvas_and_host_actions_preserved": true,
+    "native_status_visible_unclipped": true,
+    "node_follows_pointer": true,
+    "real_css_safearea_viewport": true,
+    "red_before_green_chromium": true,
+    "source_and_test_sha_bound": true,
+    "two_png_sha_dimensions_verified": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "post-final GitHub Python 3.12 and required CI",
+    "independent exact-head reviewer PASS",
+    "captain-run authorization",
+    "deployment"
+  ],
+  "evidence_digest": "36d1ea6f2c789a980f99f968e605e3bba659f049ab81fc320722363bd10ad87b",
+  "functional_head": "50dc336282efbbfd3f8d86522b59c70946b28f13",
+  "parent_evidence": {
+    "evidence_digest": "81f581d077a7cf33191093263f6122c542c7d0931873e6f49135ab76e7b4d7e4",
+    "file_sha256": "ffbf3f94550e74b5e294c7628f0e0c3f07f986051b024550bc6c33ea4dfa8676",
+    "path": "docs/operators/evidence/schaubild-single-workspace-gesture-cancel-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-gesture-cancel.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-pointer-owner.v1",
+  "scope": "A single pointerdown ownership rule stabilizes node, pan and pinch before movement; drag-to-pinch correctly reports rollback; full canvas remains",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "e3a0b67e74fa4f485c348aaeaf409429c14205a3ab723072129f984980fc6b6f",
+    "tests/visual/test_standalone_editor_single_workspace.py": "c89ec6131b961c6837ab1d7f93e01dce75e9fcfa0c4198cf6aaa1d21ee2eaa03"
+  },
+  "visual_readbacks": {
+    "drag": {
+      "case_count": 2,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-pointer-owner-20261009/visual-drag-readback.json",
+      "schema_version": "schauwerk-pr203-pointer-owner-cdp-visual.v1",
+      "screenshots": {
+        "drag-390x844-left0-right44.png": {
+          "bytes": 27781,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "07936e1d4f5b9b14ecb67ddc39d696354092efb0f07953c8b82fa85ccafc3796",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "drag-390x844-left44-right0.png": {
+          "bytes": 27764,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "7be30ba34fa67f27f4a43924567f3dd3c44edd497cdd460ebf95d4bb145b86ad",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "f014a044dd70cefae47ffc60584d6e6b123bb06b6c691e605388deefa98e5886"
+    }
+  }
+}
