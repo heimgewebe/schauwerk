@@ -448,6 +448,7 @@ button:focus-visible {
     top: max(6px, env(safe-area-inset-top));
     left: max(6px, env(safe-area-inset-left));
     right: max(6px, env(safe-area-inset-right));
+    flex-wrap: wrap;
     gap: 4px;
   }
   .viewer-heading .eyebrow { display: none; }
