@@ -877,6 +877,55 @@ const wait = async (predicate, label) => {
   ) {
     throw new Error("native editing process status reduced the full canvas viewport");
   }
+  // A status change between pointer moves may grow the native toolbar.
+  // A manual node drag must preserve its view transform across that resize.
+  if (innerWidth === 390) {
+    const nativeWin = nativeFrame.contentWindow;
+    const dragViewport = nativeDoc.querySelector("#nativeViewport");
+    const dragCanvas = nativeDoc.querySelector("#nativeCanvas");
+    const dragNode = nativeDoc.querySelector('[data-source-id="a"]');
+    nativeWin.Element.prototype.setPointerCapture = function () {};
+    nativeWin.Element.prototype.releasePointerCapture = function () {};
+    nativeDoc.querySelector("#fitView").click();
+    const waitFrame = () => new Promise((resolve) => nativeWin.requestAnimationFrame(
+      () => nativeWin.requestAnimationFrame(resolve)
+    ));
+    await waitFrame();
+    const barBeforeDrag = nativeDoc.querySelector(".viewer-bar").getBoundingClientRect().bottom;
+    const viewBeforeDrag = dragCanvas.style.transform;
+    const nodeRect = dragNode.getBoundingClientRect();
+    const startX = nodeRect.left + Math.max(1, nodeRect.width / 2);
+    const startY = nodeRect.top + Math.max(1, nodeRect.height / 2);
+    const fireDrag = (target, type, x, y) => target.dispatchEvent(
+      new nativeWin.PointerEvent(type, {
+        bubbles: true, cancelable: true, pointerId: 73, pointerType: "mouse",
+        isPrimary: true, button: 0, buttons: type === "pointerup" ? 0 : 1,
+        clientX: x, clientY: y,
+      })
+    );
+    fireDrag(dragNode, "pointerdown", startX, startY);
+    fireDrag(dragViewport, "pointermove", startX + 24, startY + 3);
+    await waitFrame();
+    const dragStatus = nativeStatus.textContent.trim();
+    const barDuringDrag = nativeDoc.querySelector(".viewer-bar").getBoundingClientRect().bottom;
+    if (dragStatus !== "Position geändert · Verbindungen angepasst") {
+      throw new Error("node drag did not set expected live status: " + dragStatus);
+    }
+    if (barDuringDrag <= barBeforeDrag + 1) {
+      throw new Error("drag status did not expand overlay in 390px regression: "
+        + barBeforeDrag.toFixed(2) + "/" + barDuringDrag.toFixed(2));
+    }
+    if (dragCanvas.style.transform !== viewBeforeDrag) {
+      throw new Error("dragging node triggered auto-fit after status growth: "
+        + viewBeforeDrag + " => " + dragCanvas.style.transform);
+    }
+    fireDrag(dragViewport, "pointermove", startX + 37, startY + 3);
+    await waitFrame();
+    if (dragCanvas.style.transform !== viewBeforeDrag) {
+      throw new Error("native drag view changed between pointer moves");
+    }
+    fireDrag(dragViewport, "pointerup", startX + 37, startY + 3);
+  }
   document.documentElement.dataset.mobileBar320Smoke = "pass";
 })().catch((error) => {
   document.documentElement.dataset.mobileBar320Smoke = "fail";

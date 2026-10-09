@@ -1852,6 +1852,9 @@ viewport.addEventListener("pointermove", (event) => {
     const screenDy = event.clientY - gesture.startY;
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
     gesture.moved = true;
+    // A node drag is manual interaction; status growth must not re-fit the
+    // view between successive pointer moves.
+    autoFitActive = false;
     const delta = screenDeltaToSvg(view, screenDx, screenDy);
     setNodeOffset(
       gesture.sourceId,
