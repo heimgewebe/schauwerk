@@ -1009,6 +1009,10 @@ let edgeReattach = null;
 let textEditTarget = null;
 let gesture = null;
 const activePointers = new Map();
+// Restore automatic fitting after a motionless pointer sequence, never after a manual view change.
+let pointerAutoFitBefore = null;
+let pointerChangedView = false;
+let pointerFitPending = false;
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
@@ -1601,10 +1605,27 @@ function fit({ announce = true } = {}) {
   applyView();
 }
 
+function releasePointerAutoFitIfIdle() {
+  if (activePointers.size || gesture) return;
+  if (pointerAutoFitBefore && !pointerChangedView) {
+    autoFitActive = true;
+    if (pointerFitPending) fit({ announce: false });
+  }
+  pointerAutoFitBefore = null;
+  pointerChangedView = false;
+  pointerFitPending = false;
+}
+
+function fitAfterLayoutChange() {
+  if (autoFitActive) fit({ announce: false });
+  else if (activePointers.size && pointerAutoFitBefore) pointerFitPending = true;
+}
+
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
   const next = zoomAt(view, view.scale * factor, point, fitScaleFloor);
   if (factor < 1 && next.scale >= view.scale) return;
+  if (activePointers.size) pointerChangedView = true;
   autoFitActive = false;
   view = next;
   applyView();
@@ -1655,12 +1676,16 @@ function updatePinch() {
     gesture.startScale * (distance / gesture.startDistance),
     fitScaleFloor,
   );
-  autoFitActive = false;
-  view = {
+  const nextView = {
     x: midpoint.x - gesture.diagramPoint.x * scale,
     y: midpoint.y - gesture.diagramPoint.y * scale,
     scale,
   };
+  if (nextView.x !== view.x || nextView.y !== view.y || nextView.scale !== view.scale) {
+    pointerChangedView = true;
+  }
+  autoFitActive = false;
+  view = nextView;
   applyView();
 }
 
@@ -1729,7 +1754,12 @@ applyAllNodeTransforms();
 
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
-  // Any deliberate canvas pointer gesture owns its view before the first move.
+  // The first pointer suspends fit; pure taps restore the previously active mode.
+  if (activePointers.size === 0) {
+    pointerAutoFitBefore = autoFitActive;
+    pointerChangedView = false;
+    pointerFitPending = false;
+  }
   autoFitActive = false;
   const point = localPoint(event);
   const node = nodeFromTarget(event.target);
@@ -1765,6 +1795,7 @@ viewport.addEventListener("pointerdown", (event) => {
       edgeReattach = null;
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      releasePointerAutoFitIfIdle();
       rebuildDocument(document);
       return;
     }
@@ -1774,6 +1805,7 @@ viewport.addEventListener("pointerdown", (event) => {
         edgeCreateSource = null;
         activePointers.delete(event.pointerId);
         try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* no rebuild */ }
+        releasePointerAutoFitIfIdle();
         return;
       }
       const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
@@ -1791,6 +1823,7 @@ viewport.addEventListener("pointerdown", (event) => {
       edgeCreateSource = null;
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      releasePointerAutoFitIfIdle();
       rebuildDocument(document);
       return;
     }
@@ -1815,6 +1848,7 @@ viewport.addEventListener("pointerdown", (event) => {
     activePointers.delete(event.pointerId);
     try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
     gesture = null;
+    releasePointerAutoFitIfIdle();
     return;
   }
   selectNode(null);
@@ -1845,6 +1879,9 @@ viewport.addEventListener("pointermove", (event) => {
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
   if (gesture.kind === "pan") {
+    if (event.clientX !== gesture.startX || event.clientY !== gesture.startY) {
+      pointerChangedView = true;
+    }
     autoFitActive = false;
     view = panBy(gesture.startView, event.clientX - gesture.startX, event.clientY - gesture.startY);
     applyView();
@@ -1855,6 +1892,7 @@ viewport.addEventListener("pointermove", (event) => {
     const screenDy = event.clientY - gesture.startY;
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
     gesture.moved = true;
+    pointerChangedView = true;
     const delta = screenDeltaToSvg(view, screenDx, screenDy);
     setNodeOffset(
       gesture.sourceId,
@@ -1916,6 +1954,7 @@ function finishPointer(event) {
     }
   }
   if (!gesture) viewport.classList.remove("is-panning");
+  releasePointerAutoFitIfIdle();
 }
 viewport.addEventListener("pointerup", finishPointer);
 viewport.addEventListener("pointercancel", finishPointer);
@@ -1931,6 +1970,9 @@ viewport.addEventListener("wheel", (event) => {
     const factor = Math.exp(-event.deltaY * modeScale * 0.0015);
     zoomBy(factor, localPoint(event));
     return;
+  }
+  if (activePointers.size && (event.deltaX !== 0 || event.deltaY !== 0)) {
+    pointerChangedView = true;
   }
   autoFitActive = false;
   view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);
@@ -2061,16 +2103,12 @@ if (documentEditorHosted) {
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
-window.addEventListener("resize", () => {
-  if (autoFitActive) fit({ announce: false });
-});
+window.addEventListener("resize", fitAfterLayoutChange);
 // A longer live status can grow this overlay after the previous auto-fit.
 // Keep automatic clearance synchronized, without changing manual zoom or pan.
 const viewerBar = document.querySelector(".viewer-bar");
 if (viewerBar && typeof ResizeObserver === "function") {
-  new ResizeObserver(() => {
-    if (autoFitActive) fit({ announce: false });
-  }).observe(viewerBar);
+  new ResizeObserver(fitAfterLayoutChange).observe(viewerBar);
 }
 resetLayout.addEventListener("click", () => {
   overrides = {};

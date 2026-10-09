@@ -49,6 +49,10 @@ BROWSER_SMOKE_TESTS = (
         "tests/visual/test_standalone_editor_single_workspace.py::"
         "test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable"
     ),
+    (
+        "tests/visual/test_native_viewer_tap_autofit_browser.py::"
+        "test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences"
+    ),
 )
 MAX_ATTEMPTS = 2
 
