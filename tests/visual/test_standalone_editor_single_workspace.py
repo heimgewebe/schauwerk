@@ -958,6 +958,38 @@ const wait = async (predicate, label) => {
     touch("pointerup", 82, 120, 420);
     await resetFit();
 
+    // Background pan owns its view before a first move, even during status growth.
+    const heldPanView = dragCanvas.style.transform;
+    fireDrag(dragViewport, "pointerdown", 280, 400);
+    nativeStatus.textContent = longStatus;
+    await waitFrame();
+    if (dragCanvas.style.transform !== heldPanView) {
+      throw new Error("held background pan allowed auto-fit before first move: "
+        + heldPanView + " => " + dragCanvas.style.transform);
+    }
+    fireDrag(dragViewport, "pointercancel", 280, 400);
+    await resetFit();
+
+    // Taking a dragged node over into pinch rolls the offset and status back.
+    const takeoverInitialTransform = dragNode.getAttribute("transform");
+    fireDrag(dragNode, "pointerdown", startX, startY);
+    fireDrag(dragViewport, "pointermove", startX + 24, startY + 3);
+    await waitFrame();
+    if (nativeStatus.textContent.trim() !== "Position geändert · Verbindungen angepasst") {
+      throw new Error("takeover test did not start from an active node drag");
+    }
+    touch("pointerdown", 82, 255, 420);
+    await waitFrame();
+    if (dragNode.getAttribute("transform") !== takeoverInitialTransform) {
+      throw new Error("pinch takeover did not rollback dragged node");
+    }
+    if (nativeStatus.textContent.trim() !== "Verschieben abgebrochen") {
+      throw new Error("pinch takeover retained stale drag mutation status");
+    }
+    touch("pointerup", 82, 255, 420);
+    fireDrag(dragViewport, "pointerup", startX + 24, startY + 3);
+    await resetFit();
+
     fireDrag(dragNode, "pointerdown", startX, startY);
     fireDrag(dragViewport, "pointermove", startX + 24, startY + 3);
     await waitFrame();

@@ -1632,13 +1632,12 @@ function startPinchIfPossible() {
         gesture.rollbackOffset.y,
       );
       applyNodeTransform(gesture.sourceId);
+      setStatus("Verschieben abgebrochen");
     }
     nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
   }
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const diagramPoint = { x: (midpoint.x - view.x) / view.scale, y: (midpoint.y - view.y) / view.scale };
-  // Pinch owns its transform from the first two-pointer contact.
-  autoFitActive = false;
   gesture = { kind: "pinch", startDistance: distance, startScale: view.scale, diagramPoint };
   viewport.classList.add("is-panning");
   return true;
@@ -1730,6 +1729,8 @@ applyAllNodeTransforms();
 
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
+  // Any deliberate canvas pointer gesture owns its view before the first move.
+  autoFitActive = false;
   const point = localPoint(event);
   const node = nodeFromTarget(event.target);
   const edge = node ? null : edgeFromTarget(event.target);
@@ -1793,8 +1794,6 @@ viewport.addEventListener("pointerdown", (event) => {
       rebuildDocument(document);
       return;
     }
-    // Prevent asynchronous overlay growth from moving the view during a held node.
-    autoFitActive = false;
     selectNode(sourceId);
     const startOffset = nodeOffset(overrides, sourceId);
     gesture = {
