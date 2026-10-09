@@ -5,9 +5,11 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.request import urlopen
 
 import pytest
 
@@ -1355,6 +1357,8 @@ def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
     safe_left: int,
     safe_right: int,
 ) -> None:
+    from websockets.sync.client import connect
+
     chrome = _chrome()
     if chrome is None:
         _skip_or_fail_browser("Google Chrome is unavailable for standalone fit regression")
@@ -1480,6 +1484,9 @@ try {
   // actions). Every actual contextual subset must also fit within safe edges.
   const safeLeft = __SAFE_LEFT__;
   const safeRight = __SAFE_RIGHT__;
+  if (innerWidth !== __WIDTH__ || innerHeight !== __HEIGHT__) {
+    throw new Error("native fit CDP did not use requested CSS viewport");
+  }
   if (safeLeft || safeRight) {
     const editControls = document.querySelector(".edit-controls");
     const editMenu = document.querySelector(".edit-menu");
@@ -1499,6 +1506,33 @@ try {
           + menuRect.left.toFixed(2) + "/"
           + menuRect.right.toFixed(2),
       );
+    }
+    const safeEdge = innerWidth - safeRight;
+    const selection = document.querySelector("#selectionStatus");
+    selection.textContent = "Element: " + "LangerKnotenname".repeat(25);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const footBounds = foot.getBoundingClientRect();
+    if (footBounds.left < safeLeft - 0.5
+        || footBounds.right > safeEdge + 0.5
+        || foot.scrollWidth > foot.clientWidth + 1) {
+      throw new Error("native selection footer escapes horizontal safe area: "
+        + footBounds.left.toFixed(2) + "/" + footBounds.right.toFixed(2));
+    }
+    for (const target of bar.querySelectorAll(
+      ".view-controls button, .view-controls output, .edit-controls > summary"
+    )) {
+      if (!target.getClientRects().length) continue;
+      const r = target.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1
+          || r.left < safeLeft - 0.5 || r.right > safeEdge + 0.5) {
+        throw new Error("native toolbar control escapes horizontal safe area: "
+          + (target.id || target.tagName) + " " + r.left.toFixed(2) + "/" + r.right.toFixed(2));
+      }
+    }
+    fitButton.click();
+    const liveTop = marker(box.x, box.y).top;
+    if (liveTop - bar.getBoundingClientRect().bottom < 8) {
+      throw new Error("wrapped native toolbar masks fitted diagram content");
     }
   }
   document.documentElement.dataset.standaloneFitClearanceRegression = "pass";
@@ -1520,6 +1554,8 @@ try {
     probe = (
         probe.replace("__SAFE_LEFT__", str(safe_left))
         .replace("__SAFE_RIGHT__", str(safe_right))
+        .replace("__WIDTH__", str(width))
+        .replace("__HEIGHT__", str(height))
     )
     index_path.write_text(
         index.replace(app_tag, app_tag + probe, 1),
@@ -1535,42 +1571,83 @@ try {
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     port = int(server.server_address[1])
+    chrome_profile = tmp_path / f"standalone-fit-chrome-{width}x{height}"
+    debug_port_file = chrome_profile / "DevToolsActivePort"
+    proc = subprocess.Popen(
+        [
+            chrome, "--headless=new", "--no-first-run", "--disable-gpu",
+            "--disable-dev-shm-usage", "--no-sandbox",
+            "--remote-allow-origins=http://localhost",
+            "--remote-debugging-port=0", f"--user-data-dir={chrome_profile}",
+            "about:blank",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     try:
-        try:
-            completed = subprocess.run(
-                [
-                    chrome,
-                    "--headless=new",
-                    f"--user-data-dir={tmp_path / f'standalone-fit-chrome-{width}x{height}'}",
-                    "--no-first-run",
-                    "--disable-gpu",
-                    "--disable-dev-shm-usage",
-                    "--no-sandbox",
-                    "--run-all-compositor-stages-before-draw",
-                    f"--window-size={width},{height}",
-                    "--virtual-time-budget=12000",
-                    "--dump-dom",
-                    f"http://127.0.0.1:{port}/",
-                ],
-                check=False,
-                text=True,
-                capture_output=True,
-                timeout=20,
-            )
-        except subprocess.TimeoutExpired:
-            _skip_or_fail_browser(
-                "Google Chrome standalone fit probe did not become usable in time"
-            )
-            raise AssertionError("unreachable")
+        tab = None
+        for _ in range(100):
+            try:
+                port_text = debug_port_file.read_text(encoding="utf-8").splitlines()[0]
+                debug_port = int(port_text)
+                with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
+                    tab = next(
+                        (item for item in json.load(response) if item.get("type") == "page"),
+                        None,
+                    )
+                if tab:
+                    break
+            except (OSError, TimeoutError, ValueError, IndexError):
+                pass
+            time.sleep(0.12)
+        assert tab, "native fit CDP page was not ready"
+        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
+            message_id = 0
+
+            def cdp(method: str, parameters: dict | None = None) -> dict:
+                nonlocal message_id
+                message_id += 1
+                current_id = message_id
+                ws.send(json.dumps({
+                    "id": current_id, "method": method, "params": parameters or {},
+                }))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    incoming = json.loads(ws.recv(timeout=max(0.1, deadline - time.monotonic())))
+                    if incoming.get("id") == current_id:
+                        assert "error" not in incoming, incoming.get("error")
+                        return incoming.get("result", {})
+                raise AssertionError("native fit CDP timeout: " + method)
+
+            cdp("Page.enable")
+            cdp("Runtime.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": width, "height": height,
+                "deviceScaleFactor": 1, "mobile": False,
+            })
+            cdp("Page.navigate", {"url": f"http://127.0.0.1:{port}/"})
+            for _ in range(120):
+                value = cdp("Runtime.evaluate", {
+                    "expression": (
+                        "({state:document.documentElement.dataset.standaloneFitClearanceRegression||'',"
+                        "error:document.documentElement.dataset.standaloneFitClearanceError||''})"
+                    ),
+                    "returnByValue": True,
+                }).get("result", {}).get("value", {})
+                if value.get("state") == "fail":
+                    pytest.fail(str(value.get("error")))
+                if value.get("state") == "pass":
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail("native fit CDP probe did not complete")
     finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
-
-    assert completed.returncode == 0, completed.stderr
-    assert (
-        'data-standalone-fit-clearance-regression="pass"' in completed.stdout
-    ), completed.stdout
-    assert (
-        'data-standalone-fit-clearance-regression="fail"' not in completed.stdout
-    ), completed.stdout

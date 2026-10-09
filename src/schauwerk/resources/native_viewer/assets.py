@@ -218,6 +218,7 @@ button:focus-visible {
 }
 .controls {
   min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -226,9 +227,12 @@ button:focus-visible {
   pointer-events: auto;
 }
 .view-controls {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--line);
@@ -395,7 +399,10 @@ button:focus-visible {
   left: max(7px, env(safe-area-inset-left));
   bottom: max(7px, env(safe-area-inset-bottom));
   min-height: 0;
-  max-width: calc(100vw - 14px);
+  max-width: calc(
+    100vw - max(7px, env(safe-area-inset-left))
+    - max(7px, env(safe-area-inset-right))
+  );
   padding: 6px 8px;
   display: flex;
   align-items: center;
@@ -410,6 +417,10 @@ button:focus-visible {
   pointer-events: none;
 }
 .viewer-foot span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink);
   font-weight: 700;
 }
@@ -457,7 +468,10 @@ button:focus-visible {
   .viewer-foot {
     left: max(6px, env(safe-area-inset-left));
     bottom: max(6px, env(safe-area-inset-bottom));
-    max-width: calc(100vw - 12px);
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left))
+      - max(6px, env(safe-area-inset-right))
+    );
   }
 }
 @media (max-width: 430px) {
@@ -470,14 +484,14 @@ button:focus-visible {
 
 @media (max-width: 360px) {
   /* A live editing instruction must not sit underneath zoom/edit controls. */
-  .document-editor-hosted .viewer-bar { flex-wrap: wrap; gap: 4px; }
-  .document-editor-hosted .controls {
+  .viewer-bar { flex-wrap: wrap; gap: 4px; }
+  .controls {
     order: 0;
     width: 100%;
     margin-left: 0;
     justify-content: flex-end;
   }
-  .document-editor-hosted .viewer-heading {
+  .viewer-heading {
     order: 1;
     flex: 0 0 100%;
     width: 100%;
