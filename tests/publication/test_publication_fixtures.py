@@ -290,6 +290,10 @@ SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-status-drag-20261009"
 )
+SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-gesture-cancel-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -951,6 +955,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     single_workspace_status_drag_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_gesture_cancel_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
@@ -8186,6 +8194,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_status_drag_superseded_files
     )
     for name, sha in drag_acceptance["source_bindings"].items():
+        if name in single_workspace_gesture_cancel_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(drag_acceptance["checks"].values())
     drag_checks = drag_acceptance["check_evidence"]
@@ -8240,6 +8250,87 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert geom["host_bar"]["left"] >= area["left"] - 0.5
         assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
     assert covered_drag_cases == expected_drag_cases
+    # The 4fe085f gesture correction is a newly accepted revision, not an
+    # inheritance of the previous status-drag visual acceptance.
+    gesture_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    gesture_acceptance = json.loads(gesture_path.read_text(encoding="utf-8"))
+    assert gesture_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-gesture-cancel.v1"
+    )
+    assert gesture_acceptance["functional_head"] == (
+        "4fe085ffc9f9d2e9635f62581c789b6b65a921df"
+    )
+    assert gesture_acceptance["parent_evidence"] == {
+        "path": str(drag_path.relative_to(ROOT)),
+        "schema_version": drag_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(drag_path.read_bytes()).hexdigest(),
+        "evidence_digest": drag_acceptance["evidence_digest"],
+    }
+    assert gesture_acceptance["evidence_digest"] == digest_mapping(
+        gesture_acceptance, "evidence_digest"
+    )
+    assert set(gesture_acceptance["source_bindings"]) == (
+        single_workspace_gesture_cancel_superseded_files
+    )
+    for name, digest in gesture_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert all(gesture_acceptance["checks"].values())
+    assert gesture_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
+        "157f8573df4845e99b0f859a"
+    )
+    assert gesture_acceptance["check_evidence"]["focused_browser_green"]["passed_count"] == 3
+    assert gesture_acceptance["check_evidence"]["focused_browser_green"]["failed_count"] == 0
+    assert gesture_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert set(gesture_acceptance["visual_readbacks"]) == {"drag"}
+    gesture_meta = gesture_acceptance["visual_readbacks"]["drag"]
+    gesture_raw = (ROOT / gesture_meta["path"]).read_bytes()
+    assert hashlib.sha256(gesture_raw).hexdigest() == gesture_meta["sha256"]
+    gesture_readback = json.loads(gesture_raw)
+    assert gesture_readback["schema_version"] == gesture_meta["schema_version"]
+    assert gesture_readback["functional_head"] == gesture_acceptance["functional_head"]
+    assert gesture_readback["source_bindings"] == gesture_acceptance["source_bindings"]
+    assert gesture_meta["native_css_sha256"] == native_css_sha
+    assert gesture_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(gesture_readback["cases"]) == gesture_meta["case_count"] == 2
+    gesture_seen = set()
+    for case in gesture_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in gesture_seen
+        gesture_seen.add(key)
+        bound = gesture_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert bound["viewport"] == [width, height]
+        assert bound["safe_area"] == area
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geom = case["geometry"]
+        assert geom["status_text"] == "Position geändert · Verbindungen angepasst"
+        assert geom["view_before"] == geom["view_during"] == geom["view_after"]
+        assert geom["node_move_px"] >= 20 and geom["active_drag"] is True
+        assert geom["bar_during"]["bottom"] - geom["bar_before"]["bottom"] >= 20
+        assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+        assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+        assert geom["overlap_area"] <= 0.5 and geom["visibility"] == "visible"
+        assert abs(geom["stage"]["width"] - width) < 1
+        assert abs(geom["stage"]["height"] - height) < 1
+        assert geom["host_bar"]["left"] >= area["left"] - 0.5
+        assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert gesture_seen == {(390, 844, 44, 0), (390, 844, 0, 44)}
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -8268,7 +8359,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_status_drag_superseded_files:
+        if name in single_workspace_gesture_cancel_superseded_files:
+            assert gesture_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_status_drag_superseded_files:
             assert drag_acceptance["source_bindings"][name] == current
         elif name in single_workspace_status_autofit_superseded_files:
             assert status_acceptance["source_bindings"][name] == current

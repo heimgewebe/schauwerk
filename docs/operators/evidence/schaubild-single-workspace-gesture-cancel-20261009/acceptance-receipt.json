@@ -1,0 +1,102 @@
+{
+  "check_evidence": {
+    "capture_task": {
+      "case_count": 2,
+      "task_id": "acbc9c8aed1744c095011de4"
+    },
+    "focused_browser_green": {
+      "checks": [
+        "prethreshold node hold",
+        "pointercancel rollback",
+        "pinch-before-move status growth",
+        "ongoing node drag view stability"
+      ],
+      "failed_count": 0,
+      "passed_count": 3,
+      "task_id": "46fe3618908241ddb8a5dae4"
+    },
+    "prior_local_red": {
+      "message": "pre-threshold node hold allowed status re-fit",
+      "task_id": "157f8573df4845e99b0f859a",
+      "view_after": "translate(171.867px, 151px) scale(0.111216)",
+      "view_before": "translate(169.668px, 95px) scale(0.12179)"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with emulated CSS viewport and simulated host safe insets; not physical iOS/Safari",
+        "Native pointer events are deliberately synthesized in source-bound CDP harness; functional browser regression separately exercises mid-drag scheduling",
+        "This is a new visual acceptance; no earlier acceptance was inherited"
+      ],
+      "method": "Both newly captured 390x844 Chrome CDP PNGs individually inspected: live drag text unobstructed, source node visible and status/controls separated; full viewport and host navigation preserved. Separate Chrome regressions cover pointercancel rollback, pre-threshold held node and pinch start."
+    }
+  },
+  "checks": {
+    "drag_status_grows_toolbar": true,
+    "drag_transform_stable_across_frames": true,
+    "exact_parent_immutable": true,
+    "full_canvas_and_host_actions_preserved": true,
+    "native_status_visible_unclipped": true,
+    "node_follows_pointer": true,
+    "real_css_safearea_viewport": true,
+    "red_before_green_chromium": true,
+    "source_and_test_sha_bound": true,
+    "two_png_sha_dimensions_verified": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "post-final GitHub Python 3.12 and required CI",
+    "independent exact-head reviewer PASS",
+    "captain-run authorization",
+    "deployment"
+  ],
+  "evidence_digest": "81f581d077a7cf33191093263f6122c542c7d0931873e6f49135ab76e7b4d7e4",
+  "functional_head": "4fe085ffc9f9d2e9635f62581c789b6b65a921df",
+  "parent_evidence": {
+    "evidence_digest": "b252aa9aad3b264d539ef394f64394ce6868bfbd325b2b6584bb13ab5406a828",
+    "file_sha256": "88be3584f8daaf421d40246b86e2dc650ea965b3d9624ffaf1633e0f086f939a",
+    "path": "docs/operators/evidence/schaubild-single-workspace-status-drag-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-drag-status.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-gesture-cancel.v1",
+  "scope": "Manual gesture ownership starts at node hold and pinch initiation, pointercancel rolls back changes, and ongoing drag remains visually stable under status growth; full native canvas and controls remain",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "32536e43291c85d727019dbbbfdad88f1287f9427cc16edec92382b0d110461f",
+    "tests/visual/test_standalone_editor_single_workspace.py": "32afe0ece02c8d8767680c9575071a1103e6f205c9dd497790eb6a820633f175"
+  },
+  "visual_readbacks": {
+    "drag": {
+      "case_count": 2,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-gesture-cancel-20261009/visual-drag-readback.json",
+      "schema_version": "schauwerk-pr203-gesture-cancel-cdp-visual.v1",
+      "screenshots": {
+        "drag-390x844-left0-right44.png": {
+          "bytes": 27781,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "07936e1d4f5b9b14ecb67ddc39d696354092efb0f07953c8b82fa85ccafc3796",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "drag-390x844-left44-right0.png": {
+          "bytes": 27764,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "7be30ba34fa67f27f4a43924567f3dd3c44edd497cdd460ebf95d4bb145b86ad",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "0c6b50f5a677d816601539c570756fa44b2b232022a59c6ff5c6f4cf92aed838"
+    }
+  }
+}
