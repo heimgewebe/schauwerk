@@ -1,0 +1,199 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "active_drag": true,
+        "bar_before": {
+          "bottom": 86.125,
+          "height": 80.125,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "bar_during": {
+          "bottom": 114.375,
+          "height": 108.375,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "controls": {
+          "bottom": 114.375,
+          "height": 48,
+          "left": 70.828125,
+          "right": 384,
+          "top": 66.375,
+          "width": 313.171875
+        },
+        "height": 844,
+        "host_bar": {
+          "bottom": 836,
+          "height": 52,
+          "left": 244.125,
+          "right": 384,
+          "top": 784,
+          "width": 139.875
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:37707/native/9fac98db0e3c7a1f0068db625c144952/index.html",
+        "node_after": {
+          "bottom": 356.1204528808594,
+          "height": 32.189788818359375,
+          "left": 108.6058349609375,
+          "right": 167.6204376220703,
+          "top": 323.9306640625,
+          "width": 59.01460266113281
+        },
+        "node_before": {
+          "bottom": 353.1204528808594,
+          "height": 32.189788818359375,
+          "left": 71.6058349609375,
+          "right": 130.6204376220703,
+          "top": 320.9306640625,
+          "width": 59.01460266113281
+        },
+        "node_move_px": 37,
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 61.375,
+          "height": 54.375,
+          "left": 7,
+          "right": 133,
+          "top": 7,
+          "width": 126
+        },
+        "status_client_height": 52,
+        "status_client_width": 124,
+        "status_scroll_height": 52,
+        "status_scroll_width": 124,
+        "status_text": "Position geändert · Verbindungen angepasst",
+        "view_after": "translate(48px, 297.325px) scale(0.268248)",
+        "view_before": "translate(48px, 297.325px) scale(0.268248)",
+        "view_during": "translate(48px, 297.325px) scale(0.268248)",
+        "visibility": "visible",
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 27764,
+      "screenshot_file": "drag-390x844-left44-right0.png",
+      "screenshot_sha256": "7be30ba34fa67f27f4a43924567f3dd3c44edd497cdd460ebf95d4bb145b86ad",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 390
+    },
+    {
+      "geometry": {
+        "active_drag": true,
+        "bar_before": {
+          "bottom": 86.125,
+          "height": 80.125,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "bar_during": {
+          "bottom": 114.375,
+          "height": 108.375,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "controls": {
+          "bottom": 114.375,
+          "height": 48,
+          "left": 70.828125,
+          "right": 384,
+          "top": 66.375,
+          "width": 313.171875
+        },
+        "height": 844,
+        "host_bar": {
+          "bottom": 836,
+          "height": 52,
+          "left": 206.125,
+          "right": 346,
+          "top": 784,
+          "width": 139.875
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:41585/native/9d460f23a9714f9fba0bf26303673719/index.html",
+        "node_after": {
+          "bottom": 356.1204528808594,
+          "height": 32.189788818359375,
+          "left": 108.6058349609375,
+          "right": 167.6204376220703,
+          "top": 323.9306640625,
+          "width": 59.01460266113281
+        },
+        "node_before": {
+          "bottom": 353.1204528808594,
+          "height": 32.189788818359375,
+          "left": 71.6058349609375,
+          "right": 130.6204376220703,
+          "top": 320.9306640625,
+          "width": 59.01460266113281
+        },
+        "node_move_px": 37,
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 61.375,
+          "height": 54.375,
+          "left": 7,
+          "right": 133,
+          "top": 7,
+          "width": 126
+        },
+        "status_client_height": 52,
+        "status_client_width": 124,
+        "status_scroll_height": 52,
+        "status_scroll_width": 124,
+        "status_text": "Position geändert · Verbindungen angepasst",
+        "view_after": "translate(48px, 297.325px) scale(0.268248)",
+        "view_before": "translate(48px, 297.325px) scale(0.268248)",
+        "view_during": "translate(48px, 297.325px) scale(0.268248)",
+        "visibility": "visible",
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 27781,
+      "screenshot_file": "drag-390x844-left0-right44.png",
+      "screenshot_sha256": "07936e1d4f5b9b14ecb67ddc39d696354092efb0f07953c8b82fa85ccafc3796",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 390
+    }
+  ],
+  "functional_head": "901335742df80f2e6169f6e921e34b24f51d78fc",
+  "native_child_styles_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+  "pythonpath": "/home/alex/repos/.grabowski-worktrees/schauwerk-pr203-postreview-20261008/src",
+  "schema_version": "schauwerk-pr203-drag-status-cdp-visual.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "8ad489d40b72350b94390c97b14999112a0667ff7005203614b3c39e9861f812",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0122aca6c3ae7b3575bad172741833473e718bf08bf6ee5cf5c0270a3bcdddc6"
+  },
+  "viewport_method": "Chrome CDP real CSS viewport; isolated safe-area CSS substitution"
+}

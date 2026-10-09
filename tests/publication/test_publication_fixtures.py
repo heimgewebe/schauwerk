@@ -286,6 +286,10 @@ SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-status-autofit-20261009"
 )
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-status-drag-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -943,6 +947,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/native_viewer/assets.py",
     }
     single_workspace_status_autofit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_status_drag_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
@@ -8094,6 +8102,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_status_autofit_superseded_files
     )
     for name, expected in status_acceptance["source_bindings"].items():
+        if name in single_workspace_status_drag_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(status_acceptance["checks"].values())
     assert status_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
@@ -8151,6 +8161,85 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert geometry["host_bar"]["left"] >= area["left"] - 0.5
         assert geometry["host_bar"]["right"] <= width - area["right"] + 0.5
     assert covered_status_cases == expected_status_cases
+    # New 9013357 drag interaction explicitly supersedes the two source/test
+    # bindings of 088269c; no visual acceptance transfers automatically.
+    drag_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE / "acceptance-receipt.json"
+    )
+    drag_acceptance = json.loads(drag_path.read_text(encoding="utf-8"))
+    assert drag_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-drag-status.v1"
+    )
+    assert drag_acceptance["functional_head"] == (
+        "901335742df80f2e6169f6e921e34b24f51d78fc"
+    )
+    assert drag_acceptance["parent_evidence"] == {
+        "path": str(status_path.relative_to(ROOT)),
+        "schema_version": status_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(status_path.read_bytes()).hexdigest(),
+        "evidence_digest": status_acceptance["evidence_digest"],
+    }
+    assert drag_acceptance["evidence_digest"] == digest_mapping(
+        drag_acceptance, "evidence_digest"
+    )
+    assert set(drag_acceptance["source_bindings"]) == (
+        single_workspace_status_drag_superseded_files
+    )
+    for name, sha in drag_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(drag_acceptance["checks"].values())
+    drag_checks = drag_acceptance["check_evidence"]
+    assert drag_checks["prior_local_red"]["task_id"] == "5cf36257993c46089c23a17f"
+    assert drag_checks["focused_browser_green"]["passed_count"] == 3
+    assert drag_checks["focused_browser_green"]["failed_count"] == 0
+    assert drag_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(drag_acceptance["visual_readbacks"]) == {"drag"}
+    drag_meta = drag_acceptance["visual_readbacks"]["drag"]
+    drag_raw = (ROOT / drag_meta["path"]).read_bytes()
+    assert hashlib.sha256(drag_raw).hexdigest() == drag_meta["sha256"]
+    drag_readback = json.loads(drag_raw)
+    assert drag_readback["schema_version"] == drag_meta["schema_version"]
+    assert drag_readback["functional_head"] == drag_acceptance["functional_head"]
+    assert drag_readback["source_bindings"] == drag_acceptance["source_bindings"]
+    assert drag_meta["native_css_sha256"] == native_css_sha
+    assert drag_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(drag_readback["cases"]) == drag_meta["case_count"] == 2
+    expected_drag_cases = {(390, 844, 44, 0), (390, 844, 0, 44)}
+    covered_drag_cases = set()
+    for case in drag_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in expected_drag_cases and key not in covered_drag_cases
+        covered_drag_cases.add(key)
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE / case["screenshot_file"]
+        ).read_bytes()
+        bound = drag_meta["screenshots"][case["screenshot_file"]]
+        assert bound["viewport"] == [width, height]
+        assert bound["safe_area"] == area
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geom = case["geometry"]
+        assert geom["status_text"] == "Position geändert · Verbindungen angepasst"
+        assert geom["view_before"] == geom["view_during"] == geom["view_after"]
+        assert geom["node_move_px"] >= 20
+        assert geom["active_drag"] is True
+        assert geom["bar_during"]["bottom"] - geom["bar_before"]["bottom"] >= 20
+        assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+        assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+        assert geom["overlap_area"] <= 0.5 and geom["visibility"] == "visible"
+        assert abs(geom["stage"]["width"] - width) < 1
+        assert abs(geom["stage"]["height"] - height) < 1
+        assert geom["host_bar"]["left"] >= area["left"] - 0.5
+        assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert covered_drag_cases == expected_drag_cases
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -8179,7 +8268,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_status_autofit_superseded_files:
+        if name in single_workspace_status_drag_superseded_files:
+            assert drag_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_status_autofit_superseded_files:
             assert status_acceptance["source_bindings"][name] == current
         elif name in single_workspace_mobile_prompt_width_superseded_files:
             assert prompt_acceptance["source_bindings"][name] == current

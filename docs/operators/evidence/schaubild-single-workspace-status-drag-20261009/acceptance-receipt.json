@@ -1,0 +1,96 @@
+{
+  "check_evidence": {
+    "capture_task": {
+      "case_count": 2,
+      "task_id": "eb96c5b4171948ba92c50d6c"
+    },
+    "focused_browser_green": {
+      "failed_count": 0,
+      "passed_count": 3,
+      "task_id": "fe6c998f58d94aee9bdb63dc"
+    },
+    "prior_local_red": {
+      "message": "dragging node triggered auto-fit after status growth",
+      "task_id": "5cf36257993c46089c23a17f",
+      "view_after": "translate(170.767px, 123px) scale(0.116503)",
+      "view_before": "translate(169.668px, 95px) scale(0.12179)"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with emulated CSS viewport and simulated host safe insets; not physical iOS/Safari",
+        "Native pointer events are deliberately synthesized in source-bound CDP harness; functional browser regression separately exercises mid-drag scheduling",
+        "This is a new visual acceptance; no earlier acceptance was inherited"
+      ],
+      "method": "Direct visual inspection of both new 390x844 Chrome CDP screenshots confirms stable selected node layout, complete live status text, separated zoom/edit/export/navigation overlays and full canvas. Technical transform and PNG/digest checks are independent."
+    }
+  },
+  "checks": {
+    "drag_status_grows_toolbar": true,
+    "drag_transform_stable_across_frames": true,
+    "exact_parent_immutable": true,
+    "full_canvas_and_host_actions_preserved": true,
+    "native_status_visible_unclipped": true,
+    "node_follows_pointer": true,
+    "real_css_safearea_viewport": true,
+    "red_before_green_chromium": true,
+    "source_and_test_sha_bound": true,
+    "two_png_sha_dimensions_verified": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "post-final GitHub Python 3.12 and required CI",
+    "independent exact-head reviewer PASS",
+    "captain-run authorization",
+    "deployment"
+  ],
+  "evidence_digest": "b252aa9aad3b264d539ef394f64394ce6868bfbd325b2b6584bb13ab5406a828",
+  "functional_head": "901335742df80f2e6169f6e921e34b24f51d78fc",
+  "parent_evidence": {
+    "evidence_digest": "59f7b37e1df48fce636a33acc5f172a09d625818c43be7d912be60e39a554ee2",
+    "file_sha256": "fc4f1d3c7b975daa99606428a42664b4682de36a27d83621c0c73aea97177817",
+    "path": "docs/operators/evidence/schaubild-single-workspace-status-autofit-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-status-autofit.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-drag-status.v1",
+  "scope": "During native JSON node drag, a wrapped status change must not alter the fitted view transform; safe-area host controls, full canvas, and accessible live status remain",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "8ad489d40b72350b94390c97b14999112a0667ff7005203614b3c39e9861f812",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0122aca6c3ae7b3575bad172741833473e718bf08bf6ee5cf5c0270a3bcdddc6"
+  },
+  "visual_readbacks": {
+    "drag": {
+      "case_count": 2,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-status-drag-20261009/visual-drag-readback.json",
+      "schema_version": "schauwerk-pr203-drag-status-cdp-visual.v1",
+      "screenshots": {
+        "drag-390x844-left0-right44.png": {
+          "bytes": 27781,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "07936e1d4f5b9b14ecb67ddc39d696354092efb0f07953c8b82fa85ccafc3796",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "drag-390x844-left44-right0.png": {
+          "bytes": 27764,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "7be30ba34fa67f27f4a43924567f3dd3c44edd497cdd460ebf95d4bb145b86ad",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "0c76660f04e8ffe7b5afdfc072cdaa450396169be0f2b91aabc9c5c43ab04e79"
+    }
+  }
+}
