@@ -1,0 +1,104 @@
+{
+  "check_evidence": {
+    "browser_smoke_green": {
+      "failed_count": 0,
+      "job_id": "359f24c030f0",
+      "passed_count": 28
+    },
+    "canceled_drag_red": {
+      "job_id": "2357a906c423",
+      "message": "fully rolled-back node drag: tap-only pointer permanently disabled auto-fit"
+    },
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "d49d41e93faf",
+      "passed_count": 1
+    },
+    "tap_only_red": {
+      "job_id": "9832d98768bf",
+      "message": "node tap: tap-only pointer permanently disabled auto-fit"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with emulated CSS viewport and simulated safe insets, not physical iOS/Safari",
+        "Standalone viewer intentionally elides long status text; this receipt does not prove embedded status growth",
+        "Functional gestures separately verified in CDP; screenshots alone do not prove interactions",
+        "New visual acceptance; earlier acceptance was not inherited"
+      ],
+      "method": "Manually inspected both new real Chrome/CDP 390x844 PNGs; graph, selected node, zoom/fit/reset controls and selection footer visible and clear of opposing 44px host safe areas"
+    }
+  },
+  "checks": {
+    "exact_functional_head_source_test_bindings": true,
+    "full_cancel_and_pinch_takeover_rollback": true,
+    "held_pointer_no_auto_fit": true,
+    "immutable_parent_unchanged": true,
+    "manual_pan_zoom_node_drag_remain_manual": true,
+    "red_before_green_chromium": true,
+    "safearea_left_right_44px_no_controls_overlap": true,
+    "tap_node_edge_background_cancel_auto_fit": true,
+    "two_new_png_hash_dimensions_verified": true,
+    "viewport_resize_updates_auto_fit": true,
+    "visual_inspection_separate_from_technical_checks": true
+  },
+  "does_not_establish": [
+    "full local make validate with successor fixture",
+    "final GitHub CI and Python 3.12",
+    "independent exact-head reviewer PASS",
+    "Codex review settlement completeness",
+    "Captain merge authorization",
+    "physical iOS/Safari acceptance",
+    "deployment"
+  ],
+  "evidence_digest": "6cb4cf28dad7524cf255f74173ac549e3fe41248f5ad43f601099b0545528e58",
+  "functional_head": "25ac38668cfa049489dc5f5715de01c2b9d7192a",
+  "parent_evidence": {
+    "evidence_digest": "36d1ea6f2c789a980f99f968e605e3bba659f049ab81fc320722363bd10ad87b",
+    "file_sha256": "5d77cb1adbcd52effe377ad52fad0fc0525b31f0d02122e48ce660e4bc67745d",
+    "path": "docs/operators/evidence/schaubild-single-workspace-pointer-owner-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-pointer-owner.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-tap-autofit-rollback.v1",
+  "scope": "Restore pre-gesture auto-fit after motionless taps and fully canceled node drag, preserve manual pan/zoom/pinch and held-pointer ownership",
+  "source_bindings": {
+    "Makefile": "5308a84a3b918199f1cf4b7228d25ee981b17ba2a7c3b0041f9e143d04e86502",
+    "scripts/run_browser_smoke.py": "1f41e60eaec7f4724c5d4d0b39ab6dd824110b7577649b9de99acbe9ccaf2093",
+    "src/schauwerk/resources/native_viewer/assets.py": "a018b710d715baf258d72cad5d7f368482bb47d036f82e1d49c8832c2c12feb1",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "b9f58e35182533a6d5e2350250e95170e818f319755c8cc00cc170482a634e9a"
+  },
+  "visual_readbacks": {
+    "tap_resize": {
+      "case_count": 2,
+      "path": "docs/operators/evidence/schaubild-single-workspace-tap-autofit-rollback-20261009/visual-tap-readback.json",
+      "schema_version": "schauwerk-pr203-tap-autofit-chrome-cdp-visual.v1",
+      "screenshots": {
+        "tap-390x844-left0-right44.png": {
+          "bytes": 19129,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "9ecb9539c9985104f0961018ecbb651c8142d1f7b8bb7458cadd3dd946c8381d",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "tap-390x844-left44-right0.png": {
+          "bytes": 18378,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "c9ed9355483e6ae9d0919f7db1fe25de10ad3a9627827eb9c1e0c0e000dbd727",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "8106967cae6cb1533ee7c25e3cb393eb2bdd8b3e6afb367917d6152e4c7bb191"
+    }
+  }
+}

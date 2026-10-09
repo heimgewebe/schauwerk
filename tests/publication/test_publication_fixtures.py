@@ -298,6 +298,10 @@ SCHAUBILD_SINGLE_WORKSPACE_POINTER_OWNER_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-pointer-owner-20261009"
 )
+SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-tap-autofit-rollback-20261009"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -969,6 +973,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_pointer_owner_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_tap_autofit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_tap_autofit_browser.py",
+        "Makefile",
+        "scripts/run_browser_smoke.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -7291,7 +7301,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert mobile["evidence_digest"] == digest_mapping(mobile, "evidence_digest")
     assert set(mobile["source_bindings"]) == single_workspace_mobile_320_superseded_files
     for name, expected in mobile["source_bindings"].items():
-        if name in single_workspace_side_safearea_superseded_files:
+        if name in (
+            single_workspace_side_safearea_superseded_files
+            | single_workspace_tap_autofit_superseded_files
+        ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(mobile["checks"].values())
@@ -8367,6 +8380,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_pointer_owner_superseded_files
     )
     for name, sha in owner_acceptance["source_bindings"].items():
+        if name in single_workspace_tap_autofit_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(owner_acceptance["checks"].values())
     assert owner_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
@@ -8422,6 +8437,84 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert geom["host_bar"]["left"] >= area["left"] - 0.5
         assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
     assert owner_cases == {(390, 844, 44, 0), (390, 844, 0, 44)}
+    # The Tap-only / fully-canceled-drag revision has its own visual
+    # acceptance. Historical source hashes remain exact for prior revisions.
+    tap_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    tap_acceptance = json.loads(tap_path.read_text(encoding="utf-8"))
+    assert tap_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-tap-autofit-rollback.v1"
+    )
+    assert tap_acceptance["functional_head"] == (
+        "25ac38668cfa049489dc5f5715de01c2b9d7192a"
+    )
+    assert tap_acceptance["parent_evidence"] == {
+        "path": str(owner_path.relative_to(ROOT)),
+        "schema_version": owner_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(owner_path.read_bytes()).hexdigest(),
+        "evidence_digest": owner_acceptance["evidence_digest"],
+    }
+    assert tap_acceptance["evidence_digest"] == digest_mapping(
+        tap_acceptance, "evidence_digest"
+    )
+    assert set(tap_acceptance["source_bindings"]) == (
+        single_workspace_tap_autofit_superseded_files
+    )
+    for name, sha in tap_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(tap_acceptance["checks"].values())
+    evidence = tap_acceptance["check_evidence"]
+    assert evidence["tap_only_red"]["job_id"] == "9832d98768bf"
+    assert evidence["canceled_drag_red"]["job_id"] == "2357a906c423"
+    assert evidence["focused_green"]["passed_count"] == 1
+    assert evidence["focused_green"]["failed_count"] == 0
+    assert evidence["browser_smoke_green"]["passed_count"] == 28
+    assert evidence["browser_smoke_green"]["failed_count"] == 0
+    assert evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(tap_acceptance["visual_readbacks"]) == {"tap_resize"}
+    tap_meta = tap_acceptance["visual_readbacks"]["tap_resize"]
+    tap_raw = (ROOT / tap_meta["path"]).read_bytes()
+    assert hashlib.sha256(tap_raw).hexdigest() == tap_meta["sha256"]
+    tap_readback = json.loads(tap_raw)
+    assert tap_readback["schema_version"] == tap_meta["schema_version"]
+    assert tap_readback["functional_head"] == tap_acceptance["functional_head"]
+    assert tap_readback["source_bindings"] == tap_acceptance["source_bindings"]
+    assert len(tap_readback["cases"]) == tap_meta["case_count"] == 2
+    tap_seen = set()
+    for case in tap_readback["cases"]:
+        safe = case["simulated_safe_inset"]
+        width, height = case["viewport"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in tap_seen
+        tap_seen.add(key)
+        binding = tap_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == binding["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == binding["sha256"] == case["screenshot_sha256"]
+        assert binding["viewport"] == [width, height]
+        assert binding["safe_area"] == safe
+        geom = case["geometry"]
+        assert (geom["width"], geom["height"]) == (width, height)
+        assert geom["selected"] == "true" and not geom["documentOverflow"]
+        assert geom["view"] == case["view_before"]
+        assert case["view_after_tap_resize_320"] != case["view_before"]
+        assert geom["topMarker"]["top"] >= geom["bar"]["bottom"] + 7.5
+        assert geom["node"]["top"] >= geom["bar"]["bottom"] + 7.5
+        assert not geom["statusOverflow"] or geom["statusEllipsis"]
+        for control in geom["controls"]:
+            bounds = control["bounds"]
+            assert bounds["left"] >= safe["left"] - 0.5
+            assert bounds["right"] <= width - safe["right"] + 0.5
+    assert tap_seen == {(390, 844, 44, 0), (390, 844, 0, 44)}
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -8450,7 +8543,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_pointer_owner_superseded_files:
+        if name in single_workspace_tap_autofit_superseded_files:
+            assert tap_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_pointer_owner_superseded_files:
             assert owner_acceptance["source_bindings"][name] == current
         elif name in single_workspace_gesture_cancel_superseded_files:
             assert gesture_acceptance["source_bindings"][name] == current

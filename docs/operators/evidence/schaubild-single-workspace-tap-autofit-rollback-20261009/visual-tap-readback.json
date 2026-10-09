@@ -1,0 +1,281 @@
+{
+  "cases": [
+    {
+      "bar_before_bottom": 94,
+      "generated_css_sha256": "0c0eeddba329e3e1b5b7608633a5a8fe922d6e83039b8ad7ee18e2633520b7ef",
+      "geometry": {
+        "bar": {
+          "bottom": 94,
+          "height": 88,
+          "left": 44,
+          "right": 384,
+          "top": 6,
+          "width": 340,
+          "x": 44,
+          "y": 6
+        },
+        "controls": [
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 113.359375,
+              "right": 155.359375,
+              "top": 49,
+              "width": 42,
+              "x": 113.359375,
+              "y": 49
+            },
+            "title": "zoomOut"
+          },
+          {
+            "bounds": {
+              "bottom": 77,
+              "height": 14,
+              "left": 157.359375,
+              "right": 205.359375,
+              "top": 63,
+              "width": 48,
+              "x": 157.359375,
+              "y": 63
+            },
+            "title": "zoomValue"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 207.359375,
+              "right": 249.359375,
+              "top": 49,
+              "width": 42,
+              "x": 207.359375,
+              "y": 49
+            },
+            "title": "zoomIn"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 251.359375,
+              "right": 337,
+              "top": 49,
+              "width": 85.640625,
+              "x": 251.359375,
+              "y": 49
+            },
+            "title": "fitView"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 339,
+              "right": 381,
+              "top": 49,
+              "width": 42,
+              "x": 339,
+              "y": 49
+            },
+            "title": "resetLayout"
+          }
+        ],
+        "documentOverflow": false,
+        "footer": {
+          "bottom": 838,
+          "height": 28,
+          "left": 44,
+          "right": 137.90625,
+          "top": 810,
+          "width": 93.90625,
+          "x": 44,
+          "y": 810
+        },
+        "height": 844,
+        "node": {
+          "bottom": 438.3850402832031,
+          "height": 25.475830078125,
+          "left": 70.68228149414062,
+          "right": 117.38799285888672,
+          "top": 412.9092102050781,
+          "width": 46.705711364746094,
+          "x": 70.68228149414062,
+          "y": 412.9092102050781
+        },
+        "selected": "true",
+        "statusEllipsis": true,
+        "statusOverflow": true,
+        "statusText": "Ansicht angepasst",
+        "topMarker": {
+          "bottom": 394.4392395019531,
+          "height": 0.212310791015625,
+          "left": 52,
+          "right": 52.21229934692383,
+          "top": 394.2269287109375,
+          "width": 0.21229934692382812,
+          "x": 52,
+          "y": 394.2269287109375
+        },
+        "view": "translate(52px, 394.227px) scale(0.212299)",
+        "width": 390
+      },
+      "screenshot_bytes": 18378,
+      "screenshot_file": "tap-390x844-left44-right0.png",
+      "screenshot_sha256": "c9ed9355483e6ae9d0919f7db1fe25de10ad3a9627827eb9c1e0c0e000dbd727",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "view_after_tap_resize_320": "translate(52px, 430.448px) scale(0.161054)",
+      "view_before": "translate(52px, 394.227px) scale(0.212299)",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "bar_before_bottom": 94,
+      "generated_css_sha256": "5327c326a2d685e4e8f66a3289058ac43a1f6a216fff6656673ebf8b0b54429f",
+      "geometry": {
+        "bar": {
+          "bottom": 94,
+          "height": 88,
+          "left": 6,
+          "right": 346,
+          "top": 6,
+          "width": 340,
+          "x": 6,
+          "y": 6
+        },
+        "controls": [
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 75.359375,
+              "right": 117.359375,
+              "top": 49,
+              "width": 42,
+              "x": 75.359375,
+              "y": 49
+            },
+            "title": "zoomOut"
+          },
+          {
+            "bounds": {
+              "bottom": 77,
+              "height": 14,
+              "left": 119.359375,
+              "right": 167.359375,
+              "top": 63,
+              "width": 48,
+              "x": 119.359375,
+              "y": 63
+            },
+            "title": "zoomValue"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 169.359375,
+              "right": 211.359375,
+              "top": 49,
+              "width": 42,
+              "x": 169.359375,
+              "y": 49
+            },
+            "title": "zoomIn"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 213.359375,
+              "right": 299,
+              "top": 49,
+              "width": 85.640625,
+              "x": 213.359375,
+              "y": 49
+            },
+            "title": "fitView"
+          },
+          {
+            "bounds": {
+              "bottom": 91,
+              "height": 42,
+              "left": 301,
+              "right": 343,
+              "top": 49,
+              "width": 42,
+              "x": 301,
+              "y": 49
+            },
+            "title": "resetLayout"
+          }
+        ],
+        "documentOverflow": false,
+        "footer": {
+          "bottom": 838,
+          "height": 28,
+          "left": 6,
+          "right": 99.90625,
+          "top": 810,
+          "width": 93.90625,
+          "x": 6,
+          "y": 810
+        },
+        "height": 844,
+        "node": {
+          "bottom": 438.3850402832031,
+          "height": 25.475830078125,
+          "left": 66.68228149414062,
+          "right": 113.38799285888672,
+          "top": 412.9092102050781,
+          "width": 46.705711364746094,
+          "x": 66.68228149414062,
+          "y": 412.9092102050781
+        },
+        "selected": "true",
+        "statusEllipsis": true,
+        "statusOverflow": true,
+        "statusText": "Ansicht angepasst",
+        "topMarker": {
+          "bottom": 394.4392395019531,
+          "height": 0.212310791015625,
+          "left": 48,
+          "right": 48.21229934692383,
+          "top": 394.2269287109375,
+          "width": 0.21229934692382812,
+          "x": 48,
+          "y": 394.2269287109375
+        },
+        "view": "translate(48px, 394.227px) scale(0.212299)",
+        "width": 390
+      },
+      "screenshot_bytes": 19129,
+      "screenshot_file": "tap-390x844-left0-right44.png",
+      "screenshot_sha256": "9ecb9539c9985104f0961018ecbb651c8142d1f7b8bb7458cadd3dd946c8381d",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "view_after_tap_resize_320": "translate(48px, 430.448px) scale(0.161054)",
+      "view_before": "translate(48px, 394.227px) scale(0.212299)",
+      "viewport": [
+        390,
+        844
+      ]
+    }
+  ],
+  "functional_head": "25ac38668cfa049489dc5f5715de01c2b9d7192a",
+  "schema_version": "schauwerk-pr203-tap-autofit-chrome-cdp-visual.v1",
+  "source_bindings": {
+    "Makefile": "5308a84a3b918199f1cf4b7228d25ee981b17ba2a7c3b0041f9e143d04e86502",
+    "scripts/run_browser_smoke.py": "1f41e60eaec7f4724c5d4d0b39ab6dd824110b7577649b9de99acbe9ccaf2093",
+    "src/schauwerk/resources/native_viewer/assets.py": "a018b710d715baf258d72cad5d7f368482bb47d036f82e1d49c8832c2c12feb1",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "b9f58e35182533a6d5e2350250e95170e818f319755c8cc00cc170482a634e9a"
+  },
+  "viewport_method": "Real desktop Chrome/CDP CSS viewport 390x844 with simulated host safe insets; not iOS/Safari"
+}
