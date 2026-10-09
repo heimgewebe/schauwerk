@@ -812,7 +812,7 @@ const wait = async (predicate, label) => {
   document.querySelector("#sourceInput").value = JSON.stringify({
     nodes: [
       {id: "a", type: "text", x: 0, y: 0, width: 220, height: 120, text: "Alpha"},
-      {id: "b", type: "text", x: 20, y: 600, width: 220, height: 120, text: "Beta"},
+      {id: "b", type: "text", x: 20, y: 5000, width: 220, height: 120, text: "Beta"},
     ],
     edges: [],
   });
@@ -831,6 +831,25 @@ const wait = async (predicate, label) => {
     throw new Error("native canvas shows an empty tools menu without :has()");
   }
   await new Promise((resolve) => setTimeout(resolve, 200));
+  // Live CSS viewport, real editable JSON canvas and actual production limit message.
+  nativeDoc.querySelector("#fitView").click();
+  const barBeforeGrowth = nativeDoc.querySelector(".viewer-bar").getBoundingClientRect().bottom;
+  const firstNode = nativeDoc.querySelector('[data-source-id="a"]');
+  const limits = JSON.parse(nativeDoc.querySelector("#nativeLimits").textContent);
+  nativeStatus.textContent = "Produktgrenze erreicht · maximal " + limits.max_edges
+    + " Kanten und " + limits.max_routing_pairs + " Routing-Paare";
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const barAfterGrowth = nativeDoc.querySelector(".viewer-bar").getBoundingClientRect().bottom;
+  const topNodeAfterGrowth = firstNode.getBoundingClientRect().top;
+  if (barAfterGrowth <= barBeforeGrowth + 1) {
+    throw new Error("long real status did not expand native overlay: "
+      + barBeforeGrowth.toFixed(2) + "/" + barAfterGrowth.toFixed(2));
+  }
+  if (topNodeAfterGrowth < barAfterGrowth + 8) {
+    throw new Error("auto-fit top node obscured by grown status overlay: "
+      + topNodeAfterGrowth.toFixed(2) + "/" + barAfterGrowth.toFixed(2));
+  }
+  nativeDoc.querySelector("#fitView").click();
   nativeStatus.textContent = "Ziel f\u00fcr die neue Verbindung ausw\u00e4hlen";
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   const promptRect = nativeStatus.getBoundingClientRect();

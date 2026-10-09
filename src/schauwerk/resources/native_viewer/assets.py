@@ -2053,6 +2053,14 @@ fitButton.addEventListener("click", () => fit());
 window.addEventListener("resize", () => {
   if (autoFitActive) fit({ announce: false });
 });
+// A longer live status can grow this overlay after the previous auto-fit.
+// Keep automatic clearance synchronized, without changing manual zoom or pan.
+const viewerBar = document.querySelector(".viewer-bar");
+if (viewerBar && typeof ResizeObserver === "function") {
+  new ResizeObserver(() => {
+    if (autoFitActive) fit({ announce: false });
+  }).observe(viewerBar);
+}
 resetLayout.addEventListener("click", () => {
   overrides = {};
   if (!documentMode) {
