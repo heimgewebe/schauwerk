@@ -492,7 +492,8 @@ button:focus-visible {
     margin-left: 0;
     justify-content: flex-end;
   }
-  .viewer-heading {
+  .viewer-heading,
+  .document-editor-hosted .viewer-heading {
     order: 1;
     flex: 0 0 100%;
     width: 100%;
