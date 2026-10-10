@@ -325,6 +325,9 @@ SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE = (
 SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-single-workspace-dual-notch-20261010"
 )
+SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-no-observer-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1036,6 +1039,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_dual_notch_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_no_observer_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -9147,6 +9153,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_dual_notch_superseded_files
     )
     for name, expected in dual_notch_acceptance["source_bindings"].items():
+        if name in single_workspace_no_observer_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(dual_notch_acceptance["checks"].values())
     dual_evidence = dual_notch_acceptance["check_evidence"]
@@ -9216,6 +9224,107 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             assert g["narrow"] is False and g["bar"]["height"] <= 54
     assert len(seen_dual) == 5
 
+    # New visual successor for event-based host-bar clearance; old evidence stays immutable.
+    no_observer_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE / "acceptance-receipt.json"
+    )
+    no_observer_acceptance = json.loads(
+        no_observer_path.read_text(encoding="utf-8")
+    )
+    assert no_observer_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-no-observer.v1"
+    )
+    assert no_observer_acceptance["functional_head"] == (
+        "bb5fe730a731271ef5fe1a0f26fb93f3af0fc465"
+    )
+    assert no_observer_acceptance["parent_evidence"] == {
+        "path": str(dual_notch_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(dual_notch_path.read_bytes()).hexdigest(),
+        "schema_version": dual_notch_acceptance["schema_version"],
+        "evidence_digest": dual_notch_acceptance["evidence_digest"],
+    }
+    assert no_observer_acceptance["evidence_digest"] == digest_mapping(
+        no_observer_acceptance, "evidence_digest"
+    )
+    assert set(no_observer_acceptance["source_bindings"]) == (
+        single_workspace_no_observer_superseded_files
+    )
+    for name, expected in no_observer_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert set(no_observer_acceptance["test_bindings"]) == {
+        "tests/visual/test_standalone_editor_single_workspace.py"
+    }
+    for name, expected in no_observer_acceptance["test_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(no_observer_acceptance["checks"].values())
+    no_observer_checks = no_observer_acceptance["check_evidence"]
+    assert no_observer_checks["mobile_green"]["passed_count"] == 6
+    assert no_observer_checks["full_browser_green"]["passed_count"] == 30
+    assert no_observer_checks["visual_capture_green"]["case_count"] == 5
+    assert no_observer_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(no_observer_acceptance["visual_readbacks"]) == {"no_observer"}
+    no_observer_meta = no_observer_acceptance["visual_readbacks"]["no_observer"]
+    assert no_observer_meta["case_count"] == 5
+    raw_no_observer = (ROOT / no_observer_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_no_observer).hexdigest() == no_observer_meta["sha256"]
+    no_observer_readback = json.loads(raw_no_observer)
+    assert no_observer_readback["schema_version"] == no_observer_meta["schema_version"]
+    assert no_observer_readback["functional_head"] == no_observer_acceptance["functional_head"]
+    assert no_observer_readback["source_bindings"] == no_observer_acceptance["source_bindings"]
+    assert len(no_observer_readback["cases"]) == 5
+    expected_no_observer = {
+        (320, 700, 64, 80), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    seen_no_observer = set()
+    for case in no_observer_readback["cases"]:
+        w, h = case["viewport"]
+        safe = case["safe_area"]
+        key = (w, h, safe["left"], safe["right"])
+        assert key in expected_no_observer and key not in seen_no_observer
+        seen_no_observer.add(key)
+        bound = no_observer_meta["screenshots"][case["screenshot_file"]]
+        assert bound["viewport"] == [w, h]
+        assert bound["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == w
+        assert int.from_bytes(png[20:24], "big") == h
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        raw_geo = (
+            SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(raw_geo).hexdigest() == case["geometry_sha256"]
+        assert bound["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(raw_geo) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] is True
+        assert g["shortText"] == "Speichern"
+        assert g["accessible"] == "Speichern: Originalprojekt"
+        assert g["textRoom"] >= 66 and g["stressWidth"] >= 64
+        assert g["noTruncation"] and g["stressPass"]
+        assert g["controlValid"] and g["toolbarSafe"] and g["layoutPass"]
+        assert g["popoverPass"] and g["hasCanvasFullWidth"]
+        assert 6 <= g["popoverGap"] <= 14
+        assert abs(g["barMeasured"] - g["bar"]["height"]) <= 1
+        if key == (320, 700, 64, 80):
+            assert g["narrow"] is True
+            assert 80 <= g["bar"]["height"] <= 108
+        else:
+            assert g["narrow"] is False and g["bar"]["height"] <= 54
+    assert seen_no_observer == expected_no_observer
+    assert b"ResizeObserver" not in (
+        ROOT / "src/schauwerk/resources/standalone_editor/assets.py"
+    ).read_bytes()
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -9244,7 +9353,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_dual_notch_superseded_files:
+        if name in single_workspace_no_observer_superseded_files:
+            assert no_observer_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_dual_notch_superseded_files:
             assert dual_notch_acceptance["source_bindings"][name] == current
         elif name in single_workspace_ci_save_font_superseded_files:
             assert ci_save_acceptance["source_bindings"][name] == current
