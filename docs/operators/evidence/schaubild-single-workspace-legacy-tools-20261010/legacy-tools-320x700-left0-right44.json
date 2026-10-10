@@ -1,0 +1,140 @@
+{
+  "geometry": {
+    "actions": [
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontDecreaseButton",
+        "rect": {
+          "bottom": 535,
+          "height": 42,
+          "left": 78.078125,
+          "right": 116.53125,
+          "top": 493,
+          "width": 38.453125
+        },
+        "text": "A−"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontPanelButton",
+        "rect": {
+          "bottom": 535,
+          "height": 42,
+          "left": 120.53125,
+          "right": 168.0625,
+          "top": 493,
+          "width": 47.53125
+        },
+        "text": "Text"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontIncreaseButton",
+        "rect": {
+          "bottom": 535,
+          "height": 42,
+          "left": 172.0625,
+          "right": 210.515625,
+          "top": 493,
+          "width": 38.453125
+        },
+        "text": "A+"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontAllButton",
+        "rect": {
+          "bottom": 535,
+          "height": 42,
+          "left": 214.515625,
+          "right": 266,
+          "top": 493,
+          "width": 51.484375
+        },
+        "text": "Alles"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "layoutButton",
+        "rect": {
+          "bottom": 587,
+          "height": 42,
+          "left": 203.03125,
+          "right": 270,
+          "top": 545,
+          "width": 66.96875
+        },
+        "text": "Ordnen"
+      }
+    ],
+    "bar": {
+      "bottom": 652,
+      "height": 52,
+      "left": 111.046875,
+      "right": 276,
+      "top": 600,
+      "width": 164.953125
+    },
+    "flexWrap": "wrap",
+    "fullyFitted": true,
+    "hostVisibility": "hidden",
+    "iframe": {
+      "bottom": 700,
+      "height": 700,
+      "left": 0,
+      "right": 320,
+      "top": 0,
+      "width": 320
+    },
+    "legacyToolsVisible": true,
+    "measuredBar": 52,
+    "pass": true,
+    "popover": {
+      "bottom": 593,
+      "height": 110,
+      "left": 68.078125,
+      "right": 276,
+      "top": 483,
+      "width": 207.921875
+    },
+    "popoverGap": 7,
+    "safe": {
+      "left": 0,
+      "right": 44
+    },
+    "safeBar": true,
+    "safeMenu": true,
+    "sourceMode": true,
+    "stage": {
+      "bottom": 700,
+      "height": 700,
+      "left": 0,
+      "right": 320,
+      "top": 0,
+      "width": 320
+    },
+    "status": {
+      "bottom": 592,
+      "height": 28,
+      "left": 8,
+      "right": 234.078125,
+      "top": 564,
+      "width": 226.078125
+    },
+    "textVisible": true,
+    "viewport": {
+      "height": 700,
+      "width": 320
+    }
+  }
+}

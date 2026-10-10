@@ -328,6 +328,9 @@ SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE = (
 SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-single-workspace-no-observer-20261010"
 )
+SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-legacy-tools-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1042,6 +1045,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     single_workspace_no_observer_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
+    }
+    single_workspace_legacy_tools_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
@@ -7636,6 +7644,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_pinch_save_superseded_files
             | single_workspace_host_retry_superseded_files
             | single_workspace_ci_save_font_superseded_files
+            | single_workspace_legacy_tools_superseded_files
         ):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -7862,7 +7871,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_review_p2_superseded_files
                     | single_workspace_pinch_save_superseded_files
                     | single_workspace_host_retry_superseded_files
-                    | single_workspace_ci_save_font_superseded_files):
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert {
@@ -7926,7 +7936,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_embedded_host_superseded_files
                     | single_workspace_review_p2_superseded_files
                     | single_workspace_host_retry_superseded_files
-                    | single_workspace_ci_save_font_superseded_files):
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(final["checks"].values())
@@ -7980,7 +7991,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                         | single_workspace_review_p2_superseded_files
                         | single_workspace_pinch_save_superseded_files
                         | single_workspace_host_retry_superseded_files
-                        | single_workspace_ci_save_font_superseded_files):
+                        | single_workspace_ci_save_font_superseded_files
+                        | single_workspace_legacy_tools_superseded_files):
                 continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         seen_cases = set()
@@ -8088,7 +8100,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_review_p2_superseded_files
                     | single_workspace_pinch_save_superseded_files
                     | single_workspace_host_retry_superseded_files
-                    | single_workspace_ci_save_font_superseded_files):
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(prompt_acceptance["checks"].values())
@@ -8131,7 +8144,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                         | single_workspace_review_p2_superseded_files
                         | single_workspace_pinch_save_superseded_files
                         | single_workspace_host_retry_superseded_files
-                        | single_workspace_ci_save_font_superseded_files):
+                        | single_workspace_ci_save_font_superseded_files
+                        | single_workspace_legacy_tools_superseded_files):
                 continue
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
         covered = set()
@@ -8719,7 +8733,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in review_p2_acceptance["source_bindings"].items():
         if name in (single_workspace_pinch_save_superseded_files
                     | single_workspace_host_retry_superseded_files
-                    | single_workspace_ci_save_font_superseded_files):
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_p2_acceptance["checks"].values())
@@ -8836,7 +8851,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for path, expected in pinch_save_acceptance["source_bindings"].items():
         if path in (single_workspace_host_retry_superseded_files
-                    | single_workspace_ci_save_font_superseded_files):
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
     assert all(pinch_save_acceptance["checks"].values())
@@ -9067,7 +9083,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_ci_save_font_superseded_files
     )
     for name, expected in ci_save_acceptance["source_bindings"].items():
-        if name in single_workspace_dual_notch_superseded_files:
+        if name in (single_workspace_dual_notch_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(ci_save_acceptance["checks"].values())
@@ -9153,7 +9170,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_dual_notch_superseded_files
     )
     for name, expected in dual_notch_acceptance["source_bindings"].items():
-        if name in single_workspace_no_observer_superseded_files:
+        if name in (single_workspace_no_observer_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(dual_notch_acceptance["checks"].values())
@@ -9250,11 +9268,15 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_no_observer_superseded_files
     )
     for name, expected in no_observer_acceptance["source_bindings"].items():
+        if name in single_workspace_legacy_tools_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert set(no_observer_acceptance["test_bindings"]) == {
         "tests/visual/test_standalone_editor_single_workspace.py"
     }
     for name, expected in no_observer_acceptance["test_bindings"].items():
+        if name in single_workspace_legacy_tools_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(no_observer_acceptance["checks"].values())
     no_observer_checks = no_observer_acceptance["check_evidence"]
@@ -9325,6 +9347,103 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ROOT / "src/schauwerk/resources/standalone_editor/assets.py"
     ).read_bytes()
 
+    # Exact successor for enabling legacy font/layout actions without widening SHA exemptions.
+    legacy_tools_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE / "acceptance-receipt.json"
+    )
+    legacy_tools_acceptance = json.loads(
+        legacy_tools_path.read_text(encoding="utf-8")
+    )
+    assert legacy_tools_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-legacy-tools.v1"
+    )
+    assert legacy_tools_acceptance["functional_head"] == (
+        "ed4a70309c7952527fce6883b774ee905bf6d860"
+    )
+    assert legacy_tools_acceptance["parent_evidence"] == {
+        "path": str(no_observer_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(no_observer_path.read_bytes()).hexdigest(),
+        "schema_version": no_observer_acceptance["schema_version"],
+        "evidence_digest": no_observer_acceptance["evidence_digest"],
+    }
+    assert legacy_tools_acceptance["evidence_digest"] == digest_mapping(
+        legacy_tools_acceptance, "evidence_digest"
+    )
+    assert set(legacy_tools_acceptance["source_bindings"]) == (
+        single_workspace_legacy_tools_superseded_files
+    )
+    for name, sha in legacy_tools_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(legacy_tools_acceptance["checks"].values())
+    legacy_checks = legacy_tools_acceptance["check_evidence"]
+    assert legacy_checks["mobile_green"]["passed_count"] == 6
+    assert legacy_checks["desktop_green"]["passed_count"] == 8
+    assert legacy_checks["static_green"]["passed_count"] == 3
+    assert legacy_checks["full_browser_green"]["passed_count"] == 30
+    assert legacy_checks["visual_capture_green"]["case_count"] == 5
+    assert legacy_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(legacy_tools_acceptance["visual_readbacks"]) == {"legacy_tools"}
+    legacy_meta = legacy_tools_acceptance["visual_readbacks"]["legacy_tools"]
+    assert legacy_meta["case_count"] == 5
+    raw_legacy = (ROOT / legacy_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_legacy).hexdigest() == legacy_meta["sha256"]
+    legacy_readback = json.loads(raw_legacy)
+    assert legacy_readback["schema_version"] == legacy_meta["schema_version"]
+    assert legacy_readback["functional_head"] == legacy_tools_acceptance["functional_head"]
+    assert legacy_readback["source_bindings"] == legacy_tools_acceptance["source_bindings"]
+    assert len(legacy_readback["cases"]) == 5
+    expected_legacy = {
+        (320, 700, 64, 80), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+        (1366, 900, 0, 0),
+    }
+    action_ids = {
+        "fontDecreaseButton", "fontPanelButton", "fontIncreaseButton",
+        "fontAllButton", "layoutButton",
+    }
+    seen_legacy = set()
+    for case in legacy_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in expected_legacy and key not in seen_legacy
+        seen_legacy.add(key)
+        binding = legacy_meta["screenshots"][case["screenshot_file"]]
+        assert binding["viewport"] == [width, height]
+        assert binding["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == binding["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == binding["sha256"] == case["screenshot_sha256"]
+        )
+        geometry_file = (
+            SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(geometry_file).hexdigest() == case["geometry_sha256"]
+        assert binding["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(geometry_file) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] and g["sourceMode"] and g["legacyToolsVisible"]
+        assert g["safeMenu"] and g["safeBar"] and g["fullyFitted"] and g["textVisible"]
+        assert {x["id"] for x in g["actions"]} == action_ids
+        assert all(x["hit"] and not x["hidden"] and not x["disabled"]
+                   for x in g["actions"])
+        assert 0 <= g["popoverGap"] <= 14
+        if width <= 760:
+            assert g["popoverGap"] >= 6
+        if key == (320, 700, 64, 80):
+            assert g["flexWrap"] == "wrap"
+        assert abs(g["bar"]["height"] - g["measuredBar"]) <= 1
+    assert seen_legacy == expected_legacy
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -9353,7 +9472,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_no_observer_superseded_files:
+        if name in single_workspace_legacy_tools_superseded_files:
+            assert legacy_tools_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_no_observer_superseded_files:
             assert no_observer_acceptance["source_bindings"][name] == current
         elif name in single_workspace_dual_notch_superseded_files:
             assert dual_notch_acceptance["source_bindings"][name] == current
