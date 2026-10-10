@@ -750,6 +750,15 @@ const wait = async (predicate, label) => {
   }
   const hostTopline = document.querySelector("body.workspace-active .topline")
     .getBoundingClientRect();
+  // The status pill must not protrude beyond either host safe area.
+  const hostStatusRect = document.querySelector("body.workspace-active .status")
+    .getBoundingClientRect();
+  if (hostStatusRect.left < safeLeft - 0.5
+      || hostStatusRect.right > innerWidth - safeRight + 0.5) {
+    throw new Error("P2: host status enters horizontal safe area: "
+      + hostStatusRect.left.toFixed(1) + "/" + hostStatusRect.right.toFixed(1)
+      + " allowed=" + safeLeft + "/" + (innerWidth - safeRight));
+  }
   if (hostTopline.bottom > barRect.top - 6) {
     throw new Error("mobile host status overlaps wrapped workspace action bar");
   }
@@ -1152,6 +1161,30 @@ const wait = async (predicate, label) => {
       throw new Error("native drag view changed between pointer moves");
     }
     fireDrag(dragViewport, "pointerup", startX + 37, startY + 3);
+  }
+  // Revealing Download can wrap the host bar, without resizing the iframe.
+  // The Native viewer must then remeasure its footer and fitted content.
+  if (innerWidth === 320 && safeLeft === 64 && safeRight === 80) {
+    nativeDoc.querySelector("#fitView").click();
+    const oldHostFooter = parseFloat(
+      nativeDoc.documentElement.style.getPropertyValue("--host-footer-bottom"));
+    const oldHostBarHeight = document.querySelector(".workspace-bar")
+      .getBoundingClientRect().height;
+    const fitExport = document.querySelector(".workspace-export-menu");
+    fitExport.open = true;
+    document.querySelector('[data-export="svg"]').click();
+    await wait(() => !document.querySelector("#downloadLink").hidden,
+      "P2: Native SVG download could not be prepared");
+    await wait(() => document.querySelector(".workspace-bar").getBoundingClientRect().height
+      > oldHostBarHeight + 20, "P2: prepared download did not wrap host actions");
+    await wait(() => parseFloat(
+      nativeDoc.documentElement.style.getPropertyValue("--host-footer-bottom"))
+      > oldHostFooter + 30, "P2: Native fit still reserves the old host footer");
+    const updatedHostFooter = parseFloat(
+      nativeDoc.documentElement.style.getPropertyValue("--host-footer-bottom"));
+    if (!(updatedHostFooter > oldHostFooter + 30)) {
+      throw new Error("P2: Native fit failed to follow host action wrap");
+    }
   }
   // Legacy font/layout actions must remain reachable in the exact dual-notch
   // viewport, not merely in the native draw.io compatibility workspace.

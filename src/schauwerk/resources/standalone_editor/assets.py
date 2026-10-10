@@ -791,7 +791,13 @@ body.workspace-active .status {
   .brand-copy small { display: none; }
   .status { max-width: 42vw; border: 0; padding-inline: 0; background: transparent; font-size: 0.72rem; }
   body.workspace-active .status {
-    max-width: min(72vw, 520px);
+    /* Two host notches reduce the usable status width as well as the toolbar. */
+    max-width: min(
+      72vw,
+      520px,
+      calc(100vw - max(8px, env(safe-area-inset-left))
+        - max(8px, env(safe-area-inset-right)))
+    );
     border: 1px solid var(--line);
     padding: 6px 9px;
     background: rgba(255, 255, 255, 0.9);
@@ -2225,6 +2231,14 @@ function syncWorkspaceBarHeight() {
     const value = actual + "px";
     if (document.body.style.getPropertyValue("--workspace-bar-height") !== value) {
       document.body.style.setProperty("--workspace-bar-height", value);
+      // Parent wrapping does not resize the iframe; use the Native viewer's
+      // existing guarded resize-fit path, preserving manual pan/pinch.
+      try {
+        const frameWindow = elements.frame.contentWindow;
+        if (elements.frame.contentDocument?.querySelector("#nativeCanvas")) {
+          frameWindow.dispatchEvent(new frameWindow.Event("resize"));
+        }
+      } catch (_) { /* External legacy iframe may be cross-origin. */ }
     }
   }
 }
