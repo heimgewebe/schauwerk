@@ -227,6 +227,10 @@ SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_CLOSURE_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-process-feedback-routing-review-closure-20261010"
 )
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -781,6 +785,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_native_diagram.py",
     }
     process_feedback_routing_review_closure_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_outer_path_superseded_files = {
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
@@ -6351,7 +6359,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_review_closure_superseded_files
     )
     for name, expected in process_feedback_routing_review_closure["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_outer_path_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     checks = process_feedback_routing_review_closure["checks"]
     assert checks["historical_parent_immutable"]
     assert checks["fail_first_feedback_collision_reproduced"]
@@ -6361,6 +6370,48 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert checks["fresh_browser_visual_accepted"] is False
     assert checks["independent_reviewer_pass"] is False
     assert checks["captain_merge_authorized"] is False
+
+    process_feedback_routing_outer_path = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert process_feedback_routing_outer_path["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-outer-path.v1"
+    )
+    assert process_feedback_routing_outer_path["functional_head"] == (
+        "cef1e5af3f2c374ad911ee520b9b60994c83e84d"
+    )
+    assert process_feedback_routing_outer_path["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing_review_closure["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_CLOSURE_EVIDENCE
+             / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-review-closure-20261010/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing_review_closure["schema_version"],
+    }
+    assert process_feedback_routing_outer_path["evidence_digest"] == digest_mapping(
+        process_feedback_routing_outer_path, "evidence_digest"
+    )
+    assert set(process_feedback_routing_outer_path["source_bindings"]) == (
+        process_feedback_routing_outer_path_superseded_files
+    )
+    for name, expected in process_feedback_routing_outer_path["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    outer_checks = process_feedback_routing_outer_path["checks"]
+    assert outer_checks["parent_receipt_immutable"]
+    assert outer_checks["outer_long_branch_crossing_failed_before_fix"]
+    assert outer_checks["outer_long_branch_crossing_passed_after_fix"]
+    assert outer_checks["complete_native_diagram_suite_passed"]
+    assert outer_checks["fresh_visual_browser_acceptance"] is False
+    assert outer_checks["independent_exact_head_review_pass"] is False
+    assert outer_checks["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -6390,7 +6441,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_review_closure_superseded_files:
+        if name in process_feedback_routing_outer_path_superseded_files:
+            assert process_feedback_routing_outer_path["source_bindings"][name] == current
+        elif name in process_feedback_routing_review_closure_superseded_files:
             assert process_feedback_routing_review_closure["source_bindings"][name] == current
         elif name in process_feedback_routing_review_collision_fix_superseded_files:
             assert (
