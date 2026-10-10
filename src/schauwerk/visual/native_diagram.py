@@ -1304,7 +1304,7 @@ def _edge_geometry(
     feedback_label_y: float | None = None,
     max_node_bottom: float = 0.0,
     preserve_same_row_feedback_footer: bool = True,
-    feedback_path_y: float | None = None,
+    feedback_path_y: float | tuple[float, float] | None = None,
     feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
     obstacle_positions: Sequence[tuple[int, int]] = (),
@@ -1371,8 +1371,14 @@ def _edge_geometry(
             start_y = end_y = source_y + _NODE_HEIGHT
             source_corridor_y = target_corridor_y = start_y + process_row_gap / 2
             start_bend = end_bend = bend
+        # The text retains its accepted row-gap slot even when path legs
+        # choose different safe heights closer to a card boundary.
         label_corridor_y = source_corridor_y
-        if feedback_path_y is not None and source_y == target_y:
+        if isinstance(feedback_path_y, tuple):
+            # The ungrouped return can have a different free lane on each
+            # endpoint; neither horizontal leg may mask a corridor label.
+            source_corridor_y, target_corridor_y = feedback_path_y
+        elif feedback_path_y is not None and source_y == target_y:
             source_corridor_y = target_corridor_y = feedback_path_y
         gutter_x = (
             feedback_local_gutter_x
@@ -1958,7 +1964,7 @@ def _render_edge(
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
     force_feedback_footer: bool = False,
-    feedback_path_y: float | None = None,
+    feedback_path_y: float | tuple[float, float] | None = None,
     force_feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
 ) -> list[str]:
@@ -3457,7 +3463,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     )
     feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
     feedback_footer_ids: set[str] = set()
-    feedback_path_y: dict[str, float] = {}
+    feedback_path_y: dict[str, float | tuple[float, float]] = {}
     feedback_path_footer_ids: set[str] = set()
     feedback_local_gutter_x: dict[str, float] = {}
     if intent == "process" and not model["groups"]:
@@ -3498,6 +3504,39 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     )
                 )
 
+        def free_horizontal_gap_y(
+            corridor: tuple[int, int], from_x: float, to_x: float
+        ) -> float | None:
+            # A free vertical gutter alone is not sufficient: both horizontal
+            # endpoint legs must avoid every rendered node/label rectangle.
+            low = float(corridor[0]) + 2
+            high = float(corridor[1]) - 2
+            if low > high:
+                return None
+            preferred = (float(corridor[0]) + float(corridor[1])) / 2
+            left_x, right_x = sorted((from_x, to_x))
+            blockers = [
+                (top - 2, bottom + 2)
+                for left, top, right, bottom in occupied_boxes
+                if left - 2 < right_x and right + 2 > left_x
+            ]
+            candidates = [min(max(preferred, low), high), low, high]
+            for top, bottom in blockers:
+                candidates.extend(
+                    (min(max(top, low), high), min(max(bottom, low), high))
+                )
+            return next(
+                (
+                    y
+                    for y in sorted(
+                        set(candidates),
+                        key=lambda value: (abs(value - preferred), value),
+                    )
+                    if all(not (top < y < bottom) for top, bottom in blockers)
+                ),
+                None,
+            )
+
         for edge in feedback_edges:
             if edge["from"] == edge["to"]:
                 continue
@@ -3536,6 +3575,26 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             if candidate > gutter_x:
                 feedback_local_gutter_x[str(edge["id"])] = candidate
                 width = max(width, math.ceil(candidate + 16))
+            source_direction = 1 if source[1] < target[1] else -1
+            source_corridor = _process_row_corridor_bounds(
+                source[1], positions, direction=source_direction
+            )
+            target_corridor = _process_row_corridor_bounds(
+                target[1], positions, direction=-source_direction
+            )
+            if source_corridor is not None and target_corridor is not None:
+                source_y = free_horizontal_gap_y(
+                    source_corridor, source[0] + _NODE_WIDTH / 2, candidate
+                )
+                target_y = free_horizontal_gap_y(
+                    target_corridor, target[0] + _NODE_WIDTH / 2, candidate
+                )
+                if source_y is None or target_y is None:
+                    raise ValueError("no collision-free process feedback corridor")
+                source_default_y = sum(source_corridor) / 2
+                target_default_y = sum(target_corridor) / 2
+                if (source_y, target_y) != (source_default_y, target_default_y):
+                    feedback_path_y[str(edge["id"])] = (source_y, target_y)
 
     if intent == "process" and occupied_process_adjacent_corridors:
         for edge in feedback_edges:

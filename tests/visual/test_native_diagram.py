@@ -3554,6 +3554,58 @@ def test_ungrouped_process_feedback_channel_clears_unrelated_flow_label() -> Non
         )
 
 
+def test_ungrouped_feedback_full_horizontal_route_clears_other_labels() -> None:
+    # Moving only the vertical gutter can route the source leg through a
+    # different, two-line corridor label that was never a vertical obstacle.
+    raw = _minimal_process_model(18)
+    edges = [
+        {"id": "short", "from": "n6", "to": "n7",
+         "label": "Nebenprozess mit Titel", "kind": "flow"},
+        {"id": "tall", "from": "n13", "to": "n14",
+         "label": "zweizeilige prozessbeziehung mit langem text", "kind": "flow"},
+        {"id": "feedback", "from": "n12", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], str
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)["feedback"]
+
+    labels, path = geometry(edges)
+    assert (labels, path) == geometry(list(reversed(edges)))
+    initial = re.search(
+        r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+        r"([-0-9.]+) ([-0-9.]+) L ",
+        path,
+    )
+    assert initial is not None
+    points = [tuple(map(float, initial.groups()))]
+    points.extend(
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    )
+    for edge_id in ("short", "tall"):
+        left, top, width, height = labels[edge_id]
+        right, bottom = left + width, top + height
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            horizontal_hit = (
+                y1 == y2
+                and top < y1 < bottom
+                and max(min(x1, x2), left) < min(max(x1, x2), right)
+            )
+            vertical_hit = (
+                x1 == x2
+                and left < x1 < right
+                and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+            )
+            assert not horizontal_hit
+            assert not vertical_hit
+
+
 def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:
     raw = _minimal_process_model(7)
     raw["edges"] = [
