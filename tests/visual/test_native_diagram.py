@@ -2951,6 +2951,48 @@ def test_grouped_crossing_adjacent_relations_use_safe_local_lanes() -> None:
         forward_paths["cross_down"], forward_labels["cross_up"]
     )
 
+def test_parallel_group_long_branches_keep_outer_legs_clear_of_peer_labels() -> None:
+    # A late label-pack demotion must not leave one local label underneath the
+    # source corridor of its parallel peer's outer branch.
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {"id": "parallel_a", "from": "n0", "to": "n5",
+         "label": "erster Weg", "kind": "flow"},
+        {"id": "parallel_b", "from": "n0", "to": "n5",
+         "label": "zweiter Weg", "kind": "flow"},
+    ]
+
+    def geometry(ordered_edges: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], dict[str, str]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    for edge_id, path in paths.items():
+        peer = "parallel_b" if edge_id == "parallel_a" else "parallel_a"
+        match = re.search(
+            r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+            r"([-0-9.]+) ([-0-9.]+) L ([-0-9.]+) ([-0-9.]+)",
+            path,
+        )
+        assert match is not None
+        start_x, start_y, end_x, end_y = map(float, match.groups())
+        left, top, width, height = labels[peer]
+        assert not (
+            start_y == end_y
+            and top < start_y < top + height
+            and max(min(start_x, end_x), left)
+            < min(max(start_x, end_x), left + width)
+        )
+
+
 def test_local_long_branch_label_clears_other_outer_branch_source_path() -> None:
     raw = _minimal_process_model(9)
     raw["groups"] = [

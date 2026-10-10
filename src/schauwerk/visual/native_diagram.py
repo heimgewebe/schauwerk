@@ -997,6 +997,15 @@ def _process_local_group_branch_gutter_x(
         usable_left = source_right + clearance
         usable_right = target_left - clearance
         ordered_ids = sorted(edge_ids)
+        # A later label pack can demote one of two parallel long routes into
+        # an outer gutter. Its source leg would cross the retained local label.
+        # Route the entire parallel set through the existing outer fallback.
+        endpoints = [
+            (str(edges_by_id[edge_id]["from"]), str(edges_by_id[edge_id]["to"]))
+            for edge_id in ordered_ids
+        ]
+        if len(set(endpoints)) != len(endpoints):
+            continue
         required_span = (len(ordered_ids) - 1) * _PROCESS_LANE_STEP
         if usable_right < usable_left or required_span > usable_right - usable_left:
             continue
