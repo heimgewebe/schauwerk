@@ -795,6 +795,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     process_feedback_routing_parallel_long_superseded_files = (
         process_feedback_routing_outer_path_superseded_files
     )
+    process_feedback_routing_anchor_cluster_superseded_files = (
+        process_feedback_routing_parallel_long_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -6451,13 +6454,57 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_parallel_long_superseded_files
     )
     for name, expected in parallel_long["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_anchor_cluster_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert parallel_long["checks"]["historical_parent_immutable"] is True
     assert parallel_long["checks"]["parallel_long_branch_collision_failed_before_fix"] is True
     assert parallel_long["checks"]["parallel_long_branch_collision_passed_after_fix"] is True
     assert parallel_long["checks"]["nine_targeted_tests_passed"] is True
     assert parallel_long["checks"]["full_exact_head_ci_passed"] is False
     assert parallel_long["checks"]["captain_merge_authorized"] is False
+
+    anchor_cluster = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "anchor-cluster-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert anchor_cluster["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-anchor-cluster.v1"
+    )
+    assert anchor_cluster["functional_head"] == (
+        "6d85cf0b523149431947cf590bd29307ab05488e"
+    )
+    assert anchor_cluster["parent_evidence"] == {
+        "schema_version": parallel_long["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "parallel-long-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "parallel-long-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": parallel_long["evidence_digest"],
+    }
+    assert anchor_cluster["evidence_digest"] == digest_mapping(
+        anchor_cluster, "evidence_digest"
+    )
+    assert set(anchor_cluster["source_bindings"]) == (
+        process_feedback_routing_anchor_cluster_superseded_files
+    )
+    for name, expected in anchor_cluster["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert anchor_cluster["checks"]["historical_parent_immutable"] is True
+    assert anchor_cluster["checks"]["two_p2_fail_first_regressions_reproduced"] is True
+    assert anchor_cluster["checks"]["two_p2_regressions_pass_after_fix"] is True
+    assert anchor_cluster["checks"]["full_native_diagram_suite_passed"] is True
+    assert anchor_cluster["checks"]["native_diagram_passed_count"] == 159
+    assert anchor_cluster["checks"]["full_exact_head_ci_passed"] is False
+    assert anchor_cluster["checks"]["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -6487,7 +6534,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_parallel_long_superseded_files:
+        if name in process_feedback_routing_anchor_cluster_superseded_files:
+            assert anchor_cluster["source_bindings"][name] == current
+        elif name in process_feedback_routing_parallel_long_superseded_files:
             assert parallel_long["source_bindings"][name] == current
         elif name in process_feedback_routing_outer_path_superseded_files:
             assert process_feedback_routing_outer_path["source_bindings"][name] == current
