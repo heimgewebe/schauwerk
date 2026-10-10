@@ -1,0 +1,382 @@
+{
+  "cases": [
+    {
+      "bar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 95.171875,
+        "right": 314,
+        "top": 640,
+        "width": 218.828125,
+        "x": 95.171875,
+        "y": 640
+      },
+      "controls": [
+        {
+          "display": "none",
+          "hidden": false,
+          "labelClientWidth": 0,
+          "labelRect": {
+            "bottom": 0,
+            "height": 0,
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+          },
+          "labelScrollWidth": 0,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "rect": {
+            "bottom": 0,
+            "height": 0,
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+          },
+          "title": ""
+        },
+        {
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 58,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 100.171875,
+            "right": 160.046875,
+            "top": 645,
+            "width": 59.875,
+            "x": 100.171875,
+            "y": 645
+          },
+          "labelScrollWidth": 58,
+          "labelText": "Export",
+          "name": "export",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 100.171875,
+            "right": 160.046875,
+            "top": 645,
+            "width": 59.875,
+            "x": 100.171875,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 76,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 163.046875,
+            "right": 241.046875,
+            "top": 645,
+            "width": 78,
+            "x": 163.046875,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "JSON Canvas speichern",
+          "name": "download",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 163.046875,
+            "right": 241.046875,
+            "top": 645,
+            "width": 78,
+            "x": 163.046875,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 63,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 244.046875,
+            "right": 309,
+            "top": 645,
+            "width": 64.953125,
+            "x": 244.046875,
+            "y": 645
+          },
+          "labelScrollWidth": 63,
+          "labelText": "Zurück",
+          "name": "back",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 244.046875,
+            "right": 309,
+            "top": 645,
+            "width": 64.953125,
+            "x": 244.046875,
+            "y": 645
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 700,
+      "nativeProcessStatus": {
+        "barRect": {
+          "bottom": 133.125,
+          "height": 127.125,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308,
+          "x": 6,
+          "y": 6
+        },
+        "clientHeight": 24,
+        "clientWidth": 225,
+        "controlRect": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308,
+          "x": 6,
+          "y": 6
+        },
+        "frameHeight": 700,
+        "frameWidth": 320,
+        "headingRect": {
+          "bottom": 133.125,
+          "height": 28.125,
+          "left": 6,
+          "right": 314,
+          "top": 105,
+          "width": 308,
+          "x": 6,
+          "y": 105
+        },
+        "scrollHeight": 24,
+        "scrollWidth": 225,
+        "statusOverlap": false,
+        "statusRect": {
+          "bottom": 132.125,
+          "height": 26.125,
+          "left": 7,
+          "right": 233.671875,
+          "top": 106,
+          "width": 226.671875,
+          "x": 7,
+          "y": 106
+        },
+        "text": "Ziel für die neue Verbindung auswählen",
+        "textOverflow": "clip",
+        "whiteSpace": "normal"
+      },
+      "overlap": [],
+      "screenshot_bytes": 29142,
+      "screenshot_sha256": "c4cde9d0f32266f4b569f186159ec23e0dfeee74dbe3777a818249a4f1665ea8",
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "bar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 92.9375,
+        "right": 384,
+        "top": 784,
+        "width": 291.0625,
+        "x": 92.9375,
+        "y": 784
+      },
+      "controls": [
+        {
+          "display": "none",
+          "hidden": false,
+          "labelClientWidth": 0,
+          "labelRect": {
+            "bottom": 0,
+            "height": 0,
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+          },
+          "labelScrollWidth": 0,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "rect": {
+            "bottom": 0,
+            "height": 0,
+            "left": 0,
+            "right": 0,
+            "top": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+          },
+          "title": ""
+        },
+        {
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 60,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 97.9375,
+            "right": 159.859375,
+            "top": 789,
+            "width": 61.921875,
+            "x": 97.9375,
+            "y": 789
+          },
+          "labelScrollWidth": 60,
+          "labelText": "Export",
+          "name": "export",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 97.9375,
+            "right": 159.859375,
+            "top": 789,
+            "width": 61.921875,
+            "x": 97.9375,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 146,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 162.859375,
+            "right": 311.046875,
+            "top": 789,
+            "width": 148.1875,
+            "x": 162.859375,
+            "y": 789
+          },
+          "labelScrollWidth": 158,
+          "labelText": "JSON Canvas speichern",
+          "name": "download",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 162.859375,
+            "right": 311.046875,
+            "top": 789,
+            "width": 148.1875,
+            "x": 162.859375,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 63,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 314.046875,
+            "right": 379,
+            "top": 789,
+            "width": 64.953125,
+            "x": 314.046875,
+            "y": 789
+          },
+          "labelScrollWidth": 63,
+          "labelText": "Zurück",
+          "name": "back",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 314.046875,
+            "right": 379,
+            "top": 789,
+            "width": 64.953125,
+            "x": 314.046875,
+            "y": 789
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 844,
+      "nativeProcessStatus": {
+        "barRect": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378,
+          "x": 6,
+          "y": 6
+        },
+        "clientHeight": 52,
+        "clientWidth": 124,
+        "controlRect": {
+          "bottom": 99,
+          "height": 93,
+          "left": 138,
+          "right": 384,
+          "top": 6,
+          "width": 246,
+          "x": 138,
+          "y": 6
+        },
+        "frameHeight": 844,
+        "frameWidth": 390,
+        "headingRect": {
+          "bottom": 62.375,
+          "height": 56.375,
+          "left": 6,
+          "right": 134,
+          "top": 6,
+          "width": 128,
+          "x": 6,
+          "y": 6
+        },
+        "scrollHeight": 52,
+        "scrollWidth": 124,
+        "statusOverlap": false,
+        "statusRect": {
+          "bottom": 61.375,
+          "height": 54.375,
+          "left": 7,
+          "right": 133,
+          "top": 7,
+          "width": 126,
+          "x": 7,
+          "y": 7
+        },
+        "text": "Ziel für die neue Verbindung auswählen",
+        "textOverflow": "clip",
+        "whiteSpace": "normal"
+      },
+      "overlap": [],
+      "screenshot_bytes": 34457,
+      "screenshot_sha256": "37850a4beb78c8959f19dec2a0adcf4073c938d5d60d8161d29d5d2b562aa328",
+      "scrollWidth": 390,
+      "width": 390
+    }
+  ],
+  "functional_head": "88833933230b270ffdfba60aee2b5fe0977623da",
+  "schema_version": "schauwerk-pr203-native-process-status-visual.v1"
+}

@@ -5,9 +5,11 @@ import os
 import shutil
 import subprocess
 import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.request import urlopen
 
 import pytest
 
@@ -1334,3 +1336,326 @@ try {
     assert (
         'data-empty-canvas-browser-regression="fail"' not in completed.stdout
     ), completed.stdout
+
+@pytest.mark.parametrize(
+    ("width", "height", "bottom_y", "right_x", "safe_left", "safe_right", "host_only"),
+    [
+        (1366, 900, 1280, 0, 0, 0, False),
+        (390, 844, 1280, 0, 0, 0, False),
+        (390, 844, 4000, 0, 0, 0, False),
+        (390, 844, 0, 3000, 80, 64, False),
+        (320, 700, 0, 3000, 64, 80, False),
+        (640, 720, 0, 3000, 80, 80, False),
+        (621, 720, 0, 3000, 80, 80, True),
+    ],
+)
+def test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome(
+    tmp_path: Path,
+    width: int,
+    height: int,
+    bottom_y: int,
+    right_x: int,
+    safe_left: int,
+    safe_right: int,
+    host_only: bool,
+) -> None:
+    from websockets.sync.client import connect
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is unavailable for standalone fit regression")
+        raise AssertionError("unreachable")
+
+    source = {
+        "nodes": [
+            {
+                "id": "top",
+                "type": "text",
+                "x": 0,
+                "y": 0,
+                "width": 220,
+                "height": 120,
+                "text": "Top",
+            },
+            {
+                "id": "bottom",
+                "type": "text",
+                "x": right_x,
+                "y": bottom_y,
+                "width": 220,
+                "height": 120,
+                "text": "Bottom",
+            },
+        ],
+        "edges": [],
+    }
+    document = json_canvas_to_editing_document(
+        source,
+        title="Standalone Fit Clearance Browser Probe",
+    )
+    output = tmp_path / "standalone-fit-viewer"
+    build_native_viewer(document, output)
+    # Emulate CSS safe-area values in the isolated build only.
+    styles_path = output / "styles.css"
+    styles = styles_path.read_text(encoding="utf-8")
+    assert "env(safe-area-inset-left)" in styles
+    assert "env(safe-area-inset-right)" in styles
+    styles_path.write_text(
+        styles.replace("env(safe-area-inset-left)", f"{0 if host_only else safe_left}px")
+        .replace("env(safe-area-inset-right)", f"{0 if host_only else safe_right}px"),
+        encoding="utf-8",
+    )
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    probe = r"""
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 240) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+try {
+  const canvas = document.querySelector("#nativeCanvas");
+  const svg = document.querySelector("#nativeDiagram");
+  const fitButton = document.querySelector("#fitView");
+  const bar = document.querySelector(".viewer-bar");
+  const foot = document.querySelector(".viewer-foot");
+  if (
+    !(canvas instanceof HTMLElement) ||
+    !(svg instanceof SVGSVGElement) ||
+    !(fitButton instanceof HTMLButtonElement) ||
+    !(bar instanceof HTMLElement) ||
+    !(foot instanceof HTMLElement)
+  ) {
+    throw new Error("standalone fit probe DOM contract missing");
+  }
+  await waitUntil(
+    () => canvas.style.transform.includes("scale("),
+    "standalone viewer did not become fit-ready",
+  );
+  if (__HOST_ONLY__) {
+    document.documentElement.style.setProperty("--host-safe-left", "__SAFE_LEFT__px");
+    document.documentElement.style.setProperty("--host-safe-right", "__SAFE_RIGHT__px");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+  fitButton.click();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  const box = svg.viewBox.baseVal;
+  const ns = "http://www.w3.org/2000/svg";
+  const marker = (x, y) => {
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", "1");
+    rect.setAttribute("height", "1");
+    svg.appendChild(rect);
+    return rect.getBoundingClientRect();
+  };
+  const topBoundary = marker(box.x, box.y);
+  const bottomBoundary = marker(box.x, box.y + box.height - 1);
+  const leftBoundary = marker(box.x, box.y + box.height / 2);
+  const rightBoundary = marker(box.x + box.width - 1, box.y + box.height / 2);
+  const barRect = bar.getBoundingClientRect();
+  const footRect = foot.getBoundingClientRect();
+  const topClearance = topBoundary.top - barRect.bottom;
+  const bottomClearance = footRect.top - bottomBoundary.bottom;
+  const leftClearance = leftBoundary.left - barRect.left;
+  const rightClearance = barRect.right - rightBoundary.right;
+  if (leftClearance < 7.5 || rightClearance < 7.5) {
+    throw new Error(
+      "standalone fit enters horizontal safe area: "
+        + leftClearance.toFixed(2) + "/" + rightClearance.toFixed(2),
+    );
+  }
+  if (topClearance < 8) {
+    throw new Error(
+      "standalone fit overlaps viewer toolbar: clearance="
+        + topClearance.toFixed(2)
+        + "px",
+    );
+  }
+  if (bottomClearance < 8) {
+    throw new Error(
+      "standalone fit overlaps viewer footer: clearance="
+        + bottomClearance.toFixed(2)
+        + "px",
+    );
+  }
+  // Emulate the widest selection menu (even combinations of available
+  // actions). Every actual contextual subset must also fit within safe edges.
+  const safeLeft = __SAFE_LEFT__;
+  const safeRight = __SAFE_RIGHT__;
+  if (innerWidth !== __WIDTH__ || innerHeight !== __HEIGHT__) {
+    throw new Error("native fit CDP did not use requested CSS viewport");
+  }
+  if (safeLeft || safeRight) {
+    const editControls = document.querySelector(".edit-controls");
+    const editMenu = document.querySelector(".edit-menu");
+    if (!(editControls instanceof HTMLDetailsElement) || !(editMenu instanceof HTMLElement)) {
+      throw new Error("native edit-menu DOM contract missing");
+    }
+    editControls.hidden = false;
+    editControls.open = true;
+    editMenu.querySelectorAll("button").forEach((button) => { button.hidden = false; });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const menuRect = editMenu.getBoundingClientRect();
+    if (menuRect.width < 90
+        || menuRect.left < safeLeft - 0.5
+        || menuRect.right > window.innerWidth - safeRight + 0.5) {
+      throw new Error(
+        "native edit menu enters horizontal safe area: "
+          + menuRect.left.toFixed(2) + "/"
+          + menuRect.right.toFixed(2),
+      );
+    }
+    const safeEdge = innerWidth - safeRight;
+    const selection = document.querySelector("#selectionStatus");
+    selection.textContent = "Element: " + "LangerKnotenname".repeat(25);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    const footBounds = foot.getBoundingClientRect();
+    if (footBounds.left < safeLeft - 0.5
+        || footBounds.right > safeEdge + 0.5
+        || foot.scrollWidth > foot.clientWidth + 1) {
+      throw new Error("native selection footer escapes horizontal safe area: "
+        + footBounds.left.toFixed(2) + "/" + footBounds.right.toFixed(2));
+    }
+    for (const target of bar.querySelectorAll(
+      ".view-controls button, .view-controls output, .edit-controls > summary"
+    )) {
+      if (!target.getClientRects().length) continue;
+      const r = target.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1
+          || r.left < safeLeft - 0.5 || r.right > safeEdge + 0.5) {
+        throw new Error("native toolbar control escapes horizontal safe area: "
+          + (target.id || target.tagName) + " " + r.left.toFixed(2) + "/" + r.right.toFixed(2));
+      }
+    }
+    fitButton.click();
+    const liveTop = marker(box.x, box.y).top;
+    if (liveTop - bar.getBoundingClientRect().bottom < 8) {
+      throw new Error("wrapped native toolbar masks fitted diagram content");
+    }
+  }
+  document.documentElement.dataset.standaloneFitClearanceRegression = "pass";
+  document.documentElement.dataset.standaloneFitTopClearance =
+    topClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitBottomClearance =
+    bottomClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitLeftClearance =
+    leftClearance.toFixed(2);
+  document.documentElement.dataset.standaloneFitRightClearance =
+    rightClearance.toFixed(2);
+} catch (error) {
+  document.documentElement.dataset.standaloneFitClearanceRegression = "fail";
+  document.documentElement.dataset.standaloneFitClearanceError =
+    error instanceof Error ? error.message : String(error);
+}
+</script>
+"""
+    probe = (
+        probe.replace("__SAFE_LEFT__", str(safe_left))
+        .replace("__SAFE_RIGHT__", str(safe_right))
+        .replace("__WIDTH__", str(width))
+        .replace("__HEIGHT__", str(height))
+        .replace("__HOST_ONLY__", "true" if host_only else "false")
+    )
+    index_path.write_text(
+        index.replace(app_tag, app_tag + probe, 1),
+        encoding="utf-8",
+    )
+
+    class QuietStandaloneFitHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietStandaloneFitHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    chrome_profile = tmp_path / f"standalone-fit-chrome-{width}x{height}"
+    debug_port_file = chrome_profile / "DevToolsActivePort"
+    proc = subprocess.Popen(
+        [
+            chrome, "--headless=new", "--no-first-run", "--disable-gpu",
+            "--disable-dev-shm-usage", "--no-sandbox",
+            "--remote-allow-origins=http://localhost",
+            "--remote-debugging-port=0", f"--user-data-dir={chrome_profile}",
+            "about:blank",
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        tab = None
+        for _ in range(100):
+            try:
+                port_text = debug_port_file.read_text(encoding="utf-8").splitlines()[0]
+                debug_port = int(port_text)
+                with urlopen(f"http://127.0.0.1:{debug_port}/json/list", timeout=1) as response:
+                    tab = next(
+                        (item for item in json.load(response) if item.get("type") == "page"),
+                        None,
+                    )
+                if tab:
+                    break
+            except (OSError, TimeoutError, ValueError, IndexError):
+                pass
+            time.sleep(0.12)
+        assert tab, "native fit CDP page was not ready"
+        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
+            message_id = 0
+
+            def cdp(method: str, parameters: dict | None = None) -> dict:
+                nonlocal message_id
+                message_id += 1
+                current_id = message_id
+                ws.send(json.dumps({
+                    "id": current_id, "method": method, "params": parameters or {},
+                }))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    incoming = json.loads(ws.recv(timeout=max(0.1, deadline - time.monotonic())))
+                    if incoming.get("id") == current_id:
+                        assert "error" not in incoming, incoming.get("error")
+                        return incoming.get("result", {})
+                raise AssertionError("native fit CDP timeout: " + method)
+
+            cdp("Page.enable")
+            cdp("Runtime.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": width, "height": height,
+                "deviceScaleFactor": 1, "mobile": False,
+            })
+            cdp("Page.navigate", {"url": f"http://127.0.0.1:{port}/"})
+            for _ in range(120):
+                value = cdp("Runtime.evaluate", {
+                    "expression": (
+                        "({state:document.documentElement.dataset.standaloneFitClearanceRegression||'',"
+                        "error:document.documentElement.dataset.standaloneFitClearanceError||''})"
+                    ),
+                    "returnByValue": True,
+                }).get("result", {}).get("value", {})
+                if value.get("state") == "fail":
+                    pytest.fail(str(value.get("error")))
+                if value.get("state") == "pass":
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail("native fit CDP probe did not complete")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

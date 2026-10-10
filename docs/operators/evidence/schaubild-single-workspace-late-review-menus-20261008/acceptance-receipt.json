@@ -1,0 +1,157 @@
+{
+  "check_evidence": {
+    "browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "884968fcdfb9759644ec26692ac1c8f8acb04fc9",
+      "passed_count": 27,
+      "task_id": "8422c4a9117247d6880f1024"
+    },
+    "codex_review_findings": [
+      {
+        "comment_id": 4224015464,
+        "resolution": "Native .edit-menu max-width uses both actual CSS side-safe-area insets at desktop and <=620 CSS px",
+        "severity": "P2",
+        "thread_id": "PRRT_kwDOTGqvHc6qjHXz"
+      },
+      {
+        "comment_id": 4224015486,
+        "resolution": "on details toggle, JS closes open siblings and recomputes status visibility when name exclusivity unsupported",
+        "severity": "P2",
+        "thread_id": "PRRT_kwDOTGqvHc6qjHYA"
+      }
+    ],
+    "focused_green": {
+      "details_cases": 5,
+      "details_task_id": "6a7fbcef944d48f9a5a4425b",
+      "native_cases": 6,
+      "native_task_id": "3940e0b44e6b4e37aad1c193"
+    },
+    "native_menu_green": {
+      "measured_clearance_px": [
+        0,
+        0
+      ],
+      "passed": true,
+      "task_id": "d70dc61e3d7542a9883c5114"
+    },
+    "native_menu_red": {
+      "cases": [
+        {
+          "left": -132,
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        {
+          "left": -132,
+          "viewport": [
+            320,
+            700
+          ]
+        }
+      ],
+      "head": "2a460d3a57d0d7be942ae4d7bff73c0942c0476d",
+      "task_id": "5f8d3e1bc10e41fa856f0f09"
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failure": "historical source SHA on immutable preceding receipt",
+      "full_pass_claim": false,
+      "passed_count": 1676,
+      "task_id": "091b7aeb459a4c5fbcfe5249"
+    },
+    "unsupported_details_red": {
+      "failed_cases": 5,
+      "task_id": "1e94a1f479c34e22819dc0ba"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "not a physically measured Safari/iOS screenshot",
+        "actual edge-selection permutations were covered by browser regression, not by these worst-case screenshots",
+        "no acceptance inherited automatically from prior revision"
+      ],
+      "method": "actual visual inspection of all three PNG images and their viewport/side-area metadata, separate from geometric assertion",
+      "scope": "Native contextual Edit menu displayed with worst-case all actions in 320x700, 390x844 and 640x720 simulated side-notch Chrome viewports"
+    }
+  },
+  "checks": {
+    "all_three_png_digests": true,
+    "full_chromium_27_cases": true,
+    "immutable_parent_unchanged": true,
+    "red_green_reproduced": true,
+    "source_shas_current": true,
+    "three_safe_area_geometries": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "full make validate PASS on evidence successor head",
+    "GitHub CI on new published head",
+    "independent exact-head PASS",
+    "Captain merge release",
+    "physical Safari/iOS behavior",
+    "deployment"
+  ],
+  "evidence_digest": "8ddb620cb7d5b4ffa31f89e72edd361fa16e9715a920593329e78c999dba0a0f",
+  "functional_head": "884968fcdfb9759644ec26692ac1c8f8acb04fc9",
+  "parent_evidence": {
+    "evidence_digest": "ca8aac3aadf5af0524371141ced119c6a8604d1e663cccd7c6a68aa0e655a5e9",
+    "file_sha256": "aee46ef259a25a0e8d9e27da4032cfe4cccc00808edffd852493488f0e393108",
+    "path": "docs/operators/evidence/schaubild-single-workspace-independent-remediation-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-independent-remediation.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-late-review-menus.v1",
+  "scope": "PR203 two current-head Codex P2: Native contextual menu horizontal safe-area and exclusive workspace menus without details[name] support",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "6df71cf48305c50be3b8ceb9909768e32413770b8a217b8a44dd1a54a9995c51",
+    "src/schauwerk/resources/standalone_editor/assets.py": "6cb4f51254b6ff368cbd4c5b4ddfb9990ff0f321e9896f8e18f5182ee6a80395",
+    "tests/visual/test_native_viewer_browser.py": "2189448d81dfb248123a62621eecb27f283861b0433bd5b56955cf947ca75d33",
+    "tests/visual/test_standalone_editor_single_workspace.py": "d4a8316f14b5aeae47cc36f0b2263d4777305670ecb1a5cdcb244917a8e13bb5"
+  },
+  "visual_readback": {
+    "case_count": 3,
+    "native_source_css_sha256": "1af50ed47c7c4046b569ac53b4f322f23f71ed1057280e67dee5602f1ad8710e",
+    "path": "docs/operators/evidence/schaubild-single-workspace-late-review-menus-20261008/visual-readback.json",
+    "schema_version": "schauwerk-pr203-edit-menu-safearea-readback.v1",
+    "screenshots": {
+      "edit-menu-320x700-left64-right80.png": {
+        "sha256": "215c26cfa0ee472f01cbc635a0f409d2e778be11cbdd8fe8ddb2201e896e6dc8",
+        "simulated_side_safe_areas": {
+          "left": 64,
+          "right": 80
+        },
+        "size": 21376,
+        "viewport": [
+          320,
+          700
+        ]
+      },
+      "edit-menu-390x844-left80-right64.png": {
+        "sha256": "4ce09af0bdada3210034cd47f32f08a67ab36b9b851a370632c54a4548eef1ca",
+        "simulated_side_safe_areas": {
+          "left": 80,
+          "right": 64
+        },
+        "size": 24113,
+        "viewport": [
+          390,
+          844
+        ]
+      },
+      "edit-menu-640x720-left80-right80.png": {
+        "sha256": "80965390f67abb09c92ab14aa8a88efc580b94ab6690798fe1b7981895578226",
+        "simulated_side_safe_areas": {
+          "left": 80,
+          "right": 80
+        },
+        "size": 33903,
+        "viewport": [
+          640,
+          720
+        ]
+      }
+    },
+    "sha256": "c8474bf3cf5c435a1cb6fbfe1ce245f2bfdee1b98746b11a606c3ad619cbbe70"
+  }
+}

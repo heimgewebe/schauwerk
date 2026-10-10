@@ -29,16 +29,19 @@ INDEX_HTML = r"""<!doctype html>
           <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
-          <button id="resetLayout" type="button">Positionen zurücksetzen</button>
+          <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
-        <div class="edit-controls document-only" role="group" aria-label="Bearbeiten" hidden>
-          <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
-          <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
-          <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
-          <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
-          <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
-          <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
-        </div>
+        <details class="edit-controls document-only" hidden>
+          <summary>Bearbeiten</summary>
+          <div class="edit-menu" role="group" aria-label="Bearbeiten">
+            <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
+            <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
+            <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
+            <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
+            <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
+            <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -147,29 +150,39 @@ button:focus-visible {
 .destructive-control { color: var(--danger); }
 
 .viewer-shell {
+  position: relative;
   height: 100vh;
   height: 100dvh;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
 }
 .viewer-bar {
-  position: relative;
-  z-index: 2;
-  min-height: 58px;
-  padding: max(7px, env(safe-area-inset-top)) max(9px, env(safe-area-inset-right)) 7px max(9px, env(safe-area-inset-left));
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  backdrop-filter: blur(18px) saturate(140%);
+  position: absolute;
+  z-index: 3;
+  top: max(7px, env(safe-area-inset-top));
+  left: max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+  right: max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px));
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
 }
 .viewer-heading {
   min-width: 0;
+  max-width: min(42vw, 460px);
+  padding: 4px 6px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
+  pointer-events: auto;
 }
 .viewer-title {
   min-width: 0;
@@ -191,7 +204,7 @@ button:focus-visible {
 }
 .status {
   min-width: 0;
-  max-width: min(36vw, 420px);
+  max-width: min(30vw, 360px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -205,60 +218,120 @@ button:focus-visible {
 }
 .controls {
   min-width: 0;
+  max-width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  pointer-events: auto;
+}
+.view-controls {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 6px;
-}
-.view-controls,
-.edit-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
+  gap: 3px;
   padding: 3px;
   border: 1px solid var(--line);
   border-radius: 11px;
-  background: var(--surface-soft);
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
 }
 .controls output {
-  min-width: 52px;
+  min-width: 48px;
   text-align: center;
   color: var(--muted);
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
 }
-.view-controls button,
-.edit-controls button {
+.view-controls button {
   border-color: transparent;
   background: transparent;
 }
-.view-controls button:hover,
-.edit-controls button:hover {
+.view-controls button:hover {
   border-color: var(--line);
   background: #fff;
 }
-.view-controls button:disabled:hover,
-.edit-controls button:disabled:hover {
+.view-controls button:disabled:hover {
   border-color: transparent;
   background: transparent;
 }
-
-.embedded-native-viewer .viewer-bar {
-  padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));
+.edit-controls {
+  position: relative;
+  min-width: 0;
 }
-.document-editor-hosted .viewer-bar {
-  min-height: 50px;
-  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+.edit-controls > summary {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  list-style: none;
+  color: #343746;
+  background: var(--surface);
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+.edit-controls > summary::-webkit-details-marker { display: none; }
+.edit-controls[open] > summary {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+.edit-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: max-content;
+  max-width: min(
+    520px,
+    calc(
+      100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+    )
+  );
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+.edit-menu button {
+  border-color: transparent;
+  background: transparent;
+}
+.edit-menu button:hover {
+  border-color: var(--line);
+  background: #fff;
 }
 .document-editor-hosted .viewer-title { display: none; }
-.document-editor-hosted .viewer-heading { gap: 0; }
-.document-editor-hosted .status { max-width: min(28vw, 320px); }
-.document-editor-hosted .controls { justify-content: flex-end; }
+.document-editor-hosted .viewer-heading {
+  max-width: min(32vw, 320px);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.document-editor-hosted .status { max-width: min(32vw, 320px); }
 
 .viewer-stage {
-  position: relative;
+  position: absolute;
+  inset: 0;
   min-height: 0;
   overflow: hidden;
   background:
@@ -321,64 +394,118 @@ button:focus-visible {
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .viewer-foot {
-  min-height: 34px;
-  padding: 6px max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  position: absolute;
+  z-index: 3;
+  left: max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+  bottom: max(7px, env(safe-area-inset-bottom), var(--host-footer-bottom, 0px));
+  min-height: 0;
+  max-width: calc(
+    100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+    - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+  );
+  padding: 6px 8px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   color: var(--muted);
   background: var(--surface);
-  border-top: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 4px 16px rgba(25, 28, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(140%);
   font-size: 0.68rem;
+  pointer-events: none;
 }
 .viewer-foot span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink);
   font-weight: 700;
 }
 .viewer-foot span:last-child { margin-left: auto; }
+.document-editor-hosted .viewer-foot span:not(:first-child) { display: none; }
 
 @media (max-width: 980px) {
-  .viewer-bar {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
+  .viewer-bar { gap: 6px; }
+  .viewer-heading { max-width: min(46vw, 360px); }
+  .status { max-width: min(42vw, 300px); }
+  .controls { gap: 4px; }
+  .document-editor-hosted .viewer-heading { max-width: min(30vw, 240px); }
+  .document-editor-hosted .status {
+    max-width: min(30vw, 240px);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    line-height: 1.3;
   }
-  .viewer-heading { justify-content: space-between; }
-  .status { max-width: 52vw; }
-  .controls { justify-content: flex-start; }
-  .document-editor-hosted .viewer-bar {
-    grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
-    align-items: center;
-  }
-  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
-  .document-editor-hosted .controls { justify-content: flex-end; }
 }
 @media (max-width: 620px) {
-  .viewer-bar { gap: 6px; padding-inline: 7px; }
+  button { min-width: 42px; min-height: 42px; }
+  .viewer-bar {
+    top: max(6px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+    right: max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px));
+    flex-wrap: wrap;
+    gap: 4px;
+  }
   .viewer-heading .eyebrow { display: none; }
+  .viewer-heading { max-width: 34vw; }
   .status {
-    max-width: 58vw;
-    border: 0;
-    padding-inline: 0;
-    background: transparent;
+    max-width: 100%;
+    padding-inline: 7px;
   }
-  .controls { gap: 4px; }
-  .document-editor-hosted .viewer-bar { grid-template-columns: minmax(0, 1fr); }
-  .document-editor-hosted .viewer-heading { justify-content: flex-start; }
-  .document-editor-hosted .status { max-width: 100%; }
-  .document-editor-hosted .controls { justify-content: flex-start; }
-  .view-controls,
-  .edit-controls {
-    width: 100%;
-    padding: 2px;
+  .controls { margin-left: auto; gap: 3px; }
+  .view-controls { padding: 2px; gap: 2px; }
+  .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
+  .edit-menu {
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+    );
   }
-  .view-controls button,
-  .edit-controls button { flex: 1 1 auto; }
-  .viewer-foot { gap: 8px; }
-  .viewer-foot span:nth-child(2) { display: none; }
+  .viewer-foot {
+    left: max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px));
+    bottom: max(6px, env(safe-area-inset-bottom), var(--host-footer-bottom, 0px));
+    max-width: calc(
+      100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+    );
+  }
 }
 @media (max-width: 430px) {
+  .document-editor-hosted .viewer-heading { max-width: min(34vw, 128px); }
+  .document-editor-hosted .status { max-width: 100%; }
+  .document-editor-hosted .controls output { display: none; }
+  .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
 }
+
+@media (max-width: 360px) {
+  /* A live editing instruction must not sit underneath zoom/edit controls. */
+  .viewer-bar { flex-wrap: wrap; gap: 4px; }
+  .controls {
+    order: 0;
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+  .viewer-heading,
+  .document-editor-hosted .viewer-heading {
+    order: 1;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 2px;
+  }
+  .document-editor-hosted .status {
+    width: fit-content;
+    max-width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; }
 }
@@ -401,7 +528,9 @@ button:focus-visible {
   button { color: #e9eaf2; background: #242733; }
   button:hover { border-color: #4d5262; background: #2b2f3c; }
   .view-controls button:hover,
-  .edit-controls button:hover { background: #292d39; }
+  .edit-menu button:hover { background: #292d39; }
+  .edit-controls > summary,
+  .edit-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }
@@ -425,10 +554,11 @@ export function clampScale(value) {
 }
 
 export function normalizeView(value = {}) {
+  const scale = finite(value.scale, 1);
   return {
     x: finite(value.x),
     y: finite(value.y),
-    scale: clampScale(value.scale),
+    scale: scale > 0 ? Math.min(MAX_SCALE, scale) : MIN_SCALE,
   };
 }
 
@@ -437,9 +567,17 @@ export function panBy(view, dx, dy) {
   return { ...current, x: current.x + finite(dx), y: current.y + finite(dy) };
 }
 
-export function zoomAt(view, requestedScale, anchor) {
+export function interactionScale(startScale, requestedScale, minimumScale = startScale) {
+  const requested = finite(requestedScale, startScale);
+  // A fitted scale below 25% is the floor for the full zoom/pinch session,
+  // not a new floor to ratchet upward on every interaction.
+  const floor = Math.min(MIN_SCALE, Math.max(Number.MIN_VALUE, finite(minimumScale, startScale)));
+  return Math.max(floor, Math.min(MAX_SCALE, requested));
+}
+
+export function zoomAt(view, requestedScale, anchor, minimumScale = view.scale) {
   const current = normalizeView(view);
-  const scale = clampScale(requestedScale);
+  const scale = interactionScale(current.scale, requestedScale, minimumScale);
   const anchorX = finite(anchor?.x);
   const anchorY = finite(anchor?.y);
   const diagramX = (anchorX - current.x) / current.scale;
@@ -459,12 +597,36 @@ export function screenDeltaToSvg(view, dx, dy) {
 export function fitView(contentWidth, contentHeight, viewportWidth, viewportHeight, padding = 28) {
   const width = Math.max(1, finite(contentWidth, 1));
   const height = Math.max(1, finite(contentHeight, 1));
-  const availableWidth = Math.max(1, finite(viewportWidth, 1) - 2 * Math.max(0, finite(padding)));
-  const availableHeight = Math.max(1, finite(viewportHeight, 1) - 2 * Math.max(0, finite(padding)));
-  const scale = clampScale(Math.min(availableWidth / width, availableHeight / height));
+  const viewportWidthValue = finite(viewportWidth, 1);
+  const viewportHeightValue = finite(viewportHeight, 1);
+  const uniformPadding = Math.max(0, finite(padding));
+  const insetPadding = (
+    padding && typeof padding === "object" && !Array.isArray(padding)
+      ? {
+          top: Math.max(0, finite(padding.top)),
+          right: Math.max(0, finite(padding.right)),
+          bottom: Math.max(0, finite(padding.bottom)),
+          left: Math.max(0, finite(padding.left)),
+        }
+      : {
+          top: uniformPadding,
+          right: uniformPadding,
+          bottom: uniformPadding,
+          left: uniformPadding,
+        }
+  );
+  const availableWidth = Math.max(
+    1,
+    viewportWidthValue - insetPadding.left - insetPadding.right,
+  );
+  const availableHeight = Math.max(
+    1,
+    viewportHeightValue - insetPadding.top - insetPadding.bottom,
+  );
+  const scale = Math.min(MAX_SCALE, availableWidth / width, availableHeight / height);
   return {
-    x: (finite(viewportWidth, 1) - width * scale) / 2,
-    y: (finite(viewportHeight, 1) - height * scale) / 2,
+    x: insetPadding.left + (availableWidth - width * scale) / 2,
+    y: insetPadding.top + (availableHeight - height * scale) / 2,
     scale,
   };
 }
@@ -761,8 +923,10 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 """
 
 APP_JS = r"""import {
+  MIN_SCALE,
   clampScale,
   fitView,
+  interactionScale,
   liveEdgeGeometry,
   nodeOffset,
   panBy,
@@ -835,6 +999,7 @@ const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
 let view = { x: 0, y: 0, scale: 1 };
+let fitScaleFloor = MIN_SCALE;
 let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
@@ -844,10 +1009,117 @@ let edgeReattach = null;
 let textEditTarget = null;
 let gesture = null;
 const activePointers = new Map();
+// Restore automatic fitting after a motionless pointer sequence, never after a manual view change.
+let pointerAutoFitBefore = null;
+let pointerChangedView = false;
+let pointerMovedNode = false;
+let pointerFitPending = false;
 const DRAG_THRESHOLD_PX = 4;
 const BOUNDS_EPSILON = 0.01;
+const VIEWPORT_FIT_PADDING = 48;
+const FIT_OVERLAY_CLEARANCE = 8;
+const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({
+  top: 60,
+  right: VIEWPORT_FIT_PADDING,
+  bottom: 104,
+  left: VIEWPORT_FIT_PADDING,
+});
 
 function setStatus(message) { status.textContent = message; }
+
+function viewportFitPadding(minimumPadding) {
+  const barRect = document.querySelector(".viewer-bar")?.getBoundingClientRect();
+  const footRect = document.querySelector(".viewer-foot")?.getBoundingClientRect();
+  const top = Math.max(
+    minimumPadding.top,
+    Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE,
+  );
+  const bottom = Math.max(
+    minimumPadding.bottom,
+    Math.ceil(viewport.clientHeight - (footRect?.top ?? viewport.clientHeight))
+      + FIT_OVERLAY_CLEARANCE,
+  );
+  // Measure the same safe-area-shifted bar used by the viewer controls.
+  // A fixed 48px margin can otherwise fit nodes under a landscape notch.
+  const left = Math.max(
+    minimumPadding.left,
+    Math.ceil(barRect?.left || 0) + FIT_OVERLAY_CLEARANCE,
+  );
+  const right = Math.max(
+    minimumPadding.right,
+    Math.ceil(viewport.clientWidth - (barRect?.right ?? viewport.clientWidth))
+      + FIT_OVERLAY_CLEARANCE,
+  );
+  return { top, right, bottom, left };
+}
+
+function standaloneViewportFitPadding() {
+  return viewportFitPadding({
+    top: VIEWPORT_FIT_PADDING,
+    right: VIEWPORT_FIT_PADDING,
+    bottom: VIEWPORT_FIT_PADDING,
+    left: VIEWPORT_FIT_PADDING,
+  });
+}
+
+function syncEmbeddedHostOverlays() {
+  if (!embeddedNativeViewer) return;
+  try {
+    const frame = window.frameElement?.getBoundingClientRect();
+    const host = window.parent.document;
+    if (!frame || !host.body.classList.contains("workspace-active")) return;
+    const bar = host.querySelector(".workspace-bar")?.getBoundingClientRect();
+    const status = host.querySelector(".topline")?.getBoundingClientRect();
+    const retry = host.querySelector("#nativeRetryButton");
+    const retryRect = retry && !retry.hidden ? retry.getBoundingClientRect() : null;
+    if (!bar || !status || !bar.width || !status.width) return;
+    const overlayTop = Math.min(
+      bar.top,
+      status.top,
+      retryRect?.height > 0 ? retryRect.top : Infinity,
+    );
+    const margins = {
+      "--host-safe-left": Math.ceil(Math.max(0, status.left - frame.left)),
+      "--host-safe-right": Math.ceil(Math.max(0, frame.right - bar.right)),
+      // Native selection must remain above both host status and action bar.
+      "--host-footer-bottom": Math.ceil(Math.max(0, frame.bottom - overlayTop))
+        + FIT_OVERLAY_CLEARANCE,
+    };
+    for (const [name, px] of Object.entries(margins)) {
+      const value = px + "px";
+      if (document.documentElement.style.getPropertyValue(name) !== value) {
+        document.documentElement.style.setProperty(name, value);
+      }
+    }
+  } catch (_) {
+    // Cross-origin embedding cannot read the hosting overlays.
+  }
+}
+
+function embeddedViewportFitPadding() {
+  // The host moves its status and workspace bar for bottom safe-area insets.
+  // Read actual overlay bounds instead of adding a fixed gutter on all devices.
+  let bottom = EMBEDDED_VIEWPORT_FIT_PADDING.bottom;
+  try {
+    const frameRect = window.frameElement?.getBoundingClientRect();
+    const host = window.parent.document;
+    if (frameRect && host.body.classList.contains("workspace-active")) {
+      for (const selector of [".topline", ".workspace-bar", "#nativeRetryButton"]) {
+        const overlay = host.querySelector(selector);
+        const rect = overlay?.getBoundingClientRect();
+        if (rect && rect.width > 0 && rect.height > 0) {
+          bottom = Math.max(
+            bottom,
+            Math.ceil(frameRect.bottom - rect.top) + FIT_OVERLAY_CLEARANCE,
+          );
+        }
+      }
+    }
+  } catch (_) {
+    // A cross-origin embed has no access to Schauwerk host overlay geometry.
+  }
+  return viewportFitPadding({ ...EMBEDDED_VIEWPORT_FIT_PADDING, bottom });
+}
 
 function readOverrides() {
   try {
@@ -1232,8 +1504,15 @@ function constrainAllNodesToCanvas() {
   return changed;
 }
 
-function setDocumentControlState(control, enabled, enabledTitle, disabledTitle) {
+function setDocumentControlState(
+  control,
+  enabled,
+  enabledTitle,
+  disabledTitle,
+  visible = enabled,
+) {
   if (!(control instanceof HTMLButtonElement)) return;
+  control.hidden = !visible;
   control.disabled = !enabled;
   control.title = enabled ? enabledTitle : disabledTitle;
 }
@@ -1247,6 +1526,7 @@ function updateDocumentToolbarState() {
     true,
     "Element hinzufügen",
     "Element hinzufügen",
+    true,
   );
   setDocumentControlState(
     addEdgeButton,
@@ -1341,17 +1621,51 @@ function contentSize() {
 }
 
 function fit({ announce = true } = {}) {
+  syncEmbeddedHostOverlays();
+  // Status text can wrap and grow the overlay bar (notably on CI/mobile).
+  // Measure fit insets only after the final status is in layout.
+  if (announce) setStatus("Ansicht angepasst");
   const content = contentSize();
-  view = fitView(content.width, content.height, viewport.clientWidth, viewport.clientHeight);
+  const fitPadding = embeddedNativeViewer
+    ? embeddedViewportFitPadding()
+    : standaloneViewportFitPadding();
+  view = fitView(
+    content.width,
+    content.height,
+    viewport.clientWidth,
+    viewport.clientHeight,
+    fitPadding,
+  );
+  fitScaleFloor = Math.min(MIN_SCALE, view.scale);
   autoFitActive = true;
   applyView();
-  if (announce) setStatus("Ansicht angepasst");
+}
+
+function releasePointerAutoFitIfIdle() {
+  if (activePointers.size || gesture) return;
+  if (pointerAutoFitBefore && !pointerChangedView && !pointerMovedNode) {
+    autoFitActive = true;
+    if (pointerFitPending) fit({ announce: false });
+  }
+  pointerAutoFitBefore = null;
+  pointerChangedView = false;
+  pointerMovedNode = false;
+  pointerFitPending = false;
+}
+
+function fitAfterLayoutChange() {
+  syncEmbeddedHostOverlays();
+  if (autoFitActive) fit({ announce: false });
+  else if (activePointers.size && pointerAutoFitBefore) pointerFitPending = true;
 }
 
 function zoomBy(factor, anchor = null) {
   const point = anchor || { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+  const next = zoomAt(view, view.scale * factor, point, fitScaleFloor);
+  if (factor < 1 && next.scale >= view.scale) return;
+  if (activePointers.size) pointerChangedView = true;
   autoFitActive = false;
-  view = zoomAt(view, clampScale(view.scale * factor), point);
+  view = next;
   applyView();
 }
 
@@ -1377,12 +1691,21 @@ function startPinchIfPossible() {
         gesture.rollbackOffset.y,
       );
       applyNodeTransform(gesture.sourceId);
+      pointerMovedNode = false;
+      setStatus("Verschieben abgebrochen");
     }
     nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
   }
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
   const diagramPoint = { x: (midpoint.x - view.x) / view.scale, y: (midpoint.y - view.y) / view.scale };
-  gesture = { kind: "pinch", startDistance: distance, startScale: view.scale, diagramPoint };
+  gesture = {
+    kind: "pinch",
+    startDistance: distance,
+    startScale: view.scale,
+    startMidpoint: midpoint,
+    diagramPoint,
+    moved: false,
+  };
   viewport.classList.add("is-panning");
   return true;
 }
@@ -1394,13 +1717,28 @@ function updatePinch() {
   const [first, second] = pointers;
   const distance = Math.hypot(second.x - first.x, second.y - first.y);
   const midpoint = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
-  const scale = clampScale(gesture.startScale * (distance / gesture.startDistance));
-  autoFitActive = false;
-  view = {
+  if (!gesture.moved
+      && Math.abs(distance - gesture.startDistance) < DRAG_THRESHOLD_PX
+      && Math.hypot(
+        midpoint.x - gesture.startMidpoint.x,
+        midpoint.y - gesture.startMidpoint.y,
+      ) < DRAG_THRESHOLD_PX) return;
+  gesture.moved = true;
+  const scale = interactionScale(
+    gesture.startScale,
+    gesture.startScale * (distance / gesture.startDistance),
+    fitScaleFloor,
+  );
+  const nextView = {
     x: midpoint.x - gesture.diagramPoint.x * scale,
     y: midpoint.y - gesture.diagramPoint.y * scale,
     scale,
   };
+  if (nextView.x !== view.x || nextView.y !== view.y || nextView.scale !== view.scale) {
+    pointerChangedView = true;
+  }
+  autoFitActive = false;
+  view = nextView;
   applyView();
 }
 
@@ -1469,6 +1807,14 @@ applyAllNodeTransforms();
 
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
+  // The first pointer suspends fit; pure taps restore the previously active mode.
+  if (activePointers.size === 0) {
+    pointerAutoFitBefore = autoFitActive;
+    pointerChangedView = false;
+    pointerMovedNode = false;
+    pointerFitPending = false;
+  }
+  autoFitActive = false;
   const point = localPoint(event);
   const node = nodeFromTarget(event.target);
   const edge = node ? null : edgeFromTarget(event.target);
@@ -1503,6 +1849,7 @@ viewport.addEventListener("pointerdown", (event) => {
       edgeReattach = null;
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      releasePointerAutoFitIfIdle();
       rebuildDocument(document);
       return;
     }
@@ -1512,6 +1859,7 @@ viewport.addEventListener("pointerdown", (event) => {
         edgeCreateSource = null;
         activePointers.delete(event.pointerId);
         try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* no rebuild */ }
+        releasePointerAutoFitIfIdle();
         return;
       }
       const edgeId = uniqueId("edge_", [...document.nodes, ...document.edges]);
@@ -1529,6 +1877,7 @@ viewport.addEventListener("pointerdown", (event) => {
       edgeCreateSource = null;
       activePointers.delete(event.pointerId);
       try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* frame rebuild */ }
+      releasePointerAutoFitIfIdle();
       rebuildDocument(document);
       return;
     }
@@ -1553,6 +1902,7 @@ viewport.addEventListener("pointerdown", (event) => {
     activePointers.delete(event.pointerId);
     try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
     gesture = null;
+    releasePointerAutoFitIfIdle();
     return;
   }
   selectNode(null);
@@ -1562,6 +1912,7 @@ viewport.addEventListener("pointerdown", (event) => {
     startX: event.clientX,
     startY: event.clientY,
     startView: { ...view },
+    moved: false,
   };
   viewport.classList.add("is-panning");
 });
@@ -1583,8 +1934,14 @@ viewport.addEventListener("pointermove", (event) => {
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
   if (gesture.kind === "pan") {
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    // Touch jitter during a tap is not manual viewport navigation.
+    if (!gesture.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+    gesture.moved = true;
+    pointerChangedView = true;
     autoFitActive = false;
-    view = panBy(gesture.startView, event.clientX - gesture.startX, event.clientY - gesture.startY);
+    view = panBy(gesture.startView, dx, dy);
     applyView();
     return;
   }
@@ -1593,6 +1950,7 @@ viewport.addEventListener("pointermove", (event) => {
     const screenDy = event.clientY - gesture.startY;
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
     gesture.moved = true;
+    pointerMovedNode = true;
     const delta = screenDeltaToSvg(view, screenDx, screenDy);
     setNodeOffset(
       gesture.sourceId,
@@ -1616,7 +1974,16 @@ function finishPointer(event) {
 
   if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
-    if (endedGesture.moved) {
+    if (event.type === "pointercancel" && endedGesture.moved) {
+      setNodeOffset(
+        endedGesture.sourceId,
+        endedGesture.rollbackOffset.x,
+        endedGesture.rollbackOffset.y,
+      );
+      applyNodeTransform(endedGesture.sourceId);
+      pointerMovedNode = false;
+      setStatus("Verschieben abgebrochen");
+    } else if (endedGesture.moved) {
       if (documentEditorHosted) {
         publishDocumentState();
         setStatus("Dokumentposition geändert · Kanten live geroutet");
@@ -1639,6 +2006,7 @@ function finishPointer(event) {
         startX: pointer.clientX,
         startY: pointer.clientY,
         startView: { ...view },
+        moved: false,
       };
       viewport.classList.add("is-panning");
     } else {
@@ -1646,6 +2014,7 @@ function finishPointer(event) {
     }
   }
   if (!gesture) viewport.classList.remove("is-panning");
+  releasePointerAutoFitIfIdle();
 }
 viewport.addEventListener("pointerup", finishPointer);
 viewport.addEventListener("pointercancel", finishPointer);
@@ -1661,6 +2030,9 @@ viewport.addEventListener("wheel", (event) => {
     const factor = Math.exp(-event.deltaY * modeScale * 0.0015);
     zoomBy(factor, localPoint(event));
     return;
+  }
+  if (activePointers.size && (event.deltaX !== 0 || event.deltaY !== 0)) {
+    pointerChangedView = true;
   }
   autoFitActive = false;
   view = panBy(view, -event.deltaX * modeScale, -event.deltaY * modeScale);
@@ -1703,16 +2075,6 @@ function deleteSelection() {
 
 if (documentEditorHosted) {
   if (editControls instanceof HTMLElement) editControls.hidden = false;
-  for (const control of [
-    addNodeButton,
-    addEdgeButton,
-    editTextButton,
-    reattachSourceButton,
-    reattachTargetButton,
-    deleteSelectionButton,
-  ]) {
-    if (control instanceof HTMLButtonElement) control.hidden = false;
-  }
   if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Text · Elemente & Verbindungen";
   if (authorityHint) authorityHint.textContent = "Dokument wird lokal gesichert";
   updateDocumentToolbarState();
@@ -1739,6 +2101,7 @@ if (documentEditorHosted) {
       return;
     }
     edgeCreateSource = selectedId;
+    if (editControls instanceof HTMLDetailsElement) editControls.open = false;
     setStatus("Ziel für die neue Verbindung auswählen");
   });
   editTextButton?.addEventListener("click", openTextEditor);
@@ -1749,6 +2112,7 @@ if (documentEditorHosted) {
     }
     edgeCreateSource = null;
     edgeReattach = { edgeId: selectedEdgeId, endpoint };
+    if (editControls instanceof HTMLDetailsElement) editControls.open = false;
     setStatus(
       endpoint === "from"
         ? "Neuen Anfang auswählen"
@@ -1799,9 +2163,27 @@ if (documentEditorHosted) {
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
 fitButton.addEventListener("click", () => fit());
-window.addEventListener("resize", () => {
-  if (autoFitActive) fit({ announce: false });
-});
+window.addEventListener("resize", fitAfterLayoutChange);
+// The embedded parent layout can settle after native module initialization.
+window.addEventListener("load", fitAfterLayoutChange, { once: true });
+// A longer live status can grow this overlay after the previous auto-fit.
+// Keep automatic clearance synchronized, without changing manual zoom or pan.
+const viewerBar = document.querySelector(".viewer-bar");
+if (viewerBar && typeof ResizeObserver === "function") {
+  new ResizeObserver(fitAfterLayoutChange).observe(viewerBar);
+}
+// The absolutely positioned host retry row cannot resize the native toolbar.
+// Its visibility changes must remeasure host clearance while auto-fit owns view.
+if (embeddedNativeViewer && typeof MutationObserver === "function") {
+  try {
+    const retry = window.parent.document.querySelector("#nativeRetryButton");
+    if (retry) {
+      new MutationObserver(fitAfterLayoutChange).observe(
+        retry, { attributes: true, attributeFilter: ["hidden"] },
+      );
+    }
+  } catch (_) { /* cross-origin host is not observable */ }
+}
 resetLayout.addEventListener("click", () => {
   overrides = {};
   if (!documentMode) {

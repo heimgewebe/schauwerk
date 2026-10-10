@@ -1,0 +1,208 @@
+{
+  "geometry": {
+    "host": {
+      "actionBar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 78.046875,
+        "right": 314,
+        "top": 640,
+        "width": 235.953125,
+        "x": 78.046875,
+        "y": 640
+      },
+      "actions": [
+        {
+          "accessible": "Tools (Werkzeuge)",
+          "box": {
+            "bottom": 687,
+            "height": 42,
+            "left": 83.046875,
+            "right": 125.046875,
+            "top": 645,
+            "width": 42,
+            "x": 83.046875,
+            "y": 645
+          },
+          "fontPx": 12.48,
+          "hidden": false,
+          "paddingLeft": "0px",
+          "paddingRight": "0px",
+          "selector": ".workspace-tools-menu > summary",
+          "spanWidth": 32,
+          "text": "Tools",
+          "textScrollWidth": 32
+        },
+        {
+          "accessible": "Export",
+          "box": {
+            "bottom": 687,
+            "height": 42,
+            "left": 128.046875,
+            "right": 170.046875,
+            "top": 645,
+            "width": 42,
+            "x": 128.046875,
+            "y": 645
+          },
+          "fontPx": 12.48,
+          "hidden": false,
+          "paddingLeft": "0px",
+          "paddingRight": "0px",
+          "selector": ".workspace-export-menu > summary",
+          "spanWidth": 40,
+          "text": "Export",
+          "textScrollWidth": 40
+        },
+        {
+          "accessible": "Speichern: Originalprojekt",
+          "box": {
+            "bottom": 687,
+            "height": 42,
+            "left": 173.046875,
+            "right": 241.046875,
+            "top": 645,
+            "width": 68,
+            "x": 173.046875,
+            "y": 645
+          },
+          "fontPx": 13.12,
+          "hidden": false,
+          "paddingLeft": "4px",
+          "paddingRight": "4px",
+          "selector": "#downloadLink",
+          "spanWidth": 56,
+          "text": "Speichern",
+          "textScrollWidth": 56
+        },
+        {
+          "accessible": "Zurück zum Start",
+          "box": {
+            "bottom": 687,
+            "height": 42,
+            "left": 244.046875,
+            "right": 309,
+            "top": 645,
+            "width": 64.953125,
+            "x": 244.046875,
+            "y": 645
+          },
+          "fontPx": 13.12,
+          "hidden": false,
+          "paddingLeft": "9px",
+          "paddingRight": "9px",
+          "selector": "#workspaceCloseButton",
+          "spanWidth": 63,
+          "text": "Zurück",
+          "textScrollWidth": 63
+        }
+      ],
+      "stage": {
+        "bottom": 700,
+        "height": 700,
+        "left": 0,
+        "right": 320,
+        "top": 0,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      }
+    },
+    "native": {
+      "active": false,
+      "controls": [
+        {
+          "box": {
+            "bottom": 51,
+            "height": 42,
+            "left": 87.359375,
+            "right": 129.359375,
+            "top": 9,
+            "width": 42
+          },
+          "name": "zoomOut"
+        },
+        {
+          "box": {
+            "bottom": 37,
+            "height": 14,
+            "left": 131.359375,
+            "right": 179.359375,
+            "top": 23,
+            "width": 48
+          },
+          "name": "zoomValue"
+        },
+        {
+          "box": {
+            "bottom": 51,
+            "height": 42,
+            "left": 181.359375,
+            "right": 223.359375,
+            "top": 9,
+            "width": 42
+          },
+          "name": "zoomIn"
+        },
+        {
+          "box": {
+            "bottom": 51,
+            "height": 42,
+            "left": 225.359375,
+            "right": 311,
+            "top": 9,
+            "width": 85.640625
+          },
+          "name": "fitView"
+        },
+        {
+          "box": {
+            "bottom": 95,
+            "height": 42,
+            "left": 269,
+            "right": 311,
+            "top": 53,
+            "width": 42
+          },
+          "name": "resetLayout"
+        }
+      ],
+      "footer": {
+        "bottom": 596,
+        "height": 28,
+        "left": 44,
+        "right": 140.625,
+        "top": 568,
+        "width": 96.625
+      },
+      "frame": {
+        "bottom": 700,
+        "height": 700,
+        "left": 0,
+        "right": 320,
+        "top": 0,
+        "width": 320,
+        "x": 0,
+        "y": 0
+      },
+      "safeLeft": "44px",
+      "safeRight": "6px"
+    },
+    "window": {
+      "height": 700,
+      "width": 320
+    }
+  },
+  "png_bytes": 30528,
+  "png_sha256": "992c695d5796edd5faf1ee77eda546dae1b97ad3550d79cb10b96313c43ef8b9",
+  "safe_area": {
+    "left": 44,
+    "right": 0
+  },
+  "schema_version": "schauwerk-pr203-pinch-save-cdp.v1",
+  "stage": "tools",
+  "viewport": [
+    320,
+    700
+  ]
+}

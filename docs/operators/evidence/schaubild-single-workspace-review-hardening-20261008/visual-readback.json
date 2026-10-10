@@ -1,0 +1,445 @@
+{
+  "cases": {
+    "drawio-export-mobile-dark": {
+      "bar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 384,
+        "width": 378,
+        "x": 6,
+        "y": 784
+      },
+      "button": {
+        "bottom": 762,
+        "height": 42,
+        "right": 371,
+        "width": 108.0625,
+        "x": 262.9375,
+        "y": 720
+      },
+      "download": "Originalprojekt speichern",
+      "exportClosed": true,
+      "gap": 16,
+      "popover": {
+        "bottom": 768,
+        "height": 54,
+        "right": 377,
+        "width": 120.0625,
+        "x": 256.9375,
+        "y": 714
+      },
+      "screenshot_bytes": 35571,
+      "screenshot_sha256": "29dee6f74322714bc7011ed9ed95db97b13f60544a0294a30eee4eeab3df12c3",
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    "native-desktop-light": {
+      "frame": {
+        "bottom": 900,
+        "height": 900,
+        "right": 1366,
+        "width": 1366,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 892,
+        "height": 50,
+        "right": 1358,
+        "width": 144.875,
+        "x": 1213.125,
+        "y": 842
+      },
+      "hostClearance": 56.096435546875,
+      "hostStatus": {
+        "bottom": 840,
+        "height": 29,
+        "right": 90.1875,
+        "width": 82.1875,
+        "x": 8,
+        "y": 811
+      },
+      "nativeBar": {
+        "bottom": 51,
+        "height": 44,
+        "right": 1359,
+        "width": 1352,
+        "x": 7,
+        "y": 7
+      },
+      "nativeClearance": 50.09645080566406,
+      "processStatus": null,
+      "screenshot_bytes": 42435,
+      "screenshot_sha256": "89d1bc7dd38b2b7f93011d936b1033643a4efe3f9900393ec37dad9c84690e08",
+      "stage": {
+        "bottom": 900,
+        "height": 900,
+        "right": 1366,
+        "width": 1366,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1366
+      }
+    },
+    "native-mobile-dark": {
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 784
+      },
+      "hostClearance": 43.34515380859375,
+      "hostStatus": {
+        "bottom": 776,
+        "height": 28,
+        "right": 83.578125,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "nativeBar": {
+        "bottom": 99,
+        "height": 93,
+        "right": 384,
+        "width": 378,
+        "x": 6,
+        "y": 6
+      },
+      "nativeClearance": 43.345184326171875,
+      "processStatus": null,
+      "screenshot_bytes": 27780,
+      "screenshot_sha256": "8d33e3994fbf539469366d3326ed9aeb8b77fdb842219f723fa1e62cd084fa5c",
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    "native-tablet-light": {
+      "frame": {
+        "bottom": 768,
+        "height": 768,
+        "right": 1024,
+        "width": 1024,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 760,
+        "height": 50,
+        "right": 1016,
+        "width": 144.875,
+        "x": 871.125,
+        "y": 710
+      },
+      "hostClearance": 48.72589111328125,
+      "hostStatus": {
+        "bottom": 708,
+        "height": 29,
+        "right": 90.1875,
+        "width": 82.1875,
+        "x": 8,
+        "y": 679
+      },
+      "nativeBar": {
+        "bottom": 51,
+        "height": 44,
+        "right": 1017,
+        "width": 1010,
+        "x": 7,
+        "y": 7
+      },
+      "nativeClearance": 42.72589111328125,
+      "processStatus": null,
+      "screenshot_bytes": 36084,
+      "screenshot_sha256": "3c7a0055e852453edce1e6b974be124508ee98552b0870871e0a002abdc6c89f",
+      "stage": {
+        "bottom": 768,
+        "height": 768,
+        "right": 1024,
+        "width": 1024,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 768,
+        "width": 1024
+      }
+    },
+    "native-tall-mobile-dark": {
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 784
+      },
+      "hostClearance": 20.96649169921875,
+      "hostStatus": {
+        "bottom": 776,
+        "height": 28,
+        "right": 83.578125,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "nativeBar": {
+        "bottom": 99,
+        "height": 93,
+        "right": 384,
+        "width": 378,
+        "x": 6,
+        "y": 6
+      },
+      "nativeClearance": 20.966476440429688,
+      "processStatus": null,
+      "screenshot_bytes": 27097,
+      "screenshot_sha256": "c644d2970303bbcf4043e3a4b289784b6cb755cbd7d57bf7f3c252291609c519",
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    },
+    "process-status-431-dark": {
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "right": 431,
+        "width": 431,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 425,
+        "width": 139.875,
+        "x": 285.125,
+        "y": 784
+      },
+      "hostClearance": 43.34515380859375,
+      "hostStatus": {
+        "bottom": 776,
+        "height": 28,
+        "right": 83.578125,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "nativeBar": {
+        "bottom": 99,
+        "height": 93,
+        "right": 425,
+        "width": 419,
+        "x": 6,
+        "y": 6
+      },
+      "nativeClearance": 43.345184326171875,
+      "processStatus": {
+        "clientHeight": 52,
+        "clientWidth": 106,
+        "rect": {
+          "bottom": 61.375,
+          "height": 54.375,
+          "right": 115.4375,
+          "width": 108.4375,
+          "x": 7,
+          "y": 7
+        },
+        "scrollHeight": 52,
+        "scrollWidth": 106,
+        "text": "Ziel für die neue Verbindung auswählen",
+        "textOverflow": "clip",
+        "whiteSpace": "normal"
+      },
+      "screenshot_bytes": 30927,
+      "screenshot_sha256": "cc8f1c989bb3894adb491a39755905a4822dd4966e7902411ec048a2eca50780",
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "right": 431,
+        "width": 431,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 844,
+        "width": 431
+      }
+    },
+    "process-status-landscape-dark": {
+      "frame": {
+        "bottom": 390,
+        "height": 390,
+        "right": 844,
+        "width": 844,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 382,
+        "height": 50,
+        "right": 836,
+        "width": 144.875,
+        "x": 691.125,
+        "y": 332
+      },
+      "hostClearance": 27.619293212890625,
+      "hostStatus": {
+        "bottom": 330,
+        "height": 29,
+        "right": 90.1875,
+        "width": 82.1875,
+        "x": 8,
+        "y": 301
+      },
+      "nativeBar": {
+        "bottom": 51,
+        "height": 44,
+        "right": 837,
+        "width": 830,
+        "x": 7,
+        "y": 7
+      },
+      "nativeClearance": 21.619293212890625,
+      "processStatus": {
+        "clientHeight": 24,
+        "clientWidth": 227,
+        "rect": {
+          "bottom": 34.125,
+          "height": 26.125,
+          "right": 236.671875,
+          "width": 228.671875,
+          "x": 8,
+          "y": 8
+        },
+        "scrollHeight": 24,
+        "scrollWidth": 227,
+        "text": "Ziel für die neue Verbindung auswählen",
+        "textOverflow": "clip",
+        "whiteSpace": "normal"
+      },
+      "screenshot_bytes": 26013,
+      "screenshot_sha256": "86bd89b25578461c5bc1253563412bf9935eac9d9d9b9c7733ecd93889b83872",
+      "stage": {
+        "bottom": 390,
+        "height": 390,
+        "right": 844,
+        "width": 844,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 390,
+        "width": 844
+      }
+    },
+    "process-status-mobile-dark": {
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 784
+      },
+      "hostClearance": 43.34515380859375,
+      "hostStatus": {
+        "bottom": 776,
+        "height": 28,
+        "right": 83.578125,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "nativeBar": {
+        "bottom": 99,
+        "height": 93,
+        "right": 384,
+        "width": 378,
+        "x": 6,
+        "y": 6
+      },
+      "nativeClearance": 43.345184326171875,
+      "processStatus": {
+        "clientHeight": 52,
+        "clientWidth": 124,
+        "rect": {
+          "bottom": 61.375,
+          "height": 54.375,
+          "right": 133,
+          "width": 126,
+          "x": 7,
+          "y": 7
+        },
+        "scrollHeight": 52,
+        "scrollWidth": 124,
+        "text": "Ziel für die neue Verbindung auswählen",
+        "textOverflow": "clip",
+        "whiteSpace": "normal"
+      },
+      "screenshot_bytes": 30302,
+      "screenshot_sha256": "96527cae8fd2446b9e284cad495e13e05b5b6401e0501dff08a2973e608e9aca",
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    }
+  },
+  "head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70"
+}

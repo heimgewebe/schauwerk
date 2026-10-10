@@ -1,0 +1,186 @@
+{
+  "schema_version": "schauwerk-schaubild-single-workspace-max-canvas.v1",
+  "scope": "schaubild-single-workspace-max-canvas-and-integrated-export",
+  "accepted_at": "2026-10-05T07:10:34Z",
+  "base_product_head": "8ec2042d565008a171d46b84415065904748e29b",
+  "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+  "parent_evidence": {
+    "evidence_digest": "11cb09d163b76ef960cbaead203f88b2d383398000b0d34def0f235abdedce39",
+    "file_sha256": "96a47e4cd02b65cb388b975b19bcd0330dc51adfc7f14e6bb82eef8cf54e3214",
+    "path": "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-dark-status.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "single_workspace_only_after_open": true,
+    "fullscreen_toggle_and_state_machine_absent": true,
+    "outer_workspace_stage_fills_viewport": true,
+    "native_stage_fills_iframe_viewport": true,
+    "legacy_reserved_canvas_gutters_removed": true,
+    "tools_and_export_collapsed_into_compact_workspace_popovers": true,
+    "engine_specific_export_capabilities_preserved": true,
+    "native_edit_controls_contextual_and_collapsible": true,
+    "export_popover_closes_after_export_action": true,
+    "desktop_tablet_mobile_browser_geometry_passed": true,
+    "light_dark_native_legacy_visual_readback_passed": true,
+    "exact_head_browser_smoke_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true,
+    "exact_successor_full_validate_passed": true
+  },
+  "check_evidence": {
+    "focused_regressions": {
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "job_id": "04d5eaa80cdb4e7585dfc800",
+      "finalization_receipt_sha256": "d8ef36f324a18a6aea8d8a185680f0caf9d4c53f8db5f5b17679cea2b33b1edf",
+      "argv_sha256": "84c56d8184c62a5a8bc1f9188011ad1dfc48a866746aa2317c36e7fb2cfeeb9c",
+      "passed_count": 32,
+      "result": "passed"
+    },
+    "browser_smoke": {
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "job_id": "cbb7f605fc3f4e0d9bca42d9",
+      "finalization_receipt_sha256": "a92d6047197f2ced02f251a883b2e839f44fd86fbe20ea529d09fd4d546275c0",
+      "argv_sha256": "8435325077682c8b367723a753badf39e6e117c2f37a24ec070e89a38d7bc0b2",
+      "passed_count": 7,
+      "result": "passed"
+    },
+    "visual_readback": {
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "job_id": "5f176639c0064efda87292ca",
+      "finalization_receipt_sha256": "75271db13e0e0e6fdffc3bc133965fe649aecddc576bd0e225b8ae97807533e5",
+      "argv_sha256": "ff54c91148e641b96d3a15b27d0f79221eea941d3cf73a67c5408ecb609b63f6",
+      "states": {
+        "native_desktop_light": {
+          "viewport": {
+            "width": 1366,
+            "height": 900
+          },
+          "workspace_fills_viewport": true,
+          "native_stage_fills_iframe": true,
+          "project_label": "Canvas",
+          "png_visible": false,
+          "svg_visible": true,
+          "export_menu_open_after_action": false,
+          "download_visible_after_action": true,
+          "screenshot_sha256": "8050f57b6caef07ccb9ccb01d66a81dd8a88ff7276ab30eef605575e52ac59b4",
+          "result": "passed"
+        },
+        "native_mobile_dark": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "workspace_fills_viewport": true,
+          "native_stage_fills_iframe": true,
+          "project_label": "Canvas",
+          "png_visible": false,
+          "svg_visible": true,
+          "export_menu_open_after_action": false,
+          "download_visible_after_action": true,
+          "screenshot_sha256": "259a8acc215618adfdaeb82550224864018754d17a9d3856cf916fbdabab5918",
+          "result": "passed"
+        },
+        "legacy_desktop_light": {
+          "viewport": {
+            "width": 1366,
+            "height": 900
+          },
+          "workspace_fills_viewport": true,
+          "frame_fills_workspace": true,
+          "project_label": "Projekt",
+          "png_visible": true,
+          "svg_visible": true,
+          "handshake_reached_ready_state": true,
+          "export_menu_open_after_action": false,
+          "download_visible_after_action": true,
+          "screenshot_sha256": "689523b124dd027f8ae04aa95291d335101522faaec1f687e471a2c752e342a3",
+          "result": "passed"
+        },
+        "legacy_mobile_dark": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "workspace_fills_viewport": true,
+          "frame_fills_workspace": true,
+          "project_label": "Projekt",
+          "png_visible": true,
+          "svg_visible": true,
+          "handshake_reached_ready_state": true,
+          "export_menu_open_after_action": false,
+          "download_visible_after_action": true,
+          "screenshot_sha256": "7a0ee07a783bd07b733f88d6dddf379674401a36b4bbc984b329969583bb60a3",
+          "result": "passed"
+        }
+      },
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "job_id": "41156c29cdd5425581d5ba3a",
+      "finalization_receipt_sha256": "5dbb5f15eda2a191de1b20dd2a3a6c82e6ad99b4cccbf02e5fa99f6c9d9a39a0",
+      "argv_sha256": "6be942c39e39572005ea0e9f147c135b1f4d02a27655fe3ce4d81834923d6721",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1658,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-05T07:08:03.542641Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+      "head_sha": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "diff_sha256": "67abebb2c17a6ccd3e73dbbe4da373737f86a6000d83b332be106df5b11690d1",
+      "diff_bytes": 71784,
+      "result": "passed"
+    },
+    "exact_successor_full_validate": {
+      "functional_head": "eea29caf4f212125e734894a479d612fe9e9ef42",
+      "job_id": "0ebad912ee22484792059480",
+      "finalization_receipt_sha256": "19ea075ac1347fb14b8e1d3dc0a8c2d8bbe99dbf0759566ba68e45013436fb34",
+      "argv_sha256": "4857c15cbffd013349abb034c17caeb9612661f69016a44a67937af6bdad96a0",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1659,
+      "failed_count": 0,
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "Makefile": "59b2239d15f93effbb1d647690a2ad72c11046114396ea9d8ba315078422c23f",
+    "src/schauwerk/resources/native_viewer/assets.py": "567f98b39bd27b096e845d46b798e2537624ac4c885471cd566046a25bc469e7",
+    "src/schauwerk/resources/standalone_editor/assets.py": "3a25ff3dd94e666478e9aac35aa4faeca0fae887971f392e95116f19bba7b8bb",
+    "tests/visual/test_native_viewer.py": "7c89542271a5495ca8f03bf856db80a45a05b9d68d87cd34557af2c966dc6cef",
+    "tests/visual/test_native_viewer_product_ui.py": "ef39d554d1629703d3409a5ef550a356a7d0ba776c62955ae82783807b01f91c",
+    "tests/visual/test_standalone_editor.py": "9b8352ff40c17f632135357f12b1ff88accd620008b67c8f26638746a2d36154",
+    "tests/visual/test_standalone_editor_font_controls.py": "bbff9095faa24196d2fd423d36f2b249c7fe4b386b0e56ad7461fb6b8a67569f",
+    "tests/visual/test_standalone_editor_product_ui.py": "08fb0eb516a6fddd2f7a7ce6495982b9cdfb37179b6d230e78a4691642f5a9fb",
+    "tests/visual/test_standalone_editor_single_workspace.py": "f251616615a86fe4da63c3d8314e3d8d7a17a9d74017078d8d2713ff2aa03c1a"
+  },
+  "does_not_establish": [
+    "user post-change visual acceptance or aesthetic approval of this max-canvas revision",
+    "decision-bound independent reviewer PASS on the later successor-evidence head",
+    "GitHub CI success on the later successor-evidence head",
+    "GitHub current-head reviewer settlement and review-thread resolution",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "c785affc15fc9cce37ee2e1f82e3b9fc991c8710666aae4b70ffaf01c88a3927"
+}

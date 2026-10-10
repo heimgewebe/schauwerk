@@ -1,0 +1,148 @@
+{
+  "capture_note": "Original Headless Desktop Google Chrome CDP screenshots, real CSS viewports. No physical iOS Safari.",
+  "case_count": 3,
+  "cases": [
+    {
+      "geometry": {
+        "childEnvironment": {
+          "left": 0,
+          "right": 0
+        },
+        "footer": {
+          "left": 80,
+          "right": 497.984375
+        },
+        "hostSafe": {
+          "left": 80,
+          "right": 80
+        },
+        "menu": {
+          "bottom": 191,
+          "left": 80,
+          "right": 541,
+          "top": 103,
+          "width": 461
+        },
+        "pass": true,
+        "toolbar": {
+          "left": 80,
+          "right": 541
+        },
+        "viewport": {
+          "height": 720,
+          "width": 621
+        }
+      },
+      "geometry_file": "menu-621x720-host80-both.json",
+      "geometry_sha256": "a758816816dbf0204ce3aea579419f8f11318e6fdc9adad16b714e886eced0c7",
+      "kind": "desktop-menu",
+      "name": "menu-621x720-host80-both",
+      "screenshot_bytes": 38221,
+      "screenshot_file": "menu-621x720-host80-both.png",
+      "screenshot_sha256": "77efd6b87d40bc9470f3a4c59f93fe08780fb67604d757c7cf52a6bb1bf705c3",
+      "simulated_safe_area": {
+        "left": 80,
+        "right": 80
+      },
+      "viewport": [
+        621,
+        720
+      ]
+    },
+    {
+      "geometry": {
+        "autoFit": "translate(175.477px, 95px) scale(0.103474)",
+        "fittedContentBottom": 643,
+        "frame": {
+          "height": 844,
+          "left": 0,
+          "top": 0,
+          "width": 390
+        },
+        "nativeFooter": {
+          "left": 44,
+          "right": 140.625
+        },
+        "pass": true,
+        "retry": {
+          "bottom": 729,
+          "left": 285.09375,
+          "right": 383,
+          "top": 687,
+          "width": 97.90625
+        },
+        "retryClearance": 44,
+        "viewport": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "retry-390x844.json",
+      "geometry_sha256": "e07806a815627dccf1cbd043e4dc7b1ee6e08b609a505f4d8f036a442e5eb912",
+      "kind": "embedded-retry",
+      "name": "retry-390x844",
+      "screenshot_bytes": 29057,
+      "screenshot_file": "retry-390x844.png",
+      "screenshot_sha256": "fbd47f17ed782e2350fff777b9a073d6763ac208da7e0a636d77abacc109a84e",
+      "simulated_safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "autoFit": "translate(143.979px, 142px) scale(0.0674094)",
+        "fittedContentBottom": 499,
+        "frame": {
+          "height": 700,
+          "left": 0,
+          "top": 0,
+          "width": 320
+        },
+        "nativeFooter": {
+          "left": 8,
+          "right": 104.625
+        },
+        "pass": true,
+        "retry": {
+          "bottom": 585,
+          "left": 177.09375,
+          "right": 275,
+          "top": 543,
+          "width": 97.90625
+        },
+        "retryClearance": 44,
+        "viewport": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "retry-320x700.json",
+      "geometry_sha256": "94ef78293f9821e78307fc4b3cbb6b88b22236a5a4883ad522b8666d9a109a4f",
+      "kind": "embedded-retry",
+      "name": "retry-320x700",
+      "screenshot_bytes": 28111,
+      "screenshot_file": "retry-320x700.png",
+      "screenshot_sha256": "83fced6822f3208308cbfe827fcdb7672b64944967358b2140a0f2c0b3a3716c",
+      "simulated_safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "viewport": [
+        320,
+        700
+      ]
+    }
+  ],
+  "functional_head": "6fa626d6fc073d622131339fa97f2e7d65d390dd",
+  "schema_version": "schauwerk-pr203-host-retry-chromium-cdp.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "8f55a9fa3b17007dcf9927d248ebd2b6312e0234362136b9a5d443d0b4f06a11",
+    "tests/visual/test_native_viewer_browser.py": "a10ad6a50353ec80e0f616fab08f1d05ffd22575199ad7230b3e2aea5b7d740a",
+    "tests/visual/test_standalone_editor_single_workspace.py": "09944d77b49306014bc389ee1f280881ea43032df24905cea6a1980d0e4f9f48"
+  }
+}

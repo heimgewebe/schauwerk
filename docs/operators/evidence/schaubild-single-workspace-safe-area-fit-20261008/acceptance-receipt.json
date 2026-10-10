@@ -1,0 +1,126 @@
+{
+  "base_product_head": "4996e39ec2f7c4b21a204bf01b78ee9a21ffe4bc",
+  "check_evidence": {
+    "exact_css_viewport": {
+      "cases": [
+        "mobile-390-normal8",
+        "mobile-390-safe44",
+        "mobile-431-safe44"
+      ],
+      "head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+      "method": "Chromium CDP Emulation.setDeviceMetricsOverride",
+      "result": "passed",
+      "task_id": "d7aa2ffe60844dcf98da8a2b"
+    },
+    "focused_red_green": {
+      "case": "390-844-5000 (Chrome-window-sized smoke; safe-area inset 44px)",
+      "result": "passed",
+      "task_id": "7e34d99e4f784f1faf358e38"
+    },
+    "postcommit_browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+      "passed_count": 19,
+      "result": "passed",
+      "task_id": "4cb2d3dbadaf46cbae923f57"
+    },
+    "pre_successor_digest_gate": {
+      "failure_class": "expected_immutable_parent_source_hash_superseded_without_successor",
+      "head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+      "result": "failed",
+      "task_id": "e054af1b30b346c9bc648cc7"
+    },
+    "red_before": {
+      "failure": "fitted native content overlaps host chrome",
+      "limitation": "headless --window-size=390 actual CSS width 500; not misreported as 390",
+      "observed_clearance_px": -19.94,
+      "result": "failed",
+      "task_id": "d5b4090a30f74b81a0da6a1f"
+    },
+    "review_finding": {
+      "actual_css_viewport_px": [
+        390,
+        844
+      ],
+      "base_head": "4996e39ec2f7c4b21a204bf01b78ee9a21ffe4bc",
+      "pre_fix_host_clearance_px": -15.0335,
+      "simulated_bottom_safe_area_px": 44,
+      "source": "PR #203 Codex P2 and exact 390 CSS px independent readback",
+      "thread_id": "PRRT_kwDOTGqvHc6qYrG4"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+      "limitations": [
+        "no physical iOS Safari",
+        "no productive deployment"
+      ],
+      "method": "three actual PNGs visually read back separately from geometric test output; no visual change in production drawing content",
+      "scope": "actual 390/431 CSS viewport native graph and bottom safe-area of 44px, with 390px no-inset control"
+    }
+  },
+  "checks": {
+    "exact_css_viewport_reproduced": true,
+    "mobile_safe_area_clearance_nonnegative": true,
+    "no_fixed_canvas_gutter_added": true,
+    "parent_evidence_immutable": true,
+    "postcommit_chrome_smoke_green": true,
+    "real_pngs_visually_inspected": true,
+    "red_before_proved": true,
+    "source_sha256_bound": true,
+    "visual_readback_file_hash_bound": true
+  },
+  "does_not_establish": [
+    "new evidence head remote CI",
+    "independent exact evidence head reviewer PASS",
+    "Captain merge readiness",
+    "production deployment",
+    "iOS Safari behavior without physical verification"
+  ],
+  "evidence_digest": "1f7e33927a8b7af927ac354920264cddf6cd7bc72a965d127bb7626243980509",
+  "functional_head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+  "parent_evidence": {
+    "evidence_digest": "ae0f28bc15cb207e2921a30128b45db381f7ccd77fe6da16b1f07b108e5f05df",
+    "file_sha256": "937357831f30eeb5215ea11565c49316c60bdbeca3111528994cea92b24d11a7",
+    "path": "docs/operators/evidence/schaubild-single-workspace-final-review-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-final-review.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-safe-area-fit.v1",
+  "scope": "schauwerk-pr203-native-embedded-fit-host-bottom-safe-area-P2",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "35ea344e58a324eb09c795327bb9e6e9e44fed9727f16442a52ed05c0dac89ae",
+    "tests/visual/test_standalone_editor_single_workspace.py": "799060b997783728f4d2b558fb8cce111eac38de08d0044d254f8d25df9017b5"
+  },
+  "visual_readback": {
+    "case_count": 3,
+    "path": "docs/operators/evidence/schaubild-single-workspace-safe-area-fit-20261008/visual-readback.json",
+    "result": "passed",
+    "screenshot_bindings": {
+      "mobile-390-normal8.png": {
+        "bytes": 24974,
+        "sha256": "899c7b936a401156529837f898e6805e461565a8d81b2bebd94d5d3fff9b0a49",
+        "viewport_css_px": [
+          390,
+          844
+        ]
+      },
+      "mobile-390-safe44.png": {
+        "bytes": 25214,
+        "sha256": "22a18555130f449b76bc759c0652ffc62a0010f68f9327b325511718df46b1e3",
+        "viewport_css_px": [
+          390,
+          844
+        ]
+      },
+      "mobile-431-safe44.png": {
+        "bytes": 25760,
+        "sha256": "3c506e264a5e8036e54edebf370070efa9698e031cc20f84d902f1cf28660080",
+        "viewport_css_px": [
+          431,
+          844
+        ]
+      }
+    },
+    "sha256": "1cd827a04dfccf4d57b5cba96e9bcd7a3897deafa3023af42a9fb24e538df685"
+  }
+}

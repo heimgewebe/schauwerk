@@ -1,0 +1,112 @@
+{
+  "accepted_at": "2026-10-08T07:52:46+00:00",
+  "base_product_head": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+  "check_evidence": {
+    "exact_head_browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "lifecycle_receipt_sha256": "a4390763e28fb544884f4e7cad5f41c00078f4ba18c2ca1b44a882a3efff8f19",
+      "passed_count": 18,
+      "result": "passed",
+      "task_id": "a4893f78088046478a89c65c"
+    },
+    "git_diff_check": {
+      "base_sha": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+      "diff_bytes": 5459,
+      "diff_sha256": "c33c7aeb11e738afc90a694c54ff5276f3d55c18299dff9f750383463dd3a9f8",
+      "head_sha": "eca81dc0ba825e4ad3477322361f376498034393",
+      "result": "passed"
+    },
+    "independent_observer_readback": {
+      "observation_complete": true,
+      "observed_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "observer": "grosser-adler",
+      "untracked_present": false,
+      "worktree_clean": true
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "lifecycle_receipt_sha256": "72bc171f607733fa1550fec43e028cc90472e215aa3b87d710661e5968809fa3",
+      "passed_count": 1667,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "ed292ad461274cafa9695c1d"
+    },
+    "prior_codex_review_finding": {
+      "finding": "Pinch inward when starting below MIN_SCALE snapped up to manual minimum",
+      "resolved_by_functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "review_thread": "PRRT_kwDOTGqvHc6qP6qS"
+    },
+    "prior_current_head_independent_review": {
+      "does_not_establish_new_head_pass": true,
+      "finding": "ZoomIn from auto-fitted sub-MIN_SCALE snaps to manual minimum",
+      "job_unit": "grabowski-job-f087db4053e2",
+      "material_findings": 1,
+      "prior_reviewed_head": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+      "reviewer": "antigravity-gemini-pro-review-high",
+      "verdict": "NEEDS_CHANGE"
+    },
+    "visual_acceptance": {
+      "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "result": "accepted",
+      "reviewer": "ChatGPT visual inspection of exact-head native-tall-mobile Chrome PNG",
+      "scope": "4000px diagram remains proportionate and within toolbar/footer; technical pinch behavior separately measured"
+    },
+    "visual_readback": {
+      "case_count": 8,
+      "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+      "pinch_scales": {
+        "expectedOutward": 0.18944485714285716,
+        "initial": 0.147346,
+        "inward": 0.147346,
+        "outward": 0.189445
+      },
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-zoom-continuity-20261008/visual-readback.json",
+      "readback_json_sha256": "200587d2d0137ab595f556490006f79fdbaadab967bdbdd744c989e3fe88d553",
+      "result": "passed",
+      "task_id": "773322b1e14542f6a623f2a5"
+    }
+  },
+  "checks": {
+    "auto_fit_can_use_scale_below_manual_zoom_floor": true,
+    "exact_head_browser_smoke_passed": true,
+    "exact_head_visual_readback_passed": true,
+    "independent_observer_clean_source_head": true,
+    "inward_pinch_from_subfloor_fit_does_not_zoom_in": true,
+    "manual_zoom_bounds_at_normal_scales_preserved": true,
+    "module_import_declared_without_reference_error": true,
+    "outward_pinch_from_subfloor_fit_is_continuous": true,
+    "parent_acceptance_left_immutable": true,
+    "pinch_and_button_share_same_interaction_scale_helper": true,
+    "pre_successor_validate_failed_only_expected_hash_gate": true,
+    "source_has_no_temporary_debug_hooks": true,
+    "source_revisions_digest_bound": true,
+    "zoom_in_from_subfloor_fit_is_continuous": true
+  },
+  "does_not_establish": [
+    "independent decision-bound reviewer PASS on this later evidence head",
+    "current GitHub CI on the later evidence head",
+    "all GitHub Codex review findings settled after this change",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime deployment"
+  ],
+  "evidence_digest": "2a9ab1352ae36f72f4bc65046a47d19447998d3ec640a6d8b02a1fc03211522b",
+  "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+  "parent_evidence": {
+    "evidence_digest": "eacf84fab117c496ad8ae37df95ddb72d89ff0b8bc8282b792219d28b986e774",
+    "file_sha256": "32c69bbcce55c5ba9284ff79feed809ffbef9f5830c236b2cab91c652f329f26",
+    "path": "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-review-hardening.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-zoom-continuity.v1",
+  "scope": "schaubild-single-workspace-smooth-zoom-in-and-pinch-after-subminimum-fit",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "c2539cb4cf7bcd88762765529fc7ab7102c6f7b59a7d7746f33e724ec966ce7f",
+    "tests/visual/test_native_viewer.py": "9a2a972b960a6d8b6d2daa4a82f5e81c17281cfa4aee838ffbd7f5c6e99e57e7",
+    "tests/visual/test_standalone_editor_single_workspace.py": "a12e70c6c7f97653b8960d9fb86a4e5841dce0d69c3868cc9aa81a0fa7a1a822"
+  }
+}

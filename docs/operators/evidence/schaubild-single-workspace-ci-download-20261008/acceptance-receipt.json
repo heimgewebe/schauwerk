@@ -1,0 +1,133 @@
+{
+  "check_evidence": {
+    "local_browser_green": {
+      "case_count": 27,
+      "failed_count": 0,
+      "task_id": "2e1215d181344532b8ef912c"
+    },
+    "prior_remote_red": {
+      "failed_cases": 5,
+      "head": "2a460d3a57d0d7be942ae4d7bff73c0942c0476d",
+      "job_id": 113534469036,
+      "python": "3.12",
+      "reason": "mobile action text escapes its hit target: 2"
+    },
+    "static_green": {
+      "failed_count": 0,
+      "task_id": "9c2a522e209d4c078acc8d1c",
+      "test_count": 2
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "No GitHub Python-3.12 PASS on this functional head yet",
+        "Not a physical Safari/iOS test",
+        "Native toolbar outside this exact change is not re-accepted"
+      ],
+      "method": "Separate manual visual readback of all five current browser screenshots; not inferred from technical assertions",
+      "scope": "Visible full Speichern caption and non-overlapping actions in 320/390 CSS-pixel notched viewports"
+    }
+  },
+  "checks": {
+    "current_source_digests_exact": true,
+    "five_png_digests_match": true,
+    "full_aria_name_retained": true,
+    "local_browser_27_cases_pass": true,
+    "native_child_source_verified": true,
+    "no_download_ghost_overflow": true,
+    "parent_receipt_immutable": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "Full make validate on Evidence successor head",
+    "Exact-head GitHub CI PASS",
+    "New independent decision review PASS",
+    "All review threads resolved",
+    "Captain merge",
+    "Deployment"
+  ],
+  "evidence_digest": "94cbf63416a1da83ddbe818fc202b9484f1e4bdd96b186593acadb1f17bae67c",
+  "functional_head": "3f04561d3a1376e052e075b191b92b1f9bd6900e",
+  "parent_evidence": {
+    "evidence_digest": "8ddb620cb7d5b4ffa31f89e72edd361fa16e9715a920593329e78c999dba0a0f",
+    "file_sha256": "aef4dca5430b78e209817366f59b2f0d8131b3942a713532ebe0396eee3ec6d4",
+    "path": "docs/operators/evidence/schaubild-single-workspace-late-review-menus-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-late-review-menus.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-ci-download.v1",
+  "scope": "Mobile Originalprojekt short Download without hidden flex width, while retaining full accessible label; runner font metric discrepancy.",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "763f0bcce331b4fb1f173d974c1beebebfe316f3966114dfe05f844d24f8ea50",
+    "tests/visual/test_standalone_editor_font_controls.py": "1072adefd6d68fa997cb3635addb90b935069a41812203da07e67ba0c4dfcf72",
+    "tests/visual/test_standalone_editor_single_workspace.py": "f5f6c3951c6f77ce86812ec7d31b650b4d5d1aacdd9cf0f289953b0bcfaa8a24"
+  },
+  "visual_readback": {
+    "case_count": 5,
+    "native_css_sha256": "1af50ed47c7c4046b569ac53b4f322f23f71ed1057280e67dee5602f1ad8710e",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-download-20261008/visual-final-readback.json",
+    "schema_version": "schauwerk-pr203-ci-download-caption-visual.v1",
+    "screenshots": {
+      "final-320x700-left0-right0.png": {
+        "bytes": 26118,
+        "css_viewport": [
+          320,
+          700
+        ],
+        "sha256": "d479f6068d467f2a788befe38be875ead23f23cd48b94e799ccf6828a405287d",
+        "simulated_insets": {
+          "left": 0,
+          "right": 0
+        }
+      },
+      "final-320x700-left0-right44.png": {
+        "bytes": 26129,
+        "css_viewport": [
+          320,
+          700
+        ],
+        "sha256": "9e6897dfc9d122d8b28fd8ec5d01d65ab1b16b347dc3c8cbbe4ec1d6940ac0cb",
+        "simulated_insets": {
+          "left": 0,
+          "right": 44
+        }
+      },
+      "final-320x700-left44-right0.png": {
+        "bytes": 26458,
+        "css_viewport": [
+          320,
+          700
+        ],
+        "sha256": "58ede02b8d0cb5bce3f5d48e0f1740a573ccf0142594f146cd8e901e2e477cf6",
+        "simulated_insets": {
+          "left": 44,
+          "right": 0
+        }
+      },
+      "final-390x844-left0-right44.png": {
+        "bytes": 32208,
+        "css_viewport": [
+          390,
+          844
+        ],
+        "sha256": "4bbf3981e888246f555fa6c36f1a052796da3da3e94817a73a8544268147ee54",
+        "simulated_insets": {
+          "left": 0,
+          "right": 44
+        }
+      },
+      "final-390x844-left44-right0.png": {
+        "bytes": 32273,
+        "css_viewport": [
+          390,
+          844
+        ],
+        "sha256": "001d4b5c444535e4b135b1465750bef691cba30b81e25c7e60240961232b0b07",
+        "simulated_insets": {
+          "left": 44,
+          "right": 0
+        }
+      }
+    },
+    "sha256": "ebed1922899fdcf177746ea8cf9a0becd467ade14e0bca809cfed08fbcd3957c"
+  }
+}

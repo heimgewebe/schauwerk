@@ -1,0 +1,317 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "bar_after": {
+          "bottom": 147.25,
+          "height": 141.25,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "bar_before": {
+          "bottom": 133.125,
+          "height": 127.125,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "clearance_after": 16.061172485351562,
+        "controls": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "height": 700,
+        "host_bar": {
+          "bottom": 692,
+          "height": 52,
+          "left": 176.171875,
+          "right": 314,
+          "top": 640,
+          "width": 137.828125
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:37551/native/365031bcba6ac0530a265c3da1f188bd/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 146.25,
+          "height": 40.25,
+          "left": 7,
+          "right": 313,
+          "top": 106,
+          "width": 306
+        },
+        "status_client_height": 38,
+        "status_client_width": 304,
+        "status_scroll_height": 38,
+        "status_scroll_width": 304,
+        "status_text": "Produktgrenze erreicht · maximal 256 Kanten und 32768 Routing-Paare",
+        "top_node_after": 163.31117248535156,
+        "top_node_before": 149.54380798339844,
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 25580,
+      "screenshot_file": "status-fit-320x700-left0-right0.png",
+      "screenshot_sha256": "43e6e439db41d47a34efe73abba41cd0a1e8b888d1a589273bb77dc4277784ce",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "bar_after": {
+          "bottom": 147.25,
+          "height": 141.25,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "bar_before": {
+          "bottom": 133.125,
+          "height": 127.125,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "clearance_after": 16.061172485351562,
+        "controls": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "height": 700,
+        "host_bar": {
+          "bottom": 692,
+          "height": 52,
+          "left": 176.171875,
+          "right": 314,
+          "top": 640,
+          "width": 137.828125
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:46667/native/b9e447369d7e867ab437c5a94e55769e/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 146.25,
+          "height": 40.25,
+          "left": 7,
+          "right": 313,
+          "top": 106,
+          "width": 306
+        },
+        "status_client_height": 38,
+        "status_client_width": 304,
+        "status_scroll_height": 38,
+        "status_scroll_width": 304,
+        "status_text": "Produktgrenze erreicht · maximal 256 Kanten und 32768 Routing-Paare",
+        "top_node_after": 163.31117248535156,
+        "top_node_before": 149.54380798339844,
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 25569,
+      "screenshot_file": "status-fit-320x700-left44-right0.png",
+      "screenshot_sha256": "1e1eeb389e99765ccd96e77a512983546f40ada217e9037a1953cf8c9420a70e",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "bar_after": {
+          "bottom": 142.625,
+          "height": 136.625,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "bar_before": {
+          "bottom": 86.125,
+          "height": 80.125,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "clearance_after": 18.162002563476562,
+        "controls": {
+          "bottom": 142.625,
+          "height": 48,
+          "left": 70.828125,
+          "right": 384,
+          "top": 94.625,
+          "width": 313.171875
+        },
+        "height": 844,
+        "host_bar": {
+          "bottom": 836,
+          "height": 52,
+          "left": 244.125,
+          "right": 384,
+          "top": 784,
+          "width": 139.875
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:38615/native/ef58040c156c63f21c06c14f0830b0d4/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 89.625,
+          "height": 82.625,
+          "left": 7,
+          "right": 133,
+          "top": 7,
+          "width": 126
+        },
+        "status_client_height": 81,
+        "status_client_width": 124,
+        "status_scroll_height": 81,
+        "status_scroll_width": 124,
+        "status_text": "Produktgrenze erreicht · maximal 256 Kanten und 32768 Routing-Paare",
+        "top_node_after": 160.78700256347656,
+        "top_node_before": 105.71752166748047,
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 29771,
+      "screenshot_file": "status-fit-390x844-left44-right0.png",
+      "screenshot_sha256": "738647ae9d751f4b5cdbb08354f97f7f27b651f38b9db79a5f61434764b7185d",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 390
+    },
+    {
+      "geometry": {
+        "bar_after": {
+          "bottom": 142.625,
+          "height": 136.625,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "bar_before": {
+          "bottom": 86.125,
+          "height": 80.125,
+          "left": 6,
+          "right": 384,
+          "top": 6,
+          "width": 378
+        },
+        "clearance_after": 18.162002563476562,
+        "controls": {
+          "bottom": 142.625,
+          "height": 48,
+          "left": 70.828125,
+          "right": 384,
+          "top": 94.625,
+          "width": 313.171875
+        },
+        "height": 844,
+        "host_bar": {
+          "bottom": 836,
+          "height": 52,
+          "left": 206.125,
+          "right": 346,
+          "top": 784,
+          "width": 139.875
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_url": "http://127.0.0.1:46463/native/e8faeb0f3ccf91d1907e97af5bdef158/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 89.625,
+          "height": 82.625,
+          "left": 7,
+          "right": 133,
+          "top": 7,
+          "width": 126
+        },
+        "status_client_height": 81,
+        "status_client_width": 124,
+        "status_scroll_height": 81,
+        "status_scroll_width": 124,
+        "status_text": "Produktgrenze erreicht · maximal 256 Kanten und 32768 Routing-Paare",
+        "top_node_after": 160.78700256347656,
+        "top_node_before": 105.71752166748047,
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 29793,
+      "screenshot_file": "status-fit-390x844-left0-right44.png",
+      "screenshot_sha256": "ec33852461adce4090ac3cca946a1a482172b487f32ddd1c6c13bba520f9c93b",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 390
+    }
+  ],
+  "functional_head": "088269c96f8bdb63b3f7fe0ae964e5c4ddbd5394",
+  "native_child_styles_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+  "pythonpath": "/home/alex/repos/.grabowski-worktrees/schauwerk-pr203-postreview-20261008/src",
+  "schema_version": "schauwerk-pr203-status-autofit-cdp-visual.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "469048e623832345bc41dbf3dfc6ac1173cfb058b24d9b33ac3644be9c18f090",
+    "tests/visual/test_standalone_editor_single_workspace.py": "76a78922c032443db1ebd4137844cedc23648ecffb87a88582cc6b3794d89a40"
+  },
+  "viewport_method": "Chrome CDP real CSS viewport; isolated safe-area CSS substitution"
+}

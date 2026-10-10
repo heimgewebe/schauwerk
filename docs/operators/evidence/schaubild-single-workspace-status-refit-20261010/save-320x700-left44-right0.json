@@ -1,0 +1,144 @@
+{
+  "geometry": {
+    "accessible": "Speichern: Originalprojekt",
+    "bar": {
+      "bottom": 692,
+      "height": 52,
+      "left": 70.046875,
+      "right": 314,
+      "top": 640,
+      "width": 243.953125
+    },
+    "barMeasured": 52,
+    "controlValid": true,
+    "download": {
+      "bottom": 687,
+      "height": 42,
+      "left": 165.046875,
+      "right": 241.046875,
+      "top": 645,
+      "width": 76
+    },
+    "fullDisplay": "none",
+    "hasCanvasFullWidth": true,
+    "hostStatus": {
+      "bottom": 632,
+      "height": 28,
+      "left": 44,
+      "right": 274.390625,
+      "top": 604,
+      "width": 230.390625
+    },
+    "layoutPass": true,
+    "narrow": false,
+    "naturalWidth": 56,
+    "noTruncation": true,
+    "pass": true,
+    "popover": {
+      "bottom": 633,
+      "height": 54,
+      "left": 193.9375,
+      "right": 314,
+      "top": 579,
+      "width": 120.0625
+    },
+    "popoverGap": 7,
+    "popoverPass": true,
+    "safe": {
+      "left": 44,
+      "right": 0
+    },
+    "short": {
+      "bottom": 673,
+      "height": 14,
+      "left": 174.859375,
+      "right": 231.234375,
+      "top": 659,
+      "width": 56.375
+    },
+    "shortClientWidth": 56,
+    "shortDisplay": "block",
+    "shortScrollWidth": 56,
+    "shortText": "Speichern",
+    "stage": {
+      "bottom": 700,
+      "height": 700,
+      "left": 0,
+      "right": 320,
+      "top": 0,
+      "width": 320
+    },
+    "statusPill": {
+      "bottom": 632,
+      "height": 28,
+      "left": 44,
+      "right": 274.390625,
+      "top": 604,
+      "width": 230.390625
+    },
+    "statusSafe": true,
+    "stressClient": 66,
+    "stressPass": true,
+    "stressWidth": 67,
+    "targets": [
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 75.046875,
+          "right": 117.046875,
+          "top": 645,
+          "width": 42
+        },
+        "visible": "Tools"
+      },
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 120.046875,
+          "right": 162.046875,
+          "top": 645,
+          "width": 42
+        },
+        "visible": "Export"
+      },
+      {
+        "hit": true,
+        "name": "downloadLink",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 165.046875,
+          "right": 241.046875,
+          "top": 645,
+          "width": 76
+        },
+        "visible": "Originalprojekt speichernSpeichern"
+      },
+      {
+        "hit": true,
+        "name": "workspaceCloseButton",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 244.046875,
+          "right": 309,
+          "top": 645,
+          "width": 64.953125
+        },
+        "visible": "Zurück"
+      }
+    ],
+    "textRoom": 66,
+    "toolbarSafe": true,
+    "viewport": {
+      "height": 700,
+      "width": 320
+    }
+  }
+}

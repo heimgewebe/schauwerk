@@ -1,0 +1,128 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "reviewed_at": "2026-10-05T10:03:58Z",
+  "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+  "head_sha": "f473384f4a70411f9e42fad403084ccab77a1372",
+  "diff_sha256": "94a9c4d6fc824f3bb74335320718da946349272dd8cd6d71b328b4ffd6743a51",
+  "diff_bytes": 127275,
+  "reviewed_files": [
+    "Makefile",
+    "docs/operators/evidence/schaubild-single-workspace-fit-clearance-20261005/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005/acceptance-receipt.json",
+    "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005/grabowski-self-review.json",
+    "src/schauwerk/resources/native_viewer/assets.py",
+    "src/schauwerk/resources/standalone_editor/assets.py",
+    "tests/publication/test_publication_fixtures.py",
+    "tests/visual/test_native_viewer.py",
+    "tests/visual/test_native_viewer_product_ui.py",
+    "tests/visual/test_standalone_editor.py",
+    "tests/visual/test_standalone_editor_font_controls.py",
+    "tests/visual/test_standalone_editor_product_ui.py",
+    "tests/visual/test_standalone_editor_single_workspace.py"
+  ],
+  "review_focus": [
+    "Opening a Schaubild enters exactly one workspace; no compact/fullscreen product state or Fullscreen API path is reintroduced.",
+    "The outer workspace, editor iframe and Native stage remain viewport-filling; tools, export, status and Native controls remain overlays rather than layout-reserving chrome.",
+    "Legacy host gutters remain removed while Legacy keeps its own editor and its real export capabilities instead of inheriting Native-only behavior.",
+    "Engine capability truth remains asymmetric: Native exposes Canvas/source-or-original plus SVG and no PNG; Legacy exposes Projekt, PNG and SVG.",
+    "Choosing an export closes the Export details popover before export while the prepared download remains reachable without changing stage geometry.",
+    "Native editing remains contextual and collapsible, with zoom, fit and reset reachable on desktop, tablet and mobile.",
+    "The earlier historical self-review claim that a uniform 48 px fit margin protects all overlay chrome is explicitly superseded: 48 px remains the standalone Native margin, while embedded Native fit uses asymmetric top=60, right=48, bottom=104, left=48 insets.",
+    "Real-browser clearance is measured in host coordinates, not inferred from iframe dimensions: host-chrome clearance is 56.10 px desktop, 48.73 px tablet and 53.97 px mobile; Native-toolbar clearance is 50.10 px, 42.73 px and 43.97 px respectively.",
+    "The fit math keeps numeric padding backward-compatible while adding bounded asymmetric inset support for the embedded product path.",
+    "The new browser regression uses a deliberately tall graph and asserts at least 8 px clearance from host chrome and at least 6 px from the Native toolbar after fit.",
+    "Legacy light/dark readback remains visually unchanged and full-workspace after the Native-only hosted-fit correction.",
+    "The immutable fit-clearance successor supersedes exactly four implementation/test paths and chains to the prior max-canvas acceptance without rewriting it.",
+    "Publication precedence verifies current hashes through the fit-clearance successor first and retains the prior max-canvas successor for all other accepted paths.",
+    "No new external origin, persistence authority, privilege, provider dependency, cross-repository write, runtime deployment or image-production path is introduced.",
+    "The clean fit-clearance evidence head passes Ruff, compile, registry validation, git diff hygiene and all 1659 repository tests."
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The original product issue was persistent chrome and Legacy gutters consuming workspace, not a missing browser Fullscreen implementation.",
+      "resolution": "Kept one workspace state, removed dynamic dock/gutter mechanics and moved host plus Native controls to compact overlays while retaining an explicit Zurück action."
+    },
+    {
+      "iteration": 2,
+      "finding": "Overlaying Native controls introduced a fit-to-content collision risk; the first implementation used a uniform 48 px fit margin.",
+      "resolution": "Kept the 48 px standalone margin but later re-opened this assumption after review showed that it covered only iframe-internal chrome."
+    },
+    {
+      "iteration": 3,
+      "finding": "Maximizing Native and Legacy together could accidentally erase real engine capability differences.",
+      "resolution": "Preserved explicit export truth: Native Canvas/source/original plus SVG and no PNG; Legacy Projekt plus PNG and SVG."
+    },
+    {
+      "iteration": 4,
+      "finding": "The Export popover remained visible after a successful export and unnecessarily covered the canvas.",
+      "resolution": "Close the containing details element before export while keeping the resulting download reachable in the same compact workspace bar."
+    },
+    {
+      "iteration": 5,
+      "finding": "Changing accepted product/test bytes invalidated historical source bindings, but those historical receipts must remain immutable.",
+      "resolution": "Added digest-bound max-canvas acceptance and exact publication precedence rather than rewriting historical receipts."
+    },
+    {
+      "iteration": 6,
+      "finding": "PR review thread PRRT_kwDOTGqvHc6o8b6l correctly identified that uniform VIEWPORT_FIT_PADDING=48 did not account for the outer host status pill plus workspace bar and that the existing browser test did not measure content clearance.",
+      "resolution": "Extended fitView with backward-compatible asymmetric insets; embedded Native uses top=60/right=48/bottom=104/left=48. Added a tall-graph browser regression measuring fitted content against both host chrome and iframe toolbar. Exact-head readback proves positive clearance on desktop, tablet and mobile."
+    },
+    {
+      "iteration": 7,
+      "finding": "The first clearance browser harness revision used nested requestAnimationFrame waits that can stall under Chrome virtual-time mode and produced no pass/fail marker.",
+      "resolution": "Kept the geometry assertion unchanged and replaced only the harness wait with a virtual-time-compatible 20 ms timer; the resulting exact-head browser regression passes 3/3."
+    },
+    {
+      "iteration": 8,
+      "finding": "The fit-clearance product change invalidated four bindings in the previous immutable max-canvas acceptance.",
+      "resolution": "Created a separate fit-clearance acceptance successor for exactly those four paths, bound the review finding and measured clearances, and passed the publication gate plus full 1659-test validation on the evidence head."
+    }
+  ],
+  "validation": {
+    "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+    "evidence_head": "f473384f4a70411f9e42fad403084ccab77a1372",
+    "focused_regressions_job_id": "3f1962c08238436abf2a98f2",
+    "focused_regressions_finalization_receipt_sha256": "8c8803d85a63a931bf2d4414efe6b7d8c225d8f3d9186e5569fa39091a934a1c",
+    "focused_regressions_passed_count": 30,
+    "browser_smoke_job_id": "b66b2fa8ad2c4633979458da",
+    "browser_smoke_finalization_receipt_sha256": "eb15bf78ca61144349888790cb60cc8a33845ca1e10b9a925714570afce91226",
+    "browser_smoke_passed_count": 7,
+    "visual_readback_job_id": "e5db7766956645e98b0b762c",
+    "visual_readback_finalization_receipt_sha256": "2c3232d173eb6daf3ed384e9a2182943bae1804e711d21234396e47b420413c7",
+    "tablet_readback_job_id": "1ff7c2e2b7764e89898c5631",
+    "tablet_readback_finalization_receipt_sha256": "559cc054af91d4a459084fe9b831a50389e8b6404f29d7f0704dd414d7704fed",
+    "pre_successor_validate_job_id": "670a904e59bf4c1c9cdbd446",
+    "pre_successor_validate_finalization_receipt_sha256": "e9eaf5625b3784dd64c10539f4a77fd39ab20df17209511c0fa044d2fb2ebb91",
+    "pre_successor_validate_passed_count": 1658,
+    "pre_successor_validate_failed_count": 1,
+    "successor_validate_job_id": "bc460ea301614bbe937d80ab",
+    "successor_validate_finalization_receipt_sha256": "aa193d1b50d12aa1e4864b3de9afda29ee55136e27dc1d4a07b4a51fb5f2e3cc",
+    "successor_validate_passed_count": 1659,
+    "evidence_head_validate_job_id": "cc09d1ec080541c4ac7f8fe3",
+    "evidence_head_validate_finalization_receipt_sha256": "4da91fb83ef253fb0d8db832b87ff14fd5f5eb361476fae0b0e545d10d3da1f1",
+    "evidence_head_validate_passed_count": 1659,
+    "observer": {
+      "name": "grosser-adler",
+      "observed_head": "f473384f4a70411f9e42fad403084ccab77a1372",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-05T10:03:05.481542Z"
+    }
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "decision-bound independent reviewer PASS on the later self-review commit",
+    "GitHub CI success on the later self-review commit",
+    "GitHub current-head reviewer settlement and review-thread resolution",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

@@ -1,0 +1,294 @@
+{
+  "cases": [
+    {
+      "bar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 6,
+        "right": 314,
+        "top": 640,
+        "width": 308,
+        "x": 6,
+        "y": 640
+      },
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 90,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 10.21875,
+            "right": 102.078125,
+            "top": 645,
+            "width": 91.859375,
+            "x": 10.21875,
+            "y": 645
+          },
+          "labelScrollWidth": 90,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 10.21875,
+            "right": 102.078125,
+            "top": 645,
+            "width": 91.859375,
+            "x": 10.21875,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 60,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 105.078125,
+            "right": 167,
+            "top": 645,
+            "width": 61.921875,
+            "x": 105.078125,
+            "y": 645
+          },
+          "labelScrollWidth": 60,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 105.078125,
+            "right": 167,
+            "top": 645,
+            "width": 61.921875,
+            "x": 105.078125,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 76,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 170,
+            "right": 248,
+            "top": 645,
+            "width": 78,
+            "x": 170,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "\"Speichern\"",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 170,
+            "right": 248,
+            "top": 645,
+            "width": 78,
+            "x": 170,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 56,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 251,
+            "right": 309,
+            "top": 645,
+            "width": 58,
+            "x": 251,
+            "y": 645
+          },
+          "labelScrollWidth": 56,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 251,
+            "right": 309,
+            "top": 645,
+            "width": 58,
+            "x": 251,
+            "y": 645
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 700,
+      "overlap": [],
+      "screenshot_bytes": 26248,
+      "screenshot_sha256": "ddb7211ea4d57e571958a8813acfb17f849cc5561073fe86e1b8798588fe407c",
+      "scrollWidth": 320,
+      "width": 320
+    },
+    {
+      "bar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 6,
+        "right": 384,
+        "top": 784,
+        "width": 378,
+        "x": 6,
+        "y": 784
+      },
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 90,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 11,
+            "right": 102.859375,
+            "top": 789,
+            "width": 91.859375,
+            "x": 11,
+            "y": 789
+          },
+          "labelScrollWidth": 90,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 11,
+            "right": 99.203125,
+            "top": 789,
+            "width": 88.203125,
+            "x": 11,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 60,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 102.203125,
+            "right": 164.125,
+            "top": 789,
+            "width": 61.921875,
+            "x": 102.203125,
+            "y": 789
+          },
+          "labelScrollWidth": 60,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 102.203125,
+            "right": 161.65625,
+            "top": 789,
+            "width": 59.453125,
+            "x": 102.203125,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 146,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 164.65625,
+            "right": 312.84375,
+            "top": 789,
+            "width": 148.1875,
+            "x": 164.65625,
+            "y": 789
+          },
+          "labelScrollWidth": 162,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 164.65625,
+            "right": 312.84375,
+            "top": 789,
+            "width": 148.1875,
+            "x": 164.65625,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 61,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 315.84375,
+            "right": 379,
+            "top": 789,
+            "width": 63.15625,
+            "x": 315.84375,
+            "y": 789
+          },
+          "labelScrollWidth": 61,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 315.84375,
+            "right": 379,
+            "top": 789,
+            "width": 63.15625,
+            "x": 315.84375,
+            "y": 789
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 844,
+      "overlap": [],
+      "screenshot_bytes": 32005,
+      "screenshot_sha256": "6573cda0738d9f2563474272bcd638809c65dbbfe2b838f58cb99618b95e5f9d",
+      "scrollWidth": 390,
+      "width": 390
+    }
+  ],
+  "functional_head": "de0ba2e47c88d7992a429cf6d882d45d05851b69",
+  "schema_version": "schauwerk-pr203-mobile-320-visual-readback.v1"
+}

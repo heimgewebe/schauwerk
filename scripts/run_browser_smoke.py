@@ -23,6 +23,10 @@ BROWSER_SMOKE_TESTS = (
     ),
     (
         "tests/visual/test_native_viewer_browser.py::"
+        "test_native_viewer_browser_keeps_standalone_fit_clear_of_overlay_chrome"
+    ),
+    (
+        "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_document_browser_drag_updates_edge_and_document_state"
     ),
     (
@@ -36,6 +40,18 @@ BROWSER_SMOKE_TESTS = (
     (
         "tests/visual/test_native_viewer_browser.py::"
         "test_native_canvas_browser_clamps_dragged_coordinates_to_document_budget"
+    ),
+    (
+        "tests/visual/test_standalone_editor_single_workspace.py::"
+        "test_single_workspace_browser_uses_full_canvas_and_keeps_native_actions_reachable"
+    ),
+    (
+        "tests/visual/test_standalone_editor_single_workspace.py::"
+        "test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable"
+    ),
+    (
+        "tests/visual/test_native_viewer_tap_autofit_browser.py::"
+        "test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences"
     ),
 )
 MAX_ATTEMPTS = 2

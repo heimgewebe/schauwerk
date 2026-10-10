@@ -1,0 +1,203 @@
+{
+  "schema_version": "schauwerk-schaubild-single-workspace-fit-clearance.v1",
+  "scope": "schaubild-single-workspace-hosted-native-fit-clearance",
+  "accepted_at": "2026-10-05T09:47:22Z",
+  "base_product_head": "1e1be1742147a5dbb72dc82ed3c3fe75a2258844",
+  "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+  "parent_evidence": {
+    "evidence_digest": "c785affc15fc9cce37ee2e1f82e3b9fc991c8710666aae4b70ffaf01c88a3927",
+    "file_sha256": "776a994abbd60fa290442d90040cea5209bcaeab699ba6bd6a584bddc46dbc0f",
+    "path": "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-max-canvas.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "review_fit_clearance_gap_reproduced_and_addressed": true,
+    "prior_uniform_fit_padding_claim_superseded": true,
+    "standalone_native_fit_padding_preserved": true,
+    "embedded_native_fit_uses_asymmetric_host_clearance_insets": true,
+    "desktop_host_and_native_chrome_clearance_passed": true,
+    "tablet_host_and_native_chrome_clearance_passed": true,
+    "mobile_host_and_native_chrome_clearance_passed": true,
+    "engine_specific_export_capabilities_preserved": true,
+    "legacy_workspace_geometry_preserved": true,
+    "exact_head_focused_regressions_passed": true,
+    "exact_head_browser_smoke_passed": true,
+    "exact_head_visual_readback_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true,
+    "exact_successor_full_validate_passed": true
+  },
+  "check_evidence": {
+    "review_finding": {
+      "source_head": "1e1be1742147a5dbb72dc82ed3c3fe75a2258844",
+      "thread_id": "PRRT_kwDOTGqvHc6o8b6l",
+      "comment_id": 4181740632,
+      "path": "src/schauwerk/resources/native_viewer/assets.py",
+      "line": 921,
+      "finding": "VIEWPORT_FIT_PADDING=48 only cleared iframe-internal chrome and did not prove clearance from the host status pill plus workspace bar.",
+      "addressed_by_functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b"
+    },
+    "fit_contract": {
+      "standalone_padding_px": 48,
+      "embedded_padding_px": {
+        "top": 60,
+        "right": 48,
+        "bottom": 104,
+        "left": 48
+      },
+      "minimum_required_host_clearance_px": 8,
+      "minimum_required_native_toolbar_clearance_px": 6,
+      "numeric_padding_api_backward_compatible": true
+    },
+    "exact_head_focused_regressions": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "3f1962c08238436abf2a98f2",
+      "finalization_receipt_sha256": "8c8803d85a63a931bf2d4414efe6b7d8c225d8f3d9186e5569fa39091a934a1c",
+      "argv_sha256": "d841c18f495a6bfa1d7d21b746bc5b76afd9fe45f53f0d39fda58fafc4b29fd3",
+      "passed_count": 30,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "exact_head_browser_smoke": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "b66b2fa8ad2c4633979458da",
+      "finalization_receipt_sha256": "eb15bf78ca61144349888790cb60cc8a33845ca1e10b9a925714570afce91226",
+      "argv_sha256": "2cb40764012187c66c24218a73668da58c2eb8aa36f62c82d617c0ee5d8dc226",
+      "passed_count": 7,
+      "failed_count": 0,
+      "result": "passed"
+    },
+    "visual_readback": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "e5db7766956645e98b0b762c",
+      "finalization_receipt_sha256": "2c3232d173eb6daf3ed384e9a2182943bae1804e711d21234396e47b420413c7",
+      "argv_sha256": "227e78e3e09c2ae38ac260a64a3906e0630b19f6fe18536d5ee81884cd3c780e",
+      "states": {
+        "native_desktop_light": {
+          "viewport": {
+            "width": 1366,
+            "height": 900
+          },
+          "host_clearance_px": 56.096435546875,
+          "native_toolbar_clearance_px": 50.09645080566406,
+          "project_label": "Canvas",
+          "png_visible": false,
+          "svg_visible": true,
+          "screenshot_sha256": "89d1bc7dd38b2b7f93011d936b1033643a4efe3f9900393ec37dad9c84690e08",
+          "result": "passed"
+        },
+        "native_mobile_dark": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "host_clearance_px": 53.96954345703125,
+          "native_toolbar_clearance_px": 43.96954345703125,
+          "project_label": "Canvas",
+          "png_visible": false,
+          "svg_visible": true,
+          "screenshot_sha256": "0d9f1cb597e7b8da8bab48e331ad02f5b5e76f07401283af62c7620b613042ac",
+          "result": "passed"
+        },
+        "legacy_desktop_light": {
+          "viewport": {
+            "width": 1366,
+            "height": 900
+          },
+          "project_label": "Projekt",
+          "png_visible": true,
+          "svg_visible": true,
+          "screenshot_sha256": "7ea2c441db89f4a92a460e526477be7ea068d94a08c33c88efbdd5f9fe10c64a",
+          "result": "passed"
+        },
+        "legacy_mobile_dark": {
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "project_label": "Projekt",
+          "png_visible": true,
+          "svg_visible": true,
+          "screenshot_sha256": "11cc88b1d660240c8a9b3b00969428ed8fa5769ff7cd13552705a64330cc3586",
+          "result": "passed"
+        }
+      },
+      "result": "passed"
+    },
+    "tablet_visual_readback": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "1ff7c2e2b7764e89898c5631",
+      "finalization_receipt_sha256": "559cc054af91d4a459084fe9b831a50389e8b6404f29d7f0704dd414d7704fed",
+      "argv_sha256": "55fb97a0097272a6d8f5bb7dd7431de5c7b8c24fabc123ea119318ffdc7922b1",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "host_clearance_px": 48.72589111328125,
+      "native_toolbar_clearance_px": 42.72589111328125,
+      "screenshot_sha256": "addbfc8c1d6737322fabf20be6522d3a53b243d1a4284254eb1925e9ac7a79b9",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "670a904e59bf4c1c9cdbd446",
+      "finalization_receipt_sha256": "e9eaf5625b3784dd64c10539f4a77fd39ab20df17209511c0fa044d2fb2ebb91",
+      "argv_sha256": "fd12b64d8064a77ba206f270c1566a1ee5eb4095dfacddc4de830d0bbafb7dac",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1658,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "finding_count": 0,
+      "projection_complete": true,
+      "observed_at": "2026-10-05T09:47:18.902740Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "1e1be1742147a5dbb72dc82ed3c3fe75a2258844",
+      "head_sha": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "diff_sha256": "4d8262a605f32cd7d7b1209dd946b983e5b7b3cd5078011fb8bf9832b13904f7",
+      "diff_bytes": 8188,
+      "result": "passed"
+    },
+    "exact_successor_full_validate": {
+      "functional_head": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+      "job_id": "bc460ea301614bbe937d80ab",
+      "finalization_receipt_sha256": "aa193d1b50d12aa1e4864b3de9afda29ee55136e27dc1d4a07b4a51fb5f2e3cc",
+      "argv_sha256": "b9b549e9a8c126591a748871917f9b16f59b35ca7cc397b4b19a34ecc7fdd2d5",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1659,
+      "failed_count": 0,
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d3096dcff8e7f897e688220d8352a9027f311d569685db2a9d0acb547b5253e4",
+    "tests/visual/test_native_viewer.py": "0538f095dc9249f93a062c88ad3b13a6633b74864ad4ef2a6ec4db395d27acc0",
+    "tests/visual/test_native_viewer_product_ui.py": "9aab96c7669529f36e2af300446b0dfb3d994d3662dac57ef89eb4260bda8c75",
+    "tests/visual/test_standalone_editor_single_workspace.py": "d5136f9c583e348ce535b37c915648011be8447dc190862df021130c0e710b8c"
+  },
+  "does_not_establish": [
+    "user post-change aesthetic approval beyond the recorded visual acceptance",
+    "GitHub CI success on the later successor-evidence head",
+    "current-head review-thread settlement after the successor-evidence commit",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "0a43dab22e843f2ed920d6ad423d9e924218ddf79547c8eda0a03b9046a31f2d"
+}

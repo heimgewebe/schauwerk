@@ -1,0 +1,78 @@
+{
+  "cases": {
+    "status-growth-tall-mobile": {
+      "fitStatus": {
+        "after": {
+          "bottom": 145,
+          "height": 138,
+          "right": 103.703125,
+          "width": 96.703125,
+          "x": 7,
+          "y": 7
+        },
+        "barAfterBottom": 146,
+        "barBeforeBottom": 62,
+        "before": {
+          "bottom": 61,
+          "height": 54,
+          "right": 48.03125,
+          "width": 41.03125,
+          "x": 7,
+          "y": 7
+        },
+        "text": "Ansicht angepasst"
+      },
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "hostBar": {
+        "bottom": 836,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 784
+      },
+      "hostClearance": 20.00372314453125,
+      "hostStatus": {
+        "bottom": 776,
+        "height": 28,
+        "right": 83.578125,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "nativeBar": {
+        "bottom": 146,
+        "height": 140,
+        "right": 384,
+        "width": 378,
+        "x": 6,
+        "y": 6
+      },
+      "nativeClearance": 20.00372314453125,
+      "processStatus": null,
+      "screenshot_bytes": 30329,
+      "screenshot_sha256": "ec94a1591a9205575765832fb413384e203933b4fd589521eff3c88d175df985",
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "right": 390,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "touchPinch": null,
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    }
+  },
+  "head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549"
+}

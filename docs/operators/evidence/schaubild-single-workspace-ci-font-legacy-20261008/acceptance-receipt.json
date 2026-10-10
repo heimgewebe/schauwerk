@@ -1,0 +1,92 @@
+{
+  "capture_checkout_head": "728c737ca16c8fe0a4b87c8f05e62acdbd564b4d",
+  "check_evidence": {
+    "before_acceptance_shabinding_red": {
+      "failed_count": 1,
+      "note": "run on prior 728c737 source state; not a PASS on final functional commit",
+      "passed_count": 1673,
+      "result": "expected_historical_sha_failure",
+      "task_id": "5c634eb65cc244dfbbb5ce4f"
+    },
+    "browser_green": {
+      "failed_count": 0,
+      "passed_count": 24,
+      "source_bindings": {
+        "src/schauwerk/resources/standalone_editor/assets.py": "b70e17597832fc164fa184b0637861579172108689c79231195fd05d4f6c9ba4",
+        "tests/visual/test_standalone_editor_single_workspace.py": "85e11e8113da5e130a706a8aa4eb4a9463552d38db2cbf2183dc268241d78560"
+      },
+      "task_id": "655529f6c3904e3480f77476"
+    },
+    "legacy_css_fallback": {
+      "finding": "separate standalone legacy selector from unsupported native :has() selector list",
+      "result": "code_assertion_pass",
+      "revision": "728c737ca16c8fe0a4b87c8f05e62acdbd564b4d"
+    },
+    "prior_remote_ci_red": {
+      "failed_parameterized_cases": 5,
+      "head": "5039dc0059d4f2698279e4343b17a276cfd83a61",
+      "job_url": "https://github.com/heimgewebe/schauwerk/actions/runs/37818934858/job/113454656397",
+      "python": "3.12"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "no physical mobile Safari/iOS acceptance",
+        "not an acceptance of unrelated native header/toolbar layout"
+      ],
+      "method": "actual final PNG readback side-by-side with prior five screenshots; independent of unit assertions",
+      "scope": "mobile download caption at 320/390 CSS px with 0/44 left-right simulated safe areas; full accessible label preserved and touch targets distinct",
+      "screenshot_count": 5
+    }
+  },
+  "checks": {
+    "browser_smoke_24_passed": true,
+    "immutable_parent_receipt_unchanged": true,
+    "legacy_css_fallback_selector_separate": true,
+    "mobile_caption_and_safeareas_accepted": true,
+    "old_and_new_screenshot_sha256_match": true,
+    "prior_ci_font_failure_evidence_bound": true,
+    "separate_visual_acceptance": true,
+    "source_sha256_current_exact": true
+  },
+  "does_not_establish": [
+    "full make validate on evidence successor head",
+    "GitHub CI on published final head",
+    "formal independent decision review PASS",
+    "all GitHub review threads resolved",
+    "Captain merge authority",
+    "production deployment",
+    "physical Safari/iOS behavior"
+  ],
+  "evidence_digest": "63358b149d00dce782a03bc73353d865417eca0341cf685489ff17711eb199eb",
+  "functional_head": "7ddd57ca724bf775afacc819dfb10c5ccdc037b3",
+  "parent_evidence": {
+    "evidence_digest": "92546903690340910463d3ba74243e487939375fff2a2d45316583e30a918aed",
+    "file_sha256": "57896a4ff4f7f2bae86108f0ac7b924c2b44824dfd5621fc9bb0cdfe0b027ce1",
+    "path": "docs/operators/evidence/schaubild-single-workspace-side-safearea-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-side-safearea.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-ci-font-legacy.v1",
+  "scope": "PR203 GitHub 3.12 font-metric fallback, legacy CSS :has selector fallback and 390px legible mobile download",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "b70e17597832fc164fa184b0637861579172108689c79231195fd05d4f6c9ba4",
+    "tests/visual/test_standalone_editor_product_ui.py": "b2c615401f45e91e96b927f2fb374126402356da31bac60eb2702378a3b75543",
+    "tests/visual/test_standalone_editor_single_workspace.py": "85e11e8113da5e130a706a8aa4eb4a9463552d38db2cbf2183dc268241d78560"
+  },
+  "visual_readbacks": {
+    "after": {
+      "case_count": 5,
+      "functional_head": "7ddd57ca724bf775afacc819dfb10c5ccdc037b3",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-font-legacy-20261008/visual-final-readback.json",
+      "sha256": "b5f97f24ff6f49e0e55cb64b15c9746269637867054152dfe322b9e01c8c1987",
+      "source_byte_identity_verified": true
+    },
+    "before": {
+      "case_count": 5,
+      "checkout_head": "728c737ca16c8fe0a4b87c8f05e62acdbd564b4d",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-font-legacy-20261008/visual-readback.json",
+      "scope": "before responsive 390px caption change",
+      "sha256": "18c86ca3a97a69b5e7c308a2d82cdae8d0e25c4a06d256c148780649dca80114"
+    }
+  }
+}

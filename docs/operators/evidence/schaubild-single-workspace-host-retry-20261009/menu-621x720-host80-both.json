@@ -1,0 +1,30 @@
+{
+  "childEnvironment": {
+    "left": 0,
+    "right": 0
+  },
+  "footer": {
+    "left": 80,
+    "right": 497.984375
+  },
+  "hostSafe": {
+    "left": 80,
+    "right": 80
+  },
+  "menu": {
+    "bottom": 191,
+    "left": 80,
+    "right": 541,
+    "top": 103,
+    "width": 461
+  },
+  "pass": true,
+  "toolbar": {
+    "left": 80,
+    "right": 541
+  },
+  "viewport": {
+    "height": 720,
+    "width": 621
+  }
+}

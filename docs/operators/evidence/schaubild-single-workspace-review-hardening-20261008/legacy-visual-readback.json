@@ -1,0 +1,38 @@
+{
+  "cases": {
+    "legacy-dark-mobile": {
+      "bar": {
+        "bottom": 796,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 744
+      },
+      "exportGap": 56,
+      "exportPopover": {
+        "bottom": 688,
+        "height": 54,
+        "right": 377,
+        "width": 177.921875,
+        "x": 199.078125,
+        "y": 634
+      },
+      "screenshot_bytes": 22153,
+      "screenshot_sha256": "311a6e76d880f905fcd78a8f91251d0c4ee2d947ad6ee02584216c6783efa4a7",
+      "status": {
+        "bottom": 736,
+        "height": 28,
+        "right": 271.625,
+        "width": 263.625,
+        "x": 8,
+        "y": 708
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      }
+    }
+  },
+  "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70"
+}

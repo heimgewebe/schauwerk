@@ -1,0 +1,173 @@
+{
+  "check_evidence": {
+    "codex_finding": {
+      "severity": "P2",
+      "summary": "Legacy workspace tools menu hidden despite enabled font/layout buttons",
+      "thread_id": "PRRT_kwDOTGqvHc6rBD8H"
+    },
+    "desktop_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-af3b9ed5b173",
+      "passed_count": 8
+    },
+    "full_browser_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-7fdcd45e5801",
+      "passed_count": 30
+    },
+    "mobile_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-ab4a55a6452a",
+      "passed_count": 6
+    },
+    "red_fontall_dual_notch": {
+      "case": "320x700 left64 right80 fontAllButton inaccessible",
+      "failed_count": 1,
+      "job_id": "grabowski-job-799206866ff0"
+    },
+    "red_legacy_browser": {
+      "case": "390x844 legacy tools invisible",
+      "failed_count": 1,
+      "job_id": "grabowski-job-b233af1ca1de"
+    },
+    "static_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-27bf0d019f20",
+      "passed_count": 3
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with simulated notch values is not physical iOS/Safari acceptance",
+        "Capture concerns host tools while legacy iframe may still be loading, not complete external draw.io renderer acceptance",
+        "Screenshots are immutable test evidence, not reusable Fundus production assets",
+        "Prior acceptance is not inherited by this edited source revision"
+      ],
+      "method": "Five original Desktop Chromium CDP screenshots individually visually inspected; exposed Tools popover shows A−/Text/A+/Alles/Ordnen and all hit-test inside simulated safe areas"
+    },
+    "visual_capture_green": {
+      "case_count": 5,
+      "failed_count": 0,
+      "job_id": "grabowski-job-53bcc7234e04"
+    }
+  },
+  "checks": {
+    "all_five_original_source_bound_pngs_individually_visually_accepted": true,
+    "codex_legacy_tools_p2_reproduced_red": true,
+    "dual_notch_font_controls_wrap_in_popover": true,
+    "eight_desktop_tablet_browser_cases_pass": true,
+    "five_real_hit_targets_inside_safe_areas": true,
+    "full_30_case_chromium_browser_smoke_green": true,
+    "historical_acceptance_unchanged": true,
+    "legacy_fontall_dual_notch_red_then_green": true,
+    "parent_acceptance_and_source_sha_bound": true,
+    "screenshots_test_evidence_only": true,
+    "six_mobile_browser_cases_pass": true,
+    "static_legacy_native_visibility_contract_green": true
+  },
+  "does_not_establish": [
+    "full final make validate after successor fixture",
+    "GitHub CI 3.12 exact new revision",
+    "new exact-head independent reviewer PASS",
+    "valid Codex review settlement",
+    "closed required GitHub threads",
+    "Captain authorization or merge",
+    "physical iOS/Safari acceptance",
+    "deployment"
+  ],
+  "evidence_digest": "ccd4ba2017d4455e39ce6c35d3ea95d7a61d6aa90a89b83114a46a62e5fc496d",
+  "functional_head": "ed4a70309c7952527fce6883b774ee905bf6d860",
+  "parent_evidence": {
+    "evidence_digest": "a9c0b1afb2f1534abc7bc2063ea7af71f9aacb206f42baeb0dfcd8f7a0fd9f53",
+    "file_sha256": "2b77b0c3b6356ca25d7788dd593340e4d3057afb0d72c7ee111c34b24377a0b0",
+    "path": "docs/operators/evidence/schaubild-single-workspace-no-observer-20261010/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-no-observer.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-legacy-tools.v1",
+  "scope": "Legacy font, text-format and layout actions enabled and reachable; Native empty-menu policy preserved and 320px dual-notch popover wrapped safely",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "feaddd56282d0618b16d33d7503e31d18b906c9fca348e19975cfda2bf2e5a7c",
+    "tests/visual/test_standalone_editor_product_ui.py": "c52a7ad46c437346da4188ddcddb9410a0ef20ddfab8c0a85187efae2c3bfb8a",
+    "tests/visual/test_standalone_editor_single_workspace.py": "951c5abd236e7eaeba34bd5349004a050c024e8634217cc5710926855d5da7fc"
+  },
+  "visual_readbacks": {
+    "legacy_tools": {
+      "case_count": 5,
+      "path": "docs/operators/evidence/schaubild-single-workspace-legacy-tools-20261010/visual-legacy-tools-readback.json",
+      "schema_version": "schauwerk-pr203-legacy-tools-cdp.v1",
+      "screenshots": {
+        "legacy-tools-1366x900-left0-right0.png": {
+          "bytes": 23929,
+          "geometry_file": "legacy-tools-1366x900-left0-right0.json",
+          "geometry_sha256": "9c500d305ccdf926e3ffe37702179de4eb9809a5fb13196552286ce059b9dd98",
+          "safe_area": {
+            "left": 0,
+            "right": 0
+          },
+          "sha256": "2a217d3e93c90d0abd0f143f3954c44bcae777ae846d908f3d76b19b03b56dbe",
+          "viewport": [
+            1366,
+            900
+          ]
+        },
+        "legacy-tools-320x700-left0-right44.png": {
+          "bytes": 14013,
+          "geometry_file": "legacy-tools-320x700-left0-right44.json",
+          "geometry_sha256": "20be299b0147f9af3196186318bebdea0653fda98187a84e4182eba59751b097",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "dd454272dec0b433781feb60ea09aa239f1183c28a006f978a36b6b87d486fbc",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "legacy-tools-320x700-left64-right80.png": {
+          "bytes": 14121,
+          "geometry_file": "legacy-tools-320x700-left64-right80.json",
+          "geometry_sha256": "4669e058695d65f08cf409f5ad694bd682d92891f03348371b27ce58076343a4",
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "0fc8737406a62aa6700c5084d243846860bec38ea36d703131a3c9442fb79102",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "legacy-tools-390x844-left0-right44.png": {
+          "bytes": 15079,
+          "geometry_file": "legacy-tools-390x844-left0-right44.json",
+          "geometry_sha256": "26d17d48f0cbe6acee56cb8fdff32416da7e1adc60b12684245a4915b80892aa",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "90a6081d5ac03191750969eb59403cf61e64a88b0ca7885845f9e185d314f035",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "legacy-tools-390x844-left44-right0.png": {
+          "bytes": 14882,
+          "geometry_file": "legacy-tools-390x844-left44-right0.json",
+          "geometry_sha256": "9d5b9ed2f73f2e4550d1fabfbc931ac15255ea5b9c43fc3032dd0edb91152aab",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "940d44bac9f59becc5342dded770059ab0696723864ace9096da35789b7e5e46",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "e93acbde4712879cb15f40a373e4020da9251d583167448c75efebe623d5c4d7"
+    }
+  }
+}

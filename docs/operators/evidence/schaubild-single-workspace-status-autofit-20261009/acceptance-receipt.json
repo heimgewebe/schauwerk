@@ -1,0 +1,124 @@
+{
+  "check_evidence": {
+    "capture_task": {
+      "case_count": 4,
+      "task_id": "4a944db538a24b7caca8bdec"
+    },
+    "focused_browser_green": {
+      "failed_count": 0,
+      "passed_count": 2,
+      "task_id": "bb7cc2eafe0e4913b50ab70e"
+    },
+    "prior_local_red": {
+      "message": "auto-fit top node obscured by grown status overlay",
+      "overlay_bottom_px": 142.63,
+      "task_id": "e481f696f319476c9a94416b",
+      "top_node_px": 105.72,
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chromium CDP real CSS-viewport emulation, not physical Safari/iOS",
+        "Safe-area simulation applies to host CSS, not native iframe env values",
+        "Product-limit text set through capture harness; actual behavior separately browser-regressed",
+        "Previous visual acceptance not inherited"
+      ],
+      "method": "All four actual PNGs visually inspected: long status fully legible, top node and controls separated, canvas full size, native and host controls clear; independent geometric checks also passed"
+    }
+  },
+  "checks": {
+    "four_screenshot_bytes_dimensions_exact": true,
+    "full_text_unclipped": true,
+    "full_viewport_stage": true,
+    "host_safeareas_respected": true,
+    "native_controls_nonoverlapping": true,
+    "parent_immutable_and_exact": true,
+    "red_green_chromium_reproduced": true,
+    "source_and_test_digests_exact": true,
+    "status_growth_auto_refit_clearance": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "remote CI success for successor commit",
+    "independent reviewer PASS for successor commit",
+    "Captain authorization",
+    "deployment"
+  ],
+  "evidence_digest": "59f7b37e1df48fce636a33acc5f172a09d625818c43be7d912be60e39a554ee2",
+  "functional_head": "088269c96f8bdb63b3f7fe0ae964e5c4ddbd5394",
+  "parent_evidence": {
+    "evidence_digest": "595d2eab37d2d0160531774fd632d1f7b548b236aab6f14c87ca0cbfb818632e",
+    "file_sha256": "f4294b310998420d98979e08797bca504c985f2e1907d7450b3b79bbb4859ec5",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-mobile-prompt-width.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-status-autofit.v1",
+  "scope": "Native embedded JSON editing auto-fit remains clear after long product-limit status increases overlay height",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "469048e623832345bc41dbf3dfc6ac1173cfb058b24d9b33ac3644be9c18f090",
+    "tests/visual/test_standalone_editor_single_workspace.py": "76a78922c032443db1ebd4137844cedc23648ecffb87a88582cc6b3794d89a40"
+  },
+  "visual_readbacks": {
+    "status_fit": {
+      "case_count": 4,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-status-autofit-20261009/visual-status-fit-readback.json",
+      "schema_version": "schauwerk-pr203-status-autofit-cdp-visual.v1",
+      "screenshots": {
+        "status-fit-320x700-left0-right0.png": {
+          "bytes": 25580,
+          "safe_area": {
+            "left": 0,
+            "right": 0
+          },
+          "sha256": "43e6e439db41d47a34efe73abba41cd0a1e8b888d1a589273bb77dc4277784ce",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "status-fit-320x700-left44-right0.png": {
+          "bytes": 25569,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "1e1eeb389e99765ccd96e77a512983546f40ada217e9037a1953cf8c9420a70e",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "status-fit-390x844-left0-right44.png": {
+          "bytes": 29793,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "ec33852461adce4090ac3cca946a1a482172b487f32ddd1c6c13bba520f9c93b",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "status-fit-390x844-left44-right0.png": {
+          "bytes": 29771,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "738647ae9d751f4b5cdbb08354f97f7f27b651f38b9db79a5f61434764b7185d",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "d0286e505162074bc0c55e0bfe1ced15df2e3aaa1521c9d053486eee7fb8ee05"
+    }
+  }
+}
