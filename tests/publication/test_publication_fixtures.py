@@ -801,6 +801,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     process_feedback_routing_feedback_fullpath_superseded_files = (
         process_feedback_routing_anchor_cluster_superseded_files
     )
+    process_feedback_routing_long_leg_superseded_files = (
+        process_feedback_routing_feedback_fullpath_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -6544,7 +6547,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_feedback_fullpath_superseded_files
     )
     for name, expected in feedback_fullpath["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_long_leg_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     feedback_checks = feedback_fullpath["checks"]
     assert feedback_checks["historical_parent_immutable"] is True
     assert feedback_checks["horizontal_feedback_path_collision_fail_first_reproduced"] is True
@@ -6553,6 +6557,50 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert feedback_checks["native_diagram_passed_count"] == 160
     assert feedback_checks["full_exact_head_ci_passed"] is False
     assert feedback_checks["captain_merge_authorized"] is False
+
+    long_leg = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "long-leg-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert long_leg["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-long-leg.v1"
+    )
+    assert long_leg["functional_head"] == (
+        "23a1cdfb8a7131431decf47923910deff8780380"
+    )
+    assert long_leg["parent_evidence"] == {
+        "schema_version": feedback_fullpath["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-fullpath-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "feedback-fullpath-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": feedback_fullpath["evidence_digest"],
+    }
+    assert long_leg["evidence_digest"] == digest_mapping(
+        long_leg, "evidence_digest"
+    )
+    assert set(long_leg["source_bindings"]) == (
+        process_feedback_routing_long_leg_superseded_files
+    )
+    for name, expected in long_leg["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert long_leg["checks"]["historical_parent_immutable"] is True
+    assert long_leg["checks"]["long_column_label_collision_fail_first_reproduced"] is True
+    assert long_leg["checks"]["grouped_local_feedback_label_avoids_long_route_leg"] is True
+    assert long_leg["checks"]["existing_ungrouped_feedback_layout_preserved"] is True
+    assert long_leg["checks"]["full_native_diagram_suite_passed"] is True
+    assert long_leg["checks"]["native_diagram_passed_count"] == 161
+    assert long_leg["checks"]["full_exact_head_ci_passed"] is False
+    assert long_leg["checks"]["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -6582,7 +6630,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_feedback_fullpath_superseded_files:
+        if name in process_feedback_routing_long_leg_superseded_files:
+            assert long_leg["source_bindings"][name] == current
+        elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:
             assert anchor_cluster["source_bindings"][name] == current

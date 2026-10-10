@@ -1,0 +1,46 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-long-leg.v1",
+  "scope": "codex-p2-grouped-feedback-label-vs-long-same-column-route-leg",
+  "recorded_at": "2026-10-10T15:38:17.198Z",
+  "status": "source_verified_exact_head_ci_and_review_pending",
+  "functional_head": "23a1cdfb8a7131431decf47923910deff8780380",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-fullpath.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-fullpath-acceptance-receipt.json",
+    "file_sha256": "95a43e9c92abfa01a100841428947f51182c0c756e7aff707500d3fa1b7f28d0",
+    "evidence_digest": "484b6ddb1a1721cf05f318229de6c623c3057936054017b91889d9ede536f3c2"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "62ab121cb00a6c648cd087b1d164fcff161a6da3c3746973382e5a934a8f990b",
+    "tests/visual/test_native_diagram.py": "a988741b79d657d6f72804ca667fb9b83ea7b2d6c6bba68192af41ac5601bd30"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "long_column_label_collision_fail_first_reproduced": true,
+    "grouped_local_feedback_label_avoids_long_route_leg": true,
+    "existing_ungrouped_feedback_layout_preserved": true,
+    "full_native_diagram_suite_passed": true,
+    "native_diagram_passed_count": 161,
+    "ruff_check_passed": true,
+    "git_diff_check_passed": true,
+    "full_exact_head_ci_passed": false,
+    "fresh_visual_browser_acceptance": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "review_thread": "PRRT_kwDOTGqvHc6rEexn",
+    "fail_first_task_id": "cef27964d9444ca9b7388646",
+    "full_native_diagram_task_id": "bc2887903cea4064991d6dcd",
+    "ruff_task_id": "9c3d5c87811a45e1acd54537",
+    "regression_test": "test_feedback_label_avoids_long_same_column_return_leg"
+  },
+  "does_not_establish": [
+    "fresh exact-head GitHub CI",
+    "independent decision-bound reviewer PASS",
+    "fresh browser/pixel acceptance",
+    "Captain merge readiness",
+    "production deployment"
+  ],
+  "evidence_digest": "e829e4e5adf57b35154dc7b81ad84f63f45cf26597fd09d61f63f90a052d27f6"
+}
