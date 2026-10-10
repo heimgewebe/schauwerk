@@ -3334,6 +3334,51 @@ def test_grouped_feedback_path_uses_safe_lane_when_corridor_label_is_crossed() -
 
 
 
+def test_ungrouped_process_feedback_channel_clears_unrelated_flow_label() -> None:
+    raw = _minimal_process_model(18)
+    edges = [
+        {
+            "id": "branch",
+            "from": "n6",
+            "to": "n7",
+            "label": "Nebenprozess mit Titel",
+            "kind": "flow",
+        },
+        {
+            "id": "feedback",
+            "from": "n12",
+            "to": "n0",
+            "label": "Rueckmeldung",
+            "kind": "feedback",
+        },
+    ]
+
+    def render(ordered_edges: list[dict]) -> tuple[tuple[float, float, float, float], str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root)["branch"], _edge_paths(root)["feedback"]
+
+    label_box, feedback_path = render(edges)
+    assert (label_box, feedback_path) == render(list(reversed(edges)))
+
+    left, top, width, height = label_box
+    right = left + width
+    bottom = top + height
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", feedback_path)
+    ]
+    assert len(line_points) >= 3
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        if x1 != x2:
+            continue
+        assert not (
+            left - 2 < x1 < right + 2
+            and max(min(y1, y2), top - 2) < min(max(y1, y2), bottom + 2)
+        )
+
+
 def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:
     raw = _minimal_process_model(7)
     raw["edges"] = [

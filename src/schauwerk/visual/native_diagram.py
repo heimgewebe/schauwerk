@@ -1226,6 +1226,7 @@ def _edge_geometry(
     preserve_same_row_feedback_footer: bool = True,
     feedback_path_y: float | None = None,
     feedback_path_footer: bool = False,
+    feedback_local_gutter_x: float | None = None,
     obstacle_positions: Sequence[tuple[int, int]] = (),
 ) -> tuple[str, float, float, str]:
     source_x, source_y = source
@@ -1293,9 +1294,13 @@ def _edge_geometry(
         label_corridor_y = source_corridor_y
         if feedback_path_y is not None and source_y == target_y:
             source_corridor_y = target_corridor_y = feedback_path_y
-        gutter_x = min(
-            canvas_width - 16.0,
-            max(source_x, target_x) + node_width + _CORRIDOR_GUTTER_OFFSET,
+        gutter_x = (
+            feedback_local_gutter_x
+            if feedback_local_gutter_x is not None
+            else min(
+                canvas_width - 16.0,
+                max(source_x, target_x) + node_width + _CORRIDOR_GUTTER_OFFSET,
+            )
         )
         if (
             feedback_label_y is not None
@@ -1875,6 +1880,7 @@ def _render_edge(
     force_feedback_footer: bool = False,
     feedback_path_y: float | None = None,
     force_feedback_path_footer: bool = False,
+    feedback_local_gutter_x: float | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -1980,6 +1986,7 @@ def _render_edge(
         preserve_same_row_feedback_footer=preserve_same_row_feedback_footer,
         feedback_path_y=feedback_path_y,
         feedback_path_footer=force_feedback_path_footer,
+        feedback_local_gutter_x=feedback_local_gutter_x,
         obstacle_positions=tuple(
             position
             for node_id, position in positions.items()
@@ -3357,6 +3364,84 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     feedback_footer_ids: set[str] = set()
     feedback_path_y: dict[str, float] = {}
     feedback_path_footer_ids: set[str] = set()
+    feedback_local_gutter_x: dict[str, float] = {}
+    if intent == "process" and not model["groups"]:
+        # A feedback return crosses multiple row corridors. Reserving only
+        # the endpoint card span can put its vertical line through an unrelated
+        # relation label (or through the next column of cards). Reuse the actual
+        # row-label pack before choosing a free local channel.
+        occupied_boxes = [
+            (float(x), float(y), float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
+            for x, y in positions.values()
+        ]
+        occupied_boxes.extend(packed_process_label_bounds)
+        for corridor, items in corridor_groups.items():
+            for natural_x, occupant_id, label_width, label_height, _ in items:
+                occupant = edges_by_id[occupant_id]
+                source_y = positions[str(occupant["from"])][1]
+                target_y = positions[str(occupant["to"])][1]
+                occupant_x = process_adjacent_label_x.get(occupant_id, natural_x)
+                if occupant_id in process_branch_gutter_x:
+                    occupant_x = (
+                        process_branch_gutter_x[occupant_id] + 8 + label_width / 2
+                    )
+                occupant_y = process_adjacent_label_y.get(occupant_id)
+                if occupant_y is None and source_y == target_y:
+                    occupant_y = (
+                        source_y - label_height / 2 - 4
+                        if label_height > 29
+                        else source_y - 18
+                    )
+                elif occupant_y is None:
+                    occupant_y = (corridor[0] + corridor[1]) / 2
+                occupied_boxes.append(
+                    (
+                        occupant_x - label_width / 2,
+                        occupant_y - label_height / 2,
+                        occupant_x + label_width / 2,
+                        occupant_y + label_height / 2,
+                    )
+                )
+
+        for edge in feedback_edges:
+            if edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if source[1] == target[1]:
+                continue
+            gutter_x = min(
+                width - 16.0,
+                max(source[0], target[0])
+                + _NODE_WIDTH
+                + _CORRIDOR_GUTTER_OFFSET,
+            )
+            # Conservatively cover the whole vertical feedback return. This
+            # avoids routing into cards when escaping a label collision.
+            span_top = min(source[1], target[1])
+            span_bottom = max(source[1], target[1]) + _NODE_HEIGHT
+            occupied_x = sorted(
+                (left, right)
+                for left, top, right, bottom in occupied_boxes
+                if top - 2 < span_bottom and bottom + 2 > span_top
+            )
+            candidate = gutter_x
+            while True:
+                blocked_right = max(
+                    (
+                        right
+                        for left, right in occupied_x
+                        if left - 2 <= candidate <= right + 2
+                    ),
+                    default=None,
+                )
+                if blocked_right is None:
+                    break
+                candidate = max(candidate + 1, blocked_right + 8)
+            if candidate > gutter_x:
+                feedback_local_gutter_x[str(edge["id"])] = candidate
+                width = max(width, math.ceil(candidate + 16))
+
     if intent == "process" and occupied_process_adjacent_corridors:
         for edge in feedback_edges:
             source = positions[str(edge["from"])]
@@ -3799,6 +3884,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 force_feedback_path_footer=(
                     str(edge["id"]) in feedback_path_footer_ids
                 ),
+                feedback_local_gutter_x=feedback_local_gutter_x.get(str(edge["id"])),
             )
         )
     for node in model["nodes"]:
