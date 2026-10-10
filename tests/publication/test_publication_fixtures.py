@@ -322,6 +322,9 @@ SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-ci-save-font-20261010"
 )
+SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-dual-notch-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1027,6 +1030,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     single_workspace_ci_save_font_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_dual_notch_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
@@ -9054,6 +9061,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_ci_save_font_superseded_files
     )
     for name, expected in ci_save_acceptance["source_bindings"].items():
+        if name in single_workspace_dual_notch_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(ci_save_acceptance["checks"].values())
     accept_evidence = ci_save_acceptance["check_evidence"]
@@ -9112,6 +9121,101 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert geo["hasCanvasFullWidth"]
     assert len(seen_ci_save) == 4
 
+    # New immutable successor: the two updated source/test revisions only.
+    dual_notch_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE / "acceptance-receipt.json"
+    )
+    dual_notch_acceptance = json.loads(
+        dual_notch_path.read_text(encoding="utf-8")
+    )
+    assert dual_notch_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-dual-notch.v1"
+    )
+    assert dual_notch_acceptance["functional_head"] == (
+        "789d1ad3a7c559f2565c0b5a483fd4601bb5a4ee"
+    )
+    assert dual_notch_acceptance["parent_evidence"] == {
+        "path": str(ci_save_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(ci_save_path.read_bytes()).hexdigest(),
+        "schema_version": ci_save_acceptance["schema_version"],
+        "evidence_digest": ci_save_acceptance["evidence_digest"],
+    }
+    assert dual_notch_acceptance["evidence_digest"] == digest_mapping(
+        dual_notch_acceptance, "evidence_digest"
+    )
+    assert set(dual_notch_acceptance["source_bindings"]) == (
+        single_workspace_dual_notch_superseded_files
+    )
+    for name, expected in dual_notch_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(dual_notch_acceptance["checks"].values())
+    dual_evidence = dual_notch_acceptance["check_evidence"]
+    assert dual_evidence["focused_green"]["passed_count"] == 6
+    assert dual_evidence["full_chromium_green"]["passed_count"] == 30
+    assert dual_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(dual_notch_acceptance["visual_readbacks"]) == {"dual_notch"}
+    dual_meta = dual_notch_acceptance["visual_readbacks"]["dual_notch"]
+    assert dual_meta["case_count"] == 5
+    dual_raw = (ROOT / dual_meta["path"]).read_bytes()
+    assert hashlib.sha256(dual_raw).hexdigest() == dual_meta["sha256"]
+    dual_readback = json.loads(dual_raw)
+    assert dual_readback["schema_version"] == dual_meta["schema_version"]
+    assert dual_readback["functional_head"] == dual_notch_acceptance["functional_head"]
+    assert dual_readback["source_bindings"] == dual_notch_acceptance["source_bindings"]
+    assert len(dual_readback["cases"]) == 5
+    seen_dual = set()
+    for case in dual_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in {
+            (320, 700, 64, 80),
+            (320, 700, 44, 0),
+            (320, 700, 0, 44),
+            (390, 844, 44, 0),
+            (390, 844, 0, 44),
+        }
+        assert key not in seen_dual
+        seen_dual.add(key)
+        shot = dual_meta["screenshots"][case["screenshot_file"]]
+        assert shot["viewport"] == [width, height]
+        assert shot["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == shot["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == shot["sha256"] == case["screenshot_sha256"]
+        )
+        raw_geometry = (
+            SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(raw_geometry).hexdigest() == case["geometry_sha256"]
+        assert shot["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(raw_geometry) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] is True
+        assert g["shortText"] == "Speichern"
+        assert g["accessible"] == "Speichern: Originalprojekt"
+        assert g["textRoom"] >= 66 and g["stressWidth"] >= 64
+        assert g["noTruncation"] and g["stressPass"]
+        assert g["controlValid"] and g["toolbarSafe"] and g["layoutPass"]
+        assert g["popoverPass"] and g["hasCanvasFullWidth"]
+        assert 6 <= g["popoverGap"] <= 14
+        assert abs(g["barMeasured"] - g["bar"]["height"]) <= 1
+        if key == (320, 700, 64, 80):
+            assert g["narrow"] is True
+            assert 80 <= g["bar"]["height"] <= 108
+        else:
+            assert g["narrow"] is False and g["bar"]["height"] <= 54
+    assert len(seen_dual) == 5
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -9140,7 +9244,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_ci_save_font_superseded_files:
+        if name in single_workspace_dual_notch_superseded_files:
+            assert dual_notch_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_ci_save_font_superseded_files:
             assert ci_save_acceptance["source_bindings"][name] == current
         elif name in single_workspace_host_retry_superseded_files:
             assert host_retry_acceptance["source_bindings"][name] == current

@@ -1,0 +1,156 @@
+{
+  "check_evidence": {
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-b9514e451e98",
+      "passed_count": 6
+    },
+    "full_chromium_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-775b72847a60",
+      "passed_count": 30
+    },
+    "new_codex_p2": {
+      "issue": "320px with 64px left / 80px right; four host actions overlap notches before fix",
+      "thread_id": "PRRT_kwDOTGqvHc6q702y"
+    },
+    "red_browser": {
+      "failed_count": 1,
+      "failure": "mobile action is not the top pointer hit: 0",
+      "job_id": "grabowski-job-d2b56d50a109",
+      "other_pass_count": 5
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with simulated notch CSS values is not physical iOS/Safari acceptance",
+        "The miniature test diagram is only for geometry verification",
+        "Screenshots are test evidence, not Fundus production assets",
+        "No previous visual acceptance inherited for modified source revision"
+      ],
+      "method": "Five original Chrome-CDP screenshots individually visually inspected, including both-sided 320px 64/80 safe area and four 44px cases; popover/status measured and mobile Save complete"
+    },
+    "visual_capture_green": {
+      "case_count": 5,
+      "failed_count": 0,
+      "job_id": "grabowski-job-5f90735577ac",
+      "readback_sha256": "20b9f736a01029230107c4b4673356aba4c359a0ed1e76a2f6dec01ef6641efd"
+    }
+  },
+  "checks": {
+    "all_five_original_png_screenshots_individually_visually_accepted": true,
+    "exact_source_test_sha_bound": true,
+    "full_30_case_chrome_browser_smoke_green": true,
+    "full_canvas_remains_and_no_toolbar_reflow_gutter": true,
+    "full_save_caption_and_accessibility_preserved": true,
+    "new_codex_p2_real_red_320_64_80": true,
+    "parent_acceptance_sha_bound_and_unchanged": true,
+    "screenshots_are_test_evidence_not_product_assets": true,
+    "side_insets_and_44px_touch_targets_respected": true,
+    "six_mobile_combinations_green_after_fix": true,
+    "wrapped_bar_syncs_host_status_and_popover_geometry": true
+  },
+  "does_not_establish": [
+    "post-acceptance full make validate and new CI",
+    "new exact-head independent reviewer PASS",
+    "five-pass self-review audit",
+    "Codex settlement",
+    "Captain merge authorization",
+    "physical iOS/Safari acceptance",
+    "production deployment"
+  ],
+  "evidence_digest": "cbf00ad9df766038bc42c2f89fb2ce3699b07318b6ac8045270a5bf972752ab6",
+  "functional_head": "789d1ad3a7c559f2565c0b5a483fd4601bb5a4ee",
+  "parent_evidence": {
+    "evidence_digest": "527e82c0b595608afd3919eee0a6362a9e3a0c350355ee83062fba8f6656f724",
+    "file_sha256": "cf7ae5abee0760f2429247a14201878d8d3654c312b6542b8fe1afad77d0288f",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-save-font-20261010/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-ci-save-font.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-dual-notch.v1",
+  "scope": "320px dual notch 64px left,80px right: all Native workspace actions in safe regions, with wrapped bar/status/popovers; full Save label and canvas retained",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "77af124bec3b8a0909b49999b6aefb17d3a4ee7279359b7fe6055af591f65cd2",
+    "tests/visual/test_standalone_editor_single_workspace.py": "5d13497888151e318f72dcfe3bb03e04fe821fa7757c4534580a0cf22901a695"
+  },
+  "visual_readbacks": {
+    "dual_notch": {
+      "case_count": 5,
+      "path": "docs/operators/evidence/schaubild-single-workspace-dual-notch-20261010/visual-dual-notch-readback.json",
+      "schema_version": "schauwerk-pr203-dual-notch-cdp.v1",
+      "screenshots": {
+        "save-320x700-left0-right44.png": {
+          "bytes": 31021,
+          "geometry_file": "save-320x700-left0-right44.json",
+          "geometry_sha256": "48ffbfe5ad5f87d720c8102ccc2c9438439947fb06474235ba587ae2a6bd5bdc",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "945f1eb393f860ec119907f419488cd03aa01d9a2746aa1eb3ff1e435c349999",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left44-right0.png": {
+          "bytes": 30522,
+          "geometry_file": "save-320x700-left44-right0.json",
+          "geometry_sha256": "59230a69483e19feb22d9a184f2aaf1e19d298f662718ecd61d75f991d6b0ed4",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "5723aea49674fb48d8c638ec2adec74fd9f244858a98d433e4bb90673b144f72",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left64-right80.png": {
+          "bytes": 28476,
+          "geometry_file": "save-320x700-left64-right80.json",
+          "geometry_sha256": "2733a0e380309a5522af7747fb07105824fa4418e52209b7b134f2a25704da0e",
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "26e40489cc52816c75f6876707ad0f0d2dc83652ae8ea2d1693c3c63e4a37e36",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-390x844-left0-right44.png": {
+          "bytes": 33125,
+          "geometry_file": "save-390x844-left0-right44.json",
+          "geometry_sha256": "891170dce6464ef0373d8c6d20402a0d058fcf5ddbc2e93b7e820cca0370cd9e",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "d3d0418ed50bea7f2fd31e986528bb9891150068e3cfccb6966aadfdae107a63",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "save-390x844-left44-right0.png": {
+          "bytes": 32865,
+          "geometry_file": "save-390x844-left44-right0.json",
+          "geometry_sha256": "64566f0fc35b51b91ed087a9eb0567c3061aab4db14edd6b2ba49fc386f0b8aa",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "cb17880663cc9450506f29d56986109f13a65df090882b46f4e8820ef0b1d18f",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "20b9f736a01029230107c4b4673356aba4c359a0ed1e76a2f6dec01ef6641efd"
+    }
+  }
+}
