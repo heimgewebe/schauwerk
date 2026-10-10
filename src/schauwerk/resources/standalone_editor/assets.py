@@ -564,10 +564,7 @@ h1 {
 .workspace-bar .download-link,
 .workspace-menu > summary { min-height: 40px; }
 .output-button { min-width: 46px; color: var(--muted); }
-/* Keep the legacy fallback valid when :has() is unsupported (older Safari). */
-body.engine-legacy .workspace-tools-menu {
-  display: none;
-}
+/* Explicit hidden state works independently of :has() (older Safari). */
 .workspace-tools-menu[hidden] { display: none; }
 .workspace-close {
   min-width: 58px;
@@ -910,6 +907,7 @@ body.workspace-active .status {
   /* A dual notch can leave 176px: keep all actions inside the safe region. */
   .workspace-bar { flex-wrap: wrap; }
   .workspace-bar .workspace-menu { flex-shrink: 1; }
+  .workspace-tools-popover .font-controls { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1751,7 +1749,8 @@ function setEngineMode(mode) {
   elements.layoutButton.hidden = native;
   const toolsMenu = document.querySelector(".workspace-tools-menu");
   if (toolsMenu instanceof HTMLDetailsElement) {
-    toolsMenu.hidden = !native || !(currentRepresentation || currentLegacyXml);
+    // Legacy font/layout actions are available even without a native representation.
+    toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml);
     if (toolsMenu.hidden) toolsMenu.open = false;
   }
   syncWorkspaceMenuOpenState();

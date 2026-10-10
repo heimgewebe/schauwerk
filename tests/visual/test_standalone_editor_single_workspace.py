@@ -430,6 +430,34 @@ try {
       && document.querySelector("#editorFrame") instanceof HTMLIFrameElement,
     "legacy compatibility workspace did not open",
   );
+  const legacyToolsMenu = document.querySelector(".workspace-tools-menu");
+  if (legacyToolsMenu.hidden || getComputedStyle(legacyToolsMenu).display === "none") {
+    throw new Error("P2: legacy font/layout tools inaccessible");
+  }
+  const legacyActions = [
+    "#fontDecreaseButton", "#fontIncreaseButton",
+    "#fontPanelButton", "#fontAllButton", "#layoutButton",
+  ].map((selector) => document.querySelector(selector));
+  if (legacyActions.some((action) => !action || action.hidden || action.disabled)) {
+    throw new Error("P2: legacy font/layout controls remain disabled or hidden");
+  }
+  legacyToolsMenu.open = true;
+  await waitUntil(
+    () => document.body.classList.contains("workspace-menu-open"),
+    "legacy tools menu failed to open",
+  );
+  for (const action of legacyActions) {
+    const rect = action.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    if (rect.width < 38 || rect.height < 40 || !hit || !action.contains(hit)) {
+      throw new Error("legacy tools action unreachable: " + action.id);
+    }
+  }
+  legacyToolsMenu.open = false;
+  await waitUntil(
+    () => !document.body.classList.contains("workspace-menu-open"),
+    "legacy tools menu failed to close",
+  );
   const legacyStage = document.querySelector(".editor-stage").getBoundingClientRect();
   const legacyFrame = document.querySelector("#editorFrame").getBoundingClientRect();
   const legacyBar = document.querySelector(".workspace-bar").getBoundingClientRect();
@@ -1125,6 +1153,56 @@ const wait = async (predicate, label) => {
     }
     fireDrag(dragViewport, "pointerup", startX + 37, startY + 3);
   }
+  // Legacy font/layout actions must remain reachable in the exact dual-notch
+  // viewport, not merely in the native draw.io compatibility workspace.
+  document.querySelector("#workspaceCloseButton").click();
+  await wait(
+    () => document.querySelector("#workspace").hidden
+      && !document.querySelector("#startView").hidden,
+    "legacy tools test could not return to start",
+  );
+  document.querySelector("#blankButton").click();
+  await wait(
+    () => !document.querySelector("#workspace").hidden
+      && document.body.classList.contains("engine-legacy"),
+    "legacy blank workspace did not open",
+  );
+  const legacyTools = document.querySelector(".workspace-tools-menu");
+  if (legacyTools.hidden || getComputedStyle(legacyTools).display === "none") {
+    throw new Error("P2: legacy tools remain invisible on notched mobile viewport");
+  }
+  const legacyActions = [
+    "#fontDecreaseButton", "#fontIncreaseButton",
+    "#fontPanelButton", "#fontAllButton", "#layoutButton",
+  ].map((selector) => document.querySelector(selector));
+  if (legacyActions.some((action) => !action || action.hidden || action.disabled)) {
+    throw new Error("P2: enabled legacy font/layout controls are hidden or disabled");
+  }
+  legacyTools.open = true;
+  await wait(
+    () => document.body.classList.contains("workspace-menu-open"),
+    "legacy tools popup did not open on mobile",
+  );
+  const legacyPop = legacyTools.querySelector(".workspace-popover").getBoundingClientRect();
+  if (legacyPop.left < safeLeft - 0.5 || legacyPop.right > innerWidth - safeRight + 0.5) {
+    throw new Error("P2: legacy tools popover escapes horizontal safe areas");
+  }
+  for (const action of legacyActions) {
+    const r = action.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (
+      r.width < 38 || r.height < 40
+      || r.left < safeLeft - 0.5 || r.right > innerWidth - safeRight + 0.5
+      || !hit || !action.contains(hit)
+    ) {
+      throw new Error("P2: legacy tool not reachable in safe viewport: " + action.id);
+    }
+  }
+  legacyTools.open = false;
+  await wait(
+    () => !document.body.classList.contains("workspace-menu-open"),
+    "legacy tools popup failed to close",
+  );
   document.documentElement.dataset.mobileBar320Smoke = "pass";
 })().catch((error) => {
   document.documentElement.dataset.mobileBar320Smoke = "fail";

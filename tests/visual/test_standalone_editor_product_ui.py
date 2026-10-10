@@ -48,14 +48,13 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     assert "body.editor-focus" not in styles_css
     assert ".fullscreen-toggle" not in styles_css
     assert ".workspace-bar { overflow-x: auto; }" not in styles_css
-    # A :has() rule must not invalidate the legacy fallback in older Safari.
-    assert "body.engine-legacy .workspace-tools-menu {\n  display: none;\n}" in styles_css
-    assert "body.engine-legacy .workspace-tools-menu,\n" not in styles_css
+    # Legacy font/layout actions must remain reachable without :has().
+    assert "body.engine-legacy .workspace-tools-menu {" not in styles_css
     assert ".workspace-tools-menu[hidden] { display: none; }" in styles_css
     assert "body.engine-native .workspace-tools-menu:not(:has(" not in styles_css
     assert ".workspace-menu-label {" in styles_css
     assert "text-overflow: ellipsis;" in styles_css
-    assert 'toolsMenu.hidden = !native || !(currentRepresentation || currentLegacyXml);' in app_js
+    assert 'toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml);' in app_js
     assert 'menu.addEventListener("toggle", syncWorkspaceMenuOpenState);' in app_js
     # Unsupported :has() must not invalidate the independent class fallback.
     assert "body.workspace-active.workspace-menu-open .topline {" in styles_css
