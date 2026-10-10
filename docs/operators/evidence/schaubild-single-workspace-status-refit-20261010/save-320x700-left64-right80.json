@@ -1,0 +1,144 @@
+{
+  "geometry": {
+    "accessible": "Speichern: Originalprojekt",
+    "bar": {
+      "bottom": 692,
+      "height": 97,
+      "left": 64,
+      "right": 240,
+      "top": 595,
+      "width": 176
+    },
+    "barMeasured": 97,
+    "controlValid": true,
+    "download": {
+      "bottom": 642,
+      "height": 42,
+      "left": 159,
+      "right": 235,
+      "top": 600,
+      "width": 76
+    },
+    "fullDisplay": "none",
+    "hasCanvasFullWidth": true,
+    "hostStatus": {
+      "bottom": 587,
+      "height": 28,
+      "left": 64,
+      "right": 240,
+      "top": 559,
+      "width": 176
+    },
+    "layoutPass": true,
+    "narrow": true,
+    "naturalWidth": 56,
+    "noTruncation": true,
+    "pass": true,
+    "popover": {
+      "bottom": 588,
+      "height": 54,
+      "left": 119.9375,
+      "right": 240,
+      "top": 534,
+      "width": 120.0625
+    },
+    "popoverGap": 7,
+    "popoverPass": true,
+    "safe": {
+      "left": 64,
+      "right": 80
+    },
+    "short": {
+      "bottom": 628,
+      "height": 14,
+      "left": 168.8125,
+      "right": 225.1875,
+      "top": 614,
+      "width": 56.375
+    },
+    "shortClientWidth": 56,
+    "shortDisplay": "block",
+    "shortScrollWidth": 56,
+    "shortText": "Speichern",
+    "stage": {
+      "bottom": 700,
+      "height": 700,
+      "left": 0,
+      "right": 320,
+      "top": 0,
+      "width": 320
+    },
+    "statusPill": {
+      "bottom": 587,
+      "height": 28,
+      "left": 64,
+      "right": 240,
+      "top": 559,
+      "width": 176
+    },
+    "statusSafe": true,
+    "stressClient": 66,
+    "stressPass": true,
+    "stressWidth": 67,
+    "targets": [
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 642,
+          "height": 42,
+          "left": 69,
+          "right": 111,
+          "top": 600,
+          "width": 42
+        },
+        "visible": "Tools"
+      },
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 642,
+          "height": 42,
+          "left": 114,
+          "right": 156,
+          "top": 600,
+          "width": 42
+        },
+        "visible": "Export"
+      },
+      {
+        "hit": true,
+        "name": "downloadLink",
+        "rect": {
+          "bottom": 642,
+          "height": 42,
+          "left": 159,
+          "right": 235,
+          "top": 600,
+          "width": 76
+        },
+        "visible": "Originalprojekt speichernSpeichern"
+      },
+      {
+        "hit": true,
+        "name": "workspaceCloseButton",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 170.046875,
+          "right": 235,
+          "top": 645,
+          "width": 64.953125
+        },
+        "visible": "Zurück"
+      }
+    ],
+    "textRoom": 66,
+    "toolbarSafe": true,
+    "viewport": {
+      "height": 700,
+      "width": 320
+    }
+  }
+}

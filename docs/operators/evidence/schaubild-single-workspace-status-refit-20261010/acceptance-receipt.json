@@ -1,0 +1,184 @@
+{
+  "check_evidence": {
+    "architecture_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-e3a061403088"
+    },
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-23974f321d29",
+      "passed_count": 6
+    },
+    "full_browser_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-51215ee0f42c",
+      "passed_count": 30
+    },
+    "host_status_p2": {
+      "before": "320px 64/80 insets: status right x=294.4; safe right x=240",
+      "red_job_id": "grabowski-job-3dc66e761a6d",
+      "thread_id": "PRRT_kwDOTGqvHc6rBTKe"
+    },
+    "native_refit_p2": {
+      "before": "host action bar 52px to 97px, native --host-footer-bottom remained 104px",
+      "red_job_id": "grabowski-job-3dc66e761a6d",
+      "thread_id": "PRRT_kwDOTGqvHc6rBTKh"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chromium and simulated safe areas are not physical iOS/Safari acceptance",
+        "Artificial long diagram nodes serve overlay geometry only and are not legibility assessment",
+        "Visual acceptance is specific to this functional source revision and does not transfer automatically",
+        "PNG screenshots are test evidence rather than reusable Fundus production assets"
+      ],
+      "method": "All six original Headless Desktop Chrome CDP screenshots inspected individually, including 320px 64/80 dual-notch status, 44px one-sided variants, 390px variants, hosted real SVG export and native re-fit"
+    },
+    "visual_capture_green": {
+      "case_count": 6,
+      "failed_count": 0,
+      "job_id": "grabowski-job-d15e23c4cfbb",
+      "native_fitted_clearance_px": 44,
+      "native_new_footer_px": 149,
+      "native_old_footer_px": 104
+    }
+  },
+  "checks": {
+    "embedded_fit_and_footer_recomputed_after_action_wrap": true,
+    "existing_manual_gesture_fit_guards_preserved": true,
+    "full_canvas_and_existing_download_controls_preserved": true,
+    "full_thirty_case_chromium_smoke_green": true,
+    "host_status_inside_both_side_safe_areas": true,
+    "parent_source_test_and_screenshot_sha_chain_bound": true,
+    "prior_accepted_evidence_unchanged": true,
+    "screenshots_only_test_evidence_not_production_assets": true,
+    "six_mobile_chromium_cases_green": true,
+    "six_new_pngs_individually_visually_accepted": true,
+    "standalone_architecture_tests_green": true,
+    "two_new_codex_p2_reproduced_red_with_real_chromium": true
+  },
+  "does_not_establish": [
+    "final exact-head complete Python validation and CI",
+    "independent reviewer exact-head PASS",
+    "five high-critical self reviews",
+    "Codex settlement",
+    "closed GitHub inline threads",
+    "Captain merge approval",
+    "physical iOS Safari acceptance",
+    "deployment"
+  ],
+  "evidence_digest": "006ebe1d1d46f6ab56a747037adc2f99143d7365c56b0d8144a490853f548845",
+  "functional_head": "eea656cd7b4f0a2c5ca78f225df24e422cc21330",
+  "parent_evidence": {
+    "evidence_digest": "ccd4ba2017d4455e39ce6c35d3ea95d7a61d6aa90a89b83114a46a62e5fc496d",
+    "file_sha256": "444b5a2f809e82e0937e89244e2e7bd12d41c3437389091ff90a35d0dc201208",
+    "path": "docs/operators/evidence/schaubild-single-workspace-legacy-tools-20261010/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-legacy-tools.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-status-refit.v1",
+  "scope": "Mobile host status respects both side safe areas and Native iframe refits when prepared Download wraps the workspace action bar",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "61a7155d28f72e05fe14547724723f265f848488cd0c05f4f7ed4589dad10457",
+    "tests/visual/test_standalone_editor_single_workspace.py": "192597f9832aa73393052482a2471e2d31ac9a53df2f706b335e6cce844c6723"
+  },
+  "visual_readbacks": {
+    "status_refit": {
+      "case_count": 6,
+      "path": "docs/operators/evidence/schaubild-single-workspace-status-refit-20261010/visual-host-status-refit-readback.json",
+      "schema_version": "schauwerk-pr203-host-status-refit-cdp.v1",
+      "screenshots": {
+        "native-refit-320x700-left64-right80.png": {
+          "bytes": 27701,
+          "geometry_file": "native-refit-320x700-left64-right80.json",
+          "geometry_sha256": "0afe9f365e955f8f3b000aeb9787edd8ab682e92e23d3e1fe7f26309891a97d1",
+          "kind": "native_refit",
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "4265b1d52e2d162e276aab70e9096f2e0e80076ab34fc7c2e5cc7f6f24760f98",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left0-right44.png": {
+          "bytes": 30716,
+          "geometry_file": "save-320x700-left0-right44.json",
+          "geometry_sha256": "34e1f076d439467cf661ba47bd662432c6ecbbd1543b6aedc5e3c3a85a55f12a",
+          "kind": "host_status",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "517bcc54a37f39a4db1e9bd916f0ec6d96efe4edfe7fe7faad52b9572c97f8c7",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left44-right0.png": {
+          "bytes": 30522,
+          "geometry_file": "save-320x700-left44-right0.json",
+          "geometry_sha256": "3b6ed0782a98e348c13a8877ccf2bf1bf418cf19c06116ac154c36bd5e2e7ea8",
+          "kind": "host_status",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "5723aea49674fb48d8c638ec2adec74fd9f244858a98d433e4bb90673b144f72",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left64-right80.png": {
+          "bytes": 29227,
+          "geometry_file": "save-320x700-left64-right80.json",
+          "geometry_sha256": "609a8cb78a6a6c8634a908da0e1e279b62bfc4201cb1891151dd05ec36c0c6e0",
+          "kind": "host_status",
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "8e9426d4411f07473184e819b5a835b7a83584fac37811010986c37fa1332075",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-390x844-left0-right44.png": {
+          "bytes": 33125,
+          "geometry_file": "save-390x844-left0-right44.json",
+          "geometry_sha256": "a42970a5a7cdd61fd6357d2beb82d27e47bd89c7d4cb19a54c96fbfb2123eee0",
+          "kind": "host_status",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "d3d0418ed50bea7f2fd31e986528bb9891150068e3cfccb6966aadfdae107a63",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "save-390x844-left44-right0.png": {
+          "bytes": 32865,
+          "geometry_file": "save-390x844-left44-right0.json",
+          "geometry_sha256": "5356f66b6758c82f41d294eea3c6efe73b92564b018bb3e2272ac850ea8d839a",
+          "kind": "host_status",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "cb17880663cc9450506f29d56986109f13a65df090882b46f4e8820ef0b1d18f",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "a1a8b087fa3aa45cffc4a268596a3723148160fa81206c80be1b9f8aa7a78a3e"
+    }
+  }
+}

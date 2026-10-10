@@ -331,6 +331,9 @@ SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE = (
 SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE = (
     ROOT / "docs/operators/evidence/schaubild-single-workspace-legacy-tools-20261010"
 )
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-status-refit-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -1049,6 +1052,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     single_workspace_legacy_tools_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_status_refit_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
     editor_successor = json.loads(
@@ -9373,6 +9380,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_legacy_tools_superseded_files
     )
     for name, sha in legacy_tools_acceptance["source_bindings"].items():
+        if name in single_workspace_status_refit_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
     assert all(legacy_tools_acceptance["checks"].values())
     legacy_checks = legacy_tools_acceptance["check_evidence"]
@@ -9444,6 +9453,101 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert abs(g["bar"]["height"] - g["measuredBar"]) <= 1
     assert seen_legacy == expected_legacy
 
+    # Exact visual successor for dual-notch host status and embedded native refit.
+    status_refit_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE / "acceptance-receipt.json"
+    )
+    status_refit_acceptance = json.loads(
+        status_refit_path.read_text(encoding="utf-8")
+    )
+    assert status_refit_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-status-refit.v1"
+    )
+    assert status_refit_acceptance["functional_head"] == (
+        "eea656cd7b4f0a2c5ca78f225df24e422cc21330"
+    )
+    assert status_refit_acceptance["parent_evidence"] == {
+        "path": str(legacy_tools_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(legacy_tools_path.read_bytes()).hexdigest(),
+        "schema_version": legacy_tools_acceptance["schema_version"],
+        "evidence_digest": legacy_tools_acceptance["evidence_digest"],
+    }
+    assert status_refit_acceptance["evidence_digest"] == digest_mapping(
+        status_refit_acceptance, "evidence_digest"
+    )
+    assert set(status_refit_acceptance["source_bindings"]) == (
+        single_workspace_status_refit_superseded_files
+    )
+    for name, expected in status_refit_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(status_refit_acceptance["checks"].values())
+    status_checks = status_refit_acceptance["check_evidence"]
+    assert status_checks["focused_green"]["passed_count"] == 6
+    assert status_checks["full_browser_green"]["passed_count"] == 30
+    assert status_checks["visual_capture_green"]["case_count"] == 6
+    assert status_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(status_refit_acceptance["visual_readbacks"]) == {"status_refit"}
+    status_meta = status_refit_acceptance["visual_readbacks"]["status_refit"]
+    assert status_meta["case_count"] == 6
+    raw_status = (ROOT / status_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_status).hexdigest() == status_meta["sha256"]
+    status_readback = json.loads(raw_status)
+    assert status_readback["schema_version"] == status_meta["schema_version"]
+    assert status_readback["functional_head"] == status_refit_acceptance["functional_head"]
+    assert status_readback["source_bindings"] == status_refit_acceptance["source_bindings"]
+    assert len(status_readback["cases"]) == 6
+    expected_status = {
+        (320, 700, 64, 80), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    kinds = {"host_status": set(), "native_refit": set()}
+    for case in status_readback["cases"]:
+        w, h = case["viewport"]
+        safe = case["safe_area"]
+        key = (w, h, safe["left"], safe["right"])
+        kind = case["kind"]
+        assert kind in kinds and key in expected_status
+        assert key not in kinds[kind]
+        kinds[kind].add(key)
+        bound = status_meta["screenshots"][case["screenshot_file"]]
+        assert bound["kind"] == kind
+        assert bound["viewport"] == [w, h] and bound["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == w
+        assert int.from_bytes(png[20:24], "big") == h
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        side = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(side).hexdigest() == case["geometry_sha256"]
+        assert bound["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(side) == {"geometry": case["geometry"]}
+        geom = case["geometry"]
+        assert geom["pass"] is True
+        if kind == "host_status":
+            assert geom["statusSafe"] is True
+            assert geom["statusPill"]["left"] >= safe["left"] - 0.5
+            assert geom["statusPill"]["right"] <= w - safe["right"] + 0.5
+            assert geom["controlValid"] and geom["layoutPass"]
+            assert geom["popoverPass"] and geom["noTruncation"]
+            assert geom["hasCanvasFullWidth"] and geom["textRoom"] >= 66
+        else:
+            assert geom["oldBar"] <= 54 and geom["newBar"] >= 80
+            assert geom["newFoot"] > geom["oldFoot"] + 30
+            assert geom["fitClearance"] >= 8
+            assert geom["hostPill"]["right"] <= w - safe["right"] + 0.5
+    assert kinds["host_status"] == expected_status
+    assert kinds["native_refit"] == {(320, 700, 64, 80)}
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -9472,7 +9576,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_legacy_tools_superseded_files:
+        if name in single_workspace_status_refit_superseded_files:
+            assert status_refit_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_legacy_tools_superseded_files:
             assert legacy_tools_acceptance["source_bindings"][name] == current
         elif name in single_workspace_no_observer_superseded_files:
             assert no_observer_acceptance["source_bindings"][name] == current
