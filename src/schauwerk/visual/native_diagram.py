@@ -1006,7 +1006,17 @@ def _process_local_group_branch_gutter_x(
         for slot, edge_id in enumerate(ordered_ids):
             centered_slot = slot - (len(ordered_ids) - 1) / 2
             proposed[edge_id] = center_x + centered_slot * _PROCESS_LANE_STEP
-        def label_overlaps_node(edge_id: str) -> bool:
+        remaining_outer = _process_long_branch_ids(
+            model,
+            positions,
+            process_row_gap=process_row_gap,
+            local_group_branch_gutter_x={**gutters, **proposed},
+        )
+        # The global gutter lies to the right of all cards, so every outer
+        # branch traverses the source/target corridor on its way there.
+        outer_reach = max(x + _NODE_WIDTH for x, _ in positions.values())
+
+        def label_overlaps_node_or_outer_leg(edge_id: str) -> bool:
             edge = edges_by_id[edge_id]
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
@@ -1026,15 +1036,43 @@ def _process_local_group_branch_gutter_x(
             label_right = proposed[edge_id] + metrics.width / 2
             label_top = label_y - metrics.height / 2
             label_bottom = label_y + metrics.height / 2
-            return any(
+            if any(
                 label_left < node_x + _NODE_WIDTH
                 and label_right > node_x
                 and label_top < node_y + _NODE_HEIGHT
                 and label_bottom > node_y
                 for node_x, node_y in positions.values()
-            )
+            ):
+                return True
 
-        if any(label_overlaps_node(edge_id) for edge_id in ordered_ids):
+            # The existing outer fallback is safer when its long-branch
+            # horizontal source/target leg would cross this proposed label.
+            # Account for its bounded lane offset before accepting a local
+            # route; otherwise the later outer-lane allocator masks the label.
+            for other_id in remaining_outer:
+                other = edges_by_id[other_id]
+                outer_source = positions[str(other["from"])]
+                outer_target = positions[str(other["to"])]
+                if outer_source[1] < outer_target[1]:
+                    source_y = outer_source[1] + _NODE_HEIGHT + process_row_gap / 2
+                    target_y = outer_target[1] - process_row_gap / 2
+                else:
+                    source_y = outer_source[1] - process_row_gap / 2
+                    target_y = outer_target[1] + _NODE_HEIGHT + process_row_gap / 2
+                for endpoint_x, corridor_y in (
+                    (outer_source[0] + _NODE_WIDTH / 2, source_y),
+                    (outer_target[0] + _NODE_WIDTH / 2, target_y),
+                ):
+                    if (
+                        label_left < outer_reach
+                        and label_right > endpoint_x
+                        and label_top < corridor_y + 8
+                        and label_bottom > corridor_y - 8
+                    ):
+                        return True
+            return False
+
+        if any(label_overlaps_node_or_outer_leg(edge_id) for edge_id in ordered_ids):
             continue
         gutters.update(proposed)
 
