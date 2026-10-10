@@ -890,8 +890,9 @@ body.workspace-active .status {
   .workspace-output { gap: 3px; }
   /* Use an unambiguous short caption when the full label cannot fit. */
   .workspace-bar .download-link.button.compact {
-    flex: 0 0 68px;
-    max-width: 68px;
+    /* CI's wider system font needs 64px for Speichern plus padding/border. */
+    flex: 0 0 76px;
+    max-width: 76px;
     min-width: 0;
     padding-inline: 4px;
     overflow: hidden;

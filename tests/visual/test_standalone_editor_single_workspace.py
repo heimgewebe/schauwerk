@@ -641,6 +641,14 @@ const wait = async (predicate, label) => {
   if (shortStyle.textOverflow !== "ellipsis" || shortStyle.overflowX !== "hidden") {
     throw new Error("mobile short caption does not own controlled text truncation");
   }
+  // Measure available button interior, not the font-dependent span width.
+  const downloadStyle = getComputedStyle(download);
+  const textRoom = download.clientWidth
+    - parseFloat(downloadStyle.paddingLeft) - parseFloat(downloadStyle.paddingRight);
+  if (textRoom < 66) {
+    throw new Error("P2: Speichern action lacks system-font width reserve: "
+      + textRoom + "px");
+  }
   if (shortCaption.scrollWidth > shortCaption.clientWidth + 1) {
     throw new Error("P2: visible Speichern caption is shortened: "
       + shortCaption.clientWidth + "/" + shortCaption.scrollWidth);
