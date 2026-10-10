@@ -1,0 +1,114 @@
+{
+  "geometry": {
+    "accessible": "Speichern: Originalprojekt",
+    "bar": {
+      "bottom": 692,
+      "height": 52,
+      "left": 32.046875,
+      "right": 276,
+      "top": 640,
+      "width": 243.953125
+    },
+    "controlValid": true,
+    "download": {
+      "bottom": 687,
+      "height": 42,
+      "left": 127.046875,
+      "right": 203.046875,
+      "top": 645,
+      "width": 76
+    },
+    "fullDisplay": "none",
+    "hasCanvasFullWidth": true,
+    "naturalWidth": 56,
+    "noTruncation": true,
+    "pass": true,
+    "safe": {
+      "left": 0,
+      "right": 44
+    },
+    "short": {
+      "bottom": 673,
+      "height": 14,
+      "left": 136.859375,
+      "right": 193.234375,
+      "top": 659,
+      "width": 56.375
+    },
+    "shortClientWidth": 56,
+    "shortDisplay": "block",
+    "shortScrollWidth": 56,
+    "shortText": "Speichern",
+    "stage": {
+      "bottom": 700,
+      "height": 700,
+      "left": 0,
+      "right": 320,
+      "top": 0,
+      "width": 320
+    },
+    "stressClient": 66,
+    "stressPass": true,
+    "stressWidth": 67,
+    "targets": [
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 37.046875,
+          "right": 79.046875,
+          "top": 645,
+          "width": 42
+        },
+        "visible": "Tools"
+      },
+      {
+        "hit": true,
+        "name": "SUMMARY",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 82.046875,
+          "right": 124.046875,
+          "top": 645,
+          "width": 42
+        },
+        "visible": "Export"
+      },
+      {
+        "hit": true,
+        "name": "downloadLink",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 127.046875,
+          "right": 203.046875,
+          "top": 645,
+          "width": 76
+        },
+        "visible": "Originalprojekt speichernSpeichern"
+      },
+      {
+        "hit": true,
+        "name": "workspaceCloseButton",
+        "rect": {
+          "bottom": 687,
+          "height": 42,
+          "left": 206.046875,
+          "right": 271,
+          "top": 645,
+          "width": 64.953125
+        },
+        "visible": "Zurück"
+      }
+    ],
+    "textRoom": 66,
+    "toolbarSafe": true,
+    "viewport": {
+      "height": 700,
+      "width": 320
+    }
+  }
+}
