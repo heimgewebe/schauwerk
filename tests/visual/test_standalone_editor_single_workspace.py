@@ -555,6 +555,7 @@ try {
 @pytest.mark.parametrize(
     ("width", "height", "inset_left", "inset_right"),
     [
+        (320, 700, 64, 80),
         (320, 700, 0, 0),
         (320, 700, 44, 0),
         (320, 700, 0, 44),
@@ -698,6 +699,10 @@ const wait = async (predicate, label) => {
     throw new Error("P2: Back button accessible name lacks visible label");
   }
   const bar = document.querySelector(".workspace-bar");
+  await wait(() => Math.abs(
+    parseFloat(getComputedStyle(document.body).getPropertyValue("--workspace-bar-height"))
+      - bar.getBoundingClientRect().height,
+  ) <= 1, "mobile bar height did not synchronize after prepared download");
   const controls = [
     toolsMenu.querySelector("summary"),
     exportMenu.querySelector("summary"),
@@ -706,12 +711,19 @@ const wait = async (predicate, label) => {
   ];
   const rects = controls.map((control) => control.getBoundingClientRect());
   const barRect = bar.getBoundingClientRect();
+  const dualNotch = innerWidth - safeLeft - safeRight < 210;
   if (
-    barRect.height > 54
+    barRect.height > (dualNotch ? 108 : 54)
+    || (dualNotch && barRect.height < 80)
     || barRect.left < safeLeft - 0.5
     || barRect.right > innerWidth - safeRight + 0.5
   ) {
-    throw new Error("mobile workspace action bar enters the left/right safe area");
+    throw new Error("mobile workspace action bar enters safe area or fails to wrap");
+  }
+  const hostTopline = document.querySelector("body.workspace-active .topline")
+    .getBoundingClientRect();
+  if (hostTopline.bottom > barRect.top - 6) {
+    throw new Error("mobile host status overlaps wrapped workspace action bar");
   }
   for (let i = 0; i < controls.length; i += 1) {
     const rect = rects[i];

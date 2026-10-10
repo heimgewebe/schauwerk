@@ -907,7 +907,8 @@ body.workspace-active .status {
 }
 
 @media (max-width: 360px) {
-  /* Allow compact menus to shrink without reducing the canvas. */
+  /* A dual notch can leave 176px: keep all actions inside the safe region. */
+  .workspace-bar { flex-wrap: wrap; }
   .workspace-bar .workspace-menu { flex-shrink: 1; }
 }
 
@@ -3246,6 +3247,21 @@ for (const control of [elements.contentCloseButton, elements.contentCancelButton
 document.querySelectorAll(".workspace-menu").forEach((menu) => {
   menu.addEventListener("toggle", syncWorkspaceMenuOpenState);
 });
+// The mobile action bar can wrap on a dual-notch viewport. The status and
+// fixed popovers already use this variable; bind it to the actual bar height.
+const workspaceActionBar = document.querySelector(".workspace-bar");
+if (workspaceActionBar && typeof ResizeObserver === "function") {
+  const syncWorkspaceBarHeight = () => {
+    const box = workspaceActionBar.getBoundingClientRect();
+    if (!box.height) return;
+    const height = Math.ceil(box.height) + "px";
+    if (document.body.style.getPropertyValue("--workspace-bar-height") !== height) {
+      document.body.style.setProperty("--workspace-bar-height", height);
+    }
+  };
+  new ResizeObserver(syncWorkspaceBarHeight).observe(workspaceActionBar);
+  syncWorkspaceBarHeight();
+}
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
 elements.projectButton.addEventListener("click", () => {
   const menu = elements.projectButton.closest("details");
