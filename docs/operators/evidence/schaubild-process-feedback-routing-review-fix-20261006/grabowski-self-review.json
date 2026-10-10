@@ -1,0 +1,78 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "a325b0be6a8634418f93cb07c8991d088190ecfb",
+  "head_sha": "4f2a37835612aa3ca699d6b823737f74054a295b",
+  "functional_diff_sha256": "d2b6a0bd52004710dee5621ae4ddedefcd5858d262ab81efe3eb08bb982db7cd",
+  "functional_diff_bytes": 4617,
+  "pre_review_worktree": {
+    "tracked_diff_sha256": "b512c9dda11092b32a7fadedc1bb243b7f68e61f7cf1092899a6848a25d37eb2",
+    "tracked_diff_bytes": 7568,
+    "acceptance_receipt_sha256": "c2f157e32eaf816df9f38f09cfb983f45f0d2cc687378623638466177e3c6005",
+    "publication_fixture_sha256": "c5e0c28113cc09ffbd5b37e7cfafcb89857a0cb8c14ba71cadac6b99709afa2b"
+  },
+  "reviewed_files": [
+    "src/schauwerk/visual/native_diagram.py",
+    "tests/visual/test_native_diagram.py",
+    "tests/publication/test_publication_fixtures.py",
+    "docs/operators/evidence/schaubild-process-feedback-routing-review-fix-20261006/acceptance-receipt.json"
+  ],
+  "review_focus": [
+    "the Codex P2 is reproduced from the reviewed a325b0be head rather than inferred",
+    "horizontal packing assigns a corridor-centered y only when every movable label fits with clearance",
+    "labels that cannot fit safely still fall back to the existing outer-gutter allocator",
+    "the new grouped two-line regression proves corridor containment and node clearance",
+    "the existing 18-node product output remains byte-identical to the previously accepted SVG and PNG",
+    "new visual acceptance is bound to the exact P2 browser PNG rather than geometry assertions alone",
+    "historical acceptance bytes remain immutable and publication precedence resolves current renderer/test bytes through the review-fix successor",
+    "the complete successor worktree passes Ruff, compile, registry validation, and all repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The review comment could have described only a theoretical edge case.",
+      "resolution": "The exact pre-fix renderer reproduced the overlap: both 48 px label boxes started above the upper-node bottom at y=362."
+    },
+    {
+      "iteration": 2,
+      "finding": "Blindly centering every horizontally packed label would replace one overlap with another when a label is taller than its corridor.",
+      "resolution": "Horizontal packing now rejects any movable label whose height plus clearance exceeds the corridor and preserves the established outer-gutter fallback."
+    },
+    {
+      "iteration": 3,
+      "finding": "A shared corridor y could still allow the two crossing labels to collide with each other.",
+      "resolution": "The existing horizontal separation check remains authoritative for x placement, and the exact regression verifies both labels are disjoint and node-clear at y=364."
+    },
+    {
+      "iteration": 4,
+      "finding": "The review remediation could accidentally disturb the accepted 18-node product layout even if the new P2 fixture passes.",
+      "resolution": "Fresh exact-head rendering produced the same SVG SHA-256 a97a0b90... and browser PNG SHA-256 4c4ea60e... as the previously accepted product readback."
+    },
+    {
+      "iteration": 5,
+      "finding": "Focused geometry success would not establish repository integrity or valid provenance.",
+      "resolution": "The parent acceptance remains byte-identical at ed1aea00..., the new successor binds the revised source digests and accepted browser pixels, and make validate passes Ruff, compile, registry validation, and 1658/1658 tests."
+    }
+  ],
+  "validation": {
+    "native_diagram_suite_task_id": "c6603acd2c52448e828987b6",
+    "native_diagram_suite_lifecycle_receipt_sha256": "dac9596d17eb52766f56c3b3936c26cc531704ff22001a44c915ba386dc5ab38",
+    "successor_full_validate_task_id": "9acb9bafc7c94ff48db065c2",
+    "successor_full_validate_lifecycle_receipt_sha256": "1bb4a9eb132e250bd7654f76720cbcc10d981f9cc9d72a09954a20f979c830f6",
+    "successor_full_validate_passed_count": 1658,
+    "product_browser_png_sha256": "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91",
+    "p2_browser_png_sha256": "e3a27ee6dab6c75920f5a92cf6007e17bd2a8b9f4edbcd1406510824eb61137d",
+    "visual_result": "accepted"
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "GitHub CI success on the later committed head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

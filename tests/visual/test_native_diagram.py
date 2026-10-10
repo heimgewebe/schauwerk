@@ -11,6 +11,7 @@ import pytest
 from schauwerk.visual.grammar import GRAMMAR_SCHEMA_VERSION
 from schauwerk.visual.native_diagram import (
     _NARRATIVE_FEEDBACK_BOTTOM_CLEARANCE,
+    _cubic_hull_intersects_box,
     _ellipsize_to_width,
     _estimated_wrap_width,
     _rebalance_single_word_lines,
@@ -90,6 +91,30 @@ def _edge_paths(root: ET.Element) -> dict[str, str]:
         assert path is not None
         paths[edge.attrib["data-source-id"]] = path.attrib["d"]
     return paths
+
+
+def _cubic_path_intersects_box(
+    path: str,
+    box: tuple[float, float, float, float],
+) -> bool:
+    match = re.fullmatch(
+        (
+            r"M ([-0-9.]+) ([-0-9.]+) "
+            r"C ([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+)"
+        ),
+        path,
+    )
+    assert match is not None
+    values = [float(value) for value in match.groups()]
+    points = (
+        (values[0], values[1]),
+        (values[2], values[3]),
+        (values[4], values[5]),
+        (values[6], values[7]),
+    )
+    return _cubic_hull_intersects_box(points, box)
 
 
 def _point_on_box_boundary(
@@ -1347,7 +1372,7 @@ def test_non_process_feedback_self_loop_uses_safe_outer_route() -> None:
     _assert_feedback_route_avoids_cards(root, "feedback_case")
 
 
-def test_process_same_column_feedback_uses_outer_gutter() -> None:
+def test_process_same_column_feedback_uses_local_column_gutter() -> None:
     raw = _minimal_process_model(18)
     raw["edges"] = [
         {
@@ -1368,29 +1393,29 @@ def test_process_same_column_feedback_uses_outer_gutter() -> None:
     path = edge.find(f"{{{SVG_NAMESPACE}}}path")
     label = edge.find(f"{{{SVG_NAMESPACE}}}rect")
     assert path is not None and label is not None
-    node_boxes = [
-        tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
-        for node in root.iter()
-        if node.attrib.get("data-source-kind") == "node"
-        for rect in [node.find(f"{{{SVG_NAMESPACE}}}rect")]
-        if rect is not None
-    ]
-    max_node_right = max(x + width for x, _, width, _ in node_boxes)
+
+    nodes = _node_boxes(root)
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in ("n0", "n12")
+    )
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
     line_points = [
         (float(x), float(y))
         for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
     ]
     assert len(line_points) == 3
-    assert line_points[0][0] == line_points[1][0] > max_node_right
+    gutter_x = line_points[0][0]
+    assert gutter_x == line_points[1][0]
+    assert endpoint_right < gutter_x <= endpoint_right + 16
+    assert gutter_x < max_node_right
     for corridor_y in (line_points[0][1], line_points[1][1]):
-        assert all(not (y < corridor_y < y + height) for _, y, _, height in node_boxes)
-    lx, ly, lw, lh = (
-        float(label.attrib[key]) for key in ("x", "y", "width", "height")
-    )
-    assert all(
-        not (lx < x + width and lx + lw > x and ly < y + height and ly + lh > y)
-        for x, y, width, height in node_boxes
-    )
+        assert all(
+            not (y < corridor_y < y + height)
+            for _, y, _, height in nodes.values()
+        )
+
+    label_box = _rect_box(label)
+    assert all(not _boxes_overlap(label_box, box) for box in nodes.values())
 
 
 def test_process_bottom_row_two_line_feedback_reserves_footer() -> None:
@@ -1459,7 +1484,7 @@ def test_group_header_clip_ids_do_not_collide_with_real_ungrouped_group_id() -> 
     assert len(set(region_clips)) == 2
 
 
-def test_process_upper_row_reverse_feedback_uses_row_gap_and_outer_gutter() -> None:
+def test_process_upper_row_reverse_feedback_uses_local_row_gap_lane() -> None:
     raw = _minimal_process_model(12)
     raw["edges"] = [
         {
@@ -1480,33 +1505,191 @@ def test_process_upper_row_reverse_feedback_uses_row_gap_and_outer_gutter() -> N
     path = edge.find(f"{{{SVG_NAMESPACE}}}path")
     label = edge.find(f"{{{SVG_NAMESPACE}}}rect")
     assert path is not None and label is not None
-    node_boxes = [
-        tuple(float(rect.attrib[key]) for key in ("x", "y", "width", "height"))
-        for node in root.iter()
-        if node.attrib.get("data-source-kind") == "node"
-        for rect in [node.find(f"{{{SVG_NAMESPACE}}}rect")]
-        if rect is not None
-    ]
-    max_node_right = max(x + width for x, _, width, _ in node_boxes)
-    first_row_bottom = min(y for _, y, _, _ in node_boxes) + 166.0
-    second_row_top = sorted({y for _, y, _, _ in node_boxes})[1]
+
+    nodes = _node_boxes(root)
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in ("n0", "n1")
+    )
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
+    first_row_bottom = min(y for _, y, _, _ in nodes.values()) + 166.0
+    second_row_top = sorted({y for _, y, _, _ in nodes.values()})[1]
     line_points = [
         (float(x), float(y))
         for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
     ]
     assert len(line_points) == 3
-    assert line_points[0][0] == line_points[1][0] > max_node_right
+    gutter_x = line_points[0][0]
+    assert gutter_x == line_points[1][0]
+    assert endpoint_right < gutter_x <= endpoint_right + 16
+    assert gutter_x < max_node_right
     corridor_y = line_points[0][1]
     assert first_row_bottom < corridor_y < second_row_top
     assert line_points[1][1] == corridor_y == line_points[2][1]
-    lx, ly, lw, lh = (
-        float(label.attrib[key]) for key in ("x", "y", "width", "height")
-    )
+
+    label_box = _rect_box(label)
+    _, ly, _, lh = label_box
     assert first_row_bottom < ly and ly + lh < second_row_top
-    assert all(
-        not (lx < x + width and lx + lw > x and ly < y + height and ly + lh > y)
-        for x, y, width, height in node_boxes
+    assert all(not _boxes_overlap(label_box, box) for box in nodes.values())
+
+
+def test_process_feedback_return_stays_local_to_its_cycle_block() -> None:
+    raw = _load("decision-flow-v1.json")
+    raw["id"] = "konzeptentwicklung_kinder_jugendarbeit_feedback_regression"
+    raw["title"] = "Konzeptentwicklung in der Kinder- und Jugendarbeit"
+    raw["purpose"] = "Lernzyklus mit lokalen Vorwärtsbeziehungen und Rückkopplung."
+    raw["groups"] = [
+        {"id": "auftrag_rahmen", "label": "Auftrag und Rahmen"},
+        {"id": "analyse_ziele", "label": "Analyse und Ziele"},
+        {"id": "fachliche_ansaetze", "label": "Fachliche Ansätze"},
+        {"id": "lernzyklus", "label": "Lern- und Entwicklungszyklus"},
+        {"id": "qualitaet_verantwortung", "label": "Qualität und Verantwortung"},
+    ]
+    node_specs = [
+        ("konzeptentwicklung", "Konzeptentwicklung", "concept", "auftrag_rahmen"),
+        ("rechtlicher_auftrag", "Rechtlicher Auftrag", "concept", "auftrag_rahmen"),
+        (
+            "lebenswelt_bedarfsanalyse",
+            "Lebenswelt- und Bedarfsanalyse",
+            "evidence",
+            "analyse_ziele",
+        ),
+        ("adressatenanalyse", "Adressatenanalyse", "evidence", "analyse_ziele"),
+        ("sozialraumanalyse", "Sozialraumanalyse", "evidence", "analyse_ziele"),
+        ("rahmenanalyse", "Rahmen analysieren", "evidence", "analyse_ziele"),
+        (
+            "sozialpaedagogische_haltung",
+            "Sozialpädagogische Haltung",
+            "concept",
+            "fachliche_ansaetze",
+        ),
+        ("partizipation", "Partizipation", "concept", "fachliche_ansaetze"),
+        ("fachliche_ausrichtung", "Fachliche Ausrichtung", "concept", "fachliche_ansaetze"),
+        ("zielentwicklung", "Ziele entwickeln", "action", "fachliche_ansaetze"),
+        ("planung", "Planung", "action", "lernzyklus"),
+        ("umsetzung", "Umsetzung", "action", "lernzyklus"),
+        ("reflexion", "Reflexion", "action", "lernzyklus"),
+        ("revision", "Revision und Veränderung", "action", "lernzyklus"),
+        ("qualitaetsimpuls", "Qualitätsimpuls", "evidence", "lernzyklus"),
+        ("qualitaet", "Qualität sichern", "evidence", "qualitaet_verantwortung"),
+        ("verantwortung", "Verantwortung", "concept", "qualitaet_verantwortung"),
+        ("transfer", "Transfer", "action", "qualitaet_verantwortung"),
+    ]
+    raw["nodes"] = [
+        {"id": node_id, "label": label, "kind": kind, "group": group}
+        for node_id, label, kind, group in node_specs
+    ]
+    edge_specs = [
+        ("e_konzept_analyse", "konzeptentwicklung", "rahmenanalyse", "liefert Analyse", "flow"),
+        (
+            "e_recht_lebenswelt",
+            "rechtlicher_auftrag",
+            "lebenswelt_bedarfsanalyse",
+            "rahmt",
+            "authority",
+        ),
+        ("e_konzept_adressaten", "konzeptentwicklung", "adressatenanalyse", "fokussiert", "flow"),
+        ("e_recht_sozialraum", "rechtlicher_auftrag", "sozialraumanalyse", "begrenzt", "authority"),
+        (
+            "e_analyse_haltung",
+            "lebenswelt_bedarfsanalyse",
+            "sozialpaedagogische_haltung",
+            "informiert",
+            "evidence",
+        ),
+        (
+            "e_adressaten_partizipation",
+            "adressatenanalyse",
+            "partizipation",
+            "begründet",
+            "evidence",
+        ),
+        (
+            "e_sozialraum_ausrichtung",
+            "sozialraumanalyse",
+            "fachliche_ausrichtung",
+            "orientiert",
+            "evidence",
+        ),
+        ("e_rahmen_ziel", "rahmenanalyse", "zielentwicklung", "führt zu", "flow"),
+        ("e_haltung_planung", "sozialpaedagogische_haltung", "planung", "prägt", "flow"),
+        ("e_partizipation_planung", "partizipation", "planung", "beteiligt", "flow"),
+        ("e_ausrichtung_planung", "fachliche_ausrichtung", "planung", "richtet aus", "flow"),
+        ("e_ziel_planung", "zielentwicklung", "planung", "konkretisiert", "flow"),
+        ("e_planung_umsetzung", "planung", "umsetzung", "führt zu", "flow"),
+        ("e_umsetzung_reflexion", "umsetzung", "reflexion", "wird ausgewertet", "flow"),
+        ("e_reflexion_revision", "reflexion", "revision", "führt zu", "flow"),
+        ("e_reflexion_qualitaet", "reflexion", "qualitaetsimpuls", "liefert Evidenz", "evidence"),
+        ("e_revision_qualitaet", "revision", "qualitaet", "sichert", "flow"),
+        ("e_impuls_verantwortung", "qualitaetsimpuls", "verantwortung", "stärkt", "flow"),
+        ("e_impuls_transfer", "qualitaetsimpuls", "transfer", "überführt", "flow"),
+        ("e_revision_planung", "revision", "planung", "neue Planung", "feedback"),
+    ]
+    raw["edges"] = [
+        {"id": edge_id, "from": source, "to": target, "label": label, "kind": kind}
+        for edge_id, source, target, label, kind in edge_specs
+    ]
+    raw["requirements"] = {
+        "formal_relations": True,
+        "free_spatial_layout": False,
+        "presentation": True,
+    }
+    raw["requested_formats"] = []
+
+    first = render_native_diagram(raw)
+    root = _parse(first)
+    assert first == render_native_diagram(copy.deepcopy(raw))
+    nodes = _node_boxes(root)
+    assert len(nodes) == 18
+
+    canvas_width = float(root.attrib["viewBox"].split()[2])
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
+    assert canvas_width <= max_node_right + 200
+
+    for edge_id in ("e_konzept_analyse", "e_ausrichtung_planung", "e_ziel_planung"):
+        edge = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == edge_id
+        )
+        assert edge.attrib["data-route"] == "process-branch"
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        label = edge.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and label is not None
+        line_points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+        ]
+        assert line_points
+        assert max(x for x, _ in line_points) < max_node_right
+        assert all(
+            not _boxes_overlap(_rect_box(label), node_box)
+            for node_box in nodes.values()
+        )
+
+    revision_right = nodes["revision"][0] + nodes["revision"][2]
+    later_group_left = nodes["qualitaet"][0]
+    feedback = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == "e_revision_planung"
     )
+    assert feedback.attrib["data-route"] == "feedback-return"
+    path = feedback.find(f"{{{SVG_NAMESPACE}}}path")
+    label = feedback.find(f"{{{SVG_NAMESPACE}}}rect")
+    assert path is not None and label is not None
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+    ]
+    assert max(x for x, _ in line_points) <= revision_right + 32
+    assert max(x for x, _ in line_points) < later_group_left
+    feedback_box = _rect_box(label)
+    assert all(
+        not _boxes_overlap(feedback_box, node_box)
+        for node_box in nodes.values()
+    )
+    max_node_bottom = max(y + height for _, y, _, height in nodes.values())
+    assert feedback_box[1] + feedback_box[3] / 2 < max_node_bottom
 
 
 @pytest.mark.parametrize(
@@ -2281,7 +2464,7 @@ def test_long_vertical_process_edge_routes_around_intervening_card() -> None:
 
 
 
-def test_process_feedback_starts_after_packed_long_vertical_labels() -> None:
+def test_process_feedback_avoids_packed_long_vertical_labels_without_global_footer() -> None:
     raw = _minimal_process_model(30)
     raw["edges"] = [
         {
@@ -2304,11 +2487,30 @@ def test_process_feedback_starts_after_packed_long_vertical_labels() -> None:
 
     root = _parse(render_native_diagram(raw))
     labels = _edge_label_boxes(root)
-    feedback = labels["feedback"]
+    nodes = _node_boxes(root)
+    feedback_box = labels["feedback"]
     verticals = [labels[f"vertical_{index}"] for index in range(4)]
-    assert all(not _boxes_overlap(feedback, box) for box in verticals)
-    vertical_bottom = max(y + height for _, y, _, height in verticals)
-    assert feedback[1] >= vertical_bottom + 10
+    assert all(not _boxes_overlap(feedback_box, box) for box in verticals)
+    assert all(not _boxes_overlap(feedback_box, box) for box in nodes.values())
+
+    source_corridor_y = (nodes["n18"][1] + nodes["n18"][3] + nodes["n24"][1]) / 2
+    assert feedback_box[1] + feedback_box[3] / 2 == source_corridor_y
+
+    edge = next(
+        element
+        for element in root.iter()
+        if element.attrib.get("data-source-id") == "feedback"
+    )
+    path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+    assert path is not None
+    route_x = max(
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path.attrib["d"])
+    )
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in ("n29", "n0")
+    )
+    assert endpoint_right < route_x <= endpoint_right + 16
 
 
 def test_wrapped_adjacent_process_branches_use_outer_card_safe_lanes() -> None:
@@ -2570,6 +2772,456 @@ def test_parallel_same_row_narrative_relations_use_row_gap_outer_lanes() -> None
         assert row_bottom < corridor_y < next_row_top
 
 
+def test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    raw["edges"] = [
+        {
+            "id": "cross_down",
+            "from": "n0",
+            "to": "n3",
+            "label": "zweizeilige prozessbeziehung mit langem text",
+            "kind": "flow",
+        },
+        {
+            "id": "cross_up",
+            "from": "n2",
+            "to": "n1",
+            "label": "zweizeilige gegenbeziehung mit langem text",
+            "kind": "flow",
+        },
+    ]
+    root = _parse(render_native_diagram(raw))
+    nodes = _node_boxes(root)
+    labels = _edge_label_boxes(root)
+    upper_bottom = nodes["n0"][1] + nodes["n0"][3]
+    lower_top = nodes["n1"][1]
+    for edge_id in ("cross_down", "cross_up"):
+        x, y, width, height = labels[edge_id]
+        assert upper_bottom < y
+        assert y + height < lower_top
+        assert all(
+            not _boxes_overlap((x, y, width, height), node_box)
+            for node_box in nodes.values()
+        )
+
+    paths = _edge_paths(root)
+    assert not _cubic_path_intersects_box(
+        paths["cross_down"], labels["cross_up"]
+    )
+    assert not _cubic_path_intersects_box(
+        paths["cross_up"], labels["cross_down"]
+    )
+
+
+def test_grouped_same_row_span_routes_around_intermediate_card() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [
+        {"id": "g0", "label": "G0"},
+        {"id": "g1", "label": "G1"},
+        {"id": "g2", "label": "G2"},
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 2}"
+    edges = [
+        {
+            "id": "span",
+            "from": "n1",
+            "to": "n5",
+            "label": "lange gleiche zeile",
+            "kind": "flow",
+        },
+        {
+            "id": "vertical",
+            "from": "n3",
+            "to": "n2",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(ordered_edges: list[dict]) -> tuple[str, str, ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        edge = next(
+            element
+            for element in root.iter()
+            if element.attrib.get("data-source-id") == "span"
+        )
+        path = edge.find(f"{{{SVG_NAMESPACE}}}path")
+        assert path is not None
+        return edge.attrib["data-route"], path.attrib["d"], root
+
+    forward_route, forward_path, root = geometry(edges)
+    reverse_route, reverse_path, _ = geometry(list(reversed(edges)))
+    assert (forward_route, forward_path) == (reverse_route, reverse_path)
+    assert forward_route == "process-row-gutter"
+    nodes = _node_boxes(root)
+    line_xs = [
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", forward_path)
+    ]
+    assert max(line_xs) > max(x + width for x, _, width, _ in nodes.values())
+
+
+def test_grouped_same_row_horizontal_pack_applies_packed_x_positions() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    edges = [
+        {
+            "id": "wide",
+            "from": "n0",
+            "to": "n2",
+            "label": "W" * 120,
+            "kind": "flow",
+        },
+        {
+            "id": "short",
+            "from": "n2",
+            "to": "n0",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, tuple[float, float, float, float]], dict[str, str]]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    forward_labels, forward_paths = geometry(edges)
+    reverse_labels, reverse_paths = geometry(list(reversed(edges)))
+    assert forward_labels == reverse_labels
+    assert forward_paths == reverse_paths
+    assert not _boxes_overlap(forward_labels["wide"], forward_labels["short"])
+
+
+def test_grouped_crossing_adjacent_relations_use_safe_local_lanes() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    edges = [
+        {
+            "id": "cross_up",
+            "from": "n1",
+            "to": "n2",
+            "label": "short relation",
+            "kind": "flow",
+        },
+        {
+            "id": "cross_down",
+            "from": "n0",
+            "to": "n3",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[
+        dict[str, str],
+        dict[str, tuple[float, float, float, float]],
+        ET.Element,
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_paths(root), _edge_label_boxes(root), root
+
+    forward_paths, forward_labels, root = geometry(edges)
+    reverse_paths, reverse_labels, _ = geometry(list(reversed(edges)))
+    assert forward_paths == reverse_paths
+    assert forward_labels == reverse_labels
+    assert " L " not in forward_paths["cross_up"]
+    assert " L " not in forward_paths["cross_down"]
+    assert not _cubic_path_intersects_box(
+        forward_paths["cross_up"], forward_labels["cross_down"]
+    )
+    assert not _cubic_path_intersects_box(
+        forward_paths["cross_down"], forward_labels["cross_up"]
+    )
+
+def test_grouped_packed_route_clears_anchored_long_branch_label() -> None:
+    raw = _minimal_process_model(9)
+    raw["groups"] = [
+        {"id": f"g{index}", "label": f"Group {index}"}
+        for index in range(3)
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "anchor", "from": "n0", "to": "n5",
+         "label": "lange lokale beziehung", "kind": "flow"},
+        {"id": "reverse", "from": "n3", "to": "n1",
+         "label": "kurz", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], dict[str, str]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    path = paths["reverse"]
+    if " L " not in path:
+        assert not _cubic_path_intersects_box(path, labels["anchor"])
+    else:
+        # The safer outer-gutter fallback has cubic entry/exit connectors and
+        # orthogonal L legs; check the full straight route, not only a cubic.
+        match = re.search(
+            r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+            r"([-0-9.]+) ([-0-9.]+) L ",
+            path,
+        )
+        assert match is not None
+        points = [tuple(float(v) for v in match.groups())]
+        points.extend(
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        )
+        left, top, width, height = labels["anchor"]
+        right, bottom = left + width, top + height
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            horizontal_overlap = (
+                y1 == y2
+                and top < y1 < bottom
+                and max(min(x1, x2), left) < min(max(x1, x2), right)
+            )
+            vertical_overlap = (
+                x1 == x2
+                and left < x1 < right
+                and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+            )
+            assert not horizontal_overlap
+            assert not vertical_overlap
+
+
+def test_grouped_horizontal_packs_reserve_other_corridor_clusters() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [
+        {"id": f"g{index}", "label": f"Group {index}"}
+        for index in range(3)
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 2}"
+    edges = [
+        {"id": "left_forward", "from": "n0", "to": "n2",
+         "label": "x", "kind": "flow"},
+        {"id": "left_reverse", "from": "n2", "to": "n0",
+         "label": "short", "kind": "flow"},
+        {"id": "right_forward", "from": "n2", "to": "n4",
+         "label": "lange prozessbeziehung mit zweitzeiligem text", "kind": "flow"},
+        {"id": "right_reverse", "from": "n4", "to": "n2",
+         "label": "x", "kind": "flow"},
+    ]
+
+    def labels_for(ordered: list[dict]) -> dict[
+        str, tuple[float, float, float, float]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        return _edge_label_boxes(_parse(render_native_diagram(candidate)))
+
+    labels = labels_for(edges)
+    assert labels == labels_for(list(reversed(edges)))
+    for left in ("left_forward", "left_reverse"):
+        for right in ("right_forward", "right_reverse"):
+            assert not _boxes_overlap(labels[left], labels[right])
+
+
+def test_parallel_group_long_branches_keep_outer_legs_clear_of_peer_labels() -> None:
+    # A late label-pack demotion must not leave one local label underneath the
+    # source corridor of its parallel peer's outer branch.
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {"id": "parallel_a", "from": "n0", "to": "n5",
+         "label": "erster Weg", "kind": "flow"},
+        {"id": "parallel_b", "from": "n0", "to": "n5",
+         "label": "zweiter Weg", "kind": "flow"},
+    ]
+
+    def geometry(ordered_edges: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], dict[str, str]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    for edge_id, path in paths.items():
+        peer = "parallel_b" if edge_id == "parallel_a" else "parallel_a"
+        match = re.search(
+            r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+            r"([-0-9.]+) ([-0-9.]+) L ([-0-9.]+) ([-0-9.]+)",
+            path,
+        )
+        assert match is not None
+        start_x, start_y, end_x, end_y = map(float, match.groups())
+        left, top, width, height = labels[peer]
+        assert not (
+            start_y == end_y
+            and top < start_y < top + height
+            and max(min(start_x, end_x), left)
+            < min(max(start_x, end_x), left + width)
+        )
+
+
+def test_local_long_branch_label_clears_other_outer_branch_source_path() -> None:
+    raw = _minimal_process_model(9)
+    raw["groups"] = [
+        {"id": f"g{index}", "label": f"Group {index}"}
+        for index in range(3)
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "local", "from": "n0", "to": "n5",
+         "label": "short branch", "kind": "flow"},
+        {"id": "outer", "from": "n0", "to": "n8",
+         "label": "outer branch", "kind": "flow"},
+    ]
+
+    def geometry(ordered_edges: list[dict]) -> tuple[
+        tuple[float, float, float, float], str
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root)["local"], _edge_paths(root)["outer"]
+
+    box, outer_path = geometry(edges)
+    assert (box, outer_path) == geometry(list(reversed(edges)))
+    match = re.search(
+        r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+        r"([-0-9.]+) ([-0-9.]+) L ([-0-9.]+) ([-0-9.]+)",
+        outer_path,
+    )
+    assert match is not None
+    start_x, start_y, end_x, end_y = map(float, match.groups())
+    left, top, width, height = box
+    assert not (
+        start_y == end_y
+        and top < start_y < top + height
+        and max(min(start_x, end_x), left)
+        < min(max(start_x, end_x), left + width)
+    )
+
+
+def test_local_group_long_branch_rejects_gutter_when_label_cannot_fit() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    raw["edges"] = [
+        {
+            "id": "long",
+            "from": "n0",
+            "to": "n5",
+            "label": "W" * 120,
+            "kind": "flow",
+        }
+    ]
+    root = _parse(render_native_diagram(raw))
+    nodes = _node_boxes(root)
+    label = _edge_label_boxes(root)["long"]
+    assert all(not _boxes_overlap(label, node_box) for node_box in nodes.values())
+    path = _edge_paths(root)["long"]
+    path_xs = [
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    ]
+    assert max(path_xs) > max(x + width for x, _, width, _ in nodes.values())
+
+
+
+
+def test_local_group_long_branch_clears_target_corridor_label() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {
+            "id": "long",
+            "from": "n0",
+            "to": "n5",
+            "label": "lange lokale beziehung",
+            "kind": "flow",
+        },
+        {
+            "id": "short",
+            "from": "n1",
+            "to": "n5",
+            "label": "kurze zielbeziehung im korridor",
+            "kind": "flow",
+        },
+    ]
+
+    def geometry(
+        ordered_edges: list[dict],
+    ) -> tuple[dict[str, str], dict[str, tuple[float, float, float, float]], ET.Element]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_paths(root), _edge_label_boxes(root), root
+
+    forward_paths, forward_labels, root = geometry(edges)
+    reverse_paths, reverse_labels, _ = geometry(list(reversed(edges)))
+    assert forward_paths == reverse_paths
+    assert forward_labels == reverse_labels
+
+    nodes = _node_boxes(root)
+    for label_box in forward_labels.values():
+        assert all(
+            not _boxes_overlap(label_box, node_box)
+            for node_box in nodes.values()
+        )
+    assert not _boxes_overlap(forward_labels["long"], forward_labels["short"])
+
+    short_left, short_top, short_width, short_height = forward_labels["short"]
+    short_right = short_left + short_width
+    short_bottom = short_top + short_height
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(
+            r"L ([-0-9.]+) ([-0-9.]+)",
+            forward_paths["long"],
+        )
+    ]
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        horizontal_hit = (
+            y1 == y2
+            and short_top < y1 < short_bottom
+            and max(min(x1, x2), short_left) < min(max(x1, x2), short_right)
+        )
+        vertical_hit = (
+            x1 == x2
+            and short_left < x1 < short_right
+            and max(min(y1, y2), short_top) < min(max(y1, y2), short_bottom)
+        )
+        assert not horizontal_hit
+        assert not vertical_hit
+
+
 def test_opposite_direction_adjacent_process_edges_use_stable_label_lanes() -> None:
     raw = _minimal_process_model(12)
     edges = [
@@ -2806,6 +3458,194 @@ def test_process_feedback_non_self_loop_avoids_occupied_adjacent_branch_corridor
     assert forward["feedback_non_self"][1] >= max_node_bottom + 10
 
 
+def test_grouped_feedback_path_uses_safe_lane_when_corridor_label_is_crossed() -> None:
+    raw = _minimal_process_model(4)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 2 else "g1"
+    raw["edges"] = [
+        {
+            "id": "feedback",
+            "from": "n2",
+            "to": "n0",
+            "label": "rückmeldung",
+            "kind": "feedback",
+        },
+        {
+            "id": "branch",
+            "from": "n2",
+            "to": "n1",
+            "label": "x",
+            "kind": "flow",
+        },
+    ]
+    first = _parse(render_native_diagram(raw))
+    raw["edges"].reverse()
+    second = _parse(render_native_diagram(raw))
+    assert _edge_label_boxes(first) == _edge_label_boxes(second)
+    assert _edge_paths(first) == _edge_paths(second)
+
+    labels = _edge_label_boxes(first)
+    paths = _edge_paths(first)
+    nodes = _node_boxes(first)
+    feedback_box = labels["feedback"]
+    branch_box = labels["branch"]
+    assert not _boxes_overlap(feedback_box, branch_box)
+    assert feedback_box[1] > max(y + height for _, y, _, height in nodes.values())
+
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", paths["feedback"])
+    ]
+    branch_left, branch_top, branch_width, branch_height = branch_box
+    branch_right = branch_left + branch_width
+    branch_bottom = branch_top + branch_height
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        if y1 != y2 or not (branch_top < y1 < branch_bottom):
+            continue
+        assert max(min(x1, x2), branch_left) >= min(
+            max(x1, x2), branch_right
+        )
+
+
+
+def test_ungrouped_process_feedback_channel_clears_unrelated_flow_label() -> None:
+    raw = _minimal_process_model(18)
+    edges = [
+        {
+            "id": "branch",
+            "from": "n6",
+            "to": "n7",
+            "label": "Nebenprozess mit Titel",
+            "kind": "flow",
+        },
+        {
+            "id": "feedback",
+            "from": "n12",
+            "to": "n0",
+            "label": "Rueckmeldung",
+            "kind": "feedback",
+        },
+    ]
+
+    def render(ordered_edges: list[dict]) -> tuple[tuple[float, float, float, float], str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered_edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root)["branch"], _edge_paths(root)["feedback"]
+
+    label_box, feedback_path = render(edges)
+    assert (label_box, feedback_path) == render(list(reversed(edges)))
+
+    left, top, width, height = label_box
+    right = left + width
+    bottom = top + height
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", feedback_path)
+    ]
+    assert len(line_points) >= 3
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        if x1 != x2:
+            continue
+        assert not (
+            left - 2 < x1 < right + 2
+            and max(min(y1, y2), top - 2) < min(max(y1, y2), bottom + 2)
+        )
+
+
+def test_ungrouped_feedback_full_horizontal_route_clears_other_labels() -> None:
+    # Moving only the vertical gutter can route the source leg through a
+    # different, two-line corridor label that was never a vertical obstacle.
+    raw = _minimal_process_model(18)
+    edges = [
+        {"id": "short", "from": "n6", "to": "n7",
+         "label": "Nebenprozess mit Titel", "kind": "flow"},
+        {"id": "tall", "from": "n13", "to": "n14",
+         "label": "zweizeilige prozessbeziehung mit langem text", "kind": "flow"},
+        {"id": "feedback", "from": "n12", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], str
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)["feedback"]
+
+    labels, path = geometry(edges)
+    assert (labels, path) == geometry(list(reversed(edges)))
+    initial = re.search(
+        r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+        r"([-0-9.]+) ([-0-9.]+) L ",
+        path,
+    )
+    assert initial is not None
+    points = [tuple(map(float, initial.groups()))]
+    points.extend(
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    )
+    for edge_id in ("short", "tall"):
+        left, top, width, height = labels[edge_id]
+        right, bottom = left + width, top + height
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            horizontal_hit = (
+                y1 == y2
+                and top < y1 < bottom
+                and max(min(x1, x2), left) < min(max(x1, x2), right)
+            )
+            vertical_hit = (
+                x1 == x2
+                and left < x1 < right
+                and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+            )
+            assert not horizontal_hit
+            assert not vertical_hit
+
+
+def test_feedback_label_avoids_long_same_column_return_leg() -> None:
+    # The existing label-only occupancy test misses an already routed edge.
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {"id": "long", "from": "n0", "to": "n2",
+         "label": "langer pfad", "kind": "flow"},
+        {"id": "feedback", "from": "n2", "to": "n1",
+         "label": "rückmeldung", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        tuple[float, float, float, float], str
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root)["feedback"], _edge_paths(root)["long"]
+
+    box, path = geometry(edges)
+    assert (box, path) == geometry(list(reversed(edges)))
+    match = re.match(r"M ([-0-9.]+) ([-0-9.]+) L ", path)
+    assert match is not None
+    points = [tuple(map(float, match.groups()))]
+    points.extend(
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    )
+    left, top, width, height = box
+    right, bottom = left + width, top + height
+    for (x1, y1), (x2, y2) in zip(points, points[1:]):
+        assert not (
+            y1 == y2
+            and top < y1 < bottom
+            and max(min(x1, x2), left) < min(max(x1, x2), right)
+        )
+
+
 def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:
     raw = _minimal_process_model(7)
     raw["edges"] = [
@@ -2841,19 +3681,23 @@ def test_ungrouped_forward_same_row_process_feedback_uses_actual_row_gap() -> No
     nodes = _node_boxes(root)
     source_bottom = nodes["n0"][1] + nodes["n0"][3]
     physical_gap_center = (source_bottom + nodes["n6"][1]) / 2
-    path, (_, label_top, _, label_height) = geometry["feedback"]
+    path, label_box = geometry["feedback"]
     assert source_bottom == 306.0
     assert physical_gap_center == 341.0
-    assert label_top + label_height / 2 == physical_gap_center
-    assert path == (
-        "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
-        "L 2514.0 341.0 L 2514.0 341.0 L 589.0 341.0 "
-        "C 589.0 341.0, 589.0 324.0, 589.0 306.0"
+    assert label_box[1] + label_box[3] / 2 == physical_gap_center
+    assert all(not _boxes_overlap(label_box, node_box) for node_box in nodes.values())
+
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    ]
+    route_x = max(x for x, _ in line_points)
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in ("n0", "n1")
     )
-    assert all(
-        not _boxes_overlap(geometry["feedback"][1], node_box)
-        for node_box in nodes.values()
-    )
+    max_node_right = max(x + width for x, _, width, _ in nodes.values())
+    assert endpoint_right < route_x <= endpoint_right + 16
+    assert route_x < max_node_right
 
 
 def test_distant_singleton_long_branch_preserves_forward_same_row_feedback() -> None:
@@ -2878,23 +3722,30 @@ def test_distant_singleton_long_branch_preserves_forward_same_row_feedback() -> 
 
     assert combined["feedback"] == solo["feedback"]
     assert combined == reordered
-    assert solo["feedback"][1] == (1288.5, 326.5, 110.0, 29.0)
     assert not _boxes_overlap(combined["feedback"][1], combined["long_branch"][1])
+
+    nodes = _node_boxes(root)
+    feedback_path, feedback_box = solo["feedback"]
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", feedback_path)
+    ]
+    route_x = max(x for x, _ in line_points)
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in ("n0", "n1")
+    )
+    assert endpoint_right < route_x <= endpoint_right + 16
     assert all(
         not _boxes_overlap(label_box, node_box)
         for _, label_box in combined.values()
-        for node_box in _node_boxes(root).values()
+        for node_box in nodes.values()
     )
 
 
 @pytest.mark.parametrize("pack_target", ("n12", "n13"), ids=("long_vertical", "long_branch"))
-@pytest.mark.parametrize(
-    ("feedback_source", "expects_footer"),
-    (("n24", False), ("n29", True)),
-    ids=("clear_of_pack", "overlapping_pack"),
-)
-def test_process_feedback_footer_depends_on_packed_label_bounds(
-    pack_target: str, feedback_source: str, expects_footer: bool
+@pytest.mark.parametrize("feedback_source", ("n24", "n29"), ids=("left_source", "right_source"))
+def test_process_feedback_packed_label_bounds_respect_local_x_separation(
+    pack_target: str, feedback_source: str
 ) -> None:
     raw = _minimal_process_model(30)
     packed_edges = [
@@ -2919,24 +3770,29 @@ def test_process_feedback_footer_depends_on_packed_label_bounds(
     reordered, _ = _feedback_geometry(raw, list(reversed(edges)))
     assert geometry == reordered
 
-    feedback_box = geometry["feedback"][1]
+    feedback_path, feedback_box = geometry["feedback"]
     packed_boxes = [geometry[edge["id"]][1] for edge in packed_edges]
     nodes = _node_boxes(root)
     assert all(not _boxes_overlap(feedback_box, box) for box in packed_boxes)
     assert all(not _boxes_overlap(feedback_box, box) for box in nodes.values())
-    _, label_top, _, label_height = feedback_box
-    if expects_footer:
-        occupied_bottom = max(y + height for _, y, _, height in [*packed_boxes, *nodes.values()])
-        assert label_top >= occupied_bottom + 10
-    else:
-        source_corridor_y = (nodes["n18"][1] + nodes["n18"][3] + nodes["n24"][1]) / 2
-        assert label_top + label_height / 2 == source_corridor_y == 1049.0
-        # Sharing the pack's y range alone is insufficient: this feedback label
-        # stays to its left, so its unoccupied row corridor remains available.
-        assert any(
-            label_top < y + height and label_top + label_height > y
-            for _, y, _, height in packed_boxes
-        )
+
+    source_corridor_y = (nodes["n18"][1] + nodes["n18"][3] + nodes["n24"][1]) / 2
+    assert feedback_box[1] + feedback_box[3] / 2 == source_corridor_y == 1049.0
+    # Packed labels may share the same y range. Their x-separation now keeps the
+    # local feedback lane usable instead of forcing an unrelated global footer.
+    assert any(
+        feedback_box[1] < y + height and feedback_box[1] + feedback_box[3] > y
+        for _, y, _, height in packed_boxes
+    )
+
+    route_x = max(
+        float(x)
+        for x, _ in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", feedback_path)
+    )
+    endpoint_right = max(
+        nodes[node_id][0] + nodes[node_id][2] for node_id in (feedback_source, "n0")
+    )
+    assert endpoint_right < route_x <= endpoint_right + 16
 
 
 def test_long_vertical_and_adjacent_non_process_labels_pack_same_row_corridor() -> None:
@@ -3518,16 +4374,26 @@ def test_process_feedback_yields_to_anchored_self_loop_corridor() -> None:
     )
     # The feedback label leaves the corridor the anchored loop owns and lands
     # in the reserved footer below the complete card field.
-    assert forward_boxes["feedback"][1] > max(y + height for _, y, _, height in nodes.values())
-
-    # Ordinary feedback without an anchored corridor user is untouched.
-    solo_boxes, solo_paths, _ = geometry([feedback])
-    assert solo_boxes["feedback"] == (1240.5, 317.0, 206.0, 48.0)
-    assert solo_paths["feedback"] == (
-        "M 173.0 306.0 C 173.0 324.0, 173.0 341.0, 173.0 341.0 "
-        "L 2514.0 341.0 L 2514.0 341.0 L 1421.0 341.0 "
-        "C 1421.0 341.0, 1421.0 358.0, 1421.0 376.0"
+    assert forward_boxes["feedback"][1] > max(
+        y + height for _, y, _, height in nodes.values()
     )
+
+    # Without the anchored corridor user, the feedback relation stays local to
+    # its own endpoints and uses the ordinary row gap.
+    solo_boxes, solo_paths, solo_root = geometry([feedback])
+    solo_nodes = _node_boxes(solo_root)
+    solo_box = solo_boxes["feedback"]
+    assert all(not _boxes_overlap(solo_box, box) for box in solo_nodes.values())
+
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", solo_paths["feedback"])
+    ]
+    route_x = max(x for x, _ in line_points)
+    endpoint_right = max(
+        solo_nodes[node_id][0] + solo_nodes[node_id][2] for node_id in ("n0", "n9")
+    )
+    assert endpoint_right < route_x <= endpoint_right + 16
 
 
 def _anchored_process_labels_model() -> dict:

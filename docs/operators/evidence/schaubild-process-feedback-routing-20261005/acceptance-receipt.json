@@ -1,0 +1,137 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing.v1",
+  "scope": "schaubild-process-feedback-routing-and-local-feedback-label",
+  "accepted_at": "2026-10-06T03:48:21.313764+00:00",
+  "base_product_head": "8ec2042d565008a171d46b84415065904748e29b",
+  "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+  "parent_evidence": {
+    "evidence_digest": "11cb09d163b76ef960cbaead203f88b2d383398000b0d34def0f235abdedce39",
+    "file_sha256": "96a47e4cd02b65cb388b975b19bcd0330dc51adfc7f14e6bb82eef8cf54e3214",
+    "path": "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-dark-status.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "global_process_detours_localized": true,
+    "true_long_and_risk_outer_gutters_preserved": true,
+    "process_feedback_path_stays_local": true,
+    "collision_free_process_feedback_label_stays_local": true,
+    "node_collision_free_feedback_label": true,
+    "edge_label_collision_free_feedback_label": true,
+    "collision_footer_fallback_preserved": true,
+    "exact_head_real_18_node_regression_passed": true,
+    "complete_native_diagram_suite_passed": true,
+    "ruff_compile_registry_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "exact_head_browser_pixel_readback_accepted": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "real_18_node_regression": {
+      "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "task_id": "2138cfb9d3344c12998d7188",
+      "lifecycle_receipt_sha256": "af5d3c1abda60bd65af0b4e6716552e065c3e1d0339d0a85fb040565ad85949d",
+      "result": "passed"
+    },
+    "complete_native_diagram_suite": {
+      "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "task_id": "2e091d122da34c9291404ca3",
+      "lifecycle_receipt_sha256": "59b54774fe605593923913fa81ce7e1f7eb2b7077c574bf060a983e5268cc7ca",
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "task_id": "92eb7b53846c460dbdbff847",
+      "lifecycle_receipt_sha256": "ea82e6468137761a0b701e79aa907ed4d2a2b9d88711dbebce0510063c16dfe4",
+      "ruff_passed": true,
+      "compile_check_passed": true,
+      "registry_validation_passed": true,
+      "passed_count": 1656,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "result": "expected_binding_gate_failure"
+    },
+    "visual_readback": {
+      "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "render_task_id": "50a5c10573de483282dc6897",
+      "render_lifecycle_receipt_sha256": "d14dbf42c476a15c07041e2fa103daa04fb573a78fa1d2ee2b10c3dd25391946",
+      "chrome_task_id": "f9b22f1ce18d42dbab0d3a16",
+      "chrome_lifecycle_receipt_sha256": "5b50a22a8167545ae731f3a0395fe1414f1807de9eec47fc323a97901f89106e",
+      "geometry_task_id": "75f6e739c77c4208b9f59a97",
+      "geometry_lifecycle_receipt_sha256": "7b1946940a269c82ed2c6e9b21e910784559b65c19e4dffa1adb339c81ad3039",
+      "collision_task_id": "685bf3eba3fc44c6ad9f8bfa",
+      "collision_lifecycle_receipt_sha256": "fa37c9985a66276307964d6e2670bc4788b9ead9214f0910679a83fb5d8483fc",
+      "source_svg_sha256": "a97a0b900da36c653e81ac568f8e34eb4cd47434ce84305a1958d843c86a2f6f",
+      "browser_png_sha256": "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91",
+      "browser_png_bytes": 190530,
+      "canvas": {
+        "width": 2588.0,
+        "height": 1118.0
+      },
+      "node_count": 18,
+      "max_node_right": 2436.0,
+      "max_node_bottom": 1042.0,
+      "right_canvas_reserve_px": 152.0,
+      "feedback": {
+        "edge_id": "e_revision_planung",
+        "label": "neue Planung",
+        "route": "feedback-return",
+        "label_box": [
+          1565.5,
+          399.5,
+          118.0,
+          29.0
+        ],
+        "label_center_y": 414.0,
+        "label_bottom": 428.5,
+        "path_max_x": 2146.0,
+        "revision_right": 2134.0,
+        "qualitaet_left": 2186.0,
+        "node_collision": false,
+        "overlapping_edge_labels": []
+      },
+      "observations": {
+        "new_planning_label_local_to_cycle": true,
+        "feedback_label_readable": true,
+        "feedback_label_overlaps_node": false,
+        "feedback_label_overlaps_other_label": false,
+        "global_feedback_detour_present": false,
+        "unnecessary_right_canvas_expansion_present": false,
+        "true_long_and_risk_outer_channels_preserved": true
+      },
+      "result": "accepted"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-06T03:44:02.393513Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+      "head_sha": "6fc31855eb300a654428981e955cefb9e2a5b248",
+      "diff_sha256": "15793554756643c3be6f8b67332bf21e403f6caa1fbcf32a78bdb606bf8eb4d5",
+      "diff_bytes": 45029,
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "8dfaf69b3dcaf3c882537b7f9ed3b47db283b1a168dc81a3330e24e0c88c4fc6",
+    "tests/visual/test_native_diagram.py": "e08c00f5189dff03c69c6cc1c7d6aa5fc1b5c6db2723542601b5651abf9aeaf8"
+  },
+  "does_not_establish": [
+    "five-pass self-review on the later successor-evidence head",
+    "decision-bound independent reviewer PASS on the later successor-evidence head",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "7d4768c3f402908b7d6ee9b0bf556584154bdb7fdbcbcadd8cdd95053cad78fb"
+}

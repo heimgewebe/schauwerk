@@ -210,6 +210,27 @@ SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004"
 )
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-20261005"
+)
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_FIX_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-review-fix-20261006"
+)
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_COLLISION_FIX_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/"
+    "schaubild-process-feedback-routing-review-collision-fix-20261006"
+)
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_CLOSURE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-review-closure-20261010"
+)
+SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -751,6 +772,38 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
     }
+    process_feedback_routing_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_review_fix_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_review_collision_fix_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_review_closure_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_outer_path_superseded_files = {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    process_feedback_routing_parallel_long_superseded_files = (
+        process_feedback_routing_outer_path_superseded_files
+    )
+    process_feedback_routing_anchor_cluster_superseded_files = (
+        process_feedback_routing_parallel_long_superseded_files
+    )
+    process_feedback_routing_feedback_fullpath_superseded_files = (
+        process_feedback_routing_anchor_cluster_superseded_files
+    )
+    process_feedback_routing_long_leg_superseded_files = (
+        process_feedback_routing_feedback_fullpath_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -1500,6 +1553,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_superseded_files
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
+            | process_feedback_routing_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -4183,7 +4237,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(edge_label_width["source_bindings"]) == edge_label_width_superseded_files
     for name, expected in edge_label_width["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert edge_label_width["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
         "ordinary_edge_label_reproduction_fixed": True,
@@ -5977,6 +6032,576 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_dark_status["does_not_establish"]
     )
 
+    process_feedback_routing = json.loads(
+        (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_EVIDENCE / "acceptance-receipt.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert process_feedback_routing["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing.v1"
+    )
+    assert process_feedback_routing["functional_head"] == (
+        "6fc31855eb300a654428981e955cefb9e2a5b248"
+    )
+    assert process_feedback_routing["parent_evidence"] == {
+        "evidence_digest": single_workspace_dark_status["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-dark-status-20261004/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_dark_status["schema_version"],
+    }
+    assert process_feedback_routing["evidence_digest"] == digest_mapping(
+        process_feedback_routing, "evidence_digest"
+    )
+    assert set(process_feedback_routing["source_bindings"]) == (
+        process_feedback_routing_superseded_files
+    )
+    for name, expected in process_feedback_routing["source_bindings"].items():
+        if name not in process_feedback_routing_review_fix_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert process_feedback_routing["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "global_process_detours_localized": True,
+        "true_long_and_risk_outer_gutters_preserved": True,
+        "process_feedback_path_stays_local": True,
+        "collision_free_process_feedback_label_stays_local": True,
+        "node_collision_free_feedback_label": True,
+        "edge_label_collision_free_feedback_label": True,
+        "collision_footer_fallback_preserved": True,
+        "exact_head_real_18_node_regression_passed": True,
+        "complete_native_diagram_suite_passed": True,
+        "ruff_compile_registry_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "exact_head_browser_pixel_readback_accepted": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    visual = process_feedback_routing["check_evidence"]["visual_readback"]
+    assert visual["result"] == "accepted"
+    assert visual["source_svg_sha256"] == (
+        "a97a0b900da36c653e81ac568f8e34eb4cd47434ce84305a1958d843c86a2f6f"
+    )
+    assert visual["browser_png_sha256"] == (
+        "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91"
+    )
+    assert visual["canvas"] == {"width": 2588.0, "height": 1118.0}
+    assert visual["node_count"] == 18
+    assert visual["max_node_right"] == 2436.0
+    assert visual["right_canvas_reserve_px"] == 152.0
+    assert visual["feedback"] == {
+        "edge_id": "e_revision_planung",
+        "label": "neue Planung",
+        "route": "feedback-return",
+        "label_box": [1565.5, 399.5, 118.0, 29.0],
+        "label_center_y": 414.0,
+        "label_bottom": 428.5,
+        "path_max_x": 2146.0,
+        "revision_right": 2134.0,
+        "qualitaet_left": 2186.0,
+        "node_collision": False,
+        "overlapping_edge_labels": [],
+    }
+    assert (
+        "five-pass self-review on the later successor-evidence head"
+        in process_feedback_routing["does_not_establish"]
+    )
+
+    process_feedback_routing_review_fix = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_FIX_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert process_feedback_routing_review_fix["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-review-fix.v1"
+    )
+    assert process_feedback_routing_review_fix["functional_head"] == (
+        "4f2a37835612aa3ca699d6b823737f74054a295b"
+    )
+    assert process_feedback_routing_review_fix["review_source_head"] == (
+        "a325b0be6a8634418f93cb07c8991d088190ecfb"
+    )
+    assert process_feedback_routing_review_fix["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-20261005/acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing["schema_version"],
+    }
+    assert process_feedback_routing_review_fix["evidence_digest"] == digest_mapping(
+        process_feedback_routing_review_fix, "evidence_digest"
+    )
+    assert (
+        set(process_feedback_routing_review_fix["source_bindings"])
+        == process_feedback_routing_review_fix_superseded_files
+    )
+    for name, expected in process_feedback_routing_review_fix["source_bindings"].items():
+        if name not in process_feedback_routing_review_collision_fix_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert process_feedback_routing_review_fix["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "codex_p2_reproduced": True,
+        "horizontal_pack_binds_safe_corridor_y": True,
+        "oversize_horizontal_pack_rejected": True,
+        "grouped_two_line_labels_inside_corridor": True,
+        "grouped_two_line_labels_clear_nodes": True,
+        "grouped_two_line_labels_do_not_overlap": True,
+        "exact_head_native_diagram_suite_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "product_visual_output_byte_identical_to_parent": True,
+        "exact_head_product_browser_output_verified": True,
+        "exact_head_p2_browser_pixel_readback_accepted": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    review_fix_finding = process_feedback_routing_review_fix["check_evidence"][
+        "advisory_review_finding"
+    ]
+    assert review_fix_finding["review_id"] == 5423746019
+    assert review_fix_finding["comment_id"] == 4191491831
+    assert review_fix_finding["severity"] == "P2"
+    assert review_fix_finding["result"] == "reproduced_and_addressed"
+    review_fix_validate = process_feedback_routing_review_fix["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert review_fix_validate["passed_count"] == 1657
+    assert review_fix_validate["failed_count"] == 1
+    assert review_fix_validate["failure_class"] == "expected_successor_binding_gate"
+    review_fix_visual = process_feedback_routing_review_fix["check_evidence"][
+        "visual_readback"
+    ]
+    assert review_fix_visual["product"]["browser_png_sha256"] == (
+        "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91"
+    )
+    assert review_fix_visual["product"]["byte_identical_to_parent_accepted_png"] is True
+    assert review_fix_visual["product"]["result"] == "accepted"
+    p2_visual = review_fix_visual["review_fix_p2"]
+    assert p2_visual["browser_png_sha256"] == (
+        "e3a27ee6dab6c75920f5a92cf6007e17bd2a8b9f4edbcd1406510824eb61137d"
+    )
+    assert p2_visual["inside_corridor"] == {
+        "cross_down": True,
+        "cross_up": True,
+    }
+    assert p2_visual["node_collision"] == {
+        "cross_down": False,
+        "cross_up": False,
+    }
+    assert p2_visual["labels_overlap"] is False
+    assert p2_visual["result"] == "accepted"
+    review_fix_diff = process_feedback_routing_review_fix["check_evidence"][
+        "git_diff_check"
+    ]
+    assert review_fix_diff["diff_sha256"] == (
+        "d2b6a0bd52004710dee5621ae4ddedefcd5858d262ab81efe3eb08bb982db7cd"
+    )
+    assert review_fix_diff["result"] == "passed"
+    assert (
+        "decision-bound independent reviewer PASS on the later successor-evidence head"
+        in process_feedback_routing_review_fix["does_not_establish"]
+    )
+
+    process_feedback_routing_review_collision_fix = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_COLLISION_FIX_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert process_feedback_routing_review_collision_fix["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-review-collision-fix.v1"
+    )
+    assert process_feedback_routing_review_collision_fix["functional_head"] == (
+        "70354608040281d4a6e4a24c92f889a59325f66f"
+    )
+    assert process_feedback_routing_review_collision_fix["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing_review_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_FIX_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-review-fix-20261006/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing_review_fix["schema_version"],
+    }
+    assert process_feedback_routing_review_collision_fix[
+        "evidence_digest"
+    ] == digest_mapping(
+        process_feedback_routing_review_collision_fix,
+        "evidence_digest",
+    )
+    assert (
+        set(process_feedback_routing_review_collision_fix["source_bindings"])
+        == process_feedback_routing_review_collision_fix_superseded_files
+    )
+    for name, expected in process_feedback_routing_review_collision_fix[
+        "source_bindings"
+    ].items():
+        if name not in process_feedback_routing_review_closure_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert process_feedback_routing_review_collision_fix["checks"] == {
+        "historical_parent_acceptance_left_immutable": True,
+        "codex_feedback_path_p2_reproduced_and_addressed": True,
+        "codex_local_gutter_label_footprint_p2_reproduced_and_addressed": True,
+        "codex_target_corridor_path_p2_reproduced_and_addressed": True,
+        "feedback_path_clears_corridor_labels": True,
+        "local_long_branch_label_footprint_node_clear": True,
+        "target_corridor_path_clears_label": True,
+        "target_corridor_regression_order_independent": True,
+        "exact_head_native_diagram_suite_passed": True,
+        "pre_successor_full_validate_failed_only_on_binding_gate": True,
+        "exact_head_product_browser_pixel_readback_accepted": True,
+        "exact_head_review_fixtures_browser_pixel_readback_accepted": True,
+        "independent_observer_readback_passed": True,
+        "git_diff_check_passed": True,
+        "publication_successor_binding_added": True,
+    }
+    collision_findings = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["advisory_review_findings"]
+    assert [finding["comment_id"] for finding in collision_findings] == [
+        4191590053,
+        4191590057,
+        4191730584,
+    ]
+    assert all(
+        finding["result"] == "reproduced_and_addressed"
+        for finding in collision_findings
+    )
+    collision_native = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["native_diagram_suite"]
+    assert collision_native["passed_count"] == 151
+    assert collision_native["result"] == "passed"
+    collision_validate = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["pre_successor_full_validate"]
+    assert collision_validate["passed_count"] == 1660
+    assert collision_validate["failed_count"] == 1
+    assert collision_validate["failure_class"] == "expected_successor_binding_gate"
+    collision_visual = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["visual_readback"]
+    assert collision_visual["product"]["browser_png_sha256"] == (
+        "b20714e821173ab4200dce711d2022c55dbf7a965d9101cbfe3f339fb74a1142"
+    )
+    assert collision_visual["product"]["output_changed_from_parent"] is True
+    assert collision_visual["product"]["feedback_node_collision"] is False
+    assert collision_visual["product"]["feedback_label_overlaps"] == []
+    assert collision_visual["product"]["result"] == "accepted"
+    assert collision_visual["crossing"]["inside_corridor"] == {
+        "cross_down": True,
+        "cross_up": True,
+    }
+    assert collision_visual["crossing"]["labels_overlap"] is False
+    assert collision_visual["long_label"]["uses_outer_gutter"] is True
+    assert collision_visual["feedback_path"]["feedback_path_hits_branch_label"] is False
+    assert collision_visual["target_corridor"]["long_path_hits_short_label"] is False
+    assert collision_visual["result"] == "accepted"
+    collision_observer = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["independent_observer_readback"]
+    assert collision_observer["functional_head"] == (
+        process_feedback_routing_review_collision_fix["functional_head"]
+    )
+    assert collision_observer["worktree_clean"] is True
+    assert collision_observer["untracked_present"] is False
+    collision_diff = process_feedback_routing_review_collision_fix[
+        "check_evidence"
+    ]["git_diff_check"]
+    assert collision_diff["diff_sha256"] == (
+        "8ae73ab28168d456ff627284a797f790c30e12a36bcc60aa3f0574190e4b6e7e"
+    )
+    assert collision_diff["result"] == "passed"
+    assert (
+        "decision-bound independent reviewer PASS on the later successor-evidence head"
+        in process_feedback_routing_review_collision_fix["does_not_establish"]
+    )
+
+    process_feedback_routing_review_closure = json.loads(
+        (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_CLOSURE_EVIDENCE
+         / "acceptance-receipt.json").read_text(encoding="utf-8")
+    )
+    assert process_feedback_routing_review_closure["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-review-closure.v1"
+    )
+    assert process_feedback_routing_review_closure["status"] == (
+        "source_revision_verified_visual_and_decision_review_pending"
+    )
+    assert process_feedback_routing_review_closure["functional_head"] == (
+        "45d2f02105c42125fa64888be4cf6d31c30ba21d"
+    )
+    assert process_feedback_routing_review_closure["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing_review_collision_fix["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_COLLISION_FIX_EVIDENCE
+             / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-review-collision-fix-20261006/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing_review_collision_fix["schema_version"],
+    }
+    assert process_feedback_routing_review_closure["evidence_digest"] == digest_mapping(
+        process_feedback_routing_review_closure, "evidence_digest"
+    )
+    assert set(process_feedback_routing_review_closure["source_bindings"]) == (
+        process_feedback_routing_review_closure_superseded_files
+    )
+    for name, expected in process_feedback_routing_review_closure["source_bindings"].items():
+        if name not in process_feedback_routing_outer_path_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    checks = process_feedback_routing_review_closure["checks"]
+    assert checks["historical_parent_immutable"]
+    assert checks["fail_first_feedback_collision_reproduced"]
+    assert checks["five_targeted_tests_passed"]
+    assert checks["full_renderer_tests_passed"]
+    assert checks["full_validate_failed_only_historical_sha_gate"]
+    assert checks["fresh_browser_visual_accepted"] is False
+    assert checks["independent_reviewer_pass"] is False
+    assert checks["captain_merge_authorized"] is False
+
+    process_feedback_routing_outer_path = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert process_feedback_routing_outer_path["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-outer-path.v1"
+    )
+    assert process_feedback_routing_outer_path["functional_head"] == (
+        "cef1e5af3f2c374ad911ee520b9b60994c83e84d"
+    )
+    assert process_feedback_routing_outer_path["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing_review_closure["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_PROCESS_FEEDBACK_ROUTING_REVIEW_CLOSURE_EVIDENCE
+             / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-review-closure-20261010/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing_review_closure["schema_version"],
+    }
+    assert process_feedback_routing_outer_path["evidence_digest"] == digest_mapping(
+        process_feedback_routing_outer_path, "evidence_digest"
+    )
+    assert set(process_feedback_routing_outer_path["source_bindings"]) == (
+        process_feedback_routing_outer_path_superseded_files
+    )
+    for name, expected in process_feedback_routing_outer_path["source_bindings"].items():
+        if name not in process_feedback_routing_parallel_long_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    outer_checks = process_feedback_routing_outer_path["checks"]
+    assert outer_checks["parent_receipt_immutable"]
+    assert outer_checks["outer_long_branch_crossing_failed_before_fix"]
+    assert outer_checks["outer_long_branch_crossing_passed_after_fix"]
+    assert outer_checks["complete_native_diagram_suite_passed"]
+    assert outer_checks["fresh_visual_browser_acceptance"] is False
+    assert outer_checks["independent_exact_head_review_pass"] is False
+    assert outer_checks["captain_merge_authorized"] is False
+
+    parallel_long = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "parallel-long-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert parallel_long["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-parallel-long.v1"
+    )
+    assert parallel_long["functional_head"] == (
+        "1d017675da5e1834d6b4118ded7b7a820dcaac91"
+    )
+    assert parallel_long["parent_evidence"] == {
+        "evidence_digest": process_feedback_routing_outer_path["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": process_feedback_routing_outer_path["schema_version"],
+    }
+    assert parallel_long["evidence_digest"] == digest_mapping(
+        parallel_long, "evidence_digest"
+    )
+    assert set(parallel_long["source_bindings"]) == (
+        process_feedback_routing_parallel_long_superseded_files
+    )
+    for name, expected in parallel_long["source_bindings"].items():
+        if name not in process_feedback_routing_anchor_cluster_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert parallel_long["checks"]["historical_parent_immutable"] is True
+    assert parallel_long["checks"]["parallel_long_branch_collision_failed_before_fix"] is True
+    assert parallel_long["checks"]["parallel_long_branch_collision_passed_after_fix"] is True
+    assert parallel_long["checks"]["nine_targeted_tests_passed"] is True
+    assert parallel_long["checks"]["full_exact_head_ci_passed"] is False
+    assert parallel_long["checks"]["captain_merge_authorized"] is False
+
+    anchor_cluster = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "anchor-cluster-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert anchor_cluster["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-anchor-cluster.v1"
+    )
+    assert anchor_cluster["functional_head"] == (
+        "6d85cf0b523149431947cf590bd29307ab05488e"
+    )
+    assert anchor_cluster["parent_evidence"] == {
+        "schema_version": parallel_long["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "parallel-long-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "parallel-long-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": parallel_long["evidence_digest"],
+    }
+    assert anchor_cluster["evidence_digest"] == digest_mapping(
+        anchor_cluster, "evidence_digest"
+    )
+    assert set(anchor_cluster["source_bindings"]) == (
+        process_feedback_routing_anchor_cluster_superseded_files
+    )
+    for name, expected in anchor_cluster["source_bindings"].items():
+        if name not in process_feedback_routing_feedback_fullpath_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert anchor_cluster["checks"]["historical_parent_immutable"] is True
+    assert anchor_cluster["checks"]["two_p2_fail_first_regressions_reproduced"] is True
+    assert anchor_cluster["checks"]["two_p2_regressions_pass_after_fix"] is True
+    assert anchor_cluster["checks"]["full_native_diagram_suite_passed"] is True
+    assert anchor_cluster["checks"]["native_diagram_passed_count"] == 159
+    assert anchor_cluster["checks"]["full_exact_head_ci_passed"] is False
+    assert anchor_cluster["checks"]["captain_merge_authorized"] is False
+
+    feedback_fullpath = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "feedback-fullpath-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert feedback_fullpath["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-feedback-fullpath.v1"
+    )
+    assert feedback_fullpath["functional_head"] == (
+        "321f7e3e19d4e3922c68982af94367aeeb41733b"
+    )
+    assert feedback_fullpath["parent_evidence"] == {
+        "schema_version": anchor_cluster["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "anchor-cluster-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "anchor-cluster-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": anchor_cluster["evidence_digest"],
+    }
+    assert feedback_fullpath["evidence_digest"] == digest_mapping(
+        feedback_fullpath, "evidence_digest"
+    )
+    assert set(feedback_fullpath["source_bindings"]) == (
+        process_feedback_routing_feedback_fullpath_superseded_files
+    )
+    for name, expected in feedback_fullpath["source_bindings"].items():
+        if name not in process_feedback_routing_long_leg_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    feedback_checks = feedback_fullpath["checks"]
+    assert feedback_checks["historical_parent_immutable"] is True
+    assert feedback_checks["horizontal_feedback_path_collision_fail_first_reproduced"] is True
+    assert feedback_checks["source_and_target_feedback_legs_collision_free_after_fix"] is True
+    assert feedback_checks["full_native_diagram_suite_passed"] is True
+    assert feedback_checks["native_diagram_passed_count"] == 160
+    assert feedback_checks["full_exact_head_ci_passed"] is False
+    assert feedback_checks["captain_merge_authorized"] is False
+
+    long_leg = json.loads(
+        (
+            SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+            / "long-leg-acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert long_leg["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-long-leg.v1"
+    )
+    assert long_leg["functional_head"] == (
+        "23a1cdfb8a7131431decf47923910deff8780380"
+    )
+    assert long_leg["parent_evidence"] == {
+        "schema_version": feedback_fullpath["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-fullpath-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "feedback-fullpath-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": feedback_fullpath["evidence_digest"],
+    }
+    assert long_leg["evidence_digest"] == digest_mapping(
+        long_leg, "evidence_digest"
+    )
+    assert set(long_leg["source_bindings"]) == (
+        process_feedback_routing_long_leg_superseded_files
+    )
+    for name, expected in long_leg["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert long_leg["checks"]["historical_parent_immutable"] is True
+    assert long_leg["checks"]["long_column_label_collision_fail_first_reproduced"] is True
+    assert long_leg["checks"]["grouped_local_feedback_label_avoids_long_route_leg"] is True
+    assert long_leg["checks"]["existing_ungrouped_feedback_layout_preserved"] is True
+    assert long_leg["checks"]["full_native_diagram_suite_passed"] is True
+    assert long_leg["checks"]["native_diagram_passed_count"] == 161
+    assert long_leg["checks"]["full_exact_head_ci_passed"] is False
+    assert long_leg["checks"]["captain_merge_authorized"] is False
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6005,7 +6630,28 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_dark_status_superseded_files:
+        if name in process_feedback_routing_long_leg_superseded_files:
+            assert long_leg["source_bindings"][name] == current
+        elif name in process_feedback_routing_feedback_fullpath_superseded_files:
+            assert feedback_fullpath["source_bindings"][name] == current
+        elif name in process_feedback_routing_anchor_cluster_superseded_files:
+            assert anchor_cluster["source_bindings"][name] == current
+        elif name in process_feedback_routing_parallel_long_superseded_files:
+            assert parallel_long["source_bindings"][name] == current
+        elif name in process_feedback_routing_outer_path_superseded_files:
+            assert process_feedback_routing_outer_path["source_bindings"][name] == current
+        elif name in process_feedback_routing_review_closure_superseded_files:
+            assert process_feedback_routing_review_closure["source_bindings"][name] == current
+        elif name in process_feedback_routing_review_collision_fix_superseded_files:
+            assert (
+                process_feedback_routing_review_collision_fix["source_bindings"][name]
+                == current
+            )
+        elif name in process_feedback_routing_review_fix_superseded_files:
+            assert process_feedback_routing_review_fix["source_bindings"][name] == current
+        elif name in process_feedback_routing_superseded_files:
+            assert process_feedback_routing["source_bindings"][name] == current
+        elif name in single_workspace_dark_status_superseded_files:
             assert single_workspace_dark_status["source_bindings"][name] == current
         elif name in single_workspace_wrapped_dock_superseded_files:
             assert single_workspace_wrapped_dock["source_bindings"][name] == current
