@@ -3606,6 +3606,46 @@ def test_ungrouped_feedback_full_horizontal_route_clears_other_labels() -> None:
             assert not vertical_hit
 
 
+def test_feedback_label_avoids_long_same_column_return_leg() -> None:
+    # The existing label-only occupancy test misses an already routed edge.
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = "g0" if index < 3 else "g1"
+    edges = [
+        {"id": "long", "from": "n0", "to": "n2",
+         "label": "langer pfad", "kind": "flow"},
+        {"id": "feedback", "from": "n2", "to": "n1",
+         "label": "rückmeldung", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        tuple[float, float, float, float], str
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root)["feedback"], _edge_paths(root)["long"]
+
+    box, path = geometry(edges)
+    assert (box, path) == geometry(list(reversed(edges)))
+    match = re.match(r"M ([-0-9.]+) ([-0-9.]+) L ", path)
+    assert match is not None
+    points = [tuple(map(float, match.groups()))]
+    points.extend(
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    )
+    left, top, width, height = box
+    right, bottom = left + width, top + height
+    for (x1, y1), (x2, y2) in zip(points, points[1:]):
+        assert not (
+            y1 == y2
+            and top < y1 < bottom
+            and max(min(x1, x2), left) < min(max(x1, x2), right)
+        )
+
+
 def test_ungrouped_process_feedback_uses_actual_row_gap() -> None:
     raw = _minimal_process_model(7)
     raw["edges"] = [

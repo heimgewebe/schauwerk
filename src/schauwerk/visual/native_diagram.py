@@ -3869,7 +3869,54 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 and label_bottom > node_y - 8
                 for node_x, node_y in positions.values()
             )
-            if collides_with_packed_label or collides_with_node:
+            # Already-routed long same-column relations occupy both their
+            # source and target row gaps. The feedback's local label can mask
+            # their horizontal legs even when no other label overlaps it.
+            collides_with_edge_leg = False
+            # The new risk is grouped local feedback versus a same-group
+            # long edge; leave historical ungrouped packed-lane policy intact.
+            for other in (model["edges"] if model["groups"] else ()):
+                if str(other["kind"]) == "feedback" or other["from"] == other["to"]:
+                    continue
+                other_source = positions[str(other["from"])]
+                other_target = positions[str(other["to"])]
+                if (
+                    other_source[0] != other_target[0]
+                    or abs(other_target[1] - other_source[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                ):
+                    continue
+                direction = 1 if other_source[1] < other_target[1] else -1
+                start_y = (
+                    other_source[1] + _NODE_HEIGHT
+                    if direction > 0
+                    else other_source[1]
+                )
+                end_y = (
+                    other_target[1]
+                    if direction > 0
+                    else other_target[1] + _NODE_HEIGHT
+                )
+                center_x = other_source[0] + _NODE_WIDTH / 2
+                gutter_x = long_vertical_gutter_x.get(
+                    str(other["id"]),
+                    other_source[0] + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                )
+                horizontal_left = min(center_x, gutter_x)
+                horizontal_right = max(center_x, gutter_x)
+                if label_left >= horizontal_right or label_right <= horizontal_left:
+                    continue
+                for corridor_y in (
+                    start_y + direction * process_row_gap / 2,
+                    end_y - direction * process_row_gap / 2,
+                ):
+                    if label_top < corridor_y < label_bottom:
+                        collides_with_edge_leg = True
+                        break
+                if collides_with_edge_leg:
+                    break
+
+            if collides_with_packed_label or collides_with_node or collides_with_edge_leg:
                 feedback_footer_ids.add(edge_id)
 
     purpose_max_width = width - 2 * _PAGE_MARGIN
