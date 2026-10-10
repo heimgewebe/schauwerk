@@ -1777,6 +1777,7 @@ function setEngineMode(mode) {
     elements.projectButton.textContent = "Projekt";
     elements.projectButton.title = "Bearbeitbares draw.io-Projekt speichern";
   }
+  syncWorkspaceBarHeight();
 }
 
 function safeFilename(value) {
@@ -2198,6 +2199,7 @@ function clearPreparedDownload() {
   elements.downloadLink.removeAttribute("download");
   elements.downloadLink.removeAttribute("aria-label");
   elements.downloadCaption.textContent = "Datei speichern";
+  syncWorkspaceBarHeight();
 }
 
 function prepareDownload(blob, filename, label) {
@@ -2208,10 +2210,24 @@ function prepareDownload(blob, filename, label) {
   elements.downloadCaption.textContent = `${label} speichern`;
   elements.downloadLink.setAttribute("aria-label", `Speichern: ${label}`);
   elements.downloadLink.hidden = false;
+  syncWorkspaceBarHeight();
 }
 
 function setWorkspaceActive(active) {
   document.body.classList.toggle("workspace-active", Boolean(active));
+  if (active) syncWorkspaceBarHeight();
+}
+
+function syncWorkspaceBarHeight() {
+  if (!document.body.classList.contains("workspace-active")) return;
+  const bar = document.querySelector(".workspace-bar");
+  const actual = Math.ceil(bar?.getBoundingClientRect().height || 0);
+  if (actual > 0) {
+    const value = actual + "px";
+    if (document.body.style.getPropertyValue("--workspace-bar-height") !== value) {
+      document.body.style.setProperty("--workspace-bar-height", value);
+    }
+  }
 }
 
 function showStart() {
@@ -3247,21 +3263,8 @@ for (const control of [elements.contentCloseButton, elements.contentCancelButton
 document.querySelectorAll(".workspace-menu").forEach((menu) => {
   menu.addEventListener("toggle", syncWorkspaceMenuOpenState);
 });
-// The mobile action bar can wrap on a dual-notch viewport. The status and
-// fixed popovers already use this variable; bind it to the actual bar height.
-const workspaceActionBar = document.querySelector(".workspace-bar");
-if (workspaceActionBar && typeof ResizeObserver === "function") {
-  const syncWorkspaceBarHeight = () => {
-    const box = workspaceActionBar.getBoundingClientRect();
-    if (!box.height) return;
-    const height = Math.ceil(box.height) + "px";
-    if (document.body.style.getPropertyValue("--workspace-bar-height") !== height) {
-      document.body.style.setProperty("--workspace-bar-height", height);
-    }
-  };
-  new ResizeObserver(syncWorkspaceBarHeight).observe(workspaceActionBar);
-  syncWorkspaceBarHeight();
-}
+// Existing UI-state paths keep action-bar overlay clearance synchronized.
+window.addEventListener("resize", syncWorkspaceBarHeight);
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
 elements.projectButton.addEventListener("click", () => {
   const menu = elements.projectButton.closest("details");
