@@ -2951,6 +2951,98 @@ def test_grouped_crossing_adjacent_relations_use_safe_local_lanes() -> None:
         forward_paths["cross_down"], forward_labels["cross_up"]
     )
 
+def test_grouped_packed_route_clears_anchored_long_branch_label() -> None:
+    raw = _minimal_process_model(9)
+    raw["groups"] = [
+        {"id": f"g{index}", "label": f"Group {index}"}
+        for index in range(3)
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "anchor", "from": "n0", "to": "n5",
+         "label": "lange lokale beziehung", "kind": "flow"},
+        {"id": "reverse", "from": "n3", "to": "n1",
+         "label": "kurz", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[
+        dict[str, tuple[float, float, float, float]], dict[str, str]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    path = paths["reverse"]
+    if " L " not in path:
+        assert not _cubic_path_intersects_box(path, labels["anchor"])
+    else:
+        # The safer outer-gutter fallback has cubic entry/exit connectors and
+        # orthogonal L legs; check the full straight route, not only a cubic.
+        match = re.search(
+            r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+            r"([-0-9.]+) ([-0-9.]+) L ",
+            path,
+        )
+        assert match is not None
+        points = [tuple(float(v) for v in match.groups())]
+        points.extend(
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        )
+        left, top, width, height = labels["anchor"]
+        right, bottom = left + width, top + height
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            horizontal_overlap = (
+                y1 == y2
+                and top < y1 < bottom
+                and max(min(x1, x2), left) < min(max(x1, x2), right)
+            )
+            vertical_overlap = (
+                x1 == x2
+                and left < x1 < right
+                and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+            )
+            assert not horizontal_overlap
+            assert not vertical_overlap
+
+
+def test_grouped_horizontal_packs_reserve_other_corridor_clusters() -> None:
+    raw = _minimal_process_model(6)
+    raw["groups"] = [
+        {"id": f"g{index}", "label": f"Group {index}"}
+        for index in range(3)
+    ]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 2}"
+    edges = [
+        {"id": "left_forward", "from": "n0", "to": "n2",
+         "label": "x", "kind": "flow"},
+        {"id": "left_reverse", "from": "n2", "to": "n0",
+         "label": "short", "kind": "flow"},
+        {"id": "right_forward", "from": "n2", "to": "n4",
+         "label": "lange prozessbeziehung mit zweitzeiligem text", "kind": "flow"},
+        {"id": "right_reverse", "from": "n4", "to": "n2",
+         "label": "x", "kind": "flow"},
+    ]
+
+    def labels_for(ordered: list[dict]) -> dict[
+        str, tuple[float, float, float, float]
+    ]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        return _edge_label_boxes(_parse(render_native_diagram(candidate)))
+
+    labels = labels_for(edges)
+    assert labels == labels_for(list(reversed(edges)))
+    for left in ("left_forward", "left_reverse"):
+        for right in ("right_forward", "right_reverse"):
+            assert not _boxes_overlap(labels[left], labels[right])
+
+
 def test_parallel_group_long_branches_keep_outer_legs_clear_of_peer_labels() -> None:
     # A late label-pack demotion must not leave one local label underneath the
     # source corridor of its parallel peer's outer branch.

@@ -1054,6 +1054,39 @@ def _process_local_group_branch_gutter_x(
             ):
                 return True
 
+            # Short adjacent-row paths can later be routed into the outer
+            # gutter, but their full horizontal legs still cross this gap.
+            # Avoid anchoring a long-branch label underneath those legs.
+            for other_id, other in edges_by_id.items():
+                if other_id == edge_id or str(other["kind"]) == "feedback":
+                    continue
+                other_source = positions[str(other["from"])]
+                other_target = positions[str(other["to"])]
+                # The reproduced hazard is the reverse adjacent branch whose
+                # outer return crosses the local anchor. Keep ordinary forward
+                # process links local; otherwise normal 18-node diagrams widen.
+                if other_source[0] <= other_target[0]:
+                    continue
+                if (
+                    other_source[1] == other_target[1]
+                    or abs(other_target[1] - other_source[1]) > row_step
+                ):
+                    continue
+                gap_top = min(other_source[1], other_target[1]) + _NODE_HEIGHT
+                gap_bottom = max(other_source[1], other_target[1])
+                if gap_bottom <= gap_top:
+                    continue
+                center_y = (gap_top + gap_bottom) / 2
+                left_x = min(other_source[0], other_target[0]) + _NODE_WIDTH / 2
+                right_x = max(other_source[0], other_target[0]) + _NODE_WIDTH / 2
+                if (
+                    label_left < right_x
+                    and label_right > left_x
+                    and label_top < center_y + 8
+                    and label_bottom > center_y - 8
+                ):
+                    return True
+
             # The existing outer fallback is safer when its long-branch
             # horizontal source/target leg would cross this proposed label.
             # Account for its bounded lane offset before accepting a local
@@ -2796,6 +2829,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 (natural_x, edge_id, label_width, label_height, True)
             )
 
+        # Successful horizontal packs reserve their actual label rectangles
+        # across the whole corridor, not just their original x-cluster.
+        packed_corridor_label_boxes: dict[
+            tuple[int, int], list[tuple[float, float, float, float]]
+        ] = defaultdict(list)
+
         def try_horizontal_adjacent_pack(
             movable_items: Sequence[tuple[float, str, float, int, bool]],
             fixed_items: Sequence[tuple[float, str, float, int, bool]],
@@ -2898,12 +2937,22 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 )
                 for candidate_x, edge_id, label_width in candidates
             }
+            # Earlier successful horizontal packs reserve their actual label
+            # rectangles; anchored labels keep the pre-existing fixed-item
+            # contract, rather than blocking an entire row corridor.
+            foreign_boxes = list(packed_corridor_label_boxes[corridor])
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
                 edge = edges_by_id[edge_id]
                 points = direct_process_cubic(edge_id)
                 source = positions[str(edge["from"])]
                 target = positions[str(edge["to"])]
+                peer_boxes = [
+                    peer_box
+                    for peer_id, peer_box in candidate_boxes.items()
+                    if peer_id != edge_id
+                ]
+                peer_boxes.extend(foreign_boxes)
                 if source[1] == target[1]:
                     endpoints = {str(edge["from"]), str(edge["to"])}
                     if any(
@@ -2921,18 +2970,12 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     ):
                         return False
                     if any(
-                        peer_id != edge_id
-                        and _cubic_hull_intersects_box(points, peer_box)
-                        for peer_id, peer_box in candidate_boxes.items()
+                        _cubic_hull_intersects_box(points, peer_box)
+                        for peer_box in peer_boxes
                     ):
                         return False
                     continue
 
-                peer_boxes = [
-                    peer_box
-                    for peer_id, peer_box in candidate_boxes.items()
-                    if peer_id != edge_id
-                ]
                 if not any(
                     _cubic_hull_intersects_box(points, peer_box)
                     for peer_box in peer_boxes
@@ -2981,6 +3024,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 )
 
             fixed = [(item[0], item[2]) for item in fixed_items]
+            fixed.extend(
+                (left + box_width / 2, box_width)
+                for left, _, box_width, _ in foreign_boxes
+            )
             for index, (candidate_x, _, candidate_width) in enumerate(candidates):
                 if any(
                     not separated(candidate_x, candidate_width, fixed_x, fixed_width)
@@ -3005,6 +3052,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 {edge_id: corridor_center for _, edge_id, _ in candidates}
             )
             process_adjacent_route_y.update(candidate_route_y)
+            packed_corridor_label_boxes[corridor].extend(candidate_boxes.values())
             return True
 
         for corridor, items in corridor_groups.items():
