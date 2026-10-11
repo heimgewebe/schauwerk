@@ -1,0 +1,65 @@
+{
+  "base_product_head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+  "check_evidence": {
+    "new_geometry_contract_test": {
+      "asserts": [
+        "same-origin host geometry read",
+        "dynamic extra clearance",
+        "cross-origin fallback guarded"
+      ],
+      "functional_head": "ae92461eb3d94701327151c6b6de18863c5c4e78",
+      "result": "passed",
+      "task_id": "46a35b9b4fbf4440aa9a084f"
+    },
+    "old_static_test_failure": {
+      "error_class": "test_asserted_obsolete_fixed_embedded_fit_padding_string",
+      "failed_count": 1,
+      "parent_head": "6e7e765a1f617b173cf55031015176ba08ca0be3",
+      "passed_count": 1668,
+      "task_id": "78b34d859eef443893e3cc31"
+    },
+    "pre_successor_source_digest_gate": {
+      "failure_class": "historical_final_review_test_native_sha_superseded",
+      "functional_head": "ae92461eb3d94701327151c6b6de18863c5c4e78",
+      "result": "failed",
+      "task_id": "ae6a3eebd6974b1e917ea45a"
+    },
+    "visual_acceptance_inheritance": {
+      "decision": "inherited_from_parent",
+      "parent_functional_head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+      "parent_visual_readback_sha256": "1cd827a04dfccf4d57b5cba96e9bcd7a3897deafa3023af42a9fb24e538df685",
+      "reason": "only QA test assertion changed, production asset bytes and CDP visuals unchanged"
+    }
+  },
+  "checks": {
+    "focused_static_contract_green": true,
+    "new_test_file_sha256_bound": true,
+    "old_review_fixture_not_overwritten": true,
+    "parent_evidence_unchanged": true,
+    "product_asset_byte_identity_with_parent": true
+  },
+  "does_not_establish": [
+    "full suite on current evidence head",
+    "current Github CI",
+    "independent review PASS",
+    "Captain merge readiness",
+    "production deployment"
+  ],
+  "evidence_digest": "2e37c376496f60283550fb2860d9e4a13e860cb6478c1b2318e3cb92c233a864",
+  "functional_head": "ae92461eb3d94701327151c6b6de18863c5c4e78",
+  "parent_evidence": {
+    "evidence_digest": "1f7e33927a8b7af927ac354920264cddf6cd7bc72a965d127bb7626243980509",
+    "file_sha256": "721dcb64de733ff4f47e44ffbb9a0a52f2859cfe15cffca3eb10dc223eec8b9a",
+    "path": "docs/operators/evidence/schaubild-single-workspace-safe-area-fit-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-safe-area-fit.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-safe-area-test-contract.v1",
+  "scope": "pr203-safe-area-test-contract-followup-no-production-source-changes",
+  "source_bindings": {
+    "tests/visual/test_native_viewer.py": "eb7b19262ebec0825e909e34a5c54a6d3cb0ac0c783743d36e36a0126988c0c6"
+  },
+  "unchanged_production_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "35ea344e58a324eb09c795327bb9e6e9e44fed9727f16442a52ed05c0dac89ae",
+    "tests/visual/test_standalone_editor_single_workspace.py": "799060b997783728f4d2b558fb8cce111eac38de08d0044d254f8d25df9017b5"
+  }
+}

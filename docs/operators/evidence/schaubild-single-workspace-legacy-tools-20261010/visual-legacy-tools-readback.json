@@ -1,0 +1,783 @@
+{
+  "capture_note": "Original Desktop Headless Google Chrome CDP with simulated safe-area CSS and legacy :has fallback; no physical Safari/iOS.",
+  "case_count": 5,
+  "cases": [
+    {
+      "geometry": {
+        "actions": [
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontDecreaseButton",
+            "rect": {
+              "bottom": 489,
+              "height": 42,
+              "left": 74,
+              "right": 112.453125,
+              "top": 447,
+              "width": 38.453125
+            },
+            "text": "A−"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontPanelButton",
+            "rect": {
+              "bottom": 489,
+              "height": 42,
+              "left": 116.453125,
+              "right": 163.984375,
+              "top": 447,
+              "width": 47.53125
+            },
+            "text": "Text"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontIncreaseButton",
+            "rect": {
+              "bottom": 489,
+              "height": 42,
+              "left": 167.984375,
+              "right": 206.4375,
+              "top": 447,
+              "width": 38.453125
+            },
+            "text": "A+"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontAllButton",
+            "rect": {
+              "bottom": 535,
+              "height": 42,
+              "left": 74,
+              "right": 125.484375,
+              "top": 493,
+              "width": 51.484375
+            },
+            "text": "Alles"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "layoutButton",
+            "rect": {
+              "bottom": 587,
+              "height": 42,
+              "left": 167.03125,
+              "right": 234,
+              "top": 545,
+              "width": 66.96875
+            },
+            "text": "Ordnen"
+          }
+        ],
+        "bar": {
+          "bottom": 652,
+          "height": 52,
+          "left": 75.046875,
+          "right": 240,
+          "top": 600,
+          "width": 164.953125
+        },
+        "flexWrap": "wrap",
+        "fullyFitted": true,
+        "hostVisibility": "hidden",
+        "iframe": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "legacyToolsVisible": true,
+        "measuredBar": 52,
+        "pass": true,
+        "popover": {
+          "bottom": 593,
+          "height": 156,
+          "left": 64,
+          "right": 240,
+          "top": 437,
+          "width": 176
+        },
+        "popoverGap": 7,
+        "safe": {
+          "left": 64,
+          "right": 80
+        },
+        "safeBar": true,
+        "safeMenu": true,
+        "sourceMode": true,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 592,
+          "height": 28,
+          "left": 64,
+          "right": 290.078125,
+          "top": 564,
+          "width": 226.078125
+        },
+        "textVisible": true,
+        "viewport": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "legacy-tools-320x700-left64-right80.json",
+      "geometry_sha256": "4669e058695d65f08cf409f5ad694bd682d92891f03348371b27ce58076343a4",
+      "name": "legacy-tools-320x700-left64-right80",
+      "safe_area": {
+        "left": 64,
+        "right": 80
+      },
+      "screenshot_bytes": 14121,
+      "screenshot_file": "legacy-tools-320x700-left64-right80.png",
+      "screenshot_sha256": "0fc8737406a62aa6700c5084d243846860bec38ea36d703131a3c9442fb79102",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "actions": [
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontDecreaseButton",
+            "rect": {
+              "bottom": 535,
+              "height": 42,
+              "left": 78.078125,
+              "right": 116.53125,
+              "top": 493,
+              "width": 38.453125
+            },
+            "text": "A−"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontPanelButton",
+            "rect": {
+              "bottom": 535,
+              "height": 42,
+              "left": 120.53125,
+              "right": 168.0625,
+              "top": 493,
+              "width": 47.53125
+            },
+            "text": "Text"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontIncreaseButton",
+            "rect": {
+              "bottom": 535,
+              "height": 42,
+              "left": 172.0625,
+              "right": 210.515625,
+              "top": 493,
+              "width": 38.453125
+            },
+            "text": "A+"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontAllButton",
+            "rect": {
+              "bottom": 535,
+              "height": 42,
+              "left": 214.515625,
+              "right": 266,
+              "top": 493,
+              "width": 51.484375
+            },
+            "text": "Alles"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "layoutButton",
+            "rect": {
+              "bottom": 587,
+              "height": 42,
+              "left": 203.03125,
+              "right": 270,
+              "top": 545,
+              "width": 66.96875
+            },
+            "text": "Ordnen"
+          }
+        ],
+        "bar": {
+          "bottom": 652,
+          "height": 52,
+          "left": 111.046875,
+          "right": 276,
+          "top": 600,
+          "width": 164.953125
+        },
+        "flexWrap": "wrap",
+        "fullyFitted": true,
+        "hostVisibility": "hidden",
+        "iframe": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "legacyToolsVisible": true,
+        "measuredBar": 52,
+        "pass": true,
+        "popover": {
+          "bottom": 593,
+          "height": 110,
+          "left": 68.078125,
+          "right": 276,
+          "top": 483,
+          "width": 207.921875
+        },
+        "popoverGap": 7,
+        "safe": {
+          "left": 0,
+          "right": 44
+        },
+        "safeBar": true,
+        "safeMenu": true,
+        "sourceMode": true,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 592,
+          "height": 28,
+          "left": 8,
+          "right": 234.078125,
+          "top": 564,
+          "width": 226.078125
+        },
+        "textVisible": true,
+        "viewport": {
+          "height": 700,
+          "width": 320
+        }
+      },
+      "geometry_file": "legacy-tools-320x700-left0-right44.json",
+      "geometry_sha256": "20be299b0147f9af3196186318bebdea0653fda98187a84e4182eba59751b097",
+      "name": "legacy-tools-320x700-left0-right44",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 14013,
+      "screenshot_file": "legacy-tools-320x700-left0-right44.png",
+      "screenshot_sha256": "dd454272dec0b433781feb60ea09aa239f1183c28a006f978a36b6b87d486fbc",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "geometry": {
+        "actions": [
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontDecreaseButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 186.078125,
+              "right": 224.53125,
+              "top": 637,
+              "width": 38.453125
+            },
+            "text": "A−"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontPanelButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 228.53125,
+              "right": 276.0625,
+              "top": 637,
+              "width": 47.53125
+            },
+            "text": "Text"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontIncreaseButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 280.0625,
+              "right": 318.515625,
+              "top": 637,
+              "width": 38.453125
+            },
+            "text": "A+"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontAllButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 322.515625,
+              "right": 374,
+              "top": 637,
+              "width": 51.484375
+            },
+            "text": "Alles"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "layoutButton",
+            "rect": {
+              "bottom": 731,
+              "height": 42,
+              "left": 311.03125,
+              "right": 378,
+              "top": 689,
+              "width": 66.96875
+            },
+            "text": "Ordnen"
+          }
+        ],
+        "bar": {
+          "bottom": 796,
+          "height": 52,
+          "left": 219.046875,
+          "right": 384,
+          "top": 744,
+          "width": 164.953125
+        },
+        "flexWrap": "nowrap",
+        "fullyFitted": true,
+        "hostVisibility": "hidden",
+        "iframe": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "legacyToolsVisible": true,
+        "measuredBar": 52,
+        "pass": true,
+        "popover": {
+          "bottom": 737,
+          "height": 110,
+          "left": 176.078125,
+          "right": 384,
+          "top": 627,
+          "width": 207.921875
+        },
+        "popoverGap": 7,
+        "safe": {
+          "left": 44,
+          "right": 0
+        },
+        "safeBar": true,
+        "safeMenu": true,
+        "sourceMode": true,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 736,
+          "height": 28,
+          "left": 44,
+          "right": 270.078125,
+          "top": 708,
+          "width": 226.078125
+        },
+        "textVisible": true,
+        "viewport": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "legacy-tools-390x844-left44-right0.json",
+      "geometry_sha256": "9d5b9ed2f73f2e4550d1fabfbc931ac15255ea5b9c43fc3032dd0edb91152aab",
+      "name": "legacy-tools-390x844-left44-right0",
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 14882,
+      "screenshot_file": "legacy-tools-390x844-left44-right0.png",
+      "screenshot_sha256": "940d44bac9f59becc5342dded770059ab0696723864ace9096da35789b7e5e46",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "actions": [
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontDecreaseButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 148.078125,
+              "right": 186.53125,
+              "top": 637,
+              "width": 38.453125
+            },
+            "text": "A−"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontPanelButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 190.53125,
+              "right": 238.0625,
+              "top": 637,
+              "width": 47.53125
+            },
+            "text": "Text"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontIncreaseButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 242.0625,
+              "right": 280.515625,
+              "top": 637,
+              "width": 38.453125
+            },
+            "text": "A+"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontAllButton",
+            "rect": {
+              "bottom": 679,
+              "height": 42,
+              "left": 284.515625,
+              "right": 336,
+              "top": 637,
+              "width": 51.484375
+            },
+            "text": "Alles"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "layoutButton",
+            "rect": {
+              "bottom": 731,
+              "height": 42,
+              "left": 273.03125,
+              "right": 340,
+              "top": 689,
+              "width": 66.96875
+            },
+            "text": "Ordnen"
+          }
+        ],
+        "bar": {
+          "bottom": 796,
+          "height": 52,
+          "left": 181.046875,
+          "right": 346,
+          "top": 744,
+          "width": 164.953125
+        },
+        "flexWrap": "nowrap",
+        "fullyFitted": true,
+        "hostVisibility": "hidden",
+        "iframe": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "legacyToolsVisible": true,
+        "measuredBar": 52,
+        "pass": true,
+        "popover": {
+          "bottom": 737,
+          "height": 110,
+          "left": 138.078125,
+          "right": 346,
+          "top": 627,
+          "width": 207.921875
+        },
+        "popoverGap": 7,
+        "safe": {
+          "left": 0,
+          "right": 44
+        },
+        "safeBar": true,
+        "safeMenu": true,
+        "sourceMode": true,
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "status": {
+          "bottom": 736,
+          "height": 28,
+          "left": 8,
+          "right": 234.078125,
+          "top": 708,
+          "width": 226.078125
+        },
+        "textVisible": true,
+        "viewport": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_file": "legacy-tools-390x844-left0-right44.json",
+      "geometry_sha256": "26d17d48f0cbe6acee56cb8fdff32416da7e1adc60b12684245a4915b80892aa",
+      "name": "legacy-tools-390x844-left0-right44",
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 15079,
+      "screenshot_file": "legacy-tools-390x844-left0-right44.png",
+      "screenshot_sha256": "90a6081d5ac03191750969eb59403cf61e64a88b0ca7885845f9e185d314f035",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "actions": [
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontDecreaseButton",
+            "rect": {
+              "bottom": 743,
+              "height": 40,
+              "left": 1007.203125,
+              "right": 1047.65625,
+              "top": 703,
+              "width": 40.453125
+            },
+            "text": "A−"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontPanelButton",
+            "rect": {
+              "bottom": 743,
+              "height": 40,
+              "left": 1051.65625,
+              "right": 1101.1875,
+              "top": 703,
+              "width": 49.53125
+            },
+            "text": "Text"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontIncreaseButton",
+            "rect": {
+              "bottom": 743,
+              "height": 40,
+              "left": 1105.1875,
+              "right": 1145.640625,
+              "top": 703,
+              "width": 40.453125
+            },
+            "text": "A+"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "fontAllButton",
+            "rect": {
+              "bottom": 743,
+              "height": 40,
+              "left": 1149.640625,
+              "right": 1203.125,
+              "top": 703,
+              "width": 53.484375
+            },
+            "text": "Alles"
+          },
+          {
+            "disabled": false,
+            "hidden": false,
+            "hit": true,
+            "id": "layoutButton",
+            "rect": {
+              "bottom": 793,
+              "height": 40,
+              "left": 1138.15625,
+              "right": 1207.125,
+              "top": 753,
+              "width": 68.96875
+            },
+            "text": "Ordnen"
+          }
+        ],
+        "bar": {
+          "bottom": 852,
+          "height": 50,
+          "left": 1153.03125,
+          "right": 1358,
+          "top": 802,
+          "width": 204.96875
+        },
+        "flexWrap": "nowrap",
+        "fullyFitted": true,
+        "hostVisibility": "visible",
+        "iframe": {
+          "bottom": 900,
+          "height": 900,
+          "left": 0,
+          "right": 1366,
+          "top": 0,
+          "width": 1366
+        },
+        "legacyToolsVisible": true,
+        "measuredBar": 50,
+        "pass": true,
+        "popover": {
+          "bottom": 800,
+          "height": 108,
+          "left": 996.203125,
+          "right": 1214.125,
+          "top": 692,
+          "width": 217.921875
+        },
+        "popoverGap": 2,
+        "safe": {
+          "left": 0,
+          "right": 0
+        },
+        "safeBar": true,
+        "safeMenu": true,
+        "sourceMode": true,
+        "stage": {
+          "bottom": 900,
+          "height": 900,
+          "left": 0,
+          "right": 1366,
+          "top": 0,
+          "width": 1366
+        },
+        "status": {
+          "bottom": 794,
+          "height": 29,
+          "left": 8,
+          "right": 253.140625,
+          "top": 765,
+          "width": 245.140625
+        },
+        "textVisible": true,
+        "viewport": {
+          "height": 900,
+          "width": 1366
+        }
+      },
+      "geometry_file": "legacy-tools-1366x900-left0-right0.json",
+      "geometry_sha256": "9c500d305ccdf926e3ffe37702179de4eb9809a5fb13196552286ce059b9dd98",
+      "name": "legacy-tools-1366x900-left0-right0",
+      "safe_area": {
+        "left": 0,
+        "right": 0
+      },
+      "screenshot_bytes": 23929,
+      "screenshot_file": "legacy-tools-1366x900-left0-right0.png",
+      "screenshot_sha256": "2a217d3e93c90d0abd0f143f3954c44bcae777ae846d908f3d76b19b03b56dbe",
+      "viewport": [
+        1366,
+        900
+      ]
+    }
+  ],
+  "functional_head": "ed4a70309c7952527fce6883b774ee905bf6d860",
+  "schema_version": "schauwerk-pr203-legacy-tools-cdp.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "feaddd56282d0618b16d33d7503e31d18b906c9fca348e19975cfda2bf2e5a7c",
+    "tests/visual/test_standalone_editor_product_ui.py": "c52a7ad46c437346da4188ddcddb9410a0ef20ddfab8c0a85187efae2c3bfb8a",
+    "tests/visual/test_standalone_editor_single_workspace.py": "951c5abd236e7eaeba34bd5349004a050c024e8634217cc5710926855d5da7fc"
+  }
+}

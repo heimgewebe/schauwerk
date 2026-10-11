@@ -1,0 +1,125 @@
+{
+  "accepted_at": "2026-10-08T06:04:37+00:00",
+  "base_product_head": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+  "check_evidence": {
+    "codex_review_finding": {
+      "finding": "fitView previously clamped scale to interactive MIN_SCALE=0.25; tall valid graphs overflowed top/bottom",
+      "resolved_by_functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "reviewed_base": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+      "source_pr": 203,
+      "thread_id": "PRRT_kwDOTGqvHc6qMmfF"
+    },
+    "exact_head_browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "lifecycle_receipt_sha256": "f880bfe6202e366e663edd03eea627e4e62bc1e1a3ac7c47da5ce33e6ab29ecf",
+      "passed_count": 18,
+      "result": "passed",
+      "task_id": "50d7e5e805f64d4e9387b9fb"
+    },
+    "git_diff_check": {
+      "base_sha": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+      "diff_bytes": 14660,
+      "diff_sha256": "e9a0f548f108401337a65f2e8b6a9b111b56c51550e205a76def29945e3481a5",
+      "head_sha": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "result": "passed"
+    },
+    "independent_observer_readback": {
+      "observation_complete": true,
+      "observed_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "observer": "grosser-adler",
+      "untracked_present": false,
+      "worktree_clean": true
+    },
+    "independent_review_findings": {
+      "prior_reviewer_role_receipt": "/home/alex/.local/state/grabowski/schauwerk-pr203-claude-review-5c5759de.json",
+      "prior_role_verdict": "INVALID",
+      "reproduced_scopes": [
+        "edit popup during target selection",
+        "retry action hidden in tools menu",
+        "legacy external editor footer occluded",
+        "landscape native status truncation"
+      ],
+      "role_output_contains_actionable_but_non_authoritative_findings": true
+    },
+    "legacy_readback": {
+      "case_count": 1,
+      "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "lifecycle_receipt_sha256": "d2c3bbaff1b7923a37a3c5a3266162ad496d07be56bb2ec2764bd8c25ab27443",
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008/legacy-visual-readback.json",
+      "readback_json_sha256": "f6fdbd78793e398d4190272fdc617e9efa4849f27feb4f8a0b093815e1b56372",
+      "result": "passed",
+      "task_id": "40ebe64f129e4cc58506e0dd"
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "lifecycle_receipt_sha256": "2e8c9c223830b6901c87207982086be7515158d963e915ca5dc46ec9a56f9dbe",
+      "passed_count": 1667,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "19a093ab49ca425abc7c967b"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "result": "passed",
+      "reviewer": "ChatGPT acting on exact-head Browser/PNG readbacks; no automatic aesthetic inference from tests",
+      "scope": "9 head-bound browser states including tall mobile graph and external Legacy footer"
+    },
+    "visual_readback": {
+      "case_count": 8,
+      "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+      "lifecycle_receipt_sha256": "beeb3e9aa17ac94e00fa045001eca6d0fa356a8fb8c91be3410431cb77b1f4f8",
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008/visual-readback.json",
+      "readback_json_sha256": "b490753a4a55ea32abc5fc6caa9a251063dbfcf6afdcdf28cfa93473a51b2ddf",
+      "result": "passed",
+      "task_id": "b37f6cfc83b04c5db46be53e"
+    }
+  },
+  "checks": {
+    "engine_specific_export_capabilities_preserved": true,
+    "exact_head_visual_readback_and_human_visible_inspection_passed": true,
+    "independent_observer_clean_head_verified": true,
+    "landscape_844_and_tablet_status_instructions_not_clipped": true,
+    "legacy_drawio_footer_visible_without_reintroducing_gutters": true,
+    "mobile_edit_popover_closes_for_connection_target_actions": true,
+    "native_failed_rebuild_retry_button_reachable_directly": true,
+    "parent_acceptance_left_byte_immutable": true,
+    "pre_successor_validate_failed_only_on_expected_binding_gate": true,
+    "responsive_chromium_browser_smoke_passed": true,
+    "single_workspace_full_viewport_native_and_legacy": true,
+    "successor_source_hashes_exactly_six_paths": true,
+    "tall_diagram_fits_below_manual_zoom_floor": true,
+    "zoom_out_never_enlarges_after_subfloor_fit": true
+  },
+  "does_not_establish": [
+    "user post-change aesthetic approval beyond recorded operator visual inspection",
+    "independent decision-bound reviewer PASS for future evidence commit",
+    "GitHub CI success on later successor-evidence head",
+    "all remote review threads terminal after successor publication",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication or production deployment"
+  ],
+  "evidence_digest": "eacf84fab117c496ad8ae37df95ddb72d89ff0b8bc8282b792219d28b986e774",
+  "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+  "parent_evidence": {
+    "evidence_digest": "13ad5fc3ab685b4d3762ec23a2dcd3f19ef8850988a6fec0232cb4cdb999892a",
+    "file_sha256": "055d95886c4d8d3ae52a4487aaf8b015113045f2f25e904a602c28b4322f9f52",
+    "path": "docs/operators/evidence/schaubild-single-workspace-review-closure-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-review-closure.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-review-hardening.v1",
+  "scope": "schaubild-single-workspace-review-hardening-autofit-retry-legacy-responsive",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a78ef24e7021e07fd13b8c5469dbaa75f2fe308ee6a60cc4d0b5883ece1f117d",
+    "src/schauwerk/resources/standalone_editor/assets.py": "c4a6a9518687232b2112773b925136a30ddeac9313190e286d2b4be1f8d2ee3a",
+    "tests/visual/test_native_viewer.py": "361ebcf150f51220c3f29d8bd51ac69b5eded72004dd0726b5c8069a73a7d370",
+    "tests/visual/test_native_viewer_browser.py": "970fa83d1a09f349cf2ac7fb2bdf61eac60fb781592e83cc8b46018ac4daa9ec",
+    "tests/visual/test_standalone_editor.py": "93dc045c7648858fa9d6fca21ea8acae4e49c699a5eeb658ad6307d059976e52",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0f913d9a1575ef82f2cf1ae18b63a511bb63930b99fad460be80fd7b9da295ee"
+  }
+}

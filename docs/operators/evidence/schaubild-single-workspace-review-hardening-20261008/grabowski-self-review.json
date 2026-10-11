@@ -1,0 +1,44 @@
+{
+  "base_sha": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+  "diff_sha256": "e9a0f548f108401337a65f2e8b6a9b111b56c51550e205a76def29945e3481a5",
+  "does_not_establish": [
+    "independent external reviewer verdict",
+    "current GitHub head CI",
+    "Captain execution authority"
+  ],
+  "functional_head": "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70",
+  "iterations": [
+    {
+      "focus": "fit correctness",
+      "n": 1,
+      "result": "tall graph 4000px fits with native and hosted overlay clearance and ZoomOut direction preserved"
+    },
+    {
+      "focus": "interactive recovery",
+      "n": 2,
+      "result": "Edit popover closes for target selection; failed rebuild retry visible and actionable"
+    },
+    {
+      "focus": "legacy/mobile layout",
+      "n": 3,
+      "result": "draw.io footer remains unobstructed and canvas still full; 844 landscape status readable"
+    },
+    {
+      "focus": "tests and failure modes",
+      "n": 4,
+      "result": "18/18 exact-head Chromium smoke, 1667 passed and expected binding-only pre-successor fail"
+    },
+    {
+      "focus": "origin and integration",
+      "n": 5,
+      "result": "six source SHA-256s bound to parent acceptance; prior accepted receipts unchanged; merge checks still separate"
+    }
+  ],
+  "kind": "grabowski_self_review",
+  "legacy_visual_readback_json_sha256": "f6fdbd78793e398d4190272fdc617e9efa4849f27feb4f8a0b093815e1b56372",
+  "review_mode": "critical_diff_review",
+  "reviewed_at": "2026-10-08T06:04:37+00:00",
+  "schema_version": 1,
+  "verdict": "PASS for functional review only; not independent merge approval",
+  "visual_readback_json_sha256": "b490753a4a55ea32abc5fc6caa9a251063dbfcf6afdcdf28cfa93473a51b2ddf"
+}

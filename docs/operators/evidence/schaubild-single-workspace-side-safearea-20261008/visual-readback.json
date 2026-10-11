@@ -1,0 +1,812 @@
+{
+  "cases": [
+    {
+      "bar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 6,
+        "right": 314,
+        "top": 640,
+        "width": 308,
+        "x": 6,
+        "y": 640
+      },
+      "bar_inside_safe_area": true,
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 85,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 11,
+            "right": 98.359375,
+            "top": 645,
+            "width": 87.359375,
+            "x": 11,
+            "y": 645
+          },
+          "labelScrollWidth": 86,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 11,
+            "right": 98.359375,
+            "top": 645,
+            "width": 87.359375,
+            "x": 11,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 57,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 101.359375,
+            "right": 160.5625,
+            "top": 645,
+            "width": 59.203125,
+            "x": 101.359375,
+            "y": 645
+          },
+          "labelScrollWidth": 58,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 101.359375,
+            "right": 160.5625,
+            "top": 645,
+            "width": 59.203125,
+            "x": 101.359375,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 76,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 163.5625,
+            "right": 241.5625,
+            "top": 645,
+            "width": 78,
+            "x": 163.5625,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "\"Speichern\"",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 163.5625,
+            "right": 241.5625,
+            "top": 645,
+            "width": 78,
+            "x": 163.5625,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 62,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 244.5625,
+            "right": 309,
+            "top": 645,
+            "width": 64.4375,
+            "x": 244.5625,
+            "y": 645
+          },
+          "labelScrollWidth": 62,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 244.5625,
+            "right": 309,
+            "top": 645,
+            "width": 64.4375,
+            "x": 244.5625,
+            "y": 645
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 700,
+      "overlap": [],
+      "popover": {
+        "bottom": 633,
+        "height": 54,
+        "left": 182.234375,
+        "right": 314,
+        "top": 579,
+        "width": 131.765625,
+        "x": 182.234375,
+        "y": 579
+      },
+      "popover_inside_safe_area": true,
+      "screenshot_bytes": 26394,
+      "screenshot_file": "readback-320x700-left0-right0.png",
+      "screenshot_sha256": "b5c754965abe754d58739fb28d193bc2b30299b9913cc223d8fbad62642871d3",
+      "scrollWidth": 320,
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "bar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 6,
+        "right": 276,
+        "top": 640,
+        "width": 270,
+        "x": 6,
+        "y": 640
+      },
+      "bar_inside_safe_area": true,
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 67,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 11,
+            "right": 79.546875,
+            "top": 645,
+            "width": 68.546875,
+            "x": 11,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 11,
+            "right": 79.546875,
+            "top": 645,
+            "width": 68.546875,
+            "x": 11,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 44,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 82.546875,
+            "right": 129,
+            "top": 645,
+            "width": 46.453125,
+            "x": 82.546875,
+            "y": 645
+          },
+          "labelScrollWidth": 51,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 82.546875,
+            "right": 129,
+            "top": 645,
+            "width": 46.453125,
+            "x": 82.546875,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 76,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 132,
+            "right": 210,
+            "top": 645,
+            "width": 78,
+            "x": 132,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "\"Speichern\"",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 132,
+            "right": 210,
+            "top": 645,
+            "width": 78,
+            "x": 132,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 56,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 213,
+            "right": 271,
+            "top": 645,
+            "width": 58,
+            "x": 213,
+            "y": 645
+          },
+          "labelScrollWidth": 56,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 213,
+            "right": 271,
+            "top": 645,
+            "width": 58,
+            "x": 213,
+            "y": 645
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 700,
+      "overlap": [],
+      "popover": {
+        "bottom": 633,
+        "height": 54,
+        "left": 144.234375,
+        "right": 276,
+        "top": 579,
+        "width": 131.765625,
+        "x": 144.234375,
+        "y": 579
+      },
+      "popover_inside_safe_area": true,
+      "screenshot_bytes": 27085,
+      "screenshot_file": "readback-320x700-left0-right44.png",
+      "screenshot_sha256": "b60ba7cbb8e293596ec88c28ca2ea101b791cc4f6637ac49532cdfe1c28ba86f",
+      "scrollWidth": 320,
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 320
+    },
+    {
+      "bar": {
+        "bottom": 692,
+        "height": 52,
+        "left": 44,
+        "right": 314,
+        "top": 640,
+        "width": 270,
+        "x": 44,
+        "y": 640
+      },
+      "bar_inside_safe_area": true,
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 67,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 49,
+            "right": 117.546875,
+            "top": 645,
+            "width": 68.546875,
+            "x": 49,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 49,
+            "right": 117.546875,
+            "top": 645,
+            "width": 68.546875,
+            "x": 49,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 44,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 120.546875,
+            "right": 167,
+            "top": 645,
+            "width": 46.453125,
+            "x": 120.546875,
+            "y": 645
+          },
+          "labelScrollWidth": 51,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 120.546875,
+            "right": 167,
+            "top": 645,
+            "width": 46.453125,
+            "x": 120.546875,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 76,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 170,
+            "right": 248,
+            "top": 645,
+            "width": 78,
+            "x": 170,
+            "y": 645
+          },
+          "labelScrollWidth": 76,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "\"Speichern\"",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 170,
+            "right": 248,
+            "top": 645,
+            "width": 78,
+            "x": 170,
+            "y": 645
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 56,
+          "labelRect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 251,
+            "right": 309,
+            "top": 645,
+            "width": 58,
+            "x": 251,
+            "y": 645
+          },
+          "labelScrollWidth": 56,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 687,
+            "height": 42,
+            "left": 251,
+            "right": 309,
+            "top": 645,
+            "width": 58,
+            "x": 251,
+            "y": 645
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 700,
+      "overlap": [],
+      "popover": {
+        "bottom": 633,
+        "height": 54,
+        "left": 182.234375,
+        "right": 314,
+        "top": 579,
+        "width": 131.765625,
+        "x": 182.234375,
+        "y": 579
+      },
+      "popover_inside_safe_area": true,
+      "screenshot_bytes": 27341,
+      "screenshot_file": "readback-320x700-left44-right0.png",
+      "screenshot_sha256": "38f3038fae555298e35cafa1476918dcf6a4c52b13667c84869343299d4e5153",
+      "scrollWidth": 320,
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "bar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 6,
+        "right": 346,
+        "top": 784,
+        "width": 340,
+        "x": 6,
+        "y": 784
+      },
+      "bar_inside_safe_area": true,
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 69,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 11,
+            "right": 82.171875,
+            "top": 789,
+            "width": 71.171875,
+            "x": 11,
+            "y": 789
+          },
+          "labelScrollWidth": 80,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 11,
+            "right": 82.171875,
+            "top": 789,
+            "width": 71.171875,
+            "x": 11,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 46,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 85.171875,
+            "right": 133.140625,
+            "top": 789,
+            "width": 47.96875,
+            "x": 85.171875,
+            "y": 789
+          },
+          "labelScrollWidth": 53,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 85.171875,
+            "right": 133.140625,
+            "top": 789,
+            "width": 47.96875,
+            "x": 85.171875,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 142,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 136.140625,
+            "right": 280,
+            "top": 789,
+            "width": 143.859375,
+            "x": 136.140625,
+            "y": 789
+          },
+          "labelScrollWidth": 160,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 136.140625,
+            "right": 280,
+            "top": 789,
+            "width": 143.859375,
+            "x": 136.140625,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 56,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 283,
+            "right": 341,
+            "top": 789,
+            "width": 58,
+            "x": 283,
+            "y": 789
+          },
+          "labelScrollWidth": 56,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 283,
+            "right": 341,
+            "top": 789,
+            "width": 58,
+            "x": 283,
+            "y": 789
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 844,
+      "overlap": [],
+      "popover": {
+        "bottom": 777,
+        "height": 54,
+        "left": 214.234375,
+        "right": 346,
+        "top": 723,
+        "width": 131.765625,
+        "x": 214.234375,
+        "y": 723
+      },
+      "popover_inside_safe_area": true,
+      "screenshot_bytes": 33059,
+      "screenshot_file": "readback-390x844-left0-right44.png",
+      "screenshot_sha256": "a546cfaa77551fcf8c78ce60b7678b7e1472331fd14f3f4bcc1587bb490f0c16",
+      "scrollWidth": 390,
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 390
+    },
+    {
+      "bar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 44,
+        "right": 384,
+        "top": 784,
+        "width": 340,
+        "x": 44,
+        "y": 784
+      },
+      "bar_inside_safe_area": true,
+      "controls": [
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 69,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 49,
+            "right": 120.171875,
+            "top": 789,
+            "width": 71.171875,
+            "x": 49,
+            "y": 789
+          },
+          "labelScrollWidth": 80,
+          "labelText": "Werkzeuge",
+          "name": "tools",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 49,
+            "right": 120.171875,
+            "top": 789,
+            "width": 71.171875,
+            "x": 49,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": null,
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 46,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 123.171875,
+            "right": 171.140625,
+            "top": 789,
+            "width": 47.96875,
+            "x": 123.171875,
+            "y": 789
+          },
+          "labelScrollWidth": 53,
+          "labelText": "Export",
+          "name": "export",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 123.171875,
+            "right": 171.140625,
+            "top": 789,
+            "width": 47.96875,
+            "x": 123.171875,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Originalprojekt speichern",
+          "display": "flex",
+          "hidden": false,
+          "labelClientWidth": 142,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 174.140625,
+            "right": 318,
+            "top": 789,
+            "width": 143.859375,
+            "x": 174.140625,
+            "y": 789
+          },
+          "labelScrollWidth": 160,
+          "labelText": "Originalprojekt speichern",
+          "name": "download",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 174.140625,
+            "right": 318,
+            "top": 789,
+            "width": 143.859375,
+            "x": 174.140625,
+            "y": 789
+          },
+          "title": ""
+        },
+        {
+          "ariaLabel": "Arbeitsfläche schließen und zum Start zurückkehren",
+          "display": "block",
+          "hidden": false,
+          "labelClientWidth": 56,
+          "labelRect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 321,
+            "right": 379,
+            "top": 789,
+            "width": 58,
+            "x": 321,
+            "y": 789
+          },
+          "labelScrollWidth": 56,
+          "labelText": "Zurück",
+          "name": "back",
+          "pseudoContent": "none",
+          "rect": {
+            "bottom": 831,
+            "height": 42,
+            "left": 321,
+            "right": 379,
+            "top": 789,
+            "width": 58,
+            "x": 321,
+            "y": 789
+          },
+          "title": "Zurück zum Start"
+        }
+      ],
+      "height": 844,
+      "overlap": [],
+      "popover": {
+        "bottom": 777,
+        "height": 54,
+        "left": 252.234375,
+        "right": 384,
+        "top": 723,
+        "width": 131.765625,
+        "x": 252.234375,
+        "y": 723
+      },
+      "popover_inside_safe_area": true,
+      "screenshot_bytes": 33468,
+      "screenshot_file": "readback-390x844-left44-right0.png",
+      "screenshot_sha256": "2bdc0fa3bf3999b0d9407ea24d4bf6f3f0831036c0d40d3ef1127d7525588fba",
+      "scrollWidth": 390,
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 390
+    }
+  ],
+  "functional_head": "07822fe7e71390f95a50545db778ba45d5780fd0",
+  "schema_version": "schauwerk-pr203-side-safearea-visual.v1",
+  "viewport_method": "Chrome CDP Emulation.setDeviceMetricsOverride; CSS env(left/right) values substituted only in isolated output"
+}

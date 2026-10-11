@@ -1,0 +1,141 @@
+{
+  "accepted_at": "2026-10-08T10:00:55+00:00",
+  "base_product_head": "888415a1a812133875a02f565d831fde61acff3e",
+  "check_evidence": {
+    "confirmed_ci_failure": {
+      "failed_platform": "GitHub Actions Python 3.12 Chrome",
+      "observed_clearance_px": -7.13,
+      "retry_with_clean_chrome_profile_also_failed": true,
+      "reviewed_head": "888415a1a812133875a02f565d831fde61acff3e",
+      "workflow_job_id": 113210767664,
+      "workflow_run_id": 37747009123
+    },
+    "exact_head_browser_smoke": {
+      "failed_count": 0,
+      "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "lifecycle_receipt_sha256": "ba8a690a876b56cc58b7541f134eaba5c614d69907c9b89cfd61b8b4025e6662",
+      "passed_count": 18,
+      "result": "passed",
+      "task_id": "3838d87b0af54d9890204cab"
+    },
+    "git_diff_check": {
+      "base_sha": "888415a1a812133875a02f565d831fde61acff3e",
+      "diff_bytes": 4655,
+      "diff_sha256": "a04f5d33f0e2fee02cfd228ae1015b61079e2625196fe015e117d35550a1470b",
+      "head_sha": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "result": "passed"
+    },
+    "independent_observer_readback": {
+      "observation_complete": true,
+      "observed_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "observer": "grosser-adler",
+      "untracked_present": false,
+      "worktree_clean": true
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "lifecycle_receipt_sha256": "e01c42b88a18d5570b6de77fa60f3834a29b94cf8f2874387caa2d71d0f63716",
+      "passed_count": 1667,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "bd0aa682b31c4c76adadd4a3"
+    },
+    "prior_independent_review": {
+      "does_not_prove_new_head_pass": true,
+      "finding": "Retry z-index 23 blocked SVG export popover z-index 22 during native rebuild failure",
+      "reviewed_head": "888415a1a812133875a02f565d831fde61acff3e",
+      "reviewer": "antigravity-gemini-pro-review-high",
+      "unit": "grabowski-job-189a8bb08d9f",
+      "verdict": "NEEDS_CHANGE"
+    },
+    "recovery_export_hit_tests": {
+      "desktop_task_id": "15734914565b4a6a880770cf",
+      "mobile_task_id": "b1aa6a177641426caee3faaa",
+      "previous_mobile_red_task_id": "4ecbce8c601d4a6f974acf18",
+      "result": "passed",
+      "test_node": "tests/visual/test_standalone_editor.py::test_native_rebuild_failure_keeps_inconsistent_frame_inert_until_retry",
+      "widths": [
+        390,
+        1366
+      ]
+    },
+    "status_growth_readback": {
+      "case_count": 1,
+      "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "lifecycle_receipt_sha256": "bb071123a3e58b70ee09666b89a3dee260da299ad1ecd7fe675ce6f40c9ca2fc",
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008/status-growth-readback.json",
+      "readback_json_sha256": "a9c9dca2ecea3d4a1345821cb41682b0a80dce53f727cbf7961f2884848c5555",
+      "result": "passed",
+      "task_id": "7464f12c35ee4e1eb34b227b"
+    },
+    "status_growth_reproduction": {
+      "after_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "after_native_clearance_px": 20.00372314453125,
+      "after_task_id": "7464f12c35ee4e1eb34b227b",
+      "bar_height_change_px": 84,
+      "before_head": "888415a1a812133875a02f565d831fde61acff3e",
+      "before_native_clearance_px": -62.275604248046875,
+      "before_task_id": "0b271eb8d1404efda61a556c",
+      "result": "passed",
+      "status_text": "Ansicht angepasst"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "reviewer": "ChatGPT visual inspection of exact-head PNGs; separate from technical checks",
+      "scope": "Actual normal mobile and tall-graph PNGs; no toolbar/host overlap, full canvas. Forced giant status is a geometry stress test, not production design."
+    },
+    "visual_readback": {
+      "case_count": 8,
+      "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+      "lifecycle_receipt_sha256": "ff534dc75e05f6be0b835802ae2cbff22d263c09a6b7b174cf99a9ebfdd3dcde",
+      "readback_json_path": "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008/visual-readback.json",
+      "readback_json_sha256": "2753e45cd1f29eab7cd4568633cb32501fcb4631ac3c4cba302e45a73b8f4a91",
+      "result": "passed",
+      "task_id": "cd68019981ab451695412436"
+    }
+  },
+  "checks": {
+    "ci_390x844_toolbar_height_reflow_clearance_regression": true,
+    "exact_functional_head_browser_smoke_passed": true,
+    "independent_observer_clean_functional_head": true,
+    "mobile_native_original_graph_and_full_canvas_preserved": true,
+    "native_status_committed_before_fit_geometry": true,
+    "normal_visual_acceptance_independently_inspected": true,
+    "only_five_source_and_test_sha_revisions_bound": true,
+    "parent_acceptance_bytes_unchanged": true,
+    "pre_successor_validate_only_expected_digest_gate": true,
+    "recovery_button_clickable_when_menu_closed": true,
+    "recovery_button_does_not_occlude_open_svg_export_menu": true,
+    "retry_behind_popovers_no_new_canvas_gutter": true,
+    "synthetic_stress_status_not_treated_as_aesthetic_asset": true
+  },
+  "does_not_establish": [
+    "new independent decision-bound reviewer PASS for the successor evidence head",
+    "new GitHub CI success on successor evidence head",
+    "final current PR review thread settlement",
+    "Captain merge authority",
+    "merge to main",
+    "production deployment"
+  ],
+  "evidence_digest": "b17f1bab706a8e39a10efc4e93e7ed79ce4e85a28bc266e81d9a35c223a14f9d",
+  "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+  "parent_evidence": {
+    "evidence_digest": "2a9ab1352ae36f72f4bc65046a47d19447998d3ec640a6d8b02a1fc03211522b",
+    "file_sha256": "be154a73a5b7041f68af8ef7eb863a7dc5cc78cea2af02e810b650ad9a5693ee",
+    "path": "docs/operators/evidence/schaubild-single-workspace-zoom-continuity-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-zoom-continuity.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-fit-retry.v1",
+  "scope": "schaubild-single-workspace-native-fit-final-status-layout-and-error-retry-popover",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "366c4bbf8d2e93504ae6d00db033cf058804b09cb47091f4a40ec679a71641bc",
+    "src/schauwerk/resources/standalone_editor/assets.py": "6fcc567f33d8df0cc0fcc1bf5c5547d7f0f20765bc795fcb704b5cd9b03fafbf",
+    "tests/visual/test_native_viewer.py": "cc08bddf887eb9b4adb0ee03934001e7ca41e17824f34b46ea3c87cd66e3fab5",
+    "tests/visual/test_standalone_editor.py": "76269687bf9f0bda04f1c7995f2d1d53a5b09096377ab61ed7a9e95c4831884d",
+    "tests/visual/test_standalone_editor_single_workspace.py": "93279b73bc6a151b8b98cf2ad9814933416836153e5c3937f15f3211fe79a18b"
+  }
+}

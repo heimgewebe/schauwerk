@@ -41,6 +41,21 @@ def test_browser_smoke_retries_once_with_fresh_profiles(
     assert "--user-data-dir=" in calls[1]["wrapper"]
 
 
+
+def test_browser_smoke_runner_covers_makefile_filter_exactly() -> None:
+    root = Path(__file__).resolve().parents[2]
+    makefile = (root / "Makefile").read_text(encoding="utf-8")
+    prefix = "BROWSER_SMOKE_FILTER := "
+    filter_line = next(line for line in makefile.splitlines() if line.startswith(prefix))
+    filtered_names = set(filter_line.removeprefix(prefix).split(" or "))
+    runner_names = {
+        nodeid.rsplit("::", 1)[1]
+        for nodeid in run_browser_smoke.BROWSER_SMOKE_TESTS
+    }
+
+    assert runner_names == filtered_names
+
+
 def test_ci_python_failure_stops_before_browser_smoke(tmp_path: Path) -> None:
     marker = tmp_path / "browser-smoke-started"
     fake_python = tmp_path / "python"

@@ -1,0 +1,207 @@
+{
+  "check_evidence": {
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "aa0f56b4017c",
+      "passed_count": 5
+    },
+    "full_chromium_green": {
+      "failed_count": 0,
+      "job_id": "7739e36700f4",
+      "passed_count": 28
+    },
+    "independent_prior_p2": {
+      "finding_count": 3,
+      "job_id": "7139f754b1bf",
+      "reviewed_head": "ceeeedd560245067292f385acde96a21756650ac",
+      "verdict": "NEEDS_CHANGE"
+    },
+    "pinch_jitter_red": {
+      "failure": "Sub-threshold two-finger jitter changed view during tap",
+      "job_id": "b5208e3a832e"
+    },
+    "ruff_green": {
+      "job_id": "a1efa8c2d935",
+      "result": "passed"
+    },
+    "save_caption_red": {
+      "failure": "P2: visible Speichern caption is shortened: 48/56",
+      "job_id": "713cc9a75298"
+    },
+    "static_native_green": {
+      "job_id": "3106fa4f7be2",
+      "result": "passed"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Not physical iOS/Safari acceptance",
+        "At 320px Native toolbar occupies two rows; documented existing responsive behavior, not introduced by these fixes",
+        "Acceptance validates controls and overlay geometry, not general readability of the miniature test diagram",
+        "Screenshot images are test evidence, not reusable Fundus production assets",
+        "No previous visual acceptance inherited for changed revision"
+      ],
+      "method": "Eight original Desktop Chrome CDP screenshots individually visually inspected; Speichern, Tools, Export, Zurück complete; Native overlays in both 44px safe areas"
+    },
+    "visual_capture_green": {
+      "failed_count": 0,
+      "job_id": "8b4a9eeba3dd",
+      "passed_count": 4
+    }
+  },
+  "checks": {
+    "all_actions_meet_touch_hitbox_geometry": true,
+    "eight_png_geometry_digest_and_dimensions_verified": true,
+    "focused_320_and_390_chrome_green": true,
+    "full_28_case_chromium_smoke_green": true,
+    "native_safeareas_controls_footer_clear": true,
+    "parent_acceptance_immutable": true,
+    "prior_red_pinch_jitter_reproduced": true,
+    "prior_red_visible_save_truncation_reproduced": true,
+    "source_and_browser_test_revision_bound": true,
+    "temporary_capture_instrumentation_restored": true,
+    "visible_and_accessible_labels_agree": true,
+    "visible_save_text_complete_both_sides": true,
+    "visual_screenshots_individually_accepted": true
+  },
+  "does_not_establish": [
+    "full make validate including new publication successor",
+    "final GitHub CI including Python 3.12",
+    "independent exact-head Reviewer PASS",
+    "Codex-Review-Settlement",
+    "Captain merge authorization",
+    "physical iOS/Safari acceptance",
+    "production deployment"
+  ],
+  "evidence_digest": "4cb9e5b431942949949f4b711953cce2b663895e4eb93eacae66f6efbac8a3f4",
+  "functional_head": "7d906571d24cd73d788251ff529b140fa238604f",
+  "parent_evidence": {
+    "evidence_digest": "d717fbf42eb62908af6029a1869ed9d02118c3bf350e49592d7258b8dd9c3aa5",
+    "file_sha256": "c63343fa286784aabeb584bea84e840741de4fd3170649354eb46ece18cc02e5",
+    "path": "docs/operators/evidence/schaubild-single-workspace-review-p2-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-review-p2.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-pinch-save.v1",
+  "scope": "Pinch subthreshold touch jitter must keep prior auto-fit; mobile Save action must display complete Speichern and accessible name starts with visible label; Native/Legacy safe areas maintained",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1dd9ad2c0d77a9068289a422e3811979242cf4e7dd6faa1f5f9e031aa6917366",
+    "src/schauwerk/resources/standalone_editor/assets.py": "6b928aa2f2f1d729cbc79609bb2e17182a44b0ad3aa9c0357d2be1648a4d7ce4",
+    "tests/visual/test_native_viewer.py": "ef08658fb3456b83c900ae01a195d86efb69e3861833345dcfe2a459d30700ee",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "22fc6bc1399bd0665de79f003e1dc2f1d8395ba1461157bc9c317f4de14f24d7",
+    "tests/visual/test_standalone_editor_single_workspace.py": "a83a56e297663096526709e5feb924769b5f7eb265d23845bcc855aac7be88bc"
+  },
+  "visual_readbacks": {
+    "pinch_save": {
+      "case_count": 8,
+      "path": "docs/operators/evidence/schaubild-single-workspace-pinch-save-20261009/visual-pinch-save-readback.json",
+      "schema_version": "schauwerk-pr203-pinch-save-chromium-cdp.v1",
+      "screenshots": {
+        "native-320x700-left0-right44.png": {
+          "bytes": 23445,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "ad46b8979c283aacd899279efe2041eff58e9208055e09351dd88bd4d4aa7832",
+          "stage": "native",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "native-320x700-left44-right0.png": {
+          "bytes": 23159,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "b0333198f6f1ccd33b18fe896ee3268502f9a7d139c2546c9efd74c4156df044",
+          "stage": "native",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "native-390x844-left0-right44.png": {
+          "bytes": 27322,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "d00185e5395155bdf20762436f05abbe0f2ac97c56fbba1b623bf26337e469f4",
+          "stage": "native",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "native-390x844-left44-right0.png": {
+          "bytes": 27080,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "84534b1724660cac40c341b05446a0e9683b279401f4f0034c9973d2f00eeaec",
+          "stage": "native",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "tools-320x700-left0-right44.png": {
+          "bytes": 31041,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "e2623795c2986a434fe71c85988e680fe191a76d031be55777a96701c25871d6",
+          "stage": "tools",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "tools-320x700-left44-right0.png": {
+          "bytes": 30528,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "992c695d5796edd5faf1ee77eda546dae1b97ad3550d79cb10b96313c43ef8b9",
+          "stage": "tools",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "tools-390x844-left0-right44.png": {
+          "bytes": 33076,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "4026b9e58192878aed0ced07da30026f9c62a18f8aa4f7574cc1fa816e3ac1f0",
+          "stage": "tools",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "tools-390x844-left44-right0.png": {
+          "bytes": 32787,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "a0f1da25619bc728a8e9a42b68c223d5f19027fd75b6e85a0b2e0a83c70dc2c4",
+          "stage": "tools",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "c405d71b36ed83abb4cd76c2a9d6825d9ddfae77b8706bc4181d05a45a1ef69a"
+    }
+  }
+}

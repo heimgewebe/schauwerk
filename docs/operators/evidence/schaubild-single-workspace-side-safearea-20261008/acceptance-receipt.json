@@ -1,0 +1,202 @@
+{
+  "base_product_head": "369bd1c6f78f3e9e04cd89a8d02578647ded3601",
+  "check_evidence": {
+    "canonical_browser_smoke": {
+      "failed_count": 0,
+      "passed_count": 24,
+      "result": "passed",
+      "task_id": "ee991a695ef54b29a847b089"
+    },
+    "corrected_static_css_tests": {
+      "failed_count": 0,
+      "passed_count": 8,
+      "result": "passed",
+      "task_id": "014ae83c172040ca8d919cdf"
+    },
+    "native_prompt_green": {
+      "failed_count": 0,
+      "passed_count": 5,
+      "result": "passed",
+      "task_id": "1520ce44e8ec48b68ebcc47a"
+    },
+    "pre_successor_full_validate": {
+      "compile_passed": true,
+      "expected_failure": "historical immutable source SHA requires successor",
+      "failed_count": 1,
+      "passed_count": 1673,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "7daee6a3387a47958e9aacc6"
+    },
+    "red_side_before": {
+      "case": "320x700,right-side safe area 44px",
+      "observed_left_css_px": -32,
+      "result": "failed",
+      "task_id": "e669b8f72eab4d5ab96cb7ce"
+    },
+    "review_findings": [
+      {
+        "path": "src/schauwerk/resources/standalone_editor/assets.py",
+        "severity": "P1",
+        "summary": "left/right 44px notch inset pushes mobile bar/popovers off usable viewport"
+      },
+      {
+        "path": "src/schauwerk/resources/native_viewer/assets.py",
+        "severity": "P2",
+        "summary": "native editing process instructions covered by 320px zoom/edit controls"
+      }
+    ],
+    "side_green": {
+      "result": "passed",
+      "scope": "4 true CSS viewport side inset cases via CDP",
+      "task_id": "c07d4690eb9b4e36b53cdab1"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "method": "seven actual PNG screenshots inspected separately from test metrics",
+      "reviewed_product_code_head": "07822fe7e71390f95a50545db778ba45d5780fd0",
+      "reviewed_qa_head": "88833933230b270ffdfba60aee2b5fe0977623da",
+      "scope": "320px and 390px side inset host bar/export popup and editable native workflow instruction overlay; no physical iOS/Safari acceptance",
+      "source_sha_identity_verified": true
+    },
+    "workflow_baseline": {
+      "observation": "process status overlaps toolbar in narrower native host view; separate row required",
+      "task_id": "b299ff0be1b844b6967e72c4"
+    }
+  },
+  "checks": {
+    "all_source_files_sha256_bound": true,
+    "current_p1_p2_browser_smoke_passed": true,
+    "old_source_sha_gate_failure_proven": true,
+    "png_sha256_bindings_complete": true,
+    "product_bytes_unchanged_since_side_capture": true,
+    "real_browser_viewports_verified": true,
+    "side_safe_area_geometry_valid": true,
+    "status_prompt_unobstructed": true,
+    "unchanged_parent_evidence": true,
+    "visual_acceptance_separate": true
+  },
+  "does_not_establish": [
+    "full suite on successor-evidence head",
+    "remote GitHub CI",
+    "independent review PASS on successor-evidence head",
+    "Captain merge authority",
+    "physical iOS/Safari verification",
+    "production deployment"
+  ],
+  "evidence_digest": "92546903690340910463d3ba74243e487939375fff2a2d45316583e30a918aed",
+  "functional_head": "88833933230b270ffdfba60aee2b5fe0977623da",
+  "parent_evidence": {
+    "evidence_digest": "a58b451e9a359bea12b3a873ffef620245eb241c0de2ecd2473d8649bc40996b",
+    "file_sha256": "bdb50ced6dcfc8815e9e3dac4891b5508b1960069d642f6df3ec04bf3414c79f",
+    "path": "docs/operators/evidence/schaubild-single-workspace-mobile-320-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-mobile-320.v1"
+  },
+  "product_css_head": "07822fe7e71390f95a50545db778ba45d5780fd0",
+  "schema_version": "schauwerk-schaubild-single-workspace-side-safearea.v1",
+  "scope": "PR203-mobile-left-right-safe-area-and-native-process-prompt-320",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d595e0c055a654c45d8787457e65a5d3556d0a2d06159ef6e4c9539014c5a168",
+    "src/schauwerk/resources/standalone_editor/assets.py": "1e7e19f831a657f51f990d2fc13f09b1a231e54602c19c133d1cc72632477571",
+    "tests/visual/test_standalone_editor_font_controls.py": "7654b7a341e5635a28a80550fe1d6ff48abd8290803d46de1caf5f5f735c5df0",
+    "tests/visual/test_standalone_editor_product_ui.py": "61bbb9431c6833c1dd723bb74d12fb5129435cf5fbfbc19a040a3262f417a8b3",
+    "tests/visual/test_standalone_editor_single_workspace.py": "62b2b4775b0f8cb9601b18abafdfb2c995731ce92c6c861a77df964fe5308b09"
+  },
+  "visual_readbacks": {
+    "native_process_prompt": {
+      "case_count": 2,
+      "observed_head": "88833933230b270ffdfba60aee2b5fe0977623da",
+      "path": "docs/operators/evidence/schaubild-single-workspace-side-safearea-20261008/prompt-readback.json",
+      "result": "passed",
+      "screenshots": {
+        "prompt-native-320x700.png": {
+          "bytes": 29142,
+          "css_viewport": [
+            320,
+            700
+          ],
+          "sha256": "c4cde9d0f32266f4b569f186159ec23e0dfeee74dbe3777a818249a4f1665ea8"
+        },
+        "prompt-native-390x844.png": {
+          "bytes": 34457,
+          "css_viewport": [
+            390,
+            844
+          ],
+          "sha256": "37850a4beb78c8959f19dec2a0adcf4073c938d5d60d8161d29d5d2b562aa328"
+        }
+      },
+      "sha256": "48da9b7ae1acdd2e1723ba0d4f1367ba9b653e86af9d8d7ba5fa09d0e2381b76"
+    },
+    "side_safe_area": {
+      "case_count": 5,
+      "observed_head": "07822fe7e71390f95a50545db778ba45d5780fd0",
+      "path": "docs/operators/evidence/schaubild-single-workspace-side-safearea-20261008/visual-readback.json",
+      "result": "passed",
+      "screenshots": {
+        "readback-320x700-left0-right0.png": {
+          "bytes": 26394,
+          "css_viewport": [
+            320,
+            700
+          ],
+          "sha256": "b5c754965abe754d58739fb28d193bc2b30299b9913cc223d8fbad62642871d3",
+          "simulated_safe_inset": {
+            "left": 0,
+            "right": 0
+          }
+        },
+        "readback-320x700-left0-right44.png": {
+          "bytes": 27085,
+          "css_viewport": [
+            320,
+            700
+          ],
+          "sha256": "b60ba7cbb8e293596ec88c28ca2ea101b791cc4f6637ac49532cdfe1c28ba86f",
+          "simulated_safe_inset": {
+            "left": 0,
+            "right": 44
+          }
+        },
+        "readback-320x700-left44-right0.png": {
+          "bytes": 27341,
+          "css_viewport": [
+            320,
+            700
+          ],
+          "sha256": "38f3038fae555298e35cafa1476918dcf6a4c52b13667c84869343299d4e5153",
+          "simulated_safe_inset": {
+            "left": 44,
+            "right": 0
+          }
+        },
+        "readback-390x844-left0-right44.png": {
+          "bytes": 33059,
+          "css_viewport": [
+            390,
+            844
+          ],
+          "sha256": "a546cfaa77551fcf8c78ce60b7678b7e1472331fd14f3f4bcc1587bb490f0c16",
+          "simulated_safe_inset": {
+            "left": 0,
+            "right": 44
+          }
+        },
+        "readback-390x844-left44-right0.png": {
+          "bytes": 33468,
+          "css_viewport": [
+            390,
+            844
+          ],
+          "sha256": "2bdc0fa3bf3999b0d9407ea24d4bf6f3f0831036c0d40d3ef1127d7525588fba",
+          "simulated_safe_inset": {
+            "left": 44,
+            "right": 0
+          }
+        }
+      },
+      "sha256": "09cdfbf9653755f70e65966e61be3cb33f5fe0d6cceca09710c96b13005db5ab",
+      "source_byte_identity_verified_against_head": "88833933230b270ffdfba60aee2b5fe0977623da"
+    }
+  }
+}

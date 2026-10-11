@@ -1,0 +1,126 @@
+{
+  "geometry": {
+    "host": {
+      "actionBar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 251.265625,
+        "right": 384,
+        "top": 784,
+        "width": 132.734375,
+        "x": 251.265625,
+        "y": 784
+      },
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "statusBar": {
+        "bottom": 776,
+        "height": 28,
+        "left": 44,
+        "right": 119.578125,
+        "top": 748,
+        "width": 75.578125,
+        "x": 44,
+        "y": 748
+      }
+    },
+    "native": {
+      "bar": {
+        "bottom": 114.375,
+        "left": 44,
+        "right": 384,
+        "top": 6
+      },
+      "controls": [
+        {
+          "id": "zoomOut",
+          "rect": {
+            "bottom": 111.375,
+            "left": 73.828125,
+            "right": 115.828125,
+            "top": 69.375
+          }
+        },
+        {
+          "id": "zoomIn",
+          "rect": {
+            "bottom": 111.375,
+            "left": 117.828125,
+            "right": 159.828125,
+            "top": 69.375
+          }
+        },
+        {
+          "id": "fitView",
+          "rect": {
+            "bottom": 111.375,
+            "left": 161.828125,
+            "right": 247.46875,
+            "top": 69.375
+          }
+        },
+        {
+          "id": "resetLayout",
+          "rect": {
+            "bottom": 111.375,
+            "left": 249.46875,
+            "right": 291.46875,
+            "top": 69.375
+          }
+        },
+        {
+          "id": "SUMMARY",
+          "rect": {
+            "bottom": 108.375,
+            "left": 297.46875,
+            "right": 384,
+            "top": 66.375
+          }
+        }
+      ],
+      "footer": {
+        "bottom": 740,
+        "left": 44,
+        "right": 142.359375,
+        "top": 712
+      },
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "hostFooterBottom": "104px",
+      "hostSafeLeft": "44px",
+      "hostSafeRight": "6px",
+      "zoom": "translate(173.082px, 95px) scale(0.114992)"
+    },
+    "window": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  "png_bytes": 26987,
+  "png_sha256": "433c8735b000e6a65346542c2cccbef30c490f8e58d84cd9ab672e687efa2d41",
+  "schema_version": "schauwerk-pr203-embedded-native-cdp-visual.v1",
+  "simulated_host_safe_area": {
+    "left": 44,
+    "right": 0
+  },
+  "viewport": [
+    390,
+    844
+  ]
+}

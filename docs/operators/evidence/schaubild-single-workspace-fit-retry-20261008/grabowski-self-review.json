@@ -1,0 +1,44 @@
+{
+  "base_sha": "888415a1a812133875a02f565d831fde61acff3e",
+  "diff_sha256": "a04f5d33f0e2fee02cfd228ae1015b61079e2625196fe015e117d35550a1470b",
+  "does_not_establish": [
+    "current-head CI",
+    "independent reviewer PASS",
+    "Captain merge authorization"
+  ],
+  "functional_head": "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549",
+  "kind": "grabowski_self_review",
+  "passes": [
+    {
+      "focus": "CI reproducer",
+      "n": 1,
+      "result": "390x844 tall graph forced status growth from bar bottom 62 to146; before -62.28px, after +20.00px"
+    },
+    {
+      "focus": "fit algorithm",
+      "n": 2,
+      "result": "final status entered DOM before measuring bar/foot insets; no permanent canvas gutter added"
+    },
+    {
+      "focus": "retry vs export",
+      "n": 3,
+      "result": "real browser failed rebuild 390/1366 confirms svg hit target unobscured and retry remains clickable"
+    },
+    {
+      "focus": "functional regressions",
+      "n": 4,
+      "result": "26/26 native tests, 18/18 Chrome smoke, 1667 full suite passed with solely expected old SHA-binding failure"
+    },
+    {
+      "focus": "origin and scope",
+      "n": 5,
+      "result": "five exactly hashed Source/test revisions; immutable predecessor and visual screenshot digests bound"
+    }
+  ],
+  "review_mode": "five-pass scoped fit/retry functional review",
+  "reviewed_at": "2026-10-08T10:00:55+00:00",
+  "schema_version": 1,
+  "status_growth_readback_json_sha256": "a9c9dca2ecea3d4a1345821cb41682b0a80dce53f727cbf7961f2884848c5555",
+  "verdict": "PASS functional acceptance only, not independent review or merge approval",
+  "visual_readback_json_sha256": "2753e45cd1f29eab7cd4568633cb32501fcb4631ac3c4cba302e45a73b8f4a91"
+}

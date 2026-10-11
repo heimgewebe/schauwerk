@@ -1,0 +1,271 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 251.265625,
+            "right": 384,
+            "top": 784,
+            "width": 132.734375,
+            "x": 251.265625,
+            "y": 784
+          },
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "statusBar": {
+            "bottom": 776,
+            "height": 28,
+            "left": 44,
+            "right": 119.578125,
+            "top": 748,
+            "width": 75.578125,
+            "x": 44,
+            "y": 748
+          }
+        },
+        "native": {
+          "bar": {
+            "bottom": 114.375,
+            "left": 44,
+            "right": 384,
+            "top": 6
+          },
+          "controls": [
+            {
+              "id": "zoomOut",
+              "rect": {
+                "bottom": 111.375,
+                "left": 73.828125,
+                "right": 115.828125,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "zoomIn",
+              "rect": {
+                "bottom": 111.375,
+                "left": 117.828125,
+                "right": 159.828125,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "fitView",
+              "rect": {
+                "bottom": 111.375,
+                "left": 161.828125,
+                "right": 247.46875,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "resetLayout",
+              "rect": {
+                "bottom": 111.375,
+                "left": 249.46875,
+                "right": 291.46875,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "SUMMARY",
+              "rect": {
+                "bottom": 108.375,
+                "left": 297.46875,
+                "right": 384,
+                "top": 66.375
+              }
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "left": 44,
+            "right": 142.359375,
+            "top": 712
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "hostFooterBottom": "104px",
+          "hostSafeLeft": "44px",
+          "hostSafeRight": "6px",
+          "zoom": "translate(173.082px, 95px) scale(0.114992)"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_readback_file": "host-native-390x844-left44-right0.json",
+      "geometry_readback_sha256": "2f30f16f6c5e601d7ea6759de8e9ce000db28d3c67efc33c0e9605401f8dafb1",
+      "native_footer_host_action_overlap_area": 0,
+      "safe_area": {
+        "left": 44,
+        "right": 0
+      },
+      "screenshot_bytes": 26987,
+      "screenshot_file": "host-native-390x844-left44-right0.png",
+      "screenshot_sha256": "433c8735b000e6a65346542c2cccbef30c490f8e58d84cd9ab672e687efa2d41",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "geometry": {
+        "host": {
+          "actionBar": {
+            "bottom": 836,
+            "height": 52,
+            "left": 213.265625,
+            "right": 346,
+            "top": 784,
+            "width": 132.734375,
+            "x": 213.265625,
+            "y": 784
+          },
+          "stage": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "statusBar": {
+            "bottom": 776,
+            "height": 28,
+            "left": 8,
+            "right": 83.578125,
+            "top": 748,
+            "width": 75.578125,
+            "x": 8,
+            "y": 748
+          }
+        },
+        "native": {
+          "bar": {
+            "bottom": 114.375,
+            "left": 8,
+            "right": 346,
+            "top": 6
+          },
+          "controls": [
+            {
+              "id": "zoomOut",
+              "rect": {
+                "bottom": 111.375,
+                "left": 35.828125,
+                "right": 77.828125,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "zoomIn",
+              "rect": {
+                "bottom": 111.375,
+                "left": 79.828125,
+                "right": 121.828125,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "fitView",
+              "rect": {
+                "bottom": 111.375,
+                "left": 123.828125,
+                "right": 209.46875,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "resetLayout",
+              "rect": {
+                "bottom": 111.375,
+                "left": 211.46875,
+                "right": 253.46875,
+                "top": 69.375
+              }
+            },
+            {
+              "id": "SUMMARY",
+              "rect": {
+                "bottom": 108.375,
+                "left": 259.46875,
+                "right": 346,
+                "top": 66.375
+              }
+            }
+          ],
+          "footer": {
+            "bottom": 740,
+            "left": 8,
+            "right": 106.359375,
+            "top": 712
+          },
+          "frame": {
+            "bottom": 844,
+            "height": 844,
+            "left": 0,
+            "right": 390,
+            "top": 0,
+            "width": 390,
+            "x": 0,
+            "y": 0
+          },
+          "hostFooterBottom": "104px",
+          "hostSafeLeft": "8px",
+          "hostSafeRight": "44px",
+          "zoom": "translate(169.082px, 95px) scale(0.114992)"
+        },
+        "window": {
+          "height": 844,
+          "width": 390
+        }
+      },
+      "geometry_readback_file": "host-native-390x844-left0-right44.json",
+      "geometry_readback_sha256": "c9b1eba6f5f476f1f358b6242dd71055144e79bf2d83299093862e7263b9d12e",
+      "native_footer_host_action_overlap_area": 0,
+      "safe_area": {
+        "left": 0,
+        "right": 44
+      },
+      "screenshot_bytes": 27202,
+      "screenshot_file": "host-native-390x844-left0-right44.png",
+      "screenshot_sha256": "5ed7abe168b8946ac3e085c01f7125cec570fb369c3c7678a8a17d9337e292c4",
+      "viewport": [
+        390,
+        844
+      ]
+    }
+  ],
+  "functional_head": "271b0c988a82d23158c18721a8fb84441f25f3b4",
+  "schema_version": "schauwerk-pr203-embedded-host-safearea-chrome-cdp.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "ab761a69400cb07a34407704fabaec5de12a1d966c464c653afb804233a8060d",
+    "src/schauwerk/resources/standalone_editor/assets.py": "4ad3a6880e50f3fa089a48a8fd9c337eed5751cf793010cb136d67c7e91d0360",
+    "tests/visual/test_standalone_editor_font_controls.py": "9c288c574bc3f0257cf95e801b6f0fef94d44e523839a988511cee10fb566e02",
+    "tests/visual/test_standalone_editor_single_workspace.py": "8fde234d8fda85918790acb04518eac386239ebd85cb4261a32b3808bc3a3878"
+  },
+  "viewport_method": "Desktop Chrome CDP CSS viewport; isolated host CSS safe-inset substitution, not physical iOS/Safari"
+}

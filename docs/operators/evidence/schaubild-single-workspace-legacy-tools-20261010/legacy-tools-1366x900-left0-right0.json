@@ -1,0 +1,140 @@
+{
+  "geometry": {
+    "actions": [
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontDecreaseButton",
+        "rect": {
+          "bottom": 743,
+          "height": 40,
+          "left": 1007.203125,
+          "right": 1047.65625,
+          "top": 703,
+          "width": 40.453125
+        },
+        "text": "A−"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontPanelButton",
+        "rect": {
+          "bottom": 743,
+          "height": 40,
+          "left": 1051.65625,
+          "right": 1101.1875,
+          "top": 703,
+          "width": 49.53125
+        },
+        "text": "Text"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontIncreaseButton",
+        "rect": {
+          "bottom": 743,
+          "height": 40,
+          "left": 1105.1875,
+          "right": 1145.640625,
+          "top": 703,
+          "width": 40.453125
+        },
+        "text": "A+"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "fontAllButton",
+        "rect": {
+          "bottom": 743,
+          "height": 40,
+          "left": 1149.640625,
+          "right": 1203.125,
+          "top": 703,
+          "width": 53.484375
+        },
+        "text": "Alles"
+      },
+      {
+        "disabled": false,
+        "hidden": false,
+        "hit": true,
+        "id": "layoutButton",
+        "rect": {
+          "bottom": 793,
+          "height": 40,
+          "left": 1138.15625,
+          "right": 1207.125,
+          "top": 753,
+          "width": 68.96875
+        },
+        "text": "Ordnen"
+      }
+    ],
+    "bar": {
+      "bottom": 852,
+      "height": 50,
+      "left": 1153.03125,
+      "right": 1358,
+      "top": 802,
+      "width": 204.96875
+    },
+    "flexWrap": "nowrap",
+    "fullyFitted": true,
+    "hostVisibility": "visible",
+    "iframe": {
+      "bottom": 900,
+      "height": 900,
+      "left": 0,
+      "right": 1366,
+      "top": 0,
+      "width": 1366
+    },
+    "legacyToolsVisible": true,
+    "measuredBar": 50,
+    "pass": true,
+    "popover": {
+      "bottom": 800,
+      "height": 108,
+      "left": 996.203125,
+      "right": 1214.125,
+      "top": 692,
+      "width": 217.921875
+    },
+    "popoverGap": 2,
+    "safe": {
+      "left": 0,
+      "right": 0
+    },
+    "safeBar": true,
+    "safeMenu": true,
+    "sourceMode": true,
+    "stage": {
+      "bottom": 900,
+      "height": 900,
+      "left": 0,
+      "right": 1366,
+      "top": 0,
+      "width": 1366
+    },
+    "status": {
+      "bottom": 794,
+      "height": 29,
+      "left": 8,
+      "right": 253.140625,
+      "top": 765,
+      "width": 245.140625
+    },
+    "textVisible": true,
+    "viewport": {
+      "height": 900,
+      "width": 1366
+    }
+  }
+}

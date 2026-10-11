@@ -210,6 +210,130 @@ SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE = (
     ROOT
     / "docs/operators/evidence/schaubild-single-workspace-dark-status-20261004"
 )
+SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-max-canvas-20261005"
+)
+SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-fit-clearance-20261005"
+)
+SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-review-closure-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-review-hardening-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-zoom-continuity-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-popover-anchoring-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_FINAL_REVIEW_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-final-review-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_FIT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-safe-area-fit-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_TEST_CONTRACT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-safe-area-test-contract-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-mobile-320-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-side-safearea-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-font-legacy-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_INDEPENDENT_REMEDIATION_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-independent-remediation-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-late-review-menus-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-download-20261008"
+)
+SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-final-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_MOBILE_PROMPT_WIDTH_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-status-autofit-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-status-drag-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-gesture-cancel-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_POINTER_OWNER_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-pointer-owner-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-tap-autofit-rollback-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_EMBEDDED_HOST_SAFEAREA_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-embedded-host-safearea-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_REVIEW_P2_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-review-p2-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_PINCH_SAVE_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-pinch-save-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-host-retry-20261009"
+)
+SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE = (
+    ROOT
+    / "docs/operators/evidence/schaubild-single-workspace-ci-save-font-20261010"
+)
+SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-dual-notch-20261010"
+)
+SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-no-observer-20261010"
+)
+SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-legacy-tools-20261010"
+)
+SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE = (
+    ROOT / "docs/operators/evidence/schaubild-single-workspace-status-refit-20261010"
+)
 SOURCE = ROOT / "docs/operators/evidence/sw012-buehne-20260711/technical/public"
 
 
@@ -751,6 +875,189 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_product_ui.py",
     }
+    single_workspace_max_canvas_superseded_files = {
+        "Makefile",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_fit_clearance_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_review_closure_superseded_files = {
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_browser_smoke_runner.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_review_hardening_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_zoom_continuity_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_fit_retry_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_popover_anchoring_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_final_review_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_safe_area_fit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_safe_area_test_contract_superseded_files = {
+        "tests/visual/test_native_viewer.py",
+    }
+    single_workspace_mobile_320_superseded_files = {
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_side_safearea_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    single_workspace_ci_font_legacy_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
+    single_workspace_independent_remediation_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    single_workspace_late_review_menus_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_ci_download_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_ci_caption_safearea_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_mobile_prompt_width_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+    }
+    single_workspace_status_autofit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_status_drag_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_gesture_cancel_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_pointer_owner_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_tap_autofit_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_tap_autofit_browser.py",
+        "Makefile",
+        "scripts/run_browser_smoke.py",
+    }
+    single_workspace_embedded_host_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+    }
+    single_workspace_review_p2_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_tap_autofit_browser.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_pinch_save_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_tap_autofit_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_host_retry_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_ci_save_font_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_dual_notch_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_no_observer_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+    }
+    single_workspace_legacy_tools_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
+    single_workspace_status_refit_superseded_files = {
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
+    }
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -774,6 +1081,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(editor_successor["source_bindings"]) == editor_superseded_files
     for name, expected in editor_successor["source_bindings"].items():
+        if name in (
+            single_workspace_max_canvas_superseded_files
+            | single_workspace_review_closure_superseded_files
+        ):
+            continue
         if name not in (
             draft_restore_superseded_files
             | product_ui_superseded_files
@@ -1126,6 +1438,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(draft_restore_successor["source_bindings"]) == draft_restore_superseded_files
     for name, expected in draft_restore_successor["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             product_ui_superseded_files | json_canvas_text_fit_superseded_files
         ):
@@ -1237,6 +1551,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(product_ui_successor["source_bindings"]) == expected_product_ui_bindings
     for name, expected in product_ui_successor["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             product_ui_review_fix_superseded_files
             | final_ui_fix_superseded_files
@@ -1314,6 +1630,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert set(product_ui_review_fix["source_bindings"]) == expected_review_fix_bindings
     for name, expected in product_ui_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             final_ui_fix_superseded_files
             | json_canvas_text_fit_superseded_files
@@ -1392,6 +1710,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(final_ui_fix["source_bindings"]) == final_ui_fix_superseded_files
     for name, expected in final_ui_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_viewer_startup_superseded_files
             | ui_controls_superseded_files
@@ -1494,6 +1814,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_superseded_files
     )
     for name, expected in json_canvas_text_fit["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_final_superseded_files
             | smoke_pipefail_superseded_files
@@ -3666,6 +3988,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         json_canvas_text_fit_viewer_startup_superseded_files
     )
     for name, expected in json_canvas_text_fit_viewer_startup["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             json_canvas_text_fit_viewer_startup_status_superseded_files
             | ui_controls_superseded_files
@@ -3767,6 +4091,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in json_canvas_text_fit_viewer_startup_status[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in ui_controls_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert json_canvas_text_fit_viewer_startup_status["checks"] == {
@@ -3959,6 +4285,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(ui_controls["source_bindings"]) == ui_controls_superseded_files
     for name, expected in ui_controls["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             ui_controls_resize_superseded_files
             | content_editing_superseded_files
@@ -4052,6 +4380,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         ui_controls_resize_superseded_files
     )
     for name, expected in ui_controls_resize["source_bindings"].items():
+        if name in (
+            single_workspace_max_canvas_superseded_files
+            | single_workspace_review_closure_superseded_files
+        ):
+            continue
         if name not in (
             focus_default_superseded_files
             | focus_default_review_fix_superseded_files
@@ -4121,6 +4454,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(smoke_pipefail["source_bindings"]) == smoke_pipefail_superseded_files
     for name, expected in smoke_pipefail["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert smoke_pipefail["checks"] == {
@@ -4291,6 +4626,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(content_editing["source_bindings"]) == content_editing_superseded_files
     for name, expected in content_editing["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing["checks"] == {
@@ -4424,6 +4761,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_recovery_superseded_files
     )
     for name, expected in content_editing_recovery["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_form_submit_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery["checks"] == {
@@ -4539,6 +4878,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_form_submit_superseded_files
     )
     for name, expected in content_editing_form_submit["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_valid_draft_recovery_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_form_submit["checks"] == {
@@ -4678,6 +5019,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_valid_draft_recovery_superseded_files
     )
     for name, expected in content_editing_valid_draft_recovery["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_layout_reload_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_valid_draft_recovery["checks"] == {
@@ -4778,6 +5121,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in content_editing_recovery_layout_reload[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_save_feedback_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_recovery_layout_reload["checks"] == {
@@ -4909,6 +5254,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == content_editing_save_feedback_superseded_files
     )
     for name, expected in content_editing_save_feedback["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in content_editing_recovery_save_hardening_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert content_editing_save_feedback["checks"] == {
@@ -5057,6 +5404,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in content_editing_recovery_save_hardening[
         "source_bindings"
     ].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             focus_default_superseded_files
             | focus_default_review_fix_superseded_files
@@ -5196,6 +5545,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(focus_default["source_bindings"]) == focus_default_superseded_files
     for name, expected in focus_default["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in (
             focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
@@ -5279,6 +5630,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == focus_default_review_fix_superseded_files
     )
     for name, expected in focus_default_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_exports_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert focus_default_review_fix["checks"] == {
@@ -5378,6 +5731,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_exports_superseded_files
     )
     for name, expected in single_workspace_exports["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_review_fix_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_exports["checks"] == {
@@ -5495,6 +5850,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_review_fix_superseded_files
     )
     for name, expected in single_workspace_review_fix["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_mobile_status_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_review_fix["checks"] == {
@@ -5608,6 +5965,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_mobile_status_superseded_files
     )
     for name, expected in single_workspace_mobile_status["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_wrapped_dock_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_mobile_status["checks"] == {
@@ -5752,6 +6111,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_wrapped_dock_superseded_files
     )
     for name, expected in single_workspace_wrapped_dock["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         if name not in single_workspace_dark_status_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_wrapped_dock["checks"] == {
@@ -5889,6 +6250,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         == single_workspace_dark_status_superseded_files
     )
     for name, expected in single_workspace_dark_status["source_bindings"].items():
+        if name in single_workspace_max_canvas_superseded_files:
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert single_workspace_dark_status["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -5977,6 +6340,3214 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         in single_workspace_dark_status["does_not_establish"]
     )
 
+    single_workspace_max_canvas = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_max_canvas["schema_version"]
+        == "schauwerk-schaubild-single-workspace-max-canvas.v1"
+    )
+    assert (
+        single_workspace_max_canvas["functional_head"]
+        == "eea29caf4f212125e734894a479d612fe9e9ef42"
+    )
+    assert single_workspace_max_canvas["parent_evidence"] == {
+        "evidence_digest": single_workspace_dark_status["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_DARK_STATUS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-dark-status-20261004/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_dark_status["schema_version"],
+    }
+    assert single_workspace_max_canvas["evidence_digest"] == digest_mapping(
+        single_workspace_max_canvas, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_max_canvas["source_bindings"])
+        == single_workspace_max_canvas_superseded_files
+    )
+    for name, expected in single_workspace_max_canvas["source_bindings"].items():
+        if name in (
+            single_workspace_fit_clearance_superseded_files
+            | single_workspace_review_closure_superseded_files
+            | single_workspace_review_hardening_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert single_workspace_max_canvas["checks"]["single_workspace_only_after_open"] is True
+    assert (
+        single_workspace_max_canvas["checks"]["export_popover_closes_after_export_action"]
+        is True
+    )
+    assert (
+        single_workspace_max_canvas["checks"]["engine_specific_export_capabilities_preserved"]
+        is True
+    )
+    max_focused = single_workspace_max_canvas["check_evidence"]["focused_regressions"]
+    assert max_focused["job_id"] == "04d5eaa80cdb4e7585dfc800"
+    assert max_focused["passed_count"] == 32
+    assert max_focused["result"] == "passed"
+    max_smoke = single_workspace_max_canvas["check_evidence"]["browser_smoke"]
+    assert max_smoke["job_id"] == "cbb7f605fc3f4e0d9bca42d9"
+    assert max_smoke["passed_count"] == 7
+    assert max_smoke["result"] == "passed"
+    max_visual = single_workspace_max_canvas["check_evidence"]["visual_readback"]
+    assert max_visual["job_id"] == "5f176639c0064efda87292ca"
+    assert max_visual["result"] == "passed"
+    for state in (
+        "native_desktop_light",
+        "native_mobile_dark",
+        "legacy_desktop_light",
+        "legacy_mobile_dark",
+    ):
+        assert max_visual["states"][state]["export_menu_open_after_action"] is False
+        assert max_visual["states"][state]["download_visible_after_action"] is True
+        assert max_visual["states"][state]["result"] == "passed"
+    max_pre = single_workspace_max_canvas["check_evidence"]["pre_successor_full_validate"]
+    assert max_pre["job_id"] == "41156c29cdd5425581d5ba3a"
+    assert max_pre["passed_count"] == 1658
+    assert max_pre["failed_count"] == 1
+    assert max_pre["failure_class"] == "expected_successor_binding_gate"
+    max_observer = single_workspace_max_canvas["check_evidence"][
+        "independent_observer_readback"
+    ]
+    assert max_observer["observer"] == "grosser-adler"
+    assert max_observer["functional_head"] == single_workspace_max_canvas["functional_head"]
+    assert max_observer["worktree_clean"] is True
+    assert max_observer["untracked_present"] is False
+    assert max_observer["finding_count"] == 0
+    assert max_observer["result"] == "passed"
+    assert single_workspace_max_canvas["check_evidence"]["git_diff_check"] == {
+        "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+        "head_sha": "eea29caf4f212125e734894a479d612fe9e9ef42",
+        "diff_sha256": "67abebb2c17a6ccd3e73dbbe4da373737f86a6000d83b332be106df5b11690d1",
+        "diff_bytes": 71784,
+        "result": "passed",
+    }
+
+    single_workspace_fit_clearance = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert (
+        single_workspace_fit_clearance["schema_version"]
+        == "schauwerk-schaubild-single-workspace-fit-clearance.v1"
+    )
+    assert (
+        single_workspace_fit_clearance["functional_head"]
+        == "fc0e1844efa945adccdc1e0a92296c44a778bd8b"
+    )
+    assert single_workspace_fit_clearance["parent_evidence"] == {
+        "evidence_digest": single_workspace_max_canvas["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_MAX_CANVAS_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-max-canvas-20261005/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_max_canvas["schema_version"],
+    }
+    assert single_workspace_fit_clearance["evidence_digest"] == digest_mapping(
+        single_workspace_fit_clearance, "evidence_digest"
+    )
+    assert (
+        set(single_workspace_fit_clearance["source_bindings"])
+        == single_workspace_fit_clearance_superseded_files
+    )
+    for name, expected in single_workspace_fit_clearance["source_bindings"].items():
+        if name in (
+            single_workspace_review_closure_superseded_files
+            | single_workspace_review_hardening_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    fit_finding = single_workspace_fit_clearance["check_evidence"]["review_finding"]
+    assert fit_finding["thread_id"] == "PRRT_kwDOTGqvHc6o8b6l"
+    assert fit_finding["comment_id"] == 4181740632
+    fit_contract = single_workspace_fit_clearance["check_evidence"]["fit_contract"]
+    assert fit_contract["standalone_padding_px"] == 48
+    assert fit_contract["embedded_padding_px"] == {
+        "top": 60,
+        "right": 48,
+        "bottom": 104,
+        "left": 48,
+    }
+    fit_focused = single_workspace_fit_clearance["check_evidence"][
+        "exact_head_focused_regressions"
+    ]
+    assert fit_focused["job_id"] == "3f1962c08238436abf2a98f2"
+    assert fit_focused["passed_count"] == 30
+    assert fit_focused["result"] == "passed"
+    fit_smoke = single_workspace_fit_clearance["check_evidence"][
+        "exact_head_browser_smoke"
+    ]
+    assert fit_smoke["job_id"] == "b66b2fa8ad2c4633979458da"
+    assert fit_smoke["passed_count"] == 7
+    fit_visual = single_workspace_fit_clearance["check_evidence"]["visual_readback"]
+    for state in ("native_desktop_light", "native_mobile_dark"):
+        assert fit_visual["states"][state]["host_clearance_px"] > 8
+        assert fit_visual["states"][state]["native_toolbar_clearance_px"] > 6
+    fit_tablet = single_workspace_fit_clearance["check_evidence"][
+        "tablet_visual_readback"
+    ]
+    assert fit_tablet["viewport"] == {"width": 1024, "height": 768}
+    assert fit_tablet["host_clearance_px"] > 8
+    assert fit_tablet["native_toolbar_clearance_px"] > 6
+    fit_pre = single_workspace_fit_clearance["check_evidence"][
+        "pre_successor_full_validate"
+    ]
+    assert fit_pre["passed_count"] == 1658
+    assert fit_pre["failed_count"] == 1
+    assert fit_pre["failure_class"] == "expected_successor_binding_gate"
+    assert single_workspace_fit_clearance["check_evidence"]["git_diff_check"] == {
+        "base_sha": "1e1be1742147a5dbb72dc82ed3c3fe75a2258844",
+        "head_sha": "fc0e1844efa945adccdc1e0a92296c44a778bd8b",
+        "diff_sha256": "4d8262a605f32cd7d7b1209dd946b983e5b7b3cd5078011fb8bf9832b13904f7",
+        "diff_bytes": 8188,
+        "result": "passed",
+    }
+
+    review_closure = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_closure["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-review-closure.v1"
+    )
+    assert (
+        review_closure["functional_head"]
+        == "8fe4d77638e66178a58e7503f3db8b716557efd1"
+    )
+    assert review_closure["parent_evidence"] == {
+        "evidence_digest": single_workspace_fit_clearance["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_FIT_CLEARANCE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-fit-clearance-20261005/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": single_workspace_fit_clearance["schema_version"],
+    }
+    assert review_closure["evidence_digest"] == digest_mapping(
+        review_closure, "evidence_digest"
+    )
+    assert (
+        set(review_closure["source_bindings"])
+        == single_workspace_review_closure_superseded_files
+    )
+    for name, expected in review_closure["source_bindings"].items():
+        if name in (
+            single_workspace_review_hardening_superseded_files
+            | single_workspace_mobile_320_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(review_closure["checks"].values())
+    review_evidence = review_closure["check_evidence"]
+    pre_validate = review_evidence["pre_successor_full_validate"]
+    assert pre_validate["functional_head"] == review_closure["functional_head"]
+    assert pre_validate["task_id"] == "b93f619d6783470fa502dc60"
+    assert pre_validate["passed_count"] == 1662
+    assert pre_validate["failed_count"] == 1
+    assert pre_validate["failure_class"] == "expected_successor_binding_gate"
+    browser = review_evidence["browser_smoke"]
+    assert browser["functional_head"] == review_closure["functional_head"]
+    assert browser["task_id"] == "78b2146cf6374642b8601961"
+    assert browser["passed_count"] == 13
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual = review_evidence["visual_readback"]
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual["readback_json_sha256"] == hashlib.sha256(readback_bytes).hexdigest()
+    readback = json.loads(readback_bytes)
+    assert readback["head"] == review_closure["functional_head"]
+    assert len(readback["cases"]) == 6
+    for case in ("process-status-mobile-dark", "process-status-431-dark"):
+        process = readback["cases"][case]["processStatus"]
+        assert process["text"] == "Ziel für die neue Verbindung auswählen"
+        assert process["whiteSpace"] == "normal"
+        assert process["textOverflow"] == "clip"
+        assert process["scrollWidth"] <= process["clientWidth"] + 1
+        assert process["scrollHeight"] <= process["clientHeight"] + 1
+    drawio = readback["cases"]["drawio-export-mobile-dark"]
+    assert drawio["exportClosed"] is True
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    for case in ("native-desktop-light", "native-tablet-light", "native-mobile-dark"):
+        measured = readback["cases"][case]
+        assert measured["hostClearance"] >= 8
+        assert measured["nativeClearance"] >= 6
+        assert measured["stage"]["width"] == measured["viewport"]["width"]
+        assert measured["stage"]["height"] == measured["viewport"]["height"]
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["result"] == "passed"
+    assert review_evidence["git_diff_check"]["result"] == "passed"
+
+    review_self = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_self["functional_head"] == review_closure["functional_head"]
+    assert len(review_self["passes"]) == 5
+    assert review_self["visual_readback_json_sha256"] == visual["readback_json_sha256"]
+
+    review_hardening = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert review_hardening["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-review-hardening.v1"
+    )
+    assert review_hardening["functional_head"] == (
+        "0f4384223dde8d8bf5cacc1875a8fbde5f93ce70"
+    )
+    assert review_hardening["parent_evidence"] == {
+        "evidence_digest": review_closure["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_REVIEW_CLOSURE_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-review-closure-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": review_closure["schema_version"],
+    }
+    assert review_hardening["evidence_digest"] == digest_mapping(
+        review_hardening, "evidence_digest"
+    )
+    assert set(review_hardening["source_bindings"]) == (
+        single_workspace_review_hardening_superseded_files
+    )
+    for name, expected in review_hardening["source_bindings"].items():
+        if name in (
+            single_workspace_zoom_continuity_superseded_files
+            | single_workspace_fit_retry_superseded_files
+            | single_workspace_independent_remediation_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(review_hardening["checks"].values())
+    hardening_evidence = review_hardening["check_evidence"]
+    pre = hardening_evidence["pre_successor_full_validate"]
+    assert pre["functional_head"] == review_hardening["functional_head"]
+    assert pre["task_id"] == "19a093ab49ca425abc7c967b"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = hardening_evidence["exact_head_browser_smoke"]
+    assert browser["functional_head"] == review_hardening["functional_head"]
+    assert browser["task_id"] == "50d7e5e805f64d4e9387b9fb"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual_info = hardening_evidence["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual_info["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    visual_report = json.loads(visual_bytes)
+    assert visual_report["head"] == review_hardening["functional_head"]
+    assert len(visual_report["cases"]) == visual_info["case_count"] == 8
+    for key in ("native-desktop-light", "native-tablet-light",
+                "native-mobile-dark", "native-tall-mobile-dark"):
+        case = visual_report["cases"][key]
+        assert case["hostClearance"] >= 8
+        assert case["nativeClearance"] >= 6
+        assert case["frame"]["width"] == case["viewport"]["width"]
+        assert case["stage"]["height"] == case["viewport"]["height"]
+    for key in ("process-status-mobile-dark", "process-status-431-dark",
+                "process-status-landscape-dark"):
+        status = visual_report["cases"][key]["processStatus"]
+        assert status["text"] == "Ziel für die neue Verbindung auswählen"
+        assert status["whiteSpace"] == "normal"
+        assert status["textOverflow"] == "clip"
+        assert status["scrollWidth"] <= status["clientWidth"] + 1
+        assert status["scrollHeight"] <= status["clientHeight"] + 1
+    drawio = visual_report["cases"]["drawio-export-mobile-dark"]
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    assert drawio["exportClosed"] is True
+    for case in visual_report["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual_info["result"] == "passed"
+    legacy_info = hardening_evidence["legacy_readback"]
+    legacy_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+        / "legacy-visual-readback.json"
+    ).read_bytes()
+    assert legacy_info["readback_json_sha256"] == hashlib.sha256(
+        legacy_bytes
+    ).hexdigest()
+    legacy_report = json.loads(legacy_bytes)
+    assert legacy_report["functional_head"] == review_hardening["functional_head"]
+    assert len(legacy_report["cases"]) == legacy_info["case_count"] == 1
+    legacy_mobile = legacy_report["cases"]["legacy-dark-mobile"]
+    assert legacy_mobile["viewport"]["height"] - legacy_mobile["bar"]["bottom"] >= 40
+    assert legacy_mobile["exportGap"] >= 6
+    assert len(legacy_mobile["screenshot_sha256"]) == 64
+    assert legacy_info["result"] == "passed"
+    assert hardening_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert hardening_evidence["visual_acceptance"]["functional_head"] == (
+        review_hardening["functional_head"]
+    )
+    assert hardening_evidence["independent_observer_readback"][
+        "observed_head"
+    ] == review_hardening["functional_head"]
+    assert hardening_evidence["independent_observer_readback"][
+        "worktree_clean"
+    ] is True
+    assert hardening_evidence["git_diff_check"] == {
+        "base_sha": "5c5759de6ff1e18bbae2f53d13a292d120c23ab2",
+        "head_sha": review_hardening["functional_head"],
+        "diff_sha256": "e9a0f548f108401337a65f2e8b6a9b111b56c51550e205a76def29945e3481a5",
+        "diff_bytes": 14660,
+        "result": "passed",
+    }
+    hardening_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert hardening_self_review["functional_head"] == (
+        review_hardening["functional_head"]
+    )
+    assert len(hardening_self_review["iterations"]) == 5
+    assert hardening_self_review["visual_readback_json_sha256"] == (
+        visual_info["readback_json_sha256"]
+    )
+    assert hardening_self_review["legacy_visual_readback_json_sha256"] == (
+        legacy_info["readback_json_sha256"]
+    )
+
+    zoom_continuity = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert zoom_continuity["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-zoom-continuity.v1"
+    )
+    assert zoom_continuity["functional_head"] == (
+        "eca81dc0ba825e4ad3477322361f376498034393"
+    )
+    assert zoom_continuity["parent_evidence"] == {
+        "evidence_digest": review_hardening["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_REVIEW_HARDENING_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-review-hardening-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": review_hardening["schema_version"],
+    }
+    assert zoom_continuity["evidence_digest"] == digest_mapping(
+        zoom_continuity, "evidence_digest"
+    )
+    assert set(zoom_continuity["source_bindings"]) == (
+        single_workspace_zoom_continuity_superseded_files
+    )
+    for name, expected in zoom_continuity["source_bindings"].items():
+        if name in single_workspace_fit_retry_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(zoom_continuity["checks"].values())
+    zoom_evidence = zoom_continuity["check_evidence"]
+    assert zoom_evidence["prior_current_head_independent_review"][
+        "verdict"
+    ] == "NEEDS_CHANGE"
+    assert zoom_evidence["prior_current_head_independent_review"][
+        "does_not_establish_new_head_pass"
+    ] is True
+    pre = zoom_evidence["pre_successor_full_validate"]
+    assert pre["functional_head"] == zoom_continuity["functional_head"]
+    assert pre["task_id"] == "ed292ad461274cafa9695c1d"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = zoom_evidence["exact_head_browser_smoke"]
+    assert browser["functional_head"] == zoom_continuity["functional_head"]
+    assert browser["task_id"] == "a4893f78088046478a89c65c"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual_info = zoom_evidence["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual_info["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    readback = json.loads(visual_bytes)
+    assert readback["head"] == zoom_continuity["functional_head"]
+    assert len(readback["cases"]) == visual_info["case_count"] == 8
+    touch = readback["cases"]["native-tall-mobile-dark"]["touchPinch"]
+    assert touch == visual_info["pinch_scales"]
+    assert 0 < touch["initial"] < 0.25
+    assert touch["inward"] <= touch["initial"] + 1e-6
+    assert touch["outward"] > touch["initial"]
+    assert abs(touch["outward"] - touch["expectedOutward"]) <= 1e-6
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual_info["result"] == "passed"
+    assert zoom_evidence["visual_acceptance"]["result"] == "accepted"
+    assert zoom_evidence["visual_acceptance"]["functional_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert zoom_evidence["independent_observer_readback"]["observed_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert zoom_evidence["independent_observer_readback"]["worktree_clean"] is True
+    assert zoom_evidence["git_diff_check"] == {
+        "base_sha": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+        "head_sha": zoom_continuity["functional_head"],
+        "diff_sha256": "c33c7aeb11e738afc90a694c54ff5276f3d55c18299dff9f750383463dd3a9f8",
+        "diff_bytes": 5459,
+        "result": "passed",
+    }
+    zoom_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert zoom_self_review["functional_head"] == (
+        zoom_continuity["functional_head"]
+    )
+    assert len(zoom_self_review["passes"]) == 5
+    assert zoom_self_review["visual_readback_json_sha256"] == (
+        visual_info["readback_json_sha256"]
+    )
+
+    fit_retry = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert fit_retry["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-fit-retry.v1"
+    )
+    assert fit_retry["functional_head"] == (
+        "b63fae1e6ea94e4b3a35f08a47292dbc5b74f549"
+    )
+    assert fit_retry["parent_evidence"] == {
+        "evidence_digest": zoom_continuity["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_ZOOM_CONTINUITY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-zoom-continuity-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": zoom_continuity["schema_version"],
+    }
+    assert fit_retry["evidence_digest"] == digest_mapping(
+        fit_retry, "evidence_digest"
+    )
+    assert set(fit_retry["source_bindings"]) == (
+        single_workspace_fit_retry_superseded_files
+    )
+    for name, expected in fit_retry["source_bindings"].items():
+        if name in (
+            single_workspace_popover_anchoring_superseded_files
+            | single_workspace_final_review_superseded_files
+            | single_workspace_independent_remediation_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(fit_retry["checks"].values())
+    fit_checks = fit_retry["check_evidence"]
+    assert fit_checks["confirmed_ci_failure"]["observed_clearance_px"] == -7.13
+    assert fit_checks["confirmed_ci_failure"][
+        "retry_with_clean_chrome_profile_also_failed"
+    ] is True
+    growth = fit_checks["status_growth_reproduction"]
+    assert growth["before_head"] == fit_retry["base_product_head"]
+    assert growth["after_head"] == fit_retry["functional_head"]
+    assert growth["before_native_clearance_px"] < 0
+    assert growth["after_native_clearance_px"] >= 6
+    assert growth["bar_height_change_px"] >= 60
+    assert growth["result"] == "passed"
+    review = fit_checks["prior_independent_review"]
+    assert review["reviewed_head"] == fit_retry["base_product_head"]
+    assert review["verdict"] == "NEEDS_CHANGE"
+    assert review["does_not_prove_new_head_pass"] is True
+    recovery = fit_checks["recovery_export_hit_tests"]
+    assert recovery["widths"] == [390, 1366]
+    assert recovery["result"] == "passed"
+    pre = fit_checks["pre_successor_full_validate"]
+    assert pre["functional_head"] == fit_retry["functional_head"]
+    assert pre["task_id"] == "bd0aa682b31c4c76adadd4a3"
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    browser = fit_checks["exact_head_browser_smoke"]
+    assert browser["functional_head"] == fit_retry["functional_head"]
+    assert browser["task_id"] == "3838d87b0af54d9890204cab"
+    assert browser["passed_count"] == 18
+    assert browser["failed_count"] == 0
+    assert browser["result"] == "passed"
+    visual = fit_checks["visual_readback"]
+    visual_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    assert visual["readback_json_sha256"] == hashlib.sha256(
+        visual_bytes
+    ).hexdigest()
+    readback = json.loads(visual_bytes)
+    assert readback["head"] == fit_retry["functional_head"]
+    assert len(readback["cases"]) == visual["case_count"] == 8
+    for key in ("native-desktop-light", "native-tablet-light",
+                "native-mobile-dark", "native-tall-mobile-dark"):
+        case = readback["cases"][key]
+        assert case["hostClearance"] >= 8
+        assert case["nativeClearance"] >= 6
+        assert case["frame"]["width"] == case["viewport"]["width"]
+        assert case["stage"]["height"] == case["viewport"]["height"]
+    drawio = readback["cases"]["drawio-export-mobile-dark"]
+    assert drawio["gap"] >= 6
+    assert drawio["popover"]["x"] >= 0
+    assert drawio["button"]["x"] >= 0
+    for case in readback["cases"].values():
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["result"] == "passed"
+    stress = fit_checks["status_growth_readback"]
+    stress_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+        / "status-growth-readback.json"
+    ).read_bytes()
+    assert stress["readback_json_sha256"] == hashlib.sha256(
+        stress_bytes
+    ).hexdigest()
+    stress_report = json.loads(stress_bytes)
+    assert stress_report["head"] == fit_retry["functional_head"]
+    assert len(stress_report["cases"]) == stress["case_count"] == 1
+    status_growth = stress_report["cases"]["status-growth-tall-mobile"]
+    assert status_growth["nativeClearance"] >= 6
+    assert status_growth["fitStatus"]["barAfterBottom"] - (
+        status_growth["fitStatus"]["barBeforeBottom"]
+    ) >= 60
+    assert status_growth["fitStatus"]["text"] == "Ansicht angepasst"
+    assert stress["result"] == "passed"
+    assert fit_checks["visual_acceptance"]["decision"] == "accepted"
+    assert fit_checks["visual_acceptance"]["functional_head"] == (
+        fit_retry["functional_head"]
+    )
+    assert fit_checks["independent_observer_readback"][
+        "observed_head"
+    ] == fit_retry["functional_head"]
+    assert fit_checks["independent_observer_readback"]["worktree_clean"] is True
+    assert fit_checks["git_diff_check"] == {
+        "base_sha": "888415a1a812133875a02f565d831fde61acff3e",
+        "head_sha": fit_retry["functional_head"],
+        "diff_sha256": "a04f5d33f0e2fee02cfd228ae1015b61079e2625196fe015e117d35550a1470b",
+        "diff_bytes": 4655,
+        "result": "passed",
+    }
+    fit_self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert fit_self_review["functional_head"] == fit_retry["functional_head"]
+    assert len(fit_self_review["passes"]) == 5
+    assert fit_self_review["visual_readback_json_sha256"] == (
+        visual["readback_json_sha256"]
+    )
+    assert fit_self_review["status_growth_readback_json_sha256"] == (
+        stress["readback_json_sha256"]
+    )
+
+    popover_anchor = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+            / "acceptance-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert popover_anchor["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-popover-anchoring.v1"
+    )
+    assert popover_anchor["functional_head"] == (
+        "36d9d7c2ad50797a4bfa38e39b6f354398fe3089"
+    )
+    assert popover_anchor["parent_evidence"] == {
+        "evidence_digest": fit_retry["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_SINGLE_WORKSPACE_FIT_RETRY_EVIDENCE
+                / "acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-fit-retry-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": fit_retry["schema_version"],
+    }
+    assert popover_anchor["evidence_digest"] == digest_mapping(
+        popover_anchor, "evidence_digest"
+    )
+    assert set(popover_anchor["source_bindings"]) == (
+        single_workspace_popover_anchoring_superseded_files
+    )
+    for name, expected in popover_anchor["source_bindings"].items():
+        if name in single_workspace_final_review_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(popover_anchor["checks"].values())
+    pop_checks = popover_anchor["check_evidence"]
+    prev = pop_checks["independent_review"]
+    assert prev["reviewed_head"] == popover_anchor["base_product_head"]
+    assert prev["verdict"] == "NEEDS_CHANGE"
+    assert prev["new_head_review_required"] is True
+    red = pop_checks["red_before"]
+    green = pop_checks["green_after"]
+    assert red["head"] == popover_anchor["base_product_head"]
+    assert red["result"] == "failed"
+    assert red["normal_mode_and_600px_gap_px"] == 56
+    assert green["head"] == popover_anchor["functional_head"]
+    assert green["mobile_390_px_gap"] == 7
+    assert green["mobile_600_px_gap"] == 7
+    assert green["result"] == "passed"
+    full = pop_checks["pre_successor_full_validate"]
+    assert full["head"] == popover_anchor["functional_head"]
+    assert full["passed_count"] == 1667
+    assert full["failed_count"] == 1
+    assert full["failure_class"] == "expected_successor_binding_gate"
+    smoke = pop_checks["functional_browser_smoke"]
+    assert smoke["head"] == popover_anchor["functional_head"]
+    assert smoke["passed_count"] == 18
+    assert smoke["failed_count"] == 0
+    assert smoke["result"] == "passed"
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+        / "visual-readback.json"
+    ).read_bytes()
+    visual = pop_checks["visual_readback"]
+    assert hashlib.sha256(readback_bytes).hexdigest() == visual["sha256"]
+    report = json.loads(readback_bytes)
+    assert report["functional_head"] == popover_anchor["functional_head"]
+    assert set(report["cases"]) == {"legacy-dark-mobile", "legacy-dark-tablet"}
+    for case in report["cases"].values():
+        assert case["beforeCss"]["barBackdrop"] == "none"
+        assert case["beforeCss"]["position"] == "fixed"
+        assert 6 <= case["exportGap"] <= 14
+        assert abs(case["delta"]["x"]) < 1e-6
+        assert abs(case["delta"]["y"]) < 1e-6
+        assert case["exportPopover"]["right"] <= case["viewport"]["width"] + 0.5
+        assert case["beforeHit"] == "BUTTON"
+        assert len(case["screenshot_sha256"]) == 64
+    assert visual["case_count"] == 2
+    assert visual["result"] == "passed"
+    assert pop_checks["visual_acceptance"]["decision"] == "accepted"
+    assert pop_checks["visual_acceptance"]["head"] == (
+        popover_anchor["functional_head"]
+    )
+    assert pop_checks["observer"]["observed_head"] == (
+        popover_anchor["functional_head"]
+    )
+    assert pop_checks["observer"]["worktree_clean"] is True
+    assert pop_checks["git_diff_check"] == {
+        "base_sha": "559a89a86e793863b544397d89db6f2db8643256",
+        "head_sha": popover_anchor["functional_head"],
+        "diff_sha256": "a6c87f9c7be42043887e468f9d29366e447af6e4752079c2405fd92da40c5867",
+        "diff_bytes": 2269,
+        "result": "passed",
+    }
+    self_review = json.loads(
+        (
+            SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+            / "grabowski-self-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert self_review["functional_head"] == popover_anchor["functional_head"]
+    assert len(self_review["passes"]) == 5
+    assert self_review["visual_readback_json_sha256"] == visual["sha256"]
+
+    final_review_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_FINAL_REVIEW_EVIDENCE / "acceptance-receipt.json"
+    )
+    final_review = json.loads(final_review_path.read_text(encoding="utf-8"))
+    assert final_review["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-final-review.v1"
+    )
+    assert final_review["functional_head"] == (
+        "cca926f4a8e9262e65f51b67e59bbf538519481f"
+    )
+    assert final_review["base_product_head"] == (
+        "ea1cb09a9cb1ac79d3cfa10ede6d20e4209402c8"
+    )
+    assert final_review["parent_evidence"] == {
+        "evidence_digest": popover_anchor["evidence_digest"],
+        "file_sha256": hashlib.sha256(
+            (SCHAUBILD_SINGLE_WORKSPACE_POPOVER_ANCHORING_EVIDENCE
+             / "acceptance-receipt.json").read_bytes()
+        ).hexdigest(),
+        "path": (
+            "docs/operators/evidence/schaubild-single-workspace-popover-anchoring-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": popover_anchor["schema_version"],
+    }
+    assert final_review["evidence_digest"] == digest_mapping(
+        final_review, "evidence_digest"
+    )
+    assert set(final_review["source_bindings"]) == (
+        single_workspace_final_review_superseded_files
+    )
+    for name, expected in final_review["source_bindings"].items():
+        if name in (
+            single_workspace_safe_area_fit_superseded_files
+            | single_workspace_safe_area_test_contract_superseded_files
+            | single_workspace_mobile_320_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(final_review["checks"].values())
+    assert final_review["check_evidence"]["red_before"]["result"] == "failed"
+    focused = final_review["check_evidence"]["focused_tests"]
+    assert focused["functional_head"] == final_review["functional_head"]
+    assert focused["passed_count"] == 8
+    assert focused["failed_count"] == 0
+    assert focused["result"] == "passed"
+    pre = final_review["check_evidence"]["pre_successor_full_validate"]
+    assert pre["functional_head"] == final_review["functional_head"]
+    assert pre["passed_count"] == 1667
+    assert pre["failed_count"] == 1
+    assert pre["failure_class"] == "expected_successor_binding_gate"
+    visual_binding = final_review["visual_readback"]
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_FINAL_REVIEW_EVIDENCE / "visual-readback.json"
+    ).read_bytes()
+    assert visual_binding["sha256"] == hashlib.sha256(readback_bytes).hexdigest()
+    readback = json.loads(readback_bytes)
+    assert readback["functional_head"] == final_review["functional_head"]
+    assert set(readback["cases"]) == {
+        "native-mobile", "legacy-mobile", "legacy-431", "legacy-tablet",
+    }
+    assert visual_binding["case_count"] == 4
+    assert set(visual_binding["screenshot_bindings"]) == {
+        name + ".png" for name in readback["cases"]
+    }
+    for name, case in readback["cases"].items():
+        assert (case["width"], case["height"]) == {
+            "native-mobile": (390, 844),
+            "legacy-mobile": (390, 844),
+            "legacy-431": (431, 844),
+            "legacy-tablet": (600, 900),
+        }[name]
+        assert 6 <= case["barGap"] <= 14
+        assert case["menu"]["x"] >= -0.5
+        assert case["menu"]["x"] + case["menu"]["width"] <= case["width"] + 0.5
+        if case["width"] <= 520:
+            assert case["statusVisibility"] == "hidden"
+        else:
+            assert case["statusVisibility"] == "visible"
+            assert case["overlap"]["width"] == 0
+        if name == "native-mobile":
+            assert case["nativeNodeCount"] >= 2
+        png = (SCHAUBILD_SINGLE_WORKSPACE_FINAL_REVIEW_EVIDENCE / (name + ".png")).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        digest = hashlib.sha256(png).hexdigest()
+        assert digest == case["screenshot_sha256"]
+        assert digest == visual_binding["screenshot_bindings"][name + ".png"]["sha256"]
+        assert len(png) == case["screenshot_bytes"]
+        assert len(png) == visual_binding["screenshot_bindings"][name + ".png"]["bytes"]
+    assert final_review["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+
+    safe_area_receipt_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_FIT_EVIDENCE / "acceptance-receipt.json"
+    )
+    safe_area_receipt = json.loads(safe_area_receipt_path.read_text(encoding="utf-8"))
+    assert safe_area_receipt["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-safe-area-fit.v1"
+    )
+    assert safe_area_receipt["functional_head"] == (
+        "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9"
+    )
+    assert safe_area_receipt["base_product_head"] == (
+        "4996e39ec2f7c4b21a204bf01b78ee9a21ffe4bc"
+    )
+    assert safe_area_receipt["parent_evidence"] == {
+        "evidence_digest": final_review["evidence_digest"],
+        "file_sha256": hashlib.sha256(final_review_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-final-review-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": final_review["schema_version"],
+    }
+    assert safe_area_receipt["evidence_digest"] == digest_mapping(
+        safe_area_receipt, "evidence_digest"
+    )
+    assert set(safe_area_receipt["source_bindings"]) == (
+        single_workspace_safe_area_fit_superseded_files
+    )
+    for name, expected in safe_area_receipt["source_bindings"].items():
+        if name in (
+            single_workspace_mobile_320_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(safe_area_receipt["checks"].values())
+    safe_evidence = safe_area_receipt["check_evidence"]
+    assert safe_evidence["review_finding"]["pre_fix_host_clearance_px"] < 0
+    assert safe_evidence["red_before"]["observed_clearance_px"] < 0
+    assert safe_evidence["focused_red_green"]["result"] == "passed"
+    assert safe_evidence["postcommit_browser_smoke"]["functional_head"] == (
+        safe_area_receipt["functional_head"]
+    )
+    assert safe_evidence["postcommit_browser_smoke"]["passed_count"] == 19
+    assert safe_evidence["postcommit_browser_smoke"]["failed_count"] == 0
+    assert safe_evidence["exact_css_viewport"]["head"] == (
+        safe_area_receipt["functional_head"]
+    )
+    assert safe_evidence["visual_acceptance"]["decision"] == "accepted"
+    visual_binding = safe_area_receipt["visual_readback"]
+    readback_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_FIT_EVIDENCE / "visual-readback.json"
+    ).read_bytes()
+    assert hashlib.sha256(readback_bytes).hexdigest() == visual_binding["sha256"]
+    safe_visual = json.loads(readback_bytes)
+    assert safe_visual["schema_version"] == "schauwerk-pr203-safe-area-visual.v1"
+    assert safe_visual["functional_head"] == safe_area_receipt["functional_head"]
+    expected_css = {
+        "mobile-390-normal8": (390, 844, 8),
+        "mobile-390-safe44": (390, 844, 44),
+        "mobile-431-safe44": (431, 844, 44),
+    }
+    assert set(safe_visual["cases"]) == set(expected_css)
+    assert visual_binding["case_count"] == len(expected_css)
+    assert set(visual_binding["screenshot_bindings"]) == {
+        key + ".png" for key in expected_css
+    }
+    for name, values in safe_visual["cases"].items():
+        width, height, inset = expected_css[name]
+        measured = values["safe"]
+        assert values["inset"] == inset
+        assert (measured["width"], measured["height"]) == (width, height)
+        assert abs(height - measured["barBottom"] - inset) < 1
+        assert measured["hostClearance"] >= 7.5
+        assert abs(measured["stageWidth"] - width) <= 1
+        assert abs(measured["stageHeight"] - height) <= 1
+        assert measured["scale"] <= values["normal"]["scale"] + 1e-9
+        if name == "mobile-390-safe44":
+            assert measured["hostBarHorizontalOverlap"] > 0
+        picture = (
+            SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_FIT_EVIDENCE / (name + ".png")
+        ).read_bytes()
+        assert picture[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        picture_digest = hashlib.sha256(picture).hexdigest()
+        assert values["screenshot_sha256"] == picture_digest
+        assert values["screenshot_bytes"] == len(picture)
+        binding = visual_binding["screenshot_bindings"][name + ".png"]
+        assert binding["sha256"] == picture_digest
+        assert binding["bytes"] == len(picture)
+        assert binding["viewport_css_px"] == [width, height]
+
+    test_contract_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_SAFE_AREA_TEST_CONTRACT_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    test_contract = json.loads(test_contract_path.read_text(encoding="utf-8"))
+    assert test_contract["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-safe-area-test-contract.v1"
+    )
+    assert test_contract["functional_head"] == (
+        "ae92461eb3d94701327151c6b6de18863c5c4e78"
+    )
+    assert test_contract["base_product_head"] == (
+        "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9"
+    )
+    assert test_contract["parent_evidence"] == {
+        "evidence_digest": safe_area_receipt["evidence_digest"],
+        "file_sha256": hashlib.sha256(safe_area_receipt_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-safe-area-fit-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": safe_area_receipt["schema_version"],
+    }
+    assert test_contract["evidence_digest"] == digest_mapping(
+        test_contract, "evidence_digest"
+    )
+    assert set(test_contract["source_bindings"]) == (
+        single_workspace_safe_area_test_contract_superseded_files
+    )
+    for name, expected in test_contract["source_bindings"].items():
+        if name in single_workspace_independent_remediation_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert test_contract["unchanged_production_source_bindings"] == (
+        safe_area_receipt["source_bindings"]
+    )
+    for name, expected in test_contract["unchanged_production_source_bindings"].items():
+        if name in (
+            single_workspace_mobile_320_superseded_files
+            | single_workspace_side_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(test_contract["checks"].values())
+    contract_checks = test_contract["check_evidence"]
+    assert contract_checks["old_static_test_failure"]["passed_count"] == 1668
+    assert contract_checks["old_static_test_failure"]["failed_count"] == 1
+    assert contract_checks["new_geometry_contract_test"]["result"] == "passed"
+    assert contract_checks["pre_successor_source_digest_gate"]["result"] == "failed"
+    inherited = contract_checks["visual_acceptance_inheritance"]
+    assert inherited["decision"] == "inherited_from_parent"
+    assert inherited["parent_functional_head"] == safe_area_receipt["functional_head"]
+    assert inherited["parent_visual_readback_sha256"] == (
+        safe_area_receipt["visual_readback"]["sha256"]
+    )
+
+    mobile_path = SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / "acceptance-receipt.json"
+    mobile = json.loads(mobile_path.read_text(encoding="utf-8"))
+    assert mobile["schema_version"] == "schauwerk-schaubild-single-workspace-mobile-320.v1"
+    assert mobile["functional_head"] == "de0ba2e47c88d7992a429cf6d882d45d05851b69"
+    assert mobile["base_product_head"] == "359588eb2132c09cef9d2aca7d45d06f52410abe"
+    assert mobile["parent_evidence"] == {
+        "evidence_digest": test_contract["evidence_digest"],
+        "file_sha256": hashlib.sha256(test_contract_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-safe-area-test-contract-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": test_contract["schema_version"],
+    }
+    assert mobile["evidence_digest"] == digest_mapping(mobile, "evidence_digest")
+    assert set(mobile["source_bindings"]) == single_workspace_mobile_320_superseded_files
+    for name, expected in mobile["source_bindings"].items():
+        if name in (
+            single_workspace_side_safearea_superseded_files
+            | single_workspace_tap_autofit_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(mobile["checks"].values())
+    m_checks = mobile["check_evidence"]
+    assert m_checks["red_before"]["result"] == "failed"
+    assert "overlap" in m_checks["red_before"]["failure"]
+    assert m_checks["targeted_green"]["result"] == "passed"
+    assert m_checks["canonical_browser_smoke"]["passed_count"] == 20
+    assert m_checks["canonical_browser_smoke"]["failed_count"] == 0
+    assert m_checks["runner_filter_parity"]["passed_count"] == 3
+    assert m_checks["pre_successor_validate"]["passed_count"] == 1669
+    assert m_checks["pre_successor_validate"]["failed_count"] == 1
+    assert m_checks["pre_successor_validate"]["ruff_passed"] is True
+    assert m_checks["post_import_sort_lint"]["result"] == "passed"
+    assert m_checks["visual_acceptance"]["decision"] == "accepted"
+    m_visual = mobile["visual_readback"]
+    visual_data = (
+        SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / "visual-readback.json"
+    ).read_bytes()
+    assert hashlib.sha256(visual_data).hexdigest() == m_visual["sha256"]
+    m_report = json.loads(visual_data)
+    assert m_report["schema_version"] == "schauwerk-pr203-mobile-320-visual-readback.v1"
+    assert m_report["functional_head"] == mobile["functional_head"]
+    assert m_visual["case_count"] == 2
+    assert {case["width"] for case in m_report["cases"]} == {320, 390}
+    assert set(m_visual["screenshot_bindings"]) == {
+        "readback-320x700.png", "readback-390x844.png",
+    }
+    for case in m_report["cases"]:
+        width = case["width"]
+        height = 700 if width == 320 else 844
+        assert case["height"] == height and case["scrollWidth"] == width
+        assert case["bar"]["height"] <= 54 and not case["overlap"]
+        assert len(case["controls"]) == 4
+        for control in case["controls"]:
+            rect = control["rect"]
+            assert rect["width"] >= 38 and rect["height"] >= 40
+            assert rect["left"] >= -0.5 and rect["right"] <= width + 0.5
+        if width == 320:
+            download = next(i for i in case["controls"] if i["name"] == "download")
+            assert download["ariaLabel"] == "Originalprojekt speichern"
+            assert "Speichern" in download["pseudoContent"]
+        shot = f"readback-{width}x{height}.png"
+        png = (SCHAUBILD_SINGLE_WORKSPACE_MOBILE_320_EVIDENCE / shot).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        sha = hashlib.sha256(png).hexdigest()
+        assert sha == case["screenshot_sha256"] == m_visual["screenshot_bindings"][shot]["sha256"]
+        assert len(png) == case["screenshot_bytes"]
+        assert len(png) == m_visual["screenshot_bindings"][shot]["bytes"]
+        assert m_visual["screenshot_bindings"][shot]["viewport_css_px"] == [width, height]
+
+    side_receipt_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE / "acceptance-receipt.json"
+    )
+    side_safearea = json.loads(side_receipt_path.read_text(encoding="utf-8"))
+    assert side_safearea["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-side-safearea.v1"
+    )
+    assert side_safearea["functional_head"] == (
+        "88833933230b270ffdfba60aee2b5fe0977623da"
+    )
+    assert side_safearea["product_css_head"] == (
+        "07822fe7e71390f95a50545db778ba45d5780fd0"
+    )
+    assert side_safearea["parent_evidence"] == {
+        "evidence_digest": mobile["evidence_digest"],
+        "file_sha256": hashlib.sha256(mobile_path.read_bytes()).hexdigest(),
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-mobile-320-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": mobile["schema_version"],
+    }
+    assert side_safearea["evidence_digest"] == digest_mapping(
+        side_safearea, "evidence_digest"
+    )
+    assert set(side_safearea["source_bindings"]) == (
+        single_workspace_side_safearea_superseded_files
+    )
+    for name, expected in side_safearea["source_bindings"].items():
+        if name in (
+            single_workspace_ci_font_legacy_superseded_files
+            | single_workspace_independent_remediation_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(side_safearea["checks"].values())
+    sc = side_safearea["check_evidence"]
+    assert sc["red_side_before"]["observed_left_css_px"] < 0
+    assert sc["native_prompt_green"]["passed_count"] == 5
+    assert sc["native_prompt_green"]["failed_count"] == 0
+    assert sc["canonical_browser_smoke"]["passed_count"] == 24
+    assert sc["pre_successor_full_validate"]["passed_count"] == 1673
+    assert sc["pre_successor_full_validate"]["failed_count"] == 1
+    assert sc["corrected_static_css_tests"]["passed_count"] == 8
+    assert sc["visual_acceptance"]["decision"] == "accepted"
+    side_binding = side_safearea["visual_readbacks"]["side_safe_area"]
+    assert side_binding["observed_head"] == side_safearea["product_css_head"]
+    assert side_binding["case_count"] == 5
+    side_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE / "visual-readback.json"
+    ).read_bytes()
+    assert hashlib.sha256(side_bytes).hexdigest() == side_binding["sha256"]
+    side_report = json.loads(side_bytes)
+    assert side_report["schema_version"] == "schauwerk-pr203-side-safearea-visual.v1"
+    assert side_report["functional_head"] == side_binding["observed_head"]
+    assert len(side_report["cases"]) == 5
+    for case in side_report["cases"]:
+        width, height = case["width"], case["height"]
+        assert (width, height) in {(320, 700), (390, 844)}
+        assert case["bar_inside_safe_area"] is True
+        assert case["popover_inside_safe_area"] is True
+        assert case["overlap"] == []
+        filename = case["screenshot_file"]
+        png = (SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE / filename).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        sha = hashlib.sha256(png).hexdigest()
+        assert sha == case["screenshot_sha256"]
+        assert sha == side_binding["screenshots"][filename]["sha256"]
+        assert len(png) == case["screenshot_bytes"]
+        assert len(png) == side_binding["screenshots"][filename]["bytes"]
+    prompt_binding = side_safearea["visual_readbacks"]["native_process_prompt"]
+    prompt_bytes = (
+        SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE / "prompt-readback.json"
+    ).read_bytes()
+    assert hashlib.sha256(prompt_bytes).hexdigest() == prompt_binding["sha256"]
+    prompt_report = json.loads(prompt_bytes)
+    assert prompt_binding["case_count"] == 2
+    assert prompt_report["functional_head"] == side_safearea["functional_head"]
+    assert prompt_report["schema_version"] == (
+        "schauwerk-pr203-native-process-status-visual.v1"
+    )
+    assert {case["width"] for case in prompt_report["cases"]} == {320, 390}
+    for case in prompt_report["cases"]:
+        metric = case["nativeProcessStatus"]
+        assert metric["statusOverlap"] is False
+        assert metric["scrollWidth"] <= metric["clientWidth"] + 1
+        assert metric["scrollHeight"] <= metric["clientHeight"] + 1
+        assert metric["text"] == "Ziel für die neue Verbindung auswählen"
+        filename = f"prompt-native-{case['width']}x{case['height']}.png"
+        png = (SCHAUBILD_SINGLE_WORKSPACE_SIDE_SAFEAREA_EVIDENCE / filename).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        sha = hashlib.sha256(png).hexdigest()
+        assert sha == case["screenshot_sha256"]
+        assert sha == prompt_binding["screenshots"][filename]["sha256"]
+        assert len(png) == prompt_binding["screenshots"][filename]["bytes"]
+
+    # A new immutable child supersedes only the three files changed after the
+    # accepted side-safearea revision. The parent receipt remains untouched.
+    ci_path = SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE / "acceptance-receipt.json"
+    ci_font_legacy = json.loads(ci_path.read_text(encoding="utf-8"))
+    assert ci_font_legacy["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-font-legacy.v1"
+    )
+    assert ci_font_legacy["functional_head"] == (
+        "7ddd57ca724bf775afacc819dfb10c5ccdc037b3"
+    )
+    assert ci_font_legacy["capture_checkout_head"] == (
+        "728c737ca16c8fe0a4b87c8f05e62acdbd564b4d"
+    )
+    assert ci_font_legacy["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-side-safearea-20261008/acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(side_receipt_path.read_bytes()).hexdigest(),
+        "evidence_digest": side_safearea["evidence_digest"],
+        "schema_version": side_safearea["schema_version"],
+    }
+    assert ci_font_legacy["evidence_digest"] == digest_mapping(
+        ci_font_legacy, "evidence_digest"
+    )
+    assert set(ci_font_legacy["source_bindings"]) == (
+        single_workspace_ci_font_legacy_superseded_files
+    )
+    for name, expected in ci_font_legacy["source_bindings"].items():
+        if name in single_workspace_independent_remediation_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(ci_font_legacy["checks"].values())
+    assert (
+        ci_font_legacy["check_evidence"]["prior_remote_ci_red"]["failed_parameterized_cases"]
+        == 5
+    )
+    green = ci_font_legacy["check_evidence"]["browser_green"]
+    assert green["passed_count"] == 24 and green["failed_count"] == 0
+    assert ci_font_legacy["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    before = ci_font_legacy["visual_readbacks"]["before"]
+    after = ci_font_legacy["visual_readbacks"]["after"]
+    assert before["case_count"] == after["case_count"] == 5
+    expected_cases = {
+        (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    for metadata, is_final in ((before, False), (after, True)):
+        payload = (ROOT / metadata["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == metadata["sha256"]
+        report = json.loads(payload)
+        assert report["functional_head"] == (
+            ci_font_legacy["functional_head"] if is_final
+            else ci_font_legacy["capture_checkout_head"]
+        )
+        assert {
+            (case["width"], case["height"],
+             case["simulated_safe_inset"]["left"], case["simulated_safe_inset"]["right"])
+            for case in report["cases"]
+        } == expected_cases
+        for case in report["cases"]:
+            png = (SCHAUBILD_SINGLE_WORKSPACE_CI_FONT_LEGACY_EVIDENCE
+                   / case["screenshot_file"]).read_bytes()
+            assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+            assert hashlib.sha256(png).hexdigest() == case["screenshot_sha256"]
+            assert len(png) == case["screenshot_bytes"]
+            if not is_final:
+                continue
+            inset = case["simulated_safe_inset"]
+            geometry = case["geometry"]
+            assert geometry["short"] == '"Speichern"'
+            assert geometry["aria"] == "Originalprojekt speichern"
+            assert geometry["bar"]["left"] >= inset["left"] - 0.5
+            assert geometry["bar"]["right"] <= case["width"] - inset["right"] + 0.5
+            assert geometry["popover"]["left"] >= inset["left"] - 0.5
+            assert geometry["popover"]["right"] <= case["width"] - inset["right"] + 0.5
+            assert abs(geometry["stage"]["width"] - case["width"]) < 1
+            assert abs(geometry["stage"]["height"] - case["height"]) < 1
+            assert all(
+                item["width"] >= 38 and item["height"] >= 40
+                and item["left"] >= inset["left"] - 0.5
+                and item["right"] <= case["width"] - inset["right"] + 0.5
+                for item in geometry["controls"]
+            )
+
+    # Preserve the previous receipt's bytes and expose its invalid historical
+    # screenshot provenance; only the source-matched child authorizes new source SHA.
+    independent_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_INDEPENDENT_REMEDIATION_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    independent_remediation = json.loads(independent_path.read_text(encoding="utf-8"))
+    assert independent_remediation["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-independent-remediation.v1"
+    )
+    assert independent_remediation["functional_head"] == (
+        "0ef33d9e65d04019171b7c1df848367240d2250d"
+    )
+    assert independent_remediation["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-ci-font-legacy-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": ci_font_legacy["schema_version"],
+        "file_sha256": hashlib.sha256(ci_path.read_bytes()).hexdigest(),
+        "evidence_digest": ci_font_legacy["evidence_digest"],
+    }
+    assert independent_remediation["evidence_digest"] == digest_mapping(
+        independent_remediation, "evidence_digest"
+    )
+    assert set(independent_remediation["source_bindings"]) == (
+        single_workspace_independent_remediation_superseded_files
+    )
+    for name, expected in independent_remediation["source_bindings"].items():
+        if name in (
+            single_workspace_late_review_menus_superseded_files
+            | single_workspace_ci_download_superseded_files
+            | single_workspace_review_p2_superseded_files
+            | single_workspace_pinch_save_superseded_files
+            | single_workspace_host_retry_superseded_files
+            | single_workspace_ci_save_font_superseded_files
+            | single_workspace_legacy_tools_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(independent_remediation["checks"].values())
+    independent_checks = independent_remediation["check_evidence"]
+    assert independent_checks["prior_visual_invalid"]["review_verdict"] == "NEEDS_CHANGE"
+    assert independent_checks["prior_visual_invalid"]["parent_mutation"] is False
+    assert independent_checks["visual_acceptance"]["decision"] == "accepted"
+    assert independent_checks["browser_smoke"]["passed_count"] == 26
+    assert independent_checks["browser_smoke"]["failed_count"] == 0
+    assert independent_checks["pre_successor_full_validate"] == {
+        "task_id": "ee5790c0ff444717801f94db",
+        "passed_count": 1674,
+        "failed_count": 2,
+        "failures": [
+            "expected immutable historical SHA supersession",
+            "obsolete Export exact DOM assertion, separately repaired at 0ef33d9",
+        ],
+        "full_validate_pass_claim": False,
+    }
+    red = independent_checks["side_fit_red"]["cases"]
+    green = independent_checks["side_fit_green"]["cases"]
+    assert len(red) == len(green) == 2
+    assert all(
+        before["clearance_left_px"] < 0 and before["clearance_right_px"] < 0
+        and after["clearance_left_px"] >= 8 and after["clearance_right_px"] >= 8
+        and before["viewport_css"] == after["viewport_css"]
+        and before["simulated_safe_area"] == after["simulated_safe_area"]
+        for before, after in zip(red, green)
+    )
+    independent_visual = independent_remediation["visual_readback"]
+    visual_bytes = (ROOT / independent_visual["path"]).read_bytes()
+    assert hashlib.sha256(visual_bytes).hexdigest() == independent_visual["sha256"]
+    visual_data = json.loads(visual_bytes)
+    assert visual_data["functional_head"] == independent_remediation["functional_head"]
+    assert visual_data["source_bindings"] == independent_remediation["source_bindings"]
+    assert visual_data["native_child_styles_sha256"] == independent_visual[
+        "native_css_sha256"
+    ]
+    assert independent_visual["case_count"] == len(visual_data["cases"]) == 5
+    assert len(independent_visual["screenshots"]) == 5
+    seen_viewports = set()
+    for case in visual_data["cases"]:
+        filename = case["screenshot_file"]
+        saved = independent_visual["screenshots"][filename]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_INDEPENDENT_REMEDIATION_EVIDENCE / filename
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert saved["sha256"] == case["screenshot_sha256"] == hashlib.sha256(
+            png
+        ).hexdigest()
+        assert saved["bytes"] == case["screenshot_bytes"] == len(png)
+        assert saved["viewport_css"] == [case["width"], case["height"]]
+        assert saved["safe_area_simulated"] == case["simulated_safe_inset"]
+        key = (
+            case["width"],
+            case["height"],
+            case["simulated_safe_inset"]["left"],
+            case["simulated_safe_inset"]["right"],
+        )
+        seen_viewports.add(key)
+        geom = case["geometry"]
+        assert geom["native_css_sha256"] == independent_visual["native_css_sha256"]
+        assert geom["native_reset_text"] == "↺"
+        assert geom["aria"] == "Originalprojekt speichern"
+        assert geom["short"] == '"Speichern"'
+        left = case["simulated_safe_inset"]["left"]
+        right = case["simulated_safe_inset"]["right"]
+        assert geom["bar"]["left"] >= left - 0.5
+        assert geom["bar"]["right"] <= case["width"] - right + 0.5
+        assert geom["popover"]["left"] >= left - 0.5
+        assert geom["popover"]["right"] <= case["width"] - right + 0.5
+        assert abs(geom["stage"]["width"] - case["width"]) < 1
+        assert abs(geom["stage"]["height"] - case["height"]) < 1
+        assert all(
+            item["width"] >= 38 and item["height"] >= 40
+            and item["left"] >= left - 0.5
+            and item["right"] <= case["width"] - right + 0.5
+            for item in geom["controls"]
+        )
+    assert seen_viewports == {
+        (320, 700, 0, 0),
+        (320, 700, 0, 44),
+        (320, 700, 44, 0),
+        (390, 844, 0, 44),
+        (390, 844, 44, 0),
+    }
+
+    # The preceding visual acceptance is immutable; this child binds the
+    # exact later source revision and only four newly superseded SHA keys.
+    late_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    late_menus = json.loads(late_path.read_text(encoding="utf-8"))
+    assert late_menus["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-late-review-menus.v1"
+    )
+    assert late_menus["functional_head"] == (
+        "884968fcdfb9759644ec26692ac1c8f8acb04fc9"
+    )
+    assert late_menus["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/schaubild-single-workspace-independent-"
+            "remediation-20261008/acceptance-receipt.json"
+        ),
+        "schema_version": independent_remediation["schema_version"],
+        "file_sha256": hashlib.sha256(independent_path.read_bytes()).hexdigest(),
+        "evidence_digest": independent_remediation["evidence_digest"],
+    }
+    assert late_menus["evidence_digest"] == digest_mapping(
+        late_menus, "evidence_digest"
+    )
+    assert set(late_menus["source_bindings"]) == (
+        single_workspace_late_review_menus_superseded_files
+    )
+    for name, expected in late_menus["source_bindings"].items():
+        if name in (
+            single_workspace_ci_download_superseded_files
+            | single_workspace_ci_caption_safearea_superseded_files
+        ):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(late_menus["checks"].values())
+    finding_ids = {item["thread_id"] for item in
+                   late_menus["check_evidence"]["codex_review_findings"]}
+    assert finding_ids == {
+        "PRRT_kwDOTGqvHc6qjHXz",
+        "PRRT_kwDOTGqvHc6qjHYA",
+    }
+    assert late_menus["check_evidence"]["unsupported_details_red"]["failed_cases"] == 5
+    green = late_menus["check_evidence"]["focused_green"]
+    assert green["native_cases"] == 6 and green["details_cases"] == 5
+    browser = late_menus["check_evidence"]["browser_smoke"]
+    assert browser["passed_count"] == 27 and browser["failed_count"] == 0
+    assert late_menus["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    red = late_menus["check_evidence"]["native_menu_red"]["cases"]
+    assert all(item["left"] < 0 for item in red) and len(red) == 2
+    visual = late_menus["visual_readback"]
+    assert visual["case_count"] == 3 and len(visual["screenshots"]) == 3
+    content = (ROOT / visual["path"]).read_bytes()
+    assert hashlib.sha256(content).hexdigest() == visual["sha256"]
+    report = json.loads(content)
+    assert report["functional_head"] == late_menus["functional_head"]
+    assert report["schema_version"] == visual["schema_version"]
+    assert len(report["cases"]) == 3
+    assert {(tuple(c["viewport"]),c["safe_insets"]["left"],c["safe_insets"]["right"])
+            for c in report["cases"]} == {
+        ((390,844),80,64), ((320,700),64,80), ((640,720),80,80),
+    }
+    for case in report["cases"]:
+        entry = visual["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_LATE_REVIEW_MENUS_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert len(png) == entry["size"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == entry["sha256"] == case[
+            "screenshot_sha256"
+        ]
+        assert case["edit_menu_safe_left_clearance"] >= 0
+        assert case["edit_menu_safe_right_clearance"] >= 0
+        assert case["menu"]["left"] >= case["safe_insets"]["left"]
+        assert case["menu"]["right"] <= case["viewport"][0] - case[
+            "safe_insets"
+        ]["right"]
+    # Keep the predecessor's immutable native stylesheet digest distinct from
+    # the successor's changed production stylesheet.
+    assert visual["native_source_css_sha256"] == (
+        "1af50ed47c7c4046b569ac53b4f322f23f71ed1057280e67dee5602f1ad8710e"
+    )
+
+    # The current mobile download caption has a new production revision; the
+    # previous accepted screenshots remain immutable and do not inherit PASS.
+    download_path = SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE / "acceptance-receipt.json"
+    ci_download = json.loads(download_path.read_text(encoding="utf-8"))
+    assert ci_download["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-download.v1"
+    )
+    assert ci_download["functional_head"] == (
+        "3f04561d3a1376e052e075b191b92b1f9bd6900e"
+    )
+    assert ci_download["parent_evidence"] == {
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-single-workspace-late-review-menus-20261008/"
+            "acceptance-receipt.json"
+        ),
+        "schema_version": late_menus["schema_version"],
+        "file_sha256": hashlib.sha256(late_path.read_bytes()).hexdigest(),
+        "evidence_digest": late_menus["evidence_digest"],
+    }
+    assert ci_download["evidence_digest"] == digest_mapping(
+        ci_download, "evidence_digest"
+    )
+    assert set(ci_download["source_bindings"]) == (
+        single_workspace_ci_download_superseded_files
+    )
+    for name, expected in ci_download["source_bindings"].items():
+        if name in single_workspace_ci_caption_safearea_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(ci_download["checks"].values())
+    checks = ci_download["check_evidence"]
+    assert checks["prior_remote_red"]["python"] == "3.12"
+    assert checks["prior_remote_red"]["failed_cases"] == 5
+    assert checks["prior_remote_red"]["job_id"] == 113534469036
+    assert checks["local_browser_green"]["case_count"] == 27
+    assert checks["local_browser_green"]["failed_count"] == 0
+    assert checks["static_green"]["test_count"] == 2
+    assert checks["visual_acceptance"]["decision"] == "accepted"
+    final_info = ci_download["visual_readback"]
+    assert final_info["case_count"] == len(final_info["screenshots"]) == 5
+    final_raw = (ROOT / final_info["path"]).read_bytes()
+    assert hashlib.sha256(final_raw).hexdigest() == final_info["sha256"]
+    final_visual = json.loads(final_raw)
+    assert final_visual["functional_head"] == ci_download["functional_head"]
+    assert final_visual["schema_version"] == final_info["schema_version"]
+    assert len(final_visual["cases"]) == 5
+    for name, expected in final_visual["source_bindings"].items():
+        if name in (single_workspace_ci_caption_safearea_superseded_files
+                    | single_workspace_review_p2_superseded_files
+                    | single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert {
+        (c["width"], c["height"], c["simulated_safe_inset"]["left"],
+         c["simulated_safe_inset"]["right"])
+        for c in final_visual["cases"]
+    } == {
+        (320, 700, 0, 0), (320, 700, 0, 44), (320, 700, 44, 0),
+        (390, 844, 0, 44), (390, 844, 44, 0),
+    }
+    for case in final_visual["cases"]:
+        image = final_info["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_CI_DOWNLOAD_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert len(png) == image["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == image["sha256"] == case[
+            "screenshot_sha256"
+        ]
+        geometry = case["geometry"]
+        assert geometry["caption_display"] == "none"
+        assert geometry["download_scroll_width"] <= geometry["download_client_width"] + 1
+        assert geometry["aria"] == geometry["label"] == "Originalprojekt speichern"
+        assert geometry["short"] == '"Speichern"'
+        left = case["simulated_safe_inset"]["left"]
+        right = case["simulated_safe_inset"]["right"]
+        assert geometry["bar"]["left"] >= left - 0.5
+        assert geometry["bar"]["right"] <= case["width"] - right + 0.5
+        assert geometry["popover"]["left"] >= left - 0.5
+        assert geometry["popover"]["right"] <= case["width"] - right + 0.5
+        assert abs(geometry["stage"]["width"] - case["width"]) < 1
+        assert abs(geometry["stage"]["height"] - case["height"]) < 1
+    assert final_info["native_css_sha256"] == visual["native_source_css_sha256"]
+
+    # Accept only the exact final post-caption + Native safe-area revision.
+    final_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    final = json.loads(final_path.read_text(encoding="utf-8"))
+    assert final["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-caption-safearea.v1"
+    )
+    assert final["functional_head"] == (
+        "d6e10ec63c9999f3b21a0a313d762cba341dc14b"
+    )
+    assert final["parent_evidence"] == {
+        "path": str(download_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(download_path.read_bytes()).hexdigest(),
+        "evidence_digest": ci_download["evidence_digest"],
+        "schema_version": ci_download["schema_version"],
+    }
+    assert final["evidence_digest"] == digest_mapping(final, "evidence_digest")
+    assert set(final["source_bindings"]) == (
+        single_workspace_ci_caption_safearea_superseded_files
+    )
+    for name, expected in final["source_bindings"].items():
+        if name in (single_workspace_status_autofit_superseded_files
+                    | single_workspace_embedded_host_superseded_files
+                    | single_workspace_review_p2_superseded_files
+                    | single_workspace_host_retry_superseded_files
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(final["checks"].values())
+    assert final["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert final["check_evidence"]["native_green"]["passed_count"] == 6
+    assert final["check_evidence"]["prior_remote_ci_failure"]["python"] == "3.12"
+    assert final["check_evidence"]["prior_remote_ci_failure"]["failed_cases"] == 5
+    from schauwerk.resources.native_viewer.assets import ASSETS as current_native
+
+    current_native_css_sha = hashlib.sha256(
+        current_native["styles.css"].encode("utf-8")
+    ).hexdigest()
+    # Historic CDP captures are bound to their immutable original CSS revision.
+    # New production CSS is checked against the new acceptance source digest.
+    native_css_sha = json.loads(
+        (SCHAUBILD_SINGLE_WORKSPACE_POINTER_OWNER_EVIDENCE
+         / "acceptance-receipt.json").read_text(encoding="utf-8")
+    )["visual_readbacks"]["drag"]["native_css_sha256"]
+    assert current_native_css_sha != native_css_sha
+    old_final_native_css_sha = final["visual_readbacks"]["native"]["native_styles_sha256"]
+    assert old_final_native_css_sha != final_info["native_css_sha256"]
+    assert native_css_sha != old_final_native_css_sha
+    expected_cases = {
+        "host": {
+            (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+            (390, 844, 44, 0), (390, 844, 0, 44),
+        },
+        "native": {
+            (320, 700, 64, 80), (390, 844, 80, 64), (640, 720, 80, 80),
+        },
+    }
+    for kind, meta in final["visual_readbacks"].items():
+        assert kind in expected_cases
+        payload = (ROOT / meta["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == meta["sha256"]
+        readback = json.loads(payload)
+        assert readback["schema_version"] == meta["schema_version"]
+        assert readback["functional_head"] == final["functional_head"]
+        assert len(readback["cases"]) == meta["case_count"] == len(
+            meta["screenshots"]
+        )
+        assert meta["native_styles_sha256"] == old_final_native_css_sha
+        css_binding = (
+            readback["native_child_styles_sha256"]
+            if kind == "host" else readback["native_styles_sha256"]
+        )
+        assert css_binding == old_final_native_css_sha
+        for name, sha in readback["source_bindings"].items():
+            if name in (single_workspace_status_autofit_superseded_files
+                        | single_workspace_embedded_host_superseded_files
+                        | single_workspace_review_p2_superseded_files
+                        | single_workspace_pinch_save_superseded_files
+                        | single_workspace_host_retry_superseded_files
+                        | single_workspace_ci_save_font_superseded_files
+                        | single_workspace_legacy_tools_superseded_files):
+                continue
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        seen_cases = set()
+        for case in readback["cases"]:
+            area = (
+                case["simulated_safe_inset"]
+                if kind == "host" else case["safe_area"]
+            )
+            width, height = case["width"], case["height"]
+            seen_cases.add((width, height, area["left"], area["right"]))
+            entry = meta["screenshots"][case["screenshot_file"]]
+            assert entry["viewport"] == [width, height]
+            assert entry["safe_area"] == area
+            png = (
+                SCHAUBILD_SINGLE_WORKSPACE_CI_CAPTION_SAFEAREA_EVIDENCE
+                / case["screenshot_file"]
+            ).read_bytes()
+            assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+            assert int.from_bytes(png[16:20], "big") == width
+            assert int.from_bytes(png[20:24], "big") == height
+            assert len(png) == entry["bytes"] == case["screenshot_bytes"]
+            assert (
+                hashlib.sha256(png).hexdigest()
+                == entry["sha256"]
+                == case["screenshot_sha256"]
+            )
+            geom = case["geometry"]
+            assert geom["bar"]["left"] >= area["left"] - 0.5
+            assert geom["bar"]["right"] <= width - area["right"] + 0.5
+            assert abs(geom["stage"]["width"] - width) < 1
+            assert abs(geom["stage"]["height"] - height) < 1
+            if kind == "host":
+                assert geom["short"] == "Speichern"
+                assert geom["short_display"] == "block"
+                assert geom["caption_display"] == "none"
+                assert geom["aria"] == geom["label"] == "Originalprojekt speichern"
+                assert geom["pseudo_content"] == "none"
+                assert geom["download_scroll_width"] <= geom["download_client_width"] + 1
+                assert geom["short_scroll_width"] <= geom["short_client_width"] + 1
+                assert geom["popover"]["left"] >= area["left"] - 0.5
+                assert geom["popover"]["right"] <= width - area["right"] + 0.5
+                assert all(
+                    item["left"] >= area["left"] - 0.5
+                    and item["right"] <= width - area["right"] + 0.5
+                    for item in geom["controls"]
+                )
+            else:
+                assert geom["footer"]["left"] >= area["left"] - 0.5
+                assert geom["footer"]["right"] <= width - area["right"] + 0.5
+                assert geom["edit_menu"]["left"] >= area["left"] - 0.5
+                assert geom["edit_menu"]["right"] <= width - area["right"] + 0.5
+                assert all(
+                    item["left"] >= area["left"] - 0.5
+                    and item["right"] <= width - area["right"] + 0.5
+                    for item in geom["targets"]
+                )
+                assert geom["selection_text_length"] >= 100
+                if width == 390:
+                    assert geom["view"]["height"] <= 100
+        assert seen_cases == expected_cases[kind]
+    # Rejected/staging screenshots are bound as historical bytes, never granted
+    # the final acceptance or treated as a current source.
+    unaccepted = final["check_evidence"]["before_unaccepted"]
+    assert len(unaccepted) == 3
+    for predecessor in unaccepted:
+        raw_before = (ROOT / predecessor["path"]).read_bytes()
+        assert hashlib.sha256(raw_before).hexdigest() == predecessor["file_sha256"]
+        observed = json.loads(raw_before)
+        assert observed["functional_head"] == predecessor["functional_head"]
+        assert "not inherited" in predecessor["acceptance"]
+        for case in observed["cases"]:
+            image = (ROOT / predecessor["path"]).parent / case["screenshot_file"]
+            assert hashlib.sha256(image.read_bytes()).hexdigest() == (
+                case["screenshot_sha256"]
+            )
+
+    # The accepted d6e10ec visual package is historical, not inherited after
+    # the Native hosted mobile prompt width/source changed at 1e1b1e8.
+    prompt_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_MOBILE_PROMPT_WIDTH_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    prompt_acceptance = json.loads(prompt_path.read_text(encoding="utf-8"))
+    assert prompt_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-mobile-prompt-width.v1"
+    )
+    assert prompt_acceptance["functional_head"] == (
+        "1e1b1e82dc7b5de16c755a97e9224b803026fc59"
+    )
+    assert prompt_acceptance["parent_evidence"] == {
+        "path": str(final_path.relative_to(ROOT)),
+        "schema_version": final["schema_version"],
+        "file_sha256": hashlib.sha256(final_path.read_bytes()).hexdigest(),
+        "evidence_digest": final["evidence_digest"],
+    }
+    assert prompt_acceptance["evidence_digest"] == digest_mapping(
+        prompt_acceptance, "evidence_digest"
+    )
+    assert set(prompt_acceptance["source_bindings"]) == (
+        single_workspace_mobile_prompt_width_superseded_files
+    )
+    for name, sha in prompt_acceptance["source_bindings"].items():
+        if name in (single_workspace_status_autofit_superseded_files
+                    | single_workspace_embedded_host_superseded_files
+                    | single_workspace_review_p2_superseded_files
+                    | single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(prompt_acceptance["checks"].values())
+    prompt_checks = prompt_acceptance["check_evidence"]
+    assert prompt_checks["prior_local_red"]["failed_count"] == 3
+    assert prompt_checks["focused_browser_green"]["passed_count"] == 11
+    assert prompt_checks["focused_browser_green"]["failed_count"] == 0
+    assert prompt_checks["visual_acceptance"]["decision"] == "accepted"
+    prompt_expected_cases = {
+        "host": {
+            (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+            (390, 844, 44, 0), (390, 844, 0, 44),
+        },
+        "native": {
+            (320, 700, 64, 80), (390, 844, 80, 64), (640, 720, 80, 80),
+        },
+        "process": {
+            (320, 700, 0, 0), (320, 700, 44, 0), (320, 700, 0, 44),
+        },
+    }
+    assert set(prompt_acceptance["visual_readbacks"]) == set(prompt_expected_cases)
+    for kind, meta in prompt_acceptance["visual_readbacks"].items():
+        payload = (ROOT / meta["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == meta["sha256"]
+        readback = json.loads(payload)
+        assert readback["schema_version"] == meta["schema_version"]
+        assert readback["functional_head"] == prompt_acceptance["functional_head"]
+        assert len(readback["cases"]) == meta["case_count"] == len(
+            meta["screenshots"]
+        )
+        assert meta["native_css_sha256"] == native_css_sha
+        actual_css_binding = (
+            readback["native_styles_sha256"]
+            if kind == "native" else readback["native_child_styles_sha256"]
+        )
+        assert actual_css_binding == native_css_sha
+        for name, sha in readback["source_bindings"].items():
+            if name in (single_workspace_status_autofit_superseded_files
+                        | single_workspace_embedded_host_superseded_files
+                        | single_workspace_review_p2_superseded_files
+                        | single_workspace_pinch_save_superseded_files
+                        | single_workspace_host_retry_superseded_files
+                        | single_workspace_ci_save_font_superseded_files
+                        | single_workspace_legacy_tools_superseded_files):
+                continue
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        covered = set()
+        for case in readback["cases"]:
+            area = (
+                case["safe_area"] if kind == "native"
+                else case["simulated_safe_inset"]
+            )
+            width, height = case["width"], case["height"]
+            key = (width, height, area["left"], area["right"])
+            assert key not in covered
+            covered.add(key)
+            evidence_png = (
+                SCHAUBILD_SINGLE_WORKSPACE_MOBILE_PROMPT_WIDTH_EVIDENCE
+                / case["screenshot_file"]
+            ).read_bytes()
+            bound = meta["screenshots"][case["screenshot_file"]]
+            assert bound["viewport"] == [width, height]
+            assert bound["safe_area"] == area
+            assert evidence_png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+            assert int.from_bytes(evidence_png[16:20], "big") == width
+            assert int.from_bytes(evidence_png[20:24], "big") == height
+            assert len(evidence_png) == bound["bytes"] == case["screenshot_bytes"]
+            assert (
+                hashlib.sha256(evidence_png).hexdigest()
+                == bound["sha256"] == case["screenshot_sha256"]
+            )
+            geom = case["geometry"]
+            assert abs(geom["stage"]["width"] - width) < 1
+            assert abs(geom["stage"]["height"] - height) < 1
+            usable_right = width - area["right"]
+            if kind == "host":
+                assert geom["bar"]["left"] >= area["left"] - 0.5
+                assert geom["bar"]["right"] <= usable_right + 0.5
+                assert geom["popover"]["left"] >= area["left"] - 0.5
+                assert geom["popover"]["right"] <= usable_right + 0.5
+                assert geom["aria"] == geom["label"] == "Originalprojekt speichern"
+                assert geom["short"] == "Speichern"
+                assert geom["short_display"] == "block"
+                assert geom["caption_display"] == "none"
+                assert geom["pseudo_content"] == "none"
+                assert geom["download_scroll_width"] <= geom["download_client_width"] + 1
+                assert geom["short_scroll_width"] <= geom["short_client_width"] + 1
+                assert all(
+                    x["left"] >= area["left"] - 0.5
+                    and x["right"] <= usable_right + 0.5
+                    for x in geom["controls"]
+                )
+            elif kind == "native":
+                for name in ("bar", "footer", "edit_menu"):
+                    assert geom[name]["left"] >= area["left"] - 0.5
+                    assert geom[name]["right"] <= usable_right + 0.5
+                assert all(
+                    x["left"] >= area["left"] - 0.5
+                    and x["right"] <= usable_right + 0.5
+                    for x in geom["targets"]
+                )
+                if width == 390:
+                    assert geom["view"]["height"] <= 100
+            else:
+                assert geom["status_text"] == "Ziel für die neue Verbindung auswählen"
+                assert geom["status"]["width"] >= 160
+                assert geom["status"]["height"] >= 20
+                assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+                assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+                assert geom["overlap_area"] <= 0.5
+                assert geom["visibility"] == "visible"
+                assert geom["host_bar"]["left"] >= area["left"] - 0.5
+                assert geom["host_bar"]["right"] <= usable_right + 0.5
+        assert covered == prompt_expected_cases[kind]
+    # The 088269c status-autofit revision supersedes two exact source/test SHA
+    # bindings without inheriting the prior prompt-width visual acceptance.
+    status_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    status_acceptance = json.loads(status_path.read_text(encoding="utf-8"))
+    assert status_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-status-autofit.v1"
+    )
+    assert status_acceptance["functional_head"] == (
+        "088269c96f8bdb63b3f7fe0ae964e5c4ddbd5394"
+    )
+    assert status_acceptance["parent_evidence"] == {
+        "path": str(prompt_path.relative_to(ROOT)),
+        "schema_version": prompt_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(prompt_path.read_bytes()).hexdigest(),
+        "evidence_digest": prompt_acceptance["evidence_digest"],
+    }
+    assert status_acceptance["evidence_digest"] == digest_mapping(
+        status_acceptance, "evidence_digest"
+    )
+    assert set(status_acceptance["source_bindings"]) == (
+        single_workspace_status_autofit_superseded_files
+    )
+    for name, expected in status_acceptance["source_bindings"].items():
+        if name in single_workspace_status_drag_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(status_acceptance["checks"].values())
+    assert status_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
+        "e481f696f319476c9a94416b"
+    )
+    assert status_acceptance["check_evidence"]["focused_browser_green"]["passed_count"] == 2
+    assert status_acceptance["check_evidence"]["focused_browser_green"]["failed_count"] == 0
+    assert status_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    status_meta = status_acceptance["visual_readbacks"]["status_fit"]
+    assert set(status_acceptance["visual_readbacks"]) == {"status_fit"}
+    status_raw = (ROOT / status_meta["path"]).read_bytes()
+    assert hashlib.sha256(status_raw).hexdigest() == status_meta["sha256"]
+    status_readback = json.loads(status_raw)
+    assert status_readback["schema_version"] == status_meta["schema_version"]
+    assert status_readback["functional_head"] == status_acceptance["functional_head"]
+    assert status_readback["source_bindings"] == status_acceptance["source_bindings"]
+    assert status_meta["native_css_sha256"] == native_css_sha
+    assert status_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(status_readback["cases"]) == status_meta["case_count"] == 4
+    expected_status_cases = {
+        (320, 700, 0, 0), (320, 700, 44, 0),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    covered_status_cases = set()
+    for case in status_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in expected_status_cases and key not in covered_status_cases
+        covered_status_cases.add(key)
+        bound = status_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_AUTOFIT_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert bound["safe_area"] == area and bound["viewport"] == [width, height]
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geometry = case["geometry"]
+        assert geometry["status_text"].startswith("Produktgrenze erreicht")
+        assert geometry["bar_after"]["bottom"] - geometry["bar_before"]["bottom"] > 1
+        assert geometry["clearance_after"] >= 8
+        assert geometry["status_scroll_width"] <= geometry["status_client_width"] + 1
+        assert geometry["status_scroll_height"] <= geometry["status_client_height"] + 1
+        assert geometry["overlap_area"] <= 0.5
+        assert geometry["visibility"] == "visible"
+        assert abs(geometry["stage"]["width"] - width) < 1
+        assert abs(geometry["stage"]["height"] - height) < 1
+        assert geometry["host_bar"]["left"] >= area["left"] - 0.5
+        assert geometry["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert covered_status_cases == expected_status_cases
+    # New 9013357 drag interaction explicitly supersedes the two source/test
+    # bindings of 088269c; no visual acceptance transfers automatically.
+    drag_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE / "acceptance-receipt.json"
+    )
+    drag_acceptance = json.loads(drag_path.read_text(encoding="utf-8"))
+    assert drag_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-drag-status.v1"
+    )
+    assert drag_acceptance["functional_head"] == (
+        "901335742df80f2e6169f6e921e34b24f51d78fc"
+    )
+    assert drag_acceptance["parent_evidence"] == {
+        "path": str(status_path.relative_to(ROOT)),
+        "schema_version": status_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(status_path.read_bytes()).hexdigest(),
+        "evidence_digest": status_acceptance["evidence_digest"],
+    }
+    assert drag_acceptance["evidence_digest"] == digest_mapping(
+        drag_acceptance, "evidence_digest"
+    )
+    assert set(drag_acceptance["source_bindings"]) == (
+        single_workspace_status_drag_superseded_files
+    )
+    for name, sha in drag_acceptance["source_bindings"].items():
+        if name in single_workspace_gesture_cancel_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(drag_acceptance["checks"].values())
+    drag_checks = drag_acceptance["check_evidence"]
+    assert drag_checks["prior_local_red"]["task_id"] == "5cf36257993c46089c23a17f"
+    assert drag_checks["focused_browser_green"]["passed_count"] == 3
+    assert drag_checks["focused_browser_green"]["failed_count"] == 0
+    assert drag_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(drag_acceptance["visual_readbacks"]) == {"drag"}
+    drag_meta = drag_acceptance["visual_readbacks"]["drag"]
+    drag_raw = (ROOT / drag_meta["path"]).read_bytes()
+    assert hashlib.sha256(drag_raw).hexdigest() == drag_meta["sha256"]
+    drag_readback = json.loads(drag_raw)
+    assert drag_readback["schema_version"] == drag_meta["schema_version"]
+    assert drag_readback["functional_head"] == drag_acceptance["functional_head"]
+    assert drag_readback["source_bindings"] == drag_acceptance["source_bindings"]
+    assert drag_meta["native_css_sha256"] == native_css_sha
+    assert drag_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(drag_readback["cases"]) == drag_meta["case_count"] == 2
+    expected_drag_cases = {(390, 844, 44, 0), (390, 844, 0, 44)}
+    covered_drag_cases = set()
+    for case in drag_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in expected_drag_cases and key not in covered_drag_cases
+        covered_drag_cases.add(key)
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_DRAG_EVIDENCE / case["screenshot_file"]
+        ).read_bytes()
+        bound = drag_meta["screenshots"][case["screenshot_file"]]
+        assert bound["viewport"] == [width, height]
+        assert bound["safe_area"] == area
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geom = case["geometry"]
+        assert geom["status_text"] == "Position geändert · Verbindungen angepasst"
+        assert geom["view_before"] == geom["view_during"] == geom["view_after"]
+        assert geom["node_move_px"] >= 20
+        assert geom["active_drag"] is True
+        assert geom["bar_during"]["bottom"] - geom["bar_before"]["bottom"] >= 20
+        assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+        assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+        assert geom["overlap_area"] <= 0.5 and geom["visibility"] == "visible"
+        assert abs(geom["stage"]["width"] - width) < 1
+        assert abs(geom["stage"]["height"] - height) < 1
+        assert geom["host_bar"]["left"] >= area["left"] - 0.5
+        assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert covered_drag_cases == expected_drag_cases
+    # The 4fe085f gesture correction is a newly accepted revision, not an
+    # inheritance of the previous status-drag visual acceptance.
+    gesture_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    gesture_acceptance = json.loads(gesture_path.read_text(encoding="utf-8"))
+    assert gesture_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-gesture-cancel.v1"
+    )
+    assert gesture_acceptance["functional_head"] == (
+        "4fe085ffc9f9d2e9635f62581c789b6b65a921df"
+    )
+    assert gesture_acceptance["parent_evidence"] == {
+        "path": str(drag_path.relative_to(ROOT)),
+        "schema_version": drag_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(drag_path.read_bytes()).hexdigest(),
+        "evidence_digest": drag_acceptance["evidence_digest"],
+    }
+    assert gesture_acceptance["evidence_digest"] == digest_mapping(
+        gesture_acceptance, "evidence_digest"
+    )
+    assert set(gesture_acceptance["source_bindings"]) == (
+        single_workspace_gesture_cancel_superseded_files
+    )
+    for name, digest in gesture_acceptance["source_bindings"].items():
+        if name in single_workspace_pointer_owner_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert all(gesture_acceptance["checks"].values())
+    assert gesture_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
+        "157f8573df4845e99b0f859a"
+    )
+    assert gesture_acceptance["check_evidence"]["focused_browser_green"]["passed_count"] == 3
+    assert gesture_acceptance["check_evidence"]["focused_browser_green"]["failed_count"] == 0
+    assert gesture_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert set(gesture_acceptance["visual_readbacks"]) == {"drag"}
+    gesture_meta = gesture_acceptance["visual_readbacks"]["drag"]
+    gesture_raw = (ROOT / gesture_meta["path"]).read_bytes()
+    assert hashlib.sha256(gesture_raw).hexdigest() == gesture_meta["sha256"]
+    gesture_readback = json.loads(gesture_raw)
+    assert gesture_readback["schema_version"] == gesture_meta["schema_version"]
+    assert gesture_readback["functional_head"] == gesture_acceptance["functional_head"]
+    assert gesture_readback["source_bindings"] == gesture_acceptance["source_bindings"]
+    assert gesture_meta["native_css_sha256"] == native_css_sha
+    assert gesture_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(gesture_readback["cases"]) == gesture_meta["case_count"] == 2
+    gesture_seen = set()
+    for case in gesture_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in gesture_seen
+        gesture_seen.add(key)
+        bound = gesture_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_GESTURE_CANCEL_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert bound["viewport"] == [width, height]
+        assert bound["safe_area"] == area
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geom = case["geometry"]
+        assert geom["status_text"] == "Position geändert · Verbindungen angepasst"
+        assert geom["view_before"] == geom["view_during"] == geom["view_after"]
+        assert geom["node_move_px"] >= 20 and geom["active_drag"] is True
+        assert geom["bar_during"]["bottom"] - geom["bar_before"]["bottom"] >= 20
+        assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+        assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+        assert geom["overlap_area"] <= 0.5 and geom["visibility"] == "visible"
+        assert abs(geom["stage"]["width"] - width) < 1
+        assert abs(geom["stage"]["height"] - height) < 1
+        assert geom["host_bar"]["left"] >= area["left"] - 0.5
+        assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert gesture_seen == {(390, 844, 44, 0), (390, 844, 0, 44)}
+    # The 50dc336 pointer-owner invariant requires independent new visual
+    # acceptance; the previous gesture-cancel revision remains immutable.
+    owner_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_POINTER_OWNER_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    owner_acceptance = json.loads(owner_path.read_text(encoding="utf-8"))
+    assert owner_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-pointer-owner.v1"
+    )
+    assert owner_acceptance["functional_head"] == (
+        "50dc336282efbbfd3f8d86522b59c70946b28f13"
+    )
+    assert owner_acceptance["parent_evidence"] == {
+        "path": str(gesture_path.relative_to(ROOT)),
+        "schema_version": gesture_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(gesture_path.read_bytes()).hexdigest(),
+        "evidence_digest": gesture_acceptance["evidence_digest"],
+    }
+    assert owner_acceptance["evidence_digest"] == digest_mapping(
+        owner_acceptance, "evidence_digest"
+    )
+    assert set(owner_acceptance["source_bindings"]) == (
+        single_workspace_pointer_owner_superseded_files
+    )
+    for name, sha in owner_acceptance["source_bindings"].items():
+        if name in (single_workspace_tap_autofit_superseded_files
+                    | single_workspace_embedded_host_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(owner_acceptance["checks"].values())
+    assert owner_acceptance["check_evidence"]["prior_local_red"]["task_id"] == (
+        "f8f11e18f2b94371a4f2b8c5"
+    )
+    assert owner_acceptance["check_evidence"]["focused_browser_green"]["passed_count"] == 3
+    assert owner_acceptance["check_evidence"]["focused_browser_green"]["failed_count"] == 0
+    assert owner_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert set(owner_acceptance["visual_readbacks"]) == {"drag"}
+    owner_meta = owner_acceptance["visual_readbacks"]["drag"]
+    owner_raw = (ROOT / owner_meta["path"]).read_bytes()
+    assert hashlib.sha256(owner_raw).hexdigest() == owner_meta["sha256"]
+    owner_readback = json.loads(owner_raw)
+    assert owner_readback["schema_version"] == owner_meta["schema_version"]
+    assert owner_readback["functional_head"] == owner_acceptance["functional_head"]
+    assert owner_readback["source_bindings"] == owner_acceptance["source_bindings"]
+    assert owner_meta["native_css_sha256"] == native_css_sha
+    assert owner_readback["native_child_styles_sha256"] == native_css_sha
+    assert len(owner_readback["cases"]) == owner_meta["case_count"] == 2
+    owner_cases = set()
+    for case in owner_readback["cases"]:
+        area = case["simulated_safe_inset"]
+        width, height = case["width"], case["height"]
+        key = (width, height, area["left"], area["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in owner_cases
+        owner_cases.add(key)
+        bound = owner_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_POINTER_OWNER_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert bound["viewport"] == [width, height]
+        assert bound["safe_area"] == area
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        geom = case["geometry"]
+        assert geom["status_text"] == "Position geändert · Verbindungen angepasst"
+        assert geom["view_before"] == geom["view_during"] == geom["view_after"]
+        assert geom["node_move_px"] >= 20 and geom["active_drag"] is True
+        assert geom["bar_during"]["bottom"] - geom["bar_before"]["bottom"] >= 20
+        assert geom["status_scroll_width"] <= geom["status_client_width"] + 1
+        assert geom["status_scroll_height"] <= geom["status_client_height"] + 1
+        assert geom["overlap_area"] <= 0.5 and geom["visibility"] == "visible"
+        assert abs(geom["stage"]["width"] - width) < 1
+        assert abs(geom["stage"]["height"] - height) < 1
+        assert geom["host_bar"]["left"] >= area["left"] - 0.5
+        assert geom["host_bar"]["right"] <= width - area["right"] + 0.5
+    assert owner_cases == {(390, 844, 44, 0), (390, 844, 0, 44)}
+    # The Tap-only / fully-canceled-drag revision has its own visual
+    # acceptance. Historical source hashes remain exact for prior revisions.
+    tap_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    tap_acceptance = json.loads(tap_path.read_text(encoding="utf-8"))
+    assert tap_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-tap-autofit-rollback.v1"
+    )
+    assert tap_acceptance["functional_head"] == (
+        "25ac38668cfa049489dc5f5715de01c2b9d7192a"
+    )
+    assert tap_acceptance["parent_evidence"] == {
+        "path": str(owner_path.relative_to(ROOT)),
+        "schema_version": owner_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(owner_path.read_bytes()).hexdigest(),
+        "evidence_digest": owner_acceptance["evidence_digest"],
+    }
+    assert tap_acceptance["evidence_digest"] == digest_mapping(
+        tap_acceptance, "evidence_digest"
+    )
+    assert set(tap_acceptance["source_bindings"]) == (
+        single_workspace_tap_autofit_superseded_files
+    )
+    for name, sha in tap_acceptance["source_bindings"].items():
+        if name in (single_workspace_embedded_host_superseded_files
+                    | single_workspace_review_p2_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(tap_acceptance["checks"].values())
+    evidence = tap_acceptance["check_evidence"]
+    assert evidence["tap_only_red"]["job_id"] == "9832d98768bf"
+    assert evidence["canceled_drag_red"]["job_id"] == "2357a906c423"
+    assert evidence["focused_green"]["passed_count"] == 1
+    assert evidence["focused_green"]["failed_count"] == 0
+    assert evidence["browser_smoke_green"]["passed_count"] == 28
+    assert evidence["browser_smoke_green"]["failed_count"] == 0
+    assert evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(tap_acceptance["visual_readbacks"]) == {"tap_resize"}
+    tap_meta = tap_acceptance["visual_readbacks"]["tap_resize"]
+    tap_raw = (ROOT / tap_meta["path"]).read_bytes()
+    assert hashlib.sha256(tap_raw).hexdigest() == tap_meta["sha256"]
+    tap_readback = json.loads(tap_raw)
+    assert tap_readback["schema_version"] == tap_meta["schema_version"]
+    assert tap_readback["functional_head"] == tap_acceptance["functional_head"]
+    assert tap_readback["source_bindings"] == tap_acceptance["source_bindings"]
+    assert len(tap_readback["cases"]) == tap_meta["case_count"] == 2
+    tap_seen = set()
+    for case in tap_readback["cases"]:
+        safe = case["simulated_safe_inset"]
+        width, height = case["viewport"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in tap_seen
+        tap_seen.add(key)
+        binding = tap_meta["screenshots"][case["screenshot_file"]]
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_TAP_AUTOFIT_ROLLBACK_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10]))
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == binding["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == binding["sha256"] == case["screenshot_sha256"]
+        assert binding["viewport"] == [width, height]
+        assert binding["safe_area"] == safe
+        geom = case["geometry"]
+        assert (geom["width"], geom["height"]) == (width, height)
+        assert geom["selected"] == "true" and not geom["documentOverflow"]
+        assert geom["view"] == case["view_before"]
+        assert case["view_after_tap_resize_320"] != case["view_before"]
+        assert geom["topMarker"]["top"] >= geom["bar"]["bottom"] + 7.5
+        assert geom["node"]["top"] >= geom["bar"]["bottom"] + 7.5
+        assert not geom["statusOverflow"] or geom["statusEllipsis"]
+        for control in geom["controls"]:
+            bounds = control["bounds"]
+            assert bounds["left"] >= safe["left"] - 0.5
+            assert bounds["right"] <= width - safe["right"] + 0.5
+    assert tap_seen == {(390, 844, 44, 0), (390, 844, 0, 44)}
+
+    # New visual acceptance for embedded-host geometry; no old approval inherited.
+    host_path = (SCHAUBILD_SINGLE_WORKSPACE_EMBEDDED_HOST_SAFEAREA_EVIDENCE
+                 / "acceptance-receipt.json")
+    host_acceptance = json.loads(host_path.read_text(encoding="utf-8"))
+    assert host_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-embedded-host-safearea.v1"
+    )
+    assert host_acceptance["functional_head"] == (
+        "271b0c988a82d23158c18721a8fb84441f25f3b4"
+    )
+    assert host_acceptance["parent_evidence"] == {
+        "path": str(tap_path.relative_to(ROOT)),
+        "schema_version": tap_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(tap_path.read_bytes()).hexdigest(),
+        "evidence_digest": tap_acceptance["evidence_digest"],
+    }
+    assert host_acceptance["evidence_digest"] == digest_mapping(
+        host_acceptance, "evidence_digest"
+    )
+    assert set(host_acceptance["source_bindings"]) == (
+        single_workspace_embedded_host_superseded_files
+    )
+    for name, expected in host_acceptance["source_bindings"].items():
+        if name in single_workspace_review_p2_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(host_acceptance["checks"].values())
+    assert host_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert host_acceptance["check_evidence"]["browser_smoke_green"]["passed_count"] == 28
+    assert host_acceptance["check_evidence"]["focused_green"]["passed_count"] == 5
+    assert host_acceptance["check_evidence"]["capture_green"]["passed_count"] == 2
+    assert set(host_acceptance["visual_readbacks"]) == {"host_safearea"}
+    host_meta = host_acceptance["visual_readbacks"]["host_safearea"]
+    raw_host_readback = (ROOT / host_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_host_readback).hexdigest() == host_meta["sha256"]
+    host_readback = json.loads(raw_host_readback)
+    assert host_readback["schema_version"] == host_meta["schema_version"]
+    assert host_readback["functional_head"] == host_acceptance["functional_head"]
+    assert host_readback["source_bindings"] == host_acceptance["source_bindings"]
+    assert len(host_readback["cases"]) == host_meta["case_count"] == 2
+    host_seen = set()
+    for case in host_readback["cases"]:
+        area = case["safe_area"]
+        width, height = case["viewport"]
+        key = (width, height, area["left"], area["right"])
+        assert key in {(390, 844, 44, 0), (390, 844, 0, 44)}
+        assert key not in host_seen
+        host_seen.add(key)
+        bound = host_meta["screenshots"][case["screenshot_file"]]
+        png = (SCHAUBILD_SINGLE_WORKSPACE_EMBEDDED_HOST_SAFEAREA_EVIDENCE
+               / case["screenshot_file"]).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (hashlib.sha256(png).hexdigest()
+                == bound["sha256"] == case["screenshot_sha256"])
+        readback_file = (SCHAUBILD_SINGLE_WORKSPACE_EMBEDDED_HOST_SAFEAREA_EVIDENCE
+                         / case["geometry_readback_file"])
+        assert hashlib.sha256(readback_file.read_bytes()).hexdigest() == (
+            case["geometry_readback_sha256"]
+        )
+        assert json.loads(readback_file.read_text(encoding="utf-8"))["geometry"] == case["geometry"]
+        g = case["geometry"]["native"]
+        assert g["bar"]["left"] >= area["left"] - 0.5
+        assert g["bar"]["right"] <= width - area["right"] + 0.5
+        assert g["footer"]["left"] >= area["left"] - 0.5
+        assert g["footer"]["right"] <= width - area["right"] + 0.5
+        assert case["native_footer_host_action_overlap_area"] <= 0.5
+        for control in g["controls"]:
+            assert control["rect"]["left"] >= area["left"] - 0.5
+            assert control["rect"]["right"] <= width - area["right"] + 0.5
+    assert host_seen == {(390, 844, 44, 0), (390, 844, 0, 44)}
+
+    # Exact successor after the independent review's three P2 remediations:
+    # old visual evidence remains bound to its own unchanged source revision.
+    review_p2_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_REVIEW_P2_EVIDENCE
+        / "acceptance-receipt.json"
+    )
+    review_p2_acceptance = json.loads(review_p2_path.read_text(encoding="utf-8"))
+    assert review_p2_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-review-p2.v1"
+    )
+    assert review_p2_acceptance["functional_head"] == (
+        "cb6dcc148a4f2ff3a49f2052456b94765a07598a"
+    )
+    assert review_p2_acceptance["parent_evidence"] == {
+        "path": str(host_path.relative_to(ROOT)),
+        "schema_version": host_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(host_path.read_bytes()).hexdigest(),
+        "evidence_digest": host_acceptance["evidence_digest"],
+    }
+    assert review_p2_acceptance["evidence_digest"] == digest_mapping(
+        review_p2_acceptance, "evidence_digest"
+    )
+    assert set(review_p2_acceptance["source_bindings"]) == (
+        single_workspace_review_p2_superseded_files
+    )
+    for name, expected in review_p2_acceptance["source_bindings"].items():
+        if name in (single_workspace_pinch_save_superseded_files
+                    | single_workspace_host_retry_superseded_files
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(review_p2_acceptance["checks"].values())
+    review_evidence = review_p2_acceptance["check_evidence"]
+    assert review_evidence["reviewer_p2"]["finding_count"] == 3
+    assert review_evidence["focused_green"]["passed_count"] == 7
+    assert review_evidence["focused_green"]["failed_count"] == 0
+    assert review_evidence["chrome_smoke_green"]["passed_count"] == 28
+    assert review_evidence["chrome_smoke_green"]["failed_count"] == 0
+    assert review_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(review_p2_acceptance["visual_readbacks"]) == {"review_p2"}
+    review_meta = review_p2_acceptance["visual_readbacks"]["review_p2"]
+    review_raw = (ROOT / review_meta["path"]).read_bytes()
+    assert hashlib.sha256(review_raw).hexdigest() == review_meta["sha256"]
+    review_readback = json.loads(review_raw)
+    assert review_readback["schema_version"] == review_meta["schema_version"]
+    assert review_readback["functional_head"] == review_p2_acceptance["functional_head"]
+    assert review_readback["source_bindings"] == review_p2_acceptance["source_bindings"]
+    assert len(review_readback["cases"]) == review_meta["case_count"] == 4
+    seen_review_cases = set()
+    for case in review_readback["cases"]:
+        area = case["safe_area"]
+        width, height = case["viewport"]
+        stage = case["stage"]
+        key = (stage, width, height, area["left"], area["right"])
+        assert key in {
+            ("native", 390, 844, 44, 0), ("native", 390, 844, 0, 44),
+            ("tools", 390, 844, 44, 0), ("tools", 390, 844, 0, 44),
+        }
+        assert key not in seen_review_cases
+        seen_review_cases.add(key)
+        bound = review_meta["screenshots"][case["screenshot_file"]]
+        assert bound["stage"] == stage
+        assert bound["safe_area"] == area
+        assert bound["viewport"] == [width, height]
+        png = (SCHAUBILD_SINGLE_WORKSPACE_REVIEW_P2_EVIDENCE
+               / case["screenshot_file"]).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == case["screenshot_bytes"] == bound["bytes"]
+        assert (hashlib.sha256(png).hexdigest()
+                == case["screenshot_sha256"] == bound["sha256"])
+        geo = (SCHAUBILD_SINGLE_WORKSPACE_REVIEW_P2_EVIDENCE
+               / case["geometry_file"]).read_bytes()
+        assert hashlib.sha256(geo).hexdigest() == case["geometry_sha256"]
+        assert json.loads(geo)["geometry"] == case["geometry"]
+        geometry = case["geometry"]
+        host = geometry["host"]
+        assert host["actionBar"]["left"] >= area["left"] - 0.5
+        assert host["actionBar"]["right"] <= width - area["right"] + 0.5
+        assert host["stage"]["width"] == width
+        assert host["stage"]["height"] == height
+        back = next(item for item in host["actions"]
+                    if item["selector"] == "#workspaceCloseButton")
+        assert back["text"] == "Zurück" and back["accessible"].startswith("Zurück")
+        if stage == "tools":
+            assert geometry["native"]["active"] is False
+            tools = next(item for item in host["actions"]
+                         if item["selector"] == ".workspace-tools-menu > summary")
+            assert tools["text"] == "Tools" and tools["accessible"].startswith("Tools")
+            assert tools["fontPx"] >= 12
+            assert tools["textWidth"] <= tools["availableWidth"]
+            for item in host["actions"]:
+                if item["hidden"]:
+                    continue
+                rect = item["box"]
+                assert rect["left"] >= area["left"] - 0.5
+                assert rect["right"] <= width - area["right"] + 0.5
+        else:
+            native = geometry["native"]
+            assert native["active"] is True
+            assert len(native["controls"]) == 5
+            footer = native["footer"]
+            assert footer["left"] >= area["left"] - 0.5
+            assert footer["right"] <= width - area["right"] + 0.5
+            for item in native["controls"]:
+                rect = item["box"]
+                assert rect["left"] >= area["left"] - 0.5
+                assert rect["right"] <= width - area["right"] + 0.5
+            bar = host["actionBar"]
+            overlap_width = max(0, min(footer["right"], bar["right"])
+                                - max(footer["left"], bar["left"]))
+            overlap_height = max(0, min(footer["bottom"], bar["bottom"])
+                                 - max(footer["top"], bar["top"]))
+            assert overlap_width * overlap_height <= 0.5
+    assert len(seen_review_cases) == 4
+
+    # New visually inspected source revision for pinch-jitter and save labeling.
+    # Previous PNGs and their original revision bindings remain immutable.
+    pinch_save_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_PINCH_SAVE_EVIDENCE / "acceptance-receipt.json"
+    )
+    pinch_save_acceptance = json.loads(
+        pinch_save_path.read_text(encoding="utf-8")
+    )
+    assert pinch_save_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-pinch-save.v1"
+    )
+    assert pinch_save_acceptance["functional_head"] == (
+        "7d906571d24cd73d788251ff529b140fa238604f"
+    )
+    assert pinch_save_acceptance["parent_evidence"] == {
+        "path": str(review_p2_path.relative_to(ROOT)),
+        "schema_version": review_p2_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(review_p2_path.read_bytes()).hexdigest(),
+        "evidence_digest": review_p2_acceptance["evidence_digest"],
+    }
+    assert pinch_save_acceptance["evidence_digest"] == digest_mapping(
+        pinch_save_acceptance, "evidence_digest"
+    )
+    assert set(pinch_save_acceptance["source_bindings"]) == (
+        single_workspace_pinch_save_superseded_files
+    )
+    for path, expected in pinch_save_acceptance["source_bindings"].items():
+        if path in (single_workspace_host_retry_superseded_files
+                    | single_workspace_ci_save_font_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
+    assert all(pinch_save_acceptance["checks"].values())
+    p2_checks = pinch_save_acceptance["check_evidence"]
+    assert p2_checks["independent_prior_p2"]["finding_count"] == 3
+    assert p2_checks["focused_green"]["passed_count"] == 5
+    assert p2_checks["focused_green"]["failed_count"] == 0
+    assert p2_checks["full_chromium_green"]["passed_count"] == 28
+    assert p2_checks["full_chromium_green"]["failed_count"] == 0
+    assert p2_checks["visual_capture_green"]["passed_count"] == 4
+    assert p2_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(pinch_save_acceptance["visual_readbacks"]) == {"pinch_save"}
+    pinch_meta = pinch_save_acceptance["visual_readbacks"]["pinch_save"]
+    pinch_raw = (ROOT / pinch_meta["path"]).read_bytes()
+    assert hashlib.sha256(pinch_raw).hexdigest() == pinch_meta["sha256"]
+    pinch_readback = json.loads(pinch_raw)
+    assert pinch_readback["schema_version"] == pinch_meta["schema_version"]
+    assert pinch_readback["functional_head"] == pinch_save_acceptance["functional_head"]
+    assert pinch_readback["source_bindings"] == pinch_save_acceptance["source_bindings"]
+    assert len(pinch_readback["cases"]) == pinch_meta["case_count"] == 8
+    seen_pinch_cases = set()
+    for case in pinch_readback["cases"]:
+        stage = case["stage"]
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (stage, width, height, safe["left"], safe["right"])
+        assert key in {
+            (kind, w, h, inset_left, inset_right)
+            for kind in ("tools", "native")
+            for w, h in ((320, 700), (390, 844))
+            for inset_left, inset_right in ((44, 0), (0, 44))
+        }
+        assert key not in seen_pinch_cases
+        seen_pinch_cases.add(key)
+        binding = pinch_meta["screenshots"][case["screenshot_file"]]
+        assert binding["stage"] == stage
+        assert binding["viewport"] == [width, height]
+        assert binding["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_PINCH_SAVE_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == case["screenshot_bytes"] == binding["bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == case["screenshot_sha256"] == binding["sha256"]
+        )
+        sidecar = (
+            SCHAUBILD_SINGLE_WORKSPACE_PINCH_SAVE_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(sidecar).hexdigest() == case["geometry_sha256"]
+        assert json.loads(sidecar)["geometry"] == case["geometry"]
+        geom = case["geometry"]
+        host = geom["host"]
+        assert geom["window"] == {"width": width, "height": height}
+        assert host["actionBar"]["left"] >= safe["left"] - 0.5
+        assert host["actionBar"]["right"] <= width - safe["right"] + 0.5
+        assert abs(host["stage"]["width"] - width) <= 1
+        assert abs(host["stage"]["height"] - height) <= 1
+        back = next(
+            item for item in host["actions"]
+            if item["selector"] == "#workspaceCloseButton"
+        )
+        assert back["text"] == "Zurück" and back["accessible"].startswith("Zurück")
+        if stage == "tools":
+            assert geom["native"]["active"] is False
+            tools = next(
+                item for item in host["actions"]
+                if item["selector"] == ".workspace-tools-menu > summary"
+            )
+            save = next(
+                item for item in host["actions"]
+                if item["selector"] == "#downloadLink"
+            )
+            assert tools["text"] == "Tools"
+            assert tools["accessible"].startswith("Tools")
+            assert tools["spanWidth"] + 1 >= tools["textScrollWidth"]
+            assert tools["fontPx"] >= 12
+            assert save["text"] == "Speichern"
+            assert save["accessible"].startswith("Speichern")
+            assert save["spanWidth"] + 1 >= save["textScrollWidth"]
+            assert not save["hidden"]
+            for item in host["actions"]:
+                if item["hidden"]:
+                    continue
+                bounds = item["box"]
+                assert bounds["width"] >= 38 and bounds["height"] >= 40
+                assert bounds["left"] >= safe["left"] - 0.5
+                assert bounds["right"] <= width - safe["right"] + 0.5
+        else:
+            native = geom["native"]
+            assert native["active"] is True
+            assert len(native["controls"]) == 5
+            footer = native["footer"]
+            assert footer["left"] >= safe["left"] - 0.5
+            assert footer["right"] <= width - safe["right"] + 0.5
+            for item in native["controls"]:
+                bounds = item["box"]
+                assert bounds["left"] >= safe["left"] - 0.5
+                assert bounds["right"] <= width - safe["right"] + 0.5
+            bar = host["actionBar"]
+            overlap_x = max(
+                0, min(footer["right"], bar["right"])
+                - max(footer["left"], bar["left"])
+            )
+            overlap_y = max(
+                0, min(footer["bottom"], bar["bottom"])
+                - max(footer["top"], bar["top"])
+            )
+            assert overlap_x * overlap_y <= 0.5
+    assert len(seen_pinch_cases) == 8
+
+    # Exact successor for 621px host-safe Native menu and 320/390px host retry.
+    # Parent bytes remain immutable; the latest receipt binds three changed files.
+    host_retry_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE / "acceptance-receipt.json"
+    )
+    host_retry_acceptance = json.loads(
+        host_retry_path.read_text(encoding="utf-8")
+    )
+    assert host_retry_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-host-retry.v1"
+    )
+    assert host_retry_acceptance["functional_head"] == (
+        "6fa626d6fc073d622131339fa97f2e7d65d390dd"
+    )
+    assert host_retry_acceptance["parent_evidence"] == {
+        "path": str(pinch_save_path.relative_to(ROOT)),
+        "schema_version": pinch_save_acceptance["schema_version"],
+        "file_sha256": hashlib.sha256(pinch_save_path.read_bytes()).hexdigest(),
+        "evidence_digest": pinch_save_acceptance["evidence_digest"],
+    }
+    assert host_retry_acceptance["evidence_digest"] == digest_mapping(
+        host_retry_acceptance, "evidence_digest"
+    )
+    assert set(host_retry_acceptance["source_bindings"]) == (
+        single_workspace_host_retry_superseded_files
+    )
+    for path, sha in host_retry_acceptance["source_bindings"].items():
+        if path in single_workspace_ci_save_font_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == sha
+    assert all(host_retry_acceptance["checks"].values())
+    assert host_retry_acceptance["check_evidence"]["visual_acceptance"]["decision"] == "accepted"
+    assert host_retry_acceptance["check_evidence"]["full_chromium_green"]["passed_count"] == 29
+    assert host_retry_acceptance["check_evidence"]["visual_capture_green"]["case_count"] == 3
+    assert set(host_retry_acceptance["visual_readbacks"]) == {"host_retry"}
+    host_retry_meta = host_retry_acceptance["visual_readbacks"]["host_retry"]
+    assert host_retry_meta["case_count"] == 3
+    host_retry_raw = (ROOT / host_retry_meta["path"]).read_bytes()
+    assert hashlib.sha256(host_retry_raw).hexdigest() == host_retry_meta["sha256"]
+    host_retry_readback = json.loads(host_retry_raw)
+    assert host_retry_readback["schema_version"] == host_retry_meta["schema_version"]
+    assert host_retry_readback["functional_head"] == host_retry_acceptance["functional_head"]
+    assert host_retry_readback["source_bindings"] == host_retry_acceptance["source_bindings"]
+    assert len(host_retry_readback["cases"]) == 3
+    seen_host_retry = set()
+    for case in host_retry_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["simulated_safe_area"]
+        kind = case["kind"]
+        key = (kind, width, height, safe["left"], safe["right"])
+        assert key in {
+            ("desktop-menu", 621, 720, 80, 80),
+            ("embedded-retry", 390, 844, 44, 0),
+            ("embedded-retry", 320, 700, 0, 44),
+        }
+        assert key not in seen_host_retry
+        seen_host_retry.add(key)
+        shot = host_retry_meta["screenshots"][case["screenshot_file"]]
+        assert shot["kind"] == kind and shot["viewport"] == [width, height]
+        assert shot["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == shot["bytes"] == case["screenshot_bytes"]
+        assert hashlib.sha256(png).hexdigest() == shot["sha256"] == case["screenshot_sha256"]
+        sidecar = (
+            SCHAUBILD_SINGLE_WORKSPACE_HOST_RETRY_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(sidecar).hexdigest() == case["geometry_sha256"]
+        assert shot["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(sidecar) == case["geometry"]
+        geom = case["geometry"]
+        assert geom["pass"] is True
+        if kind == "desktop-menu":
+            assert geom["childEnvironment"] == {"left": 0, "right": 0}
+            assert geom["hostSafe"] == {"left": 80, "right": 80}
+            assert geom["menu"]["left"] >= 80
+            assert geom["menu"]["right"] <= width - 80
+        else:
+            assert geom["retry"]["width"] > 0
+            assert geom["retryClearance"] >= 8
+            assert geom["retry"]["top"] - geom["fittedContentBottom"] == geom["retryClearance"]
+    assert len(seen_host_retry) == 3
+
+    # The new mobile visible Save caption revision supersedes exactly two files.
+    # Do not mutate the parent or the historical image acceptance.
+    ci_save_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE / "acceptance-receipt.json"
+    )
+    ci_save_acceptance = json.loads(ci_save_path.read_text(encoding="utf-8"))
+    assert ci_save_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-ci-save-font.v1"
+    )
+    assert ci_save_acceptance["functional_head"] == (
+        "25c1b8cbdf9879f68593fbcf808579a5f34bd6f5"
+    )
+    assert ci_save_acceptance["parent_evidence"] == {
+        "path": str(host_retry_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(host_retry_path.read_bytes()).hexdigest(),
+        "evidence_digest": host_retry_acceptance["evidence_digest"],
+        "schema_version": host_retry_acceptance["schema_version"],
+    }
+    assert ci_save_acceptance["evidence_digest"] == digest_mapping(
+        ci_save_acceptance, "evidence_digest"
+    )
+    assert set(ci_save_acceptance["source_bindings"]) == (
+        single_workspace_ci_save_font_superseded_files
+    )
+    for name, expected in ci_save_acceptance["source_bindings"].items():
+        if name in (single_workspace_dual_notch_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(ci_save_acceptance["checks"].values())
+    accept_evidence = ci_save_acceptance["check_evidence"]
+    assert accept_evidence["prior_ci_fail"]["failed_cases"] == 5
+    assert accept_evidence["focused_browser_green"]["passed_count"] == 5
+    assert accept_evidence["full_chromium_green"]["passed_count"] == 29
+    assert accept_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(ci_save_acceptance["visual_readbacks"]) == {"ci_save_font"}
+    ci_save_meta = ci_save_acceptance["visual_readbacks"]["ci_save_font"]
+    assert ci_save_meta["case_count"] == 4
+    raw_ci_save = (ROOT / ci_save_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_ci_save).hexdigest() == ci_save_meta["sha256"]
+    ci_save_readback = json.loads(raw_ci_save)
+    assert ci_save_readback["schema_version"] == ci_save_meta["schema_version"]
+    assert ci_save_readback["functional_head"] == ci_save_acceptance["functional_head"]
+    assert ci_save_readback["source_bindings"] == ci_save_acceptance["source_bindings"]
+    assert len(ci_save_readback["cases"]) == 4
+    seen_ci_save = set()
+    for case in ci_save_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in {
+            (320, 700, 44, 0), (320, 700, 0, 44),
+            (390, 844, 44, 0), (390, 844, 0, 44),
+        }
+        assert key not in seen_ci_save
+        seen_ci_save.add(key)
+        bound = ci_save_meta["screenshots"][case["screenshot_file"]]
+        assert bound["viewport"] == [width, height] and bound["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        raw_geo = (
+            SCHAUBILD_SINGLE_WORKSPACE_CI_SAVE_FONT_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(raw_geo).hexdigest() == case["geometry_sha256"]
+        assert bound["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(raw_geo) == {"geometry": case["geometry"]}
+        geo = case["geometry"]
+        assert geo["pass"] and geo["shortText"] == "Speichern"
+        assert geo["accessible"] == "Speichern: Originalprojekt"
+        assert geo["textRoom"] >= 66 and geo["stressWidth"] >= 64
+        assert geo["stressPass"] and geo["noTruncation"]
+        assert geo["toolbarSafe"] and geo["controlValid"]
+        assert geo["hasCanvasFullWidth"]
+    assert len(seen_ci_save) == 4
+
+    # New immutable successor: the two updated source/test revisions only.
+    dual_notch_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE / "acceptance-receipt.json"
+    )
+    dual_notch_acceptance = json.loads(
+        dual_notch_path.read_text(encoding="utf-8")
+    )
+    assert dual_notch_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-dual-notch.v1"
+    )
+    assert dual_notch_acceptance["functional_head"] == (
+        "789d1ad3a7c559f2565c0b5a483fd4601bb5a4ee"
+    )
+    assert dual_notch_acceptance["parent_evidence"] == {
+        "path": str(ci_save_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(ci_save_path.read_bytes()).hexdigest(),
+        "schema_version": ci_save_acceptance["schema_version"],
+        "evidence_digest": ci_save_acceptance["evidence_digest"],
+    }
+    assert dual_notch_acceptance["evidence_digest"] == digest_mapping(
+        dual_notch_acceptance, "evidence_digest"
+    )
+    assert set(dual_notch_acceptance["source_bindings"]) == (
+        single_workspace_dual_notch_superseded_files
+    )
+    for name, expected in dual_notch_acceptance["source_bindings"].items():
+        if name in (single_workspace_no_observer_superseded_files
+                    | single_workspace_legacy_tools_superseded_files):
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(dual_notch_acceptance["checks"].values())
+    dual_evidence = dual_notch_acceptance["check_evidence"]
+    assert dual_evidence["focused_green"]["passed_count"] == 6
+    assert dual_evidence["full_chromium_green"]["passed_count"] == 30
+    assert dual_evidence["visual_acceptance"]["decision"] == "accepted"
+    assert set(dual_notch_acceptance["visual_readbacks"]) == {"dual_notch"}
+    dual_meta = dual_notch_acceptance["visual_readbacks"]["dual_notch"]
+    assert dual_meta["case_count"] == 5
+    dual_raw = (ROOT / dual_meta["path"]).read_bytes()
+    assert hashlib.sha256(dual_raw).hexdigest() == dual_meta["sha256"]
+    dual_readback = json.loads(dual_raw)
+    assert dual_readback["schema_version"] == dual_meta["schema_version"]
+    assert dual_readback["functional_head"] == dual_notch_acceptance["functional_head"]
+    assert dual_readback["source_bindings"] == dual_notch_acceptance["source_bindings"]
+    assert len(dual_readback["cases"]) == 5
+    seen_dual = set()
+    for case in dual_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in {
+            (320, 700, 64, 80),
+            (320, 700, 44, 0),
+            (320, 700, 0, 44),
+            (390, 844, 44, 0),
+            (390, 844, 0, 44),
+        }
+        assert key not in seen_dual
+        seen_dual.add(key)
+        shot = dual_meta["screenshots"][case["screenshot_file"]]
+        assert shot["viewport"] == [width, height]
+        assert shot["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == shot["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == shot["sha256"] == case["screenshot_sha256"]
+        )
+        raw_geometry = (
+            SCHAUBILD_SINGLE_WORKSPACE_DUAL_NOTCH_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(raw_geometry).hexdigest() == case["geometry_sha256"]
+        assert shot["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(raw_geometry) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] is True
+        assert g["shortText"] == "Speichern"
+        assert g["accessible"] == "Speichern: Originalprojekt"
+        assert g["textRoom"] >= 66 and g["stressWidth"] >= 64
+        assert g["noTruncation"] and g["stressPass"]
+        assert g["controlValid"] and g["toolbarSafe"] and g["layoutPass"]
+        assert g["popoverPass"] and g["hasCanvasFullWidth"]
+        assert 6 <= g["popoverGap"] <= 14
+        assert abs(g["barMeasured"] - g["bar"]["height"]) <= 1
+        if key == (320, 700, 64, 80):
+            assert g["narrow"] is True
+            assert 80 <= g["bar"]["height"] <= 108
+        else:
+            assert g["narrow"] is False and g["bar"]["height"] <= 54
+    assert len(seen_dual) == 5
+
+    # New visual successor for event-based host-bar clearance; old evidence stays immutable.
+    no_observer_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE / "acceptance-receipt.json"
+    )
+    no_observer_acceptance = json.loads(
+        no_observer_path.read_text(encoding="utf-8")
+    )
+    assert no_observer_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-no-observer.v1"
+    )
+    assert no_observer_acceptance["functional_head"] == (
+        "bb5fe730a731271ef5fe1a0f26fb93f3af0fc465"
+    )
+    assert no_observer_acceptance["parent_evidence"] == {
+        "path": str(dual_notch_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(dual_notch_path.read_bytes()).hexdigest(),
+        "schema_version": dual_notch_acceptance["schema_version"],
+        "evidence_digest": dual_notch_acceptance["evidence_digest"],
+    }
+    assert no_observer_acceptance["evidence_digest"] == digest_mapping(
+        no_observer_acceptance, "evidence_digest"
+    )
+    assert set(no_observer_acceptance["source_bindings"]) == (
+        single_workspace_no_observer_superseded_files
+    )
+    for name, expected in no_observer_acceptance["source_bindings"].items():
+        if name in single_workspace_legacy_tools_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert set(no_observer_acceptance["test_bindings"]) == {
+        "tests/visual/test_standalone_editor_single_workspace.py"
+    }
+    for name, expected in no_observer_acceptance["test_bindings"].items():
+        if name in single_workspace_legacy_tools_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(no_observer_acceptance["checks"].values())
+    no_observer_checks = no_observer_acceptance["check_evidence"]
+    assert no_observer_checks["mobile_green"]["passed_count"] == 6
+    assert no_observer_checks["full_browser_green"]["passed_count"] == 30
+    assert no_observer_checks["visual_capture_green"]["case_count"] == 5
+    assert no_observer_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(no_observer_acceptance["visual_readbacks"]) == {"no_observer"}
+    no_observer_meta = no_observer_acceptance["visual_readbacks"]["no_observer"]
+    assert no_observer_meta["case_count"] == 5
+    raw_no_observer = (ROOT / no_observer_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_no_observer).hexdigest() == no_observer_meta["sha256"]
+    no_observer_readback = json.loads(raw_no_observer)
+    assert no_observer_readback["schema_version"] == no_observer_meta["schema_version"]
+    assert no_observer_readback["functional_head"] == no_observer_acceptance["functional_head"]
+    assert no_observer_readback["source_bindings"] == no_observer_acceptance["source_bindings"]
+    assert len(no_observer_readback["cases"]) == 5
+    expected_no_observer = {
+        (320, 700, 64, 80), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    seen_no_observer = set()
+    for case in no_observer_readback["cases"]:
+        w, h = case["viewport"]
+        safe = case["safe_area"]
+        key = (w, h, safe["left"], safe["right"])
+        assert key in expected_no_observer and key not in seen_no_observer
+        seen_no_observer.add(key)
+        bound = no_observer_meta["screenshots"][case["screenshot_file"]]
+        assert bound["viewport"] == [w, h]
+        assert bound["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == w
+        assert int.from_bytes(png[20:24], "big") == h
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        raw_geo = (
+            SCHAUBILD_SINGLE_WORKSPACE_NO_OBSERVER_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(raw_geo).hexdigest() == case["geometry_sha256"]
+        assert bound["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(raw_geo) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] is True
+        assert g["shortText"] == "Speichern"
+        assert g["accessible"] == "Speichern: Originalprojekt"
+        assert g["textRoom"] >= 66 and g["stressWidth"] >= 64
+        assert g["noTruncation"] and g["stressPass"]
+        assert g["controlValid"] and g["toolbarSafe"] and g["layoutPass"]
+        assert g["popoverPass"] and g["hasCanvasFullWidth"]
+        assert 6 <= g["popoverGap"] <= 14
+        assert abs(g["barMeasured"] - g["bar"]["height"]) <= 1
+        if key == (320, 700, 64, 80):
+            assert g["narrow"] is True
+            assert 80 <= g["bar"]["height"] <= 108
+        else:
+            assert g["narrow"] is False and g["bar"]["height"] <= 54
+    assert seen_no_observer == expected_no_observer
+    assert b"ResizeObserver" not in (
+        ROOT / "src/schauwerk/resources/standalone_editor/assets.py"
+    ).read_bytes()
+
+    # Exact successor for enabling legacy font/layout actions without widening SHA exemptions.
+    legacy_tools_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE / "acceptance-receipt.json"
+    )
+    legacy_tools_acceptance = json.loads(
+        legacy_tools_path.read_text(encoding="utf-8")
+    )
+    assert legacy_tools_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-legacy-tools.v1"
+    )
+    assert legacy_tools_acceptance["functional_head"] == (
+        "ed4a70309c7952527fce6883b774ee905bf6d860"
+    )
+    assert legacy_tools_acceptance["parent_evidence"] == {
+        "path": str(no_observer_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(no_observer_path.read_bytes()).hexdigest(),
+        "schema_version": no_observer_acceptance["schema_version"],
+        "evidence_digest": no_observer_acceptance["evidence_digest"],
+    }
+    assert legacy_tools_acceptance["evidence_digest"] == digest_mapping(
+        legacy_tools_acceptance, "evidence_digest"
+    )
+    assert set(legacy_tools_acceptance["source_bindings"]) == (
+        single_workspace_legacy_tools_superseded_files
+    )
+    for name, sha in legacy_tools_acceptance["source_bindings"].items():
+        if name in single_workspace_status_refit_superseded_files:
+            continue
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+    assert all(legacy_tools_acceptance["checks"].values())
+    legacy_checks = legacy_tools_acceptance["check_evidence"]
+    assert legacy_checks["mobile_green"]["passed_count"] == 6
+    assert legacy_checks["desktop_green"]["passed_count"] == 8
+    assert legacy_checks["static_green"]["passed_count"] == 3
+    assert legacy_checks["full_browser_green"]["passed_count"] == 30
+    assert legacy_checks["visual_capture_green"]["case_count"] == 5
+    assert legacy_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(legacy_tools_acceptance["visual_readbacks"]) == {"legacy_tools"}
+    legacy_meta = legacy_tools_acceptance["visual_readbacks"]["legacy_tools"]
+    assert legacy_meta["case_count"] == 5
+    raw_legacy = (ROOT / legacy_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_legacy).hexdigest() == legacy_meta["sha256"]
+    legacy_readback = json.loads(raw_legacy)
+    assert legacy_readback["schema_version"] == legacy_meta["schema_version"]
+    assert legacy_readback["functional_head"] == legacy_tools_acceptance["functional_head"]
+    assert legacy_readback["source_bindings"] == legacy_tools_acceptance["source_bindings"]
+    assert len(legacy_readback["cases"]) == 5
+    expected_legacy = {
+        (320, 700, 64, 80), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+        (1366, 900, 0, 0),
+    }
+    action_ids = {
+        "fontDecreaseButton", "fontPanelButton", "fontIncreaseButton",
+        "fontAllButton", "layoutButton",
+    }
+    seen_legacy = set()
+    for case in legacy_readback["cases"]:
+        width, height = case["viewport"]
+        safe = case["safe_area"]
+        key = (width, height, safe["left"], safe["right"])
+        assert key in expected_legacy and key not in seen_legacy
+        seen_legacy.add(key)
+        binding = legacy_meta["screenshots"][case["screenshot_file"]]
+        assert binding["viewport"] == [width, height]
+        assert binding["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == width
+        assert int.from_bytes(png[20:24], "big") == height
+        assert len(png) == binding["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == binding["sha256"] == case["screenshot_sha256"]
+        )
+        geometry_file = (
+            SCHAUBILD_SINGLE_WORKSPACE_LEGACY_TOOLS_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(geometry_file).hexdigest() == case["geometry_sha256"]
+        assert binding["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(geometry_file) == {"geometry": case["geometry"]}
+        g = case["geometry"]
+        assert g["pass"] and g["sourceMode"] and g["legacyToolsVisible"]
+        assert g["safeMenu"] and g["safeBar"] and g["fullyFitted"] and g["textVisible"]
+        assert {x["id"] for x in g["actions"]} == action_ids
+        assert all(x["hit"] and not x["hidden"] and not x["disabled"]
+                   for x in g["actions"])
+        assert 0 <= g["popoverGap"] <= 14
+        if width <= 760:
+            assert g["popoverGap"] >= 6
+        if key == (320, 700, 64, 80):
+            assert g["flexWrap"] == "wrap"
+        assert abs(g["bar"]["height"] - g["measuredBar"]) <= 1
+    assert seen_legacy == expected_legacy
+
+    # Exact visual successor for dual-notch host status and embedded native refit.
+    status_refit_path = (
+        SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE / "acceptance-receipt.json"
+    )
+    status_refit_acceptance = json.loads(
+        status_refit_path.read_text(encoding="utf-8")
+    )
+    assert status_refit_acceptance["schema_version"] == (
+        "schauwerk-schaubild-single-workspace-status-refit.v1"
+    )
+    assert status_refit_acceptance["functional_head"] == (
+        "eea656cd7b4f0a2c5ca78f225df24e422cc21330"
+    )
+    assert status_refit_acceptance["parent_evidence"] == {
+        "path": str(legacy_tools_path.relative_to(ROOT)),
+        "file_sha256": hashlib.sha256(legacy_tools_path.read_bytes()).hexdigest(),
+        "schema_version": legacy_tools_acceptance["schema_version"],
+        "evidence_digest": legacy_tools_acceptance["evidence_digest"],
+    }
+    assert status_refit_acceptance["evidence_digest"] == digest_mapping(
+        status_refit_acceptance, "evidence_digest"
+    )
+    assert set(status_refit_acceptance["source_bindings"]) == (
+        single_workspace_status_refit_superseded_files
+    )
+    for name, expected in status_refit_acceptance["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert all(status_refit_acceptance["checks"].values())
+    status_checks = status_refit_acceptance["check_evidence"]
+    assert status_checks["focused_green"]["passed_count"] == 6
+    assert status_checks["full_browser_green"]["passed_count"] == 30
+    assert status_checks["visual_capture_green"]["case_count"] == 6
+    assert status_checks["visual_acceptance"]["decision"] == "accepted"
+    assert set(status_refit_acceptance["visual_readbacks"]) == {"status_refit"}
+    status_meta = status_refit_acceptance["visual_readbacks"]["status_refit"]
+    assert status_meta["case_count"] == 6
+    raw_status = (ROOT / status_meta["path"]).read_bytes()
+    assert hashlib.sha256(raw_status).hexdigest() == status_meta["sha256"]
+    status_readback = json.loads(raw_status)
+    assert status_readback["schema_version"] == status_meta["schema_version"]
+    assert status_readback["functional_head"] == status_refit_acceptance["functional_head"]
+    assert status_readback["source_bindings"] == status_refit_acceptance["source_bindings"]
+    assert len(status_readback["cases"]) == 6
+    expected_status = {
+        (320, 700, 64, 80), (320, 700, 44, 0), (320, 700, 0, 44),
+        (390, 844, 44, 0), (390, 844, 0, 44),
+    }
+    kinds = {"host_status": set(), "native_refit": set()}
+    for case in status_readback["cases"]:
+        w, h = case["viewport"]
+        safe = case["safe_area"]
+        key = (w, h, safe["left"], safe["right"])
+        kind = case["kind"]
+        assert kind in kinds and key in expected_status
+        assert key not in kinds[kind]
+        kinds[kind].add(key)
+        bound = status_meta["screenshots"][case["screenshot_file"]]
+        assert bound["kind"] == kind
+        assert bound["viewport"] == [w, h] and bound["safe_area"] == safe
+        png = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE
+            / case["screenshot_file"]
+        ).read_bytes()
+        assert png[:8] == bytes([137, 80, 78, 71, 13, 10, 26, 10])
+        assert int.from_bytes(png[16:20], "big") == w
+        assert int.from_bytes(png[20:24], "big") == h
+        assert len(png) == bound["bytes"] == case["screenshot_bytes"]
+        assert (
+            hashlib.sha256(png).hexdigest()
+            == bound["sha256"] == case["screenshot_sha256"]
+        )
+        side = (
+            SCHAUBILD_SINGLE_WORKSPACE_STATUS_REFIT_EVIDENCE
+            / case["geometry_file"]
+        ).read_bytes()
+        assert hashlib.sha256(side).hexdigest() == case["geometry_sha256"]
+        assert bound["geometry_sha256"] == case["geometry_sha256"]
+        assert json.loads(side) == {"geometry": case["geometry"]}
+        geom = case["geometry"]
+        assert geom["pass"] is True
+        if kind == "host_status":
+            assert geom["statusSafe"] is True
+            assert geom["statusPill"]["left"] >= safe["left"] - 0.5
+            assert geom["statusPill"]["right"] <= w - safe["right"] + 0.5
+            assert geom["controlValid"] and geom["layoutPass"]
+            assert geom["popoverPass"] and geom["noTruncation"]
+            assert geom["hasCanvasFullWidth"] and geom["textRoom"] >= 66
+        else:
+            assert geom["oldBar"] <= 54 and geom["newBar"] >= 80
+            assert geom["newFoot"] > geom["oldFoot"] + 30
+            assert geom["fitClearance"] >= 8
+            assert geom["hostPill"]["right"] <= w - safe["right"] + 0.5
+    assert kinds["host_status"] == expected_status
+    assert kinds["native_refit"] == {(320, 700, 64, 80)}
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -6005,7 +9576,71 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_dark_status_superseded_files:
+        if name in single_workspace_status_refit_superseded_files:
+            assert status_refit_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_legacy_tools_superseded_files:
+            assert legacy_tools_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_no_observer_superseded_files:
+            assert no_observer_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_dual_notch_superseded_files:
+            assert dual_notch_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_ci_save_font_superseded_files:
+            assert ci_save_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_host_retry_superseded_files:
+            assert host_retry_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_pinch_save_superseded_files:
+            assert pinch_save_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_review_p2_superseded_files:
+            assert review_p2_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_embedded_host_superseded_files:
+            assert host_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_tap_autofit_superseded_files:
+            assert tap_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_pointer_owner_superseded_files:
+            assert owner_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_gesture_cancel_superseded_files:
+            assert gesture_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_status_drag_superseded_files:
+            assert drag_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_status_autofit_superseded_files:
+            assert status_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_mobile_prompt_width_superseded_files:
+            assert prompt_acceptance["source_bindings"][name] == current
+        elif name in single_workspace_ci_caption_safearea_superseded_files:
+            assert final["source_bindings"][name] == current
+        elif name in single_workspace_ci_download_superseded_files:
+            assert ci_download["source_bindings"][name] == current
+        elif name in single_workspace_late_review_menus_superseded_files:
+            assert late_menus["source_bindings"][name] == current
+        elif name in single_workspace_independent_remediation_superseded_files:
+            assert independent_remediation["source_bindings"][name] == current
+        elif name in single_workspace_ci_font_legacy_superseded_files:
+            assert ci_font_legacy["source_bindings"][name] == current
+        elif name in single_workspace_side_safearea_superseded_files:
+            assert side_safearea["source_bindings"][name] == current
+        elif name in single_workspace_mobile_320_superseded_files:
+            assert mobile["source_bindings"][name] == current
+        elif name in single_workspace_safe_area_test_contract_superseded_files:
+            assert test_contract["source_bindings"][name] == current
+        elif name in single_workspace_safe_area_fit_superseded_files:
+            assert safe_area_receipt["source_bindings"][name] == current
+        elif name in single_workspace_final_review_superseded_files:
+            assert final_review["source_bindings"][name] == current
+        elif name in single_workspace_popover_anchoring_superseded_files:
+            assert popover_anchor["source_bindings"][name] == current
+        elif name in single_workspace_fit_retry_superseded_files:
+            assert fit_retry["source_bindings"][name] == current
+        elif name in single_workspace_zoom_continuity_superseded_files:
+            assert zoom_continuity["source_bindings"][name] == current
+        elif name in single_workspace_review_hardening_superseded_files:
+            assert review_hardening["source_bindings"][name] == current
+        elif name in single_workspace_review_closure_superseded_files:
+            assert review_closure["source_bindings"][name] == current
+        elif name in single_workspace_fit_clearance_superseded_files:
+            assert single_workspace_fit_clearance["source_bindings"][name] == current
+        elif name in single_workspace_max_canvas_superseded_files:
+            assert single_workspace_max_canvas["source_bindings"][name] == current
+        elif name in single_workspace_dark_status_superseded_files:
             assert single_workspace_dark_status["source_bindings"][name] == current
         elif name in single_workspace_wrapped_dock_superseded_files:
             assert single_workspace_wrapped_dock["source_bindings"][name] == current

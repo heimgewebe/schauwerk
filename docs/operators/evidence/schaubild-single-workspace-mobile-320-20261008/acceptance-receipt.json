@@ -1,0 +1,123 @@
+{
+  "base_product_head": "359588eb2132c09cef9d2aca7d45d06f52410abe",
+  "check_evidence": {
+    "actual_browser_visual": {
+      "head": "de0ba2e47c88d7992a429cf6d882d45d05851b69",
+      "result": "passed",
+      "task_id": "ddea213cb35b40518f5179e0",
+      "viewport_method": "Chrome CDP Emulation.setDeviceMetricsOverride"
+    },
+    "canonical_browser_smoke": {
+      "failed_count": 0,
+      "passed_count": 20,
+      "result": "passed",
+      "task_id": "8d64a2f217bc4a498f60f848"
+    },
+    "post_import_sort_lint": {
+      "note": "Full Ruff checks passed after correcting new test import order",
+      "result": "passed"
+    },
+    "pre_successor_validate": {
+      "failed_count": 1,
+      "failure_class": "expected_historical_source_binding_supersession",
+      "passed_count": 1669,
+      "ruff_passed": true,
+      "task_id": "13a2310fae7745858854c40c"
+    },
+    "red_before": {
+      "failure": "mobile action touch targets overlap: 1/0",
+      "head": "359588eb2132c09cef9d2aca7d45d06f52410abe",
+      "result": "failed",
+      "task_id": "13e72ad2be9d497cb9ea34a9"
+    },
+    "review_finding": {
+      "issue": "four simultaneous actions at 320 CSS px overlaid their visible labels",
+      "severity": "P2",
+      "thread_id": "PRRT_kwDOTGqvHc6qa0xG"
+    },
+    "runner_filter_parity": {
+      "failed_count": 0,
+      "passed_count": 3,
+      "result": "passed",
+      "task_id": "449731798b3c41d994e5d3ef"
+    },
+    "targeted_green": {
+      "result": "passed",
+      "task_id": "0ff589eae0d34dd5ad0286e7",
+      "test": "test_single_workspace_mobile_320_prepared_download_is_readable_and_clickable"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "head": "de0ba2e47c88d7992a429cf6d882d45d05851b69",
+      "limitations": [
+        "no physical iOS/Safari",
+        "not production deployment"
+      ],
+      "review_method": "two actual PNG screenshots inspected, separately from code and geometry tests",
+      "scope": "320px compact original-download button with 52px action bar and 390px regression control"
+    }
+  },
+  "checks": {
+    "actual_pngs_visually_inspected": true,
+    "all_controls_within_true_css_viewport": true,
+    "bar_stays_52px": true,
+    "canonical_chrome_smoke_extended": true,
+    "download_full_aria_label_present": true,
+    "full_canvas_preserved": true,
+    "mobile_320px_regression_green": true,
+    "no_control_overlap": true,
+    "original_320px_p2_reproduced": true,
+    "parent_immutable": true,
+    "runner_makefile_selection_parity": true,
+    "source_sha256_bound": true,
+    "visual_readback_sha256_bound": true
+  },
+  "does_not_establish": [
+    "new evidence-head complete validation",
+    "remote GitHub CI",
+    "exact evidence-head independent review",
+    "Captain merge readiness",
+    "iOS/Safari physical device acceptance",
+    "production deployment"
+  ],
+  "evidence_digest": "a58b451e9a359bea12b3a873ffef620245eb241c0de2ecd2473d8649bc40996b",
+  "functional_head": "de0ba2e47c88d7992a429cf6d882d45d05851b69",
+  "parent_evidence": {
+    "evidence_digest": "2e37c376496f60283550fb2860d9e4a13e860cb6478c1b2318e3cb92c233a864",
+    "file_sha256": "8cacca8f8dc623ec889ba79d3f2c6462ee6c27e256ed295be300f42dea79dd6c",
+    "path": "docs/operators/evidence/schaubild-single-workspace-safe-area-test-contract-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-safe-area-test-contract.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-mobile-320.v1",
+  "scope": "pr203-320px-narrow-mobile-workspace-actions-and-cdp-regression",
+  "source_bindings": {
+    "Makefile": "b78a823fe253be1142436f3b635137c569b247f986dea23a3da7e804cc67c2b2",
+    "scripts/run_browser_smoke.py": "642019b5468288f5f2bed8c44f95fac73aea3fa0b5509081cb34f6355a8d418e",
+    "src/schauwerk/resources/standalone_editor/assets.py": "ac7ec66aac4ba00193c269f3d601ebf0e7c82b7af2b6b72e479591f8a56f086d",
+    "tests/visual/test_standalone_editor_single_workspace.py": "ffd8820fe63194019be0a0d69c9ba8c953475e437ad741e4a40e55ad51a2ba7c"
+  },
+  "visual_readback": {
+    "case_count": 2,
+    "path": "docs/operators/evidence/schaubild-single-workspace-mobile-320-20261008/visual-readback.json",
+    "result": "passed",
+    "screenshot_bindings": {
+      "readback-320x700.png": {
+        "bytes": 26248,
+        "sha256": "ddb7211ea4d57e571958a8813acfb17f849cc5561073fe86e1b8798588fe407c",
+        "viewport_css_px": [
+          320,
+          700
+        ]
+      },
+      "readback-390x844.png": {
+        "bytes": 32005,
+        "sha256": "6573cda0738d9f2563474272bcd638809c65dbbfe2b838f58cb99618b95e5f9d",
+        "viewport_css_px": [
+          390,
+          844
+        ]
+      }
+    },
+    "sha256": "d86247aabfc958ff71e288d47402940e5c0e44c95b07e747988627db702009ed"
+  }
+}

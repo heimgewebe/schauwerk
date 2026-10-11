@@ -1,0 +1,107 @@
+{
+  "cases": {
+    "legacy-431": {
+      "barGap": 7,
+      "height": 844,
+      "menu": {
+        "height": 54,
+        "width": 179.921875,
+        "x": 245.078125,
+        "y": 683
+      },
+      "mode": "legacy-431",
+      "overlap": {
+        "height": 28,
+        "width": 0
+      },
+      "pill": {
+        "height": 28,
+        "width": 226.078125,
+        "x": 8,
+        "y": 708
+      },
+      "screenshot_bytes": 13103,
+      "screenshot_sha256": "d72400770cb9ed739a4bc51c8423151a1206b3d3cbd769fe53e10bb22b251b56",
+      "statusVisibility": "hidden",
+      "width": 431
+    },
+    "legacy-mobile": {
+      "barGap": 7,
+      "height": 844,
+      "menu": {
+        "height": 54,
+        "width": 177.921875,
+        "x": 206.078125,
+        "y": 683
+      },
+      "mode": "legacy-mobile",
+      "overlap": {
+        "height": 28,
+        "width": 28
+      },
+      "pill": {
+        "height": 28,
+        "width": 226.078125,
+        "x": 8,
+        "y": 708
+      },
+      "screenshot_bytes": 13298,
+      "screenshot_sha256": "580f6a5b5aabf5fd3a49a28fa24bdec07c468a6dc1091e7ffa75534d16ecaaf8",
+      "statusVisibility": "hidden",
+      "width": 390
+    },
+    "legacy-tablet": {
+      "barGap": 7,
+      "height": 900,
+      "menu": {
+        "height": 54,
+        "width": 179.921875,
+        "x": 414.078125,
+        "y": 739
+      },
+      "mode": "legacy-tablet",
+      "overlap": {
+        "height": 28,
+        "width": 0
+      },
+      "pill": {
+        "height": 28,
+        "width": 226.078125,
+        "x": 8,
+        "y": 764
+      },
+      "screenshot_bytes": 18919,
+      "screenshot_sha256": "3a8354407a0ec3a2578110f9a5daccb11b4639a017f0277e31a33bce52d04bb7",
+      "statusVisibility": "visible",
+      "width": 600
+    },
+    "native-mobile": {
+      "barGap": 7,
+      "height": 844,
+      "menu": {
+        "height": 54,
+        "width": 129.46875,
+        "x": 254.53125,
+        "y": 723
+      },
+      "mode": "native-mobile",
+      "nativeNodeCount": 2,
+      "overlap": {
+        "height": 28,
+        "width": 0
+      },
+      "pill": {
+        "height": 28,
+        "width": 75.578125,
+        "x": 8,
+        "y": 748
+      },
+      "screenshot_bytes": 29125,
+      "screenshot_sha256": "7b1dd2ae9a8cb48303a0c01277ec269abd7c44cc8389ebaeaedea6d76773302e",
+      "statusVisibility": "hidden",
+      "width": 390
+    }
+  },
+  "functional_head": "cca926f4a8e9262e65f51b67e59bbf538519481f",
+  "schema_version": "schauwerk-pr203-final-review-visual-readback.v1"
+}

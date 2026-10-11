@@ -1,0 +1,44 @@
+{
+  "base_sha": "559a89a86e793863b544397d89db6f2db8643256",
+  "diff_sha256": "a6c87f9c7be42043887e468f9d29366e447af6e4752079c2405fd92da40c5867",
+  "does_not_establish": [
+    "full PR-level audit",
+    "new independent review",
+    "new GitHub CI",
+    "Captain authorization"
+  ],
+  "functional_head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+  "kind": "grabowski_self_review",
+  "passes": [
+    {
+      "focus": "review finding",
+      "n": 1,
+      "result": "Gemini viewport-fixed containing-block displacement confirmed with blur on"
+    },
+    {
+      "focus": "cause correction",
+      "n": 2,
+      "result": "removing mobile bar backdrop-filter restores viewport positioning without changing canvas dimension"
+    },
+    {
+      "focus": "real browser regression",
+      "n": 3,
+      "result": "previous red gap 56px; new Legacy 390/600 gap 7px and hit-tested buttons"
+    },
+    {
+      "focus": "scope/test integration",
+      "n": 4,
+      "result": "18/18 Chrome, 1667 full-suite PASS, one expected historical digest error"
+    },
+    {
+      "focus": "source identity and acceptance",
+      "n": 5,
+      "result": "exact two file SHA256s, parent digest, two JSON/Png screenshot digests; no prior acceptance modified"
+    }
+  ],
+  "review_mode": "bounded five-pass source revision assessment",
+  "reviewed_at": "2026-10-08T12:01:48+00:00",
+  "schema_version": 1,
+  "verdict": "PASS for functional source revision; not canonical PR-level audit or independent approval",
+  "visual_readback_json_sha256": "6708025dfc9bef0732f35631c4faeb1591f66876c05a0ce19d5468fb96922252"
+}

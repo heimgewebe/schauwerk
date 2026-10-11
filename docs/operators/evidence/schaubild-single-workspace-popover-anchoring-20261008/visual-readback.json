@@ -1,0 +1,125 @@
+{
+  "cases": {
+    "legacy-dark-mobile": {
+      "afterHit": "BUTTON",
+      "bar": {
+        "bottom": 796,
+        "height": 52,
+        "right": 384,
+        "width": 139.875,
+        "x": 244.125,
+        "y": 744
+      },
+      "beforeCss": {
+        "barBackdrop": "none",
+        "position": "fixed"
+      },
+      "beforeHit": "BUTTON",
+      "beforePop": {
+        "bottom": 737,
+        "height": 54,
+        "right": 384,
+        "width": 177.921875,
+        "x": 206.078125,
+        "y": 683
+      },
+      "buttonVisible": true,
+      "delta": {
+        "x": 0,
+        "y": 0
+      },
+      "exportGap": 7,
+      "exportPopover": {
+        "bottom": 737,
+        "height": 54,
+        "right": 384,
+        "width": 177.921875,
+        "x": 206.078125,
+        "y": 683
+      },
+      "screenshot_bytes": 21455,
+      "screenshot_sha256": "4b77993126ac62802a0132fffdc02cf6d15a7ddf82a177e0cb31ad86f4573121",
+      "status": {
+        "bottom": 736,
+        "height": 28,
+        "right": 271.625,
+        "width": 263.625,
+        "x": 8,
+        "y": 708
+      },
+      "viewport": {
+        "height": 844,
+        "width": 390
+      },
+      "withoutBackdrop": {
+        "bottom": 737,
+        "height": 54,
+        "right": 384,
+        "width": 177.921875,
+        "x": 206.078125,
+        "y": 683
+      }
+    },
+    "legacy-dark-tablet": {
+      "afterHit": "BUTTON",
+      "bar": {
+        "bottom": 852,
+        "height": 52,
+        "right": 594,
+        "width": 139.875,
+        "x": 454.125,
+        "y": 800
+      },
+      "beforeCss": {
+        "barBackdrop": "none",
+        "position": "fixed"
+      },
+      "beforeHit": "BUTTON",
+      "beforePop": {
+        "bottom": 793,
+        "height": 54,
+        "right": 594,
+        "width": 179.921875,
+        "x": 414.078125,
+        "y": 739
+      },
+      "buttonVisible": true,
+      "delta": {
+        "x": 0,
+        "y": 0
+      },
+      "exportGap": 7,
+      "exportPopover": {
+        "bottom": 793,
+        "height": 54,
+        "right": 594,
+        "width": 179.921875,
+        "x": 414.078125,
+        "y": 739
+      },
+      "screenshot_bytes": 23524,
+      "screenshot_sha256": "34be9c285dde9ba86174a517e7871844772120241f5b47b71719bf97462e8f7e",
+      "status": {
+        "bottom": 792,
+        "height": 28,
+        "right": 271.625,
+        "width": 263.625,
+        "x": 8,
+        "y": 764
+      },
+      "viewport": {
+        "height": 900,
+        "width": 600
+      },
+      "withoutBackdrop": {
+        "bottom": 793,
+        "height": 54,
+        "right": 594,
+        "width": 179.921875,
+        "x": 414.078125,
+        "y": 739
+      }
+    }
+  },
+  "functional_head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089"
+}

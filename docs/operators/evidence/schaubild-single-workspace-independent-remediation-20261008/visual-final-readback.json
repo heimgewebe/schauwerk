@@ -1,0 +1,364 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "aria": "Originalprojekt speichern",
+        "bar": {
+          "height": 52,
+          "left": 6,
+          "right": 314,
+          "width": 308
+        },
+        "controls": [
+          {
+            "height": 42,
+            "left": 11,
+            "name": ".workspace-tools-menu summary",
+            "right": 98.0625,
+            "width": 87.0625
+          },
+          {
+            "height": 42,
+            "left": 101.0625,
+            "name": ".workspace-export-menu summary",
+            "right": 160.046875,
+            "width": 58.984375
+          },
+          {
+            "height": 42,
+            "left": 163.046875,
+            "name": "#downloadLink",
+            "right": 241.046875,
+            "width": 78
+          },
+          {
+            "height": 42,
+            "left": 244.046875,
+            "name": "#workspaceCloseButton",
+            "right": 309,
+            "width": 64.953125
+          }
+        ],
+        "height": 700,
+        "label": "Originalprojekt speichern",
+        "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:45319/native/c75463a34507172d2ea80dd8f7c44172/index.html",
+        "popover": {
+          "height": 54,
+          "left": 182.234375,
+          "right": 314,
+          "width": 131.765625
+        },
+        "short": "\"Speichern\"",
+        "stage": {
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "width": 320
+        },
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 26084,
+      "screenshot_file": "final-320x700-left0-right0.png",
+      "screenshot_sha256": "7810d9efaf126a1c2d96e632f348f23265846ea5826fdb6c0fd37d93cd7fbd55",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "aria": "Originalprojekt speichern",
+        "bar": {
+          "height": 52,
+          "left": 44,
+          "right": 314,
+          "width": 270
+        },
+        "controls": [
+          {
+            "height": 42,
+            "left": 49,
+            "name": ".workspace-tools-menu summary",
+            "right": 113.40625,
+            "width": 64.40625
+          },
+          {
+            "height": 42,
+            "left": 116.40625,
+            "name": ".workspace-export-menu summary",
+            "right": 160.046875,
+            "width": 43.640625
+          },
+          {
+            "height": 42,
+            "left": 163.046875,
+            "name": "#downloadLink",
+            "right": 241.046875,
+            "width": 78
+          },
+          {
+            "height": 42,
+            "left": 244.046875,
+            "name": "#workspaceCloseButton",
+            "right": 309,
+            "width": 64.953125
+          }
+        ],
+        "height": 700,
+        "label": "Originalprojekt speichern",
+        "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:35821/native/e4bb5f93be2d1d39b80a66665f99e70b/index.html",
+        "popover": {
+          "height": 54,
+          "left": 182.234375,
+          "right": 314,
+          "width": 131.765625
+        },
+        "short": "\"Speichern\"",
+        "stage": {
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "width": 320
+        },
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 26377,
+      "screenshot_file": "final-320x700-left44-right0.png",
+      "screenshot_sha256": "382b6df9bda121fa6bc54186a9b95ae6c7dc6cff0b9ae687a024b6cc89513bf3",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "aria": "Originalprojekt speichern",
+        "bar": {
+          "height": 52,
+          "left": 6,
+          "right": 276,
+          "width": 270
+        },
+        "controls": [
+          {
+            "height": 42,
+            "left": 11,
+            "name": ".workspace-tools-menu summary",
+            "right": 75.40625,
+            "width": 64.40625
+          },
+          {
+            "height": 42,
+            "left": 78.40625,
+            "name": ".workspace-export-menu summary",
+            "right": 122.046875,
+            "width": 43.640625
+          },
+          {
+            "height": 42,
+            "left": 125.046875,
+            "name": "#downloadLink",
+            "right": 203.046875,
+            "width": 78
+          },
+          {
+            "height": 42,
+            "left": 206.046875,
+            "name": "#workspaceCloseButton",
+            "right": 271,
+            "width": 64.953125
+          }
+        ],
+        "height": 700,
+        "label": "Originalprojekt speichern",
+        "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:34575/native/765b2789f3ef34a94fbabad0970e77b9/index.html",
+        "popover": {
+          "height": 54,
+          "left": 144.234375,
+          "right": 276,
+          "width": 131.765625
+        },
+        "short": "\"Speichern\"",
+        "stage": {
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "width": 320
+        },
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 26040,
+      "screenshot_file": "final-320x700-left0-right44.png",
+      "screenshot_sha256": "c062e3580115430b933cd8c285cc33978ebbe42a25d30c6d351e92e70626ca78",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "aria": "Originalprojekt speichern",
+        "bar": {
+          "height": 52,
+          "left": 68.265625,
+          "right": 384,
+          "width": 315.734375
+        },
+        "controls": [
+          {
+            "height": 42,
+            "left": 73.265625,
+            "name": ".workspace-tools-menu summary",
+            "right": 165.125,
+            "width": 91.859375
+          },
+          {
+            "height": 42,
+            "left": 168.125,
+            "name": ".workspace-export-menu summary",
+            "right": 230.046875,
+            "width": 61.921875
+          },
+          {
+            "height": 42,
+            "left": 233.046875,
+            "name": "#downloadLink",
+            "right": 311.046875,
+            "width": 78
+          },
+          {
+            "height": 42,
+            "left": 314.046875,
+            "name": "#workspaceCloseButton",
+            "right": 379,
+            "width": 64.953125
+          }
+        ],
+        "height": 844,
+        "label": "Originalprojekt speichern",
+        "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:43895/native/702d94d74909e321a3d6f7428d543b7d/index.html",
+        "popover": {
+          "height": 54,
+          "left": 252.234375,
+          "right": 384,
+          "width": 131.765625
+        },
+        "short": "\"Speichern\"",
+        "stage": {
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "width": 390
+        },
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 32179,
+      "screenshot_file": "final-390x844-left44-right0.png",
+      "screenshot_sha256": "b98d815cd4d290ae4c1313efa4b60cec61dc3244b34948fdb079684d3a08432b",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 390
+    },
+    {
+      "geometry": {
+        "aria": "Originalprojekt speichern",
+        "bar": {
+          "height": 52,
+          "left": 30.265625,
+          "right": 346,
+          "width": 315.734375
+        },
+        "controls": [
+          {
+            "height": 42,
+            "left": 35.265625,
+            "name": ".workspace-tools-menu summary",
+            "right": 127.125,
+            "width": 91.859375
+          },
+          {
+            "height": 42,
+            "left": 130.125,
+            "name": ".workspace-export-menu summary",
+            "right": 192.046875,
+            "width": 61.921875
+          },
+          {
+            "height": 42,
+            "left": 195.046875,
+            "name": "#downloadLink",
+            "right": 273.046875,
+            "width": 78
+          },
+          {
+            "height": 42,
+            "left": 276.046875,
+            "name": "#workspaceCloseButton",
+            "right": 341,
+            "width": 64.953125
+          }
+        ],
+        "height": 844,
+        "label": "Originalprojekt speichern",
+        "native_css_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:45131/native/7c6a63f3894dd9f7d30a78e54f63570a/index.html",
+        "popover": {
+          "height": 54,
+          "left": 214.234375,
+          "right": 346,
+          "width": 131.765625
+        },
+        "short": "\"Speichern\"",
+        "stage": {
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "width": 390
+        },
+        "width": 390
+      },
+      "height": 844,
+      "screenshot_bytes": 32107,
+      "screenshot_file": "final-390x844-left0-right44.png",
+      "screenshot_sha256": "3cea95a5bbc5be96627ca892a7f9b05db37604982145c764ea2d1d8928821ff8",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 390
+    }
+  ],
+  "functional_head": "0ef33d9e65d04019171b7c1df848367240d2250d",
+  "native_child_styles_sha256": "af976745b127f855646c33fae670eec435635dbded71e579ebfd866273c29122",
+  "pythonpath": "/home/alex/repos/.grabowski-worktrees/schauwerk-pr203-postreview-20261008/src",
+  "schema_version": "schauwerk-pr203-independent-remediation-host-visual.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "c9790ed300ba3d0c0718c0ef3496956a32baed814f97e9cd7cd84953f2e49ac7",
+    "src/schauwerk/resources/standalone_editor/assets.py": "5ca38e565eaeb759dd7b2c61ec92ad1dc47afeb01d14498aa84695bcf6bc3f2d",
+    "tests/visual/test_native_viewer.py": "c8726ea892a5669eb50da780ad86971715f2f3cd75478a317646bcc59e226e91",
+    "tests/visual/test_native_viewer_browser.py": "ed4ed066e11e6e32c82b315233e3113e1b1de33833715f8d434d2ab50bdfab9e",
+    "tests/visual/test_standalone_editor.py": "b5293fec47355dce50600e6c906eb3e86f321142d535f34ac45eb6f20a90b15b",
+    "tests/visual/test_standalone_editor_font_controls.py": "12d572e5dc75ce73f5bdf88c2ef0d1926fe1e8349ed86bde80872a5a7bee0217",
+    "tests/visual/test_standalone_editor_product_ui.py": "7e089bacd9d76dcec1a161326241395e8cf98bbf53b368287a973a773698b5d6",
+    "tests/visual/test_standalone_editor_single_workspace.py": "447335b4cd4deea7212305321a4878f994ea3ca9cf10e0c0e7fdc58d7bef1b48"
+  },
+  "viewport_method": "Chrome CDP real CSS viewport; isolated safe-area CSS substitution"
+}
