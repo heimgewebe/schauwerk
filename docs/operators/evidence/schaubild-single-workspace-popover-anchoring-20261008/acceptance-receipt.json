@@ -1,0 +1,115 @@
+{
+  "accepted_at": "2026-10-08T12:01:48+00:00",
+  "base_product_head": "559a89a86e793863b544397d89db6f2db8643256",
+  "check_evidence": {
+    "functional_browser_smoke": {
+      "failed_count": 0,
+      "head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "passed_count": 18,
+      "receipt_sha256": "8434f346f538df5834dd47ba8f5eda14ac0c894ae496942d1f9ea1e09b9c3e53",
+      "result": "passed",
+      "task_id": "b35b0da17f27422fa7875d62"
+    },
+    "git_diff_check": {
+      "base_sha": "559a89a86e793863b544397d89db6f2db8643256",
+      "diff_bytes": 2269,
+      "diff_sha256": "a6c87f9c7be42043887e468f9d29366e447af6e4752079c2405fd92da40c5867",
+      "head_sha": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "result": "passed"
+    },
+    "green_after": {
+      "chrome_control_probe_id": "711a8bc09c07445cb7050942",
+      "head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "mobile_390_px_gap": 7,
+      "mobile_600_px_gap": 7,
+      "result": "passed",
+      "task_id": "6cd6758c3e6b4505bacc0899"
+    },
+    "independent_review": {
+      "finding": "mobile position:fixed popover trapped by backdrop-filter containing block",
+      "new_head_review_required": true,
+      "reviewed_head": "559a89a86e793863b544397d89db6f2db8643256",
+      "reviewer": "antigravity-gemini-pro-review-high",
+      "unit": "grabowski-job-682e74f57570",
+      "verdict": "NEEDS_CHANGE"
+    },
+    "observer": {
+      "observation_complete": true,
+      "observed_head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "observer": "grosser-adler",
+      "untracked_present": false,
+      "worktree_clean": true
+    },
+    "pre_successor_full_validate": {
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "passed_count": 1667,
+      "receipt_sha256": "c2b30aa8e132a761aa56a9b48f187c963c1c94cafae65f5ad10b0cfce229212a",
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "2630a331b7524109ab1237e7"
+    },
+    "red_before": {
+      "chrome_control_probe_id": "babb7de1fd224058bb03611b",
+      "error": "legacy export popover is detached or outside viewport: gap=56.00",
+      "head": "559a89a86e793863b544397d89db6f2db8643256",
+      "normal_mode_and_600px_gap_px": 56,
+      "result": "failed",
+      "task_id": "8649c3b443434d608456b43a"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "reviewer": "ChatGPT visual readback; not inferred from unit tests",
+      "scope": "390 and 600px legacy export popovers directly adjacent to bar; actual PNGs inspected, full workspace remains unobstructed"
+    },
+    "visual_readback": {
+      "case_count": 2,
+      "head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+      "path": "docs/operators/evidence/schaubild-single-workspace-popover-anchoring-20261008/visual-readback.json",
+      "receipt_sha256": "59b47fe2bbb50b21848097a6a6d938aa2016d1c8906a2071f69c4249f0ff75b9",
+      "result": "passed",
+      "sha256": "6708025dfc9bef0732f35631c4faeb1591f66876c05a0ce19d5468fb96922252",
+      "task_id": "711a8bc09c07445cb7050942"
+    }
+  },
+  "checks": {
+    "actual_pngs_visually_inspected": true,
+    "chrome_red_to_green_reproduced": true,
+    "current_functional_head_browser_smoke_passed": true,
+    "full_canvas_geometry_preserved": true,
+    "independent_observer_clean_source_head": true,
+    "legacy_export_menu_adjacent_at_390_and_600": true,
+    "menu_buttons_within_viewport_and_hittable": true,
+    "mobile_viewport_fixed_popover_no_backdrop_containing_block": true,
+    "native_and_legacy_menu_gap_bounds_regression": true,
+    "only_two_revised_source_and_test_paths": true,
+    "parent_acceptance_immutable": true,
+    "pre_successor_validate_only_historical_digest_gate": true,
+    "readback_files_exact_sha256_bound": true,
+    "source_sha256s_verified": true
+  },
+  "does_not_establish": [
+    "new independent reviewer PASS on later evidence head",
+    "GitHub CI for later evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "production deployment"
+  ],
+  "evidence_digest": "f1f22f61031ead1959fb8aecdebb7864080a19d03abca26a332dfd3cbfd740c7",
+  "functional_head": "36d9d7c2ad50797a4bfa38e39b6f354398fe3089",
+  "parent_evidence": {
+    "evidence_digest": "b17f1bab706a8e39a10efc4e93e7ed79ce4e85a28bc266e81d9a35c223a14f9d",
+    "file_sha256": "7cc442b936284e00d23d45abe50c90b61aecd0931dc5685e4835c5259d619024",
+    "path": "docs/operators/evidence/schaubild-single-workspace-fit-retry-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-fit-retry.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-popover-anchoring.v1",
+  "scope": "schaubild-mobile-workspace-export-and-tools-popover-viewport-anchoring",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "7267432f74a3988f233377f20b5a409e80afd9f0cd371c5b310ae9798319cd33",
+    "tests/visual/test_standalone_editor_single_workspace.py": "61cdbf09f5660c18c61b01c5d65331e95526efbf757f2e246d88109536a72d2d"
+  }
+}

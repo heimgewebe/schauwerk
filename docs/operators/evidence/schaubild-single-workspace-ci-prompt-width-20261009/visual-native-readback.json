@@ -1,0 +1,423 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "bar": {
+          "bottom": 185,
+          "height": 179,
+          "left": 64,
+          "right": 240,
+          "top": 6,
+          "width": 176
+        },
+        "controls": {
+          "bottom": 143,
+          "height": 137,
+          "left": 64,
+          "right": 240,
+          "top": 6,
+          "width": 176
+        },
+        "edit_menu": {
+          "bottom": 341,
+          "height": 192,
+          "left": 64,
+          "right": 240,
+          "top": 149,
+          "width": 176
+        },
+        "footer": {
+          "bottom": 694,
+          "height": 28,
+          "left": 64,
+          "right": 240,
+          "top": 666,
+          "width": 176
+        },
+        "height": 700,
+        "safe_area": {
+          "left": 64,
+          "right": 80
+        },
+        "selection": {
+          "bottom": 687,
+          "height": 14,
+          "left": 73,
+          "right": 231,
+          "top": 673,
+          "width": 158
+        },
+        "selection_client_width": 158,
+        "selection_scroll_width": 2672,
+        "selection_text_length": 409,
+        "source_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "targets": [
+          {
+            "bottom": 51,
+            "height": 42,
+            "id": "zoomOut",
+            "left": 101,
+            "right": 143,
+            "top": 9,
+            "width": 42
+          },
+          {
+            "bottom": 37,
+            "height": 14,
+            "id": "zoomValue",
+            "left": 145,
+            "right": 193,
+            "top": 23,
+            "width": 48
+          },
+          {
+            "bottom": 51,
+            "height": 42,
+            "id": "zoomIn",
+            "left": 195,
+            "right": 237,
+            "top": 9,
+            "width": 42
+          },
+          {
+            "bottom": 95,
+            "height": 42,
+            "id": "fitView",
+            "left": 107.359375,
+            "right": 193,
+            "top": 53,
+            "width": 85.640625
+          },
+          {
+            "bottom": 95,
+            "height": 42,
+            "id": "resetLayout",
+            "left": 195,
+            "right": 237,
+            "top": 53,
+            "width": 42
+          },
+          {
+            "bottom": 143,
+            "height": 42,
+            "id": "SUMMARY",
+            "left": 153.46875,
+            "right": 240,
+            "top": 101,
+            "width": 86.53125
+          }
+        ],
+        "view": {
+          "bottom": 98,
+          "height": 92,
+          "left": 64,
+          "right": 240,
+          "top": 6,
+          "width": 176
+        },
+        "width": 320
+      },
+      "height": 700,
+      "safe_area": {
+        "left": 64,
+        "right": 80
+      },
+      "screenshot_bytes": 23305,
+      "screenshot_file": "native-320x700-left64-right80.png",
+      "screenshot_sha256": "d269b1b35d8fe31e820027d5967322d9a519cef0d956f1fca85fe0a6b4089150",
+      "width": 320
+    },
+    {
+      "geometry": {
+        "bar": {
+          "bottom": 183,
+          "height": 177,
+          "left": 80,
+          "right": 326,
+          "top": 6,
+          "width": 246
+        },
+        "controls": {
+          "bottom": 183,
+          "height": 137,
+          "left": 80,
+          "right": 326,
+          "top": 46,
+          "width": 246
+        },
+        "edit_menu": {
+          "bottom": 335,
+          "height": 146,
+          "left": 80,
+          "right": 326,
+          "top": 189,
+          "width": 246
+        },
+        "footer": {
+          "bottom": 838,
+          "height": 28,
+          "left": 80,
+          "right": 326,
+          "top": 810,
+          "width": 246
+        },
+        "height": 844,
+        "safe_area": {
+          "left": 80,
+          "right": 64
+        },
+        "selection": {
+          "bottom": 831,
+          "height": 14,
+          "left": 89,
+          "right": 317,
+          "top": 817,
+          "width": 228
+        },
+        "selection_client_width": 228,
+        "selection_scroll_width": 2672,
+        "selection_text_length": 409,
+        "source_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "stage": {
+          "bottom": 844,
+          "height": 844,
+          "left": 0,
+          "right": 390,
+          "top": 0,
+          "width": 390
+        },
+        "targets": [
+          {
+            "bottom": 91,
+            "height": 42,
+            "id": "zoomOut",
+            "left": 99.359375,
+            "right": 141.359375,
+            "top": 49,
+            "width": 42
+          },
+          {
+            "bottom": 77,
+            "height": 14,
+            "id": "zoomValue",
+            "left": 143.359375,
+            "right": 191.359375,
+            "top": 63,
+            "width": 48
+          },
+          {
+            "bottom": 91,
+            "height": 42,
+            "id": "zoomIn",
+            "left": 193.359375,
+            "right": 235.359375,
+            "top": 49,
+            "width": 42
+          },
+          {
+            "bottom": 91,
+            "height": 42,
+            "id": "fitView",
+            "left": 237.359375,
+            "right": 323,
+            "top": 49,
+            "width": 85.640625
+          },
+          {
+            "bottom": 135,
+            "height": 42,
+            "id": "resetLayout",
+            "left": 281,
+            "right": 323,
+            "top": 93,
+            "width": 42
+          },
+          {
+            "bottom": 183,
+            "height": 42,
+            "id": "SUMMARY",
+            "left": 239.46875,
+            "right": 326,
+            "top": 141,
+            "width": 86.53125
+          }
+        ],
+        "view": {
+          "bottom": 138,
+          "height": 92,
+          "left": 80,
+          "right": 326,
+          "top": 46,
+          "width": 246
+        },
+        "width": 390
+      },
+      "height": 844,
+      "safe_area": {
+        "left": 80,
+        "right": 64
+      },
+      "screenshot_bytes": 27974,
+      "screenshot_file": "native-390x844-left80-right64.png",
+      "screenshot_sha256": "fb25c7897febbbbb451dcb133a2d255414caed644bf4f84ebf385691e601d969",
+      "width": 390
+    },
+    {
+      "geometry": {
+        "bar": {
+          "bottom": 97,
+          "height": 90,
+          "left": 80,
+          "right": 560,
+          "top": 7,
+          "width": 480
+        },
+        "controls": {
+          "bottom": 97,
+          "height": 90,
+          "left": 293.421875,
+          "right": 560,
+          "top": 7,
+          "width": 266.578125
+        },
+        "edit_menu": {
+          "bottom": 151,
+          "height": 48,
+          "left": 95.359375,
+          "right": 560,
+          "top": 103,
+          "width": 464.640625
+        },
+        "footer": {
+          "bottom": 713,
+          "height": 56,
+          "left": 80,
+          "right": 560,
+          "top": 657,
+          "width": 480
+        },
+        "height": 720,
+        "safe_area": {
+          "left": 80,
+          "right": 80
+        },
+        "selection": {
+          "bottom": 692,
+          "height": 14,
+          "left": 89,
+          "right": 411.421875,
+          "top": 678,
+          "width": 322.421875
+        },
+        "selection_client_width": 322,
+        "selection_scroll_width": 2672,
+        "selection_text_length": 409,
+        "source_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "stage": {
+          "bottom": 720,
+          "height": 720,
+          "left": 0,
+          "right": 640,
+          "top": 0,
+          "width": 640
+        },
+        "targets": [
+          {
+            "bottom": 47,
+            "height": 36,
+            "id": "zoomOut",
+            "left": 302.359375,
+            "right": 338.359375,
+            "top": 11,
+            "width": 36
+          },
+          {
+            "bottom": 36,
+            "height": 14,
+            "id": "zoomValue",
+            "left": 341.359375,
+            "right": 389.359375,
+            "top": 22,
+            "width": 48
+          },
+          {
+            "bottom": 47,
+            "height": 36,
+            "id": "zoomIn",
+            "left": 392.359375,
+            "right": 428.359375,
+            "top": 11,
+            "width": 36
+          },
+          {
+            "bottom": 47,
+            "height": 36,
+            "id": "fitView",
+            "left": 431.359375,
+            "right": 517,
+            "top": 11,
+            "width": 85.640625
+          },
+          {
+            "bottom": 47,
+            "height": 36,
+            "id": "resetLayout",
+            "left": 520,
+            "right": 556,
+            "top": 11,
+            "width": 36
+          },
+          {
+            "bottom": 97,
+            "height": 42,
+            "id": "SUMMARY",
+            "left": 469.46875,
+            "right": 560,
+            "top": 55,
+            "width": 90.53125
+          }
+        ],
+        "view": {
+          "bottom": 51,
+          "height": 44,
+          "left": 298.359375,
+          "right": 560,
+          "top": 7,
+          "width": 261.640625
+        },
+        "width": 640
+      },
+      "height": 720,
+      "safe_area": {
+        "left": 80,
+        "right": 80
+      },
+      "screenshot_bytes": 35532,
+      "screenshot_file": "native-640x720-left80-right80.png",
+      "screenshot_sha256": "d35cb1d6784ef5d305340ab9e9f51a85f2f1254b2f42cccdd116f92724895a26",
+      "width": 640
+    }
+  ],
+  "functional_head": "1e1b1e82dc7b5de16c755a97e9224b803026fc59",
+  "native_styles_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+  "schema_version": "schauwerk-pr203-native-prompt-safearea-cdp-visual.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a9c21c1a7683a02a471aafabd2f8c852a77ab24439f0553c91dd27d6bfcb9699",
+    "src/schauwerk/resources/standalone_editor/assets.py": "c3145d196cd0522d8884ad33570849df93960bb9ccd55fcdb4867470afea3fa4",
+    "tests/visual/test_native_viewer.py": "c8726ea892a5669eb50da780ad86971715f2f3cd75478a317646bcc59e226e91",
+    "tests/visual/test_native_viewer_browser.py": "c53444924fa4fc63a2c141bc0dfc1336a1f85ec1fa2b69dde446cb3df260c536",
+    "tests/visual/test_standalone_editor.py": "b5293fec47355dce50600e6c906eb3e86f321142d535f34ac45eb6f20a90b15b",
+    "tests/visual/test_standalone_editor_font_controls.py": "c54334d0a47b9708ef13ecce538e029e4d0639a047a596f3049575e4491fbf11",
+    "tests/visual/test_standalone_editor_product_ui.py": "7e089bacd9d76dcec1a161326241395e8cf98bbf53b368287a973a773698b5d6",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0170d53ce13316b904daa52aa1e1c482195486f6804182a23be4fc0e6a27b4a7"
+  },
+  "viewport_method": "CDP CSS-viewport emulation; isolated env() safe-area substitution"
+}

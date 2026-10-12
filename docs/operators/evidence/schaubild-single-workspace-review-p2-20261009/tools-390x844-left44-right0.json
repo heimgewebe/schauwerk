@@ -1,0 +1,199 @@
+{
+  "functional_head": "cb6dcc1",
+  "geometry": {
+    "host": {
+      "actionBar": {
+        "bottom": 836,
+        "height": 52,
+        "left": 119.75,
+        "right": 384,
+        "top": 784,
+        "width": 264.25,
+        "x": 119.75,
+        "y": 784
+      },
+      "actions": [
+        {
+          "accessible": "Tools (Werkzeuge)",
+          "availableWidth": 32,
+          "box": {
+            "bottom": 831,
+            "height": 42,
+            "left": 124.75,
+            "right": 177.171875,
+            "top": 789,
+            "width": 52.421875,
+            "x": 124.75,
+            "y": 789
+          },
+          "fontPx": 12.48,
+          "hidden": false,
+          "selector": ".workspace-tools-menu > summary",
+          "text": "Tools",
+          "textWidth": 32
+        },
+        {
+          "accessible": "Export",
+          "availableWidth": 40,
+          "box": {
+            "bottom": 831,
+            "height": 42,
+            "left": 180.171875,
+            "right": 240.046875,
+            "top": 789,
+            "width": 59.875,
+            "x": 180.171875,
+            "y": 789
+          },
+          "fontPx": 12.48,
+          "hidden": false,
+          "selector": ".workspace-export-menu > summary",
+          "text": "Export",
+          "textWidth": 40
+        },
+        {
+          "accessible": "Originalprojekt speichern",
+          "availableWidth": 66,
+          "box": {
+            "bottom": 831,
+            "height": 42,
+            "left": 243.046875,
+            "right": 311.046875,
+            "top": 789,
+            "width": 68,
+            "x": 243.046875,
+            "y": 789
+          },
+          "fontPx": 13.12,
+          "hidden": false,
+          "selector": "#downloadLink",
+          "text": "Originalprojekt speichernSpeichern",
+          "textWidth": 66
+        },
+        {
+          "accessible": "Zurück zum Start",
+          "availableWidth": 63,
+          "box": {
+            "bottom": 831,
+            "height": 42,
+            "left": 314.046875,
+            "right": 379,
+            "top": 789,
+            "width": 64.953125,
+            "x": 314.046875,
+            "y": 789
+          },
+          "fontPx": 13.12,
+          "hidden": false,
+          "selector": "#workspaceCloseButton",
+          "text": "Zurück",
+          "textWidth": 63
+        }
+      ],
+      "stage": {
+        "bottom": 844,
+        "height": 844,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "status": {
+        "bottom": 776,
+        "height": 28,
+        "left": 44,
+        "right": 277.28125,
+        "top": 748,
+        "width": 233.28125,
+        "x": 44,
+        "y": 748
+      }
+    },
+    "native": {
+      "active": false,
+      "controls": [
+        {
+          "box": {
+            "bottom": 91,
+            "left": 113.359375,
+            "right": 155.359375,
+            "top": 49
+          },
+          "id": "zoomOut"
+        },
+        {
+          "box": {
+            "bottom": 77,
+            "left": 157.359375,
+            "right": 205.359375,
+            "top": 63
+          },
+          "id": "zoomValue"
+        },
+        {
+          "box": {
+            "bottom": 91,
+            "left": 207.359375,
+            "right": 249.359375,
+            "top": 49
+          },
+          "id": "zoomIn"
+        },
+        {
+          "box": {
+            "bottom": 91,
+            "left": 251.359375,
+            "right": 337,
+            "top": 49
+          },
+          "id": "fitView"
+        },
+        {
+          "box": {
+            "bottom": 91,
+            "left": 339,
+            "right": 381,
+            "top": 49
+          },
+          "id": "resetLayout"
+        }
+      ],
+      "footer": {
+        "bottom": 740,
+        "left": 44,
+        "right": 140.625,
+        "top": 712
+      },
+      "frame": {
+        "bottom": 844,
+        "height": 844,
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "width": 390,
+        "x": 0,
+        "y": 0
+      },
+      "safeLeft": "44px",
+      "safeRight": "6px"
+    },
+    "viewport": {
+      "height": 844,
+      "width": 390
+    }
+  },
+  "png_bytes": 32605,
+  "png_sha256": "f120094f0e95641e571b88d450282dca62c52d6e675bad7bf46bd8c139b606bf",
+  "safe_area": {
+    "left": 44,
+    "right": 0
+  },
+  "schema_version": "schauwerk-pr203-reviewed-mobile-cdp.v1",
+  "stage": "tools",
+  "viewport": [
+    390,
+    844
+  ]
+}

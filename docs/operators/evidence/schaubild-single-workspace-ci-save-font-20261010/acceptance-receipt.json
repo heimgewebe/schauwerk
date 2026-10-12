@@ -1,0 +1,145 @@
+{
+  "check_evidence": {
+    "capture_green": {
+      "case_count": 4,
+      "failed_count": 0,
+      "job_id": "grabowski-job-bcd1f22fe1e3",
+      "readback_sha256": "e46de8cbde15484da31c5b2bf786ea9a1b880043f1d79bb6acbc009c09167ed7"
+    },
+    "focused_browser_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-7544dc755d02",
+      "passed_count": 5
+    },
+    "full_chromium_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-24c55be7c97d",
+      "passed_count": 29
+    },
+    "prior_ci_fail": {
+      "failed_cases": 5,
+      "failure": "P2: visible Speichern caption is shortened: 58/64",
+      "head": "600d01a9638516bc5832ff1b64024a17ffb119f0",
+      "job_id": 114008358969,
+      "python": "3.12",
+      "run_id": 37986098209,
+      "source": "GitHub Actions"
+    },
+    "static_css_green": {
+      "failed_count": 0,
+      "job_id": "grabowski-job-5aca0f82c226",
+      "passed_count": 2
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chromium and simulated safe-area values, not physical iOS/Safari acceptance",
+        "Full-width canvas and action labels checked, not general text legibility in the miniature imported test diagram",
+        "No prior visual acceptance inherited for this functional revision",
+        "Screenshots are immutable test evidence, not Fundus production assets"
+      ],
+      "method": "Four original 320/390 Desktop Chrome CDP PNG screenshots individually visually inspected; full Speichern, safe 44px left/right, unobscured actions and canvas; font stress measured separately in CDP"
+    }
+  },
+  "checks": {
+    "all_four_original_pngs_individually_visually_inspected": true,
+    "complete_visible_save_caption_and_accessible_name": true,
+    "five_original_chromium_mobile_cases_green_on_functional_revision": true,
+    "full_chromium_smoke_29_pass_on_functional_revision": true,
+    "parent_immutable_and_digest_bound": true,
+    "prior_ci_python312_reproduced_five_red": true,
+    "safe_area_touch_targets_and_full_canvas_unchanged": true,
+    "sixty_six_px_button_text_room_and_system_font_stress": true,
+    "source_and_browser_test_revision_sha_bound": true,
+    "test_evidence_not_a_reusable_production_asset": true
+  },
+  "does_not_establish": [
+    "new exact-head GitHub Python 3.12 success",
+    "independent exact-head reviewer PASS",
+    "five-pass self-review audit",
+    "Codex settlement",
+    "Captain merge authorization",
+    "physical iOS Safari acceptance",
+    "deployment"
+  ],
+  "evidence_digest": "527e82c0b595608afd3919eee0a6362a9e3a0c350355ee83062fba8f6656f724",
+  "functional_head": "25c1b8cbdf9879f68593fbcf808579a5f34bd6f5",
+  "parent_evidence": {
+    "evidence_digest": "a5723be3c0fab417908e2d80dac231193e8cc05e7f81cc8483570ec40444f06d",
+    "file_sha256": "f008f6ac51bbcd62c02320989ead73540800e8acbcffbb5bba0f3cc5cb4722df",
+    "path": "docs/operators/evidence/schaubild-single-workspace-host-retry-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-host-retry.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-ci-save-font.v1",
+  "scope": "Wider CI system font: visible full Speichern label with unchanged mobile overlay safety and one full-sized workspace",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "9165f1d3a78a471d336080b40b902ffea3f67190640a036937e719fa03a28ad5",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0d0a9a8b77e44b88429ae84974df56a97862d82d60fede52a8acb82eda0e35a1"
+  },
+  "visual_readbacks": {
+    "ci_save_font": {
+      "case_count": 4,
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-save-font-20261010/visual-ci-save-font-readback.json",
+      "schema_version": "schauwerk-pr203-ci-save-font-cdp.v1",
+      "screenshots": {
+        "save-320x700-left0-right44.png": {
+          "bytes": 31021,
+          "geometry_file": "save-320x700-left0-right44.json",
+          "geometry_sha256": "ea020a0a656569ecd9a6c5f7b7bf1d556e64e6979f660e7e5bc61c50b652018c",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "945f1eb393f860ec119907f419488cd03aa01d9a2746aa1eb3ff1e435c349999",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-320x700-left44-right0.png": {
+          "bytes": 30522,
+          "geometry_file": "save-320x700-left44-right0.json",
+          "geometry_sha256": "d035ee2d8b4c3cd695ce288ee46ca8ec23d1898df062a977f012f41d23343876",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "5723aea49674fb48d8c638ec2adec74fd9f244858a98d433e4bb90673b144f72",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "save-390x844-left0-right44.png": {
+          "bytes": 33125,
+          "geometry_file": "save-390x844-left0-right44.json",
+          "geometry_sha256": "e87e770f597380ef5b33a9d00e71d6f4cee0928d357d94bae1a3e34b7f7fd337",
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "d3d0418ed50bea7f2fd31e986528bb9891150068e3cfccb6966aadfdae107a63",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "save-390x844-left44-right0.png": {
+          "bytes": 32865,
+          "geometry_file": "save-390x844-left44-right0.json",
+          "geometry_sha256": "3cb2a32f4827b22c629cf486f4a7c3e8ac1bdaa3b12f9e6ee6ab38751b720632",
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "cb17880663cc9450506f29d56986109f13a65df090882b46f4e8820ef0b1d18f",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "e46de8cbde15484da31c5b2bf786ea9a1b880043f1d79bb6acbc009c09167ed7"
+    }
+  }
+}

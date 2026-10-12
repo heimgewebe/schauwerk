@@ -1,0 +1,27 @@
+{
+  "autoFit": "translate(143.979px, 142px) scale(0.0674094)",
+  "fittedContentBottom": 499,
+  "frame": {
+    "height": 700,
+    "left": 0,
+    "top": 0,
+    "width": 320
+  },
+  "nativeFooter": {
+    "left": 8,
+    "right": 104.625
+  },
+  "pass": true,
+  "retry": {
+    "bottom": 585,
+    "left": 177.09375,
+    "right": 275,
+    "top": 543,
+    "width": 97.90625
+  },
+  "retryClearance": 44,
+  "viewport": {
+    "height": 700,
+    "width": 320
+  }
+}

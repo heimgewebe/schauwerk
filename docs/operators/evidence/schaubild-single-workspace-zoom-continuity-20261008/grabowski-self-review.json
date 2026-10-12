@@ -1,0 +1,43 @@
+{
+  "base_sha": "eb02f981025f97e9ca27641d67c02eecc49ca16f",
+  "diff_sha256": "c33c7aeb11e738afc90a694c54ff5276f3d55c18299dff9f750383463dd3a9f8",
+  "does_not_establish": [
+    "current-head GitHub CI",
+    "independent review PASS",
+    "Captain merge permission"
+  ],
+  "functional_head": "eca81dc0ba825e4ad3477322361f376498034393",
+  "kind": "grabowski_self_review",
+  "passes": [
+    {
+      "focus": "correctness",
+      "n": 1,
+      "result": "zoomAt and pinch use explicit imported helper, no runtime ReferenceError"
+    },
+    {
+      "focus": "gesture monotonicity",
+      "n": 2,
+      "result": "real Chrome Pinch inward remains at 14.7346%, outward to 18.9445%, no 25% snap"
+    },
+    {
+      "focus": "normal zoom regression",
+      "n": 3,
+      "result": "native math 26/26, interactive scales at or above 0.25 remain bounded"
+    },
+    {
+      "focus": "end-to-end and UI",
+      "n": 4,
+      "result": "18/18 Chrome browser smoke plus 8 bound viewports, 1667 passing pre-successor tests and known binding gate"
+    },
+    {
+      "focus": "digest and provenance",
+      "n": 5,
+      "result": "three exact source/test SHA256s linked to unaltered prior immutable acceptance"
+    }
+  ],
+  "review_mode": "bounded five-pass functional and evidence review",
+  "reviewed_at": "2026-10-08T07:52:46+00:00",
+  "schema_version": 1,
+  "verdict": "PASS for functional revision only, not independent or merge approval",
+  "visual_readback_json_sha256": "200587d2d0137ab595f556490006f79fdbaadab967bdbdd744c989e3fe88d553"
+}

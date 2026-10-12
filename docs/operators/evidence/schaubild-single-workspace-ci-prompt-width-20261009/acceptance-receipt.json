@@ -1,0 +1,224 @@
+{
+  "check_evidence": {
+    "capture_tasks": {
+      "host": "856dfb587bcc4b86a26851ff",
+      "native": "99a7b0c22ea845bdb44dad04",
+      "process": "2490d188d1f14fd6970bf122"
+    },
+    "focused_browser_green": {
+      "failed_count": 0,
+      "functional_head": "1e1b1e82dc7b5de16c755a97e9224b803026fc59",
+      "passed_count": 11,
+      "task_id": "420cb762ed854b60947fc04a"
+    },
+    "prior_local_red": {
+      "failed_count": 3,
+      "head": "9c77a54fd2f10488513f16b8668a3d5bb8b4abd5",
+      "message": "native editing process instruction is too narrow or clipped",
+      "passed_count": 1674,
+      "task_id": "0fe7c41223c44382a6e3a424"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome with real emulated CSS viewport and simulated host/notch safe-area insets, not physical iOS/Safari",
+        "The process-status screenshots set the required status text through the browser test harness; actual action behavior is separately browser-regressed, not proved by screenshots",
+        "No GitHub Python-3.12 PASS or independent exact-head review yet",
+        "No automatic visual acceptance inherited from parent revision"
+      ],
+      "method": "Direct inspection of all eleven fresh PNGs for legibility, overlay separation, mobile target visibility, and safe-area arrangements; separately verified geometric checks and SHA-256 bytes",
+      "scope": "Five 320/390 host screenshots, three Native 320/390/640 side-inset screenshots, three 320px hosted native process-status screenshots"
+    }
+  },
+  "checks": {
+    "direct_visual_acceptance_separate_from_geometry": true,
+    "eleven_png_digests_and_dimensions": true,
+    "five_host_download_actions_accessible": true,
+    "native_child_css_bound_to_checkout": true,
+    "new_native_css_sha256_exact": true,
+    "parent_immutable_and_exact": true,
+    "three_hosted_active_prompts_visible_and_unclipped": true,
+    "three_native_safearea_toolbars_and_footers": true
+  },
+  "does_not_establish": [
+    "remote required GitHub-CI success",
+    "physical Safari/iOS acceptance",
+    "independent reviewer PASS",
+    "Captain merge authorization",
+    "deployment"
+  ],
+  "evidence_digest": "595d2eab37d2d0160531774fd632d1f7b548b236aab6f14c87ca0cbfb818632e",
+  "functional_head": "1e1b1e82dc7b5de16c755a97e9224b803026fc59",
+  "parent_evidence": {
+    "evidence_digest": "22532f31f6fa10951066e25bb2668c9294bdcc76d8d16a215acb01d80dcaca76",
+    "file_sha256": "30d2295167e65d7af1b66170d2f75b65df31bb3f17be710b10b8e74bee983c61",
+    "path": "docs/operators/evidence/schaubild-single-workspace-ci-caption-safearea-final-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-ci-caption-safearea.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-mobile-prompt-width.v1",
+  "scope": "New Native mobile @max360 hosted process-prompt width specificity; unaffected download and standalone overlays re-captured at actual CSS viewports.",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a9c21c1a7683a02a471aafabd2f8c852a77ab24439f0553c91dd27d6bfcb9699"
+  },
+  "visual_readbacks": {
+    "host": {
+      "case_count": 5,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009/visual-final-readback.json",
+      "schema_version": "schauwerk-pr203-ci-prompt-width-visual.v1",
+      "screenshots": {
+        "final-320x700-left0-right0.png": {
+          "bytes": 29094,
+          "safe_area": {
+            "left": 0,
+            "right": 0
+          },
+          "sha256": "bd79a9c59ef7bbca4c2284b0d5c5e1e19a70df2b4b0d7fbcad2259391b5f0fb1",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-320x700-left0-right44.png": {
+          "bytes": 29029,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "f2b79a12b1f686e7fff80590f14c35d4fc4832d7c86d4631db1f77ae44f5b62d",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-320x700-left44-right0.png": {
+          "bytes": 29361,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "2aa610de722623358dd8f0701a89976535ea7fd6365244c80b8e0ecacf1682fa",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "final-390x844-left0-right44.png": {
+          "bytes": 33203,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "e66864c74dbdea69b82c790f145e0853f8a98ed65706aeccec2b21e58d3d8763",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "final-390x844-left44-right0.png": {
+          "bytes": 33278,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "08f6970414d72717258d2afefcf83594cfb90b47384b8c9acba319c8222183a3",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "10309ce055e3470d71666aef1acc673243f06775f6b0982493aef233086c9ffd"
+    },
+    "native": {
+      "case_count": 3,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009/visual-native-readback.json",
+      "schema_version": "schauwerk-pr203-native-prompt-safearea-cdp-visual.v1",
+      "screenshots": {
+        "native-320x700-left64-right80.png": {
+          "bytes": 23305,
+          "safe_area": {
+            "left": 64,
+            "right": 80
+          },
+          "sha256": "d269b1b35d8fe31e820027d5967322d9a519cef0d956f1fca85fe0a6b4089150",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "native-390x844-left80-right64.png": {
+          "bytes": 27974,
+          "safe_area": {
+            "left": 80,
+            "right": 64
+          },
+          "sha256": "fb25c7897febbbbb451dcb133a2d255414caed644bf4f84ebf385691e601d969",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "native-640x720-left80-right80.png": {
+          "bytes": 35532,
+          "safe_area": {
+            "left": 80,
+            "right": 80
+          },
+          "sha256": "d35cb1d6784ef5d305340ab9e9f51a85f2f1254b2f42cccdd116f92724895a26",
+          "viewport": [
+            640,
+            720
+          ]
+        }
+      },
+      "sha256": "71eff28bc8f7db611701530896bc0f6cdfd4f787eb0ccdef9ca96fabc2bb58f0"
+    },
+    "process": {
+      "case_count": 3,
+      "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+      "path": "docs/operators/evidence/schaubild-single-workspace-ci-prompt-width-20261009/visual-process-readback.json",
+      "schema_version": "schauwerk-pr203-active-process-prompt-visual.v1",
+      "screenshots": {
+        "process-320x700-left0-right0.png": {
+          "bytes": 24492,
+          "safe_area": {
+            "left": 0,
+            "right": 0
+          },
+          "sha256": "bb803e28c3eb172cc29cf1d48bf8480c3d08400cdef7c3264e189504418dd665",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "process-320x700-left0-right44.png": {
+          "bytes": 24619,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "3e933a41717a9a22675972e6a179730fb785a1d2161f13d253f620137bebde99",
+          "viewport": [
+            320,
+            700
+          ]
+        },
+        "process-320x700-left44-right0.png": {
+          "bytes": 24495,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "1a3c6c331854d441060f0712133e3f1d94fa70876e827482f659848becb03e04",
+          "viewport": [
+            320,
+            700
+          ]
+        }
+      },
+      "sha256": "cb837f1f02f13f11059eb34a9df72db06ecc8f5b2e1074274302c5c74ed4ff43"
+    }
+  }
+}

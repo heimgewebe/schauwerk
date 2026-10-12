@@ -1,0 +1,114 @@
+{
+  "cases": [
+    {
+      "bar": {
+        "left": 80,
+        "right": 326
+      },
+      "content": {
+        "left": 88,
+        "right": 318
+      },
+      "content_size": [
+        3396,
+        296
+      ],
+      "edit_menu_safe_left_clearance": 0,
+      "edit_menu_safe_right_clearance": 0,
+      "gap_left": 8,
+      "gap_right": 8,
+      "menu": {
+        "height": 146,
+        "left": 80,
+        "right": 326,
+        "width": 246
+      },
+      "safe_insets": {
+        "left": 80,
+        "right": 64
+      },
+      "screenshot_bytes": 24113,
+      "screenshot_file": "edit-menu-390x844-left80-right64.png",
+      "screenshot_sha256": "4ce09af0bdada3210034cd47f32f08a67ab36b9b851a370632c54a4548eef1ca",
+      "transform": "translate(88px, 418.976px) scale(0.0677267)",
+      "viewport": [
+        390,
+        844
+      ]
+    },
+    {
+      "bar": {
+        "left": 64,
+        "right": 240
+      },
+      "content": {
+        "left": 72,
+        "right": 232
+      },
+      "content_size": [
+        3396,
+        296
+      ],
+      "edit_menu_safe_left_clearance": 0,
+      "edit_menu_safe_right_clearance": 0,
+      "gap_left": 8,
+      "gap_right": 8,
+      "menu": {
+        "height": 192,
+        "left": 64,
+        "right": 240,
+        "width": 176
+      },
+      "safe_insets": {
+        "left": 64,
+        "right": 80
+      },
+      "screenshot_bytes": 21376,
+      "screenshot_file": "edit-menu-320x700-left64-right80.png",
+      "screenshot_sha256": "215c26cfa0ee472f01cbc635a0f409d2e778be11cbdd8fe8ddb2201e896e6dc8",
+      "transform": "translate(72px, 350.027px) scale(0.0471143)",
+      "viewport": [
+        320,
+        700
+      ]
+    },
+    {
+      "bar": {
+        "left": 80,
+        "right": 560
+      },
+      "content": {
+        "left": 88,
+        "right": 552
+      },
+      "content_size": [
+        3396,
+        296
+      ],
+      "edit_menu_safe_left_clearance": 15.359375,
+      "edit_menu_safe_right_clearance": 0,
+      "gap_left": 8,
+      "gap_right": 8,
+      "menu": {
+        "height": 48,
+        "left": 95.359375,
+        "right": 560,
+        "width": 464.640625
+      },
+      "safe_insets": {
+        "left": 80,
+        "right": 80
+      },
+      "screenshot_bytes": 33903,
+      "screenshot_file": "edit-menu-640x720-left80-right80.png",
+      "screenshot_sha256": "80965390f67abb09c92ab14aa8a88efc580b94ab6690798fe1b7981895578226",
+      "transform": "translate(88px, 345.279px) scale(0.136631)",
+      "viewport": [
+        640,
+        720
+      ]
+    }
+  ],
+  "functional_head": "884968fcdfb9759644ec26692ac1c8f8acb04fc9",
+  "schema_version": "schauwerk-pr203-edit-menu-safearea-readback.v1"
+}

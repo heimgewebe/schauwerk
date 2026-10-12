@@ -1,0 +1,109 @@
+{
+  "check_evidence": {
+    "browser_smoke_green": {
+      "failed_count": 0,
+      "job_id": "3dda64d68bf9",
+      "passed_count": 28
+    },
+    "capture_green": {
+      "failed_count": 0,
+      "job_id": "464ecf27bce1",
+      "passed_count": 2
+    },
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "2739bfb976bc",
+      "passed_count": 5
+    },
+    "prior_mobile_red": {
+      "failure": "P2: embedded Native control enters host horizontal safe area; child host-safe-right missing",
+      "job_id": "9612d486f29c"
+    },
+    "static_label_green": {
+      "failed_count": 0,
+      "job_id": "ef00c8dc6fcb",
+      "passed_count": 2,
+      "source_unchanged_from_screenshot_capture": true,
+      "test_sha256": "9c288c574bc3f0257cf95e801b6f0fef94d44e523839a988511cee10fb566e02"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "No physical iOS/Safari acceptance; desktop Chromium with simulated host safe insets",
+        "This acceptance proves overlay/safe-area geometry only, not general diagram readability",
+        "Screenshots are immutable test evidence, not reusable production assets",
+        "No previous visual acceptance inherited"
+      ],
+      "method": "Both 390x844 PNGs inspected separately; native buttons, status and footer visible with host actions separated"
+    }
+  },
+  "checks": {
+    "controlled_menu_labels_preserved": true,
+    "embedded_footer_clear_of_host_action_bar": true,
+    "full_chromium_browser_smoke_green": true,
+    "functional_head_source_test_digest_bound": true,
+    "host_native_horizontal_safearea_both_sides": true,
+    "mobile_320_and_390_safearea_regressions_green": true,
+    "previous_acceptance_immutable": true,
+    "two_new_png_sha_and_dimensions_verified": true,
+    "visual_images_inspected_separately": true
+  },
+  "does_not_establish": [
+    "full make validate including new publication successor",
+    "final GitHub CI including Python 3.12",
+    "independent exact-head Reviewer PASS",
+    "Codex review settlement",
+    "Captain merge authority",
+    "production deployment"
+  ],
+  "evidence_digest": "9d6efde9452fe82c3856e7ab0dc7af7bce6fe873aad460dfaa40047548c4eac7",
+  "functional_head": "271b0c988a82d23158c18721a8fb84441f25f3b4",
+  "parent_evidence": {
+    "evidence_digest": "6cb4cf28dad7524cf255f74173ac549e3fe41248f5ad43f601099b0545528e58",
+    "file_sha256": "d808ade74090417ba2e2bea9f7722e1b75e6fe15c27b36b9d6362719d64a43ae",
+    "path": "docs/operators/evidence/schaubild-single-workspace-tap-autofit-rollback-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-tap-autofit-rollback.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-embedded-host-safearea.v1",
+  "scope": "Preserve embedded Native controls, selection footer and mobile action labels within actual host safe areas after layout initialization; keep single canvas",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "ab761a69400cb07a34407704fabaec5de12a1d966c464c653afb804233a8060d",
+    "src/schauwerk/resources/standalone_editor/assets.py": "4ad3a6880e50f3fa089a48a8fd9c337eed5751cf793010cb136d67c7e91d0360",
+    "tests/visual/test_standalone_editor_font_controls.py": "9c288c574bc3f0257cf95e801b6f0fef94d44e523839a988511cee10fb566e02",
+    "tests/visual/test_standalone_editor_single_workspace.py": "8fde234d8fda85918790acb04518eac386239ebd85cb4261a32b3808bc3a3878"
+  },
+  "visual_readbacks": {
+    "host_safearea": {
+      "case_count": 2,
+      "path": "docs/operators/evidence/schaubild-single-workspace-embedded-host-safearea-20261009/visual-host-readback.json",
+      "schema_version": "schauwerk-pr203-embedded-host-safearea-chrome-cdp.v1",
+      "screenshots": {
+        "host-native-390x844-left0-right44.png": {
+          "bytes": 27202,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "5ed7abe168b8946ac3e085c01f7125cec570fb369c3c7678a8a17d9337e292c4",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "host-native-390x844-left44-right0.png": {
+          "bytes": 26987,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "433c8735b000e6a65346542c2cccbef30c490f8e58d84cd9ab672e687efa2d41",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "a1c46900365a3edd3a9035638b90d6ab7398c5a83db5d30010933a8bbb71e549"
+    }
+  }
+}

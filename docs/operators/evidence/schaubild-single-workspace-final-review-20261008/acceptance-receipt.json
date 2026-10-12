@@ -1,0 +1,116 @@
+{
+  "base_product_head": "ea1cb09a9cb1ac79d3cfa10ede6d20e4209402c8",
+  "check_evidence": {
+    "exact_css_viewport_visual_capture": {
+      "actual_pngs_visually_inspected": true,
+      "browser": "Chromium CDP deviceMetricsOverride, headless",
+      "cdp_readback_task_id": "51f1437e55ce4a299d723bc0",
+      "native_document_nodes_loaded": true,
+      "native_readback_task_id": "b905c485297c45a581751a2c",
+      "result": "passed",
+      "status_hidden_only_while_menu_open_at_mobile_widths": true,
+      "status_visible_no_intersection_at_600px": true
+    },
+    "focused_tests": {
+      "failed_count": 0,
+      "functional_head": "cca926f4a8e9262e65f51b67e59bbf538519481f",
+      "passed_count": 8,
+      "result": "passed",
+      "task_id": "82c551bea41f45afaff13deb",
+      "test_scope": "one native JS math and seven Chrome workspace browser scenarios"
+    },
+    "pre_successor_full_validate": {
+      "compile_passed": true,
+      "failed_count": 1,
+      "failure_class": "expected_successor_binding_gate",
+      "functional_head": "cca926f4a8e9262e65f51b67e59bbf538519481f",
+      "passed_count": 1667,
+      "registry_passed": true,
+      "ruff_passed": true,
+      "task_id": "958fb87179a14b8f847da19b"
+    },
+    "red_before": {
+      "failure_class": "new_subfloor_zoom_reversal_regression_before_fix",
+      "head": "ea1cb09a9cb1ac79d3cfa10ede6d20e4209402c8",
+      "result": "failed",
+      "task_id": "8086b9cd126148daa673f6e7"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "functional_head": "cca926f4a8e9262e65f51b67e59bbf538519481f",
+      "review_method": "actual four PNGs inspected separately from geometric and test checks",
+      "scope": "mobile host-status/menu non-overlap + native two-node view and legacy menu presentation at 390/431/600 CSS px; not overall production or iOS/Safari acceptance"
+    }
+  },
+  "checks": {
+    "chrome_browser_regressions_green": true,
+    "focused_zoom_regressions_green": true,
+    "parent_evidence_unchanged": true,
+    "screenshot_readback_bytes_hash_bound": true,
+    "source_revision_sha256_bound": true,
+    "visual_acceptance_separately_scoped": true
+  },
+  "does_not_establish": [
+    "new exact evidence-head CI",
+    "independent reviewer PASS on later evidence head",
+    "GitHub PR-head publication",
+    "captain merge readiness",
+    "deployment"
+  ],
+  "evidence_digest": "ae0f28bc15cb207e2921a30128b45db381f7ccd77fe6da16b1f07b108e5f05df",
+  "functional_head": "cca926f4a8e9262e65f51b67e59bbf538519481f",
+  "parent_evidence": {
+    "evidence_digest": "f1f22f61031ead1959fb8aecdebb7864080a19d03abca26a332dfd3cbfd740c7",
+    "file_sha256": "caad99c26f4f999e9611aaad826c18b1e448d90b5c842be07463b2325ef79fa6",
+    "path": "docs/operators/evidence/schaubild-single-workspace-popover-anchoring-20261008/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-popover-anchoring.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-final-review.v1",
+  "scope": "schauwerk-pr203-post-review-subfloor-zoom-and-mobile-menu-status-overlap",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "ca2a2259e538354e5078693ead4234e87da32b18f1e68b9f7b4e8e0111bd60e0",
+    "src/schauwerk/resources/standalone_editor/assets.py": "ef3a2e49d4753902f07535369af0d2175c05c7d84ebe0c9f7f8047ceefd3451c",
+    "tests/visual/test_native_viewer.py": "b7eb1b8356e491c0b484fb410fe79b9fa6c19050164e23caa168b847700927c2",
+    "tests/visual/test_standalone_editor_single_workspace.py": "dc20e199606fe7d3b5663c73a867ac848eb62d5d7b5be3ed3814d2a8ad2f2316"
+  },
+  "visual_readback": {
+    "case_count": 4,
+    "path": "docs/operators/evidence/schaubild-single-workspace-final-review-20261008/visual-readback.json",
+    "result": "passed",
+    "screenshot_bindings": {
+      "legacy-431.png": {
+        "bytes": 13103,
+        "sha256": "d72400770cb9ed739a4bc51c8423151a1206b3d3cbd769fe53e10bb22b251b56",
+        "viewport_css": [
+          431,
+          844
+        ]
+      },
+      "legacy-mobile.png": {
+        "bytes": 13298,
+        "sha256": "580f6a5b5aabf5fd3a49a28fa24bdec07c468a6dc1091e7ffa75534d16ecaaf8",
+        "viewport_css": [
+          390,
+          844
+        ]
+      },
+      "legacy-tablet.png": {
+        "bytes": 18919,
+        "sha256": "3a8354407a0ec3a2578110f9a5daccb11b4639a017f0277e31a33bce52d04bb7",
+        "viewport_css": [
+          600,
+          900
+        ]
+      },
+      "native-mobile.png": {
+        "bytes": 29125,
+        "sha256": "7b1dd2ae9a8cb48303a0c01277ec269abd7c44cc8389ebaeaedea6d76773302e",
+        "viewport_css": [
+          390,
+          844
+        ]
+      }
+    },
+    "sha256": "89dd5fe69202004a4987d3e8bc73721818134f71e03c2c560701feeb6f0fa3b7"
+  }
+}

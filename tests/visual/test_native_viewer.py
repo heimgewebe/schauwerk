@@ -358,7 +358,10 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "function updateIncidentEdges(sourceId)" in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
-    assert 'gesture = { kind: "pinch"' in app
+    assert 'kind: "pinch",' in app
+    assert 'startMidpoint: midpoint,' in app
+    assert 'moved: false,' in app
+    assert 'Math.abs(distance - gesture.startDistance) < DRAG_THRESHOLD_PX' in app
     assert 'pointers.some((pointer) => !pointer.background)' not in app
     assert 'if (gesture?.kind === "drag")' in app
     assert 'const DRAG_THRESHOLD_PX = 4;' in app
@@ -381,6 +384,52 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "edgeReattach = null;" in escape_handler
     assert "Verbindungsaktion abgebrochen" in escape_handler
     assert "touch-action: none" in styles
+    assert '<details class="edit-controls document-only" hidden>' in index
+    assert "<summary>Bearbeiten</summary>" in index
+    assert 'id="resetLayout" class="icon-control"' in index
+    assert 'aria-label="Positionen zurücksetzen"' in index
+    assert ".viewer-stage {" in styles
+    viewer_stage = styles[
+        styles.index(".viewer-stage {") : styles.index(".viewer-stage.is-panning")
+    ]
+    assert "position: absolute;" in viewer_stage
+    assert "inset: 0;" in viewer_stage
+    assert ".viewer-foot {" in styles
+    assert ".edit-menu {" in styles
+    assert "const VIEWPORT_FIT_PADDING = 48;" in app
+    assert "const FIT_OVERLAY_CLEARANCE = 8;" in app
+    assert "const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({" in app
+    assert "top: 60," in app
+    assert "bottom: 104," in app
+    assert "function viewportFitPadding(minimumPadding)" in app
+    assert "function standaloneViewportFitPadding()" in app
+    assert "function embeddedViewportFitPadding()" in app
+    assert "const frameRect = window.frameElement?.getBoundingClientRect();" in app
+    assert "const host = window.parent.document;" in app
+    assert 'host.body.classList.contains("workspace-active")' in app
+    assert "Math.ceil(frameRect.bottom - rect.top) + FIT_OVERLAY_CLEARANCE" in app
+    assert "return viewportFitPadding({ ...EMBEDDED_VIEWPORT_FIT_PADDING, bottom });" in app
+    embedded_fit_body = app.split("function embeddedViewportFitPadding() {", 1)[1].split(
+        "\nfunction readOverrides()", 1
+    )[0]
+    assert "catch (_)" in embedded_fit_body
+    assert 'document.querySelector(".viewer-bar")?.getBoundingClientRect()' in app
+    assert 'document.querySelector(".viewer-foot")?.getBoundingClientRect()' in app
+    assert "Math.ceil(barRect?.bottom || 0) + FIT_OVERLAY_CLEARANCE" in app
+    assert "Math.ceil(barRect?.left || 0) + FIT_OVERLAY_CLEARANCE" in app
+    assert "viewport.clientWidth - (barRect?.right ?? viewport.clientWidth)" in app
+    assert "return { top, right, bottom, left };" in app
+    assert "viewport.clientHeight - (footRect?.top ?? viewport.clientHeight)" in app
+    assert "const fitPadding = embeddedNativeViewer" in app
+    assert "? embeddedViewportFitPadding()" in app
+    assert ": standaloneViewportFitPadding();" in app
+    fit_body = app.split("function fit({ announce = true } = {}) {", 1)[1].split(
+        "\nfunction zoomBy(", 1
+    )[0]
+    assert fit_body.index('if (announce) setStatus("Ansicht angepasst");') < (
+        fit_body.index("const fitPadding = embeddedNativeViewer")
+    )
+    assert "control.hidden = !visible;" in app
 
 
 def test_native_viewer_document_bundle_preserves_collapsible_whitespace_semantics(
@@ -627,6 +676,56 @@ if (!(
   Number.isFinite(fitted.x) &&
   Number.isFinite(fitted.y)
 )) throw new Error('fit math invalid');
+const insetFitted = m.fitView(
+  220,
+  1400,
+  390,
+  844,
+  {{top: 60, right: 48, bottom: 104, left: 48}},
+);
+if (
+  insetFitted.y < 60 - 1e-9 ||
+  insetFitted.y + 1400 * insetFitted.scale > 844 - 104 + 1e-9 ||
+  insetFitted.x < 48 - 1e-9 ||
+  insetFitted.x + 220 * insetFitted.scale > 390 - 48 + 1e-9
+) throw new Error('asymmetric fit inset drifted');
+const tallFitted = m.fitView(
+  220, 4000, 390, 844,
+  {{top: 60, right: 48, bottom: 104, left: 48}},
+);
+if (!(tallFitted.scale > 0 && tallFitted.scale < m.MIN_SCALE)) {{
+  throw new Error('auto fit could not zoom below interactive floor');
+}}
+if (
+  tallFitted.y < 60 - 1e-9 ||
+  tallFitted.y + 4000 * tallFitted.scale > 844 - 104 + 1e-9 ||
+  m.normalizeView(tallFitted).scale !== tallFitted.scale
+) throw new Error('tall auto fit clipped or drifted on normalized interaction');
+const tallAnchor = {{x: 195, y: 422}};
+const tallZoomed = m.zoomAt(tallFitted, m.MIN_SCALE, tallAnchor);
+const diagramBefore = {{
+  x: (tallAnchor.x - tallFitted.x) / tallFitted.scale,
+  y: (tallAnchor.y - tallFitted.y) / tallFitted.scale,
+}};
+const diagramAfter = {{
+  x: (tallAnchor.x - tallZoomed.x) / tallZoomed.scale,
+  y: (tallAnchor.y - tallZoomed.y) / tallZoomed.scale,
+}};
+if (
+  Math.abs(diagramBefore.x - diagramAfter.x) > 1e-7 ||
+  Math.abs(diagramBefore.y - diagramAfter.y) > 1e-7
+) throw new Error('zoom anchor jumps after subfloor fit');
+const smoothZoom = m.zoomAt(tallFitted, tallFitted.scale * 1.2, tallAnchor);
+if (
+  Math.abs(smoothZoom.scale - tallFitted.scale * 1.2) > 1e-9 ||
+  smoothZoom.scale >= m.MIN_SCALE
+) throw new Error('first zoom-in snapped from fitted subfloor view to interactive minimum');
+const restoredScale = m.interactionScale(smoothZoom.scale, tallFitted.scale, tallFitted.scale);
+const smoothBack = m.zoomAt(smoothZoom, tallFitted.scale, tallAnchor, tallFitted.scale);
+if (
+  Math.abs(restoredScale - tallFitted.scale) > 1e-9 ||
+  Math.abs(smoothBack.scale - tallFitted.scale) > 1e-9
+) throw new Error('zoom-in followed by zoom-out cannot restore original fitted scale');
 """
     subprocess.run(
         [node, "--input-type=module", "-e", script],

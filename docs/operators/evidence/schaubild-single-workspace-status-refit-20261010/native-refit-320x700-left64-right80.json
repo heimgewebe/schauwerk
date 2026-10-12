@@ -1,0 +1,33 @@
+{
+  "geometry": {
+    "bar": {
+      "bottom": 692,
+      "left": 64,
+      "right": 240,
+      "top": 595
+    },
+    "childFooterMargin": "149px",
+    "fitClearance": 44,
+    "hostPill": {
+      "bottom": 587,
+      "left": 64,
+      "right": 240,
+      "top": 559
+    },
+    "markerBottom": 515,
+    "newBar": 97,
+    "newFoot": 149,
+    "newView": "translate(139.079px, 186px) scale(0.0621224)",
+    "oldBar": 52,
+    "oldFoot": 104,
+    "oldView": "translate(137.311px, 186px) scale(0.0706193)",
+    "pass": true,
+    "sourceBindings": "native hosted iframe + real SVG export",
+    "status": {
+      "bottom": 587,
+      "left": 64,
+      "right": 240,
+      "top": 559
+    }
+  }
+}

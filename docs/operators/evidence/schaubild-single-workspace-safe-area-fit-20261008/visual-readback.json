@@ -1,0 +1,123 @@
+{
+  "cases": {
+    "mobile-390-normal8": {
+      "inset": 8,
+      "normal": {
+        "barBottom": 836,
+        "barTop": 784,
+        "bottomNodeRight": 266.71451568603516,
+        "bottomNodeX": 123.2854995727539,
+        "fittedBottom": 729.4818725585938,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 22.589515686035156,
+        "hostClearance": 18.51812744140625,
+        "scale": 0.119524,
+        "stageHeight": 844,
+        "stageWidth": 390,
+        "statusTop": 748,
+        "toplineTop": 748,
+        "width": 390
+      },
+      "safe": {
+        "barBottom": 836,
+        "barTop": 784,
+        "bottomNodeRight": 266.71451568603516,
+        "bottomNodeX": 123.2854995727539,
+        "fittedBottom": 729.4818725585938,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 22.589515686035156,
+        "hostClearance": 18.51812744140625,
+        "scale": 0.119524,
+        "stageHeight": 844,
+        "stageWidth": 390,
+        "statusTop": 748,
+        "toplineTop": 748,
+        "width": 390
+      },
+      "screenshot_bytes": 24974,
+      "screenshot_sha256": "899c7b936a401156529837f898e6805e461565a8d81b2bebd94d5d3fff9b0a49"
+    },
+    "mobile-390-safe44": {
+      "inset": 44,
+      "normal": {
+        "barBottom": 836,
+        "barTop": 784,
+        "bottomNodeRight": 266.71451568603516,
+        "bottomNodeX": 123.2854995727539,
+        "fittedBottom": 729.4818725585938,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 22.589515686035156,
+        "hostClearance": 18.51812744140625,
+        "scale": 0.119524,
+        "stageHeight": 844,
+        "stageWidth": 390,
+        "statusTop": 748,
+        "toplineTop": 748,
+        "width": 390
+      },
+      "safe": {
+        "barBottom": 800,
+        "barTop": 748,
+        "bottomNodeRight": 262.63592529296875,
+        "bottomNodeX": 127.36404418945312,
+        "fittedBottom": 694.080078125,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 18.51092529296875,
+        "hostClearance": 17.919921875,
+        "scale": 0.112727,
+        "stageHeight": 844,
+        "stageWidth": 390,
+        "statusTop": 712,
+        "toplineTop": 712,
+        "width": 390
+      },
+      "screenshot_bytes": 25214,
+      "screenshot_sha256": "22a18555130f449b76bc759c0652ffc62a0010f68f9327b325511718df46b1e3"
+    },
+    "mobile-431-safe44": {
+      "inset": 44,
+      "normal": {
+        "barBottom": 836,
+        "barTop": 784,
+        "bottomNodeRight": 287.2144775390625,
+        "bottomNodeX": 143.78549194335938,
+        "fittedBottom": 729.4818725585938,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 2.0894775390625,
+        "hostClearance": 18.51812744140625,
+        "scale": 0.119524,
+        "stageHeight": 844,
+        "stageWidth": 431,
+        "statusTop": 748,
+        "toplineTop": 748,
+        "width": 431
+      },
+      "safe": {
+        "barBottom": 800,
+        "barTop": 748,
+        "bottomNodeRight": 283.13592529296875,
+        "bottomNodeX": 147.86404418945312,
+        "fittedBottom": 694.080078125,
+        "frameBottom": 844,
+        "height": 844,
+        "hostBarHorizontalOverlap": 0,
+        "hostClearance": 17.919921875,
+        "scale": 0.112727,
+        "stageHeight": 844,
+        "stageWidth": 431,
+        "statusTop": 712,
+        "toplineTop": 712,
+        "width": 431
+      },
+      "screenshot_bytes": 25760,
+      "screenshot_sha256": "3c506e264a5e8036e54edebf370070efa9698e031cc20f84d902f1cf28660080"
+    }
+  },
+  "functional_head": "12c5fb4cd7c7c0ce4e83ccd250189499a4bc7bb9",
+  "schema_version": "schauwerk-pr203-safe-area-visual.v1"
+}

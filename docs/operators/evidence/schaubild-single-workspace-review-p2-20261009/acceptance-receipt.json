@@ -1,0 +1,148 @@
+{
+  "check_evidence": {
+    "a11y_font_red": {
+      "job_id": "6be20560c060",
+      "message": "mobile menu accessible name lacks visible label"
+    },
+    "capture_green": {
+      "failed_count": 0,
+      "job_id": "aad108368e2d",
+      "passed_count": 2
+    },
+    "chrome_smoke_green": {
+      "failed_count": 0,
+      "job_id": "a7c71251f8da",
+      "passed_count": 28
+    },
+    "focused_green": {
+      "failed_count": 0,
+      "job_id": "ab82e51c3d64",
+      "passed_count": 7
+    },
+    "jitter_red": {
+      "job_id": "52896028a4cc",
+      "message": "Touch-tap jitter moved the viewport before pan threshold"
+    },
+    "reviewer_p2": {
+      "finding_count": 3,
+      "job_id": "687bde71f9b1",
+      "reviewed_head": "ab5de6d90ca0acc445784fad6e8a17c69abcbe64",
+      "verdict": "NEEDS_CHANGE"
+    },
+    "static_green": {
+      "job_id": "32ea0a48d555",
+      "result": "passed"
+    },
+    "visual_acceptance": {
+      "decision": "accepted",
+      "limitations": [
+        "Desktop Chrome CSS viewport with simulated safe insets, not physical iOS/Safari",
+        "Acceptance specifically covers overlay geometry and control legibility, not general diagram-content legibility",
+        "Chrome screenshots are immutable test evidence, not reusable production assets",
+        "New visual acceptance; no previous acceptance inherited"
+      ],
+      "method": "Four real Chrome CDP screenshots individually visually inspected, accessible Tools and Zurück readable, Native controls and footer separated from host actions"
+    }
+  },
+  "checks": {
+    "four_png_and_geometry_sha_dimensions_verified": true,
+    "host_bar_and_native_footer_do_not_overlap": true,
+    "mobile_font_at_least_12px_at_390": true,
+    "native_controls_and_footer_clear_of_safeareas": true,
+    "no_tools_export_text_clipping": true,
+    "prior_parent_immutable": true,
+    "red_before_green_chromium_jitter": true,
+    "redacted_source_substitutions_absent": true,
+    "review_p2_accessible_name_starts_with_visible_label": true,
+    "visual_inspection_independent_of_technical_checks": true
+  },
+  "does_not_establish": [
+    "final full make validate including successor",
+    "final GitHub required CI Python 3.12",
+    "new independent exact-head Reviewer PASS",
+    "Codex review settlement completeness",
+    "Captain merge authorization",
+    "physical iOS/Safari visual acceptance",
+    "deployment"
+  ],
+  "evidence_digest": "d717fbf42eb62908af6029a1869ed9d02118c3bf350e49592d7258b8dd9c3aa5",
+  "functional_head": "cb6dcc148a4f2ff3a49f2052456b94765a07598a",
+  "parent_evidence": {
+    "evidence_digest": "9d6efde9452fe82c3856e7ab0dc7af7bce6fe873aad460dfaa40047548c4eac7",
+    "file_sha256": "c4ee958f050eb64b9deee6f6b0bff218f86d3f63814dadcb167b9be51bc18c0b",
+    "path": "docs/operators/evidence/schaubild-single-workspace-embedded-host-safearea-20261009/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-single-workspace-embedded-host-safearea.v1"
+  },
+  "schema_version": "schauwerk-schaubild-single-workspace-review-p2.v1",
+  "scope": "P2 remediation: background tap jitter keeps auto-fit; WCAG label-in-name for Tools and Zurück; readable compact mobile menus and host Native geometry",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7ee17a1675a00c0a047a0ec875747c9a056f128e5917236a41ce815862e9c0fc",
+    "src/schauwerk/resources/standalone_editor/assets.py": "fa729dbbafd4e497d718845b9cdb4f2eeeb09f0848e6e8d1358ec2cd7d8711ec",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "2bd55e8afc39c8f63f4af6e8e790d4f6f3762594ac3381fbdaf6830aebdd872c",
+    "tests/visual/test_standalone_editor.py": "ac76b227b8b1855afca8016e577d2643369ed64a05ad6fa932f75208f454975f",
+    "tests/visual/test_standalone_editor_font_controls.py": "99aab979b7e610feef4cd390956365112c41d97ed808a7a8b6fd27c0739f21c6",
+    "tests/visual/test_standalone_editor_single_workspace.py": "38c9671899cfab4c55ce5f85bcf347b3f4522f20904a52eb0d324609a8979b43"
+  },
+  "visual_readbacks": {
+    "review_p2": {
+      "case_count": 4,
+      "path": "docs/operators/evidence/schaubild-single-workspace-review-p2-20261009/visual-review-p2-readback.json",
+      "schema_version": "schauwerk-pr203-reviewed-mobile-visual-cdp.v1",
+      "screenshots": {
+        "native-390x844-left0-right44.png": {
+          "bytes": 27315,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "70bdc8b06200362049c91f4684fb9bc6cfd3f35df1aa9b1a4f057c19235b2401",
+          "stage": "native",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "native-390x844-left44-right0.png": {
+          "bytes": 27228,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "b89e07e12d738b71e34c9095434d58a65eb9138c5a4e43b32cb7ae9c5842ae36",
+          "stage": "native",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "tools-390x844-left0-right44.png": {
+          "bytes": 32869,
+          "safe_area": {
+            "left": 0,
+            "right": 44
+          },
+          "sha256": "1136e321e73eccb3d9f525621268c8ea0da2fbdae6ef6299329e4a2029ba8391",
+          "stage": "tools",
+          "viewport": [
+            390,
+            844
+          ]
+        },
+        "tools-390x844-left44-right0.png": {
+          "bytes": 32605,
+          "safe_area": {
+            "left": 44,
+            "right": 0
+          },
+          "sha256": "f120094f0e95641e571b88d450282dca62c52d6e675bad7bf46bd8c139b606bf",
+          "stage": "tools",
+          "viewport": [
+            390,
+            844
+          ]
+        }
+      },
+      "sha256": "179357359e019f063b7e9da4538fadfd368f1483a429dc9299386be9a4d88403"
+    }
+  }
+}

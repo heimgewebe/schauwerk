@@ -1,0 +1,193 @@
+{
+  "cases": [
+    {
+      "geometry": {
+        "controls": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "height": 700,
+        "host_bar": {
+          "bottom": 692,
+          "height": 52,
+          "left": 176.171875,
+          "right": 314,
+          "top": 640,
+          "width": 137.828125
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:42835/native/f11fd6ea801d6a70832782d2fcfb11c5/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 132.125,
+          "height": 26.125,
+          "left": 7,
+          "right": 233.671875,
+          "top": 106,
+          "width": 226.671875
+        },
+        "status_client_height": 24,
+        "status_client_width": 225,
+        "status_scroll_height": 24,
+        "status_scroll_width": 225,
+        "status_text": "Ziel für die neue Verbindung auswählen",
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 24492,
+      "screenshot_file": "process-320x700-left0-right0.png",
+      "screenshot_sha256": "bb803e28c3eb172cc29cf1d48bf8480c3d08400cdef7c3264e189504418dd665",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "controls": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "height": 700,
+        "host_bar": {
+          "bottom": 692,
+          "height": 52,
+          "left": 176.171875,
+          "right": 314,
+          "top": 640,
+          "width": 137.828125
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:34173/native/44f7215143f41b872d63acc2eb7e2997/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 132.125,
+          "height": 26.125,
+          "left": 7,
+          "right": 233.671875,
+          "top": 106,
+          "width": 226.671875
+        },
+        "status_client_height": 24,
+        "status_client_width": 225,
+        "status_scroll_height": 24,
+        "status_scroll_width": 225,
+        "status_text": "Ziel für die neue Verbindung auswählen",
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 24495,
+      "screenshot_file": "process-320x700-left44-right0.png",
+      "screenshot_sha256": "1a3c6c331854d441060f0712133e3f1d94fa70876e827482f659848becb03e04",
+      "simulated_safe_inset": {
+        "left": 44,
+        "right": 0
+      },
+      "width": 320
+    },
+    {
+      "geometry": {
+        "controls": {
+          "bottom": 99,
+          "height": 93,
+          "left": 6,
+          "right": 314,
+          "top": 6,
+          "width": 308
+        },
+        "height": 700,
+        "host_bar": {
+          "bottom": 692,
+          "height": 52,
+          "left": 138.171875,
+          "right": 276,
+          "top": 640,
+          "width": 137.828125
+        },
+        "native_css_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+        "native_reset_text": "↺",
+        "native_url": "http://127.0.0.1:35595/native/53081d442b6eecc6f33f030ab6032b5e/index.html",
+        "overlap_area": 0,
+        "stage": {
+          "bottom": 700,
+          "height": 700,
+          "left": 0,
+          "right": 320,
+          "top": 0,
+          "width": 320
+        },
+        "status": {
+          "bottom": 132.125,
+          "height": 26.125,
+          "left": 7,
+          "right": 233.671875,
+          "top": 106,
+          "width": 226.671875
+        },
+        "status_client_height": 24,
+        "status_client_width": 225,
+        "status_scroll_height": 24,
+        "status_scroll_width": 225,
+        "status_text": "Ziel für die neue Verbindung auswählen",
+        "visibility": "visible",
+        "white_space": "normal",
+        "width": 320
+      },
+      "height": 700,
+      "screenshot_bytes": 24619,
+      "screenshot_file": "process-320x700-left0-right44.png",
+      "screenshot_sha256": "3e933a41717a9a22675972e6a179730fb785a1d2161f13d253f620137bebde99",
+      "simulated_safe_inset": {
+        "left": 0,
+        "right": 44
+      },
+      "width": 320
+    }
+  ],
+  "functional_head": "1e1b1e82dc7b5de16c755a97e9224b803026fc59",
+  "native_child_styles_sha256": "875fa9b8c9aa0d7c79043b42b95f25312fe192d76f816fdd0233353a17937a82",
+  "pythonpath": "/home/alex/repos/.grabowski-worktrees/schauwerk-pr203-postreview-20261008/src",
+  "schema_version": "schauwerk-pr203-active-process-prompt-visual.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a9c21c1a7683a02a471aafabd2f8c852a77ab24439f0553c91dd27d6bfcb9699",
+    "src/schauwerk/resources/standalone_editor/assets.py": "c3145d196cd0522d8884ad33570849df93960bb9ccd55fcdb4867470afea3fa4",
+    "tests/visual/test_native_viewer.py": "c8726ea892a5669eb50da780ad86971715f2f3cd75478a317646bcc59e226e91",
+    "tests/visual/test_native_viewer_browser.py": "c53444924fa4fc63a2c141bc0dfc1336a1f85ec1fa2b69dde446cb3df260c536",
+    "tests/visual/test_standalone_editor.py": "b5293fec47355dce50600e6c906eb3e86f321142d535f34ac45eb6f20a90b15b",
+    "tests/visual/test_standalone_editor_font_controls.py": "c54334d0a47b9708ef13ecce538e029e4d0639a047a596f3049575e4491fbf11",
+    "tests/visual/test_standalone_editor_product_ui.py": "7e089bacd9d76dcec1a161326241395e8cf98bbf53b368287a973a773698b5d6",
+    "tests/visual/test_standalone_editor_single_workspace.py": "0170d53ce13316b904daa52aa1e1c482195486f6804182a23be4fc0e6a27b4a7"
+  },
+  "viewport_method": "Chrome CDP real CSS viewport; isolated safe-area CSS substitution"
+}
