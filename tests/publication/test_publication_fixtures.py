@@ -1117,6 +1117,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     process_feedback_routing_feedback_path_clearance_superseded_files = (
         process_feedback_routing_cluster_occupancy_superseded_files
     )
+    process_feedback_routing_feedback_route_envelope_superseded_files = (
+        process_feedback_routing_feedback_path_clearance_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10262,7 +10265,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_feedback_path_clearance_superseded_files
     )
     for name, expected in feedback_path["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_feedback_route_envelope_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert feedback_path["checks"]["historical_parent_immutable"] is True
     assert feedback_path["checks"]["new_codex_p2_fail_first_reproduced"] is True
     assert (
@@ -10273,6 +10277,47 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert feedback_path["checks"]["full_exact_head_ci_passed"] is False
     assert feedback_path["checks"]["independent_exact_head_review_pass"] is False
     assert feedback_path["checks"]["captain_merge_authorized"] is False
+
+    # The preceding feedback-path and cluster receipts retain their exact
+    # bytes. The whole-route remedy binds only the two current source files.
+    feedback_route_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-route-envelope-acceptance-receipt.json"
+    )
+    feedback_route = json.loads(
+        feedback_route_path.read_text(encoding="utf-8")
+    )
+    assert feedback_route["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-feedback-route-envelope.v1"
+    )
+    assert feedback_route["based_on_pr_head"] == (
+        "a29f7b42115c8b434f56c9ca4c0cb1b0d54d5277"
+    )
+    assert feedback_route["parent_evidence"] == {
+        "schema_version": feedback_path["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-path-clearance-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(feedback_path_evidence.read_bytes()).hexdigest(),
+        "evidence_digest": feedback_path["evidence_digest"],
+    }
+    assert feedback_route["evidence_digest"] == digest_mapping(
+        feedback_route, "evidence_digest"
+    )
+    assert set(feedback_route["source_bindings"]) == (
+        process_feedback_routing_feedback_route_envelope_superseded_files
+    )
+    for name, expected in feedback_route["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert feedback_route["checks"]["historical_parent_immutable"] is True
+    assert feedback_route["checks"]["two_full_route_label_collisions_fail_first_reproduced"] is True
+    assert feedback_route["checks"]["two_feedback_full_route_p2_regressions_pass"] is True
+    assert feedback_route["checks"]["native_diagram_passed_count"] == 167
+    assert feedback_route["checks"]["full_exact_head_ci_passed"] is False
+    assert feedback_route["checks"]["independent_exact_head_review_pass"] is False
+    assert feedback_route["checks"]["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10302,7 +10347,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_feedback_path_clearance_superseded_files:
+        if name in process_feedback_routing_feedback_route_envelope_superseded_files:
+            assert feedback_route["source_bindings"][name] == current
+        elif name in process_feedback_routing_feedback_path_clearance_superseded_files:
             assert feedback_path["source_bindings"][name] == current
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current

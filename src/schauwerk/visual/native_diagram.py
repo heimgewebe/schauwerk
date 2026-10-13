@@ -3722,6 +3722,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 source_corridor = _process_row_corridor_bounds(
                     source[1], positions, direction=1
                 )
+                target_corridor = source_corridor
                 if source_corridor is not None:
                     feedback_corridors.add(source_corridor)
             shared_corridors = (
@@ -3739,10 +3740,60 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             )
             if not local_grouped_reverse_return:
                 feedback_footer_ids.add(edge_id)
-                if model["groups"] and source[1] != target[1]:
-                    # A footer moves the TEXT, not either endpoint path leg.
-                    # Plan independent clear heights in the physical source
-                    # and target gaps before rendering this feedback return.
+                if model["groups"] and edge["from"] != edge["to"]:
+                    # A footer moves the TEXT, not its horizontal or vertical
+                    # return path. First reserve the entire vertical gutter
+                    # against actual rectangles of other labels, including
+                    # labels already sent to the outer process gutter.
+                    current_gutter_x = min(
+                        width - 16.0,
+                        max(source[0], target[0])
+                        + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                    )
+                    label_boxes = list(packed_process_label_bounds)
+                    for other_corridor, other_items in corridor_groups.items():
+                        for natural_x, other_id, label_width, label_height, _ in other_items:
+                            other = edges_by_id[other_id]
+                            other_source = positions[str(other["from"])]
+                            other_target = positions[str(other["to"])]
+                            actual_x = process_adjacent_label_x.get(other_id, natural_x)
+                            if other_id in process_branch_gutter_x:
+                                actual_x = (
+                                    process_branch_gutter_x[other_id]
+                                    + 8 + label_width / 2
+                                )
+                            actual_y = process_adjacent_label_y.get(other_id)
+                            if actual_y is None:
+                                if other_source[1] == other_target[1]:
+                                    actual_y = (
+                                        other_source[1] - label_height / 2 - 4
+                                        if label_height > 29 else other_source[1] - 18
+                                    )
+                                else:
+                                    actual_y = sum(other_corridor) / 2
+                            label_boxes.append((
+                                actual_x - label_width / 2,
+                                actual_y - label_height / 2,
+                                actual_x + label_width / 2,
+                                actual_y + label_height / 2,
+                            ))
+                    candidate_gutter_x = current_gutter_x
+                    # Sorting by left edge makes the monotonic detour bounded:
+                    # each rectangle is visited at most once.
+                    for left, top, right, bottom in sorted(label_boxes):
+                        if (
+                            bottom > min(source[1], target[1])
+                            and top < height
+                            and left - 2 < candidate_gutter_x < right + 2
+                        ):
+                            candidate_gutter_x = max(candidate_gutter_x, right + 8)
+                    if candidate_gutter_x > width - 16:
+                        raise ValueError("no collision-free grouped feedback gutter")
+                    if candidate_gutter_x != current_gutter_x:
+                        feedback_local_gutter_x[edge_id] = candidate_gutter_x
+
+                    # Each horizontal leg uses a real row-gap corridor; a
+                    # same-row return needs both endpoint legs checked too.
                     safe_legs: list[float] = []
                     for corridor, endpoint_x in (
                         (source_corridor, source[0] + _NODE_WIDTH / 2),
@@ -3752,12 +3803,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             raise ValueError("no grouped feedback endpoint corridor")
                         default_y = (corridor[0] + corridor[1]) / 2
                         left_x, right_x = sorted((
-                            endpoint_x,
-                            min(
-                                width - 16.0,
-                                max(source[0], target[0])
-                                + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
-                            ),
+                            endpoint_x, candidate_gutter_x,
                         ))
                         blockers: list[tuple[float, float]] = []
                         for (

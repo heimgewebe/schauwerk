@@ -5065,3 +5065,57 @@ def test_grouped_cross_row_feedback_target_leg_clears_foreign_flow_label() -> No
             and max(min(y1, y2), top) < min(max(y1, y2), bottom)
         )
         assert not horizontal_hit and not vertical_hit
+
+
+@pytest.mark.parametrize(
+    ("return_from", "return_to", "peer_from", "peer_to"),
+    [
+        ("n1", "n4", "n4", "n5"),  # Same-row forward return crosses the peer label
+        ("n4", "n5", "n5", "n0"),  # Vertical return gutter crosses the peer label
+    ],
+)
+def test_grouped_feedback_entire_footer_route_clears_peer_label(
+    return_from: str,
+    return_to: str,
+    peer_from: str,
+    peer_to: str,
+) -> None:
+    """P2: footer labels never license source, target or vertical path overlap."""
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "feedback", "from": return_from, "to": return_to,
+         "label": "return to start", "kind": "feedback"},
+        {"id": "peer", "from": peer_from, "to": peer_to,
+         "label": "short relation", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(model))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    left, top, width, height = labels["peer"]
+    right, bottom = left + width, top + height
+    points = [
+        (float(x), float(y))
+        for x, y in re.findall(
+            r"L ([-0-9.]+) ([-0-9.]+)", paths["feedback"]
+        )
+    ]
+    assert len(points) >= 3
+    for (x1, y1), (x2, y2) in zip(points, points[1:]):
+        horizontal_hit = (
+            y1 == y2 and top < y1 < bottom
+            and max(min(x1, x2), left) < min(max(x1, x2), right)
+        )
+        vertical_hit = (
+            x1 == x2 and left < x1 < right
+            and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+        )
+        assert not horizontal_hit and not vertical_hit
