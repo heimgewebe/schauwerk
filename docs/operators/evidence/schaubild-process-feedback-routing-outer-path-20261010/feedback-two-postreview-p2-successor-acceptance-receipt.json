@@ -1,0 +1,50 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-two-postreview-p2-successor.v1",
+  "based_on_pr_head": "eea1dbf61e4e151ccbd824b0b879c334fb6fff01",
+  "scope": "Two newly discovered Codex P2 process feedback findings: late footer full-route collision and cross-group long-branch target leg",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-five-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-five-p2-successor-acceptance-receipt.json",
+    "file_sha256": "bf63bce8c4e26818e01274b56251d3896a94a230435b33bdd962e715fbc4a88b",
+    "evidence_digest": "12d506d939fc3e8c06e96e9a8527fd081a01254e9ec3cb31c485b407777c4a43"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "4aaaff545de99ee573618255f3d275fd376ccdd218bb905e9153cbf43fd4c770",
+    "tests/visual/test_native_diagram.py": "197f9a99268aeea52133f4bfb5326dfe2508a836d9a179bafbe479b573655daa"
+  },
+  "regression_tests": [
+    "test_pr204_postreview_p2_footer_clears_crossgroup_long_label",
+    "test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg"
+  ],
+  "test_receipts": {
+    "two_fail_first_task": "ced25f56987c4270a4b6af23",
+    "two_fail_first_lifecycle_sha256": "0e88079b062c2c538009bb74935f1060f14c3b6b03a2e8168b07a1b0427aca79",
+    "seven_green_task": "ff8177fbe35541f0827e3752",
+    "seven_green_lifecycle_sha256": "8ad2a07b1f3186a3846fb32a142bc0e6f5c2b95561b949683984c7e73aff04d2",
+    "full_visual_suite_task": "41bae1db1fce4eeb881c3eab",
+    "full_visual_suite_lifecycle_sha256": "d31d9272c9b6825b7681ef10b631196b9487ce38af9166d61ac63f008dfed0be"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "both_codex_postreview_p2_fail_first_cases_reproduced": true,
+    "seven_original_and_postreview_p2_regression_tests_passed": true,
+    "native_diagram_passed_count": 174,
+    "ruff_check_passed": true,
+    "git_diff_check_passed": true,
+    "full_local_validate_passed": false,
+    "full_exact_head_github_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "fresh_browser_visual_acceptance": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "full local validation on final successor",
+    "GitHub CI on published postreview successor head",
+    "independent exact-head review",
+    "new Chrome pixel visual acceptance",
+    "Captain merge or main integration",
+    "production deployment"
+  ],
+  "status": "two_postreview_p2_regressed_and_local_visual_suite_green_ci_review_captain_pending",
+  "evidence_digest": "106045783d035876f7faa478e52184be4506e53530922ef54cfc4af7375b3d86"
+}

@@ -1124,6 +1124,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     feedback_five_p2_superseded_files = (
         process_feedback_routing_feedback_route_envelope_superseded_files
     )
+    # The next immutable postreview successor owns the current source bytes.
+    feedback_postreview_two_p2_superseded_files = (
+        feedback_five_p2_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10353,7 +10357,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert set(five_p2["source_bindings"]) == feedback_five_p2_superseded_files
     for name, expected in five_p2["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in feedback_postreview_two_p2_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert len(five_p2["regression_tests"]) == 5
     checks = five_p2["checks"]
     assert checks["historical_parent_immutable"] is True
@@ -10367,6 +10372,62 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert checks["independent_exact_head_review_pass"] is False
     assert checks["fresh_browser_visual_acceptance"] is False
     assert checks["captain_merge_authorized"] is False
+
+    # Codex found two new concrete collisions after publication of eea1dbf.
+    # Keep the five-P2 predecessor immutable and bind the currently corrected
+    # renderer and visual tests through their own create-only successor.
+    postreview_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-two-postreview-p2-successor-acceptance-receipt.json"
+    )
+    postreview = json.loads(postreview_path.read_text(encoding="utf-8"))
+    assert postreview["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "feedback-two-postreview-p2-successor.v1"
+    )
+    assert postreview["based_on_pr_head"] == (
+        "eea1dbf61e4e151ccbd824b0b879c334fb6fff01"
+    )
+    assert postreview["parent_evidence"] == {
+        "schema_version": five_p2["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-five-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(five_p2_path.read_bytes()).hexdigest(),
+        "evidence_digest": five_p2["evidence_digest"],
+    }
+    assert postreview["evidence_digest"] == digest_mapping(
+        postreview, "evidence_digest"
+    )
+    assert set(postreview["source_bindings"]) == (
+        feedback_postreview_two_p2_superseded_files
+    )
+    for name, expected in postreview["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert postreview["regression_tests"] == [
+        "test_pr204_postreview_p2_footer_clears_crossgroup_long_label",
+        "test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg",
+    ]
+    new_checks = postreview["checks"]
+    assert new_checks["historical_parent_immutable"] is True
+    assert new_checks["both_codex_postreview_p2_fail_first_cases_reproduced"] is True
+    assert new_checks["seven_original_and_postreview_p2_regression_tests_passed"] is True
+    assert new_checks["native_diagram_passed_count"] == 174
+    assert new_checks["ruff_check_passed"] is True
+    assert new_checks["git_diff_check_passed"] is True
+    assert new_checks["full_local_validate_passed"] is False
+    assert new_checks["full_exact_head_github_ci_passed"] is False
+    assert new_checks["independent_exact_head_review_pass"] is False
+    assert new_checks["fresh_browser_visual_acceptance"] is False
+    assert new_checks["captain_merge_authorized"] is False
+    assert postreview["test_receipts"]["two_fail_first_task"] == (
+        "ced25f56987c4270a4b6af23"
+    )
+    assert postreview["test_receipts"]["seven_green_task"] == (
+        "ff8177fbe35541f0827e3752"
+    )
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10396,7 +10457,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in feedback_five_p2_superseded_files:
+        if name in feedback_postreview_two_p2_superseded_files:
+            assert postreview["source_bindings"][name] == current
+        elif name in feedback_five_p2_superseded_files:
             assert five_p2["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_route_envelope_superseded_files:
             assert feedback_route["source_bindings"][name] == current

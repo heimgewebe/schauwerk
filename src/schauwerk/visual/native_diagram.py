@@ -4370,23 +4370,21 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 and label_bottom > node_y - 8
                 for node_x, node_y in positions.values()
             )
-            # Already-routed long same-column relations occupy both their
-            # source and target row gaps. The feedback's local label can mask
-            # their horizontal legs even when no other label overlaps it.
+            # Long branches have both source and target horizontal legs.
+            # A cross-group branch can cross this feedback label even when
+            # its endpoints occupy different columns (the old test skipped it).
             collides_with_edge_leg = False
-            # The new risk is grouped local feedback versus a same-group
-            # long edge; leave historical ungrouped packed-lane policy intact.
             for other in (model["edges"] if model["groups"] else ()):
                 if str(other["kind"]) == "feedback" or other["from"] == other["to"]:
                     continue
                 other_source = positions[str(other["from"])]
                 other_target = positions[str(other["to"])]
                 if (
-                    other_source[0] != other_target[0]
-                    or abs(other_target[1] - other_source[1])
+                    abs(other_target[1] - other_source[1])
                     <= _NODE_HEIGHT + process_row_gap
                 ):
                     continue
+                other_id = str(other["id"])
                 direction = 1 if other_source[1] < other_target[1] else -1
                 start_y = (
                     other_source[1] + _NODE_HEIGHT
@@ -4398,20 +4396,53 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     if direction > 0
                     else other_target[1] + _NODE_HEIGHT
                 )
-                center_x = other_source[0] + _NODE_WIDTH / 2
-                gutter_x = long_vertical_gutter_x.get(
-                    str(other["id"]),
-                    other_source[0] + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                if other_source[0] == other_target[0]:
+                    # Vertical same-column branches use their own outer lanes
+                    # without the id-dependent cross-column lane offset.
+                    gutter_x = process_branch_gutter_x.get(
+                        other_id,
+                        long_vertical_gutter_x.get(
+                            other_id,
+                            other_source[0]
+                            + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                        ),
+                    )
+                    lane_offset = 0.0
+                else:
+                    # Mirror the cross-group long branch's actual routed x
+                    # and y; checking only the source leg misses its target.
+                    gutter_x = process_branch_gutter_x.get(
+                        other_id, anchored_branch_gutter_x.get(other_id)
+                    )
+                    slot = long_branch_slots.get(other_id)
+                    if gutter_x is None:
+                        gutter_x = (
+                            width - _PROCESS_EDGE_GUTTER / 2
+                            if slot is None or len(long_branch_slots) <= 1
+                            else width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
+                        )
+                    if slot is not None:
+                        centered_slot = slot - (len(long_branch_slots) - 1) / 2
+                        lane_offset = max(-8.0, min(8.0, centered_slot * 4.0))
+                    else:
+                        lane = ((lane_ranks[other_id] % 5) - 2) * _PROCESS_LANE_STEP
+                        lane_offset = max(-8.0, min(8.0, lane / 2))
+                source_leg_y = (
+                    start_y + direction * process_row_gap / 2 + lane_offset
                 )
-                horizontal_left = min(center_x, gutter_x)
-                horizontal_right = max(center_x, gutter_x)
-                if label_left >= horizontal_right or label_right <= horizontal_left:
-                    continue
-                for corridor_y in (
-                    start_y + direction * process_row_gap / 2,
-                    end_y - direction * process_row_gap / 2,
+                target_leg_y = (
+                    end_y - direction * process_row_gap / 2 + lane_offset
+                )
+                for endpoint_x, corridor_y in (
+                    (other_source[0] + _NODE_WIDTH / 2, source_leg_y),
+                    (other_target[0] + _NODE_WIDTH / 2, target_leg_y),
                 ):
-                    if label_top < corridor_y < label_bottom:
+                    left_x, right_x = sorted((endpoint_x, gutter_x))
+                    if (
+                        label_left < right_x
+                        and label_right > left_x
+                        and label_top < corridor_y < label_bottom
+                    ):
                         collides_with_edge_leg = True
                         break
                 if collides_with_edge_leg:
@@ -4419,6 +4450,43 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
 
             if collides_with_packed_label or collides_with_node or collides_with_edge_leg:
                 feedback_footer_ids.add(edge_id)
+                if (
+                    model["groups"]
+                    and edge["from"] != edge["to"]
+                    and not preserve_local_footer
+                    and edge_id not in feedback_outer_footer_ids
+                ):
+                    # Moving only the label to the footer also extends the
+                    # feedback return down its current vertical gutter. If
+                    # that gutter meets any actual peer label or card in the
+                    # extended span, switch the path to the reserved side-port
+                    # footer route rather than drawing through the obstacle.
+                    gutter_x = feedback_local_gutter_x.get(
+                        edge_id,
+                        min(
+                            width - 16.0,
+                            max(source[0], target[0])
+                            + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                        ),
+                    )
+                    span_top = min(source[1], target[1]) + _NODE_HEIGHT
+                    if any(
+                        left - 2 < gutter_x < right + 2
+                        and top - 2 < height
+                        and bottom + 2 > span_top
+                        for left, top, right, bottom in feedback_obstacles
+                    ):
+                        feedback_outer_footer_ids.add(edge_id)
+                        feedback_local_gutter_x.pop(edge_id, None)
+                        feedback_path_y.pop(edge_id, None)
+                        height = max(
+                            height,
+                            math.ceil(
+                                feedback_base_bottom
+                                + 112
+                                + feedback_count * _FEEDBACK_LABEL_LANE_STEP
+                            ),
+                        )
 
     purpose_max_width = width - 2 * _PAGE_MARGIN
     title_lines = _bounded_wrapped(

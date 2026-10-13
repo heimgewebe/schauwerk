@@ -5146,12 +5146,18 @@ def _p2_orthogonal_segments(path: str) -> list[tuple[tuple[float, float], tuple[
         path,
     )
     if first is None:
-        return []
-    points = [tuple(float(value) for value in first.groups())]
-    points.extend(
-        (float(x), float(y))
-        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
-    )
+        # Side-port outer-footer fallbacks are pure M/L polylines. They must
+        # be checked too; an empty segment list would silently pass anything.
+        points = [
+            (float(x), float(y))
+            for x, y in re.findall(r"(?:M|L) ([-0-9.]+) ([-0-9.]+)", path)
+        ]
+    else:
+        points = [tuple(float(value) for value in first.groups())]
+        points.extend(
+            (float(x), float(y))
+            for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+        )
     return list(zip(points, points[1:]))
 
 
@@ -5266,3 +5272,73 @@ def test_pr204_p2_detoured_feedback_never_enters_foreign_card_column() -> None:
     assert (labels, paths) == (
         _edge_label_boxes(alternate), _edge_paths(alternate)
     )
+
+def _pr204_named_group_model(rows_per_group: int) -> dict:
+    """Use the exact two-group stable ids from the external P2 reproducers."""
+    raw = _p2_feedback_geometry_model((rows_per_group, rows_per_group))
+    names = {
+        node["id"]: f"n{index // rows_per_group}_{index % rows_per_group}"
+        for index, node in enumerate(raw["nodes"])
+    }
+    for node in raw["nodes"]:
+        node["id"] = names[node["id"]]
+    return raw
+
+
+def test_pr204_postreview_p2_footer_clears_crossgroup_long_label() -> None:
+    """Moving feedback text to the footer must not retain a crossing path."""
+    raw = _pr204_named_group_model(4)
+    raw["edges"] = [
+        {
+            "id": "feedback",
+            "from": "n0_0",
+            "to": "n1_0",
+            "label": "Eine sehr lange Rueckmeldung mit mehreren Woertern",
+            "kind": "feedback",
+        },
+        {
+            "id": "branch",
+            "from": "n1_3",
+            "to": "n0_1",
+            "label": "Long relation with process branch",
+            "kind": "flow",
+        },
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    assert _p2_orthogonal_segments(paths["feedback"])
+    assert _p2_linear_path_clears_box(paths["feedback"], labels["branch"])
+    for node_id, box in _node_boxes(root).items():
+        if node_id not in {"n0_0", "n1_0"}:
+            assert _p2_linear_path_clears_box(paths["feedback"], box), node_id
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (_edge_label_boxes(reordered), _edge_paths(reordered))
+
+
+def test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg() -> None:
+    """A cross-group long-branch target leg is a label collision, too."""
+    raw = _pr204_named_group_model(5)
+    raw["edges"] = [
+        {
+            "id": "feedback",
+            "from": "n0_3",
+            "to": "n1_4",
+            "label": "sync",
+            "kind": "feedback",
+        },
+        {
+            "id": "branch",
+            "from": "n0_1",
+            "to": "n1_4",
+            "label": "long return",
+            "kind": "flow",
+        },
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    assert _p2_orthogonal_segments(paths["branch"])
+    assert _p2_linear_path_clears_box(paths["branch"], labels["feedback"])
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (_edge_label_boxes(reordered), _edge_paths(reordered))
