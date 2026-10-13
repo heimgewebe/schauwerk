@@ -3391,38 +3391,115 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 if descending else target[1] + _NODE_HEIGHT + process_row_gap / 2
             ) + lane_offset
             target_center_x = target[0] + _NODE_WIDTH / 2
-            for natural_x, peer_id, label_width, label_height, _ in (
-                corridor_groups.get(target_corridor, ())
-            ):
-                peer = edges_by_id[peer_id]
-                if (
-                    peer_id == local_id
-                    or peer_id in unsafe_adjacent_branches
-                    or {str(edge["from"]), str(edge["to"])}.intersection(
-                        {str(peer["from"]), str(peer["to"])}
+            # A local long branch traverses every intervening row gap, not
+            # just the gap adjacent to its target. Adjacent-edge labels are
+            # packed by corridor and may sit directly on that vertical return.
+            # Inspect each *actual* label rectangle before preserving a local
+            # gutter. If any segment overlaps, use the existing outer lane.
+            for occupied_corridor, occupants in corridor_groups.items():
+                for natural_x, peer_id, label_width, label_height, fixed in occupants:
+                    peer = edges_by_id[peer_id]
+                    if (
+                        peer_id == local_id
+                        or peer_id in unsafe_adjacent_branches
+                        or {str(edge["from"]), str(edge["to"])}.intersection(
+                            {str(peer["from"]), str(peer["to"])}
+                        )
+                    ):
+                        continue
+                    actual_x = process_adjacent_label_x.get(peer_id, natural_x)
+                    actual_y = process_adjacent_label_y.get(
+                        peer_id,
+                        (occupied_corridor[0] + occupied_corridor[1]) / 2,
                     )
-                ):
-                    continue
-                actual_x = process_adjacent_label_x.get(peer_id, natural_x)
-                actual_y = process_adjacent_label_y.get(
-                    peer_id, (target_corridor[0] + target_corridor[1]) / 2
-                )
-                left, right = actual_x - label_width / 2, actual_x + label_width / 2
-                top, bottom = actual_y - label_height / 2, actual_y + label_height / 2
-                vertical_hit = (
-                    left < gutter_x < right
-                    and top < max(source_route_y, target_route_y)
-                    and bottom > min(source_route_y, target_route_y)
-                )
-                horizontal_hit = (
-                    top < target_route_y < bottom
-                    and left < max(gutter_x, target_center_x)
-                    and right > min(gutter_x, target_center_x)
-                )
-                if vertical_hit or horizontal_hit:
-                    unsafe_adjacent_branches.add(local_id)
-                    unsafe_corridors.add(target_corridor)
-                    anchored_branch_gutter_x.pop(local_id, None)
+                    left = actual_x - label_width / 2
+                    right = actual_x + label_width / 2
+                    top = actual_y - label_height / 2
+                    bottom = actual_y + label_height / 2
+                    vertical_hit = (
+                        left < gutter_x < right
+                        and top < max(source_route_y, target_route_y)
+                        and bottom > min(source_route_y, target_route_y)
+                    )
+                    horizontal_hit = (
+                        occupied_corridor == target_corridor
+                        and top < target_route_y < bottom
+                        and left < max(gutter_x, target_center_x)
+                        and right > min(gutter_x, target_center_x)
+                    )
+                    if (
+                        vertical_hit
+                        and not horizontal_hit
+                        and occupied_corridor != target_corridor
+                        and not fixed
+                        and peer_id not in process_adjacent_label_x
+                    ):
+                        peer_source = positions[str(peer["from"])]
+                        peer_target = positions[str(peer["to"])]
+                        if peer_source[0] < peer_target[0]:
+                            # Before widening an otherwise accepted diagram,
+                            # relocate a movable adjacent label to the free
+                            # row gap directly above its own source column.
+                            # This clears the long vertical return without
+                            # changing its geometry or the canvas width.
+                            new_x = peer_source[0] + _NODE_WIDTH / 2
+                            new_left = new_x - label_width / 2
+                            new_right = new_x + label_width / 2
+                            packed_clear = all(
+                                new_left >= box_right + 4
+                                or new_right + 4 <= box_left
+                                or top >= box_bottom + 4
+                                or bottom + 4 <= box_top
+                                for box_left, box_top, box_right, box_bottom
+                                in packed_process_label_bounds
+                            )
+                            peers_clear = all(
+                                other_id == peer_id
+                                or (
+                                    new_left >= (
+                                        process_adjacent_label_x.get(
+                                            other_id, other_natural_x
+                                        ) + other_width / 2 + 4
+                                    )
+                                    or new_right + 4 <= (
+                                        process_adjacent_label_x.get(
+                                            other_id, other_natural_x
+                                        ) - other_width / 2
+                                    )
+                                    or top >= (
+                                        process_adjacent_label_y.get(
+                                            other_id, sum(occupied_corridor) / 2
+                                        ) + other_height / 2 + 4
+                                    )
+                                    or bottom + 4 <= (
+                                        process_adjacent_label_y.get(
+                                            other_id, sum(occupied_corridor) / 2
+                                        ) - other_height / 2
+                                    )
+                                )
+                                for other_natural_x, other_id, other_width,
+                                other_height, _ in occupants
+                            )
+                            nodes_clear = all(
+                                new_left >= node_x + _NODE_WIDTH + 2
+                                or new_right + 2 <= node_x
+                                or top >= node_y + _NODE_HEIGHT + 2
+                                or bottom + 2 <= node_y
+                                for node_x, node_y in positions.values()
+                            )
+                            if (
+                                (new_right + 2 <= gutter_x
+                                 or new_left >= gutter_x + 2)
+                                and packed_clear and peers_clear and nodes_clear
+                            ):
+                                process_adjacent_label_x[peer_id] = new_x
+                                continue
+                    if vertical_hit or horizontal_hit:
+                        unsafe_adjacent_branches.add(local_id)
+                        unsafe_corridors.add(occupied_corridor)
+                        anchored_branch_gutter_x.pop(local_id, None)
+                        break
+                if local_id in unsafe_adjacent_branches:
                     break
 
         if unsafe_adjacent_branches:

@@ -5373,3 +5373,28 @@ def test_pr204_p2_forward_shared_endpoint_local_leg_clears_peer_label(
     assert (labels, paths) == geometry(list(reversed(edges)))
     assert _p2_orthogonal_segments(paths["local"])
     assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
+
+
+@pytest.mark.parametrize("peer_label", ["x", "Intervening flow label"])
+def test_pr204_p2_local_long_branch_clears_intermediate_label(
+    peer_label: str,
+) -> None:
+    """A local inter-group return cannot cross an intermediate row-gap label."""
+    raw = _p2_feedback_geometry_model((4, 4))
+    original_edges = [
+        {"id": "local", "from": "n0", "to": "n7",
+         "label": "x", "kind": "flow"},
+        {"id": "peer", "from": "n1", "to": "n6",
+         "label": peer_label, "kind": "flow"},
+    ]
+
+    def geometry(edges: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(edges)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(original_edges)
+    assert (labels, paths) == geometry(list(reversed(original_edges)))
+    assert _p2_orthogonal_segments(paths["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
