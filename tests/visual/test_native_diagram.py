@@ -5342,3 +5342,34 @@ def test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg() -> None
     raw["edges"].reverse()
     reordered = _parse(render_native_diagram(raw))
     assert (labels, paths) == (_edge_label_boxes(reordered), _edge_paths(reordered))
+
+
+@pytest.mark.parametrize(
+    "peer_label",
+    [
+        "a long two-line relation label",
+        "Nebenprozess mit Titel",
+    ],
+)
+def test_pr204_p2_forward_shared_endpoint_local_leg_clears_peer_label(
+    peer_label: str,
+) -> None:
+    """A forward adjacent edge sharing source n0 can own the local source gap."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "local", "from": "n0", "to": "n5",
+         "label": "x", "kind": "flow"},
+        {"id": "peer", "from": "n0", "to": "n4",
+         "label": peer_label, "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    assert _p2_orthogonal_segments(paths["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["peer"])

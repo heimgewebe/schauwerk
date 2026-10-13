@@ -1128,6 +1128,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     feedback_postreview_two_p2_superseded_files = (
         feedback_five_p2_superseded_files
     )
+    # The eight-P2 successor alone binds the newly corrected source bytes.
+    feedback_forward_shared_source_p2_superseded_files = (
+        feedback_postreview_two_p2_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10405,7 +10409,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         feedback_postreview_two_p2_superseded_files
     )
     for name, expected in postreview["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in feedback_forward_shared_source_p2_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert postreview["regression_tests"] == [
         "test_pr204_postreview_p2_footer_clears_crossgroup_long_label",
         "test_pr204_postreview_p2_feedback_label_clears_crossgroup_long_leg",
@@ -10427,6 +10432,59 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert postreview["test_receipts"]["seven_green_task"] == (
         "ff8177fbe35541f0827e3752"
+    )
+
+    # Another immutable successor records the actual source-gap repair and
+    # first failing then passing tests. The former two receipts stay untouched.
+    forward_p2_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-forward-shared-source-p2-successor-acceptance-receipt.json"
+    )
+    forward_p2 = json.loads(forward_p2_path.read_text(encoding="utf-8"))
+    assert forward_p2["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "forward-shared-source-p2-successor.v1"
+    )
+    assert forward_p2["based_on_pr_head"] == (
+        "cec5787c9a521e5c30b1e0700218f66a30497832"
+    )
+    assert forward_p2["parent_evidence"] == {
+        "schema_version": postreview["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-two-postreview-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(postreview_path.read_bytes()).hexdigest(),
+        "evidence_digest": postreview["evidence_digest"],
+    }
+    assert forward_p2["evidence_digest"] == digest_mapping(
+        forward_p2, "evidence_digest"
+    )
+    assert set(forward_p2["source_bindings"]) == (
+        feedback_forward_shared_source_p2_superseded_files
+    )
+    for name, expected in forward_p2["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert len(forward_p2["regression_tests"]) == 2
+    check = forward_p2["checks"]
+    assert check["historical_parent_immutable"] is True
+    assert check["two_forward_shared_source_p2_fail_first_reproduced"] is True
+    assert check["two_forward_shared_source_p2_variants_green"] is True
+    assert check["accepted_noncolliding_preimage_layouts_preserved"] is True
+    assert check["full_renderer_test_passed_count"] == 176
+    assert check["ruff_check_passed"] is True
+    assert check["git_diff_check_passed"] is True
+    assert check["full_exact_head_local_validation_passed"] is False
+    assert check["full_exact_head_github_ci_passed"] is False
+    assert check["independent_exact_head_review_pass"] is False
+    assert check["fresh_browser_pixel_acceptance"] is False
+    assert check["captain_merge_authorized"] is False
+    assert forward_p2["test_receipts"]["fail_first_task"] == (
+        "a9023c8744124ab3b6bcc4b9"
+    )
+    assert forward_p2["test_receipts"]["full_renderer_suite_task"] == (
+        "0223b05246d14192b0e61942"
     )
 
     oauth_successor = json.loads(
@@ -10457,7 +10515,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in feedback_postreview_two_p2_superseded_files:
+        if name in feedback_forward_shared_source_p2_superseded_files:
+            assert forward_p2["source_bindings"][name] == current
+        elif name in feedback_postreview_two_p2_superseded_files:
             assert postreview["source_bindings"][name] == current
         elif name in feedback_five_p2_superseded_files:
             assert five_p2["source_bindings"][name] == current
