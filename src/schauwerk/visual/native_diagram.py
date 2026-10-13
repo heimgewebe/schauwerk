@@ -3739,6 +3739,75 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             )
             if not local_grouped_reverse_return:
                 feedback_footer_ids.add(edge_id)
+                if model["groups"] and source[1] != target[1]:
+                    # A footer moves the TEXT, not either endpoint path leg.
+                    # Plan independent clear heights in the physical source
+                    # and target gaps before rendering this feedback return.
+                    safe_legs: list[float] = []
+                    for corridor, endpoint_x in (
+                        (source_corridor, source[0] + _NODE_WIDTH / 2),
+                        (target_corridor, target[0] + _NODE_WIDTH / 2),
+                    ):
+                        if corridor is None:
+                            raise ValueError("no grouped feedback endpoint corridor")
+                        default_y = (corridor[0] + corridor[1]) / 2
+                        left_x, right_x = sorted((
+                            endpoint_x,
+                            min(
+                                width - 16.0,
+                                max(source[0], target[0])
+                                + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                            ),
+                        ))
+                        blockers: list[tuple[float, float]] = []
+                        for (
+                            natural_x, peer_id, peer_width, peer_height, _
+                        ) in corridor_groups.get(corridor, ()):
+                            peer_x = process_adjacent_label_x.get(
+                                peer_id, natural_x
+                            )
+                            if peer_id in process_branch_gutter_x:
+                                peer_x = (
+                                    process_branch_gutter_x[peer_id]
+                                    + 8 + peer_width / 2
+                                )
+                            if peer_id in process_adjacent_label_y:
+                                peer_y = process_adjacent_label_y[peer_id]
+                            else:
+                                peer_y = default_y
+                            if (
+                                peer_x - peer_width / 2 < right_x + 2
+                                and peer_x + peer_width / 2 > left_x - 2
+                            ):
+                                blockers.append((
+                                    peer_y - peer_height / 2 - 2,
+                                    peer_y + peer_height / 2 + 2,
+                                ))
+                        low, high = corridor[0] + 2.0, corridor[1] - 2.0
+                        candidates = [default_y, low, high]
+                        for block_low, block_high in blockers:
+                            candidates.extend((block_low, block_high))
+                        best_y = next(
+                            (
+                                y for y in sorted(
+                                    {min(max(value, low), high) for value in candidates},
+                                    key=lambda value: (abs(value - default_y), value),
+                                )
+                                if all(
+                                    not block_low < y < block_high
+                                    for block_low, block_high in blockers
+                                )
+                            ),
+                            None,
+                        )
+                        if best_y is None:
+                            # Do not silently emit a path through another
+                            # relation's confirmed text when the gap is full.
+                            raise ValueError(
+                                "no collision-free grouped feedback corridor"
+                            )
+                        safe_legs.append(best_y)
+                    feedback_path_y[edge_id] = (safe_legs[0], safe_legs[1])
                 continue
             metrics = _edge_label_metrics(edge, positions, intent)
             _, feedback_label_x, feedback_label_y, _ = _edge_geometry(

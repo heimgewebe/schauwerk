@@ -5023,3 +5023,45 @@ def test_local_group_long_branch_target_leg_clears_other_corridor_label() -> Non
             and max(min(y1, y2), top) < min(max(y1, y2), bottom)
         )
         assert not horizontal_hit and not vertical_hit
+
+
+def test_grouped_cross_row_feedback_target_leg_clears_foreign_flow_label() -> None:
+    """P2: moving feedback text to footer must not ignore a crossed target leg."""
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "feedback", "from": "n5", "to": "n0",
+         "label": "return to start", "kind": "feedback"},
+        {"id": "flow", "from": "n3", "to": "n1",
+         "label": "short relation", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    left, top, width, height = labels["flow"]
+    right, bottom = left + width, top + height
+    linear_points = [
+        (float(x), float(y))
+        for x, y in re.findall(
+            r"L ([-0-9.]+) ([-0-9.]+)", paths["feedback"]
+        )
+    ]
+    assert len(linear_points) >= 3
+    for (x1, y1), (x2, y2) in zip(linear_points, linear_points[1:]):
+        horizontal_hit = (
+            y1 == y2 and top < y1 < bottom
+            and max(min(x1, x2), left) < min(max(x1, x2), right)
+        )
+        vertical_hit = (
+            x1 == x2 and left < x1 < right
+            and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+        )
+        assert not horizontal_hit and not vertical_hit
