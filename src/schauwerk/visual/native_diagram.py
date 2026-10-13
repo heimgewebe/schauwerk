@@ -2947,6 +2947,20 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             # rectangles; anchored labels keep the pre-existing fixed-item
             # contract, rather than blocking an entire row corridor.
             foreign_boxes = list(packed_corridor_label_boxes[corridor])
+            # Anchors in another x-cluster reserve label positions but do not
+            # change the pre-existing route-hull contract for fixed labels.
+            candidate_ids = {edge_id for _, edge_id, _ in candidates}
+            anchored_boxes = [
+                (
+                    natural_x - label_width / 2,
+                    corridor_center - label_height / 2,
+                    label_width,
+                    float(label_height),
+                )
+                for natural_x, edge_id, label_width, label_height, anchored
+                in corridor_groups[corridor]
+                if anchored and edge_id not in candidate_ids
+            ]
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
                 edge = edges_by_id[edge_id]
@@ -3032,7 +3046,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             fixed = [(item[0], item[2]) for item in fixed_items]
             fixed.extend(
                 (left + box_width / 2, box_width)
-                for left, _, box_width, _ in foreign_boxes
+                for left, _, box_width, _ in (*foreign_boxes, *anchored_boxes)
             )
             for index, (candidate_x, _, candidate_width) in enumerate(candidates):
                 if any(
@@ -3120,10 +3134,25 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     continue
                 count = len(cluster)
                 if count == 1:
-                    _, edge_id, _, label_height, _ = cluster[0]
-                    # The header already reserves the established singleton
-                    # slot; only collisions there require a geometry change.
-                    if corridor != header_corridor and label_height + 8 > available_height:
+                    natural_x, edge_id, label_width, label_height, _ = cluster[0]
+                    center_y = (upper_bottom + lower_top) / 2
+                    collides_with_packed = any(
+                        natural_x - label_width / 2 < left + box_width
+                        and natural_x + label_width / 2 > left
+                        and center_y - label_height / 2 < top + box_height
+                        and center_y + label_height / 2 > top
+                        for left, top, box_width, box_height
+                        in packed_corridor_label_boxes[corridor]
+                    )
+                    # Later one-item clusters must also honor earlier packs.
+                    # The header still reserves the singleton slot if clear.
+                    if (
+                        collides_with_packed
+                        or (
+                            corridor != header_corridor
+                            and label_height + 8 > available_height
+                        )
+                    ):
                         unsafe_adjacent_branches.add(edge_id)
                         unsafe_corridors.add(corridor)
                     continue
@@ -3217,6 +3246,65 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 else:
                     unsafe_adjacent_branches.add(edge_id)
                     unsafe_corridors.add(corridor)
+
+        # Local long branches are planned before adjacent labels are packed.
+        # Inspect the *actual* completed target-corridor label locations:
+        # natural key positions can be moved by horizontal/vertical packing.
+        # A disjoint destination label must not be cut by the local return.
+        for local_id, gutter_x in local_group_branch_gutter_x.items():
+            edge = edges_by_id[local_id]
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            descending = source[1] < target[1]
+            target_corridor = _process_row_corridor_bounds(
+                target[1], positions, direction=-1 if descending else 1
+            )
+            if target_corridor is None:
+                continue
+            lane = ((process_lane_ranks[local_id] % 5) - 2) * _PROCESS_LANE_STEP
+            lane_offset = max(-8.0, min(8.0, lane / 2))
+            source_route_y = (
+                source[1] + _NODE_HEIGHT + process_row_gap / 2
+                if descending else source[1] - process_row_gap / 2
+            ) + lane_offset
+            target_route_y = (
+                target[1] - process_row_gap / 2
+                if descending else target[1] + _NODE_HEIGHT + process_row_gap / 2
+            ) + lane_offset
+            target_center_x = target[0] + _NODE_WIDTH / 2
+            for natural_x, peer_id, label_width, label_height, _ in (
+                corridor_groups.get(target_corridor, ())
+            ):
+                peer = edges_by_id[peer_id]
+                if (
+                    peer_id == local_id
+                    or peer_id in unsafe_adjacent_branches
+                    or {str(edge["from"]), str(edge["to"])}.intersection(
+                        {str(peer["from"]), str(peer["to"])}
+                    )
+                ):
+                    continue
+                actual_x = process_adjacent_label_x.get(peer_id, natural_x)
+                actual_y = process_adjacent_label_y.get(
+                    peer_id, (target_corridor[0] + target_corridor[1]) / 2
+                )
+                left, right = actual_x - label_width / 2, actual_x + label_width / 2
+                top, bottom = actual_y - label_height / 2, actual_y + label_height / 2
+                vertical_hit = (
+                    left < gutter_x < right
+                    and top < max(source_route_y, target_route_y)
+                    and bottom > min(source_route_y, target_route_y)
+                )
+                horizontal_hit = (
+                    top < target_route_y < bottom
+                    and left < max(gutter_x, target_center_x)
+                    and right > min(gutter_x, target_center_x)
+                )
+                if vertical_hit or horizontal_hit:
+                    unsafe_adjacent_branches.add(local_id)
+                    unsafe_corridors.add(target_corridor)
+                    anchored_branch_gutter_x.pop(local_id, None)
+                    break
 
         if unsafe_adjacent_branches:
             obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())

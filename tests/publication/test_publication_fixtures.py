@@ -1111,6 +1111,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     process_feedback_routing_long_leg_superseded_files = (
         process_feedback_routing_feedback_fullpath_superseded_files
     )
+    process_feedback_routing_cluster_occupancy_superseded_files = (
+        process_feedback_routing_long_leg_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10163,7 +10166,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_long_leg_superseded_files
     )
     for name, expected in long_leg["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in process_feedback_routing_cluster_occupancy_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert long_leg["checks"]["historical_parent_immutable"] is True
     assert long_leg["checks"]["long_column_label_collision_fail_first_reproduced"] is True
     assert long_leg["checks"]["grouped_local_feedback_label_avoids_long_route_leg"] is True
@@ -10172,6 +10176,53 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert long_leg["checks"]["native_diagram_passed_count"] == 161
     assert long_leg["checks"]["full_exact_head_ci_passed"] is False
     assert long_leg["checks"]["captain_merge_authorized"] is False
+
+    # The old long-leg receipt remains immutable. Only this explicit,
+    # hash-linked successor may bind the latest grouped-corridor source files.
+    cluster_occupancy_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "cluster-occupancy-acceptance-receipt.json"
+    )
+    cluster_occupancy = json.loads(
+        cluster_occupancy_path.read_text(encoding="utf-8")
+    )
+    assert cluster_occupancy["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-cluster-occupancy.v1"
+    )
+    assert cluster_occupancy["based_on_pr_head"] == (
+        "dbe9fb534929ecbd94fbf0dcfb69adb81dc37539"
+    )
+    assert cluster_occupancy["parent_evidence"] == {
+        "schema_version": long_leg["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "long-leg-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(
+            (
+                SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+                / "long-leg-acceptance-receipt.json"
+            ).read_bytes()
+        ).hexdigest(),
+        "evidence_digest": long_leg["evidence_digest"],
+    }
+    assert cluster_occupancy["evidence_digest"] == digest_mapping(
+        cluster_occupancy, "evidence_digest"
+    )
+    assert set(cluster_occupancy["source_bindings"]) == (
+        process_feedback_routing_cluster_occupancy_superseded_files
+    )
+    for name, expected in cluster_occupancy["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert cluster_occupancy["checks"]["historical_parent_immutable"] is True
+    assert cluster_occupancy["checks"]["three_p2_fail_first_regressions_reproduced"] is True
+    assert cluster_occupancy["checks"]["three_p2_regressions_pass_after_fix"] is True
+    assert cluster_occupancy["checks"]["eighteen_node_process_width_preserved"] is True
+    assert cluster_occupancy["checks"]["native_diagram_passed_count"] == 164
+    assert cluster_occupancy["checks"]["full_exact_head_ci_passed"] is False
+    assert cluster_occupancy["checks"]["independent_exact_head_review_pass"] is False
+    assert cluster_occupancy["checks"]["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10201,7 +10252,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_long_leg_superseded_files:
+        if name in process_feedback_routing_cluster_occupancy_superseded_files:
+            assert cluster_occupancy["source_bindings"][name] == current
+        elif name in process_feedback_routing_long_leg_superseded_files:
             assert long_leg["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current

@@ -4946,3 +4946,80 @@ def test_generic_non_process_self_loop_routes_clear_of_next_card() -> None:
     assert 0 <= x and x + width <= canvas_width
     assert 0 <= y and y + height <= canvas_height
     assert svg == render_native_diagram(copy.deepcopy(raw))
+
+def test_grouped_pack_reserves_later_singleton_label_other_cluster() -> None:
+    """P2: a later one-edge cluster must not overprint an earlier packed box."""
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "packed", "from": "n5", "to": "n2", "label": "short relation", "kind": "flow"},
+        {"id": "long", "from": "n2", "to": "n0", "label": "lange lokale beziehung", "kind": "flow"},
+        {"id": "singleton", "from": "n4", "to": "n5", "label": "x", "kind": "flow"},
+    ]
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    assert not _boxes_overlap(labels["packed"], labels["singleton"])
+
+
+def test_grouped_pack_reserves_anchored_label_in_foreign_cluster() -> None:
+    """P2: every anchored corridor occupant must reserve its actual label box."""
+    raw = _minimal_process_model(8)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 4}"
+    edges = [
+        {"id": "forward", "from": "n7", "to": "n3", "label": "x", "kind": "flow"},
+        {"id": "reverse", "from": "n3", "to": "n7", "label": "x", "kind": "flow"},
+        {"id": "anchored", "from": "n3", "to": "n1", "label": "short relation", "kind": "flow"},
+    ]
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    assert not _boxes_overlap(labels["reverse"], labels["anchored"])
+
+
+def test_local_group_long_branch_target_leg_clears_other_corridor_label() -> None:
+    """P2: the full local L-route must clear even unrelated target labels."""
+    raw = _minimal_process_model(6)
+    raw["groups"] = [{"id": "g0", "label": "G0"}, {"id": "g1", "label": "G1"}]
+    for index, node in enumerate(raw["nodes"]):
+        node["group"] = f"g{index // 3}"
+    edges = [
+        {"id": "long", "from": "n0", "to": "n5", "label": "x", "kind": "flow"},
+        {"id": "short", "from": "n2", "to": "n4", "label": "x", "kind": "flow"},
+    ]
+    def geometry(ordered: list[dict]) -> tuple[dict, dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root)
+    labels, paths = geometry(edges)
+    assert (labels, paths) == geometry(list(reversed(edges)))
+    left, top, width, height = labels["short"]
+    right, bottom = left + width, top + height
+    line_points = [
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", paths["long"])
+    ]
+    assert len(line_points) >= 3
+    for (x1, y1), (x2, y2) in zip(line_points, line_points[1:]):
+        horizontal_hit = (
+            y1 == y2 and top < y1 < bottom
+            and max(min(x1, x2), left) < min(max(x1, x2), right)
+        )
+        vertical_hit = (
+            x1 == x2 and left < x1 < right
+            and max(min(y1, y2), top) < min(max(y1, y2), bottom)
+        )
+        assert not horizontal_hit and not vertical_hit
