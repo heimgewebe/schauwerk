@@ -1,0 +1,44 @@
+{
+  "based_on_pr_head": "f759abbfd0f2be47302627aa12b17f20b84512e6",
+  "checks": {
+    "captain_merge_authorized": false,
+    "five_distinct_codex_p2_fail_first_cases_reproduced": true,
+    "five_regression_tests_passed_on_current_worktree": true,
+    "fresh_browser_visual_acceptance": false,
+    "full_exact_head_github_ci_passed": false,
+    "full_local_validation_first_failure_only_historical_receipt_binding": true,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 172,
+    "ruff_check_passed": true
+  },
+  "does_not_establish": [
+    "full GitHub CI on a published successor head",
+    "independent exact-head review PASS",
+    "pixel-diff and browser rendering acceptance",
+    "Captain PR merge or main integration",
+    "production service deployment"
+  ],
+  "evidence_digest": "12d506d939fc3e8c06e96e9a8527fd081a01254e9ec3cb31c485b407777c4a43",
+  "parent_evidence": {
+    "evidence_digest": "7515ac884535f87070f769f0da7b8efd2fc8a8fe39c89ba77429dd7f26a6ea64",
+    "file_sha256": "7e5cc9c89f52ad90d59f8864b4b71aaea64fce7cc2dafa6e5bd89edf3a0209f6",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-route-envelope-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-route-envelope.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_shared_endpoint_local_branch_clears_foreign_label",
+    "test_pr204_p2_grouped_saturated_endpoint_renders_fallback",
+    "test_pr204_p2_grouped_intermediate_label_clears_feedback_return",
+    "test_pr204_p2_ungrouped_saturated_endpoint_renders_fallback",
+    "test_pr204_p2_detoured_feedback_never_enters_foreign_card_column"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-five-p2-successor.v1",
+  "scope": "five unresolved Codex P2 process feedback geometry fail-first corrections; no production change",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "184be61db653d092e107e98a18b102c22043e33a5044d3f287310372e7a07d95",
+    "tests/visual/test_native_diagram.py": "787bad3af5d8dcc55620715f0e4c534dfc1aaf13d531ace55d2253c97aa63be3"
+  },
+  "status": "five_exact_pr_review_findings_regressed_local_test_pass_ci_independent_review_pending"
+}

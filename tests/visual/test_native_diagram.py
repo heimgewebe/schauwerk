@@ -5119,3 +5119,150 @@ def test_grouped_feedback_entire_footer_route_clears_peer_label(
             and max(min(y1, y2), top) < min(max(y1, y2), bottom)
         )
         assert not horizontal_hit and not vertical_hit
+
+
+def _p2_feedback_geometry_model(group_sizes: tuple[int, ...]) -> dict:
+    raw = _minimal_process_model(sum(group_sizes))
+    if group_sizes:
+        raw["groups"] = [
+            {"id": f"g{idx}", "label": f"Group {idx}"}
+            for idx in range(len(group_sizes))
+        ]
+        groups = [
+            f"g{group_idx}"
+            for group_idx, count in enumerate(group_sizes)
+            for _ in range(count)
+        ]
+        for node, group in zip(raw["nodes"], groups):
+            node["group"] = group
+    return raw
+
+
+def _p2_orthogonal_segments(path: str) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    # The first Bezier ends in a true row corridor, followed by the L legs.
+    first = re.search(
+        r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+        r"([-0-9.]+) ([-0-9.]+) L ",
+        path,
+    )
+    if first is None:
+        return []
+    points = [tuple(float(value) for value in first.groups())]
+    points.extend(
+        (float(x), float(y))
+        for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", path)
+    )
+    return list(zip(points, points[1:]))
+
+
+def _p2_linear_path_clears_box(
+    path: str, box: tuple[float, float, float, float]
+) -> bool:
+    left, top, width, height = box
+    right, bottom = left + width, top + height
+    for (x1, y1), (x2, y2) in _p2_orthogonal_segments(path):
+        if y1 == y2 and top < y1 < bottom:
+            if max(min(x1, x2), left) < min(max(x1, x2), right):
+                return False
+        if x1 == x2 and left < x1 < right:
+            if max(min(y1, y2), top) < min(max(y1, y2), bottom):
+                return False
+    return True
+
+
+def test_pr204_p2_shared_endpoint_local_branch_clears_foreign_label() -> None:
+    """An endpoint shared with a second relation does not excuse a real collision."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    raw["edges"] = [
+        {"id": "local", "from": "n2", "to": "n3", "label": "x", "kind": "flow"},
+        {"id": "peer", "from": "n3", "to": "n1", "label": "x", "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    assert _p2_orthogonal_segments(paths["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (_edge_label_boxes(reordered), _edge_paths(reordered))
+
+
+def test_pr204_p2_grouped_saturated_endpoint_renders_fallback() -> None:
+    """A two-line long-branch label must not make a valid model unrenderable."""
+    raw = _p2_feedback_geometry_model((4, 4, 4))
+    raw["edges"] = [
+        {"id": "feedback", "from": "n4", "to": "n2",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "long", "from": "n0", "to": "n11",
+         "label": "Ein sehr langer Verbindungstext fuer zwei Zeilen zum Vorhaben",
+         "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    assert "feedback" in _edge_paths(root)
+    assert _p2_linear_path_clears_box(
+        _edge_paths(root)["feedback"], _edge_label_boxes(root)["long"]
+    )
+
+
+def test_pr204_p2_grouped_intermediate_label_clears_feedback_return() -> None:
+    """Check the full vertical return, not just source and target row corridors."""
+    raw = _p2_feedback_geometry_model((4, 4, 4))
+    raw["edges"] = [
+        {"id": "feedback", "from": "n7", "to": "n4",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "long", "from": "n2", "to": "n8",
+         "label": "Ein sehr langer Verbindungstext fuer zwei Zeilen zum Vorhaben",
+         "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    assert _p2_orthogonal_segments(_edge_paths(root)["feedback"])
+    assert _p2_linear_path_clears_box(
+        _edge_paths(root)["feedback"], _edge_label_boxes(root)["long"]
+    )
+    # Match the SVG's true straight legs after its cubic entry, rather
+    # than interpreting the Bezier's start/end as one diagonal segment.
+    for card in _node_boxes(root).values():
+        assert _p2_linear_path_clears_box(_edge_paths(root)["feedback"], card)
+
+
+def test_pr204_p2_ungrouped_saturated_endpoint_renders_fallback() -> None:
+    """A full pair of row gaps cannot justify dropping the whole SVG."""
+    raw = _p2_feedback_geometry_model(())
+    raw["nodes"] = _minimal_process_model(15)["nodes"]
+    raw["edges"] = [
+        {"id": "flow1", "from": "n0", "to": "n8", "label": "x", "kind": "flow"},
+        {"id": "flow2", "from": "n8", "to": "n2", "label": "y", "kind": "flow"},
+        {"id": "risk", "from": "n7", "to": "n9", "label": "z", "kind": "risk"},
+        {"id": "feedback", "from": "n14", "to": "n1",
+         "label": "Rueckmeldung", "kind": "feedback"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    assert "feedback" in _edge_paths(root)
+    _assert_feedback_route_avoids_cards(root, "feedback")
+    for key, box in _edge_label_boxes(root).items():
+        if key != "feedback":
+            assert _p2_linear_path_clears_box(_edge_paths(root)["feedback"], box)
+
+
+def test_pr204_p2_detoured_feedback_never_enters_foreign_card_column() -> None:
+    """A single-line long relation must not move its return into g1 cards."""
+    raw = _p2_feedback_geometry_model((7, 6))
+    raw["edges"] = [
+        {"id": "flow", "from": "n3", "to": "n12",
+         "label": "Diese lange Verbindung", "kind": "flow"},
+        {"id": "feedback", "from": "n4", "to": "n3",
+         "label": "Rueckmeldung", "kind": "feedback"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    path = paths["feedback"]
+    assert _p2_orthogonal_segments(path)
+    assert _p2_linear_path_clears_box(path, labels["flow"])
+    for node_id, card in _node_boxes(root).items():
+        if node_id not in {"n3", "n4"}:
+            assert _p2_linear_path_clears_box(path, card), node_id
+
+    raw["edges"].reverse()
+    alternate = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (
+        _edge_label_boxes(alternate), _edge_paths(alternate)
+    )

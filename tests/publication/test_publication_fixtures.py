@@ -1120,6 +1120,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     process_feedback_routing_feedback_route_envelope_superseded_files = (
         process_feedback_routing_feedback_path_clearance_superseded_files
     )
+    # A later, immutable successor owns the two changed source-file bindings.
+    feedback_five_p2_superseded_files = (
+        process_feedback_routing_feedback_route_envelope_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10310,7 +10314,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         process_feedback_routing_feedback_route_envelope_superseded_files
     )
     for name, expected in feedback_route["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in feedback_five_p2_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert feedback_route["checks"]["historical_parent_immutable"] is True
     assert feedback_route["checks"]["two_full_route_label_collisions_fail_first_reproduced"] is True
     assert feedback_route["checks"]["two_feedback_full_route_p2_regressions_pass"] is True
@@ -10318,6 +10323,50 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert feedback_route["checks"]["full_exact_head_ci_passed"] is False
     assert feedback_route["checks"]["independent_exact_head_review_pass"] is False
     assert feedback_route["checks"]["captain_merge_authorized"] is False
+
+    # The original 167-test feedback envelope stays byte-identical.
+    # Its two source bindings are superseded by this new hash-linked receipt,
+    # not silently overwritten or reinterpreted as a later GitHub/CI PASS.
+    five_p2_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-five-p2-successor-acceptance-receipt.json"
+    )
+    five_p2 = json.loads(five_p2_path.read_text(encoding="utf-8"))
+    assert five_p2["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-feedback-five-p2-successor.v1"
+    )
+    assert five_p2["based_on_pr_head"] == (
+        "f759abbfd0f2be47302627aa12b17f20b84512e6"
+    )
+    assert five_p2["parent_evidence"] == {
+        "schema_version": feedback_route["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-route-envelope-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(feedback_route_path.read_bytes()).hexdigest(),
+        "evidence_digest": feedback_route["evidence_digest"],
+    }
+    assert five_p2["evidence_digest"] == digest_mapping(
+        five_p2, "evidence_digest"
+    )
+    assert set(five_p2["source_bindings"]) == feedback_five_p2_superseded_files
+    for name, expected in five_p2["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert len(five_p2["regression_tests"]) == 5
+    checks = five_p2["checks"]
+    assert checks["historical_parent_immutable"] is True
+    assert checks["five_distinct_codex_p2_fail_first_cases_reproduced"] is True
+    assert checks["five_regression_tests_passed_on_current_worktree"] is True
+    assert checks["native_diagram_passed_count"] == 172
+    assert checks["ruff_check_passed"] is True
+    assert checks["git_diff_check_passed"] is True
+    assert checks["full_local_validation_first_failure_only_historical_receipt_binding"] is True
+    assert checks["full_exact_head_github_ci_passed"] is False
+    assert checks["independent_exact_head_review_pass"] is False
+    assert checks["fresh_browser_visual_acceptance"] is False
+    assert checks["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10347,7 +10396,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in process_feedback_routing_feedback_route_envelope_superseded_files:
+        if name in feedback_five_p2_superseded_files:
+            assert five_p2["source_bindings"][name] == current
+        elif name in process_feedback_routing_feedback_route_envelope_superseded_files:
             assert feedback_route["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_path_clearance_superseded_files:
             assert feedback_path["source_bindings"][name] == current
