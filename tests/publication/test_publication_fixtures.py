@@ -1136,6 +1136,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     feedback_intermediate_local_branch_p2_superseded_files = (
         feedback_forward_shared_source_p2_superseded_files
     )
+    # A tenth immutable successor binds the corrected transactional peer move.
+    feedback_transactional_peer_move_p2_superseded_files = (
+        feedback_intermediate_local_branch_p2_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10523,7 +10527,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         feedback_intermediate_local_branch_p2_superseded_files
     )
     for name, expected in intermediate["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in feedback_transactional_peer_move_p2_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert len(intermediate["regression_tests"]) == 2
     assert intermediate["test_receipts"]["two_fail_first_task"] == (
         "6f27569b616a49859c59f288"
@@ -10544,6 +10549,60 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert checks["independent_exact_head_review_pass"] is False
     assert checks["fresh_browser_pixel_acceptance"] is False
     assert checks["captain_merge_authorized"] is False
+
+    # This create-only receipt follows the ninth-P2 SHA chain. It prevents
+    # speculative label repositioning from surviving a later outer fallback.
+    transactional_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-transactional-peer-move-p2-successor-acceptance-receipt.json"
+    )
+    transactional = json.loads(transactional_path.read_text(encoding="utf-8"))
+    assert transactional["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "transactional-peer-move-p2-successor.v1"
+    )
+    assert transactional["based_on_pr_head"] == (
+        "4ed7150efee622ee05c59493ac8260a1bf52ccbe"
+    )
+    assert transactional["parent_evidence"] == {
+        "schema_version": intermediate["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-intermediate-local-branch-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(intermediate_path.read_bytes()).hexdigest(),
+        "evidence_digest": intermediate["evidence_digest"],
+    }
+    assert transactional["evidence_digest"] == digest_mapping(
+        transactional, "evidence_digest"
+    )
+    assert set(transactional["source_bindings"]) == (
+        feedback_transactional_peer_move_p2_superseded_files
+    )
+    for name, expected in transactional["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert len(transactional["regression_tests"]) == 2
+    assert transactional["test_receipts"]["two_fail_first_task"] == (
+        "dc753a6b46bd447b81d89dea"
+    )
+    assert transactional["test_receipts"]["complete_native_suite_task"] == (
+        "4a65085bc2e04804bfae8a77"
+    )
+    check = transactional["checks"]
+    assert check["historical_parent_immutable"] is True
+    assert check["two_nondeterministic_label_failfirst_cases_reproduced"] is True
+    assert check["two_label_order_reversal_regressions_green"] is True
+    assert check["accepted_intermediate_label_collision_remedy_retained"] is True
+    assert check["accepted_18_node_process_canvas_width_preserved"] is True
+    assert check["native_diagram_passed_count"] == 180
+    assert check["ruff_check_passed"] is True
+    assert check["git_diff_check_passed"] is True
+    assert check["full_local_validate_passed"] is False
+    assert check["full_exact_head_github_ci_passed"] is False
+    assert check["independent_exact_head_review_pass"] is False
+    assert check["fresh_browser_pixel_acceptance"] is False
+    assert check["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10573,7 +10632,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in feedback_intermediate_local_branch_p2_superseded_files:
+        if name in feedback_transactional_peer_move_p2_superseded_files:
+            assert transactional["source_bindings"][name] == current
+        elif name in feedback_intermediate_local_branch_p2_superseded_files:
             assert intermediate["source_bindings"][name] == current
         elif name in feedback_forward_shared_source_p2_superseded_files:
             assert forward_p2["source_bindings"][name] == current

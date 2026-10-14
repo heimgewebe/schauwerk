@@ -3371,6 +3371,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
         # natural key positions can be moved by horizontal/vertical packing.
         # A disjoint destination label must not be cut by the local return.
         for local_id, gutter_x in local_group_branch_gutter_x.items():
+            speculative_label_x: dict[str, float] = {}
             edge = edges_by_id[local_id]
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
@@ -3407,7 +3408,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                         )
                     ):
                         continue
-                    actual_x = process_adjacent_label_x.get(peer_id, natural_x)
+                    actual_x = speculative_label_x.get(
+                        peer_id, process_adjacent_label_x.get(peer_id, natural_x)
+                    )
                     actual_y = process_adjacent_label_y.get(
                         peer_id,
                         (occupied_corridor[0] + occupied_corridor[1]) / 2,
@@ -3433,6 +3436,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                         and occupied_corridor != target_corridor
                         and not fixed
                         and peer_id not in process_adjacent_label_x
+                        and peer_id not in speculative_label_x
                     ):
                         peer_source = positions[str(peer["from"])]
                         peer_target = positions[str(peer["to"])]
@@ -3457,13 +3461,19 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                                 other_id == peer_id
                                 or (
                                     new_left >= (
-                                        process_adjacent_label_x.get(
-                                            other_id, other_natural_x
+                                        speculative_label_x.get(
+                                            other_id,
+                                            process_adjacent_label_x.get(
+                                                other_id, other_natural_x
+                                            ),
                                         ) + other_width / 2 + 4
                                     )
                                     or new_right + 4 <= (
-                                        process_adjacent_label_x.get(
-                                            other_id, other_natural_x
+                                        speculative_label_x.get(
+                                            other_id,
+                                            process_adjacent_label_x.get(
+                                                other_id, other_natural_x
+                                            ),
                                         ) - other_width / 2
                                     )
                                     or top >= (
@@ -3492,7 +3502,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                                  or new_left >= gutter_x + 2)
                                 and packed_clear and peers_clear and nodes_clear
                             ):
-                                process_adjacent_label_x[peer_id] = new_x
+                                speculative_label_x[peer_id] = new_x
                                 continue
                     if vertical_hit or horizontal_hit:
                         unsafe_adjacent_branches.add(local_id)
@@ -3501,6 +3511,8 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                         break
                 if local_id in unsafe_adjacent_branches:
                     break
+            if local_id not in unsafe_adjacent_branches:
+                process_adjacent_label_x.update(speculative_label_x)
 
         if unsafe_adjacent_branches:
             obstacle_right = max(x + _NODE_WIDTH for x, _ in positions.values())

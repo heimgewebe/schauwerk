@@ -5398,3 +5398,38 @@ def test_pr204_p2_local_long_branch_clears_intermediate_label(
     assert (labels, paths) == geometry(list(reversed(original_edges)))
     assert _p2_orthogonal_segments(paths["local"])
     assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
+
+
+@pytest.mark.parametrize("later_peer_label", ["x", "Intervening flow label"])
+def test_pr204_p2_speculative_peer_relocation_rolls_back_on_outer_route(
+    later_peer_label: str,
+) -> None:
+    """A later blocker must not leave a speculative label move after fallback."""
+    raw = _p2_feedback_geometry_model((4, 4))
+    edges = [
+        {"id": "local", "from": "n0", "to": "n7",
+         "label": "x", "kind": "flow"},
+        {"id": "a", "from": "n1", "to": "n6",
+         "label": "Intervening flow label", "kind": "flow"},
+        {"id": "b", "from": "n3", "to": "n6",
+         "label": later_peer_label, "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return (
+            _edge_label_boxes(root),
+            _edge_paths(root),
+            root.attrib["viewBox"],
+        )
+
+    labels, paths, canvas = geometry(edges)
+    assert (labels, paths, canvas) == geometry(list(reversed(edges)))
+    # The later blocker rejects the local route; the label keeps its packed
+    # anchor rather than a leftover move that only made sense for that route.
+    assert labels["a"][0] == 319.0
+    assert _p2_orthogonal_segments(paths["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["a"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["b"])
