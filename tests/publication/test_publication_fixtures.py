@@ -10713,8 +10713,23 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         feedback_safe_sideports_p2_superseded_files
         | {"tests/publication/test_publication_fixtures.py"}
     )
-    for name, expected in peer_labels["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # The peer-label receipt is historical and immutable. New fixes must
+    # never silently rewrite its source bindings or claim its older source
+    # hashes are still current.
+    assert hashlib.sha256(peer_labels_path.read_bytes()).hexdigest() == (
+        "be1b694c2f34079463d44961ff067621ea41309ba4d601d2c9ebe9035b5a05ee"
+    )
+    assert peer_labels["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "bc1ab323f4a3dcf351365b229f2480f7a8dd8f22302770cfb676155e1a6fd352"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "6c295f78e5d922a6c6883f93c8309bfebbfa4e65d4faa2aac6d1a2d5fad32a20"
+        ),
+        "tests/publication/test_publication_fixtures.py": (
+            "5ac5fdb0fb9c07e17101854124474800cf6f9c54e9a0b698c230819f185fda96"
+        ),
+    }
     assert len(peer_labels["regression_tests"]) == 3
     assert peer_labels["test_receipts"]["first_red_task"] == (
         "100725bcd5524c189905cb6f"
@@ -10738,6 +10753,69 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert peer_checks["full_exact_head_github_ci_passed"] is False
     assert peer_checks["independent_exact_head_review_pass"] is False
     assert peer_checks["captain_merge_authorized"] is False
+
+    # The next create-only P2 successor reflects the actual five-feedback
+    # offset ports and separate path-only footer rails, leaving every earlier
+    # acceptance statement byte-for-byte intact.
+    parallel_lanes_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-parallel-sideport-lanes-p2-successor-acceptance-receipt.json"
+    )
+    parallel_lanes = json.loads(parallel_lanes_path.read_text(encoding="utf-8"))
+    assert parallel_lanes["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "parallel-outer-sideport-lanes-p2-successor.v1"
+    )
+    assert parallel_lanes["based_on_pr_head"] == (
+        "3553d3d1ba68d89f3679adba00b62bd3fa266c22"
+    )
+    assert parallel_lanes["parent_evidence"] == {
+        "schema_version": peer_labels["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-peer-label-collision-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(peer_labels_path.read_bytes()).hexdigest(),
+        "evidence_digest": peer_labels["evidence_digest"],
+    }
+    assert parallel_lanes["evidence_digest"] == digest_mapping(
+        parallel_lanes, "evidence_digest"
+    )
+    assert set(parallel_lanes["source_bindings"]) == (
+        feedback_safe_sideports_p2_superseded_files
+    )
+    for name, expected in parallel_lanes["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert parallel_lanes["regression_tests"] == [
+        "test_pr204_p2_parallel_outer_feedbacks_have_distinct_routes",
+        "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
+    ]
+    assert parallel_lanes["test_receipts"]["parallel_duplicate_red_task"] == (
+        "d83c145cad0b40378191b817"
+    )
+    assert parallel_lanes["test_receipts"]["five_peer_adversarial_red_task"] == (
+        "71c174f5885440d78f651eb9"
+    )
+    assert parallel_lanes["test_receipts"]["bounded_parallel_fuzz_green_task"] == (
+        "2189dff13a134e0887dc3048"
+    )
+    assert parallel_lanes["test_receipts"]["full_native_visual_green_task"] == (
+        "3a9a792b5c2f46eb8a17a31a"
+    )
+    lane_checks = parallel_lanes["checks"]
+    assert lane_checks["immutable_peer_label_parent_retained"] is True
+    assert lane_checks["parallel_duplicate_fail_first_reproduced"] is True
+    assert lane_checks["five_parallel_semantic_feedback_fuzz_fail_first_reproduced"] is True
+    assert lane_checks["same_endpoint_parallel_route_regressions_green"] is True
+    assert lane_checks["bounded_model_count"] == 300
+    assert lane_checks["bounded_models_with_parallel_outer_feedback"] == 32
+    assert lane_checks["bounded_fuzz_failures"] == 0
+    assert lane_checks["native_visual_suite_green"] is True
+    assert lane_checks["full_local_validate_passed"] is False
+    assert lane_checks["full_exact_head_github_ci_passed"] is False
+    assert lane_checks["independent_exact_head_review_pass"] is False
+    assert lane_checks["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10768,7 +10846,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert peer_labels["source_bindings"][name] == current
+            assert parallel_lanes["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:

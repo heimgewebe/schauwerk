@@ -5631,3 +5631,87 @@ def test_pr204_p2_dense_feedback_outer_needs_only_bounded_gutter_growth() -> Non
     for node_id, box in _node_boxes(root).items():
         if node_id not in {"n16", "n7"}:
             assert _p2_linear_path_clears_box(paths["feedback1"], box), node_id
+
+def test_pr204_p2_parallel_outer_feedbacks_have_distinct_routes() -> None:
+    """Different feedback semantics must not be visually erased by identical paths."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    raw["edges"] = [
+        {"id": "first", "from": "n2", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "second", "from": "n2", "to": "n0",
+         "label": "x", "kind": "feedback"},
+        {"id": "flow", "from": "n3", "to": "n1",
+         "label": "x", "kind": "flow"},
+        {"id": "long", "from": "n0", "to": "n3",
+         "label": "E" * 70, "kind": "risk"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    assert " C " not in paths["first"]
+    assert " C " not in paths["second"]
+    assert paths["first"] != paths["second"]
+    for edge_id in ("first", "second"):
+        for foreign, box in labels.items():
+            if foreign != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, foreign
+                )
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (
+        _edge_label_boxes(reordered), _edge_paths(reordered)
+    )
+
+def test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes() -> None:
+    """Five semantic peers sharing endpoints must retain distinguishable rails."""
+    raw = _p2_feedback_geometry_model((3, 4))
+    raw["edges"] = [
+        {"id": f"feedback{index}", "from": "n3", "to": "n1",
+         "label": label, "kind": "feedback"}
+        for index, label in enumerate((
+            "Mehrzeilige Feedbackkommunikation 12345",
+            "Mehrzeilige Feedbackkommunikation 12345",
+            "Rueckmeldung", "x", "x",
+        ))
+    ] + [
+        {"id": "flow0", "from": "n5", "to": "n6",
+         "label": "E" * 45, "kind": "flow"},
+        {"id": "flow1", "from": "n1", "to": "n6",
+         "label": "E" * 45, "kind": "flow"},
+        {"id": "flow2", "from": "n4", "to": "n0",
+         "label": "E" * 45, "kind": "flow"},
+        {"id": "flow3", "from": "n6", "to": "n0",
+         "label": "E" * 70, "kind": "risk"},
+        {"id": "flow4", "from": "n4", "to": "n1",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow5", "from": "n1", "to": "n2",
+         "label": "E", "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    outer = [
+        f"feedback{index}"
+        for index in range(5)
+        if " C " not in paths[f"feedback{index}"]
+        and paths[f"feedback{index}"].count(" L ") >= 4
+    ]
+    assert len(outer) >= 2
+    assert len({paths[edge_id] for edge_id in outer}) == len(outer)
+    for edge_id in outer:
+        for foreign, box in labels.items():
+            if foreign != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, foreign
+                )
+        for card_id, box in cards.items():
+            if card_id not in {"n3", "n1"}:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, card_id
+                )
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )

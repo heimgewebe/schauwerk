@@ -1352,6 +1352,11 @@ def _cubic_hull_intersects_box(
 
 
 
+def _process_feedback_parallel_port_y_offset(slot: int) -> int:
+    """Stable, card-interior side-port separation for simultaneous returns."""
+    return (0, 9, -9, 18, -18)[slot % 5]
+
+
 def _safe_process_feedback_outer_ports(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -1360,6 +1365,7 @@ def _safe_process_feedback_outer_ports(
     canvas_height: int,
     label_width: int,
     obstacles: Sequence[tuple[float, float, float, float]],
+    parallel_route_slot: int = 0,
 ) -> tuple[float, float, float, float, float] | None:
     """Choose side-port gutters against the entire return-to-footer geometry.
 
@@ -1370,7 +1376,10 @@ def _safe_process_feedback_outer_ports(
     nominally safe outer fallback.
     """
     clearance = 3.5
-    footer_y = float(canvas_height) - 28.0
+    port_y_offset = _process_feedback_parallel_port_y_offset(parallel_route_slot)
+    # Each semantic peer gets a dedicated horizontal return lane. A distinct
+    # gutter x alone can still leave overlapping horizontal footer strokes.
+    footer_y = float(canvas_height) - 28.0 - 12.0 * parallel_route_slot
     max_x = float(canvas_width) - 16.0
 
     def segment_clear(
@@ -1405,12 +1414,18 @@ def _safe_process_feedback_outer_ports(
         preferred_side: int,
     ) -> tuple[float, float] | None:
         x, y = node
-        middle_y = y + _NODE_HEIGHT / 2
+        middle_y = y + _NODE_HEIGHT / 2 + port_y_offset
         own = (float(x), float(y), float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
         candidates: list[tuple[float, int, float, float]] = []
         for side_index, side in enumerate((preferred_side, -preferred_side)):
             port = float(x + _NODE_WIDTH if side > 0 else x)
-            preferred = port + side * _CORRIDOR_GUTTER_OFFSET
+            # Two semantic feedback relations sharing both endpoints need
+            # separate visible stems, even when their labels occupy different
+            # footer lanes. Only later deterministic peers take an offset;
+            # the first edge preserves its accepted geometry byte-for-byte.
+            preferred = port + side * (
+                _CORRIDOR_GUTTER_OFFSET + 12 * parallel_route_slot
+            )
             xs = {preferred, 16.0, max_x}
             for left, top, right, bottom in obstacles:
                 if top - clearance < footer_y and bottom + clearance > middle_y:
@@ -1493,6 +1508,7 @@ def _edge_geometry(
     feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
     feedback_outer_footer: bool = False,
+    feedback_outer_parallel_slot: int = 0,
     feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
     obstacle_positions: Sequence[tuple[int, int]] = (),
 ) -> tuple[str, float, float, str]:
@@ -1513,6 +1529,7 @@ def _edge_geometry(
                     canvas_height=canvas_height,
                     label_width=label_width,
                     obstacles=feedback_outer_obstacles,
+                    parallel_route_slot=feedback_outer_parallel_slot,
                 )
                 if safe_ports is None:
                     raise ValueError("no collision-free process feedback side-port route")
@@ -1541,10 +1558,16 @@ def _edge_geometry(
                 start_gutter = end_gutter = (
                     source_x + node_width + _CORRIDOR_GUTTER_OFFSET
                 )
-            start_y, end_y = (
-                source_y + _NODE_HEIGHT / 2, target_y + _NODE_HEIGHT / 2
+            port_y_offset = _process_feedback_parallel_port_y_offset(
+                feedback_outer_parallel_slot
             )
-            footer_y = canvas_height - 28.0
+            start_y, end_y = (
+                source_y + _NODE_HEIGHT / 2 + port_y_offset,
+                target_y + _NODE_HEIGHT / 2 + port_y_offset,
+            )
+            footer_y = (
+                canvas_height - 28.0 - 12.0 * feedback_outer_parallel_slot
+            )
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
                 f"L {start_gutter:.1f} {start_y:.1f} "
@@ -2219,6 +2242,7 @@ def _render_edge(
     force_feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
     feedback_outer_footer: bool = False,
+    feedback_outer_parallel_slot: int = 0,
     feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
 ) -> list[str]:
     kind = str(edge["kind"])
@@ -2327,6 +2351,7 @@ def _render_edge(
         feedback_path_footer=force_feedback_path_footer,
         feedback_local_gutter_x=feedback_local_gutter_x,
         feedback_outer_footer=feedback_outer_footer,
+        feedback_outer_parallel_slot=feedback_outer_parallel_slot,
         feedback_outer_obstacles=feedback_outer_obstacles,
         obstacle_positions=tuple(
             position
@@ -4851,7 +4876,26 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     outer_feedback_obstacles_by_id: dict[
         str, Sequence[tuple[float, float, float, float]]
     ] = {}
+    outer_feedback_parallel_slots: dict[str, int] = {}
     if intent == "process" and feedback_outer_footer_ids:
+        # Feedback edges are sorted by stable relation ids, not declaration
+        # order. Only edges with the same directed endpoints and genuinely
+        # forced outer footers need separate visible lanes.
+        peer_slots: dict[tuple[str, str], int] = {}
+        for peer in feedback_edges:
+            peer_id = str(peer["id"])
+            if peer_id not in feedback_outer_footer_ids:
+                continue
+            endpoints = (str(peer["from"]), str(peer["to"]))
+            outer_feedback_parallel_slots[peer_id] = peer_slots.get(endpoints, 0)
+            peer_slots[endpoints] = outer_feedback_parallel_slots[peer_id] + 1
+        # The original 80px path-only strip comfortably holds up to five
+        # parallel rails. Grow only if there are more than five distinct
+        # semantics sharing directed endpoints; never run the highest rail
+        # through a semantic footer label.
+        highest_parallel_slot = max(outer_feedback_parallel_slots.values(), default=0)
+        if highest_parallel_slot > 4:
+            height += 12 * (highest_parallel_slot - 4)
         packed_obstacles = (
             tuple(feedback_obstacles) if model["groups"]
             else tuple(occupied_boxes)
@@ -4953,6 +4997,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                         canvas_height=height,
                         label_width=metrics.width,
                         obstacles=blockers,
+                        parallel_route_slot=outer_feedback_parallel_slots[edge_id],
                     )
                     if ports is None:
                         break
@@ -5155,6 +5200,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_local_gutter_x=feedback_local_gutter_x.get(str(edge["id"])),
                 feedback_outer_footer=(
                     str(edge["id"]) in feedback_outer_footer_ids
+                ),
+                feedback_outer_parallel_slot=outer_feedback_parallel_slots.get(
+                    str(edge["id"]), 0
                 ),
                 feedback_outer_obstacles=outer_feedback_obstacles_by_id.get(
                     str(edge["id"]), outer_feedback_obstacles
