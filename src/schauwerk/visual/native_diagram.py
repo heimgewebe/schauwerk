@@ -1351,6 +1351,116 @@ def _cubic_hull_intersects_box(
     )
 
 
+
+def _safe_process_feedback_outer_ports(
+    source: tuple[int, int],
+    target: tuple[int, int],
+    *,
+    canvas_width: int,
+    canvas_height: int,
+    label_width: int,
+    obstacles: Sequence[tuple[float, float, float, float]],
+) -> tuple[float, float, float, float, float] | None:
+    """Choose side-port gutters against the entire return-to-footer geometry.
+
+    Each endpoint gets a short horizontal exit and an independent vertical
+    gutter. Only the footer, below the other cards and relation labels,
+    connects their gutters. All candidates are deterministic and bounded by
+    actual existing canvas space; a blocked local gutter is never reused as a
+    nominally safe outer fallback.
+    """
+    clearance = 3.5
+    footer_y = float(canvas_height) - 28.0
+    max_x = float(canvas_width) - 16.0
+
+    def segment_clear(
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        *,
+        skip: tuple[float, float, float, float] | None = None,
+    ) -> bool:
+        for left, top, right, bottom in obstacles:
+            if skip is not None and (left, top, right, bottom) == skip:
+                continue
+            if x1 == x2:
+                if (
+                    left - clearance < x1 < right + clearance
+                    and max(min(y1, y2), top - clearance)
+                    < min(max(y1, y2), bottom + clearance)
+                ):
+                    return False
+            elif y1 == y2:
+                if (
+                    top - clearance < y1 < bottom + clearance
+                    and max(min(x1, x2), left - clearance)
+                    < min(max(x1, x2), right + clearance)
+                ):
+                    return False
+        return True
+
+    def channel(
+        node: tuple[int, int],
+        preferred_side: int,
+    ) -> tuple[float, float] | None:
+        x, y = node
+        middle_y = y + _NODE_HEIGHT / 2
+        own = (float(x), float(y), float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
+        candidates: list[tuple[float, int, float, float]] = []
+        for side_index, side in enumerate((preferred_side, -preferred_side)):
+            port = float(x + _NODE_WIDTH if side > 0 else x)
+            preferred = port + side * _CORRIDOR_GUTTER_OFFSET
+            xs = {preferred, 16.0, max_x}
+            for left, top, right, bottom in obstacles:
+                if top - clearance < footer_y and bottom + clearance > middle_y:
+                    xs.update((left - clearance, right + clearance))
+            for gutter in sorted(xs):
+                if not 16.0 <= gutter <= max_x:
+                    continue
+                if side * (gutter - port) < clearance:
+                    continue
+                if not segment_clear(port, middle_y, gutter, middle_y, skip=own):
+                    continue
+                if not segment_clear(gutter, middle_y, gutter, footer_y):
+                    continue
+                score = abs(gutter - preferred) + 24 * side_index
+                candidates.append((score, side_index, gutter, port))
+        if not candidates:
+            return None
+        _, _, gutter, port = min(candidates)
+        return port, gutter
+
+    start_side = 1 if source[0] <= target[0] else -1
+    end_side = -start_side if source[0] != target[0] else 1
+    start = channel(source, start_side)
+    end = channel(target, end_side)
+    if start is None or end is None:
+        return None
+    start_port, start_gutter = start
+    end_port, end_gutter = end
+
+    # The feedback's own footer label must not be struck by either vertical.
+    left, right = sorted((start_gutter, end_gutter))
+    preferred_label_x = (left + right) / 2
+    label_x_candidates = (
+        preferred_label_x,
+        right + label_width / 2 + 12,
+        left - label_width / 2 - 12,
+    )
+    legal_label_x = [
+        value for value in label_x_candidates
+        if value - label_width / 2 >= 8
+        and value + label_width / 2 <= canvas_width - 8
+        and abs(value - start_gutter) >= label_width / 2 + 8
+        and abs(value - end_gutter) >= label_width / 2 + 8
+    ]
+    if not legal_label_x:
+        return None
+    label_x = min(legal_label_x, key=lambda value: (abs(value - preferred_label_x), value))
+    return start_port, start_gutter, end_gutter, end_port, label_x
+
+
 def _edge_geometry(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -1383,6 +1493,7 @@ def _edge_geometry(
     feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
     feedback_outer_footer: bool = False,
+    feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
     obstacle_positions: Sequence[tuple[int, int]] = (),
 ) -> tuple[str, float, float, str]:
     source_x, source_y = source
@@ -1394,12 +1505,30 @@ def _edge_geometry(
     if kind == "feedback" and intent == "process":
         route = "feedback-return"
         if feedback_outer_footer and not self_loop:
+            planned_footer_label_x: float | None = None
+            if feedback_outer_obstacles:
+                safe_ports = _safe_process_feedback_outer_ports(
+                    source, target,
+                    canvas_width=canvas_width,
+                    canvas_height=canvas_height,
+                    label_width=label_width,
+                    obstacles=feedback_outer_obstacles,
+                )
+                if safe_ports is None:
+                    raise ValueError("no collision-free process feedback side-port route")
+                (
+                    planned_start_x, planned_start_gutter,
+                    planned_end_gutter, planned_end_x, planned_footer_label_x,
+                ) = safe_ports
             # A genuinely saturated row gap has no safe source/target
             # horizontal leg. Leave the cards through their side ports and
             # meet at a dedicated footer below every card and packed label.
             # Adjacent group gutters are intentionally selected on the facing
             # sides of the two endpoints, never through a foreign card column.
-            if source_x > target_x:
+            if planned_footer_label_x is not None:
+                start_x, start_gutter = planned_start_x, planned_start_gutter
+                end_gutter, end_x = planned_end_gutter, planned_end_x
+            elif source_x > target_x:
                 start_x, end_x = source_x, target_x + node_width
                 start_gutter = source_x - _CORRIDOR_GUTTER_OFFSET
                 end_gutter = target_x + node_width + _CORRIDOR_GUTTER_OFFSET
@@ -1425,7 +1554,12 @@ def _edge_geometry(
                 f"L {end_x:.1f} {end_y:.1f}"
             )
             return (
-                path, (start_gutter + end_gutter) / 2,
+                path,
+                (
+                    planned_footer_label_x
+                    if planned_footer_label_x is not None
+                    else (start_gutter + end_gutter) / 2
+                ),
                 feedback_label_y if feedback_label_y is not None
                 else footer_y - 45.0, route,
             )
@@ -2085,6 +2219,7 @@ def _render_edge(
     force_feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
     feedback_outer_footer: bool = False,
+    feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -2192,6 +2327,7 @@ def _render_edge(
         feedback_path_footer=force_feedback_path_footer,
         feedback_local_gutter_x=feedback_local_gutter_x,
         feedback_outer_footer=feedback_outer_footer,
+        feedback_outer_obstacles=feedback_outer_obstacles,
         obstacle_positions=tuple(
             position
             for node_id, position in positions.items()
@@ -3403,8 +3539,22 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     if (
                         peer_id == local_id
                         or peer_id in unsafe_adjacent_branches
-                        or {str(edge["from"]), str(edge["to"])}.intersection(
-                            {str(peer["from"]), str(peer["to"])}
+                        or (
+                            # Adjacent relations sharing the target can still
+                            # mask this local return with their physical label.
+                            # Long shared-target relations retain their own
+                            # anchor/fallback treatment and must not inflate
+                            # unrelated accepted multi-group diagrams.
+                            {str(edge["from"]), str(edge["to"])}.intersection(
+                                {str(peer["from"]), str(peer["to"])}
+                            )
+                            and (
+                                str(edge["to"]) != str(peer["to"])
+                                or abs(
+                                    positions[str(peer["from"])][1]
+                                    - positions[str(peer["to"])][1]
+                                ) > _NODE_HEIGHT + process_row_gap
+                            )
                         )
                     ):
                         continue
@@ -3432,9 +3582,14 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     )
                     if (
                         vertical_hit
-                        and not horizontal_hit
-                        and occupied_corridor != target_corridor
                         and not fixed
+                        and (
+                            (not horizontal_hit and occupied_corridor != target_corridor)
+                            or (
+                                occupied_corridor == target_corridor
+                                and str(edge["to"]) == str(peer["to"])
+                            )
+                        )
                         and peer_id not in process_adjacent_label_x
                         and peer_id not in speculative_label_x
                     ):
@@ -4689,6 +4844,148 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                             ),
                         )
 
+    # Reserve only as much extra edge gutter as crowded semantic feedback
+    # footers require. All planning happens before constructing the SVG header
+    # so an expanded canvas never clips a route or misstates its viewBox.
+    outer_feedback_obstacles: Sequence[tuple[float, float, float, float]] = ()
+    outer_feedback_obstacles_by_id: dict[
+        str, Sequence[tuple[float, float, float, float]]
+    ] = {}
+    if intent == "process" and feedback_outer_footer_ids:
+        packed_obstacles = (
+            tuple(feedback_obstacles) if model["groups"]
+            else tuple(occupied_boxes)
+        )
+        for extra_gutter in range(33):
+            peer_feedback_boxes: list[tuple[float, float, float, float]] = []
+            for peer in feedback_edges:
+                peer_id = str(peer["id"])
+                if peer_id in feedback_outer_footer_ids:
+                    continue
+                peer_source = positions[str(peer["from"])]
+                peer_target = positions[str(peer["to"])]
+                peer_metrics = _edge_label_metrics(peer, positions, intent)
+                peer_slot = feedback_slots[peer_id]
+                if peer_id in self_loop_lanes:
+                    peer_lane = self_loop_lanes[peer_id]
+                elif feedback_count > 1:
+                    peer_lane = int(
+                        (peer_slot - (feedback_count - 1) / 2)
+                        * _PROCESS_LANE_STEP
+                    )
+                else:
+                    peer_lane = (
+                        (lane_ranks[peer_id] % 5) - 2
+                    ) * _PROCESS_LANE_STEP
+                peer_footer_y = (
+                    feedback_base_bottom
+                    + 10
+                    + peer_slot * _FEEDBACK_LABEL_LANE_STEP
+                    + peer_metrics.height / 2
+                    if feedback_count > 1 or peer_id in feedback_footer_ids
+                    else None
+                )
+                _, peer_x, peer_y, _ = _edge_geometry(
+                    peer_source,
+                    peer_target,
+                    self_loop=peer["from"] == peer["to"],
+                    lane=peer_lane,
+                    kind="feedback",
+                    canvas_width=width,
+                    canvas_height=height,
+                    intent=intent,
+                    process_row_gap=process_row_gap,
+                    label_width=peer_metrics.width,
+                    label_height=peer_metrics.height,
+                    feedback_label_y=peer_footer_y,
+                    max_node_bottom=max(
+                        y + _NODE_HEIGHT for _, y in positions.values()
+                    ),
+                    preserve_same_row_feedback_footer=(
+                        peer["from"] != peer["to"]
+                        and _preserve_same_row_process_feedback_return(
+                            peer_source, peer_target, positions
+                        )
+                    ),
+                    feedback_path_y=feedback_path_y.get(peer_id),
+                    feedback_path_footer=peer_id in feedback_path_footer_ids,
+                    feedback_local_gutter_x=feedback_local_gutter_x.get(peer_id),
+                )
+                peer_x = min(
+                    max(peer_x, peer_metrics.width / 2 + 8),
+                    width - peer_metrics.width / 2 - 8,
+                )
+                peer_feedback_boxes.append((
+                    peer_x - peer_metrics.width / 2,
+                    peer_y - peer_metrics.height / 2,
+                    peer_x + peer_metrics.width / 2,
+                    peer_y + peer_metrics.height / 2,
+                ))
+
+            common_obstacles = (*packed_obstacles, *peer_feedback_boxes)
+            # Side-port labels themselves can move when another footer forces
+            # a different free gutter. Iterate against all *other* planned
+            # labels until positions agree; never trust an obsolete candidate
+            # geometry or the model's original edge declaration order.
+            outer_labels: dict[str, tuple[float, float, float, float]] = {}
+            solved: dict[str, Sequence[tuple[float, float, float, float]]] = {}
+            stable = False
+            for _ in range(12):
+                future_labels = {}
+                future_routes = {}
+                for edge in feedback_edges:
+                    edge_id = str(edge["id"])
+                    if edge_id not in feedback_outer_footer_ids:
+                        continue
+                    metrics = _edge_label_metrics(edge, positions, intent)
+                    blockers = (
+                        *common_obstacles,
+                        *(
+                            outer_labels[other_id]
+                            for other_id in sorted(outer_labels)
+                            if other_id != edge_id
+                        ),
+                    )
+                    ports = _safe_process_feedback_outer_ports(
+                        positions[str(edge["from"])],
+                        positions[str(edge["to"])],
+                        canvas_width=width,
+                        canvas_height=height,
+                        label_width=metrics.width,
+                        obstacles=blockers,
+                    )
+                    if ports is None:
+                        break
+                    label_x = ports[4]
+                    label_y = (
+                        feedback_base_bottom
+                        + 10
+                        + feedback_slots[edge_id] * _FEEDBACK_LABEL_LANE_STEP
+                        + metrics.height / 2
+                    )
+                    future_labels[edge_id] = (
+                        label_x - metrics.width / 2,
+                        label_y - metrics.height / 2,
+                        label_x + metrics.width / 2,
+                        label_y + metrics.height / 2,
+                    )
+                    future_routes[edge_id] = blockers
+                if len(future_labels) != len(feedback_outer_footer_ids):
+                    break
+                if future_labels == outer_labels:
+                    solved = future_routes
+                    stable = True
+                    break
+                outer_labels = future_labels
+            if stable:
+                outer_feedback_obstacles = common_obstacles
+                outer_feedback_obstacles_by_id = solved
+                break
+            width += 16
+        else:
+            # Never silently reuse a route through a card or relation label.
+            raise ValueError("no collision-free process feedback side-port route")
+
     purpose_max_width = width - 2 * _PAGE_MARGIN
     title_lines = _bounded_wrapped(
         str(model["title"]),
@@ -4858,6 +5155,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_local_gutter_x=feedback_local_gutter_x.get(str(edge["id"])),
                 feedback_outer_footer=(
                     str(edge["id"]) in feedback_outer_footer_ids
+                ),
+                feedback_outer_obstacles=outer_feedback_obstacles_by_id.get(
+                    str(edge["id"]), outer_feedback_obstacles
                 ),
             )
         )

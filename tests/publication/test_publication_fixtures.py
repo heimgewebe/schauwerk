@@ -1140,6 +1140,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     feedback_transactional_peer_move_p2_superseded_files = (
         feedback_intermediate_local_branch_p2_superseded_files
     )
+    # The eleventh/twelfth-P2 create-only receipt binds the current files.
+    feedback_safe_sideports_p2_superseded_files = (
+        feedback_transactional_peer_move_p2_superseded_files
+    )
     editor_successor = json.loads(
         (SCHAUBILD_NATIVE_EDITOR_EVIDENCE / "acceptance-receipt.json").read_text(
             encoding="utf-8"
@@ -10581,7 +10585,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         feedback_transactional_peer_move_p2_superseded_files
     )
     for name, expected in transactional["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name not in feedback_safe_sideports_p2_superseded_files:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert len(transactional["regression_tests"]) == 2
     assert transactional["test_receipts"]["two_fail_first_task"] == (
         "dc753a6b46bd447b81d89dea"
@@ -10603,6 +10608,136 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert check["independent_exact_head_review_pass"] is False
     assert check["fresh_browser_pixel_acceptance"] is False
     assert check["captain_merge_authorized"] is False
+
+    # The independent security objection and Codex's shared-target P2 are
+    # linked to the final source without rewriting historical acceptance.
+    sideports_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-shared-target-safe-sideports-p2-successor-acceptance-receipt.json"
+    )
+    sideports = json.loads(sideports_path.read_text(encoding="utf-8"))
+    assert sideports["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "shared-target-safe-sideports-p2-successor.v1"
+    )
+    assert sideports["based_on_pr_head"] == (
+        "9fb46d4959f608bd42943d685bdf77775aafd2a7"
+    )
+    assert sideports["parent_evidence"] == {
+        "schema_version": transactional["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-transactional-peer-move-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(transactional_path.read_bytes()).hexdigest(),
+        "evidence_digest": transactional["evidence_digest"],
+    }
+    assert sideports["evidence_digest"] == digest_mapping(
+        sideports, "evidence_digest"
+    )
+    assert set(sideports["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    # Preserve the eleventh/twelfth P2 receipt as an immutable historical
+    # byte sequence; its source bindings are to the former accepted local
+    # successor, not to this new, independently reproduced P2 patch.
+    assert hashlib.sha256(sideports_path.read_bytes()).hexdigest() == (
+        "8f1621b256a4305f85c9fe0e7f70fc56176b9330d78c166bb2c850e44d8a5f73"
+    )
+    assert sideports["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "98df22004dde2c7765a59a7dc71411211bccc5f3992779f52380b9eee4137978"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "3a7813a8e6cd6c10b33d1648c7b93e9c66b2972be9e15d914d2976009588dbf6"
+        ),
+    }
+    assert len(sideports["regression_tests"]) == 4
+    assert sideports["test_receipts"]["codex_shared_target_failfirst_task"] == (
+        "4a16da57595945799fc92aef"
+    )
+    assert sideports["test_receipts"]["independent_claude_role_verdict"] == (
+        "NEEDS_CHANGE"
+    )
+    assert sideports["test_receipts"]["independent_sideport_failfirst_task"] == (
+        "e682d50366094c018b7e1660"
+    )
+    assert sideports["test_receipts"]["full_native_suite_task"] == (
+        "00276893a6c2459e8ba0dfaa"
+    )
+    checks = sideports["checks"]
+    assert checks["historical_parent_immutable"] is True
+    assert checks["both_codex_shared_target_failfirst_cases_reproduced"] is True
+    assert checks["both_independent_sideport_failfirst_cases_reproduced"] is True
+    assert checks["all_four_new_p2_cases_green"] is True
+    assert checks["native_diagram_passed_count"] == 184
+    assert checks["bounded_1746_model_sweep_zero_label_card_intersections"] is True
+    assert checks["bounded_sweep_outer_routes_checked"] == 403
+    assert checks["bounded_sweep_render_exceptions"] == 0
+    assert checks["accepted_18_node_canvas_width_preserved"] is True
+    assert checks["ruff_check_passed"] is True
+    assert checks["git_diff_check_passed"] is True
+    assert checks["full_local_validate_passed"] is False
+    assert checks["full_exact_head_github_ci_passed"] is False
+    assert checks["independent_exact_head_review_pass"] is False
+    assert checks["fresh_browser_pixel_acceptance"] is False
+    assert checks["captain_merge_authorized"] is False
+
+    # A new create-only successor binds all current code/test bytes, while
+    # preserving the complete SHA and digest chain of the prior P2 fix.
+    peer_labels_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-peer-label-collision-p2-successor-acceptance-receipt.json"
+    )
+    peer_labels = json.loads(peer_labels_path.read_text(encoding="utf-8"))
+    assert peer_labels["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "peer-feedback-label-p2-successor.v1"
+    )
+    assert peer_labels["based_on_pr_head"] == (
+        "9fb46d4959f608bd42943d685bdf77775aafd2a7"
+    )
+    assert peer_labels["parent_evidence"] == {
+        "schema_version": sideports["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-shared-target-safe-sideports-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(sideports_path.read_bytes()).hexdigest(),
+        "evidence_digest": sideports["evidence_digest"],
+    }
+    assert peer_labels["evidence_digest"] == digest_mapping(
+        peer_labels, "evidence_digest"
+    )
+    assert set(peer_labels["source_bindings"]) == (
+        feedback_safe_sideports_p2_superseded_files
+        | {"tests/publication/test_publication_fixtures.py"}
+    )
+    for name, expected in peer_labels["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert len(peer_labels["regression_tests"]) == 3
+    assert peer_labels["test_receipts"]["first_red_task"] == (
+        "100725bcd5524c189905cb6f"
+    )
+    assert peer_labels["test_receipts"]["first_green_task"] == (
+        "3117a7b5fb054a5aaf7622c4"
+    )
+    assert peer_labels["test_receipts"]["outer_peer_collision_task"] == (
+        "3375dad552de4e1b80f858c9"
+    )
+    assert peer_labels["test_receipts"]["bounded_fuzz_green_task"] == (
+        "301d4c4eca1444f4971b562b"
+    )
+    peer_checks = peer_labels["checks"]
+    assert peer_checks["historical_parent_immutable"] is True
+    assert peer_checks["three_peer_feedback_regressions_green"] is True
+    assert peer_checks["bounded_fuzz_model_count"] == 1500
+    assert peer_checks["bounded_fuzz_outer_routes"] == 171
+    assert peer_checks["bounded_fuzz_failures"] == 0
+    assert peer_checks["full_local_validate_passed"] is False
+    assert peer_checks["full_exact_head_github_ci_passed"] is False
+    assert peer_checks["independent_exact_head_review_pass"] is False
+    assert peer_checks["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10632,7 +10767,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in feedback_transactional_peer_move_p2_superseded_files:
+        if name in feedback_safe_sideports_p2_superseded_files:
+            assert peer_labels["source_bindings"][name] == current
+        elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
             assert intermediate["source_bindings"][name] == current

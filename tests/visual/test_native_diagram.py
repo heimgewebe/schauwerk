@@ -5433,3 +5433,201 @@ def test_pr204_p2_speculative_peer_relocation_rolls_back_on_outer_route(
     assert _p2_orthogonal_segments(paths["local"])
     assert _p2_linear_path_clears_box(paths["local"], labels["a"])
     assert _p2_linear_path_clears_box(paths["local"], labels["b"])
+
+
+@pytest.mark.parametrize("peer_label", ["x", "Intervening flow label"])
+def test_pr204_p2_shared_target_adjacent_label_clears_local_branch(
+    peer_label: str,
+) -> None:
+    """A shared target cannot exempt an adjacent peer's visible label."""
+    raw = _p2_feedback_geometry_model((4, 4))
+    edges = [
+        {"id": "local", "from": "n0", "to": "n6",
+         "label": "x", "kind": "flow"},
+        {"id": "peer", "from": "n1", "to": "n6",
+         "label": peer_label, "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root.attrib["viewBox"]
+
+    labels, paths, canvas = geometry(edges)
+    assert (labels, paths, canvas) == geometry(list(reversed(edges)))
+    assert _p2_orthogonal_segments(paths["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
+
+
+@pytest.mark.parametrize("same_column", [False, True])
+def test_pr204_p2_sideport_footer_clears_all_labels_and_cards(
+    same_column: bool,
+) -> None:
+    """A footer fallback must clear its own label and every foreign obstacle."""
+    if same_column:
+        raw = _p2_feedback_geometry_model((4, 4))
+        raw["edges"] = [
+            {"id": "feedback", "from": "n2", "to": "n0",
+             "label": "Rueckmeldung", "kind": "feedback"},
+            {"id": "flow0", "from": "n5", "to": "n3",
+             "label": "Ein sehr langer Verbindungstext fuer zwei Zeilen zum Vorhaben",
+             "kind": "flow"},
+            {"id": "flow1", "from": "n6", "to": "n1",
+             "label": "Nebenprozess mit Titel", "kind": "flow"},
+        ]
+    else:
+        raw = _p2_feedback_geometry_model((4, 4, 4))
+        raw["edges"] = [
+            {"id": "feedback", "from": "n4", "to": "n2",
+             "label": "Rueckmeldung", "kind": "feedback"},
+            {"id": "long", "from": "n0", "to": "n11",
+             "label": "Ein sehr langer Verbindungstext fuer zwei Zeilen zum Vorhaben",
+             "kind": "flow"},
+            {"id": "peer", "from": "n1", "to": "n6",
+             "label": "Nebenprozess mit Titel", "kind": "flow"},
+        ]
+
+    def geometry(edges: list[dict]) -> tuple[dict, dict, str, dict]:
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(edges)
+        root = _parse(render_native_diagram(model))
+        return (
+            _edge_label_boxes(root),
+            _edge_paths(root),
+            root.attrib["viewBox"],
+            _node_boxes(root),
+        )
+
+    labels, paths, canvas, cards = geometry(raw["edges"])
+    assert (labels, paths, canvas, cards) == geometry(list(reversed(raw["edges"])))
+    path = paths["feedback"]
+    assert " C " not in path  # The actual all-orthogonal outer-footer fallback.
+    assert len(_p2_orthogonal_segments(path)) >= 4
+    for edge_id, label in labels.items():
+        assert _p2_linear_path_clears_box(path, label), edge_id
+    endpoints = {
+        str(raw["edges"][0]["from"]),
+        str(raw["edges"][0]["to"]),
+    }
+    for node_id, box in cards.items():
+        if node_id not in endpoints:
+            assert _p2_linear_path_clears_box(path, box), node_id
+
+def test_pr204_p2_outer_feedback_never_crosses_peer_feedback_footer_label() -> None:
+    """The outer side-port route must see the *other feedback's* final footer label."""
+    raw = _p2_feedback_geometry_model((4, 4, 5, 5))
+    raw["edges"] = [
+        {"id": "feedback0", "from": "n17", "to": "n10",
+         "label": "x", "kind": "feedback"},
+        {"id": "feedback1", "from": "n14", "to": "n2",
+         "label": "x", "kind": "feedback"},
+        {"id": "feedback2", "from": "n2", "to": "n1",
+         "label": "x", "kind": "feedback"},
+        {"id": "feedback3", "from": "n9", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "feedback4", "from": "n3", "to": "n1",
+         "label": "x", "kind": "feedback"},
+        {"id": "flow0", "from": "n2", "to": "n6",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow1", "from": "n6", "to": "n8",
+         "label": "E", "kind": "flow"},
+        {"id": "flow2", "from": "n15", "to": "n13",
+         "label": "E" * 70, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    # This is a genuine grouped side-port fallback with one global footer.
+    assert " C " not in paths["feedback1"]
+    assert _p2_orthogonal_segments(paths["feedback1"])
+    assert _p2_linear_path_clears_box(
+        paths["feedback1"], labels["feedback2"]
+    ), "outer feedback must not cut through the other feedback's footer text"
+    for other_id, label in labels.items():
+        if other_id != "feedback1":
+            assert _p2_linear_path_clears_box(
+                paths["feedback1"], label
+            ), other_id
+    for node_id, card in _node_boxes(root).items():
+        if node_id not in {"n14", "n2"}:
+            assert _p2_linear_path_clears_box(paths["feedback1"], card), node_id
+    raw["edges"].reverse()
+    reversed_root = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (
+        _edge_label_boxes(reversed_root), _edge_paths(reversed_root)
+    )
+
+def test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels() -> None:
+    """Two side-port returns in one grouped model may not cut through peer text."""
+    raw = _p2_feedback_geometry_model((2, 2, 4))
+    raw["edges"] = [
+        {"id": "feedback0", "from": "n3", "to": "n0",
+         "label": "x", "kind": "feedback"},
+        {"id": "feedback1", "from": "n3", "to": "n2",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "feedback2", "from": "n2", "to": "n0",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "feedback3", "from": "n7", "to": "n5",
+         "label": "x", "kind": "feedback"},
+        {"id": "flow0", "from": "n4", "to": "n3",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow1", "from": "n2", "to": "n5",
+         "label": "E", "kind": "flow"},
+        {"id": "flow2", "from": "n5", "to": "n4",
+         "label": "E" * 45, "kind": "flow"},
+        {"id": "flow3", "from": "n4", "to": "n2",
+         "label": "E" * 70, "kind": "risk"},
+        {"id": "flow4", "from": "n0", "to": "n2",
+         "label": "E" * 45, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    for outer_id in ("feedback0", "feedback1"):
+        assert " C " not in paths[outer_id]
+        for other_id, box in labels.items():
+            if outer_id != other_id:
+                assert _p2_linear_path_clears_box(paths[outer_id], box), (
+                    outer_id, other_id
+                )
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (labels, paths) == (_edge_label_boxes(reordered), _edge_paths(reordered))
+
+def test_pr204_p2_dense_feedback_outer_needs_only_bounded_gutter_growth() -> None:
+    """Crowded labels must not make a valid process diagram unrenderable."""
+    raw = _p2_feedback_geometry_model((12, 5))
+    raw["edges"] = [
+        {"id": "feedback0", "from": "n8", "to": "n5",
+         "label": "x", "kind": "feedback"},
+        {"id": "feedback1", "from": "n16", "to": "n7",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "feedback2", "from": "n11", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "feedback3", "from": "n4", "to": "n0",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "feedback4", "from": "n2", "to": "n1",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "flow0", "from": "n1", "to": "n9",
+         "label": "E" * 22, "kind": "risk"},
+        {"id": "flow1", "from": "n1", "to": "n10",
+         "label": "E" * 45, "kind": "flow"},
+        {"id": "flow2", "from": "n5", "to": "n13",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow3", "from": "n10", "to": "n1",
+         "label": "E" * 45, "kind": "risk"},
+        {"id": "flow4", "from": "n7", "to": "n10",
+         "label": "E" * 5, "kind": "flow"},
+        {"id": "flow5", "from": "n16", "to": "n9",
+         "label": "E" * 45, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    width = float(root.attrib["viewBox"].split()[2])
+    assert width <= 1150, "bounded gutter fix may not grow the canvas without limit"
+    labels, paths = _edge_label_boxes(root), _edge_paths(root)
+    assert " C " not in paths["feedback1"]
+    for label_id, box in labels.items():
+        if label_id != "feedback1":
+            assert _p2_linear_path_clears_box(paths["feedback1"], box), label_id
+    for node_id, box in _node_boxes(root).items():
+        if node_id not in {"n16", "n7"}:
+            assert _p2_linear_path_clears_box(paths["feedback1"], box), node_id

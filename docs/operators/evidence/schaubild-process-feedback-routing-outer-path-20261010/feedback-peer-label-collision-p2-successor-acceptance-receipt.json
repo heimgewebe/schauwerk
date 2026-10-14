@@ -1,0 +1,56 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-peer-feedback-label-p2-successor.v1",
+  "based_on_pr_head": "9fb46d4959f608bd42943d685bdf77775aafd2a7",
+  "scope": "Outer process-feedback return path must clear all other feedback semantic footer text, including outer-to-outer labels, with bounded necessary canvas growth",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-shared-target-safe-sideports-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-shared-target-safe-sideports-p2-successor-acceptance-receipt.json",
+    "file_sha256": "8f1621b256a4305f85c9fe0e7f70fc56176b9330d78c166bb2c850e44d8a5f73",
+    "evidence_digest": "745c8e8abe79bdede33fc8d999b93c590b3461f11e50518214af1111b889ad79"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "bc1ab323f4a3dcf351365b229f2480f7a8dd8f22302770cfb676155e1a6fd352",
+    "tests/visual/test_native_diagram.py": "6c295f78e5d922a6c6883f93c8309bfebbfa4e65d4faa2aac6d1a2d5fad32a20",
+    "tests/publication/test_publication_fixtures.py": "5ac5fdb0fb9c07e17101854124474800cf6f9c54e9a0b698c230819f185fda96"
+  },
+  "regression_tests": [
+    "test_pr204_p2_outer_feedback_never_crosses_peer_feedback_footer_label",
+    "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels",
+    "test_pr204_p2_dense_feedback_outer_needs_only_bounded_gutter_growth"
+  ],
+  "test_receipts": {
+    "first_red_task": "100725bcd5524c189905cb6f",
+    "first_red_lifecycle_sha256": "1b8e30ea84a0d2ecab574da2bc50ce81ec57752b07ab6f33ffffc35c0af4d5de",
+    "first_green_task": "3117a7b5fb054a5aaf7622c4",
+    "first_green_lifecycle_sha256": "8239e62d2e16f89ccf32c94534de04e231ad64640681f5663e90157149a4f311",
+    "outer_peer_collision_task": "3375dad552de4e1b80f858c9",
+    "outer_peer_collision_lifecycle_sha256": "8f23f05471c69685354473580f814c3f38eb0e2b9f387a9dd73731cdee877ba8",
+    "dense_outer_render_failure_task": "6b813f0ffffc48b1aa5affe3",
+    "dense_outer_render_failure_lifecycle_sha256": "4a4b7b20b418d26be719e9ba291e58f81a57593d6daf6164e2acd2c41786293a",
+    "targeted_regressions_green_task": "0fbc33a6cd2a479090b471fb",
+    "targeted_regressions_green_lifecycle_sha256": "e18bf870681e4820dca3a5886593d780cb7e44f609830d9c5f6163dd73f1475a",
+    "bounded_fuzz_green_task": "301d4c4eca1444f4971b562b",
+    "bounded_fuzz_green_lifecycle_sha256": "2824107c2333634c58c17e12563ef14fb8a7ee42a8edbd898bfc6fa2b2c6fd8e"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "three_peer_feedback_regressions_green": true,
+    "bounded_fuzz_model_count": 1500,
+    "bounded_fuzz_outer_routes": 171,
+    "bounded_fuzz_failures": 0,
+    "full_local_validate_passed": false,
+    "full_exact_head_github_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "full Make validate on final receipt-bound revision",
+    "Chrome pixel acceptance",
+    "new GitHub exact-head CI",
+    "independent exact published revision R3 reviews",
+    "Captain merge",
+    "production deployment"
+  ],
+  "status": "local_red_green_and_1500_model_fuzz_pass; final_full_validate_and_independent_review_pending",
+  "evidence_digest": "986f64f8b86884151b90c0b2880fbb0192709dc6b99cdc9c19dfe7ced2b6de49"
+}
