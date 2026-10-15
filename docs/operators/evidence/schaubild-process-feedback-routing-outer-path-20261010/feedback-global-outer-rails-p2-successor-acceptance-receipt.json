@@ -1,0 +1,42 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-global-outer-rails-p2-successor.v1",
+  "based_on_pr_head": "08c1706c10eb9de7d327df4ee5fd38ccec200d0b",
+  "scope": "New isolated seven-feedback P2 candidate: deterministic globally unique outer rails, reserved parallel gutters and peer-label placement; no production mutation",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-parallel-outer-sideport-lanes-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-parallel-sideport-lanes-p2-successor-acceptance-receipt.json",
+    "file_sha256": "d5d9bf06b739430ad601d0d2b986d564010ac78030efdc5688b417cb989edc42",
+    "evidence_digest": "c7931d61e9397dca9301d79b2fa1ceee2f44b52e82763e44426bac705af5cae5"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "b896284b4bee1715fc3628552270cfdab41dd900c277c49a6610a67817e90904",
+    "tests/visual/test_native_diagram.py": "1bbb79b23df367694e8a9e74ba5bfdc426b3b8415f7a57f55c7f694cb97f61a5"
+  },
+  "regression_tests": [
+    "test_pr204_p2_outer_peer_label_solver_converges_for_three_feedbacks",
+    "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes"
+  ],
+  "test_receipts": {
+    "local_make_validate_task": "7b6af10e1e1a45bb923084e1",
+    "local_make_validate_passed_count": 1724,
+    "local_make_validate_failed_count": 1,
+    "local_make_validate_only_reported_failure": "test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+  },
+  "checks": {
+    "historical_parent_receipt_unmodified": true,
+    "new_geometry_regressions_passed_in_local_suite": true,
+    "local_validation_failed_only_on_superseded_parent_source_hash": true,
+    "full_local_validate_passed": false,
+    "full_exact_head_github_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "complete local green tests after new acceptance-binding fixture",
+    "exact published revision GitHub CI",
+    "independent exact-head security/review PASS",
+    "Captain merge or production deployment"
+  ],
+  "status": "isolated_dirty_candidate_geometry_regressions_passed_legacy_source_receipt_binding_pending",
+  "evidence_digest": "34b656e060b03f51751804101d9c29d38f2a9828df6e8dec092022f3046bdd32"
+}

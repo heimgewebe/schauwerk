@@ -10785,8 +10785,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(parallel_lanes["source_bindings"]) == (
         feedback_safe_sideports_p2_superseded_files
     )
-    for name, expected in parallel_lanes["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Historical receipt is immutable; its former source hashes must remain
+    # recorded exactly, even when a later P2 successor changes the renderer.
+    assert parallel_lanes["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "6d64e5104a6cc3cf40dcbe2d23abc916f90bc3c458277169d4f3d83067b5467d"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "c816d6c3bcc6ba8116c65b4cf8fbedbab270b147fa52564708de32dd34deac1e"
+        ),
+    }
     assert parallel_lanes["regression_tests"] == [
         "test_pr204_p2_parallel_outer_feedbacks_have_distinct_routes",
         "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
@@ -10817,6 +10825,52 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert lane_checks["independent_exact_head_review_pass"] is False
     assert lane_checks["captain_merge_authorized"] is False
 
+    # Create-only successor binds the current seven-feedback P2 candidate.
+    # An earlier accepted receipt remains a historical fact, not a live SHA.
+    global_rails_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-global-outer-rails-p2-successor-acceptance-receipt.json"
+    )
+    global_rails = json.loads(global_rails_path.read_text(encoding="utf-8"))
+    assert global_rails["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-global-outer-rails-p2-successor.v1"
+    )
+    assert global_rails["based_on_pr_head"] == (
+        "08c1706c10eb9de7d327df4ee5fd38ccec200d0b"
+    )
+    assert global_rails["parent_evidence"] == {
+        "schema_version": parallel_lanes["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-parallel-sideport-lanes-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(parallel_lanes_path.read_bytes()).hexdigest(),
+        "evidence_digest": parallel_lanes["evidence_digest"],
+    }
+    assert global_rails["evidence_digest"] == digest_mapping(
+        global_rails, "evidence_digest"
+    )
+    assert set(global_rails["source_bindings"]) == (
+        feedback_safe_sideports_p2_superseded_files
+    )
+    for name, expected in global_rails["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert global_rails["regression_tests"] == [
+        "test_pr204_p2_outer_peer_label_solver_converges_for_three_feedbacks",
+        "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes",
+    ]
+    assert global_rails["test_receipts"]["local_make_validate_task"] == (
+        "7b6af10e1e1a45bb923084e1"
+    )
+    global_checks = global_rails["checks"]
+    assert global_checks["historical_parent_receipt_unmodified"] is True
+    assert global_checks["new_geometry_regressions_passed_in_local_suite"] is True
+    assert global_checks["full_local_validate_passed"] is False
+    assert global_checks["full_exact_head_github_ci_passed"] is False
+    assert global_checks["independent_exact_head_review_pass"] is False
+    assert global_checks["captain_merge_authorized"] is False
+
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
     )
@@ -10846,7 +10900,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert parallel_lanes["source_bindings"][name] == current
+            assert global_rails["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:

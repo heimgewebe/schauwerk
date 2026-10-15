@@ -5715,3 +5715,101 @@ def test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes() -> None
     assert (paths, labels) == (
         _edge_paths(reordered), _edge_label_boxes(reordered)
     )
+
+def test_pr204_p2_outer_peer_label_solver_converges_for_three_feedbacks() -> None:
+    """Valid grouped three-peer feedback must not fail due to label oscillation."""
+    raw = _p2_feedback_geometry_model((5, 2))
+    raw["edges"] = [
+        {"id": "fb0", "from": "n6", "to": "n3",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "fb1", "from": "n6", "to": "n3",
+         "label": "x", "kind": "feedback"},
+        {"id": "fb2", "from": "n6", "to": "n3",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "flow0", "from": "n3", "to": "n6",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow1", "from": "n3", "to": "n0",
+         "label": "E" * 45, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    for edge_id in ("fb0", "fb1", "fb2"):
+        assert " C " not in paths[edge_id]
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, other_id
+                )
+        for node_id, box in _node_boxes(root).items():
+            if node_id not in {"n6", "n3"}:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, node_id
+                )
+    assert len({paths[key] for key in ("fb0", "fb1", "fb2")}) == 3
+    raw["edges"].reverse()
+    other = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+def test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes() -> None:
+    """Seed 918134: valid seven-peer grouped feedback must render safely."""
+    raw = _p2_feedback_geometry_model((4, 2))
+    raw["edges"] = [
+        {"id": f"fb{index}", "from": "n5", "to": "n3",
+         "label": label, "kind": "feedback"}
+        for index, label in enumerate((
+            "Mehrzeilige Feedbackkommunikation 12345", "x",
+            "Rueckmeldung", "Rueckmeldung", "Rueckmeldung", "x",
+            "Rueckmeldung",
+        ))
+    ] + [
+        {"id": "flow0", "from": "n0", "to": "n3",
+         "label": "E" * 45, "kind": "risk"},
+        {"id": "flow1", "from": "n5", "to": "n3",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow2", "from": "n1", "to": "n4",
+         "label": "E" * 22, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    outer = [
+        f"fb{index}" for index in range(7)
+        if " C " not in paths[f"fb{index}"]
+        and paths[f"fb{index}"].count(" L ") >= 4
+    ]
+    assert len(outer) >= 2
+    assert len({paths[edge_id] for edge_id in outer}) == len(outer)
+    for edge_id in outer:
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, other_id
+                )
+        for card_id, box in cards.items():
+            if card_id not in {"n5", "n3"}:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, card_id
+                )
+    for idx, first in enumerate(outer):
+        for second in outer[idx + 1:]:
+            for (start_a, end_a) in _p2_orthogonal_segments(paths[first]):
+                for (start_b, end_b) in _p2_orthogonal_segments(paths[second]):
+                    if abs(start_a[0] - end_a[0]) < 0.01 and abs(start_b[0] - end_b[0]) < 0.01:
+                        overlap = min(max(start_a[1], end_a[1]), max(start_b[1], end_b[1])) - max(
+                            min(start_a[1], end_a[1]), min(start_b[1], end_b[1])
+                        )
+                        assert abs(start_a[0] - start_b[0]) >= 4 or overlap <= 4, (
+                            first, second, "vertical overlap"
+                        )
+                    if abs(start_a[1] - end_a[1]) < 0.01 and abs(start_b[1] - end_b[1]) < 0.01:
+                        overlap = min(max(start_a[0], end_a[0]), max(start_b[0], end_b[0])) - max(
+                            min(start_a[0], end_a[0]), min(start_b[0], end_b[0])
+                        )
+                        assert abs(start_a[1] - start_b[1]) >= 4 or overlap <= 4, (
+                            first, second, "horizontal overlap"
+                        )
+    raw["edges"].reverse()
+    other = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
