@@ -1752,19 +1752,9 @@ def _edge_geometry(
                 f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
             )
             return path, gutter_x, feedback_label_y, route
-        if feedback_label_y is not None:
-            path = (
-                f"M {start_x:.1f} {start_y:.1f} "
-                f"C {start_x:.1f} {start_y + start_bend:.1f}, "
-                f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
-                f"L {gutter_x:.1f} {source_corridor_y:.1f} "
-                f"L {gutter_x:.1f} {feedback_label_y:.1f} "
-                f"L {gutter_x:.1f} {target_corridor_y:.1f} "
-                f"L {end_x:.1f} {target_corridor_y:.1f} "
-                f"C {end_x:.1f} {target_corridor_y:.1f}, "
-                f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
-            )
-            return path, gutter_x, feedback_label_y, route
+        # A moved footer label is independent of the local return geometry.
+        # Extending the line down to that label and back masks the next
+        # semantic footer label without adding a useful connection.
         path = (
             f"M {start_x:.1f} {start_y:.1f} "
             f"C {start_x:.1f} {start_y + start_bend:.1f}, "
@@ -1775,6 +1765,8 @@ def _edge_geometry(
             f"C {end_x:.1f} {target_corridor_y:.1f}, "
             f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
         )
+        if feedback_label_y is not None:
+            return path, gutter_x, feedback_label_y, route
         label_x = (
             (gutter_x + end_x) / 2
             if source_y == target_y and source_x > target_x

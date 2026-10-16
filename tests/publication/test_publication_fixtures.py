@@ -10854,8 +10854,19 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(global_rails["source_bindings"]) == (
         feedback_safe_sideports_p2_superseded_files
     )
-    for name, expected in global_rails["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Frozen global-rails evidence describes an older exact source revision.
+    # A new candidate must never make that parent claim to bind current files.
+    assert hashlib.sha256(global_rails_path.read_bytes()).hexdigest() == (
+        "6e1764899da65300dd84e11f64b74fe2b6c79cf298dca3bc3918df1d49e7dfb1"
+    )
+    assert global_rails["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "b896284b4bee1715fc3628552270cfdab41dd900c277c49a6610a67817e90904"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "1bbb79b23df367694e8a9e74ba5bfdc426b3b8415f7a57f55c7f694cb97f61a5"
+        ),
+    }
     assert global_rails["regression_tests"] == [
         "test_pr204_p2_outer_peer_label_solver_converges_for_three_feedbacks",
         "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes",
@@ -10870,6 +10881,58 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert global_checks["full_exact_head_github_ci_passed"] is False
     assert global_checks["independent_exact_head_review_pass"] is False
     assert global_checks["captain_merge_authorized"] is False
+
+    # A create-only descendant binds the new local path geometry and RED/GREEN
+    # evidence without overwriting the accepted parent or implying merge rights.
+    footer_label_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-local-footer-label-p2-successor-acceptance-receipt.json"
+    )
+    footer_label = json.loads(footer_label_path.read_text(encoding="utf-8"))
+    assert footer_label["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-"
+        "local-footer-label-p2-successor.v1"
+    )
+    assert footer_label["based_on_pr_head"] == (
+        "239d30128c23383357412dfb9ff74cc14d5bc828"
+    )
+    assert footer_label["parent_evidence"] == {
+        "schema_version": global_rails["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-global-outer-rails-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(global_rails_path.read_bytes()).hexdigest(),
+        "evidence_digest": global_rails["evidence_digest"],
+    }
+    assert footer_label["evidence_digest"] == digest_mapping(
+        footer_label, "evidence_digest"
+    )
+    assert set(footer_label["source_bindings"]) == (
+        feedback_safe_sideports_p2_superseded_files
+    )
+    for name, expected in footer_label["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert footer_label["regression_tests"] == [
+        "test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels",
+        "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
+        "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes",
+    ]
+    assert footer_label["test_receipts"]["red_job"] == "a745b5797d9b"
+    assert footer_label["test_receipts"]["focused_green_job"] == "d443b65d2cbb"
+    assert footer_label["test_receipts"]["native_diagram_suite_green_job"] == (
+        "fe457f30a6e4"
+    )
+    assert footer_label["test_receipts"]["configured_make_validate_passed_count"] == 1695
+    assert footer_label["test_receipts"]["configured_make_validate_failed_count"] == 1
+    assert footer_label["checks"]["historical_parent_receipt_preserved"] is True
+    assert footer_label["checks"]["local_footer_peer_label_red_reproduced"] is True
+    assert footer_label["checks"]["native_diagram_suite_passed"] is True
+    assert footer_label["checks"]["complete_local_validate_passed"] is False
+    assert footer_label["checks"]["exact_published_head_ci_passed"] is False
+    assert footer_label["checks"]["independent_exact_head_review_pass"] is False
+    assert footer_label["checks"]["captain_merge_authorized"] is False
 
     oauth_successor = json.loads(
         (MIRO_OAUTH_EVIDENCE / "acceptance-receipt.json").read_text(encoding="utf-8")
@@ -10900,7 +10963,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert global_rails["source_bindings"][name] == current
+            assert footer_label["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:

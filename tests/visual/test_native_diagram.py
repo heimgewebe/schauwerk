@@ -5710,6 +5710,19 @@ def test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes() -> None
                 assert _p2_linear_path_clears_box(paths[edge_id], box), (
                     edge_id, card_id
                 )
+    # Different paths can still share long vertical strokes and erase a peer.
+    for index, first in enumerate(outer):
+        for second in outer[index + 1:]:
+            for (a, b) in _p2_orthogonal_segments(paths[first]):
+                for (c, d) in _p2_orthogonal_segments(paths[second]):
+                    if abs(a[0] - b[0]) >= 0.01 or abs(c[0] - d[0]) >= 0.01:
+                        continue
+                    overlap = min(max(a[1], b[1]), max(c[1], d[1])) - max(
+                        min(a[1], b[1]), min(c[1], d[1])
+                    )
+                    assert abs(a[0] - c[0]) >= 4 or overlap <= 4, (
+                        first, second, "overlapping vertical feedback stems"
+                    )
     raw["edges"].reverse()
     reordered = _parse(render_native_diagram(raw))
     assert (paths, labels) == (
@@ -5813,3 +5826,39 @@ def test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes() ->
     raw["edges"].reverse()
     other = _parse(render_native_diagram(raw))
     assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+def test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels() -> None:
+    """Dense grouped labels must not mask otherwise local feedback paths."""
+    raw = _p2_feedback_geometry_model((4, 3, 2))
+    raw["edges"] = [
+        {"id": "feedback0", "from": "n4", "to": "n3",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "feedback1", "from": "n0", "to": "n6",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "flow0", "from": "n3", "to": "n5",
+         "label": "E" * 70, "kind": "flow"},
+        {"id": "flow1", "from": "n2", "to": "n6",
+         "label": "E" * 22, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    cards = _node_boxes(root)
+    endpoints = {"feedback0": {"n4", "n3"}, "feedback1": {"n0", "n6"}}
+    for edge_id in endpoints:
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, other_id
+                )
+        for card_id, box in cards.items():
+            if card_id not in endpoints[edge_id]:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, card_id
+                )
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )

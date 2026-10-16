@@ -1,0 +1,53 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-local-footer-label-p2-successor.v1",
+  "based_on_pr_head": "239d30128c23383357412dfb9ff74cc14d5bc828",
+  "scope": "Fix one proven process-feedback local-path excursion into unrelated footer labels; preserve old global-rails receipts and do not claim side-port exhaustion resolved.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-global-outer-rails-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-global-outer-rails-p2-successor-acceptance-receipt.json",
+    "file_sha256": "6e1764899da65300dd84e11f64b74fe2b6c79cf298dca3bc3918df1d49e7dfb1",
+    "evidence_digest": "34b656e060b03f51751804101d9c29d38f2a9828df6e8dec092022f3046bdd32"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "e72ff87cbee8a56d5979f8d0229ffaf60ccbd0e21fd737be21ed2ba3c8451fc8",
+    "tests/visual/test_native_diagram.py": "fe55f8e75a408ac738c166558a7a81b94ca788acf8ffcd32fe0de0cec2274799"
+  },
+  "regression_tests": [
+    "test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels",
+    "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
+    "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes"
+  ],
+  "test_receipts": {
+    "red_job": "a745b5797d9b",
+    "focused_green_job": "d443b65d2cbb",
+    "native_diagram_suite_green_job": "fe457f30a6e4",
+    "initial_make_validate_infrastructure_failed_job": "75dae12f758b",
+    "initial_make_validate_failure": "system python3.11 missing ruff",
+    "configured_make_validate_pre_acceptance_job": "19382b31e1c6",
+    "configured_make_validate_passed_count": 1695,
+    "configured_make_validate_failed_count": 1,
+    "configured_make_validate_only_failure": "test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+  },
+  "checks": {
+    "historical_parent_receipt_preserved": true,
+    "local_footer_peer_label_red_reproduced": true,
+    "focused_regressions_passed": true,
+    "native_diagram_suite_passed": true,
+    "lint_and_registry_validated": true,
+    "complete_local_validate_passed": false,
+    "exact_published_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "codex_threads_settled": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "outer-port 33-attempt exhaustion resolved",
+    "all five remaining Codex P2 issues closed",
+    "full local suite PASS after acceptance successor rebinding",
+    "published exact-head GitHub CI",
+    "independent revision-bound R3 review",
+    "Captain merge or production deployment"
+  ],
+  "status": "isolated_candidate_local_footer_label_collision_red_green_legacy_receipt_binding_pending",
+  "evidence_digest": "cb721f7388d80e15ac150b7f6e0a32d5bcb77fe0f292fc737c5bb8967d5ce7b7"
+}
