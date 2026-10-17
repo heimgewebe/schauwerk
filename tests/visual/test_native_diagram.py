@@ -5928,3 +5928,29 @@ def test_pr204_p2_risk_label_saturation_has_safe_outer_feedback_routes(
     assert (paths, labels) == (
         _edge_paths(reordered), _edge_label_boxes(reordered)
     )
+
+
+@pytest.mark.parametrize("peer_label", ["W" * 120])
+def test_pr204_p2_outer_forward_source_leg_clears_local_long_label(
+    peer_label: str,
+) -> None:
+    """A displaced forward branch's full source leg cannot cross a long-branch label."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "local", "from": "n0", "to": "n5",
+         "label": "x", "kind": "flow"},
+        {"id": "wide", "from": "n0", "to": "n4",
+         "label": peer_label, "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root.attrib["viewBox"]
+
+    labels, paths, canvas = geometry(edges)
+    assert (labels, paths, canvas) == geometry(list(reversed(edges)))
+    assert _p2_orthogonal_segments(paths["wide"])
+    assert _p2_linear_path_clears_box(paths["wide"], labels["local"])
+    assert _p2_linear_path_clears_box(paths["local"], labels["wide"])

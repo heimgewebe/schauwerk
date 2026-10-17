@@ -10980,8 +10980,52 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert long_leg["evidence_digest"] == digest_mapping(long_leg, "evidence_digest")
     assert set(long_leg["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
-    for name, expected in long_leg["source_bindings"].items():
+    # Historical published acceptance is immutable; subsequent source changes
+    # are attested by a distinct chained successor, never by rewriting parent.
+    assert long_leg["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "c32f28d5b06cf6ee632e1e4636ebdabf82a6a1eadb4238ac021f204383be01b6"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "6c7dfcca3dfb27746083d034a91399a1ff3aa784cad32f92f49d66df92c3011f"
+        ),
+    }
+    source_leg_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-outer-forward-source-leg-p2-successor-acceptance-receipt.json"
+    )
+    source_leg = json.loads(source_leg_path.read_text(encoding="utf-8"))
+    assert hashlib.sha256(source_leg_path.read_bytes()).hexdigest() == (
+        "e29b960d5496a9439c638d8d3d1039a4247c986eb9129678fa9bb59433353339"
+    )
+    assert source_leg["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-outer-source-leg-p2-successor.v1"
+    )
+    assert source_leg["based_on_pr_head"] == "1c31233d1e622e5f6da2dbf3af8f62b3a8917732"
+    assert source_leg["parent_evidence"] == {
+        "schema_version": long_leg["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-long-vertical-leg-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(long_leg_path.read_bytes()).hexdigest(),
+        "evidence_digest": long_leg["evidence_digest"],
+    }
+    assert source_leg["evidence_digest"] == digest_mapping(source_leg, "evidence_digest")
+    assert set(source_leg["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    for name, expected in source_leg["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert source_leg["regression_tests"] == [
+        "test_pr204_p2_outer_forward_source_leg_clears_local_long_label"
+    ]
+    assert source_leg["local_checks"]["red_reproduced"] is True
+    assert source_leg["local_checks"]["focused_green"] is True
+    assert source_leg["local_checks"]["full_native_suite_green"] is True
+    assert source_leg["local_checks"]["historical_parent_receipt_preserved"] is True
+    assert source_leg["local_checks"]["full_make_validate_passed"] is False
+    assert source_leg["local_checks"]["independent_exact_head_review_pass"] is False
+    assert source_leg["local_checks"]["captain_merge_authorized"] is False
     assert long_leg["regression_tests"] == [
         "test_pr204_p2_long_vertical_gutter_clears_feedback_label"
     ]

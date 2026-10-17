@@ -2090,7 +2090,7 @@ def _edge_geometry(
         # The label retains its established centered row-gap position; only
         # the long branch's physical source leg may move around a peer label.
         source_label_corridor_y = source_corridor_y
-        if spans_intervening_row and process_adjacent_route_y is not None:
+        if process_adjacent_route_y is not None:
             source_corridor_y = process_adjacent_route_y
         if process_branch_gutter_x is not None:
             gutter_x = process_branch_gutter_x
@@ -4003,14 +4003,14 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             height = max(height, math.ceil(previous_bottom + 8))
 
     if intent == "process" and model["groups"] and (
-        long_branch_slots or local_group_branch_gutter_x
+        long_branch_slots or local_group_branch_gutter_x or process_branch_gutter_x
     ):
-        # A forward, adjacent edge that shares a long branch's *source* may
-        # occupy its source gap. For a one-line peer, the gap still has a
-        # collision-free horizontal ordinate: move only the physical source
-        # leg, preserving the anchor label and global canvas width.
+        # Full source legs of both long and displaced adjacent branches must
+        # clear every rendered label in their row corridor. Prefer an unused
+        # horizontal ordinate, leaving label anchors and canvas size intact.
         candidates_by_id = sorted(
             set(long_branch_slots) | set(local_group_branch_gutter_x)
+            | set(process_branch_gutter_x)
         )
         for long_id in candidates_by_id:
             if long_id in process_adjacent_route_y:
@@ -4048,16 +4048,10 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 for natural_x, other_id, label_width, label_height, _ in items:
                     if other_id == long_id:
                         continue
-                    other = edges_by_id[other_id]
-                    other_source = positions[str(other["from"])]
-                    other_target = positions[str(other["to"])]
-                    if (
-                        str(other["from"]) != str(long_edge["from"])
-                        or other_source[0] >= other_target[0]
-                        or abs(other_target[1] - other_source[1])
-                        > _NODE_HEIGHT + process_row_gap
-                    ):
-                        continue
+                    # The source leg crosses the full horizontal span, not
+                    # just a peer sharing its endpoint. Every rendered label
+                    # in this row corridor, including an anchored local long
+                    # branch, is an obstacle if its rectangle intersects.
                     other_x = process_adjacent_label_x.get(other_id, natural_x)
                     if other_id in process_branch_gutter_x:
                         other_x = (
