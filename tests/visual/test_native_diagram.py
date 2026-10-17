@@ -5460,6 +5460,31 @@ def test_pr204_p2_shared_target_adjacent_label_clears_local_branch(
     assert _p2_linear_path_clears_box(paths["local"], labels["peer"])
 
 
+@pytest.mark.parametrize("feedback_label", ["short relations", "short relation x"])
+def test_pr204_p2_long_vertical_gutter_clears_feedback_label(
+    feedback_label: str,
+) -> None:
+    """The long branch's vertical return leg must not bisect feedback text."""
+    raw = _p2_feedback_geometry_model((2, 4))
+    edges = [
+        {"id": "feedback", "from": "n1", "to": "n3",
+         "label": feedback_label, "kind": "feedback"},
+        {"id": "long", "from": "n0", "to": "n5",
+         "label": "x", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return _edge_label_boxes(root), _edge_paths(root), root.attrib["viewBox"]
+
+    labels, paths, canvas = geometry(edges)
+    assert (labels, paths, canvas) == geometry(list(reversed(edges)))
+    assert _p2_orthogonal_segments(paths["long"])
+    assert _p2_linear_path_clears_box(paths["long"], labels["feedback"])
+
+
 @pytest.mark.parametrize("same_column", [False, True])
 def test_pr204_p2_sideport_footer_clears_all_labels_and_cards(
     same_column: bool,

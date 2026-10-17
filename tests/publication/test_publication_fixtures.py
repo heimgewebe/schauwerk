@@ -10947,8 +10947,50 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert relayout["evidence_digest"] == digest_mapping(relayout, "evidence_digest")
     assert set(relayout["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
-    for name, expected in relayout["source_bindings"].items():
+    # Keep this exact, already published renderer/test binding immutable.
+    assert hashlib.sha256(relayout_path.read_bytes()).hexdigest() == (
+        "08710afcb154ef4f2e6d6afbbbc9aa51a67991d1cc043eb1c72cbb81c07b1038"
+    )
+    assert relayout["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "eba85758385ef78d9105d9964bd32aedea05668acdbbb2b84cee4443ff4aae1e"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "4ca84e08aee1c1615e79f891a90727d36fcdcb24ae01535e4ad1ff2a2df9d02c"
+        ),
+    }
+    long_leg_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-long-vertical-leg-p2-successor-acceptance-receipt.json"
+    )
+    long_leg = json.loads(long_leg_path.read_text(encoding="utf-8"))
+    assert long_leg["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-long-vertical-leg-p2-successor.v1"
+    )
+    assert long_leg["based_on_pr_head"] == "ee8958c219bd369511a102f9a0cad613ebbd42b7"
+    assert long_leg["parent_evidence"] == {
+        "schema_version": relayout["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-post-footer-relayout-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(relayout_path.read_bytes()).hexdigest(),
+        "evidence_digest": relayout["evidence_digest"],
+    }
+    assert long_leg["evidence_digest"] == digest_mapping(long_leg, "evidence_digest")
+    assert set(long_leg["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    for name, expected in long_leg["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert long_leg["regression_tests"] == [
+        "test_pr204_p2_long_vertical_gutter_clears_feedback_label"
+    ]
+    assert long_leg["local_checks"]["red_reproduced"] is True
+    assert long_leg["local_checks"]["focused_green"] is True
+    assert long_leg["local_checks"]["full_native_suite_green"] is True
+    assert long_leg["local_checks"]["historical_parent_receipt_preserved"] is True
+    assert long_leg["local_checks"]["independent_exact_head_review_pass"] is False
+    assert long_leg["local_checks"]["captain_merge_authorized"] is False
     assert relayout["local_checks"]["parent_receipt_preserved"] is True
     assert relayout["local_checks"]["native_diagram_suite_passed"] is True
     assert relayout["local_checks"]["ruff_passed"] is True
@@ -11003,7 +11045,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert relayout["source_bindings"][name] == current
+            assert long_leg["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:

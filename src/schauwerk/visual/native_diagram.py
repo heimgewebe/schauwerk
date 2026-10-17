@@ -4898,6 +4898,16 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     ):
                         collides_with_edge_leg = True
                         break
+                # The orthogonal long branch also has a vertical gutter
+                # connecting those endpoint legs. The feedback label must not
+                # overlap its actual y-span at the planned gutter x.
+                if (
+                    not collides_with_edge_leg
+                    and label_left < gutter_x < label_right
+                    and label_top < max(source_leg_y, target_leg_y)
+                    and label_bottom > min(source_leg_y, target_leg_y)
+                ):
+                    collides_with_edge_leg = True
                 if collides_with_edge_leg:
                     break
 
