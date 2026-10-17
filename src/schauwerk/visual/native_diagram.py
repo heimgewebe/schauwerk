@@ -2303,6 +2303,7 @@ def _render_edge(
     feedback_count: int = 0,
     feedback_base_bottom: float | None = None,
     force_feedback_footer: bool = False,
+    feedback_footer_label_x_override: float | None = None,
     feedback_path_y: float | tuple[float, float] | None = None,
     force_feedback_path_footer: bool = False,
     feedback_local_gutter_x: float | None = None,
@@ -2531,6 +2532,10 @@ def _render_edge(
             canvas_width - half_label_width - 8,
         )
     if kind == "feedback":
+        # A preplanned peer-footer relocation is part of the outer-route
+        # collision model; render that exact accepted label rectangle.
+        if feedback_footer_label_x_override is not None and feedback_label_y is not None:
+            label_x = feedback_footer_label_x_override
         half_label_width = label_width / 2
         label_x = min(
             max(label_x, half_label_width + 8),
@@ -4947,6 +4952,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
     outer_feedback_ports_by_id: dict[
         str, tuple[float, float, float, float, float]
     ] = {}
+    outer_peer_footer_label_x: dict[str, float] = {}
     if intent == "process" and feedback_outer_footer_ids:
         # Every outer-feedback return receives a unique global rail, even
         # when different or reversed endpoint pairs share the same footer.
@@ -4968,8 +4974,20 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
             tuple(feedback_obstacles) if model["groups"]
             else tuple(occupied_boxes)
         )
-        for extra_gutter in range(33):
+        # Preserve every already accepted page geometry: exhaust the original
+        # 33 width-only plans first. Only if all of those remain impossible,
+        # restart from the same canvas and replan a non-outer footer label.
+        # Replanning makes formerly sealed vertical corridors available
+        # without ever relaxing card/label obstacle clearance.
+        initial_outer_width, initial_outer_height = width, height
+        for attempt in range(66):
+            if attempt == 33:
+                width, height = initial_outer_width, initial_outer_height
+            extra_gutter = attempt % 33
+            relayout_phase = attempt >= 33
             peer_feedback_boxes: list[tuple[float, float, float, float]] = []
+            peer_footer_trial: dict[str, float] = {}
+            peer_layout_safe = True
             for peer in feedback_edges:
                 peer_id = str(peer["id"])
                 if peer_id in feedback_outer_footer_ids:
@@ -5027,12 +5045,39 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                     max(peer_x, peer_metrics.width / 2 + 8),
                     width - peer_metrics.width / 2 - 8,
                 )
-                peer_feedback_boxes.append((
+                if relayout_phase and peer_footer_y is not None and extra_gutter:
+                    # The formerly fixed non-outer feedback footer label may
+                    # seal an otherwise free source-to-footer vertical gutter.
+                    # Try a bounded rightward relayout only after the accepted
+                    # initial geometry fails; widened width is not by itself
+                    # a change to any occupied rectangle.
+                    peer_x = min(
+                        peer_x + 16.0 * extra_gutter,
+                        width - peer_metrics.width / 2 - 8,
+                    )
+                peer_box = (
                     peer_x - peer_metrics.width / 2,
                     peer_y - peer_metrics.height / 2,
                     peer_x + peer_metrics.width / 2,
                     peer_y + peer_metrics.height / 2,
-                ))
+                )
+                if relayout_phase and extra_gutter and any(
+                    peer_box[0] < right + 3.5
+                    and peer_box[2] > left - 3.5
+                    and peer_box[1] < bottom + 3.5
+                    and peer_box[3] > top - 3.5
+                    for left, top, right, bottom in (
+                        *packed_obstacles, *peer_feedback_boxes
+                    )
+                ):
+                    peer_layout_safe = False
+                    break
+                peer_feedback_boxes.append(peer_box)
+                if peer_footer_y is not None:
+                    peer_footer_trial[peer_id] = peer_x
+            if not peer_layout_safe:
+                width += 16
+                continue
 
             common_obstacles = (*packed_obstacles, *peer_feedback_boxes)
             # Reserve every global rail below the lowest real relation label,
@@ -5157,6 +5202,7 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 outer_feedback_obstacles = common_obstacles
                 outer_feedback_obstacles_by_id = solved
                 outer_feedback_ports_by_id = solved_ports
+                outer_peer_footer_label_x = peer_footer_trial
                 break
             width += 16
         else:
@@ -5325,6 +5371,9 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 feedback_count=feedback_count,
                 feedback_base_bottom=feedback_base_bottom,
                 force_feedback_footer=str(edge["id"]) in feedback_footer_ids,
+                feedback_footer_label_x_override=outer_peer_footer_label_x.get(
+                    str(edge["id"])
+                ),
                 feedback_path_y=feedback_path_y.get(str(edge["id"])),
                 force_feedback_path_footer=(
                     str(edge["id"]) in feedback_path_footer_ids

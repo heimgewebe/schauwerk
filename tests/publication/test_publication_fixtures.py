@@ -10912,8 +10912,48 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(footer_label["source_bindings"]) == (
         feedback_safe_sideports_p2_superseded_files
     )
-    for name, expected in footer_label["source_bindings"].items():
+    # The footer-label receipt is immutable and belongs to a prior renderer.
+    # Its published bindings must never be silently rewritten to match a new
+    # candidate: the create-only descendant below owns the current source.
+    assert hashlib.sha256(footer_label_path.read_bytes()).hexdigest() == (
+        "e499b43c46c2cb98f5007f29394cbf85bf1fef83416e3fae064f8ca34d56cd35"
+    )
+    assert footer_label["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "e72ff87cbee8a56d5979f8d0229ffaf60ccbd0e21fd737be21ed2ba3c8451fc8"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "fe55f8e75a408ac738c166558a7a81b94ca788acf8ffcd32fe0de0cec2274799"
+        ),
+    }
+    relayout_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-post-footer-relayout-p2-successor-acceptance-receipt.json"
+    )
+    relayout = json.loads(relayout_path.read_text(encoding="utf-8"))
+    assert relayout["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-post-footer-relayout-p2-successor.v1"
+    )
+    assert relayout["based_on_pr_head"] == "f6059f99a8fe050931692f82ffb2bb53e1f4784b"
+    assert relayout["parent_evidence"] == {
+        "schema_version": footer_label["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-local-footer-label-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(footer_label_path.read_bytes()).hexdigest(),
+        "evidence_digest": footer_label["evidence_digest"],
+    }
+    assert relayout["evidence_digest"] == digest_mapping(relayout, "evidence_digest")
+    assert set(relayout["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    for name, expected in relayout["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert relayout["local_checks"]["parent_receipt_preserved"] is True
+    assert relayout["local_checks"]["native_diagram_suite_passed"] is True
+    assert relayout["local_checks"]["ruff_passed"] is True
+    assert relayout["local_checks"]["independent_exact_head_review_pass"] is False
+    assert relayout["local_checks"]["captain_merge_authorized"] is False
     assert footer_label["regression_tests"] == [
         "test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels",
         "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
@@ -10963,7 +11003,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert footer_label["source_bindings"][name] == current
+            assert relayout["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:

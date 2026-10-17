@@ -5862,3 +5862,44 @@ def test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels() -> None:
     assert (paths, labels) == (
         _edge_paths(reordered), _edge_label_boxes(reordered)
     )
+
+@pytest.mark.parametrize(
+    ("flow_kind", "label_size"),
+    [("risk", 45), ("risk", 70), ("flow", 70)],
+)
+def test_pr204_p2_risk_label_saturation_has_safe_outer_feedback_routes(
+    flow_kind: str, label_size: int,
+) -> None:
+    """A risk-branch label must not make a valid grouped process fail to render."""
+    raw = _p2_feedback_geometry_model((4, 3, 2))
+    raw["edges"] = [
+        {"id": "feedback0", "from": "n4", "to": "n3",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "feedback1", "from": "n0", "to": "n6",
+         "label": "Mehrzeilige Feedbackkommunikation 12345", "kind": "feedback"},
+        {"id": "flow0", "from": "n3", "to": "n5",
+         "label": "E" * label_size, "kind": flow_kind},
+        {"id": "flow1", "from": "n2", "to": "n6",
+         "label": "E" * 22, "kind": "flow"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    endpoints = {"feedback0": {"n4", "n3"}, "feedback1": {"n0", "n6"}}
+    for edge_id, own in endpoints.items():
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, other_id
+                )
+        for card_id, box in cards.items():
+            if card_id not in own:
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    edge_id, card_id
+                )
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
