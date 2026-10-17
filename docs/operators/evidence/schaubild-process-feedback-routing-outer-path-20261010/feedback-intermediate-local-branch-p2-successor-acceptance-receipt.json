@@ -1,0 +1,52 @@
+{
+  "based_on_pr_head": "21271c1024e86d215e028af15b5c1af3cc743ad9",
+  "checks": {
+    "accepted_18_node_process_canvas_width_preserved": true,
+    "captain_merge_authorized": false,
+    "fresh_browser_pixel_acceptance": false,
+    "full_exact_head_github_ci_passed": false,
+    "full_local_validate_passed": false,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 178,
+    "ruff_check_passed": true,
+    "two_intermediate_label_cases_green": true,
+    "two_intermediate_label_failfirst_cases_reproduced": true
+  },
+  "does_not_establish": [
+    "published final PR head and GitHub required CI",
+    "exact-head independent review",
+    "full visual browser pixel acceptance",
+    "Captain merge or main integration",
+    "production deployment"
+  ],
+  "evidence_digest": "8b8decde4e88c7c2dca1e5df6af1a0cee850dc6eab80f253022244f7b82b9cd9",
+  "parent_evidence": {
+    "evidence_digest": "62208381e81a96581e66d9ec51a3d6448b0d2b939e4d5fdf6365f5551d52a753",
+    "file_sha256": "365a1124bc9207947a0e28cd80c5ebd6b7cdbd0bd054f479cf254f3101c554a2",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-forward-shared-source-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-forward-shared-source-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_local_long_branch_clears_intermediate_label[x]",
+    "test_pr204_p2_local_long_branch_clears_intermediate_label[Intervening flow label]"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-intermediate-local-branch-p2-successor.v1",
+  "scope": "Ninth Codex P2 local long route through intermediate adjacent peer labels; actual multi-corridor clearance with minimal movable label relocation preserving accepted 18-node canvas width",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "47949fe50bd19dca53dd2937acb46f61e29b1a39f0b6e0e2d29c1fb1a871be30",
+    "tests/visual/test_native_diagram.py": "e92b62535854682079646d8259160a68c0cd44342c622211fa04207c367a7cd0"
+  },
+  "status": "ninth_codex_p2_intermediate_corridor_two_failfirst_cases_fixed_native_green_full_ci_review_pending",
+  "test_receipts": {
+    "baseline_canvas_width_preserved_lifecycle_sha256": "7f6915a27c79422afcbbe9eb3f7bf9e34987e2b74938c2d6931eedd76942dbac",
+    "baseline_canvas_width_preserved_task": "296a479c0aa9461883e834a9",
+    "complete_native_suite_lifecycle_sha256": "6ec633cdd0f1b4e69c7b052693b46624362d39b42c49390655a6bb77cd81e5c3",
+    "complete_native_suite_task": "f2bd4c03f0ae4857851271a4",
+    "two_fail_first_lifecycle_sha256": "4105c335652a106793f1a1f2ce83ba635408014240193d5e1ba56571d0e9362e",
+    "two_fail_first_task": "6f27569b616a49859c59f288",
+    "two_targeted_green_lifecycle_sha256": "d12d303c7cf867e7c2c29a2a7f48bd9c4fa62134a037b0b5d38a153489addab7",
+    "two_targeted_green_task": "c63501d0b9b14099a43c718c"
+  }
+}

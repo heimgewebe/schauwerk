@@ -1,0 +1,61 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-parallel-long.v1",
+  "scope": "codex-p2-parallel-local-long-branch-demotion",
+  "recorded_at": "2026-10-10T12:45:48.911Z",
+  "status": "source_verified_exact_head_ci_and_review_pending",
+  "functional_head": "1d017675da5e1834d6b4118ded7b7a820dcaac91",
+  "parent_evidence": {
+    "evidence_digest": "e1fd536ecba4431100ee2bbf72811ecb3eb668d84fb75b7c74a8011ce32bfc31",
+    "file_sha256": "a1c26d5d1d2514cb35c5c8476b607fe996e57ade8e377513cf3ce9f3ecbef3a0",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-outer-path.v1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "0175fab2e8c611cad2fe1fc111f905464e8ea058f2227960c5164b5dd409febc",
+    "tests/visual/test_native_diagram.py": "1889a95c0a2dafad4b0a0acc9c63742dabaab3ca5e22f2cb24b29865e77a8734"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "parallel_long_branch_collision_failed_before_fix": true,
+    "parallel_long_branch_collision_passed_after_fix": true,
+    "nine_targeted_tests_passed": true,
+    "ruff_diff_check_passed": true,
+    "full_native_diagram_suite_passed": false,
+    "full_exact_head_ci_passed": false,
+    "fresh_visual_browser_acceptance": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "review_thread": "PRRT_kwDOTGqvHc6rBfKu",
+    "regression_test": "test_parallel_group_long_branches_keep_outer_legs_clear_of_peer_labels",
+    "before": {
+      "local_label_box": [
+        360,
+        365.5,
+        102,
+        29
+      ],
+      "outer_source_leg_y": 381
+    },
+    "after": {
+      "outer_label_box": [
+        1026,
+        480.5,
+        102,
+        29
+      ],
+      "outer_source_leg_y": 390
+    },
+    "targeted_test_task_id": "d6e35845b2c445a989b13607",
+    "ruff_task_id": "5053dd0f3ca84498a1ab2ceb"
+  },
+  "does_not_establish": [
+    "fresh full CI",
+    "fresh browser visual acceptance",
+    "decision-bound independent review",
+    "Captain merge authorization",
+    "deployment"
+  ],
+  "evidence_digest": "cb177ed08b79caed05d36750e55e708392deb68bc441fcca0e049610d66644d8"
+}

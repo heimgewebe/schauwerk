@@ -1,0 +1,65 @@
+{
+  "based_on_pr_head": "9fb46d4959f608bd42943d685bdf77775aafd2a7",
+  "checks": {
+    "accepted_18_node_canvas_width_preserved": true,
+    "all_four_new_p2_cases_green": true,
+    "both_codex_shared_target_failfirst_cases_reproduced": true,
+    "both_independent_sideport_failfirst_cases_reproduced": true,
+    "bounded_1746_model_sweep_zero_label_card_intersections": true,
+    "bounded_sweep_outer_routes_checked": 403,
+    "bounded_sweep_render_exceptions": 0,
+    "captain_merge_authorized": false,
+    "fresh_browser_pixel_acceptance": false,
+    "full_exact_head_github_ci_passed": false,
+    "full_local_validate_passed": false,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 184,
+    "ruff_check_passed": true
+  },
+  "does_not_establish": [
+    "new exact published source revision and required GitHub CI",
+    "independent exact-head reviewer PASS for the successor",
+    "fresh Chrome pixel semantics",
+    "Captain merge or main integration",
+    "production service deployment"
+  ],
+  "evidence_digest": "745c8e8abe79bdede33fc8d999b93c590b3461f11e50518214af1111b889ad79",
+  "parent_evidence": {
+    "evidence_digest": "95469d8641a38e4a83ef80659dc92124c579b000129ce095d3f633a07a77f329",
+    "file_sha256": "47e8ef9bd26c809434f64c7b1d41a7fdf235a52d22993a3de1ce391639a4d253",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-transactional-peer-move-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-transactional-peer-move-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_shared_target_adjacent_label_clears_local_branch[x]",
+    "test_pr204_p2_shared_target_adjacent_label_clears_local_branch[Intervening flow label]",
+    "test_pr204_p2_sideport_footer_clears_all_labels_and_cards[False]",
+    "test_pr204_p2_sideport_footer_clears_all_labels_and_cards[True]"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-shared-target-safe-sideports-p2-successor.v1",
+  "scope": "Adjacent shared-target long branch label relocation and obstacle-free process feedback outer-footer side-port geometry for every vertical/horizontal segment and own feedback label",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "98df22004dde2c7765a59a7dc71411211bccc5f3992779f52380b9eee4137978",
+    "tests/visual/test_native_diagram.py": "3a7813a8e6cd6c10b33d1648c7b93e9c66b2972be9e15d914d2976009588dbf6"
+  },
+  "status": "eleventh_codex_and_twelfth_independent_p2_failfirst_corrected_native_sweep_green_ci_review_pending",
+  "test_receipts": {
+    "both_p2_targeted_green_lifecycle_sha256": "a6e42bfacfbdbda9f9bed6f669c2a47b147d8ca84e4538ef9a47f171399ff1fc",
+    "both_p2_targeted_green_task": "bc2a258cac1349c8bd4229a8",
+    "bounded_1746_model_sweep_lifecycle_sha256": "2b3a4bc31a571badbf2c71f3a66b84fb031d449c950723c34f57dae34e95b780",
+    "bounded_1746_model_sweep_task": "372ff05ca524400d88a29d52",
+    "codex_shared_target_failfirst_lifecycle_sha256": "46f948202dc3b2de6564ab909441ea283b8827fccefc7d27eb7a3109939de6cd",
+    "codex_shared_target_failfirst_task": "4a16da57595945799fc92aef",
+    "codex_shared_target_green_lifecycle_sha256": "33747b7780b5985261a660821176e43945a61e648437766ad3912a0ac3f86989",
+    "codex_shared_target_green_task": "5f91eeaa8d6f49dc9fb0e293",
+    "full_native_suite_lifecycle_sha256": "c86ce2954fb775f5d1269eef4df598e9bcab274959552103f7d54ed7b653defa",
+    "full_native_suite_task": "00276893a6c2459e8ba0dfaa",
+    "independent_claude_role_receipt_sha256": "bef55bf1566881d359514752210ab9c4e82ebfad13e1ba962b05dce772a8a544",
+    "independent_claude_role_unit": "grabowski-job-15eaf8562833",
+    "independent_claude_role_verdict": "NEEDS_CHANGE",
+    "independent_sideport_failfirst_lifecycle_sha256": "6ae1b982c17cfd5fec7f3ab869d00509ccc5c6571b2234079258688e2441a13a",
+    "independent_sideport_failfirst_task": "e682d50366094c018b7e1660"
+  }
+}

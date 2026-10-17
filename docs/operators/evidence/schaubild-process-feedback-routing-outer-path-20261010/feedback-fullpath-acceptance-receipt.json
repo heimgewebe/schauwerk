@@ -1,0 +1,46 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-fullpath.v1",
+  "scope": "codex-p2-ungrouped-feedback-full-horizontal-and-vertical-leg-clearance",
+  "recorded_at": "2026-10-10T14:02:49.047+00:00",
+  "status": "source_verified_exact_head_ci_and_review_pending",
+  "functional_head": "321f7e3e19d4e3922c68982af94367aeeb41733b",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-anchor-cluster.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/anchor-cluster-acceptance-receipt.json",
+    "file_sha256": "1cadf2aed54da20bb03f71c517dc25410e4cb3fbb4726c6f2a27c5527852ec89",
+    "evidence_digest": "9a533997da5add95b133d12fea54882ec82a429ff619109d85dd71ce204756bb"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "ee951396e266e56e937ff9fe08f71a13182d808734f5f7554ff057b7c66d9157",
+    "tests/visual/test_native_diagram.py": "0ea705af85a81315d85046f003cdc917f389c25cca16098a5286b57e342b1f85"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "horizontal_feedback_path_collision_fail_first_reproduced": true,
+    "source_and_target_feedback_legs_collision_free_after_fix": true,
+    "full_native_diagram_suite_passed": true,
+    "native_diagram_passed_count": 160,
+    "ruff_check_passed": true,
+    "git_diff_check_passed": true,
+    "full_exact_head_ci_passed": false,
+    "fresh_visual_browser_acceptance": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "review_thread": "PRRT_kwDOTGqvHc6rBbgR",
+    "fail_first_task_id": "12c334d879d441b0a488d8ec",
+    "full_native_diagram_task_id": "6de6ae2ebaa74068a7a0691b",
+    "ruff_task_id": "0f5e339639e241e9bf27000b",
+    "pre_fix_svg_diagnostic_task_id": "87951ee3038c4d928fa2405a",
+    "regression_test": "test_ungrouped_feedback_full_horizontal_route_clears_other_labels"
+  },
+  "does_not_establish": [
+    "fresh exact-head GitHub CI",
+    "decision-bound independent reviewer PASS",
+    "fresh browser/pixel acceptance",
+    "Captain merge readiness",
+    "production deployment"
+  ],
+  "evidence_digest": "484b6ddb1a1721cf05f318229de6c623c3057936054017b91889d9ede536f3c2"
+}

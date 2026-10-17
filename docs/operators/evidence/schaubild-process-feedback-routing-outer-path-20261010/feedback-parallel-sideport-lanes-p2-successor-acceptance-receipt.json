@@ -1,0 +1,56 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-parallel-outer-sideport-lanes-p2-successor.v1",
+  "based_on_pr_head": "3553d3d1ba68d89f3679adba00b62bd3fa266c22",
+  "scope": "Distinct stable side ports and path-only footer rails for semantically separate parallel process feedback returns sharing directed endpoints; full-segment peer labels and node clearance",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-peer-feedback-label-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-peer-label-collision-p2-successor-acceptance-receipt.json",
+    "file_sha256": "be1b694c2f34079463d44961ff067621ea41309ba4d601d2c9ebe9035b5a05ee",
+    "evidence_digest": "986f64f8b86884151b90c0b2880fbb0192709dc6b99cdc9c19dfe7ced2b6de49"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6d64e5104a6cc3cf40dcbe2d23abc916f90bc3c458277169d4f3d83067b5467d",
+    "tests/visual/test_native_diagram.py": "c816d6c3bcc6ba8116c65b4cf8fbedbab270b147fa52564708de32dd34deac1e"
+  },
+  "regression_tests": [
+    "test_pr204_p2_parallel_outer_feedbacks_have_distinct_routes",
+    "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes"
+  ],
+  "test_receipts": {
+    "parallel_duplicate_red_task": "d83c145cad0b40378191b817",
+    "parallel_duplicate_red_lifecycle_sha256": "729e859c73ec9c82b2fbd9e32a8db81fe5c77e3ff60bdda1a4257afc515a3a74",
+    "initial_two_peer_green_task": "c8dad1199bcb4ae398a539ca",
+    "initial_two_peer_green_lifecycle_sha256": "d93173b31d86788e66a8813fb0951c2232e30e0a502ba7a170154610bdab67f2",
+    "five_peer_adversarial_red_task": "71c174f5885440d78f651eb9",
+    "five_peer_adversarial_red_lifecycle_sha256": "1fd8c97dc0f9a82f925c964a127c3e586cf8a71140c3f2fd7995232109697829",
+    "final_target_green_task": "126d83114532473e9f4039bf",
+    "final_target_green_lifecycle_sha256": "bc118dd7eaf5acfcae6b2d39d453545d22938cf7dfab013e5a8712be1c165b76",
+    "bounded_parallel_fuzz_green_task": "2189dff13a134e0887dc3048",
+    "bounded_parallel_fuzz_green_lifecycle_sha256": "5d5e225f17c068be196cc8b0191628a5150a755593e607b26d0d97b01f4f8b0e",
+    "full_native_visual_green_task": "3a9a792b5c2f46eb8a17a31a",
+    "full_native_visual_green_lifecycle_sha256": "41cbee938339a4430041775c7d22f1c9511324b4009d281b506adbe7347dcb76"
+  },
+  "checks": {
+    "immutable_peer_label_parent_retained": true,
+    "parallel_duplicate_fail_first_reproduced": true,
+    "five_parallel_semantic_feedback_fuzz_fail_first_reproduced": true,
+    "same_endpoint_parallel_route_regressions_green": true,
+    "bounded_model_count": 300,
+    "bounded_models_with_parallel_outer_feedback": 32,
+    "bounded_fuzz_failures": 0,
+    "native_visual_suite_green": true,
+    "full_local_validate_passed": false,
+    "full_exact_head_github_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "fresh full Make validate on final receipt-bound source",
+    "fresh Chrome pixel approval",
+    "new exact-head GitHub CI",
+    "independent exact published revision R3 review PASS",
+    "Captain merge or production deployment"
+  ],
+  "status": "two_to_five_parallel_feedback_routing_red_green_and_300_model_fuzz_pass; full_validate_ci_review_captain_pending",
+  "evidence_digest": "c7931d61e9397dca9301d79b2fa1ceee2f44b52e82763e44426bac705af5cae5"
+}

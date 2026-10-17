@@ -1,0 +1,52 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-outer-path.v1",
+  "scope": "codex-p2-outer-long-branch-label-collision",
+  "recorded_at": "2026-10-10T05:46:24.620128+00:00",
+  "status": "source_verified_visual_and_independent_review_pending",
+  "functional_head": "cef1e5af3f2c374ad911ee520b9b60994c83e84d",
+  "parent_evidence": {
+    "evidence_digest": "5b21265c48f106985cfd648acb49743f0b043a2de5589e64eae18a0d0eece16a",
+    "file_sha256": "2d008ce0472440b2a830ce4ebce37c229a2a8ddcd77489ecadc86d4c28541c24",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-review-closure-20261010/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-review-closure.v1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "a03eaddf2fba0c2927151ac4be57861f6dc35bc1c7ac79fb6f97d5bcaaccb500",
+    "tests/visual/test_native_diagram.py": "5aaeb466b6385cc51d56381d45dfec93d5f43470ebd1c956c38691f8b7eb9095"
+  },
+  "checks": {
+    "parent_receipt_immutable": true,
+    "outer_long_branch_crossing_failed_before_fix": true,
+    "outer_long_branch_crossing_passed_after_fix": true,
+    "complete_native_diagram_suite_passed": true,
+    "ruff_diff_check_passed": true,
+    "fresh_visual_browser_acceptance": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "review_source_head": "45d2f02105c42125fa64888be4cf6d31c30ba21d",
+    "codex_comment_id": 4236528593,
+    "negative_before": {
+      "outer_source_corridor_y": 388.0,
+      "local_label_box": [
+        359.0,
+        365.5,
+        118.0,
+        29.0
+      ],
+      "failure": "horizontal outer branch segment intersects label"
+    },
+    "regression_test": "test_local_long_branch_label_clears_other_outer_branch_source_path",
+    "fix_commit": "cef1e5af3f2c374ad911ee520b9b60994c83e84d",
+    "source_tests": "full tests/visual/test_native_diagram.py PASS with Python 3.13"
+  },
+  "does_not_establish": [
+    "visual browser/pixel acceptance",
+    "full exact successor-head GitHub CI",
+    "independent reviewer verdict",
+    "Captain merge readiness",
+    "production publication or deployment"
+  ],
+  "evidence_digest": "e1fd536ecba4431100ee2bbf72811ecb3eb668d84fb75b7c74a8011ce32bfc31"
+}

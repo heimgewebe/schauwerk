@@ -1,0 +1,44 @@
+{
+  "based_on_pr_head": "dbe9fb534929ecbd94fbf0dcfb69adb81dc37539",
+  "checks": {
+    "captain_merge_authorized": false,
+    "eighteen_node_process_width_preserved": true,
+    "fresh_visual_browser_acceptance": false,
+    "full_exact_head_ci_passed": false,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 164,
+    "ruff_check_passed": true,
+    "three_p2_fail_first_regressions_reproduced": true,
+    "three_p2_regressions_pass_after_fix": true
+  },
+  "does_not_establish": [
+    "published final PR head",
+    "fresh full exact-head GitHub CI",
+    "decision-bound independent review PASS",
+    "browser/pixel acceptance",
+    "production deployment",
+    "Captain merge authority"
+  ],
+  "evidence_digest": "6e43aa96f48c17618208d48d1d4908b945dac050633c6f8db62d64233bca2504",
+  "parent_evidence": {
+    "evidence_digest": "e829e4e5adf57b35154dc7b81ad84f63f45cf26597fd09d61f63f90a052d27f6",
+    "file_sha256": "21a79015d35782df27d69f5a48b6be537af945dd865f7ba871019099bf99c9ee",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/long-leg-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-long-leg.v1"
+  },
+  "regression_tests": [
+    "test_grouped_pack_reserves_later_singleton_label_other_cluster",
+    "test_grouped_pack_reserves_anchored_label_in_foreign_cluster",
+    "test_local_group_long_branch_target_leg_clears_other_corridor_label",
+    "test_process_feedback_return_stays_local_to_its_cycle_block"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-cluster-occupancy.v1",
+  "scope": "three-codex-p2-grouped-label-singleton-anchored-and-long-target-corridor",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "98a64b56c04ba0bd2657750b3d422d54dcbf08248ed30a78049341d60491bd26",
+    "tests/visual/test_native_diagram.py": "0e873832928337743a39800abe466b2b722af341c07d960879dc73dddb23c177"
+  },
+  "status": "candidate_geometry_regression_verified_exact_head_ci_review_pending"
+}

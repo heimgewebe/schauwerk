@@ -1,0 +1,82 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "7e5e82cad542e7a5eb4a83e5ab88a0164cc4aab5",
+  "head_sha": "70354608040281d4a6e4a24c92f889a59325f66f",
+  "functional_diff_sha256": "8ae73ab28168d456ff627284a797f790c30e12a36bcc60aa3f0574190e4b6e7e",
+  "functional_diff_bytes": 20522,
+  "pre_review_worktree": {
+    "tracked_diff_sha256": "b9b741702315fc0c36d59d1741f74b9804c85a6413e9a0a7361e06f46c2da60f",
+    "tracked_diff_bytes": 8838,
+    "acceptance_receipt_sha256": "5d8452f104bb5c051886393fe9139f11771c92e720b8bfab4c86291d8e25eaa9",
+    "publication_fixture_sha256": "fce12fd9034d23917978571583a1261cfdc9227c22e211e1e263fb4894f27cfb"
+  },
+  "reviewed_files": [
+    "src/schauwerk/visual/native_diagram.py",
+    "tests/visual/test_native_diagram.py",
+    "tests/publication/test_publication_fixtures.py",
+    "docs/operators/evidence/schaubild-process-feedback-routing-review-collision-fix-20261006/acceptance-receipt.json"
+  ],
+  "review_focus": [
+    "all three exact Codex P2 findings are reproduced from their reviewed heads rather than inferred",
+    "feedback return routing checks both label rectangles and the traversed corridor path before remaining local",
+    "local long-branch channels reject label footprints that overlap cards and avoid labels in every traversed target corridor",
+    "the newest target-corridor failure has a permanent order-independent regression rather than only an ad-hoc reproduction",
+    "the changed 18-node product pixels receive new visual acceptance instead of inheriting the parent acceptance",
+    "historical acceptance receipts remain immutable while the new successor becomes authoritative only for the revised renderer and test bytes",
+    "the complete successor worktree passes Ruff, compile, registry validation, and all repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "The first follow-up could have fixed only label rectangles while leaving the feedback return line itself able to cross a corridor label.",
+      "resolution": "The exact reviewed reproduction is now path-checked; browser and geometry evidence show feedback_path_hits_branch_label=false."
+    },
+    {
+      "iteration": 2,
+      "finding": "A local inter-group gutter can be geometrically available while the rendered label footprint still overlaps a card.",
+      "resolution": "Local gutter admission now evaluates the rendered label rectangle; an oversize two-line label is rejected to the established outer gutter and remains node-clear."
+    },
+    {
+      "iteration": 3,
+      "finding": "A safe source-corridor label does not prove the full long-branch route is safe in the target corridor.",
+      "resolution": "The newest Codex n0→n5 plus n1→n5 case is reproduced and permanently tested; the long path does not intersect the target-corridor label and edge-order reversal is stable."
+    },
+    {
+      "iteration": 4,
+      "finding": "Passing synthetic fixtures would not establish that the real 18-node product still looks acceptable.",
+      "resolution": "A fresh exact-head browser render changed from the parent PNG, so inheritance was rejected; the new 2588×1118 product image was visually inspected and accepted with the local readable 'neue Planung' label and no node/label overlaps."
+    },
+    {
+      "iteration": 5,
+      "finding": "Visual success alone would not establish provenance or repository integrity.",
+      "resolution": "A new immutable successor binds the exact renderer/test SHA-256 values, parents the previous acceptance without rewriting it, passes the publication binding test, and the full successor validation passes 1661/1661 tests."
+    }
+  ],
+  "validation": {
+    "native_diagram_suite_task_id": "b739e8634a6e495ca4ad8ca4",
+    "native_diagram_suite_lifecycle_receipt_sha256": "45eb63eb32a8b2104b3dfe95e1e10fe03c52b983fa0b9b100cc1f6e096bcdb38",
+    "native_diagram_suite_passed_count": 151,
+    "pre_successor_full_validate_task_id": "482d9284c6ba4651a9671d06",
+    "pre_successor_full_validate_lifecycle_receipt_sha256": "3ae60e3a0aba48daf7b03c930f9185c52e45c174287b5e65896585f6fc4759e2",
+    "successor_full_validate_task_id": "767148d18deb462d835e7877",
+    "successor_full_validate_lifecycle_receipt_sha256": "0161690f8d025fde0d9564679dc162531b09967e175f3f776813075d49023fce",
+    "successor_full_validate_passed_count": 1661,
+    "exact_head_visual_task_id": "9311850b095a4d00bc7c488b",
+    "exact_head_visual_lifecycle_receipt_sha256": "66bcaeb53e619433547696ea8cbae38add37bb9295196bf5444def2bcc4d5c1f",
+    "product_browser_png_sha256": "b20714e821173ab4200dce711d2022c55dbf7a965d9101cbfe3f339fb74a1142",
+    "target_corridor_browser_png_sha256": "4e2b130a53c5887d55dd47dcfe75e1eae4db1b9b80d99eebd8458842125a05cd",
+    "visual_result": "accepted"
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "GitHub CI success on the later committed head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}
