@@ -1,0 +1,54 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-selfloop-peer-paint-order-p2-successor.v1",
+  "based_on_pr_head": "a1a3d9f3ce4c80410f0b2e34a63995a302bafb3e",
+  "scope": "For grouped process charts with parallel feedback endpoint peers, reuse the existing deterministic SVG paint ordering also outside the group-gap fallback; preserve previous painter order for unrelated charts",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-selfloop-peers-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-selfloop-peers-p2-successor-acceptance-receipt.json",
+    "file_sha256": "ab242ca84612e2edadac39c40f8c52f4a2b50ac792ae9b72421cac55b9ac410a",
+    "evidence_digest": "f3f162369bb9d0a034ab4e064a75bd6498e98672f9eb8dbe0420f4cabbc10769"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2744cbef0313d0964bae0a181670942d3fa5488f17e19e4247e9810ba4c1da9e",
+    "tests/visual/test_native_diagram.py": "562836f09dd802262feb76578f30dfd9b0c1b571baafe26d6ade5b257bf8b6f8"
+  },
+  "regression_tests": [
+    "test_pr205_p2_selfloop_peer_crossings_have_stable_paint_order"
+  ],
+  "local_checks": {
+    "exact_parent_head_red_reproduced": true,
+    "focused_green": true,
+    "full_native_suite_green": true,
+    "ruff_passed": true,
+    "historical_parent_receipt_preserved": true,
+    "full_make_validate_passed": true,
+    "browser_smoke_passed": true,
+    "github_exact_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "local_1736_tests_and_30_browser_pass_pending_exact_ci_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "independent visual acceptance of new geometry",
+    "GitHub CI on exact published successor",
+    "all open PR204 and PR205 P2 findings resolved",
+    "independent exact head whole-diff review",
+    "Captain merge authorization",
+    "production deployment or runtime convergence",
+    "independent test attestation on any future committed revision"
+  ],
+  "test_receipts": {
+    "full_make_validate": {
+      "task_id": "67ef6973864b476e8c628ed2",
+      "passed_tests": 1736,
+      "exit_code": 0
+    },
+    "browser_smoke": {
+      "task_id": "901b48dd37d04424b4a14feb",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "evidence_digest": "dc17e1e83764cc44ee0273e27d0ba080469f868a9578752d786f99d22d1a0ae2"
+}

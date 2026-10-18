@@ -6075,3 +6075,32 @@ def test_pr205_p2_parallel_feedback_self_loops_do_not_coincide() -> None:
         return paths, labels, root.attrib["viewBox"]
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_selfloop_peer_crossings_have_stable_paint_order() -> None:
+    """An equivalent edge permutation must not change which crossing is painted first."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "loop0", "from": "n2", "to": "n2",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "loop1", "from": "n2", "to": "n2",
+         "label": "x", "kind": "feedback"},
+        {"id": "loop2", "from": "n2", "to": "n2",
+         "label": "weitere Rueckmeldung", "kind": "feedback"},
+        {"id": "flow", "from": "n3", "to": "n1",
+         "label": "x", "kind": "flow"},
+    ]
+
+    def rendered(ordered: list[dict]) -> tuple[list[str], dict]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        painted = [
+            node.attrib["data-source-id"]
+            for node in root
+            if node.attrib.get("data-source-kind") == "edge"
+        ]
+        paths = _edge_paths(root)
+        assert len({paths[edge_id] for edge_id in ("loop0", "loop1", "loop2")}) == 3
+        return painted, paths
+
+    assert rendered(edges) == rendered(list(reversed(edges)))

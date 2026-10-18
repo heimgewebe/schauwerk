@@ -4129,6 +4129,7 @@ def render_native_diagram(
     feedback_path_y: dict[str, float | tuple[float, float]] = {}
     feedback_path_footer_ids: set[str] = set()
     feedback_outer_footer_ids: set[str] = set()
+    has_parallel_feedback_peers = False
     # Same directed endpoints yield coincident local feedback strokes.
     # Route semantic peers through the existing stable outer side-port lanes.
     if intent == "process" and model["groups"]:
@@ -4139,6 +4140,7 @@ def render_native_diagram(
             )
         for peer_ids in by_endpoints.values():
             if len(peer_ids) > 1:
+                has_parallel_feedback_peers = True
                 feedback_outer_footer_ids.update(peer_ids)
                 feedback_footer_ids.update(peer_ids)
     feedback_local_gutter_x: dict[str, float] = {}
@@ -5396,11 +5398,12 @@ def render_native_diagram(
         )
         lines.append("</g>")
 
-    # Group-gap fallback can cross peer strokes. Give every input ordering
-    # the same paint order so crossing semantics cannot flip visually.
+    # Group-gap fallback and parallel feedback peers can cross other strokes.
+    # Use a stable painter order only in those cases; preserve older SVG output.
     paint_edges = (
         sorted(model["edges"], key=lambda edge: str(edge["id"]))
-        if _process_group_gap_extra else model["edges"]
+        if _process_group_gap_extra or has_parallel_feedback_peers
+        else model["edges"]
     )
     for edge in paint_edges:
         lines.extend(
