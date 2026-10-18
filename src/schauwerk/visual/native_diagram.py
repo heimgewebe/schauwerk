@@ -2751,12 +2751,36 @@ def _render_node(
     return lines
 
 
-def render_native_diagram(value: Mapping[str, Any]) -> str:
+def render_native_diagram(
+    value: Mapping[str, Any], *, _process_group_gap_extra: int = 0
+) -> str:
     """Validate representation input and return one deterministic, standalone SVG."""
 
     model = _normalized_input(value)
     positions, regions, width, height = _layout(model)
     intent = str(model["intent"])
+    if _process_group_gap_extra:
+        # Only a failed grouped side-port plan invokes this internal retry.
+        # Shift whole regions including nodes; width-only growth cannot open
+        # a corridor trapped between the existing card columns.
+        if intent != "process" or len(regions) < 2:
+            raise ValueError("process gap expansion requires grouped regions")
+        order = {
+            region[0]: index for index, region in enumerate(
+                sorted(regions, key=lambda region: (region[2], str(region[0])))
+            )
+        }
+        node_group = {str(node["id"]): node["group"] for node in model["nodes"]}
+        positions = {
+            node_id: (x + _process_group_gap_extra * order[node_group[node_id]], y)
+            for node_id, (x, y) in positions.items()
+        }
+        regions = [
+            (group_id, label, x + _process_group_gap_extra * order[group_id],
+             y, region_width, region_height)
+            for group_id, label, x, y, region_width, region_height in regions
+        ]
+        width += _process_group_gap_extra * (len(regions) - 1)
     process_row_gap = _PROCESS_ROW_GAP if regions else _NON_PROCESS_ROW_GAP
     if intent == "process":
         # Standard same-row process labels sit above their cards. One-line
@@ -5210,6 +5234,23 @@ def render_native_diagram(value: Mapping[str, Any]) -> str:
                 break
             width += 16
         else:
+            # Width-only replans cannot free a target trapped between dense
+            # group columns. Retry with actual free horizontal group space.
+            # The finite limit derives from card and edge-label geometry,
+            # never a constant number of attempts unrelated to the model.
+            if len(regions) > 1:
+                clearance_budget = 2 * _NODE_WIDTH + sum(
+                    _edge_label_metrics(edge, positions, intent).width + 16
+                    for edge in model["edges"]
+                )
+                next_gap = (
+                    8 if _process_group_gap_extra == 0
+                    else 2 * _process_group_gap_extra
+                )
+                if next_gap <= clearance_budget:
+                    return render_native_diagram(
+                        value, _process_group_gap_extra=next_gap
+                    )
             # Never silently reuse a route through a card or relation label.
             raise ValueError("no collision-free process feedback side-port route")
 

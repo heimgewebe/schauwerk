@@ -5954,3 +5954,36 @@ def test_pr204_p2_outer_forward_source_leg_clears_local_long_label(
     assert _p2_orthogonal_segments(paths["wide"])
     assert _p2_linear_path_clears_box(paths["wide"], labels["local"])
     assert _p2_linear_path_clears_box(paths["local"], labels["wide"])
+
+def test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap() -> None:
+    """A feasible grouped feedback layout must not fail after 66 width-only retries."""
+    raw = _p2_feedback_geometry_model((7, 5, 1, 2))
+    edges = [
+        {"id": "risk", "from": "n13", "to": "n5",
+         "label": "R" * 25, "kind": "risk"},
+        {"id": "far", "from": "n2", "to": "n14",
+         "label": "W" * 22, "kind": "flow"},
+        {"id": "near", "from": "n0", "to": "n11",
+         "label": "L" * 22, "kind": "flow"},
+        {"id": "feedback", "from": "n14", "to": "n7",
+         "label": "x", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths = _edge_paths(root)
+        labels = _edge_label_boxes(root)
+        cards = _node_boxes(root)
+        assert _p2_orthogonal_segments(paths["feedback"])
+        for edge_id, box in labels.items():
+            if edge_id != "feedback":
+                assert _p2_linear_path_clears_box(paths["feedback"], box), edge_id
+        for node_id, box in cards.items():
+            if node_id not in {"n14", "n7"}:
+                assert _p2_linear_path_clears_box(paths["feedback"], box), node_id
+        assert float(root.attrib["viewBox"].split()[2]) <= 1950
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))

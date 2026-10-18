@@ -1,0 +1,53 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-sideport-group-gap-p2-successor.v1",
+  "based_on_pr_head": "1ad5a9ad0bcd0ae2332e7220904aa5aeb8708487",
+  "scope": "A valid 7/5/1/2-group process must render instead of exhausting 66 width-only side-port attempts; bounded deterministic group-gap fallback is used only after old geometry fails",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-outer-source-leg-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-outer-forward-source-leg-p2-successor-acceptance-receipt.json",
+    "file_sha256": "e29b960d5496a9439c638d8d3d1039a4247c986eb9129678fa9bb59433353339",
+    "evidence_digest": "8447014e6586927aeda1c9d3f9fbd5e28c94af74fd4669643449f21816a72785"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "bc077ac1d4b80ed408f759d296f84a0f9043bc82c98c55dbaa353f4b028f5fb6",
+    "tests/visual/test_native_diagram.py": "3fba5dc0a7825d22b712670f3f81f905ae605bb7da99569e1e4a1f2e7b8bfed3"
+  },
+  "regression_tests": [
+    "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap"
+  ],
+  "local_checks": {
+    "exact_parent_head_red_reproduced": true,
+    "focused_green": true,
+    "full_native_suite_green": true,
+    "ruff_passed": true,
+    "historical_parent_receipt_preserved": true,
+    "full_make_validate_passed": true,
+    "published_exact_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "browser_smoke_passed": true
+  },
+  "status": "local_full_regression_and_chromium_passed_pending_independent_review_visual_acceptance_ci_captain",
+  "does_not_establish": [
+    "independent visual acceptance of new geometry",
+    "GitHub CI and tests on future committed source/receipt revision",
+    "GitHub CI on exact published source revision",
+    "independent review clearance for all PR204 P2 issues",
+    "Captain merge approval",
+    "production deployment or convergence"
+  ],
+  "test_receipts": {
+    "full_make_validate": {
+      "task_id": "b4bc95faaa04461c83d6777e",
+      "passed_tests": 1733,
+      "exit_code": 0
+    },
+    "browser_smoke": {
+      "task_id": "34a5e3c53a124c4c9e99018d",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "evidence_digest": "859cef5f4f461b6a49ffd9cff872b0e91cabca55530873c916d29bb6de37abfc"
+}

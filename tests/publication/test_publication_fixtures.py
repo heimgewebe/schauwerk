@@ -11014,8 +11014,53 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert source_leg["evidence_digest"] == digest_mapping(source_leg, "evidence_digest")
     assert set(source_leg["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
-    for name, expected in source_leg["source_bindings"].items():
+    # The prior acceptance is immutable: its historical source revision
+    # must not be conflated with a later unaccepted code change.
+    assert source_leg["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "8cc4ae8925e9f9595ad19fd728d6914eef01297f3ea6721a7c0c97538b149fe4"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "acf63e46ca040b51e390578e97b78392d9ac1065cca2c24869d481f22c773612"
+        ),
+    }
+    group_gap_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-sideport-group-gap-p2-successor-acceptance-receipt.json"
+    )
+    group_gap = json.loads(group_gap_path.read_text(encoding="utf-8"))
+    assert group_gap["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-sideport-group-gap-p2-successor.v1"
+    )
+    assert group_gap["based_on_pr_head"] == "1ad5a9ad0bcd0ae2332e7220904aa5aeb8708487"
+    assert group_gap["parent_evidence"] == {
+        "schema_version": source_leg["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-outer-forward-source-leg-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(source_leg_path.read_bytes()).hexdigest(),
+        "evidence_digest": source_leg["evidence_digest"],
+    }
+    assert group_gap["evidence_digest"] == digest_mapping(group_gap, "evidence_digest")
+    assert set(group_gap["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    for name, expected in group_gap["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert group_gap["regression_tests"] == [
+        "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap"
+    ]
+    assert group_gap["local_checks"]["exact_parent_head_red_reproduced"] is True
+    assert group_gap["local_checks"]["focused_green"] is True
+    assert group_gap["local_checks"]["full_native_suite_green"] is True
+    assert group_gap["local_checks"]["full_make_validate_passed"] is True
+    assert group_gap["local_checks"]["browser_smoke_passed"] is True
+    assert group_gap["test_receipts"]["full_make_validate"]["passed_tests"] == 1733
+    assert group_gap["test_receipts"]["browser_smoke"]["passed_cases"] == 30
+    assert group_gap["local_checks"]["historical_parent_receipt_preserved"] is True
+    assert group_gap["local_checks"]["visual_acceptance_pass"] is False
+    assert group_gap["local_checks"]["independent_exact_head_review_pass"] is False
+    assert group_gap["local_checks"]["captain_merge_authorized"] is False
     assert source_leg["regression_tests"] == [
         "test_pr204_p2_outer_forward_source_leg_clears_local_long_label"
     ]
@@ -11089,7 +11134,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert long_leg["source_bindings"][name] == current
+            assert group_gap["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11107,7 +11152,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert long_leg["source_bindings"][name] == current
+            assert group_gap["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:
