@@ -1586,7 +1586,7 @@ def _edge_geometry(
     label_offset_y = 0.0
     if kind == "feedback" and intent == "process":
         route = "feedback-return"
-        if feedback_outer_footer and not self_loop:
+        if feedback_outer_footer:
             planned_footer_label_x: float | None = None
             if feedback_outer_preplanned_ports is not None:
                 # Never silently recalculate without the previously reserved
@@ -4134,10 +4134,9 @@ def render_native_diagram(
     if intent == "process" and model["groups"]:
         by_endpoints: dict[tuple[str, str], list[str]] = defaultdict(list)
         for edge in feedback_edges:
-            if edge["from"] != edge["to"]:
-                by_endpoints[(str(edge["from"]), str(edge["to"]))].append(
-                    str(edge["id"])
-                )
+            by_endpoints[(str(edge["from"]), str(edge["to"]))].append(
+                str(edge["id"])
+            )
         for peer_ids in by_endpoints.values():
             if len(peer_ids) > 1:
                 feedback_outer_footer_ids.update(peer_ids)

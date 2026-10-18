@@ -6040,3 +6040,38 @@ def test_pr204_p2_parallel_same_endpoints_have_separate_visible_routes() -> None
         return paths, labels, root.attrib["viewBox"]
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_parallel_feedback_self_loops_do_not_coincide() -> None:
+    """Two semantically different return-to-self edges need visible routes."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "loop0", "from": "n2", "to": "n2",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "loop1", "from": "n2", "to": "n2",
+         "label": "x", "kind": "feedback"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths = _edge_paths(root)
+        labels = _edge_label_boxes(root)
+        cards = _node_boxes(root)
+        assert paths["loop0"] != paths["loop1"]
+        for edge_id in ("loop0", "loop1"):
+            assert _p2_orthogonal_segments(paths[edge_id])
+            for peer_id, box in labels.items():
+                if peer_id != edge_id:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, peer_id
+                    )
+            for node_id, box in cards.items():
+                if node_id != "n2":
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, node_id
+                    )
+        assert float(root.attrib["viewBox"].split()[2]) <= 1950
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
