@@ -11150,8 +11150,70 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         selfloop_paint, "evidence_digest"
     )
     assert set(selfloop_paint["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
-    for name, expected in selfloop_paint["source_bindings"].items():
+    # The painter predecessor is immutable historical evidence. A new,
+    # digest-linked technical successor alone owns the current renderer bytes.
+    assert selfloop_paint["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "2744cbef0313d0964bae0a181670942d3fa5488f17e19e4247e9810ba4c1da9e"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "562836f09dd802262feb76578f30dfd9b0c1b571baafe26d6ade5b257bf8b6f8"
+        ),
+    }
+    collision_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-collision-p2-successor-acceptance-receipt.json"
+    )
+    collision = json.loads(collision_path.read_text(encoding="utf-8"))
+    assert collision["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-collision-p2-successor.v1"
+    )
+    assert collision["based_on_pr_head"] == (
+        "1199ed66d35349cc8abfb6dc2066933db4886ebc"
+    )
+    assert collision["parent_evidence"] == {
+        "schema_version": selfloop_paint["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-selfloop-peer-paint-order-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(selfloop_paint_path.read_bytes()).hexdigest(),
+        "evidence_digest": selfloop_paint["evidence_digest"],
+    }
+    assert collision["evidence_digest"] == digest_mapping(
+        collision, "evidence_digest"
+    )
+    assert set(collision["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert collision["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "8b86c63217c0b42efaa0a03d26eb4e208f1985a76ff81edd714973484da2e4c1"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "48032e370b48a894ca7af76d17eab80912ce4c151ba4b22e99f9f6907aa4d5a5"
+        ),
+    }
+    for name, expected in collision["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert collision["regression_tests"] == [
+        "test_pr204_p2_late_shifted_feedback_gutter_avoids_foreign_cards",
+        "test_pr204_p2_packed_adjacent_label_clears_outer_risk_target_leg",
+    ]
+    assert collision["test_receipts"]["pre_fix_red"] == {
+        "task_id": "45d8a0c286d748c386d77ce4",
+        "failed_tests": 2,
+        "exit_code": 1,
+    }
+    assert collision["test_receipts"]["post_fix_focused_green"] == {
+        "task_id": "f824adce2067496a8eb99951",
+        "passed_tests": 2,
+        "exit_code": 0,
+    }
+    assert collision["local_checks"]["pre_fix_red_reproduced"] is True
+    assert collision["local_checks"]["post_fix_focused_green"] is True
+    assert collision["local_checks"]["historical_parent_receipt_preserved"] is True
+    assert collision["local_checks"]["visual_acceptance_pass"] is False
+    assert collision["local_checks"]["captain_merge_authorized"] is False
     assert selfloop_paint["regression_tests"] == [
         "test_pr205_p2_selfloop_peer_crossings_have_stable_paint_order"
     ]
@@ -11280,7 +11342,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert selfloop_paint["source_bindings"][name] == current
+            assert collision["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11298,7 +11360,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert selfloop_paint["source_bindings"][name] == current
+            assert collision["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

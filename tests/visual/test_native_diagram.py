@@ -6104,3 +6104,55 @@ def test_pr205_p2_selfloop_peer_crossings_have_stable_paint_order() -> None:
         return painted, paths
 
     assert rendered(edges) == rendered(list(reversed(edges)))
+
+def test_pr204_p2_late_shifted_feedback_gutter_avoids_foreign_cards() -> None:
+    """A label-forced late detour must also reserve card rectangles."""
+    raw = _p2_feedback_geometry_model((6, 7, 2))
+    edges = [
+        {"id": "feedback", "from": "n0", "to": "n2",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "flow0", "from": "n3", "to": "n11",
+         "label": "F" * 22, "kind": "flow"},
+        {"id": "flow1", "from": "n7", "to": "n8",
+         "label": "E" * 22, "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        for other_id, box in labels.items():
+            if other_id != "feedback":
+                assert _p2_linear_path_clears_box(paths["feedback"], box), other_id
+        for node_id, box in cards.items():
+            if node_id not in {"n0", "n2"}:
+                assert _p2_linear_path_clears_box(paths["feedback"], box), node_id
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr204_p2_packed_adjacent_label_clears_outer_risk_target_leg() -> None:
+    """Horizontal label packing must reserve the outer long-risk target leg."""
+    raw = _p2_feedback_geometry_model((2, 2, 5, 5))
+    edges = [
+        {"id": "outer", "from": "n1", "to": "n13",
+         "label": "R" * 70, "kind": "risk"},
+        {"id": "a", "from": "n8", "to": "n12",
+         "label": "L" * 70, "kind": "flow"},
+        {"id": "b", "from": "n8", "to": "n13",
+         "label": "x", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["outer"], labels["a"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))

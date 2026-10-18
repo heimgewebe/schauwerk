@@ -3337,6 +3337,49 @@ def render_native_diagram(
                 in corridor_groups[corridor]
                 if anchored and edge_id not in candidate_ids
             ]
+            # A packed label cannot cover the outer source/target leg of a
+            # long branch routed later in this same corridor. Preserve the
+            # established +/-8 px long-branch lane envelope when checking.
+            for long_id in long_branch_ids:
+                long_edge = edges_by_id[long_id]
+                long_source = positions[str(long_edge["from"])]
+                long_target = positions[str(long_edge["to"])]
+                if long_source[1] == long_target[1]:
+                    continue
+                direction = 1 if long_source[1] < long_target[1] else -1
+                outer_x = anchored_branch_gutter_x.get(
+                    long_id, float(width) - 16.0
+                )
+                endpoint_legs = (
+                    (
+                        long_source[0] + _NODE_WIDTH / 2,
+                        (
+                            long_source[1] + _NODE_HEIGHT
+                            if direction > 0 else long_source[1]
+                        ) + direction * process_row_gap / 2,
+                    ),
+                    (
+                        long_target[0] + _NODE_WIDTH / 2,
+                        (
+                            long_target[1] if direction > 0
+                            else long_target[1] + _NODE_HEIGHT
+                        ) - direction * process_row_gap / 2,
+                    ),
+                )
+                for endpoint_x, corridor_y in endpoint_legs:
+                    leg_left, leg_right = sorted((endpoint_x, outer_x))
+                    if any(
+                        candidate_id != long_id
+                        and box_left < leg_right
+                        and box_left + box_width > leg_left
+                        and box_top < corridor_y + 8.0
+                        and box_top + box_height > corridor_y - 8.0
+                        for candidate_id, (
+                            box_left, box_top, box_width, box_height
+                        ) in candidate_boxes.items()
+                    ):
+                        return False
+
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
                 edge = edges_by_id[edge_id]
@@ -4510,7 +4553,9 @@ def render_native_diagram(
                             + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
                         ),
                     )
-                    label_boxes = list(packed_process_label_bounds)
+                    # Late footer detours must clear cards as well as labels.
+                    # Reuse the existing node-aware obstacle inventory.
+                    label_boxes = list(feedback_obstacles)
                     for other_corridor, other_items in corridor_groups.items():
                         for natural_x, other_id, label_width, label_height, _ in other_items:
                             other = edges_by_id[other_id]
