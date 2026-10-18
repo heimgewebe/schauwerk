@@ -5987,3 +5987,56 @@ def test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap() -> None:
         return paths, labels, root.attrib["viewBox"]
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+    def painter_order(ordered: list[dict]) -> list[str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        return [
+            child.attrib["data-source-id"]
+            for child in root
+            if child.attrib.get("data-source-kind") == "edge"
+        ]
+
+    # Crossing paths do not commute: the top-painted stroke must not depend
+    # on an arbitrary edge input list order even if geometry dicts compare equal.
+    assert painter_order(edges) == painter_order(list(reversed(edges)))
+
+def test_pr204_p2_parallel_same_endpoints_have_separate_visible_routes() -> None:
+    """Two semantic feedback edges may never publish the same SVG stroke."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "feedback0", "from": "n2", "to": "n0",
+         "label": "Rueckmeldung", "kind": "feedback"},
+        {"id": "feedback1", "from": "n2", "to": "n0",
+         "label": "x", "kind": "feedback"},
+        {"id": "flow", "from": "n3", "to": "n1",
+         "label": "x", "kind": "flow"},
+        {"id": "risk", "from": "n0", "to": "n3",
+         "label": "x", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        assert paths["feedback0"] != paths["feedback1"]
+        for edge_id in ("feedback0", "feedback1"):
+            assert _p2_orthogonal_segments(paths[edge_id])
+            for other_id, box in labels.items():
+                if other_id != edge_id:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, other_id
+                    )
+            for card_id, box in cards.items():
+                if card_id not in {"n2", "n0"}:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, card_id
+                    )
+        assert float(root.attrib["viewBox"].split()[2]) <= 1950
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))

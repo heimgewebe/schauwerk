@@ -11045,8 +11045,59 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert group_gap["evidence_digest"] == digest_mapping(group_gap, "evidence_digest")
     assert set(group_gap["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
-    for name, expected in group_gap["source_bindings"].items():
+    # Bind the parent as historical source truth. The next successor, not
+    # these earlier bytes, owns the revised renderer and test digests.
+    assert group_gap["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "bc077ac1d4b80ed408f759d296f84a0f9043bc82c98c55dbaa353f4b028f5fb6"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "3fba5dc0a7825d22b712670f3f81f905ae605bb7da99569e1e4a1f2e7b8bfed3"
+        ),
+    }
+    parallel_paint_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-parallel-paint-p2-successor-acceptance-receipt.json"
+    )
+    parallel_paint = json.loads(parallel_paint_path.read_text(encoding="utf-8"))
+    assert parallel_paint["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-parallel-paint-p2-successor.v1"
+    )
+    assert parallel_paint["based_on_pr_head"] == (
+        "3b29dc122d6e387039d300cfa060c5ff6d0d08ad"
+    )
+    assert parallel_paint["parent_evidence"] == {
+        "schema_version": group_gap["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-sideport-group-gap-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(group_gap_path.read_bytes()).hexdigest(),
+        "evidence_digest": group_gap["evidence_digest"],
+    }
+    assert parallel_paint["evidence_digest"] == digest_mapping(
+        parallel_paint, "evidence_digest"
+    )
+    assert set(parallel_paint["source_bindings"]) == (
+        feedback_safe_sideports_p2_superseded_files
+    )
+    for name, expected in parallel_paint["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert parallel_paint["regression_tests"] == [
+        "test_pr204_p2_parallel_same_endpoints_have_separate_visible_routes",
+        "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap",
+    ]
+    assert parallel_paint["local_checks"]["exact_parent_head_red_reproduced"] is True
+    assert parallel_paint["local_checks"]["both_focused_green"] is True
+    assert parallel_paint["local_checks"]["full_make_validate_passed"] is True
+    assert parallel_paint["local_checks"]["browser_smoke_passed"] is True
+    assert parallel_paint["test_receipts"]["full_make_validate"]["passed_tests"] == 1734
+    assert parallel_paint["test_receipts"]["browser_smoke"]["passed_cases"] == 30
+    assert parallel_paint["local_checks"]["historical_parent_receipt_preserved"] is True
+    assert parallel_paint["local_checks"]["visual_acceptance_pass"] is False
+    assert parallel_paint["local_checks"]["independent_exact_head_review_pass"] is False
+    assert parallel_paint["local_checks"]["captain_merge_authorized"] is False
     assert group_gap["regression_tests"] == [
         "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap"
     ]
@@ -11134,7 +11185,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert group_gap["source_bindings"][name] == current
+            assert parallel_paint["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11152,7 +11203,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert group_gap["source_bindings"][name] == current
+            assert parallel_paint["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

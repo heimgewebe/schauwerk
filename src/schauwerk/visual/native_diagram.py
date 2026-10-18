@@ -4129,6 +4129,19 @@ def render_native_diagram(
     feedback_path_y: dict[str, float | tuple[float, float]] = {}
     feedback_path_footer_ids: set[str] = set()
     feedback_outer_footer_ids: set[str] = set()
+    # Same directed endpoints yield coincident local feedback strokes.
+    # Route semantic peers through the existing stable outer side-port lanes.
+    if intent == "process" and model["groups"]:
+        by_endpoints: dict[tuple[str, str], list[str]] = defaultdict(list)
+        for edge in feedback_edges:
+            if edge["from"] != edge["to"]:
+                by_endpoints[(str(edge["from"]), str(edge["to"]))].append(
+                    str(edge["id"])
+                )
+        for peer_ids in by_endpoints.values():
+            if len(peer_ids) > 1:
+                feedback_outer_footer_ids.update(peer_ids)
+                feedback_footer_ids.update(peer_ids)
     feedback_local_gutter_x: dict[str, float] = {}
     anchored_feedback_label_ids = (
         {edge_id for _, _, edge_id, _, _ in anchored_corridor_labels}
@@ -5384,7 +5397,13 @@ def render_native_diagram(
         )
         lines.append("</g>")
 
-    for edge in model["edges"]:
+    # Group-gap fallback can cross peer strokes. Give every input ordering
+    # the same paint order so crossing semantics cannot flip visually.
+    paint_edges = (
+        sorted(model["edges"], key=lambda edge: str(edge["id"]))
+        if _process_group_gap_extra else model["edges"]
+    )
+    for edge in paint_edges:
         lines.extend(
             _render_edge(
                 edge,
