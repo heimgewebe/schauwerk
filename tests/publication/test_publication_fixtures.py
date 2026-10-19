@@ -11193,8 +11193,379 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "48032e370b48a894ca7af76d17eab80912ce4c151ba4b22e99f9f6907aa4d5a5"
         ),
     }
-    for name, expected in collision["source_bindings"].items():
+    # Old candidate bytes remain an immutable predecessor, not the revised
+    # accepted source. Only the new digest-bound successor owns current files.
+    rank_gap_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-rank-gap-p2-successor-acceptance-receipt.json"
+    )
+    rank_gap = json.loads(rank_gap_path.read_text(encoding="utf-8"))
+    assert rank_gap["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-rank-gap-p2-successor.v1"
+    )
+    assert rank_gap["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert rank_gap["parent_evidence"] == {
+        "schema_version": collision["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-collision-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(collision_path.read_bytes()).hexdigest(),
+        "evidence_digest": collision["evidence_digest"],
+    }
+    assert rank_gap["evidence_digest"] == digest_mapping(
+        rank_gap, "evidence_digest"
+    )
+    assert set(rank_gap["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert rank_gap["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "2fe743c8ae5f99914b3047643f2ab21eda6193b541054d2df66209272c93e895"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "117d1633c6625e9c1f65884b9b1379a86b78c9450daf37ac6c195fb5c7929e2a"
+        ),
+    }
+    # This rank-gap candidate is now an immutable historical parent. Only
+    # its digest-linked successor is allowed to bind the current source bytes.
+    cubic_target_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-cubic-target-clearance-p2-successor-acceptance-receipt.json"
+    )
+    cubic_target = json.loads(cubic_target_path.read_text(encoding="utf-8"))
+    assert cubic_target["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-cubic-target-clearance-p2-successor.v1"
+    )
+    assert cubic_target["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert cubic_target["parent_evidence"] == {
+        "schema_version": rank_gap["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-rank-gap-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(rank_gap_path.read_bytes()).hexdigest(),
+        "evidence_digest": rank_gap["evidence_digest"],
+    }
+    assert cubic_target["evidence_digest"] == digest_mapping(
+        cubic_target, "evidence_digest"
+    )
+    assert set(cubic_target["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert cubic_target["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "c81efcb281ed1dfc3bc11cf7eaa817e008b29faa4957d5e2c8b119190e3f31f0"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "22321e0a3a7df16f464ab34ad83ae4e66f140c6cc653f90edb0adb6b5598ae1d"
+        ),
+    }
+    # One current technical successor supersedes the immutable cubic-target
+    # Candidate. Its explicitly unaccepted visual status is a separate gate.
+    stroke_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-nonouter-stroke-p2-successor-acceptance-receipt.json"
+    )
+    nonouter_stroke = json.loads(stroke_path.read_text(encoding="utf-8"))
+    assert nonouter_stroke["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-nonouter-stroke-p2-successor.v1"
+    )
+    assert nonouter_stroke["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert nonouter_stroke["parent_evidence"] == {
+        "schema_version": cubic_target["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-cubic-target-clearance-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(cubic_target_path.read_bytes()).hexdigest(),
+        "evidence_digest": cubic_target["evidence_digest"],
+    }
+    assert nonouter_stroke["evidence_digest"] == digest_mapping(
+        nonouter_stroke, "evidence_digest"
+    )
+    assert set(nonouter_stroke["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert nonouter_stroke["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "9398dd74ef572311315609ed33052c8f86f44da80b8a654d99c4260c31cf80c1"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "9a82dc886bcfd1bfce2aca6ab6727b5adc6ea1382cc860d1e824fcd12b65500e"
+        ),
+    }
+    # The former nonouter-stroke candidate remains an immutable predecessor.
+    # Only its new digest-linked technical successor owns current source bytes.
+    label_only_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-label-only-strokes-p2-successor-acceptance-receipt.json"
+    )
+    label_only = json.loads(label_only_path.read_text(encoding="utf-8"))
+    assert label_only["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-label-only-strokes-p2-successor.v1"
+    )
+    assert label_only["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert label_only["parent_evidence"] == {
+        "schema_version": nonouter_stroke["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-nonouter-stroke-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(stroke_path.read_bytes()).hexdigest(),
+        "evidence_digest": nonouter_stroke["evidence_digest"],
+    }
+    assert label_only["evidence_digest"] == digest_mapping(
+        label_only, "evidence_digest"
+    )
+    assert set(label_only["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert label_only["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "07d890ea836f02e7585c3dfe573ce6c9e1796c644b7d513bf53e5370a61c313c"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "a95118bdf648ffeced8ab051ff3a19eb023e3b72e894f25bccab4a630470b76a"
+        ),
+    }
+    # The previous label-only revision is immutable; it no longer owns live bytes.
+    final_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-actual-label-position-p2-successor-acceptance-receipt.json"
+    )
+    final_successor = json.loads(final_path.read_text(encoding="utf-8"))
+    assert final_successor["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-actual-label-position-p2-successor.v1"
+    )
+    assert final_successor["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert final_successor["parent_evidence"] == {
+        "schema_version": label_only["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-label-only-strokes-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(label_only_path.read_bytes()).hexdigest(),
+        "evidence_digest": label_only["evidence_digest"],
+    }
+    assert final_successor["evidence_digest"] == digest_mapping(
+        final_successor, "evidence_digest"
+    )
+    assert set(final_successor["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert final_successor["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "72e8dc58c8f7f29c414fa105d144c8d35532968b8c70fce20b86c689e1031d42"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "f765e894a4f3dbbe7e0bccfe4017aa48ce43aab128163f8e7abcd25031f1452a"
+        ),
+    }
+    # Historical acceptances bind their own exact revisions, not live files.
+    # The new create-only successor owns the current renderer/test bytes.
+    card_aware_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-card-aware-outer-label-p2-successor-acceptance-receipt.json"
+    )
+    card_aware = json.loads(card_aware_path.read_text(encoding="utf-8"))
+    assert card_aware["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-card-aware-outer-label-p2-successor.v1"
+    )
+    assert card_aware["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert card_aware["parent_evidence"] == {
+        "schema_version": final_successor["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-actual-label-position-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(final_path.read_bytes()).hexdigest(),
+        "evidence_digest": final_successor["evidence_digest"],
+    }
+    assert card_aware["evidence_digest"] == digest_mapping(
+        card_aware, "evidence_digest"
+    )
+    assert set(card_aware["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert card_aware["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "04eb5eb1a05cbf0617c807ebbc109345a407a5835825f2f72cf5a2d89ab5812b"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "aa7306609a588fe6e5a9011886b913fd5bf4cc26a8771e37435223585b6794e7"
+        ),
+    }
+    # The card-aware candidate is immutable historical evidence; do not
+    # compare its old source bytes to a newer routing revision.
+    same_row_card_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-same-row-card-topport-p2-successor-acceptance-receipt.json"
+    )
+    same_row_card = json.loads(same_row_card_path.read_text(encoding="utf-8"))
+    assert same_row_card["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-same-row-card-topport-p2-successor.v1"
+    )
+    assert same_row_card["based_on_pr_head"] == (
+        "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    )
+    assert same_row_card["parent_evidence"] == {
+        "schema_version": card_aware["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-card-aware-outer-label-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(card_aware_path.read_bytes()).hexdigest(),
+        "evidence_digest": card_aware["evidence_digest"],
+    }
+    assert same_row_card["evidence_digest"] == digest_mapping(
+        same_row_card, "evidence_digest"
+    )
+    assert set(same_row_card["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert same_row_card["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "3bcd68653253df610b571ea02aa23a61635b4bc192a3b468429e4a19fb73f5ce"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "20de6acf3f30a6015e4b339057a6b115a4535b487f9f47e59e9dca5121f71c8b"
+        ),
+    }
+    for name, expected in same_row_card["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert "test_pr205_p2_failclosed_same_row_card_routes" in (
+        same_row_card["regression_tests"]
+    )
+    assert same_row_card["test_receipts"]["four_render_aborts_red"][
+        "failed_cases"
+    ] == 4
+    assert same_row_card["test_receipts"]["four_render_aborts_green"][
+        "passed_cases"
+    ] == 4
+    for key in (
+        "deterministic_differential_seed21",
+        "deterministic_differential_seed22",
+    ):
+        assert same_row_card["test_receipts"][key]["compared_models"] == 5000
+        assert same_row_card["test_receipts"][key]["new_render_exceptions"] == 0
+        assert same_row_card["test_receipts"][key]["new_card_intersections"] == 0
+        assert same_row_card["test_receipts"][key]["new_foreign_label_intersections"] == 0
+    assert same_row_card["local_checks"]["visual_acceptance_pass"] is False
+    assert same_row_card["local_checks"]["captain_merge_authorized"] is False
+    assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
+        "task_id": "116082c4fc7042e39ff2ffec",
+        "fixed_seed": 20520261019,
+        "compared_models": 2500,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "comparison_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+    }
+    assert card_aware["local_checks"]["visual_acceptance_pass"] is False
+    assert card_aware["local_checks"]["captain_merge_authorized"] is False
+    assert final_successor["regression_tests"][:2] == [
+        "test_pr205_p2_diagonal_source_count_preserves_vertical_peer_label",
+        "test_pr205_p2_long_return_respects_actual_same_row_label",
+    ]
+    assert final_successor["test_receipts"]["focused_red"] == {
+        "task_id": "dd5f9c2f40644ca4bb914e80",
+        "failed_tests": 2, "exit_code": 1,
+    }
+    assert final_successor["test_receipts"]["focused_green"] == {
+        "task_id": "69b376f414a94c34ab12ab69",
+        "passed_tests": 2, "exit_code": 0,
+    }
+    assert final_successor["local_checks"]["visual_acceptance_pass"] is False
+    assert final_successor["local_checks"]["captain_merge_authorized"] is False
+    assert label_only["regression_tests"] == [
+        "test_pr205_p2_stroke_obstacles_do_not_exhaust_safe_outer_routes",
+        "test_pr205_p2_stem_pack_preserves_safe_peer_lane",
+        "test_pr205_p2_forced_footer_clears_local_selfloop_stroke",
+        "test_pr205_p2_packed_stem_does_not_force_peer_label_crossing",
+        "test_pr205_p2_source_leg_clears_packed_long_branch_label",
+    ]
+    assert label_only["test_receipts"]["last_two_red"] == {
+        "task_id": "c5e5524efe144b35a0ebadee",
+        "failed_tests": 2,
+        "exit_code": 1,
+    }
+    assert label_only["test_receipts"]["current_browser_suite"] == {
+        "task_id": "9c2980556d224a7bba09921d",
+        "passed_cases": 30,
+        "exit_code": 0,
+    }
+    assert label_only["local_checks"]["immutable_parent_preserved"] is True
+    assert label_only["local_checks"]["visual_acceptance_pass"] is False
+    assert label_only["local_checks"]["captain_merge_authorized"] is False
+    assert nonouter_stroke["regression_tests"] == [
+        "test_pr205_p2_forced_footer_clears_local_selfloop_stroke",
+        "test_pr205_p2_parallel_feedback_self_loops_do_not_coincide",
+        "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels",
+        "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap",
+    ]
+    assert nonouter_stroke["test_receipts"]["focused_pre_fix_red"] == {
+        "task_id": "030bb2b14df64102a9ed4b51",
+        "failed_tests": 1,
+        "exit_code": 1,
+    }
+    assert nonouter_stroke["test_receipts"]["current_browser_smoke"] == {
+        "task_id": "128ecdc1ca3b48ce9a8dc796",
+        "passed_cases": 30,
+        "exit_code": 0,
+    }
+    assert nonouter_stroke["local_checks"]["actual_pre_fix_p2_reproduced"] is True
+    assert nonouter_stroke["local_checks"]["chrome_smoke_green"] is True
+    assert nonouter_stroke["local_checks"]["visual_acceptance_pass"] is False
+    assert nonouter_stroke["local_checks"]["captain_merge_authorized"] is False
+    assert cubic_target["regression_tests"] == [
+        "test_pr205_p2_dont_block_clear_diagonal_stems_in_label_pack",
+        "test_pr205_p2_target_leg_clears_packed_long_branch_peer_label",
+        "test_pr205_p2_packed_label_clears_noncandidate_endpoint_stem",
+        "test_pr205_p2_natural_process_anchor_label_clears_feedback_and_outer_leg",
+        "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels",
+    ]
+    assert cubic_target["test_receipts"]["newly_reproduced_red"] == {
+        "task_id": "2918f048ce6a436392e464d3",
+        "failed_tests": 2,
+        "exit_code": 1,
+    }
+    assert cubic_target["test_receipts"]["current_native_diagram_suite"]["exit_code"] == 0
+    assert cubic_target["test_receipts"]["current_chromium_browser_smoke"] == {
+        "task_id": "44cd3c608e0e47708835545f",
+        "passed_cases": 30,
+        "exit_code": 0,
+    }
+    assert cubic_target["local_checks"]["prior_immutable_receipts_unchanged"] is True
+    assert cubic_target["local_checks"]["visual_acceptance_pass"] is False
+    assert cubic_target["local_checks"]["independent_exact_successor_diff_review_pass"] is False
+    assert cubic_target["local_checks"]["captain_merge_authorized"] is False
+    assert rank_gap["regression_tests"] == [
+        "test_pr205_p2_single_group_rank_space_recovers_sideport_exhaustion",
+        "test_pr205_p2_outgoing_shared_target_label_clears_local_long_leg",
+        "test_pr205_p2_packed_label_clears_noncandidate_endpoint_stem",
+        "test_pr205_p2_natural_process_anchor_label_clears_feedback_and_outer_leg",
+        "test_process_feedback_return_stays_local_to_its_cycle_block",
+        "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels",
+    ]
+    assert rank_gap["test_receipts"]["newly_confirmed_red"] == {
+        "task_id": "e1998d8b210f4393bac7f454", "failed_tests": 4, "exit_code": 1
+    }
+    assert rank_gap["test_receipts"]["four_new_focused_green"] == {
+        "task_id": "8c2e7baf81734a13a2661494",
+        "passed_tests": 4, "exit_code": 0
+    }
+    assert rank_gap["test_receipts"]["chromium_browser_smoke"] == {
+        "task_id": "2eceb8f254fe4d9598bb2cd3",
+        "passed_cases": 30, "exit_code": 0
+    }
+    assert rank_gap["local_checks"]["native_renderer_regressions_passed"] is True
+    assert rank_gap["local_checks"]["visual_acceptance_pass"] is False
+    assert rank_gap["local_checks"]["captain_merge_authorized"] is False
     assert collision["regression_tests"] == [
         "test_pr204_p2_late_shifted_feedback_gutter_avoids_foreign_cards",
         "test_pr204_p2_packed_adjacent_label_clears_outer_risk_target_leg",
@@ -11342,7 +11713,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert collision["source_bindings"][name] == current
+            assert same_row_card["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11360,7 +11731,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert collision["source_bindings"][name] == current
+            assert same_row_card["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

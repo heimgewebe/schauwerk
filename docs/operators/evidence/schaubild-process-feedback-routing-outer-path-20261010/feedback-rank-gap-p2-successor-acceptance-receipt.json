@@ -1,0 +1,69 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-rank-gap-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate successor on stacked Schauwerk PR205: after reproducing four additional P2s, retain deterministic single-group rank spacing, exact shared-target/endpoint label obstacles, source and target corridor clearance, nested local branch return gutters, distinct selfloop/feedback paths and safe saturated outer footer routing without breaking accepted geometry.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-collision-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-collision-p2-successor-acceptance-receipt.json",
+    "file_sha256": "4e317c044bbd3bd2eb7704d0a6cdb814243acfedfb3941bd81b8f6055fc37777",
+    "evidence_digest": "413ec418bd98e7c2da7c342ceb1641a63218f8484cf625823a29bb4416eec215"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2fe743c8ae5f99914b3047643f2ab21eda6193b541054d2df66209272c93e895",
+    "tests/visual/test_native_diagram.py": "117d1633c6625e9c1f65884b9b1379a86b78c9450daf37ac6c195fb5c7929e2a"
+  },
+  "regression_tests": [
+    "test_pr205_p2_single_group_rank_space_recovers_sideport_exhaustion",
+    "test_pr205_p2_outgoing_shared_target_label_clears_local_long_leg",
+    "test_pr205_p2_packed_label_clears_noncandidate_endpoint_stem",
+    "test_pr205_p2_natural_process_anchor_label_clears_feedback_and_outer_leg",
+    "test_process_feedback_return_stays_local_to_its_cycle_block",
+    "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels"
+  ],
+  "test_receipts": {
+    "newly_confirmed_red": {
+      "task_id": "e1998d8b210f4393bac7f454",
+      "failed_tests": 4,
+      "exit_code": 1
+    },
+    "four_new_focused_green": {
+      "task_id": "8c2e7baf81734a13a2661494",
+      "passed_tests": 4,
+      "exit_code": 0
+    },
+    "all_native_after_legacy_regression_repair": {
+      "task_id": "70df4223c66f42e080ed4c31",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "task_id": "2eceb8f254fe4d9598bb2cd3",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "pre_successor_full_validate": {
+      "status": "not_rerun_on_new_digest_chain"
+    }
+  },
+  "local_checks": {
+    "four_new_p2_red_reproduced": true,
+    "four_new_focused_green": true,
+    "native_renderer_regressions_passed": true,
+    "browser_smoke_passed": true,
+    "historical_parent_receipt_preserved": true,
+    "current_source_and_test_digest_bound": true,
+    "full_make_validate_passed": false,
+    "github_exact_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "technical_candidate_focused_and_browser_pass_pending_successor_full_validate_exact_published_ci_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "complete make validate on this successor after publication fixture change",
+    "an independent exact-new-head full-stack review verdict",
+    "aesthetic approval of the resulting label and routing geometry",
+    "permission to close still-open PR204 threads prior to integrating the fixes",
+    "Captain merge authorization, OCI image production, Commonthing release-lock change or runtime convergence"
+  ],
+  "evidence_digest": "f1238a8185b738010a696350ef8e29328fb94c9a4d81f0dc7a92401362b3e5c1"
+}

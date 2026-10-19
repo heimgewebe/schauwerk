@@ -1,0 +1,59 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-label-only-strokes-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate: route port clearance uses cards and label rectangles, while non-outer feedback-stroke reservations restrict outer-label positions only. A real same-column endpoint stem selects a clear right-sided label slot before demoting an entire label pack. Deterministic without independent router.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-nonouter-stroke-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-nonouter-stroke-p2-successor-acceptance-receipt.json",
+    "file_sha256": "0424c2bed7833c984441af1ccb43fda05c053788d84a549e2410c3dd5458d595",
+    "evidence_digest": "0d2e155eb0492ad4ce7a3e27c417c72d58654879923f4e878e34c592c9c78bd1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "07d890ea836f02e7585c3dfe573ce6c9e1796c644b7d513bf53e5370a61c313c",
+    "tests/visual/test_native_diagram.py": "a95118bdf648ffeced8ab051ff3a19eb023e3b72e894f25bccab4a630470b76a"
+  },
+  "regression_tests": [
+    "test_pr205_p2_stroke_obstacles_do_not_exhaust_safe_outer_routes",
+    "test_pr205_p2_stem_pack_preserves_safe_peer_lane",
+    "test_pr205_p2_forced_footer_clears_local_selfloop_stroke",
+    "test_pr205_p2_packed_stem_does_not_force_peer_label_crossing",
+    "test_pr205_p2_source_leg_clears_packed_long_branch_label"
+  ],
+  "test_receipts": {
+    "last_two_red": {
+      "task_id": "c5e5524efe144b35a0ebadee",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "current_native_suite": {
+      "task_id": "3877aa478d1b4039b25a68dc",
+      "exit_code": 0
+    },
+    "current_browser_suite": {
+      "task_id": "9c2980556d224a7bba09921d",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "last_two_p2_red_reproduced": true,
+    "current_native_suite_passed": true,
+    "current_browser_suite_passed": true,
+    "immutable_parent_preserved": true,
+    "source_and_tests_digest_bound": true,
+    "current_complete_validate_after_receipt_pass": false,
+    "fresh_ci_for_new_git_head_pass": false,
+    "independent_final_head_approved": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "exact_source_bound_technical_candidate_green_native_browser_pending_full_validation_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "full make validate on this exact receipt chain",
+    "trusted current-head independent review and review-thread settlement",
+    "visual design acceptance for changed renderer",
+    "authorized Captain integration or merge",
+    "digest-tested OCI promotion, Commonthing release lock, runtime or production browser convergence"
+  ],
+  "evidence_digest": "4f6b5dde088e5ede56b12a50c8ca9f8e1efdcdef5cca05c75238c8e4dfaeb6ec"
+}

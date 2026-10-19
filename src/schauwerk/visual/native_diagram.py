@@ -1015,6 +1015,49 @@ def _process_local_group_branch_gutter_x(
         for slot, edge_id in enumerate(ordered_ids):
             centered_slot = slot - (len(ordered_ids) - 1) / 2
             proposed[edge_id] = center_x + centered_slot * _PROCESS_LANE_STEP
+        # Clear the actual source-gap label of shorter nested returns
+        # sharing a target before accepting the existing local gutter.
+        nested_labels: list[tuple[float, float, float, float, str]] = []
+        for edge_id in sorted(
+            ordered_ids,
+            key=lambda edge_id: (
+                str(edges_by_id[edge_id]["to"]),
+                abs(
+                    positions[str(edges_by_id[edge_id]["from"])][1]
+                    - positions[str(edges_by_id[edge_id]["to"])][1]
+                ),
+                edge_id,
+            ),
+        ):
+            edge = edges_by_id[edge_id]
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            direction = 1 if source[1] < target[1] else -1
+            offset = max(
+                -8.0, min(
+                    8.0, ((lane_ranks[edge_id] % 5) - 2) * _PROCESS_LANE_STEP / 2
+                ),
+            )
+            start_y = source[1] + (_NODE_HEIGHT if direction > 0 else 0)
+            end_y = target[1] + (0 if direction > 0 else _NODE_HEIGHT)
+            source_y = start_y + direction * process_row_gap / 2 + offset
+            target_y = end_y - direction * process_row_gap / 2 + offset
+            for left, top, right, bottom, peer_target in sorted(nested_labels):
+                if (
+                    peer_target == str(edge["to"])
+                    and top < max(source_y, target_y)
+                    and bottom > min(source_y, target_y)
+                    and left - 2 < proposed[edge_id] < right + 2
+                ):
+                    proposed[edge_id] = right + 4
+            metrics = _edge_label_metrics(edge, positions, "process")
+            nested_labels.append((
+                proposed[edge_id] - metrics.width / 2,
+                source_y - metrics.height / 2,
+                proposed[edge_id] + metrics.width / 2,
+                source_y + metrics.height / 2,
+                str(edge["to"]),
+            ))
         remaining_outer = _process_long_branch_ids(
             model,
             positions,
@@ -1051,6 +1094,24 @@ def _process_local_group_branch_gutter_x(
                 and label_top < node_y + _NODE_HEIGHT
                 and label_bottom > node_y
                 for node_x, node_y in positions.values()
+            ):
+                return True
+
+            # A shifted local gutter may not enter a foreign card column
+            # within the full source-to-target vertical return span.
+            direction = 1 if source[1] < target[1] else -1
+            source_leg_y = source[1] + (_NODE_HEIGHT if direction > 0 else 0)
+            source_leg_y += direction * process_row_gap / 2 + lane_offset
+            target_leg_y = target[1] + (0 if direction > 0 else _NODE_HEIGHT)
+            target_leg_y -= direction * process_row_gap / 2 - lane_offset
+            if (
+                proposed[edge_id] > outer_reach
+                or any(
+                    node_x - 2 < proposed[edge_id] < node_x + _NODE_WIDTH + 2
+                    and node_y - 2 < max(source_leg_y, target_leg_y)
+                    and node_y + _NODE_HEIGHT + 2 > min(source_leg_y, target_leg_y)
+                    for node_x, node_y in positions.values()
+                )
             ):
                 return True
 
@@ -1371,6 +1432,7 @@ def _safe_process_feedback_outer_ports(
     label_width: int,
     obstacles: Sequence[tuple[float, float, float, float]],
     parallel_route_slot: int = 0,
+    label_only_obstacles: Sequence[tuple[float, float, float, float]] = (),
     reserved_verticals: Sequence[tuple[float, float, float]] = (),
     label_y: float | None = None,
     label_height: float = 0.0,
@@ -1497,7 +1559,7 @@ def _safe_process_feedback_outer_ports(
                 for prior_x, prior_top, prior_bottom in reserved_verticals:
                     if max(label_top, prior_top) < min(label_bottom, prior_bottom):
                         choices.update((prior_x - half - 8, prior_x + half + 8))
-                for box_left, box_top, box_right, box_bottom in obstacles:
+                for box_left, box_top, box_right, box_bottom in (*obstacles, *label_only_obstacles):
                     if max(label_top, box_top) < min(label_bottom, box_bottom):
                         choices.update((
                             box_left - half - 8, box_right + half + 8
@@ -1526,7 +1588,9 @@ def _safe_process_feedback_outer_ports(
                             and box_top - clearance < label_bottom
                             and box_bottom + clearance > label_top
                         )
-                        for box_left, box_top, box_right, box_bottom in obstacles
+                        for box_left, box_top, box_right, box_bottom in (
+                            *obstacles, *label_only_obstacles
+                        )
                     )
                 )
             ]
@@ -1540,6 +1604,43 @@ def _safe_process_feedback_outer_ports(
                 )
     return None
 
+
+
+def _process_svg_path_hits_box(
+    path: str,
+    box: tuple[float, float, float, float],
+    *,
+    padding: float = 1.5,
+) -> bool:
+    """Check the rendered M/L/C strokes against a label or process card."""
+    left, top, width, height = box
+    expanded = (
+        left - padding, top - padding,
+        width + 2 * padding, height + 2 * padding,
+    )
+    commands = re.findall(r"[MLC]|-?\d+(?:\.\d+)?", path)
+    cursor: tuple[float, float] | None = None
+    index = 0
+    while index < len(commands):
+        command = commands[index]
+        index += 1
+        arity = 6 if command == "C" else 2
+        if command not in {"M", "L", "C"} or index + arity > len(commands):
+            return True  # Unknown SVG geometry must never be treated as clear.
+        values = tuple(float(value) for value in commands[index:index + arity])
+        index += arity
+        endpoint = (values[-2], values[-1])
+        if cursor is not None:
+            if command == "C":
+                curve = (cursor, (values[0], values[1]), (values[2], values[3]), endpoint)
+            elif command == "L":
+                curve = (cursor, cursor, endpoint, endpoint)
+            else:
+                curve = None
+            if curve is not None and _cubic_hull_intersects_box(curve, expanded):
+                return True
+        cursor = endpoint
+    return False
 
 def _edge_geometry(
     source: tuple[int, int],
@@ -1555,12 +1656,14 @@ def _edge_geometry(
     non_process_row_gap: int = _ROW_GAP,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
+    long_branch_route_count: int | None = None,
     long_branch_label_y: float | None = None,
     anchored_branch_gutter_x: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
     process_branch_gutter_x: float | None = None,
-    process_adjacent_route_y: float | None = None,
+    process_adjacent_route_y: float | tuple[float, float] | None = None,
+    process_same_row_target_port_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
     generic_self_loop_gutter_x: float | None = None,
@@ -1722,6 +1825,17 @@ def _edge_geometry(
             source_corridor_y, target_corridor_y = feedback_path_y
         elif feedback_path_y is not None and source_y == target_y:
             source_corridor_y = target_corridor_y = feedback_path_y
+        # A safe horizontal lane can sit close to the card. Fixed-size
+        # cubic bends must not overshoot that lane back through an occupied
+        # label rectangle; keep each control inside its physical stub span.
+        start_control_y = min(
+            max(start_y + start_bend, min(start_y, source_corridor_y)),
+            max(start_y, source_corridor_y),
+        )
+        end_control_y = min(
+            max(end_y + end_bend, min(end_y, target_corridor_y)),
+            max(end_y, target_corridor_y),
+        )
         gutter_x = (
             feedback_local_gutter_x
             if feedback_local_gutter_x is not None
@@ -1741,7 +1855,7 @@ def _edge_geometry(
             )
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
-                f"C {start_x:.1f} {start_y + start_bend:.1f}, "
+                f"C {start_x:.1f} {start_control_y:.1f}, "
                 f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {feedback_label_y:.1f} "
@@ -1749,7 +1863,7 @@ def _edge_geometry(
                 f"L {target_channel_x:.1f} {target_corridor_y:.1f} "
                 f"L {end_x:.1f} {target_corridor_y:.1f} "
                 f"C {end_x:.1f} {target_corridor_y:.1f}, "
-                f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
+                f"{end_x:.1f} {end_control_y:.1f}, {end_x:.1f} {end_y:.1f}"
             )
             return path, gutter_x, feedback_label_y, route
         # A moved footer label is independent of the local return geometry.
@@ -1757,13 +1871,13 @@ def _edge_geometry(
         # semantic footer label without adding a useful connection.
         path = (
             f"M {start_x:.1f} {start_y:.1f} "
-            f"C {start_x:.1f} {start_y + start_bend:.1f}, "
+            f"C {start_x:.1f} {start_control_y:.1f}, "
             f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
             f"L {gutter_x:.1f} {source_corridor_y:.1f} "
             f"L {gutter_x:.1f} {target_corridor_y:.1f} "
             f"L {end_x:.1f} {target_corridor_y:.1f} "
             f"C {end_x:.1f} {target_corridor_y:.1f}, "
-            f"{end_x:.1f} {end_y + end_bend:.1f}, {end_x:.1f} {end_y:.1f}"
+            f"{end_x:.1f} {end_control_y:.1f}, {end_x:.1f} {end_y:.1f}"
         )
         if feedback_label_y is not None:
             return path, gutter_x, feedback_label_y, route
@@ -1951,7 +2065,11 @@ def _edge_geometry(
         start_x = source_x + node_width / 2
         end_x = target_x + node_width / 2
         start_y = end_y = source_y
-        corridor_y = source_y - process_row_gap / 2
+        corridor_y = (
+            process_adjacent_route_y[0]
+            if isinstance(process_adjacent_route_y, tuple)
+            else source_y - process_row_gap / 2
+        )
         gutter_x = process_branch_gutter_x
         path = (
             f"M {start_x:.1f} {start_y:.1f} "
@@ -1979,7 +2097,11 @@ def _edge_geometry(
             and process_branch_gutter_x is not None
             and abs(target_y - source_y) <= row_step
         ):
-            corridor_y = (start_y + end_y) / 2
+            label_corridor_y = (start_y + end_y) / 2
+            corridor_y = (
+                process_adjacent_route_y
+                if process_adjacent_route_y is not None else label_corridor_y
+            )
             gutter_x = process_branch_gutter_x
             path = (
                 f"M {center_x:.1f} {start_y:.1f} "
@@ -1988,7 +2110,7 @@ def _edge_geometry(
                 f"L {center_x:.1f} {corridor_y:.1f} "
                 f"L {center_x:.1f} {end_y:.1f}"
             )
-            return path, gutter_x + 8 + label_width / 2, corridor_y, "process-row-gutter"
+            return path, gutter_x + 8 + label_width / 2, label_corridor_y, "process-row-gutter"
         if abs(target_y - source_y) > row_step:
             # A direct vertical span across multiple rows would pass through an
             # intervening card and place its label there. Leave through the
@@ -2066,7 +2188,10 @@ def _edge_geometry(
         row_step = _NODE_HEIGHT + process_row_gap
         spans_intervening_row = abs(target_y - source_y) > row_step
         if spans_intervening_row and long_branch_slot is not None:
-            stable_count = max(1, long_branch_count)
+            stable_count = max(1, (
+                long_branch_route_count
+                if long_branch_route_count is not None else long_branch_count
+            ))
             centered_slot = long_branch_slot - (stable_count - 1) / 2
             lane_offset = max(-8.0, min(8.0, centered_slot * 4.0))
         else:
@@ -2091,19 +2216,33 @@ def _edge_geometry(
         # the long branch's physical source leg may move around a peer label.
         source_label_corridor_y = source_corridor_y
         if process_adjacent_route_y is not None:
-            source_corridor_y = process_adjacent_route_y
+            if isinstance(process_adjacent_route_y, tuple):
+                source_corridor_y, target_corridor_y = process_adjacent_route_y
+            else:
+                source_corridor_y = process_adjacent_route_y
+        # Actual safe lanes may sit closer than the standard bend to a card.
+        # Monotone endpoint curves may not overshoot that lane into a label.
+        bend = 18.0
+        direction_bend = bend if source_y < target_y else -bend
+        start_control_y = min(
+            max(start_y + direction_bend, min(start_y, source_corridor_y)),
+            max(start_y, source_corridor_y),
+        )
+        end_control_y = min(
+            max(end_y - direction_bend, min(end_y, target_corridor_y)),
+            max(end_y, target_corridor_y),
+        )
         if process_branch_gutter_x is not None:
             gutter_x = process_branch_gutter_x
-            bend = 18.0
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
-                f"C {start_x:.1f} {start_y + (bend if source_y < target_y else -bend):.1f}, "
+                f"C {start_x:.1f} {start_control_y:.1f}, "
                 f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {target_corridor_y:.1f} "
                 f"L {end_x:.1f} {target_corridor_y:.1f} "
                 f"C {end_x:.1f} {target_corridor_y:.1f}, "
-                f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
+                f"{end_x:.1f} {end_control_y:.1f}, "
                 f"{end_x:.1f} {end_y:.1f}"
             )
             return (
@@ -2118,23 +2257,26 @@ def _edge_geometry(
             and anchored_branch_gutter_x is not None
         ):
             gutter_x = anchored_branch_gutter_x
-            bend = 18.0
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
-                f"C {start_x:.1f} {start_y + (bend if source_y < target_y else -bend):.1f}, "
+                f"C {start_x:.1f} {start_control_y:.1f}, "
                 f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {target_corridor_y:.1f} "
                 f"L {end_x:.1f} {target_corridor_y:.1f} "
                 f"C {end_x:.1f} {target_corridor_y:.1f}, "
-                f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
+                f"{end_x:.1f} {end_control_y:.1f}, "
                 f"{end_x:.1f} {end_y:.1f}"
             )
             return path, gutter_x, source_label_corridor_y, route
         if spans_intervening_row:
             slot = long_branch_slot or 0
             count = max(1, long_branch_count)
-            if count == 1:
+            route_count = max(1, (
+                long_branch_route_count
+                if long_branch_route_count is not None else long_branch_count
+            ))
+            if route_count == 1:
                 # Keep the established single-branch gutter width, but use the
                 # stable long-branch slot above. The label stays centered in the
                 # source row gap so it cannot drift into an intervening card.
@@ -2145,16 +2287,15 @@ def _edge_geometry(
                 )
             else:
                 gutter_x = canvas_width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
-            bend = 18.0
             path = (
                 f"M {start_x:.1f} {start_y:.1f} "
-                f"C {start_x:.1f} {start_y + (bend if source_y < target_y else -bend):.1f}, "
+                f"C {start_x:.1f} {start_control_y:.1f}, "
                 f"{start_x:.1f} {source_corridor_y:.1f}, {start_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {source_corridor_y:.1f} "
                 f"L {gutter_x:.1f} {target_corridor_y:.1f} "
                 f"L {end_x:.1f} {target_corridor_y:.1f} "
                 f"C {end_x:.1f} {target_corridor_y:.1f}, "
-                f"{end_x:.1f} {end_y + (-bend if source_y < target_y else bend):.1f}, "
+                f"{end_x:.1f} {end_control_y:.1f}, "
                 f"{end_x:.1f} {end_y:.1f}"
             )
             if count == 1:
@@ -2179,6 +2320,39 @@ def _edge_geometry(
         )
         control_one = (start_x, corridor_y)
         control_two = (end_x, corridor_y)
+    elif (
+        intent == "process"
+        and not self_loop
+        and source_y == target_y
+        and isinstance(process_adjacent_route_y, (int, float))
+        and process_branch_gutter_x is None
+        and any(
+            min(source_x, target_x) + node_width <= x
+            and x + node_width <= max(source_x, target_x)
+            and y < source_y + _NODE_HEIGHT
+            and y + _NODE_HEIGHT > source_y
+            for x, y in obstacle_positions
+        )
+    ):
+        route = "process-row-card-detour"
+        start_x = source_x + node_width / 2
+        end_x = (
+            process_same_row_target_port_x
+            if process_same_row_target_port_x is not None
+            else target_x + node_width / 2
+        )
+        port_y = (
+            source_y if process_adjacent_route_y < source_y
+            else source_y + _NODE_HEIGHT
+        )
+        channel_y = process_adjacent_route_y
+        path = (
+            f"M {start_x:.1f} {port_y:.1f} "
+            f"L {start_x:.1f} {channel_y:.1f} "
+            f"L {end_x:.1f} {channel_y:.1f} "
+            f"L {end_x:.1f} {port_y:.1f}"
+        )
+        return path, (start_x + end_x) / 2, channel_y, route
     elif source_x < target_x:
         start_x = source_x + node_width
         start_y = source_y + _NODE_HEIGHT / 2
@@ -2284,16 +2458,19 @@ def _render_edge(
     non_process_row_gap: int = _ROW_GAP,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
+    long_branch_route_count: int | None = None,
     long_branch_label_y: float | None = None,
     anchored_branch_gutter_x: float | None = None,
     long_vertical_gutter_x: float | None = None,
     long_vertical_label_y: float | None = None,
+    long_vertical_label_x: float | None = None,
     process_branch_gutter_x: float | None = None,
     process_adjacent_slot: int | None = None,
     process_adjacent_count: int = 0,
     process_adjacent_label_x: float | None = None,
     process_adjacent_label_y: float | None = None,
-    process_adjacent_route_y: float | None = None,
+    process_adjacent_route_y: float | tuple[float, float] | None = None,
+    process_same_row_target_port_x: float | None = None,
     row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
@@ -2311,6 +2488,7 @@ def _render_edge(
     feedback_outer_parallel_slot: int = 0,
     feedback_outer_preplanned_ports: tuple[float, float, float, float, float] | None = None,
     feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
+    final_label_override: tuple[float, float] | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -2400,12 +2578,14 @@ def _render_edge(
         non_process_row_gap=non_process_row_gap,
         long_branch_slot=long_branch_slot,
         long_branch_count=long_branch_count,
+        long_branch_route_count=long_branch_route_count,
         long_branch_label_y=long_branch_label_y,
         anchored_branch_gutter_x=anchored_branch_gutter_x,
         long_vertical_gutter_x=long_vertical_gutter_x,
         long_vertical_label_y=long_vertical_label_y,
         process_branch_gutter_x=process_branch_gutter_x,
         process_adjacent_route_y=process_adjacent_route_y,
+        process_same_row_target_port_x=process_same_row_target_port_x,
         narrative_parallel_gutter_x=narrative_parallel_gutter_x,
         narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
         generic_self_loop_gutter_x=generic_self_loop_gutter_x,
@@ -2427,6 +2607,8 @@ def _render_edge(
             if node_id not in {str(edge["from"]), str(edge["to"])}
         ),
     )
+    if long_vertical_label_x is not None and route == "vertical":
+        label_x = long_vertical_label_x
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
     path_opacity_attribute = (
         ' stroke-opacity="0.42"'
@@ -2438,7 +2620,7 @@ def _render_edge(
         intent == "process"
         and source_position[1] == target_position[1]
         and (
-            route == "standard"
+            route in {"standard", "process-row-card-detour"}
             or (
                 route == "process-row-gutter"
                 and source_position[1] == min(y for _, y in positions.values())
@@ -2550,6 +2732,10 @@ def _render_edge(
             max(label_x, half_label_width + 8),
             canvas_width - half_label_width - 8,
         )
+    if intent == "process" and final_label_override is not None:
+        # The rendered route is immutable; move only a demonstrably blocked
+        # outer-gutter label after checking every other physical SVG stroke.
+        label_x, label_y = final_label_override
     label_top = label_y - label_height / 2
     # Short process labels should remain natural text when they already fit.
     # Give their clip guard 2 px more breathing room per side instead of
@@ -2763,24 +2949,43 @@ def render_native_diagram(
         # Only a failed grouped side-port plan invokes this internal retry.
         # Shift whole regions including nodes; width-only growth cannot open
         # a corridor trapped between the existing card columns.
-        if intent != "process" or len(regions) < 2:
+        if intent != "process" or not regions:
             raise ValueError("process gap expansion requires grouped regions")
-        order = {
-            region[0]: index for index, region in enumerate(
-                sorted(regions, key=lambda region: (region[2], str(region[0])))
-            )
-        }
-        node_group = {str(node["id"]): node["group"] for node in model["nodes"]}
-        positions = {
-            node_id: (x + _process_group_gap_extra * order[node_group[node_id]], y)
-            for node_id, (x, y) in positions.items()
-        }
-        regions = [
-            (group_id, label, x + _process_group_gap_extra * order[group_id],
-             y, region_width, region_height)
-            for group_id, label, x, y, region_width, region_height in regions
-        ]
-        width += _process_group_gap_extra * (len(regions) - 1)
+        if len(regions) > 1:
+            order = {
+                region[0]: index for index, region in enumerate(
+                    sorted(regions, key=lambda region: (region[2], str(region[0])))
+                )
+            }
+            node_group = {str(node["id"]): node["group"] for node in model["nodes"]}
+            positions = {
+                node_id: (x + _process_group_gap_extra * order[node_group[node_id]], y)
+                for node_id, (x, y) in positions.items()
+            }
+            regions = [
+                (group_id, label, x + _process_group_gap_extra * order[group_id],
+                 y, region_width, region_height)
+                for group_id, label, x, y, region_width, region_height in regions
+            ]
+            width += _process_group_gap_extra * (len(regions) - 1)
+        else:
+            # A single group can contain several graph-rank columns. Only
+            # after its safe side-port search fails, open actual space between
+            # those columns rather than widening the page without clearance.
+            columns = sorted({x for x, _ in positions.values()})
+            if len(columns) < 2:
+                raise ValueError("no separate process rank columns to expand")
+            rank = {x: index for index, x in enumerate(columns)}
+            positions = {
+                node_id: (x + _process_group_gap_extra * rank[x], y)
+                for node_id, (x, y) in positions.items()
+            }
+            added = _process_group_gap_extra * (len(columns) - 1)
+            regions = [
+                (group_id, label, x, y, region_width + added, region_height)
+                for group_id, label, x, y, region_width, region_height in regions
+            ]
+            width += added
     process_row_gap = _PROCESS_ROW_GAP if regions else _NON_PROCESS_ROW_GAP
     if intent == "process":
         # Standard same-row process labels sit above their cards. One-line
@@ -2824,11 +3029,13 @@ def render_native_diagram(
     non_process_row_gap = _ROW_GAP if regions else _NON_PROCESS_ROW_GAP
     long_vertical_gutter_x: dict[str, float] = {}
     long_vertical_label_y: dict[str, float] = {}
+    long_vertical_label_x: dict[str, float] = {}
     packed_process_label_bounds: list[tuple[float, float, float, float]] = []
     node_width = _NARRATIVE_NODE_WIDTH if intent == "narrative" else _NODE_WIDTH
     vertical_row_gap = process_row_gap if intent == "process" else non_process_row_gap
     row_step = _NODE_HEIGHT + vertical_row_gap
     corridor_use_count: dict[tuple[int, float], int] = defaultdict(int)
+    diagonal_target_corridor_uses: dict[tuple[int, float], int] = defaultdict(int)
     corridor_groups: dict[
         tuple[int, float],
         list[tuple[float, str, int, int]],
@@ -2850,6 +3057,20 @@ def render_native_diagram(
                     (source[0], source[1] - vertical_row_gap / 2)
                 ] += 1
             continue
+        # Only the diagonal target leg shares the receiving row corridor
+        # with long vertical peers. Counting source legs here would repack
+        # labels on otherwise collision-free vertical connections.
+        if intent == "process" and source[0] != target[0] and source[1] != target[1]:
+            direction = 1 if source[1] < target[1] else -1
+            for endpoint, leg_direction in ((target, -direction),):
+                endpoint_y = endpoint[1] + (
+                    _NODE_HEIGHT if leg_direction > 0 else 0
+                )
+                corridor_key = (
+                    endpoint[0], endpoint_y + leg_direction * vertical_row_gap / 2
+                )
+                corridor_use_count[corridor_key] += 1
+                diagonal_target_corridor_uses[corridor_key] += 1
         if source[0] != target[0] or source[1] == target[1]:
             continue
         direction = 1 if source[1] < target[1] else -1
@@ -2875,8 +3096,21 @@ def render_native_diagram(
         if corridor_use_count[corridor_key] > 1
         for item in items
     ]
+    # A diagonal target counts as a label-corridor occupant, but it is not
+    # another same-column return path. Only in that case keep the short
+    # local return while relocating its competing label to the outer pack.
+    diagonal_only_shared_ids = {
+        edge_id
+        for corridor_key, items in corridor_groups.items()
+        if diagonal_target_corridor_uses[corridor_key]
+        and corridor_use_count[corridor_key] - diagonal_target_corridor_uses[corridor_key] == 1
+        for _, edge_id, _, _ in items
+    }
     long_vertical_pack_bottom = 0.0
     if shared_long_verticals:
+        # Group backgrounds are not path obstacles. Use the real card boundary
+        # for the adjacent gutter; adding the group frame width can move a
+        # previously safe long return through an unrelated self-loop label.
         obstacle_right = max(x + node_width for x, _ in positions.values())
         if regions:
             obstacle_right = max(
@@ -2888,26 +3122,81 @@ def render_native_diagram(
         for slot, (natural_y, edge_id, label_width, label_height) in enumerate(
             sorted(shared_long_verticals, key=lambda item: (item[0], item[1]))
         ):
-            gutter_x = obstacle_right + 12.0 + slot * _PROCESS_GUTTER_LANE_STEP
+            label_gutter_x = obstacle_right + 12.0 + slot * _PROCESS_GUTTER_LANE_STEP
+            gutter_x = label_gutter_x
             packed_y = max(
                 natural_y,
                 previous_bottom + 8 + label_height / 2,
             )
+            if edge_id in diagonal_only_shared_ids:
+                packed_edge = next(
+                    edge for edge in model["edges"] if str(edge["id"]) == edge_id
+                )
+                edge_source = positions[str(packed_edge["from"])]
+                edge_target = positions[str(packed_edge["to"])]
+                gutter_x = edge_source[0] + node_width + _CORRIDOR_GUTTER_OFFSET
+                long_vertical_label_x[edge_id] = (
+                    label_gutter_x + 8 + label_width / 2
+                )
+                # An intermediate self-loop's real Bezier reach can cross the
+                # middle of a packed label even when its return stays local.
+                # Keep that label in a clear endpoint row corridor instead.
+                loop_tops = [
+                    position[1]
+                    for relation in model["edges"]
+                    if str(relation["kind"]) != "feedback"
+                    and relation["from"] == relation["to"]
+                    and min(edge_source[1], edge_target[1]) < (
+                        position := positions[str(relation["from"])]
+                    )[1]
+                    < max(edge_source[1], edge_target[1])
+                    and label_gutter_x + 8
+                    < position[0] + node_width + _SELF_LOOP_BASE_REACH
+                    + _PROCESS_SELF_LOOP_MAX_LANE_REACH
+                    and label_gutter_x + 8 + label_width > position[0] + node_width
+                ]
+                if loop_tops and any(
+                    top - 44 < packed_y + label_height / 2
+                    and top + _NODE_HEIGHT + 44 > packed_y - label_height / 2
+                    for top in loop_tops
+                ):
+                    direction = 1 if edge_source[1] < edge_target[1] else -1
+                    source_gap_y = (
+                        edge_source[1] + (_NODE_HEIGHT if direction > 0 else 0)
+                        + direction * vertical_row_gap / 2
+                    )
+                    target_gap_y = (
+                        edge_target[1] + (_NODE_HEIGHT if direction < 0 else 0)
+                        - direction * vertical_row_gap / 2
+                    )
+                    if label_height + 8 <= vertical_row_gap:
+                        safe_gap_y = max(
+                            (source_gap_y, target_gap_y),
+                            key=lambda y: (min(abs(y - top) for top in loop_tops), y),
+                        )
+                        packed_y = max(
+                            safe_gap_y, previous_bottom + 8 + label_height / 2
+                        )
+            if (
+                edge_id in diagonal_only_shared_ids
+                and edge_source[1] > edge_target[1]
+            ):
+                packed_y = max(packed_y, edge_source[1] - vertical_row_gap / 2)
             long_vertical_gutter_x[edge_id] = gutter_x
             long_vertical_label_y[edge_id] = packed_y
             previous_bottom = packed_y + label_height / 2
             if intent == "process":
                 packed_process_label_bounds.append(
                     (
-                        gutter_x + 8,
+                        label_gutter_x + 8,
                         packed_y - label_height / 2,
-                        gutter_x + 8 + label_width,
+                        label_gutter_x + 8 + label_width,
                         previous_bottom,
                     )
                 )
             required_right = max(
                 required_right,
-                gutter_x + 8 + label_width + _PAGE_MARGIN,
+                label_gutter_x + 8 + label_width + _PAGE_MARGIN,
             )
         width = max(width, math.ceil(required_right))
         long_vertical_pack_bottom = previous_bottom
@@ -3135,7 +3424,7 @@ def render_native_diagram(
     process_adjacent_count: dict[str, int] = {}
     process_adjacent_label_x: dict[str, float] = {}
     process_adjacent_label_y: dict[str, float] = {}
-    process_adjacent_route_y: dict[str, float] = {}
+    process_adjacent_route_y: dict[str, float | tuple[float, float]] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     process_outer_label_right = max(
         (right for _, _, right, _ in packed_process_label_bounds),
@@ -3340,15 +3629,16 @@ def render_native_diagram(
             # A packed label cannot cover the outer source/target leg of a
             # long branch routed later in this same corridor. Preserve the
             # established +/-8 px long-branch lane envelope when checking.
-            for long_id in long_branch_ids:
+            for long_id in sorted(set(long_branch_ids) | set(long_vertical_gutter_x)):
                 long_edge = edges_by_id[long_id]
                 long_source = positions[str(long_edge["from"])]
                 long_target = positions[str(long_edge["to"])]
                 if long_source[1] == long_target[1]:
                     continue
                 direction = 1 if long_source[1] < long_target[1] else -1
-                outer_x = anchored_branch_gutter_x.get(
-                    long_id, float(width) - 16.0
+                outer_x = long_vertical_gutter_x.get(
+                    long_id,
+                    anchored_branch_gutter_x.get(long_id, float(width) - 16.0),
                 )
                 endpoint_legs = (
                     (
@@ -3379,6 +3669,96 @@ def render_native_diagram(
                         ) in candidate_boxes.items()
                     ):
                         return False
+
+            # Only same-column adjacent branches have node-centered
+            # vertical endpoint stems across an entire row-gap corridor.
+            # Move only a label that actually covers such a stem; demoting
+            # the whole cluster can make unrelated return paths intersect.
+            stems: set[float] = set()
+            for other in model["edges"]:
+                if (
+                    str(other["id"]) in candidate_ids
+                    or str(other["kind"]) == "feedback"
+                    or other["from"] == other["to"]
+                ):
+                    continue
+                other_source = positions[str(other["from"])]
+                other_target = positions[str(other["to"])]
+                if (
+                    other_source[0] != other_target[0]
+                    or other_source[1] == other_target[1]
+                    or abs(other_source[1] - other_target[1])
+                    > _NODE_HEIGHT + process_row_gap
+                    or (
+                        min(other_source[1], other_target[1]) + _NODE_HEIGHT,
+                        max(other_source[1], other_target[1]),
+                    ) != corridor
+                ):
+                    continue
+                stems.add(other_source[0] + _NODE_WIDTH / 2)
+            for candidate_id, box in sorted(candidate_boxes.items()):
+                box_left, box_top, box_width, box_height = box
+                blocking = [
+                    x for x in sorted(stems)
+                    if box_left < x < box_left + box_width
+                    and box_top < corridor[1]
+                    and box_top + box_height > corridor[0]
+                ]
+                if not blocking:
+                    continue
+                choices = (
+                    max(x + 8 for x in blocking),
+                    min(x - box_width - 8 for x in blocking),
+                )
+                fixed_boxes = (
+                    *foreign_boxes,
+                    *anchored_boxes,
+                    *(
+                        (
+                            fixed_x - fixed_width / 2,
+                            corridor_center - fixed_height / 2,
+                            fixed_width,
+                            float(fixed_height),
+                        )
+                        for fixed_x, _, fixed_width, fixed_height, _ in fixed_items
+                    ),
+                )
+                new_left = next(
+                    (
+                        value for value in choices
+                        if value >= 8 and value + box_width <= width - 8
+                        and all(not value < stem < value + box_width for stem in stems)
+                        and all(
+                            peer_id == candidate_id
+                            or value >= peer_left + peer_width + 8
+                            or value + box_width + 8 <= peer_left
+                            or box_top >= peer_top + peer_height + 8
+                            or box_top + box_height + 8 <= peer_top
+                            for peer_id, (
+                                peer_left, peer_top, peer_width, peer_height
+                            ) in candidate_boxes.items()
+                        )
+                        and all(
+                            value >= peer_left + peer_width + 8
+                            or value + box_width + 8 <= peer_left
+                            or box_top >= peer_top + peer_height + 8
+                            or box_top + box_height + 8 <= peer_top
+                            for peer_left, peer_top, peer_width, peer_height
+                            in fixed_boxes
+                        )
+                    ),
+                    None,
+                )
+                if new_left is None:
+                    return False
+                candidate_boxes[candidate_id] = (
+                    new_left, box_top, box_width, box_height
+                )
+                candidates = [
+                    (new_left + box_width / 2, edge_id, width)
+                    if edge_id == candidate_id else (x, edge_id, width)
+                    for x, edge_id, width in candidates
+                ]
 
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
@@ -3700,35 +4080,24 @@ def render_native_diagram(
             for occupied_corridor, occupants in corridor_groups.items():
                 for natural_x, peer_id, label_width, label_height, fixed in occupants:
                     peer = edges_by_id[peer_id]
-                    if (
-                        peer_id == local_id
-                        or peer_id in unsafe_adjacent_branches
-                        or (
-                            # Adjacent relations sharing the target can still
-                            # mask this local return with their physical label.
-                            # Long shared-target relations retain their own
-                            # anchor/fallback treatment and must not inflate
-                            # unrelated accepted multi-group diagrams.
-                            {str(edge["from"]), str(edge["to"])}.intersection(
-                                {str(peer["from"]), str(peer["to"])}
-                            )
-                            and (
-                                str(edge["to"]) != str(peer["to"])
-                                or abs(
-                                    positions[str(peer["from"])][1]
-                                    - positions[str(peer["to"])][1]
-                                ) > _NODE_HEIGHT + process_row_gap
-                            )
-                        )
-                    ):
+                    # Shared endpoints do not exempt peer label rectangles:
+                    # the actual local long-leg segments may still cut them.
+                    if peer_id == local_id or peer_id in unsafe_adjacent_branches:
                         continue
                     actual_x = speculative_label_x.get(
                         peer_id, process_adjacent_label_x.get(peer_id, natural_x)
                     )
-                    actual_y = process_adjacent_label_y.get(
-                        peer_id,
-                        (occupied_corridor[0] + occupied_corridor[1]) / 2,
-                    )
+                    if peer_id in process_adjacent_label_y:
+                        actual_y = process_adjacent_label_y[peer_id]
+                    elif positions[str(peer["from"])][1] == positions[str(peer["to"])][1]:
+                        row_top = positions[str(peer["from"])][1]
+                        actual_y = (
+                            row_top - label_height / 2 - 4
+                            if label_height > 29
+                            else row_top - 18
+                        )
+                    else:
+                        actual_y = (occupied_corridor[0] + occupied_corridor[1]) / 2
                     left = actual_x - label_width / 2
                     right = actual_x + label_width / 2
                     top = actual_y - label_height / 2
@@ -3853,6 +4222,25 @@ def render_native_diagram(
                 key=lambda edge_id: _process_anchor_order_key(edges_by_id[edge_id]),
             ):
                 process_branch_gutter_x[edge_id] = cursor
+                # The projected label height must match the later rendered
+                # label before selecting a clear horizontal route ordinate.
+                relation = edges_by_id[edge_id]
+                edge_source = positions[str(relation["from"])]
+                edge_target = positions[str(relation["to"])]
+                if (
+                    edge_source[0] != edge_target[0]
+                    and 0 < abs(edge_source[1] - edge_target[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                ):
+                    corridor = (
+                        min(edge_source[1], edge_target[1]) + _NODE_HEIGHT,
+                        max(edge_source[1], edge_target[1]),
+                    )
+                    label_y = sum(corridor) / 2
+                    metrics = _edge_label_metrics(relation, positions, intent)
+                    if metrics.height + 8 > corridor[1] - corridor[0]:
+                        label_y = adjacent_route_y(edge_id, corridor)
+                    process_adjacent_label_y.setdefault(edge_id, label_y)
                 actual_label_right = (
                     cursor
                     + 8
@@ -4007,6 +4395,7 @@ def render_native_diagram(
 
     long_branch_slots: dict[str, int] = {}
     long_branch_label_y: dict[str, float] = {}
+    effective_long_branch_count = 0
     long_branch_pack_bottom = 0.0
     if intent == "process":
         row_step = _NODE_HEIGHT + process_row_gap
@@ -4018,12 +4407,19 @@ def render_native_diagram(
                 natural_y = (source[1] + target[1] + _NODE_HEIGHT) / 2
                 long_branches.append((natural_y, str(edge["id"]), edge))
         long_branches.sort(key=lambda item: (item[0], item[1]))
+        # A local long vertical with a shared diagonal target also occupies
+        # a global label slot, despite retaining its collision-free local path.
+        # The synthetic second slot affects only the global label pack, not
+        # the physical number of long return paths.
+        effective_long_branch_count = len(long_branches) + int(
+            len(long_branches) == 1 and bool(diagonal_only_shared_ids)
+        )
         for slot, (_, edge_id, _) in enumerate(long_branches):
             long_branch_slots[edge_id] = slot
-        if len(long_branches) > 1:
+        if effective_long_branch_count > 1:
             required_gutter = (
                 _PROCESS_LONG_BRANCH_GUTTER
-                + (len(long_branches) - 1) * _PROCESS_GUTTER_LANE_STEP
+                + (effective_long_branch_count - 1) * _PROCESS_GUTTER_LANE_STEP
             )
             width += max(0, required_gutter - _PROCESS_EDGE_GUTTER)
             if process_outer_label_right:
@@ -4107,6 +4503,14 @@ def render_native_diagram(
                     long_id, width - _PROCESS_EDGE_GUTTER / 2
                 ),
             )
+            # A singleton's earlier anchor is not its rendered lane once
+            # a diagonal-shared label increases the effective branch count.
+            if (
+                slot is not None
+                and len(long_branch_slots) > 1
+                and long_id not in process_branch_gutter_x
+            ):
+                gutter_x = width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
             left_x, right_x = sorted((endpoint_x, gutter_x))
             blockers: list[tuple[float, float]] = []
             for other_corridor, items in corridor_groups.items():
@@ -4130,13 +4534,25 @@ def render_native_diagram(
                         or other_x + label_width / 2 + 2 <= left_x
                     ):
                         continue
-                    other_y = process_adjacent_label_y.get(
-                        other_id, sum(other_corridor) / 2
-                    )
+                    if other_id in process_adjacent_label_y:
+                        other_y = process_adjacent_label_y[other_id]
+                    elif edges_by_id[other_id]["from"] == edges_by_id[other_id]["to"]:
+                        peer_y = positions[str(edges_by_id[other_id]["from"])][1]
+                        other_y = (
+                            peer_y - label_height / 2 - 4
+                            if label_height > 29 else peer_y - 18
+                        )
+                    else:
+                        other_y = sum(other_corridor) / 2
                     blockers.append((
                         other_y - label_height / 2 - 2,
                         other_y + label_height / 2 + 2,
                     ))
+            # Source legs must see packed outer long-branch labels as well
+            # as labels still occupying the original corridor.
+            for left, top, right, bottom in packed_process_label_bounds:
+                if left - 2 < right_x and right + 2 > left_x:
+                    blockers.append((top - 2, bottom + 2))
             if not blockers or all(
                 not top < preferred < bottom for top, bottom in blockers
             ):
@@ -4156,8 +4572,368 @@ def render_native_diagram(
                 ),
                 None,
             )
-            if safe_y is not None and safe_y != preferred:
+            if safe_y is None:
+                # Moving an adjacent/parallel peer after other branches and
+                # footer routes have been planned can invalidate their
+                # already-sealed labels. Only a sole long return owns this
+                # bounded near-gutter rescue; crowded peers keep their plan.
+                if (
+                    long_id not in long_branch_ids
+                    or len(long_branch_ids) != 1
+                    or any(str(edge["kind"]) == "feedback" for edge in model["edges"])
+                ):
+                    continue
+                # The outer rail may be separated from the source by a packed
+                # two-line label filling the entire row gap. Before accepting a
+                # collision, reuse the nearer card-exterior gutter already used
+                # by local vertical branches, but only when its entire vertical
+                # return and both adjacent leg rectangles remain unobstructed.
+                near = (
+                    max(x + _NODE_WIDTH for x, _ in positions.values())
+                    + _CORRIDOR_GUTTER_OFFSET
+                )
+                if (
+                    near + 2 < gutter_x
+                    and near > max(source[0], target[0]) + _NODE_WIDTH / 2
+                ):
+                    path_top = min(source[1], target[1])
+                    path_bottom = max(source[1], target[1]) + _NODE_HEIGHT
+                    peer_boxes = list(packed_process_label_bounds)
+                    for other_corridor, occupants in corridor_groups.items():
+                        for natural_x, peer_id, box_width, box_height, _ in occupants:
+                            if peer_id == long_id:
+                                continue
+                            peer_x = process_adjacent_label_x.get(peer_id, natural_x)
+                            if peer_id in process_branch_gutter_x:
+                                peer_x = (
+                                    process_branch_gutter_x[peer_id]
+                                    + 8 + box_width / 2
+                                )
+                            if peer_id in process_adjacent_label_y:
+                                peer_y = process_adjacent_label_y[peer_id]
+                            elif edges_by_id[peer_id]["from"] == edges_by_id[peer_id]["to"]:
+                                row_y = positions[str(edges_by_id[peer_id]["from"])][1]
+                                peer_y = (
+                                    row_y - box_height / 2 - 4
+                                    if box_height > 29 else row_y - 18
+                                )
+                            else:
+                                peer_y = sum(other_corridor) / 2
+                            peer_boxes.append((
+                                peer_x - box_width / 2,
+                                peer_y - box_height / 2,
+                                peer_x + box_width / 2,
+                                peer_y + box_height / 2,
+                            ))
+                    if all(
+                        not (
+                            left - 2 < near < right + 2
+                            and top - 2 < path_bottom
+                            and bottom + 2 > path_top
+                        )
+                        for left, top, right, bottom in peer_boxes
+                    ):
+                        near_left, near_right = sorted((endpoint_x, near))
+                        near_blockers = [
+                            (top - 2, bottom + 2)
+                            for left, top, right, bottom in peer_boxes
+                            if left - 2 < near_right and right + 2 > near_left
+                        ]
+                        near_ordinates = [max(low, min(high, preferred)), low, high]
+                        for top, bottom in near_blockers:
+                            near_ordinates.extend((
+                                max(low, min(high, top)),
+                                max(low, min(high, bottom)),
+                            ))
+                        near_safe = next((
+                            y for y in sorted(
+                                set(near_ordinates),
+                                key=lambda y: (abs(y - preferred), y),
+                            )
+                            if all(not top < y < bottom for top, bottom in near_blockers)
+                        ), None)
+                        if near_safe is not None:
+                            process_branch_gutter_x[long_id] = near
+                            process_adjacent_route_y[long_id] = near_safe
+                continue
+            if safe_y != preferred:
                 process_adjacent_route_y[long_id] = safe_y
+
+        # The existing source-leg scan is not sufficient for upward, long
+        # branches: their target leg can cross an anchored label in the
+        # destination row gap. Reuse its bounded ordinate search there too.
+        for long_id in candidates_by_id:
+            edge = edges_by_id[long_id]
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if (
+                source[1] == target[1]
+                or source[0] == target[0]
+                or (
+                    abs(source[1] - target[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                    and long_id not in process_branch_gutter_x
+                )
+            ):
+                continue
+            descending = source[1] < target[1]
+            corridor = _process_row_corridor_bounds(
+                target[1], positions, direction=-1 if descending else 1
+            )
+            if corridor is None:
+                continue
+            low, high = float(corridor[0]) + 2, float(corridor[1]) - 2
+            if low >= high:
+                continue
+            slot = long_branch_slots.get(long_id)
+            if slot is not None:
+                lane_offset = (slot - (len(long_branch_slots) - 1) / 2) * 4.0
+            else:
+                lane_offset = ((lane_ranks[long_id] % 5) - 2) * _PROCESS_LANE_STEP / 2
+            lane_offset = max(-8.0, min(8.0, lane_offset))
+            end_y = target[1] if descending else target[1] + _NODE_HEIGHT
+            preferred = end_y - (1 if descending else -1) * process_row_gap / 2
+            preferred += lane_offset
+            gutter_x = process_branch_gutter_x.get(
+                long_id, anchored_branch_gutter_x.get(long_id)
+            )
+            if gutter_x is None:
+                gutter_x = (
+                    width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
+                    if slot is not None and len(long_branch_slots) > 1
+                    else width - _PROCESS_EDGE_GUTTER / 2
+                )
+            endpoint_x = target[0] + _NODE_WIDTH / 2
+            # A singleton's earlier anchor is not its rendered lane once
+            # a diagonal-shared label increases the effective branch count.
+            if (
+                slot is not None
+                and len(long_branch_slots) > 1
+                and long_id not in process_branch_gutter_x
+            ):
+                gutter_x = width - 20 - slot * _PROCESS_GUTTER_LANE_STEP
+            left_x, right_x = sorted((endpoint_x, gutter_x))
+            blockers: list[tuple[float, float]] = []
+            for other_corridor, items in corridor_groups.items():
+                if other_corridor != corridor:
+                    continue
+                for natural_x, other_id, label_width, label_height, _ in items:
+                    if other_id == long_id:
+                        continue
+                    other_x = process_adjacent_label_x.get(other_id, natural_x)
+                    if other_id in process_branch_gutter_x:
+                        other_x = (
+                            process_branch_gutter_x[other_id]
+                            + 8 + label_width / 2
+                        )
+                    if (
+                        other_x - label_width / 2 - 2 >= right_x
+                        or other_x + label_width / 2 + 2 <= left_x
+                    ):
+                        continue
+                    if other_id in process_adjacent_label_y:
+                        other_y = process_adjacent_label_y[other_id]
+                    elif edges_by_id[other_id]["from"] == edges_by_id[other_id]["to"]:
+                        peer_y = positions[str(edges_by_id[other_id]["from"])][1]
+                        other_y = (
+                            peer_y - label_height / 2 - 4
+                            if label_height > 29 else peer_y - 18
+                        )
+                    else:
+                        other_y = sum(corridor) / 2
+                    blockers.append((
+                        other_y - label_height / 2 - 2,
+                        other_y + label_height / 2 + 2,
+                    ))
+            # Long-branch labels already packed outside corridor_groups are
+            # physical obstacles too; avoid moving the target leg into them.
+            for box_left, box_top, box_right, box_bottom in packed_process_label_bounds:
+                if box_left - 2 < right_x and box_right + 2 > left_x:
+                    blockers.append((box_top - 2, box_bottom + 2))
+            if not any(top < preferred < bottom for top, bottom in blockers):
+                continue
+            candidates = [max(low, min(high, preferred)), low, high]
+            for top, bottom in blockers:
+                candidates.extend((
+                    max(low, min(high, top)),
+                    max(low, min(high, bottom)),
+                ))
+            safe_y = next(
+                (
+                    y for y in sorted(
+                        set(candidates), key=lambda y: (abs(y - preferred), y)
+                    )
+                    if all(not top < y < bottom for top, bottom in blockers)
+                ),
+                None,
+            )
+            if safe_y is None:
+                # When two adjacent cross-group endpoints share one saturated
+                # row gap, every ordinary ordinate can be occupied by loop
+                # labels. A rail 1.5 px off the *actual* card edge is still
+                # clear if every rendered label and both endpoint stems are
+                # checked. Only movable labels can yield to a shared stem.
+                source_corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=1 if descending else -1
+                )
+                source_center_x = source[0] + _NODE_WIDTH / 2
+                target_center_x = target[0] + _NODE_WIDTH / 2
+                if (
+                    source_corridor == corridor
+                    and long_id in process_branch_gutter_x
+                    and left_x <= source_center_x <= right_x
+                    and abs(source[1] - target[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                ):
+                    boundary_y = high + 0.5 if descending else low - 0.5
+                    span_left = min(source_center_x, target_center_x, gutter_x)
+                    span_right = max(source_center_x, target_center_x, gutter_x)
+                    gap_boxes: list[
+                        tuple[str | None, float, float, float, float, bool]
+                    ] = []
+                    for peer_x, peer_id, peer_width, peer_height, fixed in (
+                        corridor_groups.get(corridor, ())
+                    ):
+                        if peer_id == long_id:
+                            continue
+                        peer = edges_by_id[peer_id]
+                        center_x = process_adjacent_label_x.get(peer_id, peer_x)
+                        if peer_id in process_branch_gutter_x:
+                            center_x = (
+                                process_branch_gutter_x[peer_id]
+                                + 8 + peer_width / 2
+                            )
+                        center_y = process_adjacent_label_y.get(peer_id)
+                        if center_y is None:
+                            if peer["from"] == peer["to"]:
+                                peer_top = positions[str(peer["from"])][1]
+                                center_y = (
+                                    peer_top - peer_height / 2 - 4
+                                    if peer_height > 29 else peer_top - 18
+                                )
+                            else:
+                                center_y = sum(corridor) / 2
+                        gap_boxes.append((
+                            peer_id, center_x - peer_width / 2,
+                            center_y - peer_height / 2,
+                            center_x + peer_width / 2,
+                            center_y + peer_height / 2,
+                            fixed or peer_id in process_branch_gutter_x,
+                        ))
+                    gap_boxes.extend(
+                        (None, left, top, right, bottom, True)
+                        for left, top, right, bottom
+                        in packed_process_label_bounds
+                    )
+                    if all(
+                        not (
+                            left - 2 < span_right
+                            and right + 2 > span_left
+                            and top - 2 < boundary_y < bottom + 2
+                        )
+                        for _, left, top, right, bottom, _ in gap_boxes
+                    ):
+                        proposals: dict[str, float] = {}
+                        blocked_stem = False
+                        source_port = (
+                            source[1] + _NODE_HEIGHT
+                            if descending else source[1]
+                        )
+                        target_port = (
+                            target[1] if descending
+                            else target[1] + _NODE_HEIGHT
+                        )
+                        for stem_x, port_y in (
+                            (source_center_x, source_port),
+                            (target_center_x, target_port),
+                        ):
+                            for (
+                                peer_id, left, top, right, bottom, fixed
+                            ) in gap_boxes:
+                                if (
+                                    peer_id in proposals
+                                    or not left - 2 < stem_x < right + 2
+                                    or not top - 2 < max(port_y, boundary_y)
+                                    or not bottom + 2 > min(port_y, boundary_y)
+                                ):
+                                    continue
+                                if peer_id is None or fixed:
+                                    blocked_stem = True
+                                    break
+                                half_width = (right - left) / 2
+                                choices = (
+                                    stem_x + half_width + 8,
+                                    stem_x - half_width - 8,
+                                )
+                                relocated_x = next((
+                                    candidate for candidate in choices
+                                    if candidate - half_width >= 8
+                                    and candidate + half_width <= width - 8
+                                    and all(
+                                        other_id == peer_id
+                                        or candidate - half_width
+                                        >= other_right + 4
+                                        or candidate + half_width + 4
+                                        <= other_left
+                                        or top >= other_bottom + 4
+                                        or bottom + 4 <= other_top
+                                        for (
+                                            other_id, other_left, other_top,
+                                            other_right, other_bottom, _
+                                        ) in gap_boxes
+                                    )
+                                ), None)
+                                if relocated_x is None:
+                                    blocked_stem = True
+                                    break
+                                proposals[peer_id] = relocated_x
+                            if blocked_stem:
+                                break
+                        if not blocked_stem:
+                            process_adjacent_label_x.update(proposals)
+                            process_adjacent_route_y[long_id] = (
+                                boundary_y, boundary_y
+                            )
+                            continue
+                near = max(x + _NODE_WIDTH for x, _ in positions.values()) + _CORRIDOR_GUTTER_OFFSET
+                if (
+                    near < gutter_x
+                    and near > max(source[0], target[0]) + _NODE_WIDTH / 2
+                    and all(left > near + 2 for left, _, _, _ in packed_process_label_bounds)
+                    and all(
+                        process_adjacent_label_x.get(
+                            peer_id,
+                            process_branch_gutter_x[peer_id] + 8 + label_width / 2
+                            if peer_id in process_branch_gutter_x else natural_x,
+                        ) - label_width / 2 > near + 2
+                        for _, occupants in corridor_groups.items()
+                        for natural_x, peer_id, label_width, _, _ in occupants
+                        if peer_id != long_id
+                        and peer_id not in long_branch_slots
+                        and peer_id not in long_vertical_label_x
+                    )
+                ):
+                    metrics = _edge_label_metrics(edge, positions, intent)
+                    process_adjacent_label_x.setdefault(
+                        long_id, gutter_x + 8 + metrics.width / 2
+                    )
+                    process_branch_gutter_x[long_id] = near
+                continue
+            existing = process_adjacent_route_y.get(long_id)
+            if isinstance(existing, tuple):
+                source_route_y = existing[0]
+            elif existing is not None:
+                source_route_y = existing
+            else:
+                start_y = (
+                    source[1] + _NODE_HEIGHT if descending else source[1]
+                )
+                source_route_y = (
+                    start_y
+                    + (1 if descending else -1) * process_row_gap / 2
+                    + lane_offset
+                )
+            process_adjacent_route_y[long_id] = (source_route_y, safe_y)
 
     feedback_edges = sorted(
         (edge for edge in model["edges"] if str(edge["kind"]) == "feedback"),
@@ -4211,6 +4987,14 @@ def render_native_diagram(
             )
         center = sum(corridor) / 2
         if edge_id not in anchored_feedback_label_ids:
+            return center
+        if (
+            edge_source[0] == edge_target[0]
+            and abs(edge_source[1] - edge_target[1])
+            > _NODE_HEIGHT + process_row_gap
+        ):
+            # Same-column long branches render the anchored source-gap label
+            # at its exact midpoint, without a semantic lane offset.
             return center
         slot = long_branch_slots.get(edge_id)
         if slot is not None:
@@ -4428,16 +5212,18 @@ def render_native_diagram(
                         source[1], positions, direction=direction
                     ),
                     source[0] + _NODE_WIDTH / 2,
+                    source[1] + (_NODE_HEIGHT if direction > 0 else 0),
                 ),
                 (
                     _process_row_corridor_bounds(
                         target[1], positions, direction=-direction
                     ),
                     target[0] + _NODE_WIDTH / 2,
+                    target[1] + (0 if direction > 0 else _NODE_HEIGHT),
                 ),
             )
             free_legs: list[float] = []
-            for corridor, endpoint_x in endpoints:
+            for corridor, endpoint_x, port_y in endpoints:
                 if corridor is None:
                     break
                 low, high = corridor[0] + 2.0, corridor[1] - 2.0
@@ -4461,6 +5247,14 @@ def render_native_diagram(
                             key=lambda value: (abs(value - preferred), value),
                         )
                         if all(not top < y < bottom for top, bottom in blockers)
+                        and all(
+                            not (
+                                left < endpoint_x < right
+                                and top < max(port_y, y)
+                                and bottom > min(port_y, y)
+                            )
+                            for left, top, right, bottom in feedback_obstacles
+                        )
                     ),
                     None,
                 )
@@ -4529,6 +5323,26 @@ def render_native_diagram(
             edge_id = str(edge["id"])
             if edge_id in feedback_outer_footer_ids:
                 continue
+            # A crowded, already rejected row-gap pack remains saturated
+            # after its labels move outward: retain the existing safe footer
+            # sideports rather than speculatively reusing the local channel.
+            if (
+                model["groups"] and source[1] != target[1]
+                and any(
+                    corridor in unsafe_corridors
+                    and any(
+                        peer_id in unsafe_adjacent_branches
+                        and peer_height + 4 >= corridor[1] - corridor[0]
+                        for _, peer_id, _, peer_height, _ in corridor_groups[corridor]
+                    )
+                    for corridor in shared_corridors
+                )
+            ):
+                feedback_outer_footer_ids.add(edge_id)
+                feedback_footer_ids.add(edge_id)
+                feedback_local_gutter_x.pop(edge_id, None)
+                feedback_path_y.pop(edge_id, None)
+                continue
             local_grouped_reverse_return = (
                 len(feedback_edges) == 1
                 and bool(model["groups"])
@@ -4596,9 +5410,19 @@ def render_native_diagram(
                     # Each horizontal leg uses a real row-gap corridor; a
                     # same-row return needs both endpoint legs checked too.
                     safe_legs: list[float] = []
-                    for corridor, endpoint_x in (
-                        (source_corridor, source[0] + _NODE_WIDTH / 2),
-                        (target_corridor, target[0] + _NODE_WIDTH / 2),
+                    for corridor, endpoint_x, port_y in (
+                        (
+                            source_corridor, source[0] + _NODE_WIDTH / 2,
+                            source[1] + (
+                                _NODE_HEIGHT if source[1] <= target[1] else 0
+                            ),
+                        ),
+                        (
+                            target_corridor, target[0] + _NODE_WIDTH / 2,
+                            target[1] + (
+                                0 if source[1] < target[1] else _NODE_HEIGHT
+                            ),
+                        ),
                     ):
                         if corridor is None:
                             feedback_outer_footer_ids.add(edge_id)
@@ -4656,6 +5480,14 @@ def render_native_diagram(
                                 if all(
                                     not block_low < y < block_high
                                     for block_low, block_high in blockers
+                                )
+                                and all(
+                                    not (
+                                        left < endpoint_x < right
+                                        and top < max(port_y, y)
+                                        and bottom > min(port_y, y)
+                                    )
+                                    for left, top, right, bottom in label_boxes
                                 )
                             ),
                             None,
@@ -5073,6 +5905,7 @@ def render_native_diagram(
             extra_gutter = attempt % 33
             relayout_phase = attempt >= 33
             peer_feedback_boxes: list[tuple[float, float, float, float]] = []
+            peer_horizontal_strokes: list[tuple[float, float, float, float]] = []
             peer_footer_trial: dict[str, float] = {}
             peer_layout_safe = True
             for peer in feedback_edges:
@@ -5102,7 +5935,7 @@ def render_native_diagram(
                     if feedback_count > 1 or peer_id in feedback_footer_ids
                     else None
                 )
-                _, peer_x, peer_y, _ = _edge_geometry(
+                peer_path, peer_x, peer_y, _ = _edge_geometry(
                     peer_source,
                     peer_target,
                     self_loop=peer["from"] == peer["to"],
@@ -5128,6 +5961,45 @@ def render_native_diagram(
                     feedback_path_footer=peer_id in feedback_path_footer_ids,
                     feedback_local_gutter_x=feedback_local_gutter_x.get(peer_id),
                 )
+                # Non-outer feedback paths keep their local strokes. Reserve
+                # actual axis-aligned C endpoint stubs and L rails before
+                # placing any outer label; a label cannot hide a peer line.
+                tokens = re.findall(r"[MCL]|-?\d+(?:\.\d+)?", peer_path)
+                cursor = None
+                index = 0
+                while index < len(tokens):
+                    command = tokens[index]
+                    index += 1
+                    count = 6 if command == "C" else 2
+                    values = [float(v) for v in tokens[index:index + count]]
+                    index += count
+                    endpoint = (values[-2], values[-1])
+                    if cursor is not None:
+                        if command == "L":
+                            if abs(cursor[1] - endpoint[1]) < 0.01:
+                                peer_horizontal_strokes.append((
+                                    min(cursor[0], endpoint[0]),
+                                    endpoint[1] - 1,
+                                    max(cursor[0], endpoint[0]),
+                                    endpoint[1] + 1,
+                                ))
+                            elif abs(cursor[0] - endpoint[0]) < 0.01:
+                                peer_horizontal_strokes.append((
+                                    endpoint[0] - 1,
+                                    min(cursor[1], endpoint[1]),
+                                    endpoint[0] + 1,
+                                    max(cursor[1], endpoint[1]),
+                                ))
+                        elif command == "C":
+                            xs = (cursor[0], values[0], values[2], endpoint[0])
+                            if max(xs) - min(xs) < 0.01:
+                                peer_horizontal_strokes.append((
+                                    cursor[0] - 1,
+                                    min(cursor[1], values[1], values[3], endpoint[1]),
+                                    cursor[0] + 1,
+                                    max(cursor[1], values[1], values[3], endpoint[1]),
+                                ))
+                    cursor = endpoint
                 peer_x = min(
                     max(peer_x, peer_metrics.width / 2 + 8),
                     width - peer_metrics.width / 2 - 8,
@@ -5223,6 +6095,7 @@ def render_native_diagram(
                         canvas_height=height,
                         label_width=metrics.width,
                         obstacles=blockers,
+                        label_only_obstacles=peer_horizontal_strokes,
                         parallel_route_slot=outer_feedback_parallel_slots[edge_id],
                         reserved_verticals=reserved_verticals,
                         label_y=(
@@ -5297,7 +6170,10 @@ def render_native_diagram(
             # group columns. Retry with actual free horizontal group space.
             # The finite limit derives from card and edge-label geometry,
             # never a constant number of attempts unrelated to the model.
-            if len(regions) > 1:
+            if regions and (
+                len(regions) > 1
+                or len({x for x, _ in positions.values()}) > 1
+            ):
                 clearance_budget = 2 * _NODE_WIDTH + sum(
                     _edge_label_metrics(edge, positions, intent).width + 16
                     for edge in model["edges"]
@@ -5450,9 +6326,15 @@ def render_native_diagram(
         if _process_group_gap_extra or has_parallel_feedback_peers
         else model["edges"]
     )
-    for edge in paint_edges:
-        lines.extend(
-            _render_edge(
+    def render_planned_edge(
+        edge: Mapping[str, Any],
+        *,
+        label_x_override: float | None = None,
+        route_y_override: float | tuple[float, float] | None = None,
+        label_position_override: tuple[float, float] | None = None,
+        card_target_port_x: float | None = None,
+    ) -> list[str]:
+        return _render_edge(
                 edge,
                 positions,
                 lane_rank=lane_ranks[str(edge["id"])],
@@ -5462,17 +6344,28 @@ def render_native_diagram(
                 process_row_gap=process_row_gap,
                 non_process_row_gap=non_process_row_gap,
                 long_branch_slot=long_branch_slots.get(str(edge["id"])),
-                long_branch_count=len(long_branch_slots),
+                long_branch_count=effective_long_branch_count,
+                long_branch_route_count=len(long_branch_slots),
                 long_branch_label_y=long_branch_label_y.get(str(edge["id"])),
                 anchored_branch_gutter_x=anchored_branch_gutter_x.get(str(edge["id"])),
                 long_vertical_gutter_x=long_vertical_gutter_x.get(str(edge["id"])),
                 long_vertical_label_y=long_vertical_label_y.get(str(edge["id"])),
+                long_vertical_label_x=long_vertical_label_x.get(str(edge["id"])),
                 process_branch_gutter_x=process_branch_gutter_x.get(str(edge["id"])),
                 process_adjacent_slot=process_adjacent_slot.get(str(edge["id"])),
                 process_adjacent_count=process_adjacent_count.get(str(edge["id"]), 0),
-                process_adjacent_label_x=process_adjacent_label_x.get(str(edge["id"])),
+                process_adjacent_label_x=(
+                    label_x_override
+                    if label_x_override is not None
+                    else process_adjacent_label_x.get(str(edge["id"]))
+                ),
                 process_adjacent_label_y=process_adjacent_label_y.get(str(edge["id"])),
-                process_adjacent_route_y=process_adjacent_route_y.get(str(edge["id"])),
+                process_adjacent_route_y=(
+                    route_y_override
+                    if route_y_override is not None
+                    else process_adjacent_route_y.get(str(edge["id"]))
+                ),
+                process_same_row_target_port_x=card_target_port_x,
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
@@ -5502,8 +6395,450 @@ def render_native_diagram(
                 feedback_outer_obstacles=outer_feedback_obstacles_by_id.get(
                     str(edge["id"]), outer_feedback_obstacles
                 ),
+                final_label_override=label_position_override,
             )
-        )
+
+    # Keep the established renderer byte-for-byte for all unaffected edges.
+    # Only an actual cross-card same-row curve needs a second, label-aware pass.
+    planned_edge_lines = {
+        str(edge["id"]): render_planned_edge(edge) for edge in paint_edges
+    }
+    if intent == "process" and model["groups"]:
+        import xml.etree.ElementTree as ET
+
+        def planned_svg_parts(
+            edge_lines: list[str],
+        ) -> tuple[str, tuple[float, float, float, float]]:
+            group = ET.fromstring("\n".join(edge_lines))
+            route = next(
+                element.attrib["d"]
+                for element in group.iter("path")
+                if element.attrib.get("fill") == "none"
+            )
+            label = next(
+                element
+                for element in group.iter("rect")
+                if element.attrib.get("rx") == "9"
+                and element.attrib.get("fill") == "#f8fafc"
+            )
+            return route, tuple(
+                float(label.attrib[name]) for name in ("x", "y", "width", "height")
+            )
+
+        candidates: list[Mapping[str, Any]] = []
+        for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+            if str(edge["kind"]) == "feedback" or edge["from"] == edge["to"]:
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if source[1] != target[1] or source[1] == min(
+                row for _, row in positions.values()
+            ):
+                continue
+            if process_branch_gutter_x.get(str(edge["id"])) is not None:
+                continue
+            start_x, end_x = sorted((source[0], target[0]))
+            in_between = (
+                (node_id, (float(node_x), float(node_y),
+                           float(_NODE_WIDTH), float(_NODE_HEIGHT)))
+                for node_id, (node_x, node_y) in positions.items()
+                if node_id not in {str(edge["from"]), str(edge["to"])}
+                and node_x >= start_x + _NODE_WIDTH
+                and node_x + _NODE_WIDTH <= end_x
+                and node_y < source[1] + _NODE_HEIGHT
+                and node_y + _NODE_HEIGHT > source[1]
+            )
+            foreign_cards = tuple(in_between)
+            if not foreign_cards:
+                continue
+            old_path, _ = planned_svg_parts(planned_edge_lines[str(edge["id"])])
+            if any(
+                _process_svg_path_hits_box(old_path, card, padding=0.0)
+                for _, card in foreign_cards
+            ):
+                candidates.append(edge)
+
+        if candidates:
+            layouts = {
+                edge_id: planned_svg_parts(fragment)
+                for edge_id, fragment in planned_edge_lines.items()
+            }
+            card_boxes = {
+                node_id: (float(x), float(y),
+                          float(_NODE_WIDTH), float(_NODE_HEIGHT))
+                for node_id, (x, y) in positions.items()
+            }
+            for edge in candidates:
+                edge_id = str(edge["id"])
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                original_box = layouts[edge_id][1]
+                left, top, label_width, label_height = original_box
+                own_center = left + label_width / 2
+                source_center = source[0] + _NODE_WIDTH / 2
+                target_center = target[0] + _NODE_WIDTH / 2
+                label_step = label_width / 2 + 8
+                external_label_center = max(
+                    (
+                        other_box[0] + other_box[2]
+                        for other_id, (_, other_box) in layouts.items()
+                        if other_id != edge_id
+                    ),
+                    default=own_center,
+                ) + label_step
+                label_centers = tuple(dict.fromkeys((
+                    own_center,
+                    own_center - label_step,
+                    own_center + label_step,
+                    source_center, target_center,
+                    external_label_center,
+                    width - _PAGE_MARGIN - label_width / 2,
+                )))
+                accepted = False
+                for direction in (-1, 1):
+                    corridor = _process_row_corridor_bounds(
+                        source[1], positions, direction=direction
+                    )
+                    if corridor is None:
+                        # The final occupied row has no following card row.
+                        # Its existing canvas footer is a real safe corridor
+                        # if all cards end at the current source/target row.
+                        bottom = source[1] + _NODE_HEIGHT
+                        if (
+                            direction != 1
+                            or any(
+                                node_y + _NODE_HEIGHT > bottom
+                                for _, node_y in positions.values()
+                            )
+                            or bottom + 4 >= height - 8
+                        ):
+                            continue
+                        corridor = (
+                            float(bottom),
+                            float(min(bottom + process_row_gap, height - 8)),
+                        )
+                    low, high = map(float, corridor)
+                    offsets = (2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0)
+                    ys = (
+                        (low + high) / 2,
+                        *(high - offset for offset in offsets),
+                        *(low + offset for offset in offsets),
+                    )
+                    port = (
+                        float(source[1]) if direction < 0
+                        else float(source[1] + _NODE_HEIGHT)
+                    )
+                    # A pinned label can occupy the target's center top
+                    # port even when the rail is clear. Try the straight
+                    # part of that same card's top boundary before failing.
+                    # No peer route/label or group geometry is displaced.
+                    target_ports = tuple(dict.fromkeys((
+                        target_center,
+                        target[0] + 16.0,
+                        target[0] + _NODE_WIDTH - 16.0,
+                    )))
+                    for target_port_x, channel_y in (
+                        (port_x, y) for port_x in target_ports for y in ys
+                    ):
+                        if not low + 1.5 < channel_y < high - 1.5:
+                            continue
+                        path = (
+                            f"M {source_center:.1f} {port:.1f} "
+                            f"L {source_center:.1f} {channel_y:.1f} "
+                            f"L {target_port_x:.1f} {channel_y:.1f} "
+                            f"L {target_port_x:.1f} {port:.1f}"
+                        )
+                        if any(
+                            _process_svg_path_hits_box(path, card)
+                            for node_id, card in card_boxes.items()
+                            if node_id not in {
+                                str(edge["from"]), str(edge["to"])
+                            }
+                        ):
+                            continue
+                        # A valid path can have no available label slot at
+                        # its old ordinate. Pack only this edge's actual label
+                        # into the same row corridor; never move peer labels.
+                        label_y_centers = (
+                            top + label_height / 2,
+                            channel_y,
+                            channel_y - label_height / 2 - 4,
+                            channel_y + label_height / 2 + 4,
+                        )
+                        for candidate_x, candidate_y in (
+                            (x, y)
+                            for y in label_y_centers
+                            for x in label_centers
+                        ):
+                            label_box = (
+                                candidate_x - label_width / 2,
+                                candidate_y - label_height / 2,
+                                label_width, label_height,
+                            )
+                            if (
+                                label_box[0] < 8
+                                or label_box[0] + label_width > width - 8
+                                or label_box[1] < 112
+                                or label_box[1] + label_height > height - 8
+                            ):
+                                continue
+                            if _process_svg_path_hits_box(path, label_box):
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(path, other_box)
+                                for other_id, (_, other_box) in layouts.items()
+                                if other_id != edge_id
+                            ):
+                                continue
+                            if any(
+                                _process_svg_path_hits_box(other_path, label_box)
+                                for other_id, (other_path, _) in layouts.items()
+                                if other_id != edge_id
+                            ):
+                                continue
+                            if any(
+                                label_box[0] < other_box[0] + other_box[2] + 2
+                                and other_box[0] < label_box[0] + label_width + 2
+                                and label_box[1] < other_box[1] + other_box[3] + 2
+                                and other_box[1] < label_box[1] + label_height + 2
+                                for other_id, (_, other_box) in layouts.items()
+                                if other_id != edge_id
+                            ):
+                                continue
+                            if any(
+                                label_box[0] < bx + bw + 1.5
+                                and bx - 1.5 < label_box[0] + label_width
+                                and label_box[1] < by + bh + 1.5
+                                and by - 1.5 < label_box[1] + label_height
+                                for bx, by, bw, bh in card_boxes.values()
+                            ):
+                                continue
+                            rerendered = render_planned_edge(
+                                edge,
+                                label_x_override=candidate_x,
+                                route_y_override=channel_y,
+                                label_position_override=(candidate_x, candidate_y),
+                                card_target_port_x=target_port_x,
+                            )
+                            reroute, rendered_box = planned_svg_parts(rerendered)
+                            if (
+                                reroute != path
+                                or any(abs(a - b) > 0.01 for a, b in zip(
+                                    rendered_box, label_box
+                                ))
+                            ):
+                                continue
+                            layouts[edge_id] = reroute, rendered_box
+                            planned_edge_lines[edge_id] = rerendered
+                            accepted = True
+                            break
+                        if accepted:
+                            break
+                    if accepted:
+                        break
+                if not accepted:
+                    # The observed route crosses a real foreign card. Never
+                    # silently publish that known-invalid curve.
+                    raise ValueError("no collision-free process same-row card route")
+
+        # A same-row outer fallback can still cut through a fixed self-loop
+        # label. Move only its horizontal rail within the already available
+        # row gap, leaving every physical label and card in place.
+        if process_branch_gutter_x:
+            latest_layout = {
+                edge_id: planned_svg_parts(fragment)
+                for edge_id, fragment in planned_edge_lines.items()
+            }
+            for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+                edge_id = str(edge["id"])
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                if (
+                    edge_id not in process_branch_gutter_x
+                    or str(edge["kind"]) == "feedback"
+                    or edge["from"] == edge["to"]
+                    or source[1] != target[1]
+                    or 'data-route="process-row-gutter"' not in (
+                        planned_edge_lines[edge_id][0]
+                    )
+                ):
+                    continue
+                path, own_box = latest_layout[edge_id]
+                if not any(
+                    _process_svg_path_hits_box(path, other_box)
+                    for other_id, (_, other_box) in latest_layout.items()
+                    if other_id != edge_id
+                ):
+                    continue
+                corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=-1
+                )
+                if corridor is None:
+                    continue
+                low, high = map(float, corridor)
+                preferred = (low + high) / 2
+                ys = {low + 2, high - 2, preferred}
+                for _, (_, other_box) in latest_layout.items():
+                    _, top, _, label_height = other_box
+                    ys.update((top - 2, top + label_height + 2))
+                ordered_ys = sorted(
+                    (y for y in ys if low + 1.5 < y < high - 1.5),
+                    key=lambda y: (abs(y - preferred), y),
+                )
+                for lane_y in ordered_ys:
+                    fragment = render_planned_edge(
+                        edge,
+                        route_y_override=(lane_y, lane_y),
+                        label_position_override=(
+                            own_box[0] + own_box[2] / 2,
+                            own_box[1] + own_box[3] / 2,
+                        ),
+                    )
+                    new_path, new_box = planned_svg_parts(fragment)
+                    if new_path == path or new_box != own_box:
+                        continue
+                    if any(
+                        _process_svg_path_hits_box(new_path, other_box)
+                        for _, other_box in latest_layout.values()
+                    ):
+                        continue
+                    if any(
+                        _process_svg_path_hits_box(
+                            new_path,
+                            (float(x), float(y),
+                             float(_NODE_WIDTH), float(_NODE_HEIGHT)),
+                        )
+                        for node_id, (x, y) in positions.items()
+                        if node_id not in {
+                            str(edge["from"]), str(edge["to"])
+                        }
+                    ):
+                        continue
+                    planned_edge_lines[edge_id] = fragment
+                    latest_layout[edge_id] = new_path, new_box
+                    break
+
+        # An overflow label can be forced into the leg of an unrelated long
+        # return even though its own path has a clear right-hand gutter.
+        # Resolve only actual collisions caused by a repacked label or a
+        # long return: paths and unrelated label anchors remain unchanged.
+        if process_branch_gutter_x or long_vertical_label_x or long_branch_slots:
+            final_layout = {
+                edge_id: planned_svg_parts(fragment)
+                for edge_id, fragment in planned_edge_lines.items()
+            }
+            affected_routes = (
+                set(process_branch_gutter_x)
+                | set(long_vertical_gutter_x)
+                | set(long_branch_slots)
+            )
+            for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+                edge_id = str(edge["id"])
+                if (
+                    str(edge["kind"]) == "feedback"
+                    or edge["from"] == edge["to"]
+                ):
+                    continue
+                path, old_box = final_layout[edge_id]
+                if (
+                    edge_id not in process_branch_gutter_x
+                    and edge_id not in long_vertical_label_x
+                    and not any(
+                        other_id in affected_routes
+                        and _process_svg_path_hits_box(other_path, old_box)
+                        for other_id, (other_path, _) in final_layout.items()
+                        if other_id != edge_id
+                    )
+                ):
+                    continue
+                left, top, box_width, box_height = old_box
+                hit_foreign_path = any(
+                    _process_svg_path_hits_box(other_path, old_box)
+                    for other_id, (other_path, _) in final_layout.items()
+                    if other_id != edge_id
+                )
+                overlaps_peer_label = any(
+                    old_box[0] < other[0] + other[2]
+                    and other[0] < old_box[0] + box_width
+                    and old_box[1] < other[1] + other[3]
+                    and other[1] < old_box[1] + box_height
+                    for other_id, (_, other) in final_layout.items()
+                    if other_id != edge_id
+                )
+                if not hit_foreign_path and not overlaps_peer_label:
+                    continue
+                x_center = left + box_width / 2
+                y_center = top + box_height / 2
+                vertical_offsets = (
+                    8, -8, 16, -16, 24, -24, 32, -32,
+                    40, -40, 48, -48, 56, -56, 64, -64,
+                )
+                horizontal_offsets = (
+                    8, -8, 16, -16, 24, -24, 32, -32,
+                    40, -40, 48, -48, 56, -56, 64, -64,
+                    80, -80, 96, -96, 128, -128, 160, -160,
+                )
+                placements = (
+                    *((0, dy) for dy in vertical_offsets),
+                    *(
+                        (dx, dy)
+                        for dx in horizontal_offsets
+                        for dy in (0, 8, -8, 16, -16, 24, -24)
+                    ),
+                )
+                for dx, dy in placements:
+                    new_box = (left + dx, top + dy, box_width, box_height)
+                    if (
+                        new_box[0] < 8
+                        or new_box[0] + box_width > width - 8
+                        or new_box[1] < 104
+                        or new_box[1] + box_height > height - 8
+                    ):
+                        continue
+                    if _process_svg_path_hits_box(path, new_box):
+                        continue
+                    if any(
+                        _process_svg_path_hits_box(other_path, new_box)
+                        for other_id, (other_path, _) in final_layout.items()
+                        if other_id != edge_id
+                    ):
+                        continue
+                    if any(
+                        new_box[0] < other[0] + other[2] + 2
+                        and other[0] < new_box[0] + box_width + 2
+                        and new_box[1] < other[1] + other[3] + 2
+                        and other[1] < new_box[1] + box_height + 2
+                        for other_id, (_, other) in final_layout.items()
+                        if other_id != edge_id
+                    ):
+                        continue
+                    if any(
+                        new_box[0] < bx + _NODE_WIDTH + 1.5
+                        and bx - 1.5 < new_box[0] + box_width
+                        and new_box[1] < by + _NODE_HEIGHT + 1.5
+                        and by - 1.5 < new_box[1] + box_height
+                        for bx, by in positions.values()
+                    ):
+                        continue
+                    fragment = render_planned_edge(
+                        edge,
+                        label_position_override=(x_center + dx, y_center + dy),
+                    )
+                    new_path, actual_box = planned_svg_parts(fragment)
+                    if (
+                        new_path != path
+                        or any(
+                            abs(a - b) > 0.01
+                            for a, b in zip(actual_box, new_box)
+                        )
+                    ):
+                        continue
+                    planned_edge_lines[edge_id] = fragment
+                    final_layout[edge_id] = new_path, actual_box
+                    break
+
+    for edge in paint_edges:
+        lines.extend(planned_edge_lines[str(edge["id"])])
     for node in model["nodes"]:
         lines.extend(
             _render_node(

@@ -1,0 +1,67 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-cubic-target-clearance-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate only: safe Bezier endpoint and grouped feedback clearance, avoid treating diagonal cross-column relations as full-height vertical stems, and include packed global long-branch labels when replanning another branch's target leg; preserve existing rank-gap/outer-sideport/paint-order routing.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-rank-gap-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-rank-gap-p2-successor-acceptance-receipt.json",
+    "file_sha256": "87beb9a316e2692ff7959f267784e6dd8a8cc3acd12be700b4cb4cbb1147df1d",
+    "evidence_digest": "f1238a8185b738010a696350ef8e29328fb94c9a4d81f0dc7a92401362b3e5c1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c81efcb281ed1dfc3bc11cf7eaa817e008b29faa4957d5e2c8b119190e3f31f0",
+    "tests/visual/test_native_diagram.py": "22321e0a3a7df16f464ab34ad83ae4e66f140c6cc653f90edb0adb6b5598ae1d"
+  },
+  "regression_tests": [
+    "test_pr205_p2_dont_block_clear_diagonal_stems_in_label_pack",
+    "test_pr205_p2_target_leg_clears_packed_long_branch_peer_label",
+    "test_pr205_p2_packed_label_clears_noncandidate_endpoint_stem",
+    "test_pr205_p2_natural_process_anchor_label_clears_feedback_and_outer_leg",
+    "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels"
+  ],
+  "test_receipts": {
+    "newly_reproduced_red": {
+      "task_id": "2918f048ce6a436392e464d3",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "current_native_diagram_suite": {
+      "task_id": "dd1e5be274f64d77bbce235f",
+      "exit_code": 0
+    },
+    "current_chromium_browser_smoke": {
+      "task_id": "44cd3c608e0e47708835545f",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "previous_validation_digest_gate": {
+      "task_id": "64936a345035434a95324a46",
+      "passed_tests": 1741,
+      "failed_tests": 1,
+      "exit_code": 2,
+      "failure_class": "stale_previous_candidate_source_digest"
+    }
+  },
+  "local_checks": {
+    "regression_red_reproduced": true,
+    "current_native_renderer_suite_passed": true,
+    "current_browser_smoke_passed": true,
+    "prior_immutable_receipts_unchanged": true,
+    "current_source_bytes_digest_bound": true,
+    "full_make_validate_after_new_successor_passed": false,
+    "github_exact_successor_ci_passed": false,
+    "independent_exact_successor_diff_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "native_green_browser_green_technical_candidate_pending_full_validate_exact_head_ci_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "final committed SHA or GitHub CI on this successor",
+    "full make validate after the successor publication fixture update",
+    "complete independent exact-revision whole-diff review or R3 quorum",
+    "deliberate visual acceptance of the changed layout geometry",
+    "permission to merge either stacked PR via Captain",
+    "pushed OCI digest, Commonthing release lock or productive runtime convergence"
+  ],
+  "evidence_digest": "53bb2216939cfeee801e33f68dc4ddf62a6ac83b6f4909764e76f79582e3ee4a"
+}

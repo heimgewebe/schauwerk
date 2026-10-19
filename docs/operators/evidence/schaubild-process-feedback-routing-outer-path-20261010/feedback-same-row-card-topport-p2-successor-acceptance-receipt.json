@@ -1,0 +1,87 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-same-row-card-topport-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Create-only technical candidate for four deterministic same-row card-routing fail-closed regressions. A bounded alternative same-card target top port and actual SVG label-geometry checks preserve foreign cards/labels; no global passes, no inherited visual acceptance.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-card-aware-outer-label-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-card-aware-outer-label-p2-successor-acceptance-receipt.json",
+    "file_sha256": "67a4055e0dc754672774331efeef865a98b0d4ec75cf0ab129daa4a1b5910566",
+    "evidence_digest": "0fff8f70164bb9f4176e95d737e8e45f20986cd083347735eebf7928e2496be1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3bcd68653253df610b571ea02aa23a61635b4bc192a3b468429e4a19fb73f5ce",
+    "tests/visual/test_native_diagram.py": "20de6acf3f30a6015e4b339057a6b115a4535b487f9f47e59e9dca5121f71c8b"
+  },
+  "regression_tests": [
+    "test_pr205_p2_failclosed_same_row_card_routes",
+    "test_pr205_p2_seed20_full_label_path_clearance",
+    "test_pr205_review_unsupported_card_and_synthetic_long_gutter_clearance"
+  ],
+  "test_receipts": {
+    "four_render_aborts_red": {
+      "task_id": "88306d20083b452397092d64",
+      "failed_cases": 4,
+      "exit_code": 1,
+      "correct_worktree_pythonpath": true
+    },
+    "four_render_aborts_green": {
+      "task_id": "4081c326ec884472826c956b",
+      "passed_cases": 4,
+      "reversed_edge_order_checked": true,
+      "exit_code": 0
+    },
+    "native_suite": {
+      "task_id": "30ab39be78204b3d92b7618f",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "task_id": "e3567ce4bd3448e39b361a83",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff_compile_registry": {
+      "task_id": "b32125b499a94bfcb795bc52",
+      "exit_code": 0
+    },
+    "deterministic_differential_seed21": {
+      "task_id": "6ff46578b1354801852c1982",
+      "seed": 20520261021,
+      "compared_models": 5000,
+      "new_render_exceptions": 0,
+      "new_card_intersections": 0,
+      "new_foreign_label_intersections": 0,
+      "comparison_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    },
+    "deterministic_differential_seed22": {
+      "task_id": "0605763374154e058e4a12ae",
+      "seed": 20520261022,
+      "compared_models": 5000,
+      "new_render_exceptions": 0,
+      "new_card_intersections": 0,
+      "new_foreign_label_intersections": 0,
+      "comparison_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    }
+  },
+  "local_checks": {
+    "four_failclosed_cases_no_longer_raise": true,
+    "foreign_card_and_label_intersections_absent_in_four_regressions": true,
+    "edge_order_reversal_stable": true,
+    "previous_historical_receipts_unchanged": true,
+    "source_and_tests_digest_bound": true,
+    "full_make_validate_after_receipt_pass": false,
+    "independent_exact_successor_review_pass": false,
+    "visual_acceptance_pass": false,
+    "fresh_ci_for_new_pr_head_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "revision_bound_technical_candidate_pending_full_validation_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "full make validate after publication fixture update",
+    "independent review or resolution of nine Parent PR204 threads",
+    "visual aesthetic acceptance",
+    "GitHub CI for locally changed PR205 successor head",
+    "Captain merge authorization",
+    "OCI publish, Commonthing lock or production convergence"
+  ],
+  "evidence_digest": "fe92dd711be7d38f1827668a2dc02d3232ec69b1d655de075306b56e48059deb"
+}

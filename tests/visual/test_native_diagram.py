@@ -5176,6 +5176,26 @@ def _p2_linear_path_clears_box(
     return True
 
 
+def _p2_cubic_path_clears_box(
+    path: str, box: tuple[float, float, float, float]
+) -> bool:
+    """Check the actual Bezier endpoint stubs, not just intervening L legs."""
+    for match in re.finditer(
+        r"(?:M|L) ([-0-9.]+) ([-0-9.]+) "
+        r"C ([-0-9.]+) ([-0-9.]+), ([-0-9.]+) ([-0-9.]+), "
+        r"([-0-9.]+) ([-0-9.]+)",
+        path,
+    ):
+        values = tuple(float(value) for value in match.groups())
+        points = tuple(
+            (values[index], values[index + 1])
+            for index in (0, 2, 4, 6)
+        )
+        if _cubic_hull_intersects_box(points, box):
+            return False
+    return True
+
+
 def test_pr204_p2_shared_endpoint_local_branch_clears_foreign_label() -> None:
     """An endpoint shared with a second relation does not excuse a real collision."""
     raw = _p2_feedback_geometry_model((3, 3))
@@ -6153,6 +6173,1245 @@ def test_pr204_p2_packed_adjacent_label_clears_outer_risk_target_leg() -> None:
         root = _parse(render_native_diagram(candidate))
         paths, labels = _edge_paths(root), _edge_label_boxes(root)
         assert _p2_linear_path_clears_box(paths["outer"], labels["a"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def _p2_named_group_model(group_sizes: tuple[int, ...]) -> dict:
+    """Use stable semantic node ids from the independent P2 reproductions."""
+    raw = _p2_feedback_geometry_model(group_sizes)
+    for node, node_id in zip(raw["nodes"], "abcdefghijklmnopqrstuvxyz"):
+        node["id"] = node_id
+        node["label"] = node_id
+    return raw
+
+
+def test_pr205_p2_single_group_rank_space_recovers_sideport_exhaustion() -> None:
+    """A single group with multiple rank columns must remain renderable."""
+    raw = _p2_named_group_model((5,))
+    edges = [
+        {"id": "e0", "from": "b", "to": "b", "label": "link", "kind": "feedback"},
+        {"id": "e1", "from": "b", "to": "b", "label": "link", "kind": "feedback"},
+        {"id": "e2", "from": "a", "to": "b", "label": "link", "kind": "risk"},
+        {"id": "e3", "from": "a", "to": "e", "label": "link", "kind": "flow"},
+        {"id": "e4", "from": "b", "to": "d", "label": "link", "kind": "flow"},
+        {"id": "e5", "from": "b", "to": "c",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        assert paths["e0"] != paths["e1"]
+        for edge_id in ("e0", "e1"):
+            for other_id, box in labels.items():
+                if other_id != edge_id:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box)
+            for node_id, box in cards.items():
+                if node_id != "b":
+                    assert _p2_linear_path_clears_box(paths[edge_id], box)
+        assert float(root.attrib["viewBox"].split()[2]) <= 2400
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_outgoing_shared_target_label_clears_local_long_leg() -> None:
+    """A shared endpoint cannot exempt its outgoing label from the gutter."""
+    raw = _p2_named_group_model((3, 3))
+    edges = [
+        {"id": "e0", "from": "a", "to": "a", "label": "link", "kind": "flow"},
+        {"id": "e1", "from": "d", "to": "d", "label": "link", "kind": "flow"},
+        {"id": "e2", "from": "a", "to": "f",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e3", "from": "f", "to": "c", "label": "link", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e2"], labels["e3"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_packed_label_clears_noncandidate_endpoint_stem() -> None:
+    """Moving a label must not mask an adjacent noncandidate node stem."""
+    raw = _p2_named_group_model((2, 3))
+    edges = [
+        {"id": "e0", "from": "d", "to": "b", "label": "link", "kind": "risk"},
+        {"id": "e2", "from": "d", "to": "c", "label": "link", "kind": "flow"},
+        {"id": "e3", "from": "a", "to": "e", "label": "link", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e2"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_natural_process_anchor_label_clears_feedback_and_outer_leg() -> None:
+    """Browser-visible anchored labels must clear both feedback and long flow."""
+    raw = _p2_feedback_geometry_model((3, 3, 3))
+    edges = [
+        {"id": "request", "from": "n0", "to": "n3",
+         "label": "Antrag weiterleiten", "kind": "flow"},
+        {"id": "approval", "from": "n3", "to": "n6",
+         "label": "Freigabe", "kind": "flow"},
+        {"id": "outcome", "from": "n6", "to": "n8",
+         "label": "Ergebnis prüfen", "kind": "flow"},
+        {"id": "revision", "from": "n5", "to": "n1",
+         "label": "Neue Planung", "kind": "feedback"},
+        {"id": "risk", "from": "n4", "to": "n7",
+         "label": "Qualitätsrisiko", "kind": "risk"},
+        {"id": "audit", "from": "n7", "to": "n3",
+         "label": "Erneute Freigabe", "kind": "feedback"},
+        {"id": "checks", "from": "n2", "to": "n6",
+         "label": "Technische Prüfung", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        for edge_id in ("audit", "checks"):
+            assert _p2_linear_path_clears_box(paths[edge_id], labels["outcome"]), edge_id
+            assert _p2_cubic_path_clears_box(paths[edge_id], labels["outcome"]), edge_id
+        assert float(root.attrib["viewBox"].split()[2]) <= 1800
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_dont_block_clear_diagonal_stems_in_label_pack() -> None:
+    """A diagonal risk curve has no full-height stem in the adjacent row gap."""
+    raw = _p2_feedback_geometry_model((2, 2, 2))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n1",
+         "label": "link", "kind": "feedback"},
+        {"id": "e1", "from": "n3", "to": "n5",
+         "label": "Approve", "kind": "flow"},
+        {"id": "e2", "from": "n5", "to": "n3",
+         "label": "Approve", "kind": "flow"},
+        {"id": "e3", "from": "n3", "to": "n0",
+         "label": "link", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e2"], labels["e1"])
+        assert _p2_cubic_path_clears_box(paths["e2"], labels["e1"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_target_leg_clears_packed_long_branch_peer_label() -> None:
+    """A target-leg replan must see the already packed global risk labels."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "e1", "from": "n4", "to": "n0",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "e2", "from": "n0", "to": "n4",
+         "label": "link", "kind": "flow"},
+        {"id": "e3", "from": "n4", "to": "n0",
+         "label": "link", "kind": "risk"},
+        {"id": "e4", "from": "n4", "to": "n3",
+         "label": "Approve", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e2"], labels["e3"])
+        assert _p2_cubic_path_clears_box(paths["e2"], labels["e3"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_forced_footer_clears_local_selfloop_stroke() -> None:
+    """An outer feedback label must not obscure a non-outer selfloop rail."""
+    raw = _p2_feedback_geometry_model((2, 2, 2))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n3",
+         "label": "link", "kind": "feedback"},
+        {"id": "e1", "from": "n1", "to": "n4",
+         "label": "Approve", "kind": "feedback"},
+        {"id": "e2", "from": "n3", "to": "n4",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        assert _p2_linear_path_clears_box(paths["e0"], labels["e1"])
+        assert _p2_cubic_path_clears_box(paths["e0"], labels["e1"])
+        assert paths["e0"] != paths["e1"]
+        endpoints = {"e0": {"n3"}, "e1": {"n1", "n4"}}
+        for edge_id, excluded in endpoints.items():
+            for node_id, card in cards.items():
+                if node_id not in excluded:
+                    assert _p2_linear_path_clears_box(paths[edge_id], card)
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_packed_stem_does_not_force_peer_label_crossing() -> None:
+    """A relocated label must not demote a safe peer into a foreign label."""
+    raw = _p2_feedback_geometry_model((2, 2))
+    edges = [
+        {"id": "e0", "from": "n0", "to": "n1",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e2", "from": "n0", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "e3", "from": "n3", "to": "n1",
+         "label": "link", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e3"], labels["e0"])
+        assert _p2_cubic_path_clears_box(paths["e3"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_source_leg_clears_packed_long_branch_label() -> None:
+    """The long-branch source leg must reserve already packed outer labels."""
+    raw = _p2_feedback_geometry_model((3, 4))
+    edges = [
+        {"id": "e0", "from": "n0", "to": "n6",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e1", "from": "n1", "to": "n6",
+         "label": "Approve", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e0"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_target_leg_uses_actual_selfloop_label_ordinate() -> None:
+    """Selfloop labels occupy actual above-card slots, not row midpoints."""
+    raw = _p2_feedback_geometry_model((2, 2, 2))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n4",
+         "label": "link", "kind": "flow"},
+        {"id": "e1", "from": "n5", "to": "n2",
+         "label": "link", "kind": "flow"},
+        {"id": "e2", "from": "n3", "to": "n3",
+         "label": "Approve", "kind": "risk"},
+        {"id": "e3", "from": "n4", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e5", "from": "n5", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e2"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e2"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_outer_footer_label_clears_local_feedback_stub() -> None:
+    """Forced outer labels must clear locally retained non-selfloop cubics."""
+    raw = _p2_feedback_geometry_model((2, 2, 2))
+    edges = [
+        {"id": "e0", "from": "n5", "to": "n0",
+         "label": "link", "kind": "feedback"},
+        {"id": "e1", "from": "n3", "to": "n1",
+         "label": "Approve", "kind": "feedback"},
+        {"id": "e5", "from": "n1", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e0"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_stroke_obstacles_do_not_exhaust_safe_outer_routes() -> None:
+    """A peer line may not forbid otherwise safe feedback port geometry."""
+    raw = _p2_feedback_geometry_model((3, 4))
+    edges = [
+        {"id": "a", "from": "n6", "to": "n4",
+         "label": "link", "kind": "feedback"},
+        {"id": "b", "from": "n6", "to": "n0",
+         "label": "a somewhat longer relation label", "kind": "feedback"},
+        {"id": "c", "from": "n5", "to": "n2",
+         "label": "a somewhat longer relation label", "kind": "feedback"},
+        {"id": "d", "from": "n5", "to": "n1",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert set(paths) == {"a", "b", "c", "d"}
+        for feedback in ("a", "b", "c"):
+            for peer_id, box in labels.items():
+                if peer_id != feedback:
+                    assert _p2_linear_path_clears_box(paths[feedback], box), (
+                        feedback, peer_id
+                    )
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_stem_pack_preserves_safe_peer_lane() -> None:
+    """Right-of-stem labels must not demote safe peers to crossing outer rails."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "e2", "from": "n1", "to": "n2",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "e4", "from": "n0", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e5", "from": "n2", "to": "n3",
+         "label": "Approve", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e5"], labels["e4"])
+        assert _p2_cubic_path_clears_box(paths["e5"], labels["e4"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_target_blocked_corridor_preserves_local_return() -> None:
+    """An exhausted label-aware target search cannot accept an unsafe rail."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "e0", "from": "n0", "to": "n1",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e1", "from": "n3", "to": "n5",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "e2", "from": "n2", "to": "n3",
+         "label": "link", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e2"], labels["e0"])
+        assert _p2_cubic_path_clears_box(paths["e2"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_failed_stem_pack_does_not_mask_anchored_peer() -> None:
+    """Rejecting a pack cannot mask another local relation's retained label."""
+    raw = _p2_feedback_geometry_model((2, 2))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n1",
+         "label": "link", "kind": "flow"},
+        {"id": "e1", "from": "n0", "to": "n3",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "e2", "from": "n1", "to": "n1",
+         "label": "link", "kind": "flow"},
+        {"id": "e3", "from": "n1", "to": "n0",
+         "label": "link", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e0"], labels["e2"])
+        assert _p2_cubic_path_clears_box(paths["e0"], labels["e2"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_source_leg_uses_rendered_selfloop_label_height() -> None:
+    """The source-leg search must see the actual above-card selfloop label."""
+    raw = _p2_feedback_geometry_model((4,))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n0",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e1", "from": "n1", "to": "n2",
+         "label": "link", "kind": "flow"},
+        {"id": "e3", "from": "n3", "to": "n3",
+         "label": "link", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e3"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e3"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_p2_diagonal_source_count_preserves_vertical_peer_label() -> None:
+    """Extra source corridor accounting may not move a peer label onto a rail."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "e0", "from": "n5", "to": "n0",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e1", "from": "n5", "to": "n3",
+         "label": "link", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e0"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e0"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_long_return_respects_actual_same_row_label() -> None:
+    """An adjacent same-row label's rendered y wins over a row-gap midpoint."""
+    raw = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "e1", "from": "n0", "to": "n5",
+         "label": "a somewhat longer relation label", "kind": "flow"},
+        {"id": "e3", "from": "n5", "to": "n2",
+         "label": "Approve", "kind": "flow"},
+        {"id": "e4", "from": "n4", "to": "n1",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e4"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e4"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_repacked_vertical_return_clears_selfloop_label() -> None:
+    """Diagonal target occupancy cannot repack a clear return into a peer loop label."""
+    raw = _p2_feedback_geometry_model((2, 3))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n2",
+         "label": "Approve", "kind": "flow"},
+        {"id": "e1", "from": "n2", "to": "n4",
+         "label": "Approve", "kind": "risk"},
+        {"id": "e2", "from": "n4", "to": "n4",
+         "label": "Approve", "kind": "flow"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(paths["e1"], labels["e2"])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels["e2"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "blocked"),
+    [
+        ((2, 3), [
+            ("n4", "n2", "flow", "link"),
+            ("n2", "n1", "risk", "link"),
+            ("n1", "n4", "flow", "Approve"),
+            ("n3", "n3", "flow", "link"),
+        ], [("e3", "e0")]),
+        ((3, 3, 3), [
+            ("n2", "n0", "risk", "link"),
+            ("n8", "n1", "flow", "link"),
+        ], [("e0", "e1")]),
+        ((3, 3, 3), [
+            ("n8", "n7", "flow", "link"),
+            ("n0", "n2", "flow", "link"),
+            ("n8", "n1", "flow", "link"),
+            ("n6", "n1", "risk", "Approve"),
+        ], [("e1", "e2"), ("e1", "e3")]),
+    ],
+)
+def test_pr205_p2_diagonal_target_pack_keeps_foreign_labels_clear(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    blocked: list[tuple[str, str]],
+) -> None:
+    """Diagonal-target sharing must not route through unrelated peer labels."""
+    raw = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target, "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        for edge_id, label_id in blocked:
+            assert _p2_linear_path_clears_box(paths[edge_id], labels[label_id]), (
+                edge_id, label_id
+            )
+            assert _p2_cubic_path_clears_box(paths[edge_id], labels[label_id]), (
+                edge_id, label_id
+            )
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("relations", "crossing"),
+    [
+        (
+            [
+                ("n1", "n6", "risk", "link"),
+                ("n5", "n3", "risk", "short relation"),
+                ("n6", "n4", "flow", "Approve"),
+                ("n6", "n3", "feedback", "link"),
+            ],
+            ("e2", "e1"),
+        ),
+        (
+            [
+                ("n6", "n0", "flow", "short relation"),
+                ("n6", "n4", "risk", "short relation"),
+                ("n3", "n5", "flow", "short relation"),
+                ("n1", "n2", "feedback", "short relation"),
+            ],
+            ("e1", "e0"),
+        ),
+    ],
+)
+def test_pr205_p2_long_return_clears_newly_natural_outer_label(
+    relations: list[tuple[str, str, str, str]],
+    crossing: tuple[str, str],
+) -> None:
+    """A local vertical return must not cover a displaced long-branch label."""
+    raw = _p2_feedback_geometry_model((4, 3))
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "label": label, "kind": kind}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        path_id, label_id = crossing
+        assert _p2_linear_path_clears_box(paths[path_id], labels[label_id])
+        assert _p2_cubic_path_clears_box(paths[path_id], labels[label_id])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+
+@pytest.mark.parametrize(
+    ("group_sizes", "relations", "crossings"),
+    [
+        (
+            (4,),
+            [
+                ("n3", "n1", "flow", "link"),
+                ("n3", "n0", "flow", "Approve"),
+                ("n1", "n3", "flow", "a somewhat longer relation label"),
+            ],
+            [("e1", "e2")],
+        ),
+        (
+            (3, 4),
+            [
+                ("n6", "n3", "flow", "a somewhat longer relation label"),
+                ("n0", "n6", "flow", "a somewhat longer relation label"),
+                ("n1", "n2", "flow", "a somewhat longer relation label"),
+            ],
+            [("e2", "e0"), ("e1", "e0")],
+        ),
+        (
+            (3, 3),
+            [
+                ("n1", "n5", "flow", "a somewhat longer relation label"),
+                ("n1", "n2", "flow", "a somewhat longer relation label"),
+                ("n4", "n2", "flow", "link"),
+            ],
+            [("e2", "e0"), ("e2", "e1"), ("e0", "e2")],
+        ),
+    ],
+)
+def test_pr205_p2_repacked_target_path_and_label_remain_separate(
+    group_sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    crossings: list[tuple[str, str]],
+) -> None:
+    """Current route and label pack must clear actual foreign SVG strokes."""
+    raw = _p2_feedback_geometry_model(group_sizes)
+    edges = [
+        {"id": f"e{i}", "from": start, "to": end,
+         "kind": kind, "label": label}
+        for i, (start, end, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        for path_id, label_id in crossings:
+            assert _p2_linear_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id
+            )
+            assert _p2_cubic_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id
+            )
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("group_sizes", "relations", "path_id", "label_id"),
+    [
+        (
+            (3, 4),
+            [
+                ("n4", "n6", "flow", "a somewhat longer relation label"),
+                ("n2", "n4", "flow", "link"),
+                ("n5", "n1", "risk", "a somewhat longer relation label"),
+            ],
+            "e0", "e1",
+        ),
+        (
+            (3, 3),
+            [
+                ("n3", "n2", "flow", "Approve"),
+                ("n2", "n0", "flow", "link"),
+                ("n5", "n1", "risk", "a somewhat longer relation label"),
+            ],
+            "e0", "e2",
+        ),
+        (
+            (3, 3),
+            [
+                ("n0", "n2", "flow", "Approve"),
+                ("n4", "n4", "risk", "link"),
+                ("n3", "n1", "risk", "link"),
+            ],
+            "e1", "e0",
+        ),
+        (
+            (2, 2),
+            [
+                ("n3", "n2", "risk", "Approve"),
+                ("n1", "n1", "flow", "a somewhat longer relation label"),
+                ("n3", "n3", "risk", "link"),
+                ("n2", "n1", "flow", "a somewhat longer relation label"),
+            ],
+            "e3", "e0",
+        ),
+    ],
+)
+def test_pr205_p2_reviewed_return_clears_actual_foreign_label(
+    group_sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    path_id: str,
+    label_id: str,
+) -> None:
+    """No packed label may conceal a rendered endpoint, return, or self-loop."""
+    raw = _p2_feedback_geometry_model(group_sizes)
+    edges = [
+        {"id": f"e{i}", "from": start, "to": end,
+         "kind": kind, "label": label}
+        for i, (start, end, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(
+            paths[path_id], labels[label_id]
+        ), (path_id, label_id, paths[path_id], labels[label_id])
+        assert _p2_cubic_path_clears_box(
+            paths[path_id], labels[label_id]
+        ), (path_id, label_id, paths[path_id], labels[label_id])
+        if group_sizes == (2, 2) and path_id == "e3":
+            # The same saturated row gap also contains both fixed self-loops.
+            for loop_id in ("e1", "e2"):
+                assert _p2_linear_path_clears_box(
+                    paths[path_id], labels[loop_id]
+                ), (path_id, loop_id)
+                assert _p2_cubic_path_clears_box(
+                    paths[path_id], labels[loop_id]
+                ), (path_id, loop_id)
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_p2_same_row_multi_group_curve_clears_intermediate_card() -> None:
+    """A same-row cubic must not tunnel through a third group's process card."""
+    raw = _p2_feedback_geometry_model((2, 3, 4))
+    edges = [
+        {"id": "e0", "from": "n7", "to": "n8",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n2", "to": "n4",
+         "kind": "risk", "label": "a somewhat longer relation label"},
+        {"id": "e2", "from": "n1", "to": "n6",
+         "kind": "flow", "label": "link"},
+        {"id": "e3", "from": "n6", "to": "n2",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, boxes = _edge_paths(root), _node_boxes(root)
+        assert _p2_linear_path_clears_box(
+            paths["e2"], boxes["n3"]
+        ), (paths["e2"], boxes["n3"])
+        assert _p2_cubic_path_clears_box(
+            paths["e2"], boxes["n3"]
+        ), (paths["e2"], boxes["n3"])
+        label_boxes = _edge_label_boxes(root)
+        for foreign_edge in ("e1", "e3"):
+            assert _p2_linear_path_clears_box(
+                paths[foreign_edge], label_boxes["e2"]
+            ), (foreign_edge, paths[foreign_edge], label_boxes["e2"])
+            assert _p2_cubic_path_clears_box(
+                paths[foreign_edge], label_boxes["e2"]
+            ), (foreign_edge, paths[foreign_edge], label_boxes["e2"])
+        return paths, boxes, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_review_same_row_card_detour_clears_selfloop_label() -> None:
+    """A detour around a third card cannot replace it with a label collision."""
+    raw = _p2_feedback_geometry_model((3, 3, 3))
+    edges = [
+        {"id": "detour", "from": "n1", "to": "n7",
+         "kind": "flow", "label": "Approve"},
+        {"id": "loop", "from": "n1", "to": "n1",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(
+            paths["detour"], labels["loop"]
+        ), (paths["detour"], labels["loop"])
+        assert _p2_cubic_path_clears_box(
+            paths["detour"], labels["loop"]
+        ), (paths["detour"], labels["loop"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_review_repacked_vertical_keeps_other_source_leg_clear() -> None:
+    """When a vertical label moves, a shared source rail needs its new box."""
+    raw = _p2_feedback_geometry_model((3, 4))
+    edges = [
+        {"id": "return", "from": "n2", "to": "n3",
+         "kind": "risk", "label": "link"},
+        {"id": "peer", "from": "n2", "to": "n5",
+         "kind": "flow", "label": "Approve"},
+        {"id": "vertical", "from": "n3", "to": "n6",
+         "kind": "risk", "label": "a somewhat longer relation label"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(
+            paths["return"], labels["peer"]
+        ), (paths["return"], labels["peer"])
+        assert _p2_cubic_path_clears_box(
+            paths["return"], labels["peer"]
+        ), (paths["return"], labels["peer"])
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "route_id", "label_id"),
+    [
+        (
+            (4, 4, 4, 4),
+            [
+                ("n10", "n0", "flow", "Approve"),
+                ("n12", "n9", "feedback", "a somewhat longer relation label"),
+                ("n9", "n8", "flow", "a somewhat longer relation label"),
+                ("n0", "n2", "flow", "link"),
+                ("n2", "n6", "risk", "link"),
+            ],
+            "e0", "e2",
+        ),
+        (
+            (4, 4, 4),
+            [
+                ("n1", "n6", "flow", "a somewhat longer relation label"),
+                ("n0", "n11", "flow", "a somewhat longer relation label"),
+                ("n11", "n4", "flow", "Approve"),
+                ("n11", "n7", "flow", "a somewhat longer relation label"),
+            ],
+            "e0", "e1",
+        ),
+    ],
+)
+def test_pr205_p2_differential_outer_label_clears_foreign_return(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    route_id: str,
+    label_id: str,
+) -> None:
+    """Global long returns may not conceal packed process labels."""
+    raw = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def layout(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, boxes = _edge_paths(root), _edge_label_boxes(root)
+        assert _p2_linear_path_clears_box(
+            paths[route_id], boxes[label_id]
+        ), (route_id, label_id, paths[route_id], boxes[label_id])
+        assert _p2_cubic_path_clears_box(
+            paths[route_id], boxes[label_id]
+        ), (route_id, label_id, paths[route_id], boxes[label_id])
+        return paths, boxes, root.attrib["viewBox"]
+
+    assert layout(edges) == layout(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "expected"),
+    [
+        (
+            (2, 3, 4),
+            [
+                ("n3", "n6", "flow", "a somewhat longer relation label"),
+                ("n8", "n2", "risk", "link"),
+                ("n8", "n0", "flow", "Approve"),
+            ],
+            ("label-pair", "e1", "e2"),
+        ),
+        (
+            (3, 3),
+            [
+                ("n2", "n0", "flow", "Approve"),
+                ("n2", "n2", "flow", "short relation"),
+                ("n5", "n2", "risk", "link"),
+            ],
+            ("path-label", "e2", "e1"),
+        ),
+        (
+            (3, 3),
+            [
+                ("n4", "n2", "flow", "short relation"),
+                ("n0", "n5", "flow", "Approve"),
+                ("n2", "n0", "flow", "a somewhat longer relation label"),
+            ],
+            ("path-label", "e1", "e2"),
+        ),
+    ],
+)
+def test_pr205_review_actual_outer_labels_and_fallback_strokes_clear(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    expected: tuple[str, str, str],
+) -> None:
+    """No fallback rail may hide a fixed label or collapse two packed labels."""
+    raw = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, boxes = _edge_paths(root), _edge_label_boxes(root)
+        mode, first, second = expected
+        if mode == "label-pair":
+            left, top, width, height = boxes[first]
+            other_left, other_top, other_width, other_height = boxes[second]
+            assert (
+                left >= other_left + other_width
+                or other_left >= left + width
+                or top >= other_top + other_height
+                or other_top >= top + height
+            ), (first, boxes[first], second, boxes[second])
+        else:
+            assert _p2_linear_path_clears_box(
+                paths[first], boxes[second]
+            ), (first, second, paths[first], boxes[second])
+            assert _p2_cubic_path_clears_box(
+                paths[first], boxes[second]
+            ), (first, second, paths[first], boxes[second])
+        return paths, boxes, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "crossings"),
+    [
+        (
+            (3, 3),
+            [
+                ('n2', 'n0', 'flow', 'a somewhat longer relation label'),
+                ('n5', 'n1', 'flow', 'a somewhat longer relation label'),
+                ('n5', 'n3', 'risk', 'a somewhat longer relation label'),
+                ('n5', 'n3', 'risk', 'link'),
+                ('n5', 'n2', 'feedback', 'Approve'),
+            ],
+            [
+                ('e2', 'e0'),
+                ('e3', 'e0'),
+            ],
+        ),
+        (
+            (4, 4, 4, 3),
+            [
+                ('n4', 'n7', 'flow', 'a somewhat longer relation label'),
+                ('n5', 'n3', 'flow', 'a somewhat longer relation label'),
+                ('n3', 'n8', 'flow', 'Approve'),
+                ('n4', 'n5', 'risk', 'a somewhat longer relation label'),
+                ('n6', 'n8', 'feedback', 'link'),
+            ],
+            [
+                ('e0', 'e2'),
+            ],
+        ),
+        (
+            (4, 2),
+            [
+                ('n1', 'n0', 'flow', 'a somewhat longer relation label'),
+                ('n3', 'n5', 'flow', 'a somewhat longer relation label'),
+                ('n0', 'n3', 'flow', 'link'),
+                ('n5', 'n3', 'risk', 'link'),
+                ('n3', 'n2', 'risk', 'a somewhat longer relation label'),
+            ],
+            [
+                ('e2', 'e3'),
+            ],
+        ),
+        (
+            (3, 3, 2),
+            [
+                ('n5', 'n5', 'flow', 'link'),
+                ('n5', 'n4', 'risk', 'Approve'),
+                ('n4', 'n4', 'risk', 'a somewhat longer relation label'),
+                ('n2', 'n5', 'risk', 'a somewhat longer relation label'),
+                ('n5', 'n6', 'flow', 'Approve'),
+            ],
+            [
+                ('e4', 'e1'),
+            ],
+        ),
+        (
+            (2, 3, 4, 2),
+            [
+                ('n10', 'n3', 'feedback', 'Approve'),
+                ('n3', 'n4', 'risk', 'link'),
+                ('n0', 'n7', 'risk', 'link'),
+                ('n7', 'n5', 'flow', 'link'),
+                ('n4', 'n10', 'flow', 'Approve'),
+            ],
+            [
+                ('e2', 'e4'),
+                ('e3', 'e4'),
+            ],
+        ),
+        (
+            (3, 4, 4, 4),
+            [
+                ('n13', 'n4', 'flow', 'link'),
+                ('n8', 'n10', 'flow', 'a somewhat longer relation label'),
+                ('n6', 'n14', 'feedback', 'a somewhat longer relation label'),
+                ('n11', 'n9', 'flow', 'link'),
+            ],
+            [
+                ('e1', 'e0'),
+                ('e3', 'e0'),
+            ],
+        ),
+        (
+            (3, 2, 2),
+            [
+                ('n1', 'n4', 'risk', 'a somewhat longer relation label'),
+                ('n3', 'n3', 'feedback', 'a somewhat longer relation label'),
+                ('n4', 'n3', 'flow', 'link'),
+                ('n3', 'n2', 'flow', 'a somewhat longer relation label'),
+                ('n2', 'n0', 'risk', 'link'),
+            ],
+            [
+                ('e3', 'e2'),
+            ],
+        ),
+    ],
+)
+def test_pr205_p2_seed20_full_label_path_clearance(
+    sizes: list[int],
+    relations: list[list[str]],
+    crossings: list[list[str]],
+) -> None:
+    """An unchanged or repacked route must not cross a foreign process label."""
+    raw = _p2_feedback_geometry_model(tuple(sizes))
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        for path_id, label_id in crossings:
+            assert _p2_linear_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id, paths[path_id], labels[label_id]
+            )
+            assert _p2_cubic_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id, paths[path_id], labels[label_id]
+            )
+        return paths, labels, root.attrib["viewBox"]
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "obstacles"),
+    [
+        (
+            (3, 3, 3),
+            [
+                ("n2", "n8", "flow", "Approve"),
+                ("n2", "n3", "flow", "short relation"),
+                ("n3", "n5", "flow", "a somewhat longer relation label"),
+                ("n5", "n2", "flow", "link"),
+            ],
+            [("card", "e0", "n5")],
+        ),
+        (
+            (2, 3, 4),
+            [
+                ("n1", "n6", "flow", "a somewhat longer relation label"),
+                ("n0", "n4", "risk", "Approve"),
+                ("n5", "n7", "flow", "short relation"),
+                ("n4", "n2", "risk", "link"),
+            ],
+            [("label", "e1", "e0"), ("label", "e1", "e2")],
+        ),
+        (
+            (3, 4),
+            [
+                ("n3", "n2", "flow", "link"),
+                ("n2", "n0", "flow", "link"),
+                ("n2", "n1", "risk", "a somewhat longer relation label"),
+                ("n6", "n0", "risk", "link"),
+            ],
+            [("label", "e1", "e0")],
+        ),
+    ],
+)
+def test_pr205_review_unsupported_card_and_synthetic_long_gutter_clearance(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+    obstacles: list[tuple[str, str, str]],
+) -> None:
+    """Real routes must stay clear when a row-gap plan or label-only pack saturates."""
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def layout(ordered: list[dict]) -> tuple[dict, dict, str]:
+        candidate = copy.deepcopy(model)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths = _edge_paths(root)
+        labels = _edge_label_boxes(root)
+        cards = _node_boxes(root)
+        for box_kind, path_id, box_id in obstacles:
+            box = (cards if box_kind == "card" else labels)[box_id]
+            assert _p2_linear_path_clears_box(paths[path_id], box), (
+                box_kind, path_id, box_id, paths[path_id], box
+            )
+            assert _p2_cubic_path_clears_box(paths[path_id], box), (
+                box_kind, path_id, box_id, paths[path_id], box
+            )
+        return paths, labels, root.attrib["viewBox"]
+
+    assert layout(edges) == layout(list(reversed(edges)))
+
+@pytest.mark.parametrize(
+    ("sizes", "relations"),
+    [
+        (
+            (3, 2, 2),
+            [
+                ("n4", "n5", "risk", "link"),
+                ("n1", "n6", "flow", "Approve"),
+                ("n4", "n4", "feedback", "Approve"),
+                ("n6", "n5", "flow", "link"),
+                ("n2", "n5", "risk", "a somewhat longer relation label"),
+            ],
+        ),
+        (
+            (3, 4, 3),
+            [
+                ("n0", "n9", "flow", "a somewhat longer relation label"),
+                ("n3", "n7", "feedback", "a somewhat longer relation label"),
+                ("n2", "n9", "flow", "Approve"),
+                ("n3", "n2", "flow", "Approve"),
+                ("n1", "n8", "flow", "Approve"),
+            ],
+        ),
+        (
+            (4, 4, 4, 4),
+            [
+                ("n3", "n11", "risk", "link"),
+                ("n6", "n12", "flow", "a somewhat longer relation label"),
+                ("n4", "n3", "risk", "Approve"),
+            ],
+        ),
+        (
+            (3, 3, 4, 4),
+            [
+                ("n2", "n12", "flow", "link"),
+                ("n0", "n13", "flow", "link"),
+                ("n1", "n9", "flow", "a somewhat longer relation label"),
+                ("n10", "n10", "flow", "Approve"),
+            ],
+        ),
+    ],
+)
+def test_pr205_p2_failclosed_same_row_card_routes(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+) -> None:
+    """An exhausted same-row detour must render without crossing foreign geometry."""
+    raw = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{index}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for index, (source, target, kind, label) in enumerate(relations)
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, str]:
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(model))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        for edge in edges:
+            edge_id = edge["id"]
+            if edge["from"] == edge["to"]:
+                continue
+            for node_id, box in cards.items():
+                if node_id in {edge["from"], edge["to"]}:
+                    continue
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    "card", edge_id, node_id, paths[edge_id], box
+                )
+                assert _p2_cubic_path_clears_box(paths[edge_id], box), (
+                    "card", edge_id, node_id, paths[edge_id], box
+                )
+            for other_id, box in labels.items():
+                if other_id == edge_id:
+                    continue
+                assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                    "label", edge_id, other_id, paths[edge_id], box
+                )
+                assert _p2_cubic_path_clears_box(paths[edge_id], box), (
+                    "label", edge_id, other_id, paths[edge_id], box
+                )
         return paths, labels, root.attrib["viewBox"]
 
     assert geometry(edges) == geometry(list(reversed(edges)))
