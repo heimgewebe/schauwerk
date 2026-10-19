@@ -6431,9 +6431,7 @@ def render_native_diagram(
                 continue
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
-            if source[1] != target[1] or source[1] == min(
-                row for _, row in positions.values()
-            ):
+            if source[1] != target[1]:
                 continue
             if process_branch_gutter_x.get(str(edge["id"])) is not None:
                 continue
@@ -6459,6 +6457,10 @@ def render_native_diagram(
                 candidates.append(edge)
 
         if candidates:
+            # A newly drawn card-safe detour can cross an existing stroke.
+            # Preserve stable SVG paint semantics under input reordering,
+            # as for the established group-gap and feedback-peer fallbacks.
+            paint_edges = sorted(paint_edges, key=lambda edge: str(edge["id"]))
             layouts = {
                 edge_id: planned_svg_parts(fragment)
                 for edge_id, fragment in planned_edge_lines.items()
@@ -6500,23 +6502,34 @@ def render_native_diagram(
                         source[1], positions, direction=direction
                     )
                     if corridor is None:
-                        # The final occupied row has no following card row.
-                        # Its existing canvas footer is a real safe corridor
-                        # if all cards end at the current source/target row.
-                        bottom = source[1] + _NODE_HEIGHT
                         if (
-                            direction != 1
-                            or any(
-                                node_y + _NODE_HEIGHT > bottom
-                                for _, node_y in positions.values()
-                            )
-                            or bottom + 4 >= height - 8
+                            direction < 0
+                            and source[1] == min(y for _, y in positions.values())
                         ):
-                            continue
-                        corridor = (
-                            float(bottom),
-                            float(min(bottom + process_row_gap, height - 8)),
-                        )
+                            # The first row has no preceding card, but the
+                            # existing gap below group headings is a real
+                            # short rail. Stay below their title text and
+                            # above the card tops, and check all SVG labels.
+                            corridor = (
+                                float(max(_CONTENT_TOP + 44, source[1] - process_row_gap)),
+                                float(source[1]),
+                            )
+                        else:
+                            # The final row can reuse the existing footer.
+                            bottom = source[1] + _NODE_HEIGHT
+                            if (
+                                direction != 1
+                                or any(
+                                    node_y + _NODE_HEIGHT > bottom
+                                    for _, node_y in positions.values()
+                                )
+                                or bottom + 4 >= height - 8
+                            ):
+                                continue
+                            corridor = (
+                                float(bottom),
+                                float(min(bottom + process_row_gap, height - 8)),
+                            )
                     low, high = map(float, corridor)
                     offsets = (2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0)
                     ys = (
@@ -6565,10 +6578,44 @@ def render_native_diagram(
                             channel_y - label_height / 2 - 4,
                             channel_y + label_height / 2 + 4,
                         )
+                        trial_label_centers = label_centers
+                        if (
+                            direction < 0
+                            and source[1] == min(y for _, y in positions.values())
+                        ):
+                            # The first row's top rail lies below the group
+                            # titles. A label on the old mid-card ordinate
+                            # otherwise escapes all the way beyond the final
+                            # group. Prefer an actual inter-card column gap
+                            # at a readable distance above this new rail.
+                            row_cards = sorted({
+                                (float(x), float(x + _NODE_WIDTH))
+                                for x, y in positions.values()
+                                if y == source[1]
+                            })
+                            intergroup_centers = sorted(
+                                (
+                                    (right + next_left) / 2
+                                    for (_, right), (next_left, _) in zip(
+                                        row_cards, row_cards[1:]
+                                    )
+                                    if next_left - right >= label_width + 8
+                                ),
+                                key=lambda x: (abs(x - own_center), x),
+                            )
+                            trial_label_centers = tuple(dict.fromkeys((
+                                *intergroup_centers, *label_centers,
+                            )))
+                            label_y_centers = (
+                                channel_y - label_height / 2 - 4,
+                                top + label_height / 2,
+                                channel_y + label_height / 2 + 4,
+                                channel_y,
+                            )
                         for candidate_x, candidate_y in (
                             (x, y)
                             for y in label_y_centers
-                            for x in label_centers
+                            for x in trial_label_centers
                         ):
                             label_box = (
                                 candidate_x - label_width / 2,

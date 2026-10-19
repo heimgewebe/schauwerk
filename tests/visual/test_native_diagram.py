@@ -7415,3 +7415,172 @@ def test_pr205_p2_failclosed_same_row_card_routes(
         return paths, labels, root.attrib["viewBox"]
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+def test_pr205_codex_first_row_cross_card_uses_safe_detour() -> None:
+    """Even the first process row cannot send a curve through an intervening card."""
+    raw = _p2_feedback_geometry_model((2, 2, 2))
+    raw["edges"] = [
+        {"id": "e0", "from": "n0", "to": "n4",
+         "kind": "flow", "label": "link"},
+    ]
+    root = _parse(render_native_diagram(raw))
+    path = _edge_paths(root)["e0"]
+    intermediate_card = _node_boxes(root)["n2"]
+    assert _p2_linear_path_clears_box(path, intermediate_card), path
+    assert _p2_cubic_path_clears_box(path, intermediate_card), path
+    assert "process-row-card-detour" in [
+        node.attrib.get("data-route", "")
+        for node in root if node.attrib.get("data-source-kind") == "edge"
+    ]
+
+
+def test_pr205_codex_same_row_card_detour_stabilizes_paint_order() -> None:
+    """Foreign-stroke crossings created by a detour must paint in stable ID order."""
+    raw = _p2_feedback_geometry_model((2, 3, 4))
+    edges = [
+        {"id": "e0", "from": "n7", "to": "n8",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n2", "to": "n4",
+         "kind": "risk", "label": "a somewhat longer relation label"},
+        {"id": "e2", "from": "n1", "to": "n6",
+         "kind": "flow", "label": "link"},
+        {"id": "e3", "from": "n6", "to": "n2",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[list[str], dict, dict]:
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(model))
+        paths = _edge_paths(root)
+        labels = _edge_label_boxes(root)
+        cards = _node_boxes(root)
+        painted = [
+            node.attrib["data-source-id"]
+            for node in root if node.attrib.get("data-source-kind") == "edge"
+        ]
+        assert any(
+            node.attrib.get("data-source-id") == "e2"
+            and node.attrib.get("data-route") == "process-row-card-detour"
+            for node in root
+        )
+        for box_id, box in cards.items():
+            if box_id not in {"n1", "n6"}:
+                assert _p2_linear_path_clears_box(paths["e2"], box), box_id
+                assert _p2_cubic_path_clears_box(paths["e2"], box), box_id
+        for edge_id, box in labels.items():
+            if edge_id != "e2":
+                assert _p2_linear_path_clears_box(paths["e2"], box), edge_id
+                assert _p2_cubic_path_clears_box(paths["e2"], box), edge_id
+        return painted, paths, labels
+
+    assert geometry(edges) == geometry(list(reversed(edges)))
+
+@pytest.mark.parametrize(
+    ("sizes", "relations"),
+    [
+        (
+            (3, 4, 3),
+            [
+                ("n3", "n9", "risk", "a somewhat longer relation label"),
+                ("n8", "n1", "flow", "Approve"),
+                ("n6", "n8", "flow", "a somewhat longer relation label"),
+                ("n7", "n0", "flow", "link"),
+            ],
+        ),
+        (
+            (3, 2, 4, 3),
+            [
+                ("n5", "n7", "risk", "a somewhat longer relation label"),
+                ("n6", "n11", "risk", "a somewhat longer relation label"),
+                ("n5", "n0", "flow", "link"),
+            ],
+        ),
+        (
+            (2, 4, 3, 3),
+            [
+                ("n0", "n11", "flow", "a somewhat longer relation label"),
+                ("n9", "n2", "flow", "a somewhat longer relation label"),
+            ],
+        ),
+        (
+            (2, 3, 2),
+            [
+                ("n2", "n5", "feedback", "a somewhat longer relation label"),
+                ("n0", "n4", "flow", "a somewhat longer relation label"),
+                ("n2", "n1", "flow", "a somewhat longer relation label"),
+                ("n5", "n0", "flow", "Approve"),
+                ("n1", "n0", "flow", "a somewhat longer relation label"),
+            ],
+        ),
+    ],
+)
+def test_pr205_codex_first_row_differential_failures(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str]],
+) -> None:
+    """Previously renderable valid first-row routes must not become exceptions."""
+    raw = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    for ordering in (edges, list(reversed(edges))):
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(ordering)
+        root = _parse(render_native_diagram(model))
+        assert len(_edge_paths(root)) == len(edges)
+
+
+def test_pr205_codex_first_row_differential_label_clearance() -> None:
+    """First-row reroutes cannot newly obscure another edge's physical label."""
+    model = _p2_feedback_geometry_model((2, 2, 4, 3))
+    edges = [
+        ("n7", "n2", "flow", "link"),
+        ("n0", "n5", "flow", "link"),
+        ("n10", "n0", "risk", "link"),
+        ("n1", "n2", "flow", "link"),
+        ("n8", "n0", "risk", "Approve"),
+    ]
+    model["edges"] = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(edges)
+    ]
+    for ordering in (model["edges"], list(reversed(model["edges"]))):
+        candidate = copy.deepcopy(model)
+        candidate["edges"] = copy.deepcopy(ordering)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels = _edge_paths(root), _edge_label_boxes(root)
+        for path_id, label_id in (("e0", "e1"), ("e3", "e1")):
+            assert _p2_linear_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id, paths[path_id], labels[label_id]
+            )
+            assert _p2_cubic_path_clears_box(paths[path_id], labels[label_id]), (
+                path_id, label_id, paths[path_id], labels[label_id]
+            )
+
+@pytest.mark.parametrize("label", ("link", "a somewhat longer relation label"))
+def test_pr205_first_row_label_stays_in_intergroup_gap(label: str) -> None:
+    """A safe first-row detour must not abandon its label beyond the final group."""
+    model = _p2_feedback_geometry_model((2, 2, 2))
+    model["edges"] = [
+        {"id": "e0", "from": "n0", "to": "n4",
+         "kind": "flow", "label": label},
+    ]
+    root = _parse(render_native_diagram(model))
+    path = _edge_paths(root)["e0"]
+    cards = _node_boxes(root)
+    left, top, width, height = _edge_label_boxes(root)["e0"]
+    assert path.startswith("M ") and " L " in path
+    gap_0 = (cards["n0"][0] + cards["n0"][2], cards["n2"][0])
+    gap_1 = (cards["n2"][0] + cards["n2"][2], cards["n4"][0])
+    assert any(
+        gap_left + 4 <= left and left + width <= gap_right - 4
+        for gap_left, gap_right in (gap_0, gap_1)
+    ), (label, path, (left, top, width, height), (gap_0, gap_1))
+    for node_id, box in cards.items():
+        if node_id not in {"n0", "n4"}:
+            assert _p2_linear_path_clears_box(path, box), node_id
+            assert _p2_cubic_path_clears_box(path, box), node_id

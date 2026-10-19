@@ -11437,8 +11437,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "20de6acf3f30a6015e4b339057a6b115a4535b487f9f47e59e9dca5121f71c8b"
         ),
     }
-    for name, expected in same_row_card["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Historical topport bindings are validated against recorded revision
+    # digests above; only first_row_p2 below owns current working bytes.
     assert "test_pr205_p2_failclosed_same_row_card_routes" in (
         same_row_card["regression_tests"]
     )
@@ -11458,6 +11458,130 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         assert same_row_card["test_receipts"][key]["new_foreign_label_intersections"] == 0
     assert same_row_card["local_checks"]["visual_acceptance_pass"] is False
     assert same_row_card["local_checks"]["captain_merge_authorized"] is False
+
+    # Every predecessor remains byte-immutable, even when a new Codex review
+    # requires a corrected first-row plan and deterministic detour paint order.
+    first_row_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-first-row-paint-order-p2-successor-acceptance-receipt.json"
+    )
+    first_row_p2 = json.loads(first_row_path.read_text(encoding="utf-8"))
+    assert first_row_p2["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-first-row-paint-order-p2-successor.v1"
+    )
+    assert first_row_p2["based_on_pr_head"] == (
+        "6a3bc3f8ba614b19b59895cb23a3415656471938"
+    )
+    assert first_row_p2["parent_evidence"] == {
+        "schema_version": same_row_card["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-same-row-card-topport-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(same_row_card_path.read_bytes()).hexdigest(),
+        "evidence_digest": same_row_card["evidence_digest"],
+    }
+    assert first_row_p2["evidence_digest"] == digest_mapping(
+        first_row_p2, "evidence_digest"
+    )
+    assert set(first_row_p2["source_bindings"]) == feedback_safe_sideports_p2_superseded_files
+    assert first_row_p2["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "c3a96bdcfd626e6f3ab22f6f33d442f11cd2ef1b6e3d665857f26c709d515e9e"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "295f96c3e593664b298ac88834eb75e3b90f5c379398508748d384c54369dff4"
+        ),
+    }
+    # Historical first-row source bindings are immutable, not current bytes.
+    assert set(first_row_p2["regression_tests"]) == {
+        "test_pr205_codex_first_row_cross_card_uses_safe_detour",
+        "test_pr205_codex_same_row_card_detour_stabilizes_paint_order",
+        "test_pr205_codex_first_row_differential_failures",
+        "test_pr205_codex_first_row_differential_label_clearance",
+    }
+    assert first_row_p2["test_receipts"]["codex_two_p2_red"]["failed_tests"] == 2
+    assert first_row_p2["test_receipts"]["codex_two_p2_green"]["passed_tests"] == 2
+    assert first_row_p2["test_receipts"]["first_row_differential_red"]["failed_cases"] == 5
+    assert first_row_p2["test_receipts"]["first_row_focused_green"]["passed_cases"] == 6
+    fuzz_receipts = first_row_p2["test_receipts"]["deterministic_head_differential_fuzz"]
+    assert len(fuzz_receipts) == 6
+    assert {entry["seed"] for entry in fuzz_receipts} == set(range(20520261021, 20520261027))
+    assert all(
+        entry["cases"] == 5000
+        and entry["new_render_exceptions"] == 0
+        and entry["new_card_intersections"] == 0
+        and entry["new_foreign_label_intersections"] == 0
+        for entry in fuzz_receipts
+    )
+    assert first_row_p2["local_checks"]["visual_acceptance_pass"] is False
+    assert first_row_p2["local_checks"]["captain_merge_authorized"] is False
+    # Final technical candidate, with immutable historical parent digest.
+    first_row_terminal_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-first-row-intergroup-label-terminal-p2-successor-acceptance-receipt.json"
+    )
+    first_row_terminal = json.loads(first_row_terminal_path.read_text(encoding="utf-8"))
+    assert first_row_terminal["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-first-row-intergroup-label-terminal-p2-successor.v1"
+    )
+    assert first_row_terminal["based_on_pr_head"] == (
+        "6a3bc3f8ba614b19b59895cb23a3415656471938"
+    )
+    assert first_row_terminal["parent_evidence"] == {
+        "schema_version": first_row_p2["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-first-row-paint-order-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(first_row_path.read_bytes()).hexdigest(),
+        "evidence_digest": first_row_p2["evidence_digest"],
+    }
+    assert first_row_terminal["evidence_digest"] == digest_mapping(
+        first_row_terminal, "evidence_digest"
+    )
+    assert first_row_terminal["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "68ce6ca1dc23c106051e7eb3f569eb160403c2ab1db8c3b91867f7aeca7740d7"
+        ),
+    }
+    for name, digest in first_row_terminal["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert set(first_row_terminal["regression_tests"]) == {
+        "test_pr205_p2_failclosed_same_row_card_routes",
+        "test_pr205_codex_first_row_cross_card_uses_safe_detour",
+        "test_pr205_codex_same_row_card_detour_stabilizes_paint_order",
+        "test_pr205_codex_first_row_differential_failures",
+        "test_pr205_codex_first_row_differential_label_clearance",
+        "test_pr205_first_row_label_stays_in_intergroup_gap",
+    }
+    assert first_row_terminal["test_receipts"]["native_diagram_suite"]["exit_code"] == 0
+    assert first_row_terminal["test_receipts"]["chromium_browser_smoke"] == {
+        "task_id": "54e9d26d78824635ab5f5c51",
+        "passed_cases": 30,
+        "exit_code": 0,
+    }
+    terminal_fuzz = first_row_terminal["test_receipts"]["deterministic_head_differential_fuzz"]
+    assert len(terminal_fuzz) == 4
+    assert {entry["seed"] for entry in terminal_fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        entry["compared_models"] == 5000
+        and entry["head_render_exceptions"] == 0
+        and entry["new_render_exceptions"] == 0
+        and entry["new_card_intersections"] == 0
+        and entry["new_foreign_label_intersections"] == 0
+        and entry["renderer_sha256"] == first_row_terminal["source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ]
+        for entry in terminal_fuzz
+    )
+    assert first_row_terminal["local_checks"]["visual_acceptance_pass"] is False
+    assert first_row_terminal["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -11713,7 +11837,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert same_row_card["source_bindings"][name] == current
+            assert first_row_terminal["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11731,7 +11855,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert same_row_card["source_bindings"][name] == current
+            assert first_row_terminal["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

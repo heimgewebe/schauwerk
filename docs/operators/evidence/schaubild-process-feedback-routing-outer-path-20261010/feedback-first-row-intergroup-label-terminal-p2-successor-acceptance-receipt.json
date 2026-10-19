@@ -1,0 +1,112 @@
+{
+  "based_on_pr_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+  "evidence_digest": "0b9398800f0d543072e225a59c4890c14c77eda535df6ecb9f56cf1d17fc266c",
+  "local_checks": {
+    "captain_merge_authorized": false,
+    "first_row_intergroup_label_focused_regressions_green": true,
+    "four_failclosed_routes_green": true,
+    "full_make_validate_after_receipt_pass": false,
+    "github_ci_for_new_pr_head_pass": false,
+    "historical_receipts_byte_unchanged": true,
+    "independent_exact_successor_review_pass": false,
+    "stable_paint_order_green": true,
+    "visual_acceptance_pass": false
+  },
+  "parent_evidence": {
+    "evidence_digest": "2012a484228ffbd23eb98354ee215ccad5f1149f45fc493939b6e7fd473139bf",
+    "file_sha256": "2ae1532d7e26be03d82dac2be94b8881e172f98fdeefe3d7388d68f13d68fbc8",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-first-row-paint-order-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-first-row-paint-order-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr205_p2_failclosed_same_row_card_routes",
+    "test_pr205_codex_first_row_cross_card_uses_safe_detour",
+    "test_pr205_codex_same_row_card_detour_stabilizes_paint_order",
+    "test_pr205_codex_first_row_differential_failures",
+    "test_pr205_codex_first_row_differential_label_clearance",
+    "test_pr205_first_row_label_stays_in_intergroup_gap"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-first-row-intergroup-label-terminal-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6",
+    "tests/visual/test_native_diagram.py": "68ce6ca1dc23c106051e7eb3f569eb160403c2ab1db8c3b91867f7aeca7740d7"
+  },
+  "test_receipts": {
+    "chromium_browser_smoke": {
+      "exit_code": 0,
+      "passed_cases": 30,
+      "task_id": "54e9d26d78824635ab5f5c51"
+    },
+    "codex_two_p2_green": {
+      "exit_code": 0,
+      "passed_tests": 2,
+      "task_id": "701fa17ef6d54068b4cd1837"
+    },
+    "codex_two_p2_red": {
+      "exit_code": 1,
+      "failed_tests": 2,
+      "task_id": "70de3e4742cb44a3b5d9f672"
+    },
+    "deterministic_head_differential_fuzz": [
+      {
+        "compared_models": 5000,
+        "comparison_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+        "head_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6",
+        "seed": 20520261021,
+        "task_id": "ea0be233adee4003a2545693"
+      },
+      {
+        "compared_models": 5000,
+        "comparison_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+        "head_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6",
+        "seed": 20520261022,
+        "task_id": "d230d0c31e33462199415148"
+      },
+      {
+        "compared_models": 5000,
+        "comparison_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+        "head_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6",
+        "seed": 20520261023,
+        "task_id": "256a1bf428fb464686284e2c"
+      },
+      {
+        "compared_models": 5000,
+        "comparison_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+        "head_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "48f41e4ac8569bab492fe20f278603e5b64c436b9b152f8c4afc120a2949c9b6",
+        "seed": 20520261024,
+        "task_id": "bd358e7cbfa0473cbef31e0e"
+      }
+    ],
+    "first_row_differential_red": {
+      "exit_code": 1,
+      "failed_cases": 5,
+      "task_id": "877751e65c2844e3b189dd9f"
+    },
+    "first_row_focused_green": {
+      "exit_code": 0,
+      "passed_cases": 6,
+      "task_id": "b36770af3fa44ea78af70e7c"
+    },
+    "native_diagram_suite": {
+      "exit_code": 0,
+      "task_id": "6a80332df5554c3ab40c9341"
+    }
+  }
+}
