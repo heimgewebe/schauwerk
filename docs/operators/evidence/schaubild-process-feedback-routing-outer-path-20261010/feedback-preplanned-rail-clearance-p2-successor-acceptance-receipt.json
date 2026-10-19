@@ -1,0 +1,122 @@
+{
+  "based_on_pr_head": "9c37348049c24e6efdc63cc01528d0e9fee40130",
+  "evidence_digest": "0fd534eb45f5777ed162b10cca567f1b1dff755c68936d5c13038e2e63130af9",
+  "local_checks": {
+    "captain_merge_authorized": false,
+    "codex_gutter_rail_p2_red_green_reproduced": true,
+    "complete_make_validate_after_receipt_pass": false,
+    "existing_card_label_collision_guards_retained": true,
+    "github_ci_for_new_pr_head_pass": false,
+    "historical_receipts_byte_unchanged": true,
+    "independent_exact_head_review_pass": false,
+    "reused_original_planner_instead_of_global_postpass": true,
+    "visual_acceptance_pass": false
+  },
+  "notes": "No independent, global visual, Captain, OCI, or productive serving acceptance is implied by this technical candidate.",
+  "parent_evidence": {
+    "evidence_digest": "138cf7c3cb13858d099a9432c4f599f4923658237d00c3f2fb4482e6fa2c39e8",
+    "file_sha256": "c16958b68f4303cd446a1734ebd3e12e0cb7d14cde469a796bff526ca6767314",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-first-row-peer-rail-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-first-row-peer-rail-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr205_codex_card_detour_does_not_cover_preplanned_gutter_rail"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-preplanned-rail-clearance-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689",
+    "tests/visual/test_native_diagram.py": "888f52f53cc2c7c6017971af9295f53aaf071798bb1407bc9ee1f283bd841d3e"
+  },
+  "test_receipts": {
+    "chromium_browser_smoke": {
+      "exit_code": 0,
+      "passed_cases": 30,
+      "task_id": "72766b2e03e04ad19cb3490f"
+    },
+    "chromium_visual_readback": {
+      "screenshot_temporary": true,
+      "task_id": "6295f04730904bfb84017d02",
+      "visually_accepted": false
+    },
+    "detour_vs_static_stress": {
+      "baseline_render_exceptions": 0,
+      "detour_models": 325,
+      "detour_static_rail_overlaps": 0,
+      "models_checked": 900,
+      "new_render_exceptions": 0,
+      "reverse_path_mismatches": 0,
+      "seed": 20520261029,
+      "task_id": "8878328b9fbb4ef3b253017e"
+    },
+    "focused_first_row_peer_stress": {
+      "baseline_render_exceptions": 0,
+      "evaluated_models": 1200,
+      "new_render_exceptions": 0,
+      "overlapping_peer_rails": 0,
+      "reverse_path_mismatches": 0,
+      "task_id": "d2da78c5446340d3b15009d8"
+    },
+    "gutter_rail_green": {
+      "exit_code": 0,
+      "task_id": "6f9ae541e7e040e6904bffb7"
+    },
+    "gutter_rail_red": {
+      "exit_code": 1,
+      "failed_tests": 1,
+      "observed_overlap_px": 912.0,
+      "old_shared_rail_y": 218.0,
+      "task_id": "1d5c1dd65551499c92dfb351"
+    },
+    "head_differential_fuzz": [
+      {
+        "baseline_render_exceptions": 0,
+        "comparison_head": "9c37348049c24e6efdc63cc01528d0e9fee40130",
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689",
+        "seed": 20520261021,
+        "task_id": "6ea3808bd91c48568df97cc0"
+      },
+      {
+        "baseline_render_exceptions": 0,
+        "comparison_head": "9c37348049c24e6efdc63cc01528d0e9fee40130",
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689",
+        "seed": 20520261022,
+        "task_id": "04c39a6ff5ee44a4bfdce5fd"
+      },
+      {
+        "baseline_render_exceptions": 0,
+        "comparison_head": "9c37348049c24e6efdc63cc01528d0e9fee40130",
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689",
+        "seed": 20520261023,
+        "task_id": "0a51f47b03fe4566b282c444"
+      },
+      {
+        "baseline_render_exceptions": 0,
+        "comparison_head": "9c37348049c24e6efdc63cc01528d0e9fee40130",
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689",
+        "seed": 20520261024,
+        "task_id": "43c2d68c2e4648b09851c304"
+      }
+    ],
+    "native_diagram_suite": {
+      "exit_code": 0,
+      "task_id": "f655eb67ac5a456e895c987b"
+    }
+  }
+}

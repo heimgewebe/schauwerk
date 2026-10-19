@@ -6470,10 +6470,47 @@ def render_native_diagram(
                           float(_NODE_WIDTH), float(_NODE_HEIGHT))
                 for node_id, (x, y) in positions.items()
             }
-            # Accepted cross-card rails are physical strokes, not just labels.
-            # Reserve the horizontal spans locally while planning subsequent
-            # detours, so a later semantic edge cannot paint over a peer.
-            reserved_detour_rails: list[tuple[float, float, float]] = []
+            # A detour must not cover physical rails already emitted by any
+            # other planner (including process-row-gutter), not just earlier
+            # card detours. Ignore initial layouts of candidate edges because
+            # their known-invalid routes are replaced below.
+            def horizontal_strokes(
+                path: str,
+            ) -> list[tuple[float, float, float]]:
+                tokens = re.findall(r"[MLC]|-?\d+(?:\.\d+)?", path)
+                cursor: tuple[float, float] | None = None
+                spans: list[tuple[float, float, float]] = []
+                index = 0
+                while index < len(tokens):
+                    command = tokens[index]
+                    index += 1
+                    arity = 6 if command == "C" else 2
+                    if command not in {"M", "L", "C"} or index + arity > len(tokens):
+                        break
+                    coords = tuple(float(v) for v in tokens[index:index + arity])
+                    index += arity
+                    endpoint = (coords[-2], coords[-1])
+                    if (
+                        command == "L"
+                        and cursor is not None
+                        and abs(cursor[1] - endpoint[1]) < 0.01
+                        and abs(cursor[0] - endpoint[0]) > 4
+                    ):
+                        spans.append((
+                            cursor[1], min(cursor[0], endpoint[0]),
+                            max(cursor[0], endpoint[0]),
+                        ))
+                    cursor = endpoint
+                return spans
+
+            candidate_ids = {str(edge["id"]) for edge in candidates}
+            reserved_detour_rails = [
+                span
+                for other_id, (other_path, _) in layouts.items()
+                if other_id not in candidate_ids
+                for span in horizontal_strokes(other_path)
+            ]
+            # Every accepted new detour also reserves its physical rail.
             for edge in candidates:
                 edge_id = str(edge["id"])
                 source = positions[str(edge["from"])]

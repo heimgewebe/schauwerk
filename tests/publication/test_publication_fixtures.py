@@ -11618,8 +11618,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "e10b33bfda2f8351a2a708139be04101a75ef80b0bf60fb84d5e6c7cbc4989a8"
         ),
     }
-    for name, digest in first_row_peer_rail["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    # This immutable peer-rail candidate is a historical source revision.
     assert first_row_peer_rail["regression_tests"] == [
         "test_pr205_codex_first_row_detours_reserve_distinct_rails"
     ]
@@ -11652,6 +11651,77 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert first_row_peer_rail["local_checks"]["independent_exact_head_review_pass"] is False
     assert first_row_peer_rail["local_checks"]["visual_acceptance_pass"] is False
     assert first_row_peer_rail["local_checks"]["captain_merge_authorized"] is False
+
+    # New create-only revision: reserve already planned gutter strokes before
+    # accepting a card-detour rail, without altering historical predecessors.
+    preplanned_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-preplanned-rail-clearance-p2-successor-acceptance-receipt.json"
+    )
+    preplanned_rail_successor = json.loads(
+        preplanned_path.read_text(encoding="utf-8")
+    )
+    assert preplanned_rail_successor["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-preplanned-rail-clearance-p2-successor.v1"
+    )
+    assert preplanned_rail_successor["based_on_pr_head"] == (
+        "9c37348049c24e6efdc63cc01528d0e9fee40130"
+    )
+    assert preplanned_rail_successor["parent_evidence"] == {
+        "schema_version": first_row_peer_rail["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-first-row-peer-rail-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(first_row_peer_rail_path.read_bytes()).hexdigest(),
+        "evidence_digest": first_row_peer_rail["evidence_digest"],
+    }
+    assert preplanned_rail_successor["evidence_digest"] == digest_mapping(
+        preplanned_rail_successor, "evidence_digest"
+    )
+    assert preplanned_rail_successor["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "7e6a2c292efdbd0e1b105e39169f2c05cb0336d88d9d240a731e269946ed6689"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "888f52f53cc2c7c6017971af9295f53aaf071798bb1407bc9ee1f283bd841d3e"
+        ),
+    }
+    for path, digest in preplanned_rail_successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    assert preplanned_rail_successor["regression_tests"] == [
+        "test_pr205_codex_card_detour_does_not_cover_preplanned_gutter_rail"
+    ]
+    assert preplanned_rail_successor["test_receipts"]["gutter_rail_red"]["failed_tests"] == 1
+    assert preplanned_rail_successor["test_receipts"]["gutter_rail_green"]["exit_code"] == 0
+    assert preplanned_rail_successor["test_receipts"]["native_diagram_suite"]["exit_code"] == 0
+    assert preplanned_rail_successor["test_receipts"]["chromium_browser_smoke"] == {
+        "task_id": "72766b2e03e04ad19cb3490f",
+        "passed_cases": 30, "exit_code": 0,
+    }
+    fuzz = preplanned_rail_successor["test_receipts"]["head_differential_fuzz"]
+    assert len(fuzz) == 4
+    assert {entry["seed"] for entry in fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        entry["models_compared"] == 5000
+        and entry["baseline_render_exceptions"] == 0
+        and entry["new_render_exceptions"] == 0
+        and entry["new_foreign_card_intersections"] == 0
+        and entry["new_foreign_label_intersections"] == 0
+        and entry["renderer_sha256"] == preplanned_rail_successor["source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ]
+        for entry in fuzz
+    )
+    stress = preplanned_rail_successor["test_receipts"]["detour_vs_static_stress"]
+    assert stress["models_checked"] == 900
+    assert stress["new_render_exceptions"] == 0
+    assert stress["detour_static_rail_overlaps"] == 0
+    assert stress["reverse_path_mismatches"] == 0
+    assert preplanned_rail_successor["local_checks"]["independent_exact_head_review_pass"] is False
+    assert preplanned_rail_successor["local_checks"]["visual_acceptance_pass"] is False
+    assert preplanned_rail_successor["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -11907,7 +11977,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert first_row_peer_rail["source_bindings"][name] == current
+            assert preplanned_rail_successor["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11925,7 +11995,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert first_row_peer_rail["source_bindings"][name] == current
+            assert preplanned_rail_successor["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

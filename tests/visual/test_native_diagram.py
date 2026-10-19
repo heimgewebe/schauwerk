@@ -7634,3 +7634,52 @@ def test_pr205_codex_first_row_detours_reserve_distinct_rails() -> None:
         return paths, labels, painted
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+
+def test_pr205_codex_card_detour_does_not_cover_preplanned_gutter_rail() -> None:
+    """A first-row rescue must preserve visible strokes from earlier planners."""
+    model = _p2_feedback_geometry_model((2, 3, 4, 2, 4, 2))
+    edges = [
+        {"id": "e0", "from": "n2", "to": "n11", "kind": "risk",
+         "label": "a somewhat longer relation label"},
+        {"id": "e4", "from": "n9", "to": "n15", "kind": "flow", "label": "x"},
+        {"id": "e5", "from": "n11", "to": "n0", "kind": "flow", "label": "Approve"},
+    ]
+
+    def readback(ordered: list[dict]) -> tuple[dict, dict, list[str]]:
+        candidate = copy.deepcopy(model)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        rails = {}
+        for edge_id in ("e0", "e4"):
+            rails[edge_id] = [
+                (min(start[0], end[0]), max(start[0], end[0]), start[1])
+                for start, end in _p2_orthogonal_segments(paths[edge_id])
+                if abs(start[1] - end[1]) < 0.01
+                and abs(start[0] - end[0]) > 4
+            ]
+        assert rails["e0"] and rails["e4"]
+        for a, b, y in rails["e0"]:
+            for c, d, yy in rails["e4"]:
+                shared = min(b, d) - max(a, c)
+                assert shared <= 4 or abs(y - yy) >= 4, (
+                    "detour masked preplanned gutter", shared, paths
+                )
+        for edge in edges:
+            eid = edge["id"]
+            for node_id, card in cards.items():
+                if node_id not in (edge["from"], edge["to"]):
+                    assert _p2_linear_path_clears_box(paths[eid], card), (eid, node_id)
+            for peer_id, box in labels.items():
+                if peer_id != eid:
+                    assert _p2_linear_path_clears_box(paths[eid], box), (eid, peer_id)
+        painted = [
+            element.attrib["data-source-id"] for element in root
+            if element.attrib.get("data-source-kind") == "edge"
+        ]
+        return paths, labels, painted
+
+    assert readback(edges) == readback(list(reversed(edges)))
