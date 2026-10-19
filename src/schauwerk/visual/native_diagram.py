@@ -6470,6 +6470,10 @@ def render_native_diagram(
                           float(_NODE_WIDTH), float(_NODE_HEIGHT))
                 for node_id, (x, y) in positions.items()
             }
+            # Accepted cross-card rails are physical strokes, not just labels.
+            # Reserve the horizontal spans locally while planning subsequent
+            # detours, so a later semantic edge cannot paint over a peer.
+            reserved_detour_rails: list[tuple[float, float, float]] = []
             for edge in candidates:
                 edge_id = str(edge["id"])
                 source = positions[str(edge["from"])]
@@ -6554,6 +6558,15 @@ def render_native_diagram(
                         (port_x, y) for port_x in target_ports for y in ys
                     ):
                         if not low + 1.5 < channel_y < high - 1.5:
+                            continue
+                        rail_left = min(source_center, target_port_x)
+                        rail_right = max(source_center, target_port_x)
+                        if any(
+                            abs(channel_y - peer_y) < 4.0
+                            and min(rail_right, peer_right)
+                            - max(rail_left, peer_left) > 4.0
+                            for peer_y, peer_left, peer_right in reserved_detour_rails
+                        ):
                             continue
                         path = (
                             f"M {source_center:.1f} {port:.1f} "
@@ -6677,6 +6690,9 @@ def render_native_diagram(
                                 continue
                             layouts[edge_id] = reroute, rendered_box
                             planned_edge_lines[edge_id] = rerendered
+                            reserved_detour_rails.append((
+                                channel_y, rail_left, rail_right,
+                            ))
                             accepted = True
                             break
                         if accepted:

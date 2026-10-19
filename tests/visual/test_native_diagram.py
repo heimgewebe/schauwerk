@@ -7584,3 +7584,53 @@ def test_pr205_first_row_label_stays_in_intergroup_gap(label: str) -> None:
         if node_id not in {"n0", "n4"}:
             assert _p2_linear_path_clears_box(path, box), node_id
             assert _p2_cubic_path_clears_box(path, box), node_id
+
+
+def test_pr205_codex_first_row_detours_reserve_distinct_rails() -> None:
+    """A second first-row card detour must not hide a peer's horizontal stroke."""
+    raw = _p2_feedback_geometry_model((2, 2, 2, 2, 2))
+    edges = [
+        {"id": "e0", "from": "n0", "to": "n4", "kind": "flow", "label": "x"},
+        {"id": "e1", "from": "n2", "to": "n8", "kind": "risk", "label": "x"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, list[str]]:
+        candidate = copy.deepcopy(raw)
+        candidate["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(candidate))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        horizontal = {}
+        for edge in edges:
+            edge_id = edge["id"]
+            horizontal[edge_id] = [
+                (min(start[0], end[0]), max(start[0], end[0]), start[1])
+                for start, end in _p2_orthogonal_segments(paths[edge_id])
+                if abs(start[1] - end[1]) < 0.01
+                and abs(start[0] - end[0]) > 4
+            ]
+            for card_id, box in cards.items():
+                if card_id not in {edge["from"], edge["to"]}:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, card_id
+                    )
+            for peer_id, box in labels.items():
+                if peer_id != edge_id:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, peer_id
+                    )
+        assert horizontal["e0"] and horizontal["e1"]
+        for x0, x1, y in horizontal["e0"]:
+            for xx0, xx1, yy in horizontal["e1"]:
+                overlap = min(x1, xx1) - max(x0, xx0)
+                assert overlap <= 4 or abs(y - yy) >= 4, (
+                    "overlapping first-row rails", paths, overlap, y, yy
+                )
+        painted = [
+            item.attrib["data-source-id"] for item in root
+            if item.attrib.get("data-source-kind") == "edge"
+        ]
+        return paths, labels, painted
+
+    assert geometry(edges) == geometry(list(reversed(edges)))

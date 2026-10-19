@@ -11550,8 +11550,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "68ce6ca1dc23c106051e7eb3f569eb160403c2ab1db8c3b91867f7aeca7740d7"
         ),
     }
-    for name, digest in first_row_terminal["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    # Earlier terminal source bindings are historical, not current revision bytes.
     assert set(first_row_terminal["regression_tests"]) == {
         "test_pr205_p2_failclosed_same_row_card_routes",
         "test_pr205_codex_first_row_cross_card_uses_safe_detour",
@@ -11582,6 +11581,77 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     assert first_row_terminal["local_checks"]["visual_acceptance_pass"] is False
     assert first_row_terminal["local_checks"]["captain_merge_authorized"] is False
+
+    # Exact revision successor: the previous intergroup label candidate stays
+    # immutable; current bytes belong only to this create-once peer-rail revision.
+    first_row_peer_rail_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-first-row-peer-rail-p2-successor-acceptance-receipt.json"
+    )
+    first_row_peer_rail = json.loads(
+        first_row_peer_rail_path.read_text(encoding="utf-8")
+    )
+    assert first_row_peer_rail["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-first-row-peer-rail-p2-successor.v1"
+    )
+    assert first_row_peer_rail["based_on_pr_head"] == (
+        "4e5ead19055164e1b8b649fab8005b5b4e4a4e3d"
+    )
+    assert first_row_peer_rail["parent_evidence"] == {
+        "schema_version": first_row_terminal["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-first-row-intergroup-label-terminal-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(first_row_terminal_path.read_bytes()).hexdigest(),
+        "evidence_digest": first_row_terminal["evidence_digest"],
+    }
+    assert first_row_peer_rail["evidence_digest"] == digest_mapping(
+        first_row_peer_rail, "evidence_digest"
+    )
+    assert first_row_peer_rail["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "8f39afd40283e20f60f8f814873929580c608b017136fb8485809b9fe581db2c"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "e10b33bfda2f8351a2a708139be04101a75ef80b0bf60fb84d5e6c7cbc4989a8"
+        ),
+    }
+    for name, digest in first_row_peer_rail["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert first_row_peer_rail["regression_tests"] == [
+        "test_pr205_codex_first_row_detours_reserve_distinct_rails"
+    ]
+    assert first_row_peer_rail["test_receipts"]["peer_rail_red"]["failed_tests"] == 1
+    assert first_row_peer_rail["test_receipts"]["peer_rail_green"]["exit_code"] == 0
+    assert first_row_peer_rail["test_receipts"]["native_diagram_suite"]["exit_code"] == 0
+    assert first_row_peer_rail["test_receipts"]["chromium_browser_smoke"] == {
+        "task_id": "d0ed5820372b407982a3e6ee",
+        "passed_cases": 30, "exit_code": 0,
+    }
+    peer_fuzz = first_row_peer_rail["test_receipts"]["deterministic_differential_fuzz"]
+    assert len(peer_fuzz) == 4
+    assert {item["seed"] for item in peer_fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        item["models_compared"] == 5000
+        and item["head_render_exceptions"] == 0
+        and item["new_render_exceptions"] == 0
+        and item["new_foreign_card_intersections"] == 0
+        and item["new_foreign_label_intersections"] == 0
+        and item["renderer_sha256"] == first_row_peer_rail["source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ]
+        for item in peer_fuzz
+    )
+    focused_stress = first_row_peer_rail["test_receipts"]["focused_first_row_peer_stress"]
+    assert focused_stress["evaluated_models"] == 1200
+    assert focused_stress["new_render_exceptions"] == 0
+    assert focused_stress["overlapping_peer_rails"] == 0
+    assert focused_stress["reverse_edge_path_mismatches"] == 0
+    assert first_row_peer_rail["local_checks"]["independent_exact_head_review_pass"] is False
+    assert first_row_peer_rail["local_checks"]["visual_acceptance_pass"] is False
+    assert first_row_peer_rail["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -11837,7 +11907,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert first_row_terminal["source_bindings"][name] == current
+            assert first_row_peer_rail["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11855,7 +11925,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert first_row_terminal["source_bindings"][name] == current
+            assert first_row_peer_rail["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:
