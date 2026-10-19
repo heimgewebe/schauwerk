@@ -1,0 +1,128 @@
+{
+  "based_on_pr_head": "20084a99829ff777d385299224b5407c63b6b511",
+  "evidence_digest": "5ccfdace291690ae599d1867524ae997a21cc10a81c6157fbd674af6fe92bf2f",
+  "local_checks": {
+    "captain_merge_authorized": false,
+    "complete_make_validate_after_receipt_pass": false,
+    "github_ci_for_new_pr_head_pass": false,
+    "grouped_feedback_peer_overlap_red_green_reproduced": true,
+    "historical_receipts_byte_unchanged": true,
+    "independent_exact_head_review_pass": false,
+    "planner_uses_only_existing_physical_corridors": true,
+    "remaining_feedback_physical_overlap_candidates": 837,
+    "svg_paint_order_reversal_red_green_reproduced": true,
+    "visual_acceptance_pass": false
+  },
+  "notes": "This is an immutable technical-only candidate. In 1600 grouped differential models 837 existing horizontal feedback peer overlaps remain untriaged; this is NOT a full visual acceptance or release waiver. Future source revisions require new digest-bound successors.",
+  "parent_evidence": {
+    "evidence_digest": "0fd534eb45f5777ed162b10cca567f1b1dff755c68936d5c13038e2e63130af9",
+    "file_sha256": "5214a06cd663be0141023ce8284ab2bdb837d8a07d37c94ab948a6ac929546a2",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-preplanned-rail-clearance-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-preplanned-rail-clearance-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_distinct_local_feedback_pairs_keep_separate_physical_rails"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-grouped-peer-visible-rail-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+    "tests/visual/test_native_diagram.py": "561ba67492e6aa7a062ee16b69e1d8a821ce8dfb67c7cd053d8111d1a2c64efb"
+  },
+  "test_receipts": {
+    "chromium_browser_smoke": {
+      "exit_code": 0,
+      "passed_cases": 30,
+      "task_id": "de6bc5085f7a49be95ac78dc"
+    },
+    "grouped_feedback_differential": {
+      "baseline_physical_overlaps": 3135,
+      "baseline_render_exceptions": 0,
+      "comparison_head": "20084a99829ff777d385299224b5407c63b6b511",
+      "current_physical_overlaps": 837,
+      "evaluated_models": 1600,
+      "fixed_seed": 20520261031,
+      "new_card_or_label_hits": 0,
+      "new_render_exceptions": 0,
+      "reduced_overlaps": 2298,
+      "remaining_overlaps_untriaged": true,
+      "renderer_sha256": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+      "task_id": "4efbec2422bd48129dfeb149"
+    },
+    "head_differential_fuzz": [
+      {
+        "comparison_head": "20084a99829ff777d385299224b5407c63b6b511",
+        "head_render_exceptions": 0,
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+        "seed": 20520261021,
+        "task_id": "8a9e0ca77d884ac986061387"
+      },
+      {
+        "comparison_head": "20084a99829ff777d385299224b5407c63b6b511",
+        "head_render_exceptions": 0,
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+        "seed": 20520261022,
+        "task_id": "ba39245dd891410ebb91be13"
+      },
+      {
+        "comparison_head": "20084a99829ff777d385299224b5407c63b6b511",
+        "head_render_exceptions": 0,
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+        "seed": 20520261023,
+        "task_id": "e87e39d90701471a9359145b"
+      },
+      {
+        "comparison_head": "20084a99829ff777d385299224b5407c63b6b511",
+        "head_render_exceptions": 0,
+        "models_compared": 5000,
+        "new_foreign_card_intersections": 0,
+        "new_foreign_label_intersections": 0,
+        "new_render_exceptions": 0,
+        "renderer_sha256": "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1",
+        "seed": 20520261024,
+        "task_id": "50325fc14d5d49b8a1d53dac"
+      }
+    ],
+    "misplaced_ungrouped_trial_red": {
+      "exit_code": 1,
+      "failed_tests": 1,
+      "task_id": "ca89f9cf054c4eb2bc07fa0f"
+    },
+    "native_diagram_suite": {
+      "exit_code": 0,
+      "task_id": "e97b375c20b0436c974429ba"
+    },
+    "paint_order_red": {
+      "exit_code": 1,
+      "failed_tests": 1,
+      "task_id": "f7f854c7f24345d4a00cfddc"
+    },
+    "peer_overlap_red": {
+      "exit_code": 1,
+      "failed_tests": 1,
+      "shared_rail_y": 388.0,
+      "task_id": "ec840b34b11748599d339d58"
+    },
+    "peer_visible_green": {
+      "exit_code": 0,
+      "task_id": "3e8b590db757408dbd076b87"
+    },
+    "visual_readback": {
+      "task_id": "f0b6a3976d094c88bbefe655",
+      "temporary_browser_screenshot": true,
+      "visual_acceptance_pass": false
+    }
+  }
+}

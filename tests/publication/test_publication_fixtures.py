@@ -11688,8 +11688,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "888f52f53cc2c7c6017971af9295f53aaf071798bb1407bc9ee1f283bd841d3e"
         ),
     }
-    for path, digest in preplanned_rail_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    # Previous source bindings are historical; never compare to latest worktree bytes.
     assert preplanned_rail_successor["regression_tests"] == [
         "test_pr205_codex_card_detour_does_not_cover_preplanned_gutter_rail"
     ]
@@ -11722,6 +11721,80 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert preplanned_rail_successor["local_checks"]["independent_exact_head_review_pass"] is False
     assert preplanned_rail_successor["local_checks"]["visual_acceptance_pass"] is False
     assert preplanned_rail_successor["local_checks"]["captain_merge_authorized"] is False
+
+    # Last create-only local grouped-feedback peer revision. Its predecessor
+    # remains byte-immutable despite the physical-stroke and painter-order fix.
+    grouped_peer_visible_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-grouped-peer-visible-rail-p2-successor-acceptance-receipt.json"
+    )
+    grouped_peer_visible = json.loads(
+        grouped_peer_visible_path.read_text(encoding="utf-8")
+    )
+    assert grouped_peer_visible["schema_version"] == (
+        "schauwerk-schaubild-process-feedback-routing-grouped-peer-visible-rail-p2-successor.v1"
+    )
+    assert grouped_peer_visible["based_on_pr_head"] == (
+        "20084a99829ff777d385299224b5407c63b6b511"
+    )
+    assert grouped_peer_visible["parent_evidence"] == {
+        "schema_version": preplanned_rail_successor["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-preplanned-rail-clearance-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(preplanned_path.read_bytes()).hexdigest(),
+        "evidence_digest": preplanned_rail_successor["evidence_digest"],
+    }
+    assert grouped_peer_visible["evidence_digest"] == digest_mapping(
+        grouped_peer_visible, "evidence_digest"
+    )
+    assert grouped_peer_visible["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "71280777d79a1baf30f8a45a95e46ada3f8a30662a01733f4b53ed7f38e347e1"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "561ba67492e6aa7a062ee16b69e1d8a821ce8dfb67c7cd053d8111d1a2c64efb"
+        ),
+    }
+    for path, digest in grouped_peer_visible["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    assert grouped_peer_visible["regression_tests"] == [
+        "test_pr204_p2_distinct_local_feedback_pairs_keep_separate_physical_rails"
+    ]
+    assert grouped_peer_visible["test_receipts"]["peer_overlap_red"]["failed_tests"] == 1
+    assert grouped_peer_visible["test_receipts"]["paint_order_red"]["failed_tests"] == 1
+    assert grouped_peer_visible["test_receipts"]["peer_visible_green"]["exit_code"] == 0
+    assert grouped_peer_visible["test_receipts"]["native_diagram_suite"]["exit_code"] == 0
+    assert grouped_peer_visible["test_receipts"]["chromium_browser_smoke"] == {
+        "task_id": "de6bc5085f7a49be95ac78dc", "passed_cases": 30,
+        "exit_code": 0,
+    }
+    grouped_fuzz = grouped_peer_visible["test_receipts"]["grouped_feedback_differential"]
+    assert grouped_fuzz["evaluated_models"] == 1600
+    assert grouped_fuzz["new_render_exceptions"] == 0
+    assert grouped_fuzz["new_card_or_label_hits"] == 0
+    assert grouped_fuzz["baseline_physical_overlaps"] == 3135
+    assert grouped_fuzz["current_physical_overlaps"] == 837
+    assert grouped_fuzz["remaining_overlaps_untriaged"] is True
+    fuzz = grouped_peer_visible["test_receipts"]["head_differential_fuzz"]
+    assert len(fuzz) == 4
+    assert {item["seed"] for item in fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        item["models_compared"] == 5000
+        and item["head_render_exceptions"] == 0
+        and item["new_render_exceptions"] == 0
+        and item["new_foreign_card_intersections"] == 0
+        and item["new_foreign_label_intersections"] == 0
+        and item["renderer_sha256"] == grouped_peer_visible["source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ]
+        for item in fuzz
+    )
+    assert grouped_peer_visible["local_checks"]["visual_acceptance_pass"] is False
+    assert grouped_peer_visible["local_checks"]["independent_exact_head_review_pass"] is False
+    assert grouped_peer_visible["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -11977,7 +12050,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert preplanned_rail_successor["source_bindings"][name] == current
+            assert grouped_peer_visible["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -11995,7 +12068,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert preplanned_rail_successor["source_bindings"][name] == current
+            assert grouped_peer_visible["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

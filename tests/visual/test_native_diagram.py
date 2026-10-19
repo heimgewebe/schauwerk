@@ -7683,3 +7683,56 @@ def test_pr205_codex_card_detour_does_not_cover_preplanned_gutter_rail() -> None
         return paths, labels, painted
 
     assert readback(edges) == readback(list(reversed(edges)))
+
+
+def test_pr204_p2_distinct_local_feedback_pairs_keep_separate_physical_rails() -> None:
+    """Different feedback endpoints must not hide on one same-row return stroke."""
+    raw = _p2_feedback_geometry_model((3, 4))
+    edges = [
+        {"id": "f0", "from": "n3", "to": "n1",
+         "kind": "feedback", "label": "Rueckmeldung"},
+        {"id": "f1", "from": "n4", "to": "n0",
+         "kind": "feedback", "label": "x"},
+    ]
+
+    def geometry(ordered: list[dict]) -> tuple[dict, dict, list[str]]:
+        model = copy.deepcopy(raw)
+        model["edges"] = copy.deepcopy(ordered)
+        root = _parse(render_native_diagram(model))
+        paths, labels, cards = (
+            _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+        )
+        rails = {}
+        for edge in edges:
+            edge_id = edge["id"]
+            rails[edge_id] = [
+                (min(start[0], end[0]), max(start[0], end[0]), start[1])
+                for start, end in _p2_orthogonal_segments(paths[edge_id])
+                if abs(start[1] - end[1]) < 0.01
+                and abs(start[0] - end[0]) > 4
+            ]
+            for node_id, card in cards.items():
+                if node_id not in {edge["from"], edge["to"]}:
+                    assert _p2_linear_path_clears_box(paths[edge_id], card), (
+                        edge_id, node_id
+                    )
+            for peer_id, box in labels.items():
+                if edge_id != peer_id:
+                    assert _p2_linear_path_clears_box(paths[edge_id], box), (
+                        edge_id, peer_id
+                    )
+        assert rails["f0"] and rails["f1"]
+        for left, right, y in rails["f0"]:
+            for other_left, other_right, other_y in rails["f1"]:
+                overlap = min(right, other_right) - max(left, other_left)
+                assert overlap <= 4 or abs(y - other_y) >= 4, (
+                    "semantic feedback peer strokes overlap", paths, overlap
+                )
+        painted = [
+            element.attrib["data-source-id"]
+            for element in root
+            if element.attrib.get("data-source-kind") == "edge"
+        ]
+        return paths, labels, painted
+
+    assert geometry(edges) == geometry(list(reversed(edges)))

@@ -6319,11 +6319,90 @@ def render_native_diagram(
         )
         lines.append("</g>")
 
+    grouped_feedback_rail_replanned = False
+    # Grouped feedback peer routes can occupy the same physical row-gap rail
+    # even with distinct endpoint pairs. Resolve only overlapping local legs
+    # after the existing label/side-port planners have fixed their decisions.
+    # This uses their true corridor and obstacle geometry, without a new SVG
+    # postprocessor or changing unrelated accepted paths.
+    if intent == "process" and model["groups"] and feedback_edges:
+        reserved_feedback_legs: list[tuple[float, float, float]] = []
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            if (
+                edge_id in feedback_outer_footer_ids
+                or edge_id in feedback_path_footer_ids
+                or edge["from"] == edge["to"]
+            ):
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if source[1] == target[1]:
+                continue
+            direction = 1 if source[1] < target[1] else -1
+            source_gap = _process_row_corridor_bounds(
+                source[1], positions, direction=direction
+            )
+            target_gap = _process_row_corridor_bounds(
+                target[1], positions, direction=-direction
+            )
+            if source_gap is None or target_gap is None:
+                continue
+            original = feedback_path_y.get(edge_id)
+            base_source, base_target = (
+                original if isinstance(original, tuple)
+                else (sum(source_gap) / 2, sum(target_gap) / 2)
+            )
+            source_x = float(source[0] + _NODE_WIDTH / 2)
+            target_x = float(target[0] + _NODE_WIDTH / 2)
+            gutter_x = feedback_local_gutter_x.get(
+                edge_id,
+                min(
+                    width - 16.0,
+                    max(source[0], target[0])
+                    + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                ),
+            )
+            source_span = (min(source_x, gutter_x), max(source_x, gutter_x))
+            target_span = (min(target_x, gutter_x), max(target_x, gutter_x))
+            for shift in (0, -4, 4, -8, 8, -12, 12, -16, 16, -20, 20, -24, 24):
+                source_rail, target_rail = base_source + shift, base_target + shift
+                proposed = (
+                    (source_span[0], source_span[1], source_rail),
+                    (target_span[0], target_span[1], target_rail),
+                )
+                if (
+                    not source_gap[0] + 2 <= source_rail <= source_gap[1] - 2
+                    or not target_gap[0] + 2 <= target_rail <= target_gap[1] - 2
+                    or any(
+                        min(right, other_right) - max(left, other_left) > 4
+                        and abs(y - other_y) < 4
+                        for left, right, y in proposed
+                        for other_left, other_right, other_y in reserved_feedback_legs
+                    )
+                    or any(
+                        left < box_right + 2 and right > box_left - 2
+                        and box_top - 2 < y < box_bottom + 2
+                        for left, right, y in proposed
+                        for box_left, box_top, box_right, box_bottom in feedback_obstacles
+                    )
+                ):
+                    continue
+                if shift:
+                    feedback_path_y[edge_id] = (source_rail, target_rail)
+                    grouped_feedback_rail_replanned = True
+                reserved_feedback_legs.extend(proposed)
+                break
+
     # Group-gap fallback and parallel feedback peers can cross other strokes.
     # Use a stable painter order only in those cases; preserve older SVG output.
     paint_edges = (
         sorted(model["edges"], key=lambda edge: str(edge["id"]))
-        if _process_group_gap_extra or has_parallel_feedback_peers
+        if (
+            _process_group_gap_extra
+            or has_parallel_feedback_peers
+            or grouped_feedback_rail_replanned
+        )
         else model["edges"]
     )
     def render_planned_edge(
