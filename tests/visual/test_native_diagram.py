@@ -7925,3 +7925,78 @@ def test_pr205_grouped_fixed_same_row_feedback_rails_do_not_overpaint(
     model["edges"] = list(reversed(edges)) if reversed_order else edges
     paths = _edge_paths(_parse(render_native_diagram(model)))
     _pr205_assert_distinct_horizontal_strokes(paths, *pair)
+
+@pytest.mark.parametrize(
+    ("records", "pair"),
+    [
+        (
+            [
+                ("e00", "n12", "n2", "feedback", "link"),
+                ("e03", "n6", "n12", "feedback", "x"),
+                ("e07", "n11", "n8", "feedback", "x"),
+                ("e01", "n11", "n0", "feedback", "a somewhat longer relation label"),
+                ("e02", "n2", "n10", "feedback", "Rueckmeldung"),
+                ("e05", "n2", "n0", "feedback", "link"),
+            ],
+            ("e00", "e07"),
+        ),
+        (
+            [
+                ("other1", "n6", "n4", "flow", "Approve"),
+                ("other0", "n3", "n1", "risk", "Approve"),
+                ("e06", "n0", "n4", "feedback", "Rueckmeldung"),
+                ("e04", "n4", "n11", "feedback", "a somewhat longer relation label"),
+                ("e01", "n10", "n0", "feedback", "Rueckmeldung"),
+                ("e07", "n11", "n8", "feedback", "Rueckmeldung"),
+                ("e03", "n6", "n12", "feedback", "a somewhat longer relation label"),
+                ("e00", "n12", "n2", "feedback", "a somewhat longer relation label"),
+            ],
+            ("e03", "e04"),
+        ),
+        (
+            [
+                ("other1", "n9", "n4", "risk", "link"),
+                ("other0", "n4", "n12", "risk", "a somewhat longer relation label"),
+                ("e06", "n3", "n12", "feedback", "a somewhat longer relation label"),
+                ("e02", "n10", "n10", "feedback", "link"),
+                ("e01", "n9", "n3", "feedback", "x"),
+                ("e07", "n11", "n8", "feedback", "Rueckmeldung"),
+                ("e03", "n6", "n12", "feedback", "Rueckmeldung"),
+                ("e00", "n12", "n2", "feedback", "a somewhat longer relation label"),
+            ],
+            ("e01", "e03"),
+        ),
+    ],
+)
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_codex_new_vertical_gutter_overlaps_are_reserved(
+    records: list[tuple[str, str, str, str, str]],
+    pair: tuple[str, str],
+    reversed_order: bool,
+) -> None:
+    """Changing feedback rail y also changes its physical vertical gutter span."""
+    model = _p2_feedback_geometry_model((4, 4, 5))
+    edges = [
+        {"id": edge_id, "from": source, "to": target,
+         "kind": kind, "label": label}
+        for edge_id, source, target, kind, label in records
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+
+    def verticals(edge_id: str) -> list[tuple[float, float, float]]:
+        return [
+            (start[0], min(start[1], end[1]), max(start[1], end[1]))
+            for start, end in _p2_orthogonal_segments(paths[edge_id])
+            if abs(start[0] - end[0]) < 0.01
+            and abs(start[1] - end[1]) > 4
+        ]
+
+    assert verticals(pair[0]) and verticals(pair[1])
+    for first_x, first_low, first_high in verticals(pair[0]):
+        for peer_x, peer_low, peer_high in verticals(pair[1]):
+            overlap = min(first_high, peer_high) - max(first_low, peer_low)
+            assert abs(first_x - peer_x) >= 4 or overlap <= 4, (
+                "two feedback relations share a vertical physical stem",
+                pair, first_x, peer_x, overlap, paths
+            )

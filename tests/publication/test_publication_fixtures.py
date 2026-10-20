@@ -11824,8 +11824,6 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(reserved_feedback["source_bindings"]) == set(
         grouped_peer_visible["source_bindings"]
     )
-    for path, digest in reserved_feedback["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
     assert {item["comment_id"] for item in reserved_feedback["codex_review_findings"]} == {
         4318358308, 4318358321,
     }
@@ -11869,6 +11867,104 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert reserved_feedback["local_checks"]["visual_acceptance_pass"] is False
     assert reserved_feedback["local_checks"]["independent_exact_head_review_pass"] is False
     assert reserved_feedback["local_checks"]["captain_merge_authorized"] is False
+
+    # The preceding source-bound receipt is historical, not automatically
+    # reaccepted after the new Codex vertical-gutter P2. Verify its immutable
+    # parent digest, then bind ONLY this create-once revision to current bytes.
+    vertical_gutter_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-vertical-gutter-reservation-p2-successor-acceptance-receipt.json"
+    )
+    vertical_gutter = json.loads(vertical_gutter_path.read_text(encoding="utf-8"))
+    assert vertical_gutter["schema_version"] == (
+        "schauwerk-schaubild-feedback-vertical-gutter-reservation-p2-successor.v1"
+    )
+    assert vertical_gutter["scope"] == "technical-candidate-only"
+    assert vertical_gutter["based_on_pr_head"] == (
+        "0a544f981f9968ed605ad27dcb6c259581e58792"
+    )
+    assert vertical_gutter["parent_evidence"] == {
+        "schema_version": reserved_feedback["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-reserved-same-row-rail-exhaustion-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(reserved_feedback_path.read_bytes()).hexdigest(),
+        "evidence_digest": reserved_feedback["evidence_digest"],
+    }
+    assert vertical_gutter["evidence_digest"] == digest_mapping(
+        vertical_gutter, "evidence_digest"
+    )
+    assert set(vertical_gutter["source_bindings"]) == set(
+        reserved_feedback["source_bindings"]
+    )
+    for path, digest in vertical_gutter["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    assert vertical_gutter["codex_review_findings"] == [
+        {
+            "comment_id": 4321575695,
+            "severity": "P2",
+            "reviewed_head": "0a544f981f9968ed605ad27dcb6c259581e58792",
+            "disposition": "reproduced-and-remediated",
+            "summary": (
+                "vertical feedback gutter stroke collinearity after horizontal rail shifts"
+            ),
+        }
+    ]
+    assert vertical_gutter["regression_tests"] == [
+        "test_pr205_codex_new_vertical_gutter_overlaps_are_reserved"
+    ]
+    vertical_evidence = vertical_gutter["test_receipts"]
+    assert vertical_evidence["vertical_gutter_red"]["failed_tests"] == 6
+    assert vertical_evidence["targeted_green"]["exit_code"] == 0
+    assert vertical_evidence["native_diagram_suite"]["exit_code"] == 0
+    assert vertical_evidence["chromium_browser_smoke"]["passed_cases"] == 30
+    assert vertical_evidence["chromium_browser_smoke"]["exit_code"] == 0
+    vertical_fuzz = vertical_evidence["vertical_gutter_differential"]
+    assert vertical_fuzz["fixed_seed"] == 20520261051
+    assert vertical_fuzz["models_compared"] == 1000
+    assert vertical_fuzz["baseline_vertical_overlap_pairs"] == 2271
+    assert vertical_fuzz["current_vertical_overlap_pairs"] == 0
+    assert vertical_fuzz["new_vertical_overlap_pairs"] == 0
+    grouped_fuzz = vertical_evidence["grouped_feedback_differential"]
+    assert grouped_fuzz["fixed_seed"] == 20520261031
+    assert grouped_fuzz["models_compared"] == 1600
+    assert grouped_fuzz["baseline_horizontal_overlap_pairs"] == 837
+    assert grouped_fuzz["current_horizontal_overlap_pairs"] == 0
+    assert grouped_fuzz["new_card_or_label_hits"] == 0
+    assert grouped_fuzz["new_render_exceptions"] == 0
+    assert grouped_fuzz["renderer_sha256"] == vertical_gutter[
+        "source_bindings"
+    ]["src/schauwerk/visual/native_diagram.py"]
+    stress = vertical_evidence["saturated_feedback_differential"]
+    assert stress["fixed_seed"] == 20520261050
+    assert stress["models_compared"] == 600
+    assert stress["baseline_horizontal_overlap_pairs"] == 2052
+    assert stress["current_horizontal_overlap_pairs"] == 0
+    assert stress["new_card_or_label_hits"] == 0
+    assert stress["new_render_exceptions"] == 0
+    fuzz = vertical_evidence["head_differential_fuzz"]
+    assert len(fuzz) == 4
+    assert {entry["seed"] for entry in fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        entry["models_compared"] == 5000
+        and entry["baseline_render_exceptions"] == 0
+        and entry["new_render_exceptions"] == 0
+        and entry["new_card_or_label_hits"] == 0
+        for entry in fuzz
+    )
+    assert vertical_evidence["pre_successor_make_validate"] == {
+        "task_id": "36778ff4fe374dd2b15b7570",
+        "passed_count": 1824,
+        "failed_count": 1,
+        "exit_code": 2,
+        "result": "expected_previous_terminal_source_binding_failure",
+    }
+    assert vertical_gutter["local_checks"]["historical_parent_receipt_byte_unchanged"]
+    assert vertical_gutter["local_checks"]["visual_acceptance_pass"] is False
+    assert vertical_gutter["local_checks"]["independent_exact_head_review_pass"] is False
+    assert vertical_gutter["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -12124,7 +12220,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert reserved_feedback["source_bindings"][name] == current
+            assert vertical_gutter["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -12142,7 +12238,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert reserved_feedback["source_bindings"][name] == current
+            assert vertical_gutter["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

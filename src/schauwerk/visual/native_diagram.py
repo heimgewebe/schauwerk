@@ -5869,6 +5869,7 @@ def render_native_diagram(
     # postprocessor or changing unrelated accepted paths.
     if intent == "process" and model["groups"] and feedback_edges:
         reserved_feedback_legs: list[tuple[float, float, float]] = []
+        reserved_feedback_gutters: list[tuple[float, float, float]] = []
         # Same-row feedbacks are already physically routed. They are not
         # eligible for this replanning, but their actual drawn L legs must
         # reserve the lane before cross-row peers select a new ordinate.
@@ -5878,7 +5879,10 @@ def render_native_diagram(
             fixed_target = positions[str(fixed_edge["to"])]
             if (
                 fixed_id in feedback_outer_footer_ids
-                or fixed_source[1] != fixed_target[1]
+                or (
+                    fixed_source[1] != fixed_target[1]
+                    and fixed_id not in feedback_path_footer_ids
+                )
             ):
                 continue
             fixed_slot = feedback_slots[fixed_id]
@@ -5939,11 +5943,24 @@ def render_native_diagram(
                 for (x0, y0), (x1, y1) in zip(fixed_points, fixed_points[1:])
                 if abs(y0 - y1) < 0.01 and abs(x0 - x1) > 4
             ]
-            if any(
-                min(right, peer_right) - max(left, peer_left) > 4
-                and abs(y - peer_y) < 4
-                for left, right, y in fixed_legs
-                for peer_left, peer_right, peer_y in reserved_feedback_legs
+            fixed_gutters = [
+                (x0, min(y0, y1), max(y0, y1))
+                for (x0, y0), (x1, y1) in zip(fixed_points, fixed_points[1:])
+                if abs(x0 - x1) < 0.01 and abs(y0 - y1) > 4
+            ]
+            if (
+                any(
+                    min(right, peer_right) - max(left, peer_left) > 4
+                    and abs(y - peer_y) < 4
+                    for left, right, y in fixed_legs
+                    for peer_left, peer_right, peer_y in reserved_feedback_legs
+                )
+                or any(
+                    abs(x - peer_x) < 4
+                    and min(high, peer_high) - max(low, peer_low) > 4
+                    for x, low, high in fixed_gutters
+                    for peer_x, peer_low, peer_high in reserved_feedback_gutters
+                )
             ):
                 # Two immutable same-row plans cannot own one semantic stroke.
                 # Reuse the existing collision-checked outer footer for the
@@ -5963,6 +5980,7 @@ def render_native_diagram(
                 )
                 continue
             reserved_feedback_legs.extend(fixed_legs)
+            reserved_feedback_gutters.extend(fixed_gutters)
         for edge in feedback_edges:
             edge_id = str(edge["id"])
             if (
@@ -6007,6 +6025,10 @@ def render_native_diagram(
                     (source_span[0], source_span[1], source_rail),
                     (target_span[0], target_span[1], target_rail),
                 )
+                proposed_gutter = (
+                    gutter_x, min(source_rail, target_rail),
+                    max(source_rail, target_rail),
+                )
                 if (
                     not source_gap[0] + 2 <= source_rail <= source_gap[1] - 2
                     or not target_gap[0] + 2 <= target_rail <= target_gap[1] - 2
@@ -6015,6 +6037,12 @@ def render_native_diagram(
                         and abs(y - other_y) < 4
                         for left, right, y in proposed
                         for other_left, other_right, other_y in reserved_feedback_legs
+                    )
+                    or any(
+                        abs(proposed_gutter[0] - peer_x) < 4
+                        and min(proposed_gutter[2], peer_high)
+                        - max(proposed_gutter[1], peer_low) > 4
+                        for peer_x, peer_low, peer_high in reserved_feedback_gutters
                     )
                     or any(
                         left < box_right + 2 and right > box_left - 2
@@ -6028,6 +6056,8 @@ def render_native_diagram(
                     feedback_path_y[edge_id] = (source_rail, target_rail)
                     grouped_feedback_rail_replanned = True
                 reserved_feedback_legs.extend(proposed)
+                if proposed_gutter[2] - proposed_gutter[1] > 4:
+                    reserved_feedback_gutters.append(proposed_gutter)
                 break
             else:
                 # The finite local search is exhausted. Promote this relation
