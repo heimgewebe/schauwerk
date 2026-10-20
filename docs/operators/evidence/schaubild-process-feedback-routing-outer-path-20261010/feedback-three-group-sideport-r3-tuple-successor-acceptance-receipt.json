@@ -1,0 +1,105 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-three-group-sideport-r3-tuple-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "0f93ac50eb27f3b3c9d71e52a8ff553b28e80da0",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-saturated-same-row-source-port-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-saturated-same-row-source-port-p2-successor-acceptance-receipt.json",
+    "file_sha256": "915d819fa311f75821185c481969d0d8c1576834fd7d33cd23dc22a9e3e02fbe",
+    "evidence_digest": "15459fd7537c09d01d577cf1aa14ba73b1fd34eed55ade4c4ebe3c5b3ae68775"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "edaf936c8585692e5ca79233f6115117c64db1ac7043dbd0eb9c4e38472308d9",
+    "tests/visual/test_native_diagram.py": "1078549293fd5368876dc05315792630d6dbad23c1a8180dc84478c04f805f1c"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "040c78a8a5f27fa4b587996cec1f27751b5489e3f9047d4569c96b97ac62f14f",
+    "tests/visual/test_native_diagram.py": "e6faadef3d7304a614475e2d99ca3a5e1447673e52f2a6062b51a5b899b8d159"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "review_findings": [
+    {
+      "source": "github-codex",
+      "comment_id": 4328507158,
+      "severity": "P2",
+      "reviewed_head": "0f93ac50eb27f3b3c9d71e52a8ff553b28e80da0",
+      "disposition": "reproduced-and-fixed-in-local-candidate"
+    },
+    {
+      "source": "independent-grok",
+      "unit": "grabowski-job-4fc79a066b6a",
+      "severity": "P1",
+      "reviewed_head": "0f93ac50eb27f3b3c9d71e52a8ff553b28e80da0",
+      "disposition": "reproduced-and-fixed-in-local-candidate",
+      "summary": "tuple-valued source and target row-gutter ordinates raised TypeError in adjacent vertical branch"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_three_group_saturation_finds_clear_side_gap",
+    "test_pr206_independent_p1_vertical_adjacent_gutter_handles_dual_y"
+  ],
+  "test_receipts": {
+    "targeted_red": {
+      "failed_variants": 5,
+      "expected_exit_code": 1
+    },
+    "targeted_green": {
+      "passed_variants": 11,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "test_file": "tests/visual/test_native_diagram.py",
+      "exit_code": 0
+    },
+    "codex_p2_differential": {
+      "unit": "grabowski-job-71f0c5474b62",
+      "fixed_seed": 20620261020,
+      "models_attempted": 12000,
+      "preexisting_baseline_render_errors": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "generic_geometry_differential": {
+      "unit": "grabowski-job-196abb0733d5",
+      "seeds": [
+        20520261021,
+        20520261022,
+        20520261023,
+        20520261024
+      ],
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_differential": {
+      "unit": "grabowski-job-7f42015b2c83",
+      "seeds": [
+        20520261071,
+        20520261072,
+        20520261073,
+        20520261074
+      ],
+      "models_attempted": 2600,
+      "models_compared": 2599,
+      "preexisting_baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "targeted_red_green_pass": true,
+    "head_differential_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only, no approved visual, reviewer, Captain or production status. The (3,3,4) seven-edge model failed both input orders with medium labels; a bounded geometric side-port candidate in the existing planner restores rendering without moving peer labels or cards. Independently, a two-ordinate vertical adjacent gutter no longer formats tuple as float. The regression tests were RED before code changes and GREEN after. Physical/differential tests relate exactly to this local renderer SHA. Previous acceptance and Source revisions remain immutable.",
+  "evidence_digest": "0dc773702807db3da4a15297d13c1b275a2d9fe5f72bbb574240513c0ced5737"
+}

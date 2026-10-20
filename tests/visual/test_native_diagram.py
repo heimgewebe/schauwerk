@@ -8494,3 +8494,76 @@ def test_pr206_codex_saturated_same_row_card_can_shift_source_port(
     assert (paths, labels) == (
         _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
     )
+
+
+@pytest.mark.parametrize("label", ["link", "Approve"])
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_three_group_saturation_finds_clear_side_gap(
+    label: str, reverse_order: bool,
+) -> None:
+    """A valid grouped process needs its semantic relation even when row rails fill."""
+    model = _p2_feedback_geometry_model((3, 3, 4))
+    relations = (
+        ("n3", "n1", "risk"),
+        ("n3", "n2", "flow"),
+        ("n5", "n8", "flow"),
+        ("n8", "n0", "flow"),
+        ("n7", "n1", "flow"),
+        ("n8", "n3", "risk"),
+        ("n2", "n8", "risk"),
+    )
+    edges = [
+        {"id": f"e{i}", "from": a, "to": b, "kind": kind, "label": label}
+        for i, (a, b, kind) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    cards = _node_boxes(root)
+    assert len(paths) == len(relations)
+    rerouted = paths["e4"]
+    assert rerouted.startswith("M 977.0 497.0 L ")
+    assert rerouted.endswith("L 315.0 497.0")
+    assert any(
+        item.attrib.get("data-source-id") == "e4"
+        and item.attrib.get("data-route") == "process-row-card-side-detour"
+        for item in root.iter()
+    )
+    for node_id, card in cards.items():
+        if node_id not in {"n7", "n1"}:
+            assert _p2_linear_path_clears_box(rerouted, card), node_id
+    for edge_id, box in labels.items():
+        assert _p2_linear_path_clears_box(rerouted, box), edge_id
+    for edge_id, path in paths.items():
+        if edge_id != "e4":
+            assert _p2_linear_path_clears_box(path, labels["e4"]), edge_id
+            assert _p2_cubic_path_clears_box(path, labels["e4"]), edge_id
+    model["edges"] = list(reversed(model["edges"]))
+    rerendered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(rerendered), _edge_label_boxes(rerendered)
+    )
+
+
+def test_pr206_independent_p1_vertical_adjacent_gutter_handles_dual_y() -> None:
+    """An explicit two-ordinate local gutter must not be formatted as a float."""
+    from schauwerk.visual.native_diagram import _edge_geometry
+
+    path, _, _, route = _edge_geometry(
+        (65, 414),
+        (65, 632),
+        self_loop=False,
+        lane=0,
+        kind="flow",
+        canvas_width=1848,
+        canvas_height=1100,
+        intent="process",
+        process_branch_gutter_x=418.0,
+        process_adjacent_route_y=(596.0, 616.0),
+    )
+    assert route == "process-row-gutter"
+    assert path == (
+        "M 190.0 580.0 L 190.0 596.0 L 418.0 596.0 "
+        "L 418.0 616.0 L 190.0 616.0 L 190.0 632.0"
+    )

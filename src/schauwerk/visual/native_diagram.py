@@ -2103,18 +2103,29 @@ def _edge_geometry(
             and abs(target_y - source_y) <= row_step
         ):
             label_corridor_y = (start_y + end_y) / 2
-            corridor_y = (
-                process_adjacent_route_y
-                if process_adjacent_route_y is not None else label_corridor_y
-            )
             gutter_x = process_branch_gutter_x
-            path = (
-                f"M {center_x:.1f} {start_y:.1f} "
-                f"L {center_x:.1f} {corridor_y:.1f} "
-                f"L {gutter_x:.1f} {corridor_y:.1f} "
-                f"L {center_x:.1f} {corridor_y:.1f} "
-                f"L {center_x:.1f} {end_y:.1f}"
-            )
+            if isinstance(process_adjacent_route_y, tuple):
+                source_corridor_y, target_corridor_y = process_adjacent_route_y
+                path = (
+                    f"M {center_x:.1f} {start_y:.1f} "
+                    f"L {center_x:.1f} {source_corridor_y:.1f} "
+                    f"L {gutter_x:.1f} {source_corridor_y:.1f} "
+                    f"L {gutter_x:.1f} {target_corridor_y:.1f} "
+                    f"L {center_x:.1f} {target_corridor_y:.1f} "
+                    f"L {center_x:.1f} {end_y:.1f}"
+                )
+            else:
+                corridor_y = (
+                    process_adjacent_route_y
+                    if process_adjacent_route_y is not None else label_corridor_y
+                )
+                path = (
+                    f"M {center_x:.1f} {start_y:.1f} "
+                    f"L {center_x:.1f} {corridor_y:.1f} "
+                    f"L {gutter_x:.1f} {corridor_y:.1f} "
+                    f"L {center_x:.1f} {corridor_y:.1f} "
+                    f"L {center_x:.1f} {end_y:.1f}"
+                )
             return path, gutter_x + 8 + label_width / 2, label_corridor_y, "process-row-gutter"
         if abs(target_y - source_y) > row_step:
             # A direct vertical span across multiple rows would pass through an
@@ -2503,6 +2514,7 @@ def _render_edge(
     feedback_outer_preplanned_ports: tuple[float, float, float, float, float] | None = None,
     feedback_outer_obstacles: Sequence[tuple[float, float, float, float]] = (),
     final_label_override: tuple[float, float] | None = None,
+    process_row_card_side_path: str | None = None,
 ) -> list[str]:
     kind = str(edge["kind"])
     color, dash, width = _EDGE_STYLE[kind]
@@ -2622,6 +2634,15 @@ def _render_edge(
             if node_id not in {str(edge["from"]), str(edge["to"])}
         ),
     )
+    if process_row_card_side_path is not None:
+        if (
+            intent != "process" or kind == "feedback"
+            or source_position[1] != target_position[1]
+            or edge["from"] == edge["to"]
+        ):
+            raise ValueError("invalid process card side-port detour")
+        path = process_row_card_side_path
+        route = "process-row-card-side-detour"
     if long_vertical_label_x is not None and route == "vertical":
         label_x = long_vertical_label_x
     dash_attribute = f' stroke-dasharray="{dash}"' if dash else ""
@@ -6678,6 +6699,7 @@ def render_native_diagram(
         label_position_override: tuple[float, float] | None = None,
         card_target_port_x: float | None = None,
         card_source_port_x: float | None = None,
+        card_side_route_path: str | None = None,
     ) -> list[str]:
         return _render_edge(
                 edge,
@@ -6750,6 +6772,7 @@ def render_native_diagram(
                     str(edge["id"]), outer_feedback_obstacles
                 ),
                 final_label_override=label_position_override,
+                process_row_card_side_path=card_side_route_path,
             )
 
     # Keep the established renderer byte-for-byte for all unaffected edges.
@@ -7192,6 +7215,169 @@ def render_native_diagram(
                             break
                     if accepted:
                         break
+                # Only when existing centered and inset card detours cannot
+                # use either row gap, try the adjacent intergroup sideports.
+                if (
+                    not accepted and source_port_fallback is None
+                    and source_stem_fallback is None
+                ):
+                    columns = sorted({x for x, _ in positions.values()})
+                    source_col = columns.index(source[0])
+                    target_col = columns.index(target[0])
+                    if abs(source_col - target_col) >= 2:
+                        backward = source_col > target_col
+                        start_side = float(
+                            source[0] if backward else source[0] + _NODE_WIDTH
+                        )
+                        end_side = float(
+                            target[0] + _NODE_WIDTH if backward else target[0]
+                        )
+                        start_neighbor = (
+                            columns[source_col - 1] + _NODE_WIDTH
+                            if backward else columns[source_col + 1]
+                        )
+                        end_neighbor = (
+                            columns[target_col + 1] if backward
+                            else columns[target_col - 1] + _NODE_WIDTH
+                        )
+                        start_gap = (start_side + start_neighbor) / 2
+                        end_gap = (end_side + end_neighbor) / 2
+                        port_y = float(source[1] + _NODE_HEIGHT / 2)
+                        label_xs = (
+                            (start_side + start_gap) / 2,
+                            (end_side + end_gap) / 2,
+                        )
+                        label_ys = (
+                            port_y - label_height - 18,
+                            port_y + label_height + 18,
+                        )
+                        for gap_direction in (-1, 1):
+                            bounds = _process_row_corridor_bounds(
+                                source[1], positions, direction=gap_direction
+                            )
+                            if bounds is None:
+                                continue
+                            low, high = map(float, bounds)
+                            offsets = (2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0)
+                            rails = (
+                                (low + high) / 2,
+                                *(high - offset for offset in offsets),
+                                *(low + offset for offset in offsets),
+                            )
+                            for side_y in rails:
+                                if not low + 1.5 < side_y < high - 1.5:
+                                    continue
+                                side_path = (
+                                    f"M {start_side:.1f} {port_y:.1f} "
+                                    f"L {start_gap:.1f} {port_y:.1f} "
+                                    f"L {start_gap:.1f} {side_y:.1f} "
+                                    f"L {end_gap:.1f} {side_y:.1f} "
+                                    f"L {end_gap:.1f} {port_y:.1f} "
+                                    f"L {end_side:.1f} {port_y:.1f}"
+                                )
+                                horizontal = horizontal_strokes(side_path)
+                                vertical = vertical_strokes(side_path)
+                                if any(
+                                    abs(y - other_y) < 4
+                                    and min(right, other_right)
+                                    - max(left, other_left) > 4
+                                    for y, left, right in horizontal
+                                    for other_y, other_left, other_right
+                                    in reserved_detour_rails
+                                ):
+                                    continue
+                                if any(
+                                    abs(x - other_x) < 4
+                                    and min(high_y, other_high)
+                                    - max(low_y, other_low) > 4
+                                    for x, low_y, high_y in vertical
+                                    for other_x, other_low, other_high
+                                    in reserved_detour_verticals
+                                ):
+                                    continue
+                                if any(
+                                    _process_svg_path_hits_box(side_path, box)
+                                    for node_id, box in card_boxes.items()
+                                    if node_id not in {
+                                        str(edge["from"]), str(edge["to"])
+                                    }
+                                ) or any(
+                                    _process_svg_path_hits_box(side_path, box)
+                                    for other_id, (_, box) in layouts.items()
+                                    if other_id != edge_id
+                                ):
+                                    continue
+                                for label_x in label_xs:
+                                    for label_y in label_ys:
+                                        box = (
+                                            label_x - label_width / 2,
+                                            label_y - label_height / 2,
+                                            label_width, label_height,
+                                        )
+                                        if (
+                                            box[0] < 8
+                                            or box[0] + label_width > width - 8
+                                            or box[1] < 112
+                                            or box[1] + label_height > height - 8
+                                            or _process_svg_path_hits_box(
+                                                side_path, box
+                                            )
+                                        ):
+                                            continue
+                                        if any(
+                                            _process_svg_path_hits_box(path, box)
+                                            or (
+                                                box[0] < peer[0] + peer[2] + 2
+                                                and peer[0]
+                                                < box[0] + label_width + 2
+                                                and box[1]
+                                                < peer[1] + peer[3] + 2
+                                                and peer[1]
+                                                < box[1] + label_height + 2
+                                            )
+                                            for other_id, (path, peer)
+                                            in layouts.items()
+                                            if other_id != edge_id
+                                        ):
+                                            continue
+                                        if any(
+                                            box[0] < bx + bw + 1.5
+                                            and bx - 1.5
+                                            < box[0] + label_width
+                                            and box[1] < by + bh + 1.5
+                                            and by - 1.5
+                                            < box[1] + label_height
+                                            for bx, by, bw, bh
+                                            in card_boxes.values()
+                                        ):
+                                            continue
+                                        fragment = render_planned_edge(
+                                            edge,
+                                            label_position_override=(
+                                                label_x, label_y
+                                            ),
+                                            card_side_route_path=side_path,
+                                        )
+                                        reroute, rendered_box = planned_svg_parts(
+                                            fragment
+                                        )
+                                        if reroute != side_path or any(
+                                            abs(a - b) > 0.01
+                                            for a, b in zip(rendered_box, box)
+                                        ):
+                                            continue
+                                        layouts[edge_id] = reroute, rendered_box
+                                        planned_edge_lines[edge_id] = fragment
+                                        reserved_detour_rails.extend(horizontal)
+                                        reserved_detour_verticals.extend(vertical)
+                                        accepted = True
+                                        break
+                                    if accepted:
+                                        break
+                                if accepted:
+                                    break
+                            if accepted:
+                                break
                 if not accepted and (
                     source_port_fallback is not None
                     or source_stem_fallback is not None

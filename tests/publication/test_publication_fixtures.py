@@ -12161,8 +12161,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in saturated_source["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Historical source bytes stay immutable; the following terminal successor binds current files.
     assert saturated_source["codex_review_finding"]["comment_id"] == 4327968056
     assert saturated_source["regression_tests"] == [
         "test_pr206_codex_saturated_same_row_card_can_shift_source_port"
@@ -12185,6 +12184,57 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     ):
         assert saturated_source["local_checks"][gate] is False
 
+
+    # Create-only final local R3/Codex revision with the exact terminal parent.
+    sideport_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-three-group-sideport-r3-tuple-successor-acceptance-receipt.json"
+    )
+    sideport = json.loads(sideport_path.read_text(encoding="utf-8"))
+    assert sideport["schema_version"] == (
+        "schauwerk-schaubild-feedback-three-group-sideport-r3-tuple-successor.v1"
+    )
+    assert sideport["scope"] == "technical-candidate-only"
+    assert sideport["based_on_pr_head"] == (
+        "0f93ac50eb27f3b3c9d71e52a8ff553b28e80da0"
+    )
+    assert sideport["parent_evidence"] == {
+        "schema_version": saturated_source["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-saturated-same-row-source-port-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(saturated_source_path.read_bytes()).hexdigest(),
+        "evidence_digest": saturated_source["evidence_digest"],
+    }
+    assert sideport["evidence_digest"] == digest_mapping(
+        sideport, "evidence_digest"
+    )
+    assert sideport["predecessor_source_bindings"] == (
+        saturated_source["source_bindings"]
+    )
+    assert set(sideport["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in sideport["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert sideport["review_findings"][0]["comment_id"] == 4328507158
+    assert sideport["review_findings"][1]["unit"] == "grabowski-job-4fc79a066b6a"
+    assert sideport["test_receipts"]["targeted_red"]["failed_variants"] == 5
+    assert sideport["test_receipts"]["targeted_green"]["passed_variants"] == 11
+    assert sideport["test_receipts"]["codex_p2_differential"]["new_render_exceptions"] == 0
+    assert sideport["test_receipts"]["generic_geometry_differential"]["models_compared"] == 20000
+    assert sideport["test_receipts"]["physical_stroke_differential"][
+        "new_physical_overlap_pairs"
+    ] == 0
+    for gate in (
+        "visual_acceptance_pass", "independent_exact_head_review_pass",
+        "captain_merge_authorized", "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert sideport["local_checks"][gate] is False
 
     assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
     assert outer_local["regression_tests"] == [
