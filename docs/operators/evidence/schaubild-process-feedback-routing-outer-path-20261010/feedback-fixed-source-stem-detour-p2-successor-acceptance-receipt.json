@@ -1,0 +1,127 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-fixed-source-stem-detour-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "ab12d82343b3f29a4237a4786b7081d86bb6be6e",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-shared-target-final-label-clearance-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-shared-target-final-label-clearance-p2-successor-acceptance-receipt.json",
+    "file_sha256": "2d405636828710304bb528ca09880f5b5e25a21db68a878de684897d9a839cc5",
+    "evidence_digest": "1a4f11eaa169affadafb3ac7eae52acd51d1af56288bc26ec561ddcab5a56cdc"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3219809d3a1499e0087811cfc08da2f1b8424b519195a424940e6b605ce46e19",
+    "tests/visual/test_native_diagram.py": "0af65084a2323f37467852d176e79327177f434bb1b523b66df6e418f6296a5a"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "32ec3f597b733e963a79e9e5c0f63bed15d86e8c240df23289c805ce84f12d2f",
+    "tests/visual/test_native_diagram.py": "a7fd80ff3b49f357abfe8f88a963dfa84112d3e0decbebfbfbdb3d9a7e52e39c"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_finding": {
+    "comment_id": 4326401418,
+    "severity": "P2",
+    "reviewed_head": "ab12d82343b3f29a4237a4786b7081d86bb6be6e",
+    "disposition": "reproduced-and-remediated-local-candidate-pending-exact-head-independent-review",
+    "summary": "fixed-source entrance reservation eliminated otherwise valid same-row detours"
+  },
+  "regression_tests": [
+    "test_pr206_codex_fixed_source_stem_remains_renderable",
+    "test_pr206_codex_fixed_source_stem_prefers_overlap_free_detour"
+  ],
+  "test_receipts": {
+    "reviewer_red": {
+      "unit": "grabowski-job-a34e694a6d4c",
+      "fixed_seed": 20620261020,
+      "models_attempted": 12000,
+      "parent_render_errors": 23,
+      "new_render_exceptions": 379,
+      "result": "expected-red"
+    },
+    "reviewer_green": {
+      "unit": "grabowski-job-bb87dca64a26",
+      "fixed_seed": 20620261020,
+      "models_attempted": 12000,
+      "parent_render_errors": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "targeted_red": {
+      "failed_variants": 2,
+      "expected_exit_code": 1
+    },
+    "targeted_green": {
+      "passed_variants": 4,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "test_file": "tests/visual/test_native_diagram.py",
+      "passed_tests": 319,
+      "exit_code": 0
+    },
+    "exact_head_differential": {
+      "unit": "grabowski-job-7f1044fb25ac",
+      "comparison_head": "bf7b36a924551547e81f8ed767ebe47b1ea439be",
+      "seeds": [
+        20520261021,
+        20520261022,
+        20520261023,
+        20520261024
+      ],
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "shared_target_physical_stroke_differential": {
+      "unit": "grabowski-job-8b023b728875",
+      "seeds": [
+        20520261071,
+        20520261072,
+        20520261073,
+        20520261074
+      ],
+      "models_attempted": 2600,
+      "models_compared": 2599,
+      "parent_render_errors": 1,
+      "changed_routes": 10,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "new_order_differences": 0,
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "unit": "grabowski-job-7682b3c76274",
+      "passed_tests": 30,
+      "exit_code": 0
+    },
+    "rejected_unsafe_intermediate": {
+      "unit": "grabowski-job-bfd3c470e87a",
+      "new_physical_overlap_pairs": 10,
+      "result": "rejected-before-current-candidate"
+    },
+    "targeted_ruff": {
+      "files": [
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py"
+      ],
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "current_source_digest_bound": true,
+    "original_dirty_worktree_preserved": true,
+    "reviewer_red_green_pass": true,
+    "fixed_stem_prefers_free_corridor": true,
+    "head_differential_fuzz_pass": true,
+    "chromium_browser_smoke_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only. A four-edge minimum reproduces both paint orders. Deferring an unavoidable fixed source-stem collision until after every collision-free alternative preserves the original branch routing and avoids 10 newly overlapped physical stems from the rejected blanket exemption. One unrelated historical parent rendering error in the 2600-model cohort was excluded from comparisons, not claimed fixed. Historic receipts retain their exact immutable source bindings. Full make validate follows the terminal publication-fixture binding; no visual, R3, Captain, OCI or production acceptance is claimed.",
+  "evidence_digest": "d3d3e2a697240cd9e9f0dd3ba56aeacc17c2fbb46d0d37d1e48f69619a2dffc1"
+}

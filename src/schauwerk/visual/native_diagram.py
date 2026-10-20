@@ -6922,6 +6922,7 @@ def render_native_diagram(
                     width - _PAGE_MARGIN - label_width / 2,
                 )))
                 accepted = False
+                source_stem_fallback = None
                 for direction in (-1, 1):
                     corridor = _process_row_corridor_bounds(
                         source[1], positions, direction=direction
@@ -6994,10 +6995,20 @@ def render_native_diagram(
                             (source_center, min(port, channel_y), max(port, channel_y)),
                             (target_port_x, min(port, channel_y), max(port, channel_y)),
                         )
+                        source_stem_overlap = any(
+                            abs(x - peer_x) < 4.0
+                            and min(high, peer_high) - max(low, peer_low) > 4.0
+                            for x, low, high in candidate_verticals[:1]
+                            for peer_x, peer_low, peer_high in reserved_detour_verticals
+                        )
+                        # Only the target entrance can move with this port:
+                        # the source entrance is fixed for every candidate.
+                        # Reject avoidable new overlap, not an unavoidable
+                        # fixed-source overlap inherited from the input.
                         if any(
                             abs(x - peer_x) < 4.0
                             and min(high, peer_high) - max(low, peer_low) > 4.0
-                            for x, low, high in candidate_verticals
+                            for x, low, high in candidate_verticals[1:]
                             for peer_x, peer_low, peer_high in reserved_detour_verticals
                         ):
                             continue
@@ -7130,6 +7141,16 @@ def render_native_diagram(
                                 ))
                             ):
                                 continue
+                            if source_stem_overlap:
+                                # Remember an otherwise valid route, but first
+                                # seek an overlap-free rail in either corridor.
+                                if source_stem_fallback is None:
+                                    source_stem_fallback = (
+                                        reroute, rendered_box, rerendered,
+                                        channel_y, rail_left, rail_right,
+                                        candidate_verticals,
+                                    )
+                                continue
                             layouts[edge_id] = reroute, rendered_box
                             planned_edge_lines[edge_id] = rerendered
                             reserved_detour_rails.append((
@@ -7142,6 +7163,20 @@ def render_native_diagram(
                             break
                     if accepted:
                         break
+                if not accepted and source_stem_fallback is not None:
+                    # A fixed source entrance cannot be moved by changing a
+                    # target port. Keep the peer-card/label-safe alternative
+                    # only after every clean candidate has been exhausted.
+                    (fallback_path, fallback_label, fallback_frag,
+                     fallback_y, fallback_left, fallback_right,
+                     fallback_stems) = source_stem_fallback
+                    layouts[edge_id] = fallback_path, fallback_label
+                    planned_edge_lines[edge_id] = fallback_frag
+                    reserved_detour_rails.append(
+                        (fallback_y, fallback_left, fallback_right)
+                    )
+                    reserved_detour_verticals.extend(fallback_stems)
+                    accepted = True
                 if not accepted:
                     # The observed route crosses a real foreign card. Never
                     # silently publish that known-invalid curve.

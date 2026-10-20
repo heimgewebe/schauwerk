@@ -8377,3 +8377,78 @@ def test_pr205_shared_target_ports_preserve_final_peer_labels(
     assert (paths, labels) == (
         _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
     )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_fixed_source_stem_remains_renderable(
+    reverse_order: bool,
+) -> None:
+    """Fixed source stems must not exhaust a safe same-row card detour.
+
+    The source entrance cannot move with the detour's target port. Reserving
+    that fixed entrance as an avoidable new candidate rejected this valid
+    four-edge process in both paint orders.
+    """
+    model = _p2_feedback_geometry_model((6, 4, 5, 3))
+    edges = [
+        {"id": "e00", "from": "n8", "to": "n17",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e03", "from": "n13", "to": "n0",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e05", "from": "n16", "to": "n9",
+         "kind": "risk", "label": "link"},
+        {"id": "e07", "from": "n7", "to": "n5",
+         "kind": "flow", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    cards = _node_boxes(root)
+    detour = paths["e00"]
+    assert " L " in detour
+    assert _p2_linear_path_clears_box(detour, labels["e03"])
+    assert _p2_linear_path_clears_box(detour, labels["e05"])
+    assert _p2_linear_path_clears_box(detour, labels["e07"])
+    assert all(
+        _p2_linear_path_clears_box(detour, box)
+        for node_id, box in cards.items()
+        if node_id not in {"n8", "n17"}
+    )
+    model["edges"] = list(reversed(model["edges"]))
+    reversed_root = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
+    )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_fixed_source_stem_prefers_overlap_free_detour(
+    reverse_order: bool,
+) -> None:
+    """When another gap is safe, do not share a physical source stem."""
+    model = _p2_feedback_geometry_model((3, 4, 4, 6, 3))
+    edges = [
+        {"id": "e0", "from": "n18", "to": "n7",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e1", "from": "n12", "to": "n7",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e2", "from": "n14", "to": "n7",
+         "kind": "flow", "label": "link"},
+        {"id": "e3", "from": "n18", "to": "n1",
+         "kind": "risk", "label": "Approve"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    # The other free row corridor leaves e0's x=2014 upper stem visible;
+    # choosing the near/upper corridor would mask it.
+    assert paths["e3"].startswith(
+        "M 2014.0 580.0 L 2014.0 606.0 L 190.0 606.0"
+    )
+    model["edges"] = list(reversed(model["edges"]))
+    reversed_root = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
+    )

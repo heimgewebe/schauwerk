@@ -12036,8 +12036,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert shared_target_label_successor["evidence_digest"] == digest_mapping(
         shared_target_label_successor, "evidence_digest"
     )
-    for name, expected in shared_target_label_successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Historical receipts are bound to their original revisions, not the
+    # currently edited successor checkout.
+    assert shared_target_label_successor["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "32ec3f597b733e963a79e9e5c0f63bed15d86e8c240df23289c805ce84f12d2f"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "a7fd80ff3b49f357abfe8f88a963dfa84112d3e0decbebfbfbdb3d9a7e52e39c"
+        ),
+    }
     shared_target_tests = shared_target_label_successor["test_receipts"]
     assert shared_target_tests["six_variant_red"]["failed_variants"] == 6
     assert shared_target_tests["six_variant_green"]["passed_variants"] == 6
@@ -12056,6 +12064,70 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         is False
     )
     assert shared_target_label_successor["local_checks"]["captain_merge_authorized"] is False
+    # New fixed-source P2 revision is create-once and independently bound.
+    fixed_source_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-fixed-source-stem-detour-p2-successor-acceptance-receipt.json"
+    )
+    fixed_source = json.loads(fixed_source_path.read_text(encoding="utf-8"))
+    assert fixed_source["schema_version"] == (
+        "schauwerk-schaubild-feedback-fixed-source-stem-detour-p2-successor.v1"
+    )
+    assert fixed_source["scope"] == "technical-candidate-only"
+    assert fixed_source["based_on_pr_head"] == (
+        "ab12d82343b3f29a4237a4786b7081d86bb6be6e"
+    )
+    assert fixed_source["parent_evidence"] == {
+        "schema_version": shared_target_label_successor["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-shared-target-final-label-clearance-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(shared_target_path.read_bytes()).hexdigest(),
+        "evidence_digest": shared_target_label_successor["evidence_digest"],
+    }
+    assert fixed_source["evidence_digest"] == digest_mapping(
+        fixed_source, "evidence_digest"
+    )
+    assert fixed_source["predecessor_source_bindings"] == (
+        shared_target_label_successor["source_bindings"]
+    )
+    assert set(fixed_source["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in fixed_source["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert fixed_source["codex_review_finding"]["comment_id"] == 4326401418
+    assert fixed_source["regression_tests"] == [
+        "test_pr206_codex_fixed_source_stem_remains_renderable",
+        "test_pr206_codex_fixed_source_stem_prefers_overlap_free_detour",
+    ]
+    new_checks = fixed_source["test_receipts"]
+    assert new_checks["reviewer_red"]["new_render_exceptions"] == 379
+    assert new_checks["reviewer_green"]["models_attempted"] == 12000
+    assert new_checks["reviewer_green"]["new_render_exceptions"] == 0
+    assert new_checks["targeted_red"]["failed_variants"] == 2
+    assert new_checks["targeted_green"]["passed_variants"] == 4
+    assert new_checks["native_renderer_suite"]["passed_tests"] == 319
+    assert new_checks["exact_head_differential"]["models_compared"] == 20000
+    assert new_checks["exact_head_differential"]["new_render_exceptions"] == 0
+    assert new_checks["exact_head_differential"]["new_card_or_label_hits"] == 0
+    assert new_checks["shared_target_physical_stroke_differential"][
+        "new_physical_overlap_pairs"
+    ] == 0
+    assert new_checks["shared_target_physical_stroke_differential"][
+        "new_label_hits"
+    ] == 0
+    assert new_checks["rejected_unsafe_intermediate"][
+        "new_physical_overlap_pairs"
+    ] == 10
+    assert new_checks["chromium_browser_smoke"]["passed_tests"] == 30
+    assert fixed_source["local_checks"]["visual_acceptance_pass"] is False
+    assert fixed_source["local_checks"]["independent_exact_head_review_pass"] is False
+    assert fixed_source["local_checks"]["captain_merge_authorized"] is False
+
     assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
     assert outer_local["regression_tests"] == [
         "test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback"
