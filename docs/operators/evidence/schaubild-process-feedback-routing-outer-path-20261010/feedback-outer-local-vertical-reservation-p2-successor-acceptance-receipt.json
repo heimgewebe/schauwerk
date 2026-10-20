@@ -1,0 +1,125 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-outer-local-vertical-reservation-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "80f733454e2ec1db24e49a19e359ef03dba4480b",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-vertical-gutter-reservation-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-vertical-gutter-reservation-p2-successor-acceptance-receipt.json",
+    "file_sha256": "4c40d70bde9661b60a121f65b02ab503503101432673b53b28889891362c1b3f",
+    "evidence_digest": "36d778fd4f1b3df331fb272ea70fd2254122680e1858559d6db5ffd7858f52e6"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "b2b0a9c01801b62f507ced19319c7c45d16644eb1c3b24ddfea668ecc7e06733",
+    "tests/visual/test_native_diagram.py": "36cabf0c4393dab9da8f8676554d03f743696a3f462de2e6ec1209803f846d68"
+  },
+  "codex_review_findings": [
+    {
+      "comment_id": 4321776076,
+      "severity": "P2",
+      "reviewed_head": "80f733454e2ec1db24e49a19e359ef03dba4480b",
+      "disposition": "reproduced-and-remediated",
+      "summary": "outer feedback gutter obscured preplanned local vertical feedback stroke over 545 physical pixels"
+    }
+  ],
+  "regression_tests": [
+    "test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback"
+  ],
+  "test_receipts": {
+    "outer_local_red": {
+      "task_id": "69ea393e2f024be39fa4e4e0",
+      "baseline_head": "80f733454e2ec1db24e49a19e359ef03dba4480b",
+      "failed_variants": 2,
+      "physical_overlap_pixels": 545,
+      "exit_code": 1
+    },
+    "targeted_green": {
+      "task_id": "58b731eb43ef49568f2f744a",
+      "passed_tests": 11,
+      "exit_code": 0
+    },
+    "native_diagram_suite": {
+      "task_id": "b72c49cd18414304a91ac243",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "task_id": "d312148220fd4579b3e12723",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "head_differential_fuzz": [
+      {
+        "task_id": "fa782c19c20948a98fa612c9",
+        "seed": 20520261021,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "61032686c7404fdca0fbdfbe",
+        "seed": 20520261022,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "33c2414472ba4bcb83eed8cb",
+        "seed": 20520261023,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "117f5dcb11bb4f3caa3543ae",
+        "seed": 20520261024,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      }
+    ],
+    "grouped_feedback_differential": {
+      "task_id": "b89349331072476fa14fccb2",
+      "seed": 20520261031,
+      "models_compared": 1600,
+      "baseline_horizontal_overlap_pairs": 0,
+      "current_horizontal_overlap_pairs": 0,
+      "new_horizontal_overlap_pairs": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0
+    },
+    "saturated_feedback_differential": {
+      "task_id": "a06ce179939b4a0994245c66",
+      "seed": 20520261050,
+      "models_compared": 600,
+      "baseline_horizontal_overlap_pairs": 0,
+      "current_horizontal_overlap_pairs": 0,
+      "new_horizontal_overlap_pairs": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0
+    },
+    "vertical_gutter_differential": {
+      "task_id": "d86c849a490c451e9ef04297",
+      "seed": 20520261051,
+      "models_compared": 1000,
+      "baseline_vertical_overlap_pairs": 0,
+      "current_vertical_overlap_pairs": 0,
+      "new_vertical_overlap_pairs": 0
+    }
+  },
+  "local_checks": {
+    "historical_parent_receipts_byte_unchanged": true,
+    "source_revision_exactly_bound": true,
+    "outer_local_vertical_stroke_red_green_reproduced": true,
+    "no_new_render_exceptions_in_sampled_models": true,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Create-once technical-only candidate; baseline comparison head 80f733454e2ec1db24e49a19e359ef03dba4480b. Local C-stub and L-leg vertical occupancy is reserved by existing planner. Finite differential samples do not prove global absence of collisions. Independent exact-head review, visual acceptance, Captain integration and production gates remain pending. Historical receipts are immutable.",
+  "evidence_digest": "3d1cc678727f6d9abb3b88624cc500665867431bcd7098ebc8048bb1e2eb962c"
+}

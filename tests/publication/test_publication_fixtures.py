@@ -11899,8 +11899,16 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert set(vertical_gutter["source_bindings"]) == set(
         reserved_feedback["source_bindings"]
     )
-    for path, digest in vertical_gutter["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    # Immutable historical source bindings: only the terminal successor
+    # below may bind this worktree's edited renderer and regression tests.
+    assert vertical_gutter["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "4fa69acbbb468b0816596b24c6334e421b525587d2da6fdc4bad1e61b6c27e52"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "0c7068f60ba59a8167c94ffbaf291e15a4f7508683a84199c4a0275d406e65a6"
+        ),
+    }
     assert vertical_gutter["codex_review_findings"] == [
         {
             "comment_id": 4321575695,
@@ -11965,6 +11973,68 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert vertical_gutter["local_checks"]["visual_acceptance_pass"] is False
     assert vertical_gutter["local_checks"]["independent_exact_head_review_pass"] is False
     assert vertical_gutter["local_checks"]["captain_merge_authorized"] is False
+    # Outer-vs-local feedback P2 is a distinct create-only technical revision.
+    outer_local_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-outer-local-vertical-reservation-p2-successor-acceptance-receipt.json"
+    )
+    outer_local = json.loads(outer_local_path.read_text(encoding="utf-8"))
+    assert outer_local["schema_version"] == (
+        "schauwerk-schaubild-feedback-outer-local-vertical-reservation-p2-successor.v1"
+    )
+    assert outer_local["scope"] == "technical-candidate-only"
+    assert outer_local["based_on_pr_head"] == (
+        "80f733454e2ec1db24e49a19e359ef03dba4480b"
+    )
+    assert outer_local["parent_evidence"] == {
+        "schema_version": vertical_gutter["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-vertical-gutter-reservation-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(vertical_gutter_path.read_bytes()).hexdigest(),
+        "evidence_digest": vertical_gutter["evidence_digest"],
+    }
+    assert outer_local["evidence_digest"] == digest_mapping(
+        outer_local, "evidence_digest"
+    )
+    assert set(outer_local["source_bindings"]) == set(vertical_gutter["source_bindings"])
+    for name, expected in outer_local["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
+    assert outer_local["regression_tests"] == [
+        "test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback"
+    ]
+    outer_tests = outer_local["test_receipts"]
+    assert outer_tests["outer_local_red"]["failed_variants"] == 2
+    assert outer_tests["outer_local_red"]["physical_overlap_pixels"] == 545
+    assert outer_tests["targeted_green"]["passed_tests"] == 11
+    assert outer_tests["native_diagram_suite"]["exit_code"] == 0
+    assert outer_tests["chromium_browser_smoke"]["passed_cases"] == 30
+    assert outer_tests["chromium_browser_smoke"]["exit_code"] == 0
+    assert len(outer_tests["head_differential_fuzz"]) == 4
+    assert {
+        entry["seed"] for entry in outer_tests["head_differential_fuzz"]
+    } == set(range(20520261021, 20520261025))
+    assert all(
+        entry["models_compared"] == 5000
+        and entry["baseline_render_exceptions"] == 0
+        and entry["new_render_exceptions"] == 0
+        and entry["new_card_or_label_hits"] == 0
+        for entry in outer_tests["head_differential_fuzz"]
+    )
+    assert outer_tests["grouped_feedback_differential"]["models_compared"] == 1600
+    assert outer_tests["grouped_feedback_differential"]["new_horizontal_overlap_pairs"] == 0
+    assert outer_tests["saturated_feedback_differential"]["models_compared"] == 600
+    assert outer_tests["saturated_feedback_differential"]["new_horizontal_overlap_pairs"] == 0
+    assert outer_tests["vertical_gutter_differential"]["models_compared"] == 1000
+    assert outer_tests["vertical_gutter_differential"]["new_vertical_overlap_pairs"] == 0
+    assert outer_local["local_checks"]["historical_parent_receipts_byte_unchanged"]
+    assert outer_local["local_checks"]["source_revision_exactly_bound"]
+    assert outer_local["local_checks"]["visual_acceptance_pass"] is False
+    assert outer_local["local_checks"]["independent_exact_head_review_pass"] is False
+    assert outer_local["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -12220,7 +12290,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert vertical_gutter["source_bindings"][name] == current
+            assert outer_local["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -12238,7 +12308,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert vertical_gutter["source_bindings"][name] == current
+            assert outer_local["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

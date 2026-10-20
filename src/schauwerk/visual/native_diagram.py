@@ -6283,7 +6283,14 @@ def render_native_diagram(
                 future_ports: dict[
                     str, tuple[float, float, float, float, float]
                 ] = {}
-                reserved_verticals: list[tuple[float, float, float]] = []
+                # Fixed local feedback L legs and straight C stubs already
+                # occupy the canvas. Reserve them against outer sideport
+                # gutters as well as against footer labels.
+                reserved_verticals: list[tuple[float, float, float]] = [
+                    ((left + right) / 2, top, bottom)
+                    for left, top, right, bottom in peer_horizontal_strokes
+                    if right - left <= 2.1 and bottom - top > 4
+                ]
                 for edge in feedback_edges:
                     edge_id = str(edge["id"])
                     if edge_id not in feedback_outer_footer_ids:

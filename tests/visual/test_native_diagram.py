@@ -8000,3 +8000,50 @@ def test_pr205_codex_new_vertical_gutter_overlaps_are_reserved(
                 "two feedback relations share a vertical physical stem",
                 pair, first_x, peer_x, overlap, paths
             )
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback(
+    reversed_order: bool,
+) -> None:
+    """Outer sideport gutters must not repaint already accepted local feedback stems."""
+    model = _p2_feedback_geometry_model((3, 5, 7, 4))
+    records = (
+        ("e01", "n10", "n15", "feedback", "Rueckmeldung zur Planung"),
+        ("e03", "n15", "n13", "feedback", "a somewhat longer relation label"),
+        ("e04", "n11", "n17", "feedback", "x"),
+        ("e09", "n14", "n8", "feedback", "Rueckmeldung zur Planung"),
+        ("e10", "n11", "n17", "feedback", "Approve"),
+        ("e11", "n12", "n15", "flow", "Approve"),
+        ("e14", "n13", "n2", "flow", "Rueckmeldung zur Planung"),
+        ("extra0", "n16", "n12", "feedback", "Rueckmeldung zur Planung"),
+        ("extra1", "n12", "n17", "feedback", "long label"),
+    )
+    edges = [
+        {"id": edge_id, "from": source, "to": target,
+         "kind": kind, "label": label}
+        for edge_id, source, target, kind, label in records
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+
+    # Reproduced on 80f7334: outer e04 and local e09 both use x=1239
+    # for 545px, despite safe horizontal feedback rails.
+    assert " C " not in paths["e04"]  # outer-footer M/L route
+    assert " C " in paths["e09"]  # still-local feedback route
+
+    def verticals(edge_id: str) -> list[tuple[float, float, float]]:
+        return [
+            (start[0], min(start[1], end[1]), max(start[1], end[1]))
+            for start, end in _p2_orthogonal_segments(paths[edge_id])
+            if abs(start[0] - end[0]) < 0.01
+            and abs(start[1] - end[1]) > 4
+        ]
+
+    assert verticals("e04") and verticals("e09")
+    for outer_x, outer_low, outer_high in verticals("e04"):
+        for local_x, local_low, local_high in verticals("e09"):
+            overlap = min(outer_high, local_high) - max(outer_low, local_low)
+            assert abs(outer_x - local_x) >= 4 or overlap <= 4, (
+                "outer feedback route hides local semantic stem",
+                outer_x, local_x, overlap, paths["e04"], paths["e09"],
+            )
