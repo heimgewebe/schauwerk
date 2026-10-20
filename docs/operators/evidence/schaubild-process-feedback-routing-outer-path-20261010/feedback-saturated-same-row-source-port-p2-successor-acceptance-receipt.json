@@ -1,0 +1,98 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-saturated-same-row-source-port-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "0b164129425ae757ac826bcfa45330e408ddc843",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-fixed-source-stem-detour-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-fixed-source-stem-detour-p2-successor-acceptance-receipt.json",
+    "file_sha256": "ce738994b2b73d258ec0d3082e0ec172d0d3fce95997b20800004c159e9531f8",
+    "evidence_digest": "d3d3e2a697240cd9e9f0dd3ba56aeacc17c2fbb46d0d37d1e48f69619a2dffc1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "040c78a8a5f27fa4b587996cec1f27751b5489e3f9047d4569c96b97ac62f14f",
+    "tests/visual/test_native_diagram.py": "e6faadef3d7304a614475e2d99ca3a5e1447673e52f2a6062b51a5b899b8d159"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3219809d3a1499e0087811cfc08da2f1b8424b519195a424940e6b605ce46e19",
+    "tests/visual/test_native_diagram.py": "0af65084a2323f37467852d176e79327177f434bb1b523b66df6e418f6296a5a"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_finding": {
+    "comment_id": 4327968056,
+    "severity": "P2",
+    "reviewed_head": "0b164129425ae757ac826bcfa45330e408ddc843",
+    "disposition": "reproduced-and-remediated-local-candidate-pending-exact-head-independent-review",
+    "summary": "saturated same-row card-detour source port prevented otherwise valid grouped process rendering"
+  },
+  "regression_tests": [
+    "test_pr206_codex_saturated_same_row_card_can_shift_source_port"
+  ],
+  "test_receipts": {
+    "targeted_red": {
+      "failed_variants": 2,
+      "expected_exit_code": 1,
+      "baseline_main_rendered_both_orders": true
+    },
+    "targeted_green": {
+      "passed_variants": 6,
+      "exit_code": 0,
+      "includes_predecessor_fixed_source_stem": true
+    },
+    "native_renderer_suite": {
+      "test_file": "tests/visual/test_native_diagram.py",
+      "passed_tests": 321,
+      "exit_code": 0
+    },
+    "codex_p2_differential": {
+      "unit": "grabowski-job-de049abc6d64",
+      "fixed_seed": 20620261020,
+      "models_attempted": 12000,
+      "parent_render_errors": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "exact_source_20k_differential": {
+      "unit": "grabowski-job-0cbea3f222d4",
+      "seeds": [
+        20520261021,
+        20520261022,
+        20520261023,
+        20520261024
+      ],
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_2600_differential": {
+      "unit": "grabowski-job-9e3de7c47b13",
+      "seeds": [
+        20520261071,
+        20520261072,
+        20520261073,
+        20520261074
+      ],
+      "models_attempted": 2600,
+      "models_compared": 2599,
+      "parent_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "original_dirty_worktree_preserved": true,
+    "regression_red_green_pass": true,
+    "head_differential_fuzz_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only: old main renders the exact four-edge (5,2,3,5) process in both orders; preceding head throws ValueError. Prefer a safe central source entrance over both corridors; only then choose an in-card source inset and retain the established fixed-source-stem fallback. Existing peers, cards and labels stay fixed. One historical baseline error in 2600-model cohort is excluded, not claimed fixed. Independent review, full validation, visual acceptance, Captain, OCI and production remain separate gates.",
+  "evidence_digest": "15459fd7537c09d01d577cf1aa14ba73b1fd34eed55ade4c4ebe3c5b3ae68775"
+}

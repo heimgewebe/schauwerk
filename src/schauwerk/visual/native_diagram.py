@@ -1664,6 +1664,7 @@ def _edge_geometry(
     process_branch_gutter_x: float | None = None,
     process_adjacent_route_y: float | tuple[float, float] | None = None,
     process_same_row_target_port_x: float | None = None,
+    process_same_row_source_port_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
     generic_self_loop_gutter_x: float | None = None,
@@ -2343,7 +2344,11 @@ def _edge_geometry(
         )
     ):
         route = "process-row-card-detour"
-        start_x = source_x + node_width / 2
+        start_x = (
+            process_same_row_source_port_x
+            if process_same_row_source_port_x is not None
+            else source_x + node_width / 2
+        )
         end_x = (
             process_same_row_target_port_x
             if process_same_row_target_port_x is not None
@@ -2479,6 +2484,7 @@ def _render_edge(
     process_adjacent_label_y: float | None = None,
     process_adjacent_route_y: float | tuple[float, float] | None = None,
     process_same_row_target_port_x: float | None = None,
+    process_same_row_source_port_x: float | None = None,
     row_corridor_label_x: float | None = None,
     narrative_parallel_gutter_x: float | None = None,
     narrative_self_loop_gutter_x: float | None = None,
@@ -2594,6 +2600,7 @@ def _render_edge(
         process_branch_gutter_x=process_branch_gutter_x,
         process_adjacent_route_y=process_adjacent_route_y,
         process_same_row_target_port_x=process_same_row_target_port_x,
+        process_same_row_source_port_x=process_same_row_source_port_x,
         narrative_parallel_gutter_x=narrative_parallel_gutter_x,
         narrative_self_loop_gutter_x=narrative_self_loop_gutter_x,
         generic_self_loop_gutter_x=generic_self_loop_gutter_x,
@@ -6670,6 +6677,7 @@ def render_native_diagram(
         route_y_override: float | tuple[float, float] | None = None,
         label_position_override: tuple[float, float] | None = None,
         card_target_port_x: float | None = None,
+        card_source_port_x: float | None = None,
     ) -> list[str]:
         return _render_edge(
                 edge,
@@ -6707,6 +6715,7 @@ def render_native_diagram(
                         process_adjacent_route_y.get(str(edge["id"])),
                     )
                 ),
+                process_same_row_source_port_x=card_source_port_x,
                 process_same_row_target_port_x=(
                     card_target_port_x if card_target_port_x is not None
                     else shared_target_port_x.get(str(edge["id"]))
@@ -6923,6 +6932,7 @@ def render_native_diagram(
                 )))
                 accepted = False
                 source_stem_fallback = None
+                source_port_fallback = None
                 for direction in (-1, 1):
                     corridor = _process_row_corridor_bounds(
                         source[1], positions, direction=direction
@@ -6986,13 +6996,20 @@ def render_native_diagram(
                             for peer_x, peer_low, peer_high in reserved_detour_verticals
                         ),
                     ))
-                    for target_port_x, channel_y in (
-                        (port_x, y) for port_x in target_ports for y in ys
+                    for source_port_x, target_port_x, channel_y in (
+                        (source_x, port_x, y)
+                        # Prefer the accepted centered source entrance;
+                        # try both in-card insets only when it is obstructed.
+                        for source_x in (
+                            source_center, source[0] + 16.0,
+                            source[0] + _NODE_WIDTH - 16.0,
+                        )
+                        for port_x in target_ports for y in ys
                     ):
                         if not low + 1.5 < channel_y < high - 1.5:
                             continue
                         candidate_verticals = (
-                            (source_center, min(port, channel_y), max(port, channel_y)),
+                            (source_port_x, min(port, channel_y), max(port, channel_y)),
                             (target_port_x, min(port, channel_y), max(port, channel_y)),
                         )
                         source_stem_overlap = any(
@@ -7001,10 +7018,10 @@ def render_native_diagram(
                             for x, low, high in candidate_verticals[:1]
                             for peer_x, peer_low, peer_high in reserved_detour_verticals
                         )
-                        # Only the target entrance can move with this port:
-                        # the source entrance is fixed for every candidate.
-                        # Reject avoidable new overlap, not an unavoidable
-                        # fixed-source overlap inherited from the input.
+                        # A candidate may move either card entrance without
+                        # touching peer routes. Reject target overlap now;
+                        # seek a clean source inset before accepting a
+                        # fallback with overlapping source stems.
                         if any(
                             abs(x - peer_x) < 4.0
                             and min(high, peer_high) - max(low, peer_low) > 4.0
@@ -7012,8 +7029,8 @@ def render_native_diagram(
                             for peer_x, peer_low, peer_high in reserved_detour_verticals
                         ):
                             continue
-                        rail_left = min(source_center, target_port_x)
-                        rail_right = max(source_center, target_port_x)
+                        rail_left = min(source_port_x, target_port_x)
+                        rail_right = max(source_port_x, target_port_x)
                         if any(
                             abs(channel_y - peer_y) < 4.0
                             and min(rail_right, peer_right)
@@ -7022,8 +7039,8 @@ def render_native_diagram(
                         ):
                             continue
                         path = (
-                            f"M {source_center:.1f} {port:.1f} "
-                            f"L {source_center:.1f} {channel_y:.1f} "
+                            f"M {source_port_x:.1f} {port:.1f} "
+                            f"L {source_port_x:.1f} {channel_y:.1f} "
                             f"L {target_port_x:.1f} {channel_y:.1f} "
                             f"L {target_port_x:.1f} {port:.1f}"
                         )
@@ -7132,6 +7149,7 @@ def render_native_diagram(
                                 route_y_override=channel_y,
                                 label_position_override=(candidate_x, candidate_y),
                                 card_target_port_x=target_port_x,
+                                card_source_port_x=source_port_x,
                             )
                             reroute, rendered_box = planned_svg_parts(rerendered)
                             if (
@@ -7151,6 +7169,17 @@ def render_native_diagram(
                                         candidate_verticals,
                                     )
                                 continue
+                            if source_port_x != source_center:
+                                # A safe centered port in the other corridor
+                                # retains the accepted geometry. Use side
+                                # insets only after both center routes fail.
+                                if source_port_fallback is None:
+                                    source_port_fallback = (
+                                        reroute, rendered_box, rerendered,
+                                        channel_y, rail_left, rail_right,
+                                        candidate_verticals,
+                                    )
+                                continue
                             layouts[edge_id] = reroute, rendered_box
                             planned_edge_lines[edge_id] = rerendered
                             reserved_detour_rails.append((
@@ -7163,13 +7192,17 @@ def render_native_diagram(
                             break
                     if accepted:
                         break
-                if not accepted and source_stem_fallback is not None:
-                    # A fixed source entrance cannot be moved by changing a
-                    # target port. Keep the peer-card/label-safe alternative
-                    # only after every clean candidate has been exhausted.
+                if not accepted and (
+                    source_port_fallback is not None
+                    or source_stem_fallback is not None
+                ):
+                    # Prefer a clear side inset to shared physical stems;
+                    # retain the fixed-source fallback only as last resort.
+                    fallback = source_port_fallback or source_stem_fallback
+                    assert fallback is not None
                     (fallback_path, fallback_label, fallback_frag,
                      fallback_y, fallback_left, fallback_right,
-                     fallback_stems) = source_stem_fallback
+                     fallback_stems) = fallback
                     layouts[edge_id] = fallback_path, fallback_label
                     planned_edge_lines[edge_id] = fallback_frag
                     reserved_detour_rails.append(

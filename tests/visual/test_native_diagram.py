@@ -8452,3 +8452,45 @@ def test_pr206_codex_fixed_source_stem_prefers_overlap_free_detour(
     assert (paths, labels) == (
         _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
     )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_saturated_same_row_card_can_shift_source_port(
+    reverse_order: bool,
+) -> None:
+    """A fixed center source port must not make a valid process unrenderable.
+
+    The long preplanned peer label blocks the upper rail; a peer label and
+    feedback stroke occupy the centered lower entrance. A safe alternate
+    source-side card port and lower rail still exist for both input orders.
+    """
+    model = _p2_feedback_geometry_model((5, 2, 3, 5))
+    edges = [
+        {"id": "e0", "from": "n5", "to": "n12",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+        {"id": "e1", "from": "n6", "to": "n11",
+         "kind": "flow", "label": "x"},
+        {"id": "e2", "from": "n9", "to": "n2",
+         "kind": "risk", "label": "x"},
+        {"id": "e3", "from": "n2", "to": "n6",
+         "kind": "flow", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    cards = _node_boxes(root)
+    assert len(paths) == len(edges)
+    # n6 center x=646 is occupied; its available left port x=537 is not.
+    assert paths["e1"].startswith("M 537.0 580.0 L 537.0 ")
+    for node_id, card in cards.items():
+        if node_id not in {"n6", "n11"}:
+            assert _p2_linear_path_clears_box(paths["e1"], card), node_id
+    for other_id, label in labels.items():
+        if other_id != "e1":
+            assert _p2_linear_path_clears_box(paths["e1"], label), other_id
+    model["edges"] = list(reversed(model["edges"]))
+    reversed_root = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
+    )

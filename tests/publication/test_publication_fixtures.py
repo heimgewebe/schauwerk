@@ -12097,8 +12097,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in fixed_source["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # Historical revision is immutable; only its new successor binds current bytes.
     assert fixed_source["codex_review_finding"]["comment_id"] == 4326401418
     assert fixed_source["regression_tests"] == [
         "test_pr206_codex_fixed_source_stem_remains_renderable",
@@ -12127,6 +12126,65 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert fixed_source["local_checks"]["visual_acceptance_pass"] is False
     assert fixed_source["local_checks"]["independent_exact_head_review_pass"] is False
     assert fixed_source["local_checks"]["captain_merge_authorized"] is False
+    # Last exact-Source-Port P2 candidate binds its immutable direct parent.
+    saturated_source_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-saturated-same-row-source-port-p2-successor-acceptance-receipt.json"
+    )
+    saturated_source = json.loads(
+        saturated_source_path.read_text(encoding="utf-8")
+    )
+    assert saturated_source["schema_version"] == (
+        "schauwerk-schaubild-feedback-saturated-same-row-source-port-p2-successor.v1"
+    )
+    assert saturated_source["scope"] == "technical-candidate-only"
+    assert saturated_source["based_on_pr_head"] == (
+        "0b164129425ae757ac826bcfa45330e408ddc843"
+    )
+    assert saturated_source["parent_evidence"] == {
+        "schema_version": fixed_source["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-fixed-source-stem-detour-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(fixed_source_path.read_bytes()).hexdigest(),
+        "evidence_digest": fixed_source["evidence_digest"],
+    }
+    assert saturated_source["evidence_digest"] == digest_mapping(
+        saturated_source, "evidence_digest"
+    )
+    assert saturated_source["predecessor_source_bindings"] == (
+        fixed_source["source_bindings"]
+    )
+    assert set(saturated_source["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in saturated_source["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert saturated_source["codex_review_finding"]["comment_id"] == 4327968056
+    assert saturated_source["regression_tests"] == [
+        "test_pr206_codex_saturated_same_row_card_can_shift_source_port"
+    ]
+    verified = saturated_source["test_receipts"]
+    assert verified["targeted_red"]["failed_variants"] == 2
+    assert verified["codex_p2_differential"]["models_attempted"] == 12000
+    assert verified["codex_p2_differential"]["new_render_exceptions"] == 0
+    assert verified["exact_source_20k_differential"]["models_compared"] == 20000
+    assert verified["exact_source_20k_differential"]["new_card_or_label_hits"] == 0
+    assert verified["physical_stroke_2600_differential"][
+        "new_physical_overlap_pairs"
+    ] == 0
+    for gate in (
+        "visual_acceptance_pass",
+        "independent_exact_head_review_pass",
+        "captain_merge_authorized",
+        "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert saturated_source["local_checks"][gate] is False
+
 
     assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
     assert outer_local["regression_tests"] == [
