@@ -8047,3 +8047,333 @@ def test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback(
                 "outer feedback route hides local semantic stem",
                 outer_x, local_x, overlap, paths["e04"], paths["e09"],
             )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_codex_detour_target_port_reserves_preplanned_vertical_stroke(
+    reversed_order: bool,
+) -> None:
+    """A same-row card detour must not mask a fixed peer's cubic target stem."""
+    model = _p2_feedback_geometry_model((5, 5, 6, 2, 4))
+    edges = [
+        {"id": "e01", "from": "n8", "to": "n21",
+         "kind": "risk", "label": "x"},
+        {"id": "e04", "from": "n17", "to": "n21",
+         "kind": "flow", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths = _edge_paths(root)
+
+    def actual_vertical_strokes(
+        path: str,
+    ) -> list[tuple[float, float, float]]:
+        tokens = re.findall(r"[MLC]|-?\d+(?:\.\d+)?", path)
+        cursor: tuple[float, float] | None = None
+        segments: list[tuple[float, float, float]] = []
+        offset = 0
+        while offset < len(tokens):
+            command = tokens[offset]
+            offset += 1
+            arity = 6 if command == "C" else 2
+            assert command in {"M", "L", "C"}
+            coords = tuple(float(value) for value in tokens[offset:offset + arity])
+            offset += arity
+            endpoint = coords[-2], coords[-1]
+            if cursor is not None:
+                points = (
+                    (cursor, endpoint) if command == "L" else (
+                        (cursor, (coords[0], coords[1]),
+                         (coords[2], coords[3]), endpoint)
+                        if command == "C" else ()
+                    )
+                )
+                if points and all(abs(point[0] - cursor[0]) < 0.01 for point in points):
+                    ys = [point[1] for point in points]
+                    if max(ys) - min(ys) > 0.0:
+                        segments.append((cursor[0], min(ys), max(ys)))
+            cursor = endpoint
+        return segments
+
+    detour_stems = actual_vertical_strokes(paths["e01"])
+    peer_stems = actual_vertical_strokes(paths["e04"])
+    assert detour_stems and peer_stems, paths
+    for x, low, high in detour_stems:
+        for other_x, other_low, other_high in peer_stems:
+            physical_overlap = min(high, other_high) - max(low, other_low)
+            assert abs(x - other_x) >= 4 or physical_overlap <= 0.0, (
+                "preplanned target port physically obscured",
+                x, other_x, physical_overlap, paths,
+            )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_shared_target_row_gutter_and_branch_have_visible_target_stems(
+    reversed_order: bool,
+) -> None:
+    """Two incoming relations must not share a long physical target-side stroke."""
+    model = _p2_feedback_geometry_model((6, 3, 5))
+    edges = [
+        {"id": "e01", "from": "n3", "to": "n12",
+         "kind": "risk", "label": "a somewhat longer relation label"},
+        {"id": "e04", "from": "n7", "to": "n12",
+         "kind": "flow", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+    assert " C " not in paths["e01"] and " C " in paths["e04"]
+    row = [
+        (a[0], min(a[1], b[1]), max(a[1], b[1]))
+        for a, b in _p2_orthogonal_segments(paths["e01"])
+        if abs(a[0] - b[0]) < 0.01 and abs(a[1] - b[1]) > 4
+    ]
+    branch_match = re.search(
+        r"C ([-0-9.]+) ([-0-9.]+), ([-0-9.]+) ([-0-9.]+), "
+        r"([-0-9.]+) ([-0-9.]+)$",
+        paths["e04"],
+    )
+    assert branch_match is not None
+    bx1, by1, bx2, by2, bx3, by3 = map(float, branch_match.groups())
+    assert abs(bx1 - bx2) < 0.01 and abs(bx2 - bx3) < 0.01
+    branch_low, branch_high = min(by1, by2, by3), max(by1, by2, by3)
+    assert row
+    for x, low, high in row:
+        overlap = min(high, branch_high) - max(low, branch_low)
+        assert abs(x - bx3) >= 4 or overlap <= 4, (
+            "incoming target stem hides a second semantic edge",
+            x, bx3, overlap, paths,
+        )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_distinct_same_row_gutters_to_shared_target_keep_both_stems(
+    reversed_order: bool,
+) -> None:
+    """Separate semantics entering one card must retain distinct physical top legs."""
+    model = _p2_feedback_geometry_model((6, 6, 6))
+    edges = [
+        {"id": "e01", "from": "n0", "to": "n12",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e04", "from": "n6", "to": "n12",
+         "kind": "flow", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+    assert all(" C " not in paths[k] for k in ("e01", "e04"))
+    def physical_verticals(edge_id: str) -> list[tuple[float, float, float]]:
+        return [
+            (a[0], min(a[1], b[1]), max(a[1], b[1]))
+            for a, b in _p2_orthogonal_segments(paths[edge_id])
+            if abs(a[0] - b[0]) < 0.01 and abs(a[1] - b[1]) > 4
+        ]
+    first, second = physical_verticals("e01"), physical_verticals("e04")
+    assert first and second
+    for x, lo, hi in first:
+        for xx, low, high in second:
+            overlap = min(hi, high) - max(lo, low)
+            assert abs(x - xx) >= 4 or overlap <= 4, (
+                "different semantic edges converge on same painted stem", overlap, paths,
+            )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_distinct_shared_target_row_gutters_keep_horizontal_rails(
+    reversed_order: bool,
+) -> None:
+    """Two distinct routes to one top port must not overwrite one horizontal rail."""
+    model = _p2_feedback_geometry_model((6, 6, 6))
+    edges = [
+        {"id": "e01", "from": "n0", "to": "n12",
+         "kind": "risk", "label": "Approve"},
+        {"id": "e04", "from": "n6", "to": "n12",
+         "kind": "flow", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+    def rails(edge_id: str) -> list[tuple[float, float, float]]:
+        return [
+            (a[1], min(a[0], b[0]), max(a[0], b[0]))
+            for a, b in _p2_orthogonal_segments(paths[edge_id])
+            if abs(a[1] - b[1]) < 0.01 and abs(a[0] - b[0]) > 4
+        ]
+    assert rails("e01") and rails("e04")
+    for y, left, right in rails("e01"):
+        for yy, other_left, other_right in rails("e04"):
+            overlap = min(right, other_right) - max(left, other_left)
+            assert abs(y - yy) >= 4 or overlap <= 4, (
+                "distinct row-gutter semantic rails physically overwrite",
+                overlap, paths,
+            )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_shared_target_process_branches_separate_cubic_target_stems(
+    reversed_order: bool,
+) -> None:
+    """Different long branches entering one card cannot hide on a common C stem."""
+    model = _p2_feedback_geometry_model((5, 4, 4, 3, 5))
+    edges = [
+        {"id": "e01", "from": "n8", "to": "n20",
+         "kind": "risk", "label": "a somewhat longer relation label"},
+        {"id": "e04", "from": "n15", "to": "n20",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+    curves = []
+    for eid in ("e01", "e04"):
+        last = re.search(
+            r"C ([-0-9.]+) ([-0-9.]+), ([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+)$",
+            paths[eid],
+        )
+        assert last, (eid, paths[eid])
+        v = tuple(float(value) for value in last.groups())
+        assert abs(v[0] - v[2]) < 0.01 and abs(v[2] - v[4]) < 0.01
+        curves.append((v[4], min(v[1], v[3], v[5]), max(v[1], v[3], v[5])))
+    (x1, low1, high1), (x2, low2, high2) = curves
+    overlap = min(high1, high2) - max(low1, low2)
+    assert abs(x1 - x2) >= 4 or overlap <= 4, (
+        "incoming branch hides another target-side semantic C-stem", overlap, paths,
+    )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_shared_target_branch_ports_preserve_foreign_label_clearance(
+    reversed_order: bool,
+) -> None:
+    """Moving a shared branch entrance must not expose a previously clear label."""
+    model = _p2_feedback_geometry_model((2, 3, 2, 2, 2))
+    edges = [
+        {"id": "extra2", "from": "n0", "to": "n10",
+         "kind": "flow", "label": "Approve"},
+        {"id": "extra1", "from": "n8", "to": "n6",
+         "kind": "risk", "label": "Approve"},
+        {"id": "extra0", "from": "n7", "to": "n3",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e04", "from": "n7", "to": "n10",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e01", "from": "n3", "to": "n10",
+         "kind": "risk", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(paths["extra2"], labels["extra0"]), (
+        "shared target replan crosses an existing unrelated label",
+        paths["extra2"], labels["extra0"],
+    )
+    assert _p2_cubic_path_clears_box(paths["extra2"], labels["extra0"])
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_shared_target_port_preserves_earlier_foreign_label(
+    reversed_order: bool,
+) -> None:
+    """A shifted incoming target port may not newly enter a peer label."""
+    model = _p2_feedback_geometry_model((3, 3))
+    edges = [
+        {"id": "e0", "from": "n4", "to": "n5", "kind": "risk", "label": "Approve"},
+        {"id": "e1", "from": "n3", "to": "n5", "kind": "flow", "label": "Approve"},
+        {"id": "e2", "from": "n2", "to": "n1", "kind": "feedback", "label": "link"},
+        {"id": "e3", "from": "n0", "to": "n5", "kind": "flow",
+         "label": "a somewhat longer relation label"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(paths["e1"], labels["e0"])
+    assert _p2_cubic_path_clears_box(paths["e1"], labels["e0"])
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_shared_target_port_keeps_unrelated_forward_label_clear(
+    reversed_order: bool,
+) -> None:
+    """Moving a target C-stem must not obscure an unrelated same-row label."""
+    model = _p2_feedback_geometry_model((4, 2))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n1", "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n1", "to": "n4", "kind": "flow", "label": "Approve"},
+        {"id": "e2", "from": "n1", "to": "n2", "kind": "flow", "label": "Approve"},
+        {"id": "e3", "from": "n4", "to": "n2", "kind": "flow",
+         "label": "a somewhat longer relation label"},
+        {"id": "e4", "from": "n3", "to": "n4", "kind": "feedback", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(paths["e0"], labels["e2"])
+    assert _p2_cubic_path_clears_box(paths["e0"], labels["e2"])
+
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+@pytest.mark.parametrize("case", ["grouped", "with-feedback", "seeded-fuzz"])
+def test_pr205_shared_target_ports_preserve_final_peer_labels(
+    case: str, reversed_order: bool,
+) -> None:
+    """Shared-target C-stems must not obscure labels in the final rendered SVG."""
+    cases = {
+        "grouped": (
+            (4, 4, 2),
+            [
+                {"id": "e0", "from": "n6", "to": "n3",
+                 "kind": "risk", "label": "Approve"},
+                {"id": "e1", "from": "n0", "to": "n3",
+                 "kind": "flow", "label": "link"},
+                {"id": "e2", "from": "n1", "to": "n2",
+                 "kind": "risk", "label": "link"},
+                {"id": "e3", "from": "n2", "to": "n7",
+                 "kind": "flow", "label": "Approve"},
+            ],
+            "e0", "e3",
+        ),
+        "with-feedback": (
+            (3, 2, 2),
+            [
+                {"id": "e0", "from": "n0", "to": "n6",
+                 "kind": "risk", "label": "Approve"},
+                {"id": "e1", "from": "n5", "to": "n6",
+                 "kind": "flow", "label": "Approve"},
+                {"id": "e2", "from": "n4", "to": "n4",
+                 "kind": "feedback", "label": "Approve"},
+                {"id": "e3", "from": "n2", "to": "n0",
+                 "kind": "flow", "label": "link"},
+                {"id": "e4", "from": "n3", "to": "n4",
+                 "kind": "flow", "label": "Approve"},
+            ],
+            "e0", "e4",
+        ),
+        "seeded-fuzz": (
+            (2, 3, 3, 3),
+            [
+                {"id": "e0", "from": "n3", "to": "n10",
+                 "kind": "risk", "label": "link"},
+                {"id": "e1", "from": "n9", "to": "n10",
+                 "kind": "flow", "label": "link"},
+                {"id": "e2", "from": "n8", "to": "n0",
+                 "kind": "feedback", "label": "link"},
+                {"id": "e3", "from": "n6", "to": "n7",
+                 "kind": "risk", "label": "link"},
+            ],
+            "e0", "e3",
+        ),
+    }
+    group_sizes, edges, crossing_edge, foreign_label = cases[case]
+    model = _p2_feedback_geometry_model(group_sizes)
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(
+        paths[crossing_edge], labels[foreign_label]
+    ), (case, crossing_edge, foreign_label, paths)
+    assert _p2_cubic_path_clears_box(
+        paths[crossing_edge], labels[foreign_label]
+    ), (case, crossing_edge, foreign_label, paths)
+
+    model["edges"] = list(reversed(model["edges"]))
+    reversed_root = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reversed_root), _edge_label_boxes(reversed_root)
+    )

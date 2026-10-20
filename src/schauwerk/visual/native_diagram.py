@@ -2063,7 +2063,11 @@ def _edge_geometry(
     ):
         route = "process-row-gutter"
         start_x = source_x + node_width / 2
-        end_x = target_x + node_width / 2
+        end_x = (
+            process_same_row_target_port_x
+            if process_same_row_target_port_x is not None
+            else target_x + node_width / 2
+        )
         start_y = end_y = source_y
         corridor_y = (
             process_adjacent_route_y[0]
@@ -2184,7 +2188,11 @@ def _edge_geometry(
     elif intent == "process" and source_y != target_y:
         route = "process-branch"
         source_center_x = source_x + node_width / 2
-        target_center_x = target_x + node_width / 2
+        target_center_x = (
+            process_same_row_target_port_x
+            if process_same_row_target_port_x is not None and source_y < target_y
+            else target_x + node_width / 2
+        )
         row_step = _NODE_HEIGHT + process_row_gap
         spans_intervening_row = abs(target_y - source_y) > row_step
         if spans_intervening_row and long_branch_slot is not None:
@@ -2644,6 +2652,15 @@ def _render_edge(
             # Conflicting loop labels use the packed outer lane while their
             # Bezier arcs keep distinct semantic lanes, including overflow stacks.
             label_x = process_branch_gutter_x + 8 + label_width / 2
+    if (
+        route == "process-row-gutter"
+        and process_same_row_target_port_x is not None
+        and isinstance(process_adjacent_route_y, tuple)
+        and process_adjacent_label_y is not None
+    ):
+        # A shared-target lane may move the physical rail without moving its
+        # already packed semantic label across a foreign edge.
+        label_y = process_adjacent_label_y
     if (
         intent != "process"
         and kind != "feedback"
@@ -6553,6 +6570,99 @@ def render_native_diagram(
         )
         else model["edges"]
     )
+    # Reserve distinct physical entrances for semantics sharing one target:
+    # row gutters approach its top, as do downward process branches. Use the
+    # existing target-port override during original path planning; no SVG
+    # paint-order trick or global postprocessor can recover hidden stems.
+    shared_target_port_x: dict[str, float] = {}
+    shared_target_route_y: dict[str, tuple[float, float]] = {}
+    shared_target_label_y: dict[str, float] = {}
+    if intent == "process" and model["groups"]:
+        edges_by_target: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        for edge in model["edges"]:
+            if str(edge["kind"]) != "feedback" and edge["from"] != edge["to"]:
+                edges_by_target[str(edge["to"])].append(edge)
+        for target_id in sorted(edges_by_target):
+            target = positions[target_id]
+            candidates = edges_by_target[target_id]
+            branches = sorted(
+                (
+                    edge for edge in candidates
+                    if positions[str(edge["from"])][1] < target[1]
+                    and positions[str(edge["from"])][0] != target[0]
+                ),
+                key=lambda edge: str(edge["id"]),
+            )
+            row_gutters = sorted(
+                (
+                    edge for edge in candidates
+                    if positions[str(edge["from"])][1] == target[1]
+                    and str(edge["id"]) in process_branch_gutter_x
+                ),
+                key=lambda edge: str(edge["id"]),
+            )
+            # Same-column vertical relations retain their established center
+            # entrance. Otherwise preserve one existing long-branch center
+            # route, preferring the longest accepted semantic relation: only
+            # its competing peers need a new entrance port.
+            vertical_center = any(
+                positions[str(edge["from"])][1] < target[1]
+                and positions[str(edge["from"])][0] == target[0]
+                for edge in candidates
+            )
+            center_branch_id = None
+            if not vertical_center and branches and (
+                len(branches) + len(row_gutters) > 1
+            ):
+                center_branch_id = str(max(
+                    branches,
+                    key=lambda edge: (
+                        target[1] - positions[str(edge["from"])][1],
+                        str(edge["id"]),
+                    ),
+                )["id"])
+            moving = sorted(
+                (
+                    edge for edge in (*branches, *row_gutters)
+                    if str(edge["id"]) != center_branch_id
+                ),
+                key=lambda edge: str(edge["id"]),
+            )
+            fixed_center = vertical_center or center_branch_id is not None
+            if len(moving) + int(fixed_center) < 2:
+                continue
+            count = len(moving) + int(fixed_center)
+            offsets = [
+                _NODE_WIDTH * (index + 1) / (count + 1)
+                for index in range(count)
+            ]
+            if fixed_center:
+                center_slot = min(
+                    range(len(offsets)),
+                    key=lambda index: (abs(offsets[index] - _NODE_WIDTH / 2), index),
+                )
+                del offsets[center_slot]
+            for edge, offset in zip(moving, offsets):
+                shared_target_port_x[str(edge["id"])] = target[0] + offset
+            if len(row_gutters) > 1:
+                # Reuse actual free gap height rather than stacking every
+                # same-row return on the historical single midpoint rail.
+                rail_step = min(
+                    8.0, (process_row_gap - 8.0) / (len(row_gutters) - 1)
+                )
+                for index, edge in enumerate(row_gutters):
+                    edge_id = str(edge["id"])
+                    line_y = (
+                        target[1] - process_row_gap / 2
+                        + (index - (len(row_gutters) - 1) / 2) * rail_step
+                    )
+                    shared_target_route_y[edge_id] = (line_y, line_y)
+                    if target[1] != min(y for _, y in positions.values()):
+                        # Keep accepted labels fixed while only rails change.
+                        shared_target_label_y[edge_id] = (
+                            target[1] - process_row_gap / 2
+                        )
+
     def render_planned_edge(
         edge: Mapping[str, Any],
         *,
@@ -6586,13 +6696,21 @@ def render_native_diagram(
                     if label_x_override is not None
                     else process_adjacent_label_x.get(str(edge["id"]))
                 ),
-                process_adjacent_label_y=process_adjacent_label_y.get(str(edge["id"])),
+                process_adjacent_label_y=process_adjacent_label_y.get(
+                    str(edge["id"]), shared_target_label_y.get(str(edge["id"]))
+                ),
                 process_adjacent_route_y=(
                     route_y_override
                     if route_y_override is not None
-                    else process_adjacent_route_y.get(str(edge["id"]))
+                    else shared_target_route_y.get(
+                        str(edge["id"]),
+                        process_adjacent_route_y.get(str(edge["id"])),
+                    )
                 ),
-                process_same_row_target_port_x=card_target_port_x,
+                process_same_row_target_port_x=(
+                    card_target_port_x if card_target_port_x is not None
+                    else shared_target_port_x.get(str(edge["id"]))
+                ),
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),
                 narrative_self_loop_gutter_x=narrative_self_loop_gutter_x.get(str(edge["id"])),
@@ -6730,6 +6848,39 @@ def render_native_diagram(
                     cursor = endpoint
                 return spans
 
+            # A shifted target port must also leave already emitted vertical
+            # stems visible, including straight cubic endpoint segments.
+            def vertical_strokes(
+                path: str,
+            ) -> list[tuple[float, float, float]]:
+                tokens = re.findall(r"[MLC]|-?\d+(?:\.\d+)?", path)
+                cursor: tuple[float, float] | None = None
+                spans: list[tuple[float, float, float]] = []
+                index = 0
+                while index < len(tokens):
+                    command = tokens[index]
+                    index += 1
+                    arity = 6 if command == "C" else 2
+                    if command not in {"M", "L", "C"} or index + arity > len(tokens):
+                        break
+                    coords = tuple(float(v) for v in tokens[index:index + arity])
+                    index += arity
+                    endpoint = (coords[-2], coords[-1])
+                    if cursor is not None and command in {"L", "C"}:
+                        points = (
+                            (cursor, endpoint) if command == "L" else (
+                                cursor, (coords[0], coords[1]),
+                                (coords[2], coords[3]), endpoint
+                            )
+                        )
+                        if all(abs(x - cursor[0]) < 0.01 for x, _ in points):
+                            low = min(y for _, y in points)
+                            high = max(y for _, y in points)
+                            if high - low > 4:
+                                spans.append((cursor[0], low, high))
+                    cursor = endpoint
+                return spans
+
             candidate_ids = {str(edge["id"]) for edge in candidates}
             reserved_detour_rails = [
                 span
@@ -6737,7 +6888,13 @@ def render_native_diagram(
                 if other_id not in candidate_ids
                 for span in horizontal_strokes(other_path)
             ]
-            # Every accepted new detour also reserves its physical rail.
+            reserved_detour_verticals = [
+                span
+                for other_id, (other_path, _) in layouts.items()
+                if other_id not in candidate_ids
+                for span in vertical_strokes(other_path)
+            ]
+            # Every accepted new detour also reserves its physical rails and stems.
             for edge in candidates:
                 edge_id = str(edge["id"])
                 source = positions[str(edge["from"])]
@@ -6813,15 +6970,36 @@ def render_native_diagram(
                     # port even when the rail is clear. Try the straight
                     # part of that same card's top boundary before failing.
                     # No peer route/label or group geometry is displaced.
-                    target_ports = tuple(dict.fromkeys((
-                        target_center,
-                        target[0] + 16.0,
-                        target[0] + _NODE_WIDTH - 16.0,
-                    )))
+                    target_ports = tuple(sorted(
+                        dict.fromkeys((
+                            target_center,
+                            target[0] + 16.0,
+                            target[0] + _NODE_WIDTH - 16.0,
+                        )),
+                        # Shared endpoints may use the center only when no
+                        # clear alternative exists. Try physically free ports
+                        # first rather than shrinking a hidden final stem.
+                        key=lambda x: any(
+                            abs(x - peer_x) < 4.0
+                            and peer_low - 2.0 <= port <= peer_high + 2.0
+                            for peer_x, peer_low, peer_high in reserved_detour_verticals
+                        ),
+                    ))
                     for target_port_x, channel_y in (
                         (port_x, y) for port_x in target_ports for y in ys
                     ):
                         if not low + 1.5 < channel_y < high - 1.5:
+                            continue
+                        candidate_verticals = (
+                            (source_center, min(port, channel_y), max(port, channel_y)),
+                            (target_port_x, min(port, channel_y), max(port, channel_y)),
+                        )
+                        if any(
+                            abs(x - peer_x) < 4.0
+                            and min(high, peer_high) - max(low, peer_low) > 4.0
+                            for x, low, high in candidate_verticals
+                            for peer_x, peer_low, peer_high in reserved_detour_verticals
+                        ):
                             continue
                         rail_left = min(source_center, target_port_x)
                         rail_right = max(source_center, target_port_x)
@@ -6957,6 +7135,7 @@ def render_native_diagram(
                             reserved_detour_rails.append((
                                 channel_y, rail_left, rail_right,
                             ))
+                            reserved_detour_verticals.extend(candidate_verticals)
                             accepted = True
                             break
                         if accepted:
@@ -7062,6 +7241,15 @@ def render_native_diagram(
                 | set(long_vertical_gutter_x)
                 | set(long_branch_slots)
             )
+            # A newly moved target entrance can remove the old reason that
+            # triggered label repacking, even though another already visible
+            # peer route still crosses the label. Check every actual peer path
+            # for labels of that shared target before accepting the SVG.
+            shifted_entrance_targets = {
+                str(edge["to"])
+                for edge in paint_edges
+                if str(edge["id"]) in shared_target_port_x
+            }
             for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
                 edge_id = str(edge["id"])
                 if (
@@ -7073,6 +7261,7 @@ def render_native_diagram(
                 if (
                     edge_id not in process_branch_gutter_x
                     and edge_id not in long_vertical_label_x
+                    and str(edge["to"]) not in shifted_entrance_targets
                     and not any(
                         (other_id in affected_routes or feedback_rail_exhausted)
                         and _process_svg_path_hits_box(other_path, old_box)
@@ -7170,6 +7359,91 @@ def render_native_diagram(
                     planned_edge_lines[edge_id] = fragment
                     final_layout[edge_id] = new_path, actual_box
                     break
+
+    # A reserved shared-target entrance may reach a *final* peer label even
+    # after the earlier label pack has finished. Change only its actual target
+    # port using the existing path renderer; never relocate another edge or label.
+    # This also covers straight C stems, not just explicit L segments.
+    if intent == "process" and model["groups"] and shared_target_port_x:
+        final_layout = {
+            edge_id: planned_svg_parts(fragment)
+            for edge_id, fragment in planned_edge_lines.items()
+        }
+        by_id = {str(edge["id"]): edge for edge in paint_edges}
+        for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+            edge_id = str(edge["id"])
+            if edge_id not in shared_target_port_x:
+                continue
+            old_path, old_box = final_layout[edge_id]
+            if not any(
+                _process_svg_path_hits_box(old_path, peer_box)
+                for peer_id, (_, peer_box) in final_layout.items()
+                if peer_id != edge_id
+            ):
+                continue
+
+            target_id = str(edge["to"])
+            target = positions[target_id]
+            original_port = shared_target_port_x[edge_id]
+            offsets = (*range(16, int(_NODE_WIDTH) - 15, 8), _NODE_WIDTH - 16)
+            ports = sorted(
+                {target[0] + offset for offset in offsets},
+                key=lambda port: (abs(port - original_port), port),
+            )
+            for port in ports:
+                if abs(port - original_port) < 4:
+                    continue
+                # Respect straight shared-endpoint C stems and L entrances.
+                if any(
+                    str(by_id[peer_id]["to"]) == target_id
+                    and (
+                        end := re.search(
+                            r"([-0-9.]+) ([-0-9.]+)$", peer_path
+                        )
+                    )
+                    and abs(float(end.group(1)) - port) < 4
+                    for peer_id, (peer_path, _) in final_layout.items()
+                    if peer_id != edge_id
+                ):
+                    continue
+
+                own_label_center = (
+                    old_box[0] + old_box[2] / 2,
+                    old_box[1] + old_box[3] / 2,
+                )
+                fragment = render_planned_edge(
+                    edge,
+                    card_target_port_x=port,
+                    label_position_override=own_label_center,
+                )
+                candidate_path, candidate_box = planned_svg_parts(fragment)
+                if candidate_box != old_box:
+                    continue
+                if any(
+                    _process_svg_path_hits_box(candidate_path, peer_box)
+                    for peer_id, (_, peer_box) in final_layout.items()
+                    if peer_id != edge_id
+                ):
+                    continue
+                if any(
+                    _process_svg_path_hits_box(
+                        candidate_path,
+                        (
+                            float(x), float(y),
+                            float(_NODE_WIDTH), float(_NODE_HEIGHT),
+                        ),
+                    )
+                    for node_id, (x, y) in positions.items()
+                    if node_id not in {str(edge["from"]), target_id}
+                ):
+                    continue
+                planned_edge_lines[edge_id] = fragment
+                final_layout[edge_id] = candidate_path, candidate_box
+                shared_target_port_x[edge_id] = port
+                break
+            # If every alternative fails, preserve the previously renderable
+            # geometry. A blanket exception here regressed 318 valid inputs
+            # in the four deterministic 5,000-model differential cohorts.
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])

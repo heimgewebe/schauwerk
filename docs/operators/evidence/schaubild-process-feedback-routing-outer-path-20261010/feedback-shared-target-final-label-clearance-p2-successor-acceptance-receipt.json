@@ -1,0 +1,109 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-shared-target-final-label-clearance-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "bf7b36a924551547e81f8ed767ebe47b1ea439be",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-outer-local-vertical-reservation-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-outer-local-vertical-reservation-p2-successor-acceptance-receipt.json",
+    "file_sha256": "56cae96e7732b61b52d16ccf6910d88746893cf2eb18abc6d22ac0c92d5e5cfc",
+    "evidence_digest": "3d1cc678727f6d9abb3b88624cc500665867431bcd7098ebc8048bb1e2eb962c"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "32ec3f597b733e963a79e9e5c0f63bed15d86e8c240df23289c805ce84f12d2f",
+    "tests/visual/test_native_diagram.py": "a7fd80ff3b49f357abfe8f88a963dfa84112d3e0decbebfbfbdb3d9a7e52e39c"
+  },
+  "predecessor_dirty_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "b2d330b5e11099446513f91272397beda0c5637486b353d072b7876100429c80",
+    "tests/visual/test_native_diagram.py": "db8af0803d3fe1d6f66c96cffcea0e6ac7391ceafc9589ae8de4a300da31d4e6"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_finding": {
+    "comment_id": 4322479992,
+    "severity": "P2",
+    "reviewed_head": "bf7b36a924551547e81f8ed767ebe47b1ea439be",
+    "disposition": "remediated-local-candidate-pending-exact-head-independent-review"
+  },
+  "regression_tests": [
+    "test_pr205_shared_target_ports_preserve_final_peer_labels"
+  ],
+  "test_receipts": {
+    "six_variant_red": {
+      "unit": "grabowski-job-d34ee9c8c793",
+      "failed_variants": 6,
+      "exit_code": 1,
+      "old_renderer_sha256": "b2d330b5e11099446513f91272397beda0c5637486b353d072b7876100429c80"
+    },
+    "six_variant_green": {
+      "unit": "grabowski-job-8c22eff3709e",
+      "passed_variants": 6,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "test_file": "tests/visual/test_native_diagram.py",
+      "passed_tests": 315,
+      "exit_code": 0
+    },
+    "real_chromium_smoke": {
+      "unit": "grabowski-job-c96edea59b5b",
+      "passed_tests": 30,
+      "exit_code": 0
+    },
+    "exact_head_differential": {
+      "unit": "grabowski-job-db537ce2ce9a",
+      "comparison_head": "bf7b36a924551547e81f8ed767ebe47b1ea439be",
+      "seeds": [
+        20520261021,
+        20520261022,
+        20520261023,
+        20520261024
+      ],
+      "models_per_seed": 5000,
+      "models_compared": 20000,
+      "baseline_render_exceptions": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "shared_target_physical_stroke_differential": {
+      "unit": "grabowski-job-a44d6c7b4eac",
+      "seeds": [
+        20520261071,
+        20520261072,
+        20520261073,
+        20520261074
+      ],
+      "models_attempted": 2600,
+      "compared_models": 2599,
+      "baseline_render_errors": 1,
+      "changed_routes": 10,
+      "new_render_errors": 0,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "new_edge_order_differences": 0,
+      "exit_code": 0
+    },
+    "targeted_ruff": {
+      "files": [
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py"
+      ],
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "current_source_digest_bound": true,
+    "original_dirty_worktree_preserved": true,
+    "technical_red_green_pass": true,
+    "head_differential_fuzz_pass": true,
+    "chromium_browser_smoke_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Verified local technical candidate only. Historic source bindings remain immutable. Full make validate must run after the terminal fixture is switched to this receipt. No independent design, PR, Captain or production acceptance is claimed. In the 2600-model cohort one prior baseline error was excluded rather than claimed repaired.",
+  "evidence_digest": "1a4f11eaa169affadafb3ac7eae52acd51d1af56288bc26ec561ddcab5a56cdc"
+}

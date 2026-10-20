@@ -11999,9 +11999,63 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert outer_local["evidence_digest"] == digest_mapping(
         outer_local, "evidence_digest"
     )
-    assert set(outer_local["source_bindings"]) == set(vertical_gutter["source_bindings"])
-    for name, expected in outer_local["source_bindings"].items():
+    # The outer/local receipt stays bound to the historical 80f733 revision.
+    # Only the create-once successor may claim the currently edited bytes.
+    assert outer_local["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "b2b0a9c01801b62f507ced19319c7c45d16644eb1c3b24ddfea668ecc7e06733"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "36cabf0c4393dab9da8f8676554d03f743696a3f462de2e6ec1209803f846d68"
+        ),
+    }
+    shared_target_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-shared-target-final-label-clearance-p2-successor-acceptance-receipt.json"
+    )
+    shared_target_label_successor = json.loads(
+        shared_target_path.read_text(encoding="utf-8")
+    )
+    assert shared_target_label_successor["schema_version"] == (
+        "schauwerk-schaubild-feedback-shared-target-final-label-clearance-p2-successor.v1"
+    )
+    assert shared_target_label_successor["scope"] == "technical-candidate-only"
+    assert shared_target_label_successor["based_on_pr_head"] == (
+        "bf7b36a924551547e81f8ed767ebe47b1ea439be"
+    )
+    assert shared_target_label_successor["parent_evidence"] == {
+        "schema_version": outer_local["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-outer-local-vertical-reservation-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(outer_local_path.read_bytes()).hexdigest(),
+        "evidence_digest": outer_local["evidence_digest"],
+    }
+    assert shared_target_label_successor["evidence_digest"] == digest_mapping(
+        shared_target_label_successor, "evidence_digest"
+    )
+    for name, expected in shared_target_label_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    shared_target_tests = shared_target_label_successor["test_receipts"]
+    assert shared_target_tests["six_variant_red"]["failed_variants"] == 6
+    assert shared_target_tests["six_variant_green"]["passed_variants"] == 6
+    assert shared_target_tests["native_renderer_suite"]["passed_tests"] == 315
+    assert shared_target_tests["real_chromium_smoke"]["passed_tests"] == 30
+    assert shared_target_tests["exact_head_differential"]["models_compared"] == 20000
+    assert shared_target_tests["exact_head_differential"]["new_card_or_label_hits"] == 0
+    assert (
+        shared_target_tests["shared_target_physical_stroke_differential"]
+        ["new_physical_overlap_pairs"]
+        == 0
+    )
+    assert shared_target_label_successor["local_checks"]["visual_acceptance_pass"] is False
+    assert (
+        shared_target_label_successor["local_checks"]["independent_exact_head_review_pass"]
+        is False
+    )
+    assert shared_target_label_successor["local_checks"]["captain_merge_authorized"] is False
     assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
     assert outer_local["regression_tests"] == [
         "test_pr205_codex_outer_footer_reserves_preplanned_local_vertical_feedback"
@@ -12290,7 +12344,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert outer_local["source_bindings"][name] == current
+            assert shared_target_label_successor["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
