@@ -7736,3 +7736,192 @@ def test_pr204_p2_distinct_local_feedback_pairs_keep_separate_physical_rails() -
         return paths, labels, painted
 
     assert geometry(edges) == geometry(list(reversed(edges)))
+
+def _pr205_assert_distinct_horizontal_strokes(
+    paths: dict[str, str], first: str, second: str
+) -> None:
+    """An overpainted physical stroke cannot represent two different relations."""
+    def rails(edge_id: str) -> list[tuple[float, float, float]]:
+        return [
+            (min(start[0], end[0]), max(start[0], end[0]), start[1])
+            for start, end in _p2_orthogonal_segments(paths[edge_id])
+            if abs(start[1] - end[1]) < 0.01
+            and abs(start[0] - end[0]) > 4
+        ]
+
+    assert rails(first) and rails(second)
+    for left, right, y in rails(first):
+        for other_left, other_right, other_y in rails(second):
+            overlap = min(right, other_right) - max(left, other_left)
+            assert overlap <= 4 or abs(y - other_y) >= 4, (
+                first, second, "hidden semantic feedback stroke", overlap,
+                y, other_y, paths
+            )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_codex_preplanned_same_row_feedback_stroke_reserved(
+    reversed_order: bool,
+) -> None:
+    """A fixed same-row rail must block subsequent grouped feedback replans."""
+    raw = _p2_feedback_geometry_model((2, 3, 4))
+    edges = [
+        {"id": "e00", "from": "n0", "to": "n4",
+         "kind": "feedback", "label": "Rueckmeldung"},
+        {"id": "e01", "from": "n4", "to": "n0",
+         "kind": "feedback", "label": "Rueckmeldung"},
+        {"id": "e02", "from": "n4", "to": "n1",
+         "kind": "feedback", "label": "Pruefung und Rueckmeldung"},
+        {"id": "e03", "from": "n3", "to": "n4",
+         "kind": "feedback", "label": "x"},
+        {"id": "e07", "from": "n1", "to": "n6",
+         "kind": "feedback", "label": "Langes Label"},
+        {"id": "loop", "from": "n7", "to": "n7",
+         "kind": "risk", "label": "Langes Label"},
+    ]
+    raw["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(raw)))
+    _pr205_assert_distinct_horizontal_strokes(paths, "e03", "e07")
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_codex_feedback_rail_search_exhaustion_is_safe(
+    reversed_order: bool,
+) -> None:
+    """Fourteen competing feedbacks must not silently reuse a rejected rail."""
+    raw = _p2_feedback_geometry_model((2,) * 14)
+    edges = [
+        {"id": f"e{index:02d}", "from": f"n{2 * index}",
+         "to": f"n{2 * (13 - index) + 1}",
+         "kind": "feedback", "label": "x"}
+        for index in range(14)
+    ]
+    raw["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(raw)))
+    _pr205_assert_distinct_horizontal_strokes(paths, "e00", "e12")
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_differential_feedback_outer_keeps_process_label_clear(
+    reversed_order: bool,
+) -> None:
+    """Promoting peer feedbacks to outer paths cannot expose a flow-label collision."""
+    raw = _p2_feedback_geometry_model((4, 3, 4))
+    edges = [
+        {"id": name, "from": source, "to": target,
+         "kind": kind, "label": label}
+        for name, source, target, kind, label in (
+            ("f0", "n4", "n2", "feedback", "Rueckmeldung"),
+            ("f1", "n4", "n5", "feedback", "link"),
+            ("f2", "n2", "n0", "feedback", "Rueckmeldung"),
+            ("f3", "n5", "n0", "feedback", "Rueckmeldung"),
+            ("f4", "n3", "n8", "feedback", "Rueckmeldung"),
+            ("f5", "n5", "n4", "feedback", "Rueckmeldung"),
+            ("other0", "n0", "n8", "flow", "link"),
+            ("other1", "n7", "n5", "risk", "link"),
+            ("other2", "n4", "n6", "risk", "Approve"),
+        )
+    ]
+    raw["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(raw))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(paths["other2"], labels["other0"])
+    assert _p2_cubic_path_clears_box(paths["other2"], labels["other0"])
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_differential_feedback_selfloop_reserves_physical_rail(
+    reversed_order: bool,
+) -> None:
+    """A fixed same-row feedback selfloop also occupies its actual horizontal rail."""
+    raw = _p2_feedback_geometry_model((5, 2, 4))
+    edges = [
+        {"id": name, "from": source, "to": target,
+         "kind": kind, "label": label}
+        for name, source, target, kind, label in (
+            ("f0", "n5", "n0", "feedback", "link"),
+            ("f1", "n6", "n6", "feedback", "a somewhat longer relation label"),
+            ("f2", "n2", "n7", "feedback", "x"),
+            ("f3", "n5", "n10", "feedback", "x"),
+            ("f4", "n9", "n5", "feedback", "link"),
+            ("other0", "n5", "n5", "risk", "Approve"),
+            ("other1", "n9", "n1", "risk", "Approve"),
+            ("other2", "n9", "n1", "risk", "link"),
+        )
+    ]
+    raw["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(raw)))
+    _pr205_assert_distinct_horizontal_strokes(paths, "f1", "f2")
+
+@pytest.mark.parametrize(
+    ("sizes", "records", "pair"),
+    [
+        (
+            (4, 5, 3, 3),
+            [
+                ("f0", "n5", "n13", "feedback", "Rueckmeldung"),
+                ("f1", "n1", "n13", "feedback", "link"),
+                ("f2", "n3", "n9", "feedback", "a somewhat longer relation label"),
+                ("f3", "n8", "n0", "feedback", "Rueckmeldung"),
+                ("other0", "n6", "n8", "risk", "a somewhat longer relation label"),
+            ],
+            ("f0", "f1"),
+        ),
+        (
+            (5, 2, 3, 2, 2),
+            [
+                ("f0", "n5", "n12", "feedback", "link"),
+                ("f1", "n12", "n5", "feedback", "link"),
+                ("f2", "n10", "n4", "feedback", "Rueckmeldung"),
+                ("f3", "n2", "n1", "feedback", "Rueckmeldung"),
+                ("f4", "n13", "n3", "feedback", "Rueckmeldung"),
+                ("f5", "n13", "n11", "feedback", "a somewhat longer relation label"),
+                ("other0", "n10", "n8", "risk", "Approve"),
+                ("other1", "n12", "n7", "risk", "a somewhat longer relation label"),
+            ],
+            ("f0", "f1"),
+        ),
+        (
+            (5, 3, 3, 2, 4),
+            [
+                ("f0", "n11", "n8", "feedback", "a somewhat longer relation label"),
+                ("f1", "n12", "n14", "feedback", "a somewhat longer relation label"),
+                ("f2", "n3", "n8", "feedback", "Rueckmeldung"),
+                ("f3", "n5", "n13", "feedback", "x"),
+                ("f4", "n5", "n1", "feedback", "a somewhat longer relation label"),
+                ("other0", "n7", "n3", "flow", "Approve"),
+                ("other1", "n16", "n13", "flow", "link"),
+            ],
+            ("f0", "f3"),
+        ),
+        (
+            (5, 3),
+            [
+                ("f0", "n6", "n6", "feedback", "link"),
+                ("f1", "n5", "n3", "feedback", "a somewhat longer relation label"),
+                ("f2", "n6", "n3", "feedback", "x"),
+                ("f3", "n2", "n3", "feedback", "x"),
+                ("f4", "n1", "n6", "feedback", "Rueckmeldung"),
+                ("f5", "n4", "n7", "feedback", "x"),
+                ("other0", "n4", "n4", "flow", "link"),
+            ],
+            ("f0", "f4"),
+        ),
+    ],
+)
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr205_grouped_fixed_same_row_feedback_rails_do_not_overpaint(
+    sizes: tuple[int, ...],
+    records: list[tuple[str, str, str, str, str]],
+    pair: tuple[str, str],
+    reversed_order: bool,
+) -> None:
+    """Fixed grouped feedback routes must account for *each other's* L strokes."""
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": edge_id, "from": source, "to": target,
+         "kind": kind, "label": label}
+        for edge_id, source, target, kind, label in records
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+    _pr205_assert_distinct_horizontal_strokes(paths, *pair)

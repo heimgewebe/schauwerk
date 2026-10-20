@@ -11758,8 +11758,6 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "561ba67492e6aa7a062ee16b69e1d8a821ce8dfb67c7cd053d8111d1a2c64efb"
         ),
     }
-    for path, digest in grouped_peer_visible["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
     assert grouped_peer_visible["regression_tests"] == [
         "test_pr204_p2_distinct_local_feedback_pairs_keep_separate_physical_rails"
     ]
@@ -11795,6 +11793,82 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert grouped_peer_visible["local_checks"]["visual_acceptance_pass"] is False
     assert grouped_peer_visible["local_checks"]["independent_exact_head_review_pass"] is False
     assert grouped_peer_visible["local_checks"]["captain_merge_authorized"] is False
+
+    # The preceding grouped-peer receipt is an immutable historical revision.
+    # Only this new create-once terminal successor binds the current source.
+    reserved_feedback_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-reserved-same-row-rail-exhaustion-p2-successor-acceptance-receipt.json"
+    )
+    reserved_feedback = json.loads(reserved_feedback_path.read_text(encoding="utf-8"))
+    assert reserved_feedback["schema_version"] == (
+        "schauwerk-schaubild-feedback-reserved-same-row-rail-exhaustion-p2-successor.v1"
+    )
+    assert reserved_feedback["scope"] == "technical-candidate-only"
+    assert reserved_feedback["based_on_pr_head"] == (
+        "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3"
+    )
+    assert reserved_feedback["parent_evidence"] == {
+        "schema_version": grouped_peer_visible["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-grouped-peer-visible-rail-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(grouped_peer_visible_path.read_bytes()).hexdigest(),
+        "evidence_digest": grouped_peer_visible["evidence_digest"],
+    }
+    assert reserved_feedback["evidence_digest"] == digest_mapping(
+        reserved_feedback, "evidence_digest"
+    )
+    assert set(reserved_feedback["source_bindings"]) == set(
+        grouped_peer_visible["source_bindings"]
+    )
+    for path, digest in reserved_feedback["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    assert {item["comment_id"] for item in reserved_feedback["codex_review_findings"]} == {
+        4318358308, 4318358321,
+    }
+    assert len(reserved_feedback["regression_tests"]) == 5
+    evidence_tests = reserved_feedback["test_receipts"]
+    assert evidence_tests["original_exact_head_red"]["reproduced_failing_cases"] == 4
+    assert evidence_tests["fixed_same_row_peer_red"]["exit_code"] == 1
+    assert evidence_tests["targeted_green"]["exit_code"] == 0
+    assert evidence_tests["native_diagram_suite"]["exit_code"] == 0
+    assert evidence_tests["chromium_browser_smoke"]["passed_cases"] == 30
+    assert evidence_tests["chromium_browser_smoke"]["exit_code"] == 0
+    grouped_resolved = evidence_tests["grouped_feedback_differential"]
+    assert grouped_resolved["fixed_seed"] == 20520261031
+    assert grouped_resolved["models_compared"] == 1600
+    assert grouped_resolved["baseline_physical_overlap_pairs"] == 837
+    assert grouped_resolved["current_physical_overlap_pairs"] == 0
+    assert grouped_resolved["new_render_exceptions"] == 0
+    assert grouped_resolved["new_card_or_label_hits"] == 0
+    assert grouped_resolved["renderer_sha256"] == reserved_feedback[
+        "source_bindings"
+    ]["src/schauwerk/visual/native_diagram.py"]
+    saturated = evidence_tests["saturated_feedback_stress"]
+    assert saturated["fixed_seed"] == 20520261050
+    assert saturated["models_compared"] == 600
+    assert saturated["baseline_physical_overlap_pairs"] == 2052
+    assert saturated["current_physical_overlap_pairs"] == 0
+    assert saturated["new_render_exceptions"] == 0
+    assert saturated["new_card_or_label_hits"] == 0
+    fuzz = evidence_tests["head_differential_fuzz"]
+    assert len(fuzz) == 4
+    assert {entry["seed"] for entry in fuzz} == set(range(20520261021, 20520261025))
+    assert all(
+        entry["models_compared"] == 5000
+        and entry["baseline_render_exceptions"] == 0
+        and entry["new_render_exceptions"] == 0
+        and entry["new_card_or_label_hits"] == 0
+        for entry in fuzz
+    )
+    assert evidence_tests["pre_successor_make_validate"]["failed_count"] == 1
+    assert reserved_feedback["local_checks"]["historical_parent_receipts_byte_unchanged"]
+    assert reserved_feedback["local_checks"]["visual_acceptance_pass"] is False
+    assert reserved_feedback["local_checks"]["independent_exact_head_review_pass"] is False
+    assert reserved_feedback["local_checks"]["captain_merge_authorized"] is False
     assert card_aware["test_receipts"]["deterministic_head_differential_fuzz"] == {
         "task_id": "116082c4fc7042e39ff2ffec",
         "fixed_seed": 20520261019,
@@ -12050,7 +12124,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         if name in feedback_safe_sideports_p2_superseded_files:
-            assert grouped_peer_visible["source_bindings"][name] == current
+            assert reserved_feedback["source_bindings"][name] == current
         elif name in feedback_transactional_peer_move_p2_superseded_files:
             assert transactional["source_bindings"][name] == current
         elif name in feedback_intermediate_local_branch_p2_superseded_files:
@@ -12068,7 +12142,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         elif name in process_feedback_routing_cluster_occupancy_superseded_files:
             assert cluster_occupancy["source_bindings"][name] == current
         elif name in process_feedback_routing_long_leg_superseded_files:
-            assert grouped_peer_visible["source_bindings"][name] == current
+            assert reserved_feedback["source_bindings"][name] == current
         elif name in process_feedback_routing_feedback_fullpath_superseded_files:
             assert feedback_fullpath["source_bindings"][name] == current
         elif name in process_feedback_routing_anchor_cluster_superseded_files:

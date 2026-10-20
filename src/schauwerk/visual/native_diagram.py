@@ -5860,6 +5860,192 @@ def render_native_diagram(
                             ),
                         )
 
+    grouped_feedback_rail_replanned = False
+    feedback_rail_exhausted = False
+    # Grouped feedback peer routes can occupy the same physical row-gap rail
+    # even with distinct endpoint pairs. Resolve only overlapping local legs
+    # after the existing label/side-port planners have fixed their decisions.
+    # This uses their true corridor and obstacle geometry, without a new SVG
+    # postprocessor or changing unrelated accepted paths.
+    if intent == "process" and model["groups"] and feedback_edges:
+        reserved_feedback_legs: list[tuple[float, float, float]] = []
+        # Same-row feedbacks are already physically routed. They are not
+        # eligible for this replanning, but their actual drawn L legs must
+        # reserve the lane before cross-row peers select a new ordinate.
+        for fixed_edge in feedback_edges:
+            fixed_id = str(fixed_edge["id"])
+            fixed_source = positions[str(fixed_edge["from"])]
+            fixed_target = positions[str(fixed_edge["to"])]
+            if (
+                fixed_id in feedback_outer_footer_ids
+                or fixed_source[1] != fixed_target[1]
+            ):
+                continue
+            fixed_slot = feedback_slots[fixed_id]
+            fixed_metrics = _edge_label_metrics(fixed_edge, positions, intent)
+            fixed_lane = (
+                self_loop_lanes[fixed_id] if fixed_id in self_loop_lanes
+                else int((fixed_slot - (feedback_count - 1) / 2) * _PROCESS_LANE_STEP)
+                if feedback_count > 1
+                else ((lane_ranks[fixed_id] % 5) - 2) * _PROCESS_LANE_STEP
+            )
+            fixed_label_y = (
+                feedback_base_bottom + 10
+                + fixed_slot * _FEEDBACK_LABEL_LANE_STEP
+                + fixed_metrics.height / 2
+                if feedback_count > 1 or fixed_id in feedback_footer_ids
+                else None
+            )
+            fixed_path, _, _, _ = _edge_geometry(
+                fixed_source, fixed_target,
+                self_loop=fixed_edge["from"] == fixed_edge["to"],
+                lane=fixed_lane, kind="feedback",
+                canvas_width=width, canvas_height=height, intent=intent,
+                process_row_gap=process_row_gap,
+                label_width=fixed_metrics.width,
+                label_height=fixed_metrics.height,
+                feedback_label_y=fixed_label_y,
+                feedback_path_y=feedback_path_y.get(fixed_id),
+                feedback_path_footer=fixed_id in feedback_path_footer_ids,
+                feedback_local_gutter_x=feedback_local_gutter_x.get(fixed_id),
+                preserve_same_row_feedback_footer=(
+                    _preserve_same_row_process_feedback_return(
+                        fixed_source, fixed_target, positions
+                    )
+                ),
+            )
+            cubic_end = re.search(
+                r"C [-0-9.]+ [-0-9.]+, [-0-9.]+ [-0-9.]+, "
+                r"([-0-9.]+) ([-0-9.]+) L ",
+                fixed_path,
+            )
+            if cubic_end:
+                fixed_points = [
+                    (float(cubic_end.group(1)), float(cubic_end.group(2)))
+                ]
+                fixed_points.extend(
+                    (float(x), float(y))
+                    for x, y in re.findall(r"L ([-0-9.]+) ([-0-9.]+)", fixed_path)
+                )
+            else:
+                fixed_points = [
+                    (float(x), float(y))
+                    for x, y in re.findall(
+                        r"(?:M|L) ([-0-9.]+) ([-0-9.]+)", fixed_path
+                    )
+                ]
+            fixed_legs = [
+                (min(x0, x1), max(x0, x1), y0)
+                for (x0, y0), (x1, y1) in zip(fixed_points, fixed_points[1:])
+                if abs(y0 - y1) < 0.01 and abs(x0 - x1) > 4
+            ]
+            if any(
+                min(right, peer_right) - max(left, peer_left) > 4
+                and abs(y - peer_y) < 4
+                for left, right, y in fixed_legs
+                for peer_left, peer_right, peer_y in reserved_feedback_legs
+            ):
+                # Two immutable same-row plans cannot own one semantic stroke.
+                # Reuse the existing collision-checked outer footer for the
+                # later sorted relation; never merely change SVG paint order.
+                feedback_rail_exhausted = True
+                grouped_feedback_rail_replanned = True
+                feedback_outer_footer_ids.add(fixed_id)
+                feedback_footer_ids.add(fixed_id)
+                feedback_path_y.pop(fixed_id, None)
+                feedback_local_gutter_x.pop(fixed_id, None)
+                height = max(
+                    height,
+                    math.ceil(
+                        feedback_base_bottom
+                        + 112 + feedback_count * _FEEDBACK_LABEL_LANE_STEP
+                    ),
+                )
+                continue
+            reserved_feedback_legs.extend(fixed_legs)
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            if (
+                edge_id in feedback_outer_footer_ids
+                or edge_id in feedback_path_footer_ids
+                or edge["from"] == edge["to"]
+            ):
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            if source[1] == target[1]:
+                continue
+            direction = 1 if source[1] < target[1] else -1
+            source_gap = _process_row_corridor_bounds(
+                source[1], positions, direction=direction
+            )
+            target_gap = _process_row_corridor_bounds(
+                target[1], positions, direction=-direction
+            )
+            if source_gap is None or target_gap is None:
+                continue
+            original = feedback_path_y.get(edge_id)
+            base_source, base_target = (
+                original if isinstance(original, tuple)
+                else (sum(source_gap) / 2, sum(target_gap) / 2)
+            )
+            source_x = float(source[0] + _NODE_WIDTH / 2)
+            target_x = float(target[0] + _NODE_WIDTH / 2)
+            gutter_x = feedback_local_gutter_x.get(
+                edge_id,
+                min(
+                    width - 16.0,
+                    max(source[0], target[0])
+                    + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
+                ),
+            )
+            source_span = (min(source_x, gutter_x), max(source_x, gutter_x))
+            target_span = (min(target_x, gutter_x), max(target_x, gutter_x))
+            for shift in (0, -4, 4, -8, 8, -12, 12, -16, 16, -20, 20, -24, 24):
+                source_rail, target_rail = base_source + shift, base_target + shift
+                proposed = (
+                    (source_span[0], source_span[1], source_rail),
+                    (target_span[0], target_span[1], target_rail),
+                )
+                if (
+                    not source_gap[0] + 2 <= source_rail <= source_gap[1] - 2
+                    or not target_gap[0] + 2 <= target_rail <= target_gap[1] - 2
+                    or any(
+                        min(right, other_right) - max(left, other_left) > 4
+                        and abs(y - other_y) < 4
+                        for left, right, y in proposed
+                        for other_left, other_right, other_y in reserved_feedback_legs
+                    )
+                    or any(
+                        left < box_right + 2 and right > box_left - 2
+                        and box_top - 2 < y < box_bottom + 2
+                        for left, right, y in proposed
+                        for box_left, box_top, box_right, box_bottom in feedback_obstacles
+                    )
+                ):
+                    continue
+                if shift:
+                    feedback_path_y[edge_id] = (source_rail, target_rail)
+                    grouped_feedback_rail_replanned = True
+                reserved_feedback_legs.extend(proposed)
+                break
+            else:
+                # The finite local search is exhausted. Promote this relation
+                # before the existing, collision-checked outer side-port
+                # planner runs; never render a rejected original rail.
+                feedback_rail_exhausted = True
+                feedback_outer_footer_ids.add(edge_id)
+                feedback_footer_ids.add(edge_id)
+                feedback_local_gutter_x.pop(edge_id, None)
+                feedback_path_y.pop(edge_id, None)
+                height = max(
+                    height,
+                    math.ceil(
+                        feedback_base_bottom
+                        + 112 + feedback_count * _FEEDBACK_LABEL_LANE_STEP
+                    ),
+                )
+
     # Reserve only as much extra edge gutter as crowded semantic feedback
     # footers require. All planning happens before constructing the SVG header
     # so an expanded canvas never clips a route or misstates its viewBox.
@@ -6318,81 +6504,6 @@ def render_native_diagram(
             )
         )
         lines.append("</g>")
-
-    grouped_feedback_rail_replanned = False
-    # Grouped feedback peer routes can occupy the same physical row-gap rail
-    # even with distinct endpoint pairs. Resolve only overlapping local legs
-    # after the existing label/side-port planners have fixed their decisions.
-    # This uses their true corridor and obstacle geometry, without a new SVG
-    # postprocessor or changing unrelated accepted paths.
-    if intent == "process" and model["groups"] and feedback_edges:
-        reserved_feedback_legs: list[tuple[float, float, float]] = []
-        for edge in feedback_edges:
-            edge_id = str(edge["id"])
-            if (
-                edge_id in feedback_outer_footer_ids
-                or edge_id in feedback_path_footer_ids
-                or edge["from"] == edge["to"]
-            ):
-                continue
-            source = positions[str(edge["from"])]
-            target = positions[str(edge["to"])]
-            if source[1] == target[1]:
-                continue
-            direction = 1 if source[1] < target[1] else -1
-            source_gap = _process_row_corridor_bounds(
-                source[1], positions, direction=direction
-            )
-            target_gap = _process_row_corridor_bounds(
-                target[1], positions, direction=-direction
-            )
-            if source_gap is None or target_gap is None:
-                continue
-            original = feedback_path_y.get(edge_id)
-            base_source, base_target = (
-                original if isinstance(original, tuple)
-                else (sum(source_gap) / 2, sum(target_gap) / 2)
-            )
-            source_x = float(source[0] + _NODE_WIDTH / 2)
-            target_x = float(target[0] + _NODE_WIDTH / 2)
-            gutter_x = feedback_local_gutter_x.get(
-                edge_id,
-                min(
-                    width - 16.0,
-                    max(source[0], target[0])
-                    + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET,
-                ),
-            )
-            source_span = (min(source_x, gutter_x), max(source_x, gutter_x))
-            target_span = (min(target_x, gutter_x), max(target_x, gutter_x))
-            for shift in (0, -4, 4, -8, 8, -12, 12, -16, 16, -20, 20, -24, 24):
-                source_rail, target_rail = base_source + shift, base_target + shift
-                proposed = (
-                    (source_span[0], source_span[1], source_rail),
-                    (target_span[0], target_span[1], target_rail),
-                )
-                if (
-                    not source_gap[0] + 2 <= source_rail <= source_gap[1] - 2
-                    or not target_gap[0] + 2 <= target_rail <= target_gap[1] - 2
-                    or any(
-                        min(right, other_right) - max(left, other_left) > 4
-                        and abs(y - other_y) < 4
-                        for left, right, y in proposed
-                        for other_left, other_right, other_y in reserved_feedback_legs
-                    )
-                    or any(
-                        left < box_right + 2 and right > box_left - 2
-                        and box_top - 2 < y < box_bottom + 2
-                        for left, right, y in proposed
-                        for box_left, box_top, box_right, box_bottom in feedback_obstacles
-                    )
-                ):
-                    continue
-                if shift:
-                    feedback_path_y[edge_id] = (source_rail, target_rail)
-                    grouped_feedback_rail_replanned = True
-                reserved_feedback_legs.extend(proposed)
-                break
 
     # Group-gap fallback and parallel feedback peers can cross other strokes.
     # Use a stable painter order only in those cases; preserve older SVG output.
@@ -6901,7 +7012,10 @@ def render_native_diagram(
         # return even though its own path has a clear right-hand gutter.
         # Resolve only actual collisions caused by a repacked label or a
         # long return: paths and unrelated label anchors remain unchanged.
-        if process_branch_gutter_x or long_vertical_label_x or long_branch_slots:
+        if (
+            process_branch_gutter_x or long_vertical_label_x
+            or long_branch_slots or feedback_rail_exhausted
+        ):
             final_layout = {
                 edge_id: planned_svg_parts(fragment)
                 for edge_id, fragment in planned_edge_lines.items()
@@ -6923,7 +7037,7 @@ def render_native_diagram(
                     edge_id not in process_branch_gutter_x
                     and edge_id not in long_vertical_label_x
                     and not any(
-                        other_id in affected_routes
+                        (other_id in affected_routes or feedback_rail_exhausted)
                         and _process_svg_path_hits_box(other_path, old_box)
                         for other_id, (other_path, _) in final_layout.items()
                         if other_id != edge_id
@@ -6962,7 +7076,11 @@ def render_native_diagram(
                     *(
                         (dx, dy)
                         for dx in horizontal_offsets
-                        for dy in (0, 8, -8, 16, -16, 24, -24)
+                        for dy in (
+                            (0, *vertical_offsets)
+                            if feedback_rail_exhausted
+                            else (0, 8, -8, 16, -16, 24, -24)
+                        )
                     ),
                 )
                 for dx, dy in placements:

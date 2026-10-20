@@ -1,0 +1,148 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-reserved-same-row-rail-exhaustion-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-grouped-peer-visible-rail-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-grouped-peer-visible-rail-p2-successor-acceptance-receipt.json",
+    "file_sha256": "9049d673147fb5371dc1b7bfc89ed58065437ec5945d1feae3ee41ca996ce5b4",
+    "evidence_digest": "5ccfdace291690ae599d1867524ae997a21cc10a81c6157fbd674af6fe92bf2f"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2e300fc997774adb9ef9b03ec98220eb561789f9d0a44fd9ffe75e8e8358b839",
+    "tests/visual/test_native_diagram.py": "66f6aca70749cf08f4372cef14596de6724411966798940fc4169059882a3a9c"
+  },
+  "codex_review_findings": [
+    {
+      "comment_id": 4318358308,
+      "severity": "P2",
+      "disposition": "reproduced-and-remediated"
+    },
+    {
+      "comment_id": 4318358321,
+      "severity": "P2",
+      "disposition": "reproduced-and-remediated"
+    }
+  ],
+  "regression_tests": [
+    "test_pr205_codex_preplanned_same_row_feedback_stroke_reserved",
+    "test_pr205_codex_feedback_rail_search_exhaustion_is_safe",
+    "test_pr205_differential_feedback_outer_keeps_process_label_clear",
+    "test_pr205_differential_feedback_selfloop_reserves_physical_rail",
+    "test_pr205_grouped_fixed_same_row_feedback_rails_do_not_overpaint"
+  ],
+  "test_receipts": {
+    "original_exact_head_red": {
+      "task_id": "0f19eaad8f69430abae644d2",
+      "baseline_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3",
+      "reproduced_failing_cases": 4,
+      "exit_code": 0,
+      "expected_failure_verified": true
+    },
+    "fixed_same_row_peer_red": {
+      "task_id": "d1260cc3d79646d2974ba290",
+      "expected_failure_verified": true,
+      "exit_code": 1
+    },
+    "targeted_green": {
+      "task_id": "2f82ae0b4ebc452f852623d8",
+      "exit_code": 0
+    },
+    "all_new_regressions_green": {
+      "task_id": "2f82ae0b4ebc452f852623d8",
+      "exit_code": 0
+    },
+    "native_diagram_suite": {
+      "task_id": "b0c3367b863849f392a167cf",
+      "exit_code": 0
+    },
+    "grouped_feedback_differential": {
+      "task_id": "5b7f86623cc043c39183d48b",
+      "fixed_seed": 20520261031,
+      "models_compared": 1600,
+      "comparison_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3",
+      "baseline_render_exceptions": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "baseline_physical_overlap_pairs": 837,
+      "current_physical_overlap_pairs": 0,
+      "new_physical_overlap_pairs": 0,
+      "renderer_sha256": "2e300fc997774adb9ef9b03ec98220eb561789f9d0a44fd9ffe75e8e8358b839"
+    },
+    "saturated_feedback_stress": {
+      "task_id": "e194de3c111d4c178bdff325",
+      "fixed_seed": 20520261050,
+      "models_compared": 600,
+      "comparison_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3",
+      "baseline_render_exceptions": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "baseline_physical_overlap_pairs": 2052,
+      "current_physical_overlap_pairs": 0,
+      "new_physical_overlap_pairs": 0
+    },
+    "head_differential_fuzz": [
+      {
+        "task_id": "4a1f8293cb434612b3e0578c",
+        "seed": 20520261021,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "f3d7f7851315499fbe44f949",
+        "seed": 20520261022,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "dde742797b1d4dc7845162bc",
+        "seed": 20520261023,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "b1c3f3b990e4444b82da7dd9",
+        "seed": 20520261024,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      }
+    ],
+    "chromium_browser_smoke": {
+      "task_id": "8ae082f55e8047ae9641ca72",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "pre_successor_make_validate": {
+      "task_id": "f595770b5dcd4f7386e20d17",
+      "passed_count": 1818,
+      "failed_count": 1,
+      "result": "expected_old_terminal_source_binding_failure",
+      "exit_code": 2
+    }
+  },
+  "local_checks": {
+    "original_two_codex_p2_red_green_reproduced": true,
+    "fixed_same_row_and_selfloop_physical_rails_reserve_before_replans": true,
+    "rail_exhaustion_uses_existing_checked_outer_sideport_planner": true,
+    "full_native_editor_functionality_not_regressed_in_existing_suite": true,
+    "historical_parent_receipts_byte_unchanged": true,
+    "technical_source_binding_prepared": true,
+    "full_make_validate_after_terminal_fixture": false,
+    "independent_exact_head_review_pass": false,
+    "github_ci_for_new_pr_head_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_publication_verified": false,
+    "commonthing_prod_serving_verified": false
+  },
+  "notes": "Technical-only successor for exact source and test digests. No claim about all imaginable graph models, visual acceptance, independent R3, published GitHub Head, OCI registry or production serving. Parent bytes remain unchanged; a later material code edit needs another immutable revision.",
+  "evidence_digest": "ce14cb044e03f7d89d15870879357703a354a60ca05d7611927243e888f63ea4"
+}
