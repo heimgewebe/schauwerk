@@ -12,6 +12,7 @@ from collections import defaultdict
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from html import escape
+from itertools import chain
 from typing import Any
 
 from .grammar import GRAMMAR_SCHEMA_VERSION
@@ -1604,6 +1605,183 @@ def _safe_process_feedback_outer_ports(
                 )
     return None
 
+
+
+
+def _process_svg_stroke_segments(
+    path: str,
+) -> tuple[tuple[tuple[float, float], ...], ...] | None:
+    """Parse only the M/L/C geometry emitted by the process renderer.
+
+    Unknown or incomplete geometry is *not* proof of clearance.
+    """
+    tokens = path.replace(",", " ").split()
+    cursor: tuple[float, float] | None = None
+    segments: list[tuple[tuple[float, float], ...]] = []
+    index = 0
+    while index < len(tokens):
+        command = tokens[index]
+        index += 1
+        if command not in {"M", "L", "C"}:
+            return None
+        arity = 6 if command == "C" else 2
+        if index + arity > len(tokens):
+            return None
+        try:
+            coords = tuple(float(value) for value in tokens[index:index + arity])
+        except ValueError:
+            return None
+        if not all(math.isfinite(value) for value in coords):
+            return None
+        index += arity
+        end = (coords[-2], coords[-1])
+        if command == "M":
+            cursor = end
+            continue
+        if cursor is None:
+            return None
+        if command == "L":
+            segments.append((cursor, end))
+        else:
+            segments.append((
+                cursor, (coords[0], coords[1]), (coords[2], coords[3]), end
+            ))
+        cursor = end
+    return tuple(segments) if cursor is not None else None
+
+
+def _process_axis_aligned_stroke_spans(
+    path: str,
+) -> tuple[tuple[str, float, float, float], ...] | None:
+    """Represent *physical* collinear strokes (not cubic control tangents)."""
+    segments = _process_svg_stroke_segments(path)
+    if segments is None:
+        return None
+    spans: list[tuple[str, float, float, float]] = []
+    for segment in segments:
+        xs = [point[0] for point in segment]
+        ys = [point[1] for point in segment]
+        if max(xs) - min(xs) < 0.01 and max(ys) - min(ys) > 4:
+            spans.append(("v", xs[0], min(ys), max(ys)))
+        elif max(ys) - min(ys) < 0.01 and max(xs) - min(xs) > 4:
+            spans.append(("h", ys[0], min(xs), max(xs)))
+    return tuple(spans)
+
+
+def _process_physical_spans_overlap(
+    first: tuple[tuple[str, float, float, float], ...] | None,
+    second: tuple[tuple[str, float, float, float], ...] | None,
+) -> bool:
+    if first is None or second is None:
+        return True  # A parser miss is never evidence that routes are clear.
+    return any(
+        a[0] == b[0]
+        and abs(a[1] - b[1]) < 4
+        and min(a[3], b[3]) - max(a[2], b[2]) > 4
+        for a in first
+        for b in second
+    )
+
+
+def _process_paths_share_physical_stroke(first: str, second: str) -> bool:
+    return _process_physical_spans_overlap(
+        _process_axis_aligned_stroke_spans(first),
+        _process_axis_aligned_stroke_spans(second),
+    )
+
+
+def _process_near_path_label_boxes(
+    path: str,
+    old_box: tuple[float, float, float, float],
+) -> tuple[tuple[float, float, float, float], ...]:
+    """Try unobtrusive label positions beside the label's *own* stroke."""
+    segments = _process_svg_stroke_segments(path)
+    if segments is None:
+        return ()
+    left, top, width, height = old_box
+    center_x, center_y = left + width / 2, top + height / 2
+    candidates: set[tuple[float, float, float, float]] = set()
+    for segment in segments:
+        if len(segment) == 2:
+            start, end = segment
+            count = max(1, min(16, int(math.dist(start, end) / 32)))
+            points = (
+                (start[0] + (end[0] - start[0]) * step / count,
+                 start[1] + (end[1] - start[1]) * step / count)
+                for step in range(count + 1)
+            )
+        else:
+            start, control_a, control_b, end = segment
+            points = (
+                (
+                    (1 - t)**3 * start[0] + 3 * (1 - t)**2 * t * control_a[0]
+                    + 3 * (1 - t) * t*t * control_b[0] + t**3 * end[0],
+                    (1 - t)**3 * start[1] + 3 * (1 - t)**2 * t * control_a[1]
+                    + 3 * (1 - t) * t*t * control_b[1] + t**3 * end[1],
+                )
+                for t in (step / 24 for step in range(25))
+            )
+        for px, py in points:
+            for clearance in (10, 30, 56, 84, 112, 144, 176, 208):
+                for dx, dy in (
+                    (width / 2 + clearance, 0),
+                    (-width / 2 - clearance, 0),
+                    (0, height / 2 + clearance),
+                    (0, -height / 2 - clearance),
+                ):
+                    candidates.add((
+                        round(px + dx - width / 2, 1),
+                        round(py + dy - height / 2, 1),
+                        width, height,
+                    ))
+    return tuple(sorted(
+        candidates,
+        key=lambda box: (
+            abs(box[0] + width / 2 - center_x)
+            + abs(box[1] + height / 2 - center_y),
+            box[0], box[1],
+        ),
+    ))
+
+
+def _process_label_near_own_path(
+    path: str,
+    box: tuple[float, float, float, float],
+    *,
+    max_distance: float = 320.0,  # one process card plus one row gap
+) -> bool:
+    """Keep repositioned label centres near a real route, including C curves."""
+    segments = _process_svg_stroke_segments(path)
+    if not segments:
+        return False
+    x, y = box[0] + box[2] / 2, box[1] + box[3] / 2
+    threshold_squared = max_distance * max_distance
+    for segment in segments:
+        if len(segment) == 2:
+            points = segment
+        else:
+            start, control_a, control_b, end = segment
+            sampled = [start]
+            for step in range(1, 33):
+                t = step / 32
+                u = 1 - t
+                sampled.append((
+                    u**3 * start[0] + 3 * u*u*t * control_a[0]
+                    + 3 * u*t*t * control_b[0] + t**3 * end[0],
+                    u**3 * start[1] + 3 * u*u*t * control_a[1]
+                    + 3 * u*t*t * control_b[1] + t**3 * end[1],
+                ))
+            points = sampled
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            dx, dy = x2 - x1, y2 - y1
+            length_squared = dx*dx + dy*dy
+            fraction = (
+                min(1.0, max(0.0, ((x - x1)*dx + (y - y1)*dy) / length_squared))
+                if length_squared else 0.0
+            )
+            if (x - x1 - fraction*dx)**2 + (y - y1 - fraction*dy)**2 <= threshold_squared:
+                return True
+    return False
 
 
 def _process_svg_path_hits_box(
@@ -4044,23 +4222,9 @@ def render_native_diagram(
                 {edge_id: corridor_center for _, edge_id, _ in candidates}
             )
             process_adjacent_route_y.update(candidate_route_y)
-            # A successful horizontal pack can place its final label across
-            # a fixed long peer's target stem. Flag only the actual stem
-            # intersections for the existing late label-only reposition.
-            for candidate_id, (left, top, box_width, box_height) in (
-                candidate_boxes.items()
-            ):
-                if any(
-                    left - 1.5 < x < left + box_width + 1.5
-                    and top - 1.5 < high
-                    and top + box_height + 1.5 > low
-                    for x, low, high in fixed_long_peer_stems({candidate_id})
-                ):
-                    singleton_fixed_long_label_ids.add(candidate_id)
             packed_corridor_label_boxes[corridor].extend(candidate_boxes.values())
             return True
 
-        singleton_fixed_long_label_ids: set[str] = set()
         for corridor, items in corridor_groups.items():
             upper_bottom, lower_top = corridor
             available_height = lower_top - upper_bottom
@@ -4130,21 +4294,6 @@ def render_native_diagram(
                         for left, top, box_width, box_height
                         in packed_corridor_label_boxes[corridor]
                     )
-                    # A natural singleton can cover a longer peer's fixed
-                    # source/target stem even without a second local label.
-                    # Reuse the existing movable pack before outer fallback.
-                    fixed_stem_hit = any(
-                        natural_x - label_width / 2 - 1.5 < x
-                        < natural_x + label_width / 2 + 1.5
-                        and center_y - label_height / 2 - 1.5 < high
-                        and center_y + label_height / 2 + 1.5 > low
-                        for x, low, high in fixed_long_peer_stems({edge_id})
-                    )
-                    if fixed_stem_hit:
-                        # Keep the established route. The later final-layout
-                        # pass can move only a label that a real peer stroke
-                        # still intersects, without repacking the whole edge.
-                        singleton_fixed_long_label_ids.add(edge_id)
                     # Later one-item clusters must also honor earlier packs.
                     # The header still reserves the singleton slot if clear.
                     if (
@@ -7070,6 +7219,7 @@ def render_native_diagram(
                 return spans
 
             candidate_ids = {str(edge["id"]) for edge in candidates}
+            pending_candidate_ids = set(candidate_ids)
             reserved_detour_rails = [
                 span
                 for other_id, (other_path, _) in layouts.items()
@@ -7085,6 +7235,7 @@ def render_native_diagram(
             # Every accepted new detour also reserves its physical rails and stems.
             for edge in candidates:
                 edge_id = str(edge["id"])
+                pending_candidate_ids.discard(edge_id)
                 source = positions[str(edge["from"])]
                 target = positions[str(edge["to"])]
                 original_box = layouts[edge_id][1]
@@ -7713,6 +7864,14 @@ def render_native_diagram(
                                 for peer_x, peer_low, peer_high
                                 in reserved_detour_verticals
                             )
+                            and not any(
+                                _process_paths_share_physical_stroke(
+                                    candidate_path, peer_path
+                                )
+                                for peer_id, (peer_path, _) in layouts.items()
+                                if peer_id != edge_id
+                                and peer_id not in pending_candidate_ids
+                            )
                         )
                         if clear_others:
                             blocked_id = blocked_labels[0]
@@ -7751,6 +7910,9 @@ def render_native_diagram(
                                             or new_top + bh > height - 8
                                             or _process_svg_path_hits_box(
                                                 candidate_path, new_box
+                                            )
+                                            or not _process_label_near_own_path(
+                                                peer_path, new_box
                                             )
                                             or any(
                                                 _process_svg_path_hits_box(
@@ -7804,6 +7966,15 @@ def render_native_diagram(
                                             or moved_box != new_box
                                             or new_path != candidate_path
                                             or new_label != original_box
+                                            or any(
+                                                _process_paths_share_physical_stroke(
+                                                    new_path, other_path
+                                                )
+                                                for other_id, (other_path, _)
+                                                in layouts.items()
+                                                if other_id != edge_id
+                                                and other_id not in pending_candidate_ids
+                                            )
                                         ):
                                             continue
                                         layouts[blocked_id] = moved_path, moved_box
@@ -7939,6 +8110,8 @@ def render_native_diagram(
                     8, -8, 16, -16, 24, -24, 32, -32,
                     40, -40, 48, -48, 56, -56, 64, -64,
                     80, -80, 96, -96, 128, -128, 160, -160,
+                    # Last-resort page-side candidates are accepted ONLY after
+                    # the own-route proximity and physical clearance guards.
                     width - 8 - box_width - left, 8 - left,
                 )
                 placements = (
@@ -7946,14 +8119,13 @@ def render_native_diagram(
                     *(
                         (dx, dy)
                         for dx in horizontal_offsets
-                        for dy in (
-                            (0, *vertical_offsets)
-                            if True
-                            else (0, 8, -8, 16, -16, 24, -24)
-                        )
+                        for dy in (0, *vertical_offsets)
                     ),
                 )
-                for dx, dy in placements:
+                for dx, dy in chain(placements, (
+                    (box[0] - left, box[1] - top)
+                    for box in _process_near_path_label_boxes(path, old_box)
+                )):
                     new_box = (left + dx, top + dy, box_width, box_height)
                     if (
                         new_box[0] < 8
@@ -7962,7 +8134,10 @@ def render_native_diagram(
                         or new_box[1] + box_height > height - 8
                     ):
                         continue
-                    if _process_svg_path_hits_box(path, new_box):
+                    if (
+                        _process_svg_path_hits_box(path, new_box)
+                        or not _process_label_near_own_path(path, new_box)
+                    ):
                         continue
                     if any(
                         _process_svg_path_hits_box(other_path, new_box)
@@ -8048,6 +8223,11 @@ def render_native_diagram(
                     (y for y in ys if low + 1.5 < y < high - 1.5),
                     key=lambda y: (abs(y - preferred), y),
                 )
+                peer_spans = {
+                    other_id: _process_axis_aligned_stroke_spans(peer_path)
+                    for other_id, (peer_path, _) in latest_layout.items()
+                    if other_id != edge_id
+                }
                 for lane_y in ordered_ys:
                     fragment = render_planned_edge(
                         edge,
@@ -8077,41 +8257,11 @@ def render_native_diagram(
                         }
                     ):
                         continue
-                    # Compare physical axis-aligned SVG stroke spans, not
-                    # merely perpendicular crossings between independent edges.
-                    def physical_spans(d):
-                        tokens=re.findall(r"[MLC]|-?\d+(?:\.\d+)?",d)
-                        cursor=None
-                        parts=[]
-                        index=0
-                        while index<len(tokens):
-                            op=tokens[index]
-                            index+=1
-                            count=6 if op=="C" else 2
-                            vals=tuple(float(v) for v in tokens[index:index+count])
-                            index+=count
-                            end=vals[-2:]
-                            if cursor is not None:
-                                segments=(
-                                    ((cursor,end),) if op=="L" else
-                                    ((cursor,vals[:2]),(vals[2:4],end))
-                                    if op=="C" else ()
-                                )
-                                for (x1,y1),(x2,y2) in segments:
-                                    if abs(x1-x2)<.01 and abs(y1-y2)>4:
-                                        parts.append(("v",round(x1,1),min(y1,y2),max(y1,y2)))
-                                    if abs(y1-y2)<.01 and abs(x1-x2)>4:
-                                        parts.append(("h",round(y1,1),min(x1,x2),max(x1,x2)))
-                            cursor=end
-                        return parts
-                    trial_spans=physical_spans(new_path)
+                    # A failed SVG parse must not silently grant clearance.
+                    trial_spans = _process_axis_aligned_stroke_spans(new_path)
                     if any(
-                        a[0]==b[0] and abs(a[1]-b[1])<4
-                        and min(a[3],b[3])-max(a[2],b[2])>4
-                        for peer_id,(peer_path,_) in latest_layout.items()
-                        if peer_id!=edge_id
-                        for a in trial_spans
-                        for b in physical_spans(peer_path)
+                        _process_physical_spans_overlap(trial_spans, spans)
+                        for spans in peer_spans.values()
                     ):
                         continue
                     planned_edge_lines[edge_id] = fragment
@@ -8240,7 +8390,11 @@ def render_native_diagram(
             ):
                 continue
             left, top, box_width, box_height = old_box
-            for dx, dy in placements:
+            route_placements = chain(placements, (
+                (box[0] - left, box[1] - top)
+                for box in _process_near_path_label_boxes(own_path, old_box)
+            ))
+            for dx, dy in route_placements:
                 trial = (left + dx, top + dy, box_width, box_height)
                 if (
                     trial[0] < 8 or trial[0] + box_width > width - 8
@@ -8264,9 +8418,12 @@ def render_native_diagram(
                     if peer_id != edge_id
                 ):
                     continue
-                if any(
-                    _process_svg_path_hits_box(path, trial)
-                    for path, _ in final_layout.values()
+                if (
+                    not _process_label_near_own_path(own_path, trial)
+                    or any(
+                        _process_svg_path_hits_box(path, trial)
+                        for path, _ in final_layout.values()
+                    )
                 ):
                     continue
                 # Preserve an already accepted same-row-gutter lane while

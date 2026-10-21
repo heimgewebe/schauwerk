@@ -12437,8 +12437,64 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in pr206_final["source_bindings"].items():
+    # The exact published predecessor must stay byte-identical; only this
+    # next create-only SHA-bound R3 technical successor binds current source.
+    assert hashlib.sha256(pr206_path.read_bytes()).hexdigest() == (
+        "3004126f5adf1edc4891ea1f6a062891833a3aae4b2e57063f9e575a07c6531a"
+    )
+    pr206_r3_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-pr206-r3-physical-semantic-clearance-successor-acceptance-receipt.json"
+    )
+    pr206_r3 = json.loads(pr206_r3_path.read_text(encoding="utf-8"))
+    assert pr206_r3["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-clearance-successor.v1"
+    )
+    assert pr206_r3["scope"] == "technical-candidate-only"
+    assert pr206_r3["based_on_published_pr_head"] == (
+        "deca5f9bb3e1421493b11415be3abeb6dbd57b4c"
+    )
+    assert pr206_r3["parent_evidence"] == {
+        "schema_version": pr206_final["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-final-label-clearance-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(pr206_path.read_bytes()).hexdigest(),
+        "evidence_digest": pr206_final["evidence_digest"],
+    }
+    assert pr206_r3["predecessor_source_bindings"] == (
+        pr206_final["source_bindings"]
+    )
+    assert pr206_r3["evidence_digest"] == digest_mapping(
+        pr206_r3, "evidence_digest"
+    )
+    assert set(pr206_r3["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in pr206_r3["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert pr206_r3["measured_2200_semantic_label_proximity"][
+        "candidate_newly_far_labels"
+    ] == 0
+    assert pr206_r3["measured_2200_semantic_label_proximity"][
+        "candidate_increased_canvas_width_cases"
+    ] == 0
+    assert all(
+        item["status"] == "succeeded"
+        and len(item["finalization_receipt_sha256"]) == 64
+        for item in pr206_r3["test_receipts"].values()
+    )
+    assert pr206_r3["local_checks"]["full_native_and_editor_suite_pass"] is True
+    assert pr206_r3["local_checks"]["chromium_smoke_30_pass"] is True
+    for gate in (
+        "full_make_validate_pass", "independent_exact_head_review_pass",
+        "visual_acceptance_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert pr206_r3["local_checks"][gate] is False
     assert [f["comment_id"] for f in pr206_final["codex_review_findings"]] == [
         4336118369, 4336118379,
     ]

@@ -8948,9 +8948,48 @@ def test_pr206_main_diff_saturated_valid_process_diagram_renders(
     model = _p2_feedback_geometry_model((6, 4, 5, 3))
     model["edges"] = copy.deepcopy(list(reversed(edges)) if reverse_order else edges)
     root = _parse(render_native_diagram(model))
+    from schauwerk.visual import native_diagram as native
+
     paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    cards = _node_boxes(root)
     assert len(paths) == len(edges)
     assert len(labels) == len(edges)
+    for edge in edges:
+        edge_id = edge["id"]
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(paths[edge_id], box)
+                assert _p2_cubic_path_clears_box(paths[edge_id], box)
+        for node_id, box in cards.items():
+            if node_id not in {edge["from"], edge["to"]}:
+                assert _p2_linear_path_clears_box(paths[edge_id], box)
+                assert _p2_cubic_path_clears_box(paths[edge_id], box)
+    # These source seeds contain historic visible peer-stroke overlaps.
+    # Detect *additional* pairs instead of silently reporting the models
+    # physically clear; eliminating old pairs is a separate acceptance gate.
+    published_pairs = {
+        8: {("e01", "e02"), ("e02", "e03"), ("e02", "e07"),
+            ("e03", "e07"), ("e06", "e07")},
+        7: {("e01", "e05")},
+        10: {("e01", "e07"), ("e01", "e08"), ("e01", "e09"),
+             ("e02", "e04"), ("e02", "e07"), ("e03", "e08"),
+             ("e07", "e09"), ("e08", "e09")},
+    }
+    physical_pairs = {
+        (edge_id, other_id)
+        for edge_id, path in paths.items()
+        for other_id, other_path in paths.items()
+        if edge_id < other_id
+        and native._process_paths_share_physical_stroke(path, other_path)
+    }
+    assert physical_pairs <= published_pairs[len(edges)]
+    # Existing far labels are recorded rather than passed as visual acceptance.
+    published_far_label_count = {8: 3, 7: 3, 10: 3}
+    far_labels = {
+        edge_id for edge_id, path in paths.items()
+        if not native._process_label_near_own_path(path, labels[edge_id])
+    }
+    assert len(far_labels) <= published_far_label_count[len(edges)]
     model["edges"] = list(reversed(model["edges"]))
     other = _parse(render_native_diagram(model))
     assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
@@ -9035,3 +9074,171 @@ def test_pr206_main_diff_final_label_clearance(
         _edge_label_boxes(reordered),
         reordered.attrib["viewBox"],
     )
+
+# Exact-path R3 regressions: a physically free label must stay associated
+# with its own route, and a last-resort detour must not share peer strokes.
+def test_pr206_r3_collinear_physical_strokes_and_svg_fail_closed() -> None:
+    from schauwerk.visual import native_diagram as native
+
+    near_card = "M 200 400 L 200 330 L 360 330 L 360 400"
+    same_top_port = "M 200 400 L 200 350 L 220 350"
+    assert native._process_paths_share_physical_stroke(near_card, same_top_port)
+    assert native._process_paths_share_physical_stroke(
+        near_card, "M 400 330 L 210 330"
+    )
+    assert not native._process_paths_share_physical_stroke(
+        near_card, "M 390 400 L 390 330 L 440 330"
+    )
+    assert native._process_paths_share_physical_stroke(near_card, "M 200 400 Q 280 300 360 400")
+    assert native._process_paths_share_physical_stroke(near_card, "M 200 400 L 220")
+    assert not native._process_paths_share_physical_stroke(
+        "M 200 400 L 220 350", "M 400 400 L 420 350"
+    )
+
+
+def test_pr206_r3_semantic_label_proximity_to_own_path() -> None:
+    from schauwerk.visual import native_diagram as native
+
+    path = "M 200 400 L 200 330 L 360 330 L 360 400"
+    assert native._process_label_near_own_path(path, (250, 267, 60, 30))
+    assert not native._process_label_near_own_path(path, (930, 267, 60, 30))
+    # The actual cubic curve, not merely its enormous control hull,
+    # is the semantic reference for a displaced label.
+    cubic = "M 0 0 C 0 240, 320 240, 320 0"
+    assert native._process_label_near_own_path(cubic, (125, 158, 70, 28))
+    assert not native._process_label_near_own_path(cubic, (125, 550, 70, 28))
+    assert not native._process_label_near_own_path("M 200 400 H 500", (250, 267, 60, 30))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    ("sizes", "relations", "require_no_stroke_pairs"),
+    [
+        (
+            (2, 2, 3),
+            [
+                ("e0", "n3", "n6", "feedback", "Approve"),
+                ("e1", "n0", "n3", "feedback", "a somewhat longer relation label"),
+                ("e2", "n1", "n5", "flow", "a somewhat longer relation label"),
+                ("e3", "n5", "n3", "flow", "a somewhat longer relation label"),
+                ("e4", "n2", "n6", "flow", "link"),
+            ],
+            False,
+        ),
+        (
+            (4, 2, 4, 3),
+            [
+                ("e0", "n7", "n5", "flow", "a somewhat longer relation label"),
+                ("e1", "n11", "n3", "flow", "link"),
+                ("e2", "n9", "n7", "flow", "link"),
+                ("e3", "n11", "n5", "flow", "Approve"),
+                ("e4", "n5", "n5", "flow", "Approve"),
+            ],
+            True,
+        ),
+        (
+            (2, 5, 5),
+            [
+                ("e0", "n0", "n7", "risk", "Approve"),
+                ("e1", "n7", "n0", "risk", "link"),
+                ("e2", "n8", "n11", "feedback", "a somewhat longer relation label"),
+                ("e3", "n4", "n7", "feedback", "link"),
+                ("e4", "n4", "n6", "flow", "Approve"),
+                ("e5", "n7", "n5", "flow", "x"),
+                ("e6", "n11", "n10", "flow", "a somewhat longer relation label"),
+                ("e7", "n5", "n10", "risk", "long label"),
+                ("e8", "n11", "n6", "risk", "link"),
+                ("e9", "n6", "n8", "flow", "long label"),
+            ],
+            False,
+        ),
+    ],
+    ids=["r3-seed-440", "r3-seed-1247", "r3-saturation-308"],
+)
+def test_pr206_r3_real_label_proximity_and_foreign_physical_clearance(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str, str]],
+    require_no_stroke_pairs: bool,
+    reverse_order: bool,
+) -> None:
+    """Real seeded label P2 examples: cards and unrelated label paths are clear."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": eid, "from": source, "to": target, "kind": kind, "label": label}
+        for eid, source, target, kind, label in relations
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    for eid, path in paths.items():
+        for lid, box in labels.items():
+            if eid != lid:
+                assert _p2_linear_path_clears_box(path, box), (eid, lid)
+                assert _p2_cubic_path_clears_box(path, box), (eid, lid)
+        edge = next(item for item in edges if item["id"] == eid)
+        for nid, box in cards.items():
+            if nid not in {edge["from"], edge["to"]}:
+                assert _p2_linear_path_clears_box(path, box), (eid, nid)
+                assert _p2_cubic_path_clears_box(path, box), (eid, nid)
+    if require_no_stroke_pairs:
+        assert not any(
+            native._process_paths_share_physical_stroke(path, other_path)
+            for eid, path in paths.items()
+            for other_id, other_path in paths.items()
+            if eid < other_id
+        )
+        assert all(
+            native._process_label_near_own_path(path, labels[eid])
+            for eid, path in paths.items()
+        )
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels, root.attrib["viewBox"]) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered),
+        reordered.attrib["viewBox"],
+    )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_r3_ungrouped_process_keeps_existing_feedback_contract(
+    reverse_order: bool,
+) -> None:
+    """The late grouped-only label pass must not alter ungrouped routes."""
+    model = _minimal_process_model(15)
+    edges = [
+        {"id": "short", "from": "n0", "to": "n8",
+         "label": "x", "kind": "flow"},
+        {"id": "long", "from": "n7", "to": "n9",
+         "label": "a somewhat longer relation label", "kind": "risk"},
+        {"id": "feedback", "from": "n14", "to": "n1",
+         "label": "Rueckmeldung", "kind": "feedback"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    assert not model["groups"]
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == len(labels) == 3
+    for key, box in labels.items():
+        if key != "feedback":
+            assert _p2_linear_path_clears_box(paths["feedback"], box)
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+def test_pr206_r3_physical_path_parser_accepts_exponent_and_rejects_nonfinite() -> None:
+    from schauwerk.visual import native_diagram as native
+
+    assert native._process_axis_aligned_stroke_spans(
+        "M 2e2 4e2 L 2e2 3e2"
+    ) == (("v", 200.0, 300.0, 400.0),)
+    assert native._process_paths_share_physical_stroke(
+        "M 2e2 4e2 L 2e2 3e2", "M 200 320 L 200 380"
+    )
+    assert native._process_axis_aligned_stroke_spans(
+        "M 0 0 L NaN 10"
+    ) is None

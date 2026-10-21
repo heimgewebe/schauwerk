@@ -1,0 +1,150 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-clearance-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "deca5f9bb3e1421493b11415be3abeb6dbd57b4c",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-final-label-clearance-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-final-label-clearance-successor-acceptance-receipt.json",
+    "file_sha256": "3004126f5adf1edc4891ea1f6a062891833a3aae4b2e57063f9e575a07c6531a",
+    "evidence_digest": "0634569427f03902ec55a6f833f464e4dc206adc681e43dc13e112c0cf1068e4"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c208f8777a820599aa173d65633d5de2dc6d18c08d4bbea12dc3c1756d103eb5",
+    "tests/visual/test_native_diagram.py": "4aad25de508b44368a916d0997a6d807ee5efc8f5d77cd54ece7764dc04f7430"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "1241f0d05c8954e99563833dd3644682612b4437ac76cd4a6a5de61ccfb9ac44",
+    "tests/visual/test_native_diagram.py": "cea7ec328d9b3987858552e32f8180dbc780965d23935172d58cc05f74b18f72"
+  },
+  "review_findings": [
+    {
+      "severity": "P2",
+      "line": 7690,
+      "disposition": "physical-axis-span-repro-and-guard-RED/GREEN-tested-exact-source; independent-successor-review-pending",
+      "summary": "Near-card fallback could overlap peer physical strokes"
+    },
+    {
+      "severity": "P2",
+      "line": 7942,
+      "disposition": "label-distance-proximity-and-bounded-local-placements-tested-exact-source; independent-successor-review-pending",
+      "summary": "Repositioned labels could be physically clear but detached from their own routes"
+    },
+    {
+      "severity": "P3",
+      "line": 8081,
+      "disposition": "strict-module-parser-and-per-peer-span-cache-tested",
+      "summary": "Non-robust repeated physical-span parsing"
+    },
+    {
+      "severity": "P3",
+      "line": 7951,
+      "disposition": "dead-condition-and-unused-fixed-label-markers-removed",
+      "summary": "Dead branch and stale target-stem flags"
+    },
+    {
+      "severity": "P3",
+      "line": 7905,
+      "disposition": "ungrouped-process-negative-invariants-tested",
+      "summary": "Potential ungrouped process label pass regression"
+    },
+    {
+      "severity": "P3",
+      "line": 8941,
+      "disposition": "saturated-fixture-physical-geometry-and-baseline-physical-pair-assertions-added",
+      "summary": "Saturated regression tests missed physical overlap properties"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_r3_collinear_physical_strokes_and_svg_fail_closed",
+    "test_pr206_r3_semantic_label_proximity_to_own_path",
+    "test_pr206_r3_real_label_proximity_and_foreign_physical_clearance",
+    "test_pr206_r3_ungrouped_process_keeps_existing_feedback_contract",
+    "test_pr206_r3_physical_path_parser_accepts_exponent_and_rejects_nonfinite",
+    "test_pr206_main_diff_saturated_valid_process_diagram_renders",
+    "test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor"
+  ],
+  "test_receipts": {
+    "historical_actual_main_12k": {
+      "unit": "grabowski-job-57ba6c97dc2a",
+      "status": "succeeded",
+      "argv_sha256": "481409f18155b8501a2c554d7c1e87e4b74e11f97a40db3301546cad517d514b",
+      "finalization_receipt_sha256": "0cce3d3f1bd1f5a20f548fbb066f5e5fed4721d7ee9cff7a9e07b1cd559a718d",
+      "models_or_cases": 12000
+    },
+    "geometry_actual_main_20k": {
+      "unit": "grabowski-job-3a4518bcd3da",
+      "status": "succeeded",
+      "argv_sha256": "f09399f6dde99ca67824f7c446b0d393e99aa35bf157e5313f3b5ea526e13124",
+      "finalization_receipt_sha256": "1153fe657fc598dc7b4cdae414984d4384be19c33ca74322f67eba571cda5317",
+      "models_or_cases": 20000
+    },
+    "physical_strokes_2600": {
+      "unit": "grabowski-job-a64de9a20588",
+      "status": "succeeded",
+      "argv_sha256": "2b443c7ba0b5c3f31ec46ee8d1bd1fc1ddf0ec5fe415cff07889d5733e93cd41",
+      "finalization_receipt_sha256": "0bb2e8f09af0badc4ec9ca6db7ccebc3e76688c34ab7cef7ee35bee3a339f262",
+      "models_or_cases": 2600
+    },
+    "saturated_groups_2200": {
+      "unit": "grabowski-job-5b5e5915c01c",
+      "status": "succeeded",
+      "argv_sha256": "bc21e520809ecb83e8b20e3ed488857ba59c8f3cee0d0906192b72a3c9ff71d7",
+      "finalization_receipt_sha256": "7e8703c2788aaca52eed4e03768d3d0a60f1c103cf93f197c730999f8bae48a6",
+      "models_or_cases": 2200
+    },
+    "semantic_label_proximity_2200": {
+      "unit": "grabowski-job-5fceacd0f1aa",
+      "status": "succeeded",
+      "argv_sha256": "066451d6f6ab466287556bb9c894cdedd0fc0a8438b96015226b4461ac09a839",
+      "finalization_receipt_sha256": "b5e436257c4eb9d9391c97f5c20266d64d8b0679f67394dd1de6058320acf772",
+      "models_or_cases": 2200
+    },
+    "native_renderer_and_editor_suite": {
+      "unit": "grabowski-job-d532f54370b8",
+      "status": "succeeded",
+      "argv_sha256": "fe065ba6b2fed010bf0899a76d378014a000ff2f549d2df9ead414c0d2302c29",
+      "finalization_receipt_sha256": "112fd5c316ad2b82991c0c6e91740d2c0b76bd229a46b710865ce66da1c5b742"
+    },
+    "chrome_browser_smoke": {
+      "unit": "grabowski-job-9f8a0c642165",
+      "status": "succeeded",
+      "argv_sha256": "ad2644a3f90212db7cedd45196ccacc9b084faa9f19db99ce42d1acfddabd414",
+      "finalization_receipt_sha256": "d2273a1078a223bd58ccf685d943b45b4b2b20f3148112cac041ffcd14157d18",
+      "models_or_cases": 30
+    },
+    "ruff_check": {
+      "unit": "grabowski-job-a5e78cc5041a",
+      "status": "succeeded",
+      "argv_sha256": "1f2cb303ff2d6a3886e19f01079da6704522ea41c86b302f9c24652a8b2e4b65",
+      "finalization_receipt_sha256": "03b107fbc736620644c357fbcd120bc3dc380e0e6a9634284883b11f3966f924"
+    }
+  },
+  "measured_2200_semantic_label_proximity": {
+    "candidate_newly_far_labels": 0,
+    "candidate_became_near_labels": 121,
+    "candidate_increased_canvas_width_cases": 0,
+    "previous_far_label_counts_nonzero": true
+  },
+  "local_checks": {
+    "historical_parent_byte_unchanged": true,
+    "new_r3_guards_and_regression_tests_pass": true,
+    "deterministic_main_vs_candidate_12k_pass": true,
+    "deterministic_geometry_20k_pass": true,
+    "physical_stroke_2600_pass": true,
+    "saturated_group_2200_pass": true,
+    "semantic_proximity_differential_2200_pass": true,
+    "full_native_and_editor_suite_pass": true,
+    "chromium_smoke_30_pass": true,
+    "ruff_check_pass": true,
+    "full_make_validate_pass": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical local worktree candidate on SHA-pinned source and visual tests; 12k Main comparator had no new candidate aborts (23 historical bf7-only errors), 20k no new card/label hits or aborts, 2600 no new physical stroke/label hits, 2200 saturated no new hits, 2200 semantic proximity improved 121 former far labels and introduced zero far labels or width expansion. Existing inherited foreign stroke pairs and originally far labels are explicitly not claimed resolved globally. This document does not attest to an independent review, visual acceptance, Captain authority, OCI or Commonthing production.",
+  "evidence_digest": "4d470df0fd217e6bd69e0c12b2a79c86fd66285504ed9e295aed40d47bdfd52f"
+}
