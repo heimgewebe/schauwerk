@@ -1,0 +1,146 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-reverse-anchored-cubic-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "a9d8a2e26d7d99fef6bec3e04d4490021c852a71",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-four-group-sideport-anchored-selfloop-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-four-group-sideport-anchored-selfloop-p2-successor-acceptance-receipt.json",
+    "file_sha256": "c492c61759bdba99332d0d62156cd4f0b60ef80260ffa97e7d450901b4d75b1d",
+    "evidence_digest": "9cdf992729d4e4429d557a8a037599df6540ff82b184dcd31710141ac68fcfc4"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "ad3a5638d4e9cfb6e0c2f021d18164755c93814928f61c2a2dfdc86a74c42e03",
+    "tests/visual/test_native_diagram.py": "250f4cf63bd7aca97032ceb673641b87dcf076371d7e290e9416f8d1e16ef112"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "94bf17c6251582b7f0cd63a103dc4d330e30f0b7876b1f1380bb24cc114f3e9c",
+    "tests/visual/test_native_diagram.py": "71c7b8d2dd23b1ea218f6a33aa4714a03964a14f512f8e6023d8560d987668da"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_findings": [
+    {
+      "comment_id": 4333332488,
+      "severity": "P2",
+      "reviewed_head": "a9d8a2e26d7d99fef6bec3e04d4490021c852a71",
+      "disposition": "reproduced-RED-remediated-local-technical-candidate",
+      "summary": "reverse adjacent cubic crosses anchored one-line self-loop label"
+    }
+  ],
+  "local_differential_findings": [
+    {
+      "regression": "short-and-medium-selfloop-label-height-mismatch",
+      "before": {
+        "new_label_hits_vs_main": 20,
+        "models_compared": 50
+      },
+      "after": {
+        "new_label_hits_vs_main": 0,
+        "models_compared": 50
+      },
+      "fix": "reserve true rendered self-loop text y; avoid false local cubic clearance"
+    },
+    {
+      "regression": "intermediate-anchor-detour-overlaps-unrelated-fixed-long-stem",
+      "before": {
+        "new_physical_overlap_pairs": 1,
+        "models_attempted": 2600
+      },
+      "after": {
+        "new_physical_overlap_pairs": 0,
+        "models_attempted": 2600
+      },
+      "fix": "only the anchored short-label collision checks fixed long-stems; select a clear existing in-card target port when center occupied"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_reverse_adjacent_cubic_clears_anchored_loop_label",
+    "test_pr206_adjacent_cubic_repack_clears_one_line_selfloop_label",
+    "test_pr206_anchored_cubic_reroute_preserves_long_vertical_endpoint_stem"
+  ],
+  "test_receipts": {
+    "reverse_cubic_red": {
+      "unit": "grabowski-job-bcb65583f684",
+      "failed_variants": 2
+    },
+    "label_matrix_red": {
+      "unit": "grabowski-job-b57d92a5fcb0",
+      "failed_variants": 8
+    },
+    "physical_stem_red": {
+      "unit": "grabowski-job-b97a0ca2b3b6",
+      "failed_variants": 2
+    },
+    "targeted_green": {
+      "unit": "grabowski-job-0f253e9134e1",
+      "passed_variants": 22,
+      "exit_code": 0
+    },
+    "main_parent_label_matrix": {
+      "unit": "grabowski-job-bc32ab334ae7",
+      "models_compared": 50,
+      "new_hits_vs_main": 0,
+      "fixed_hits_vs_published_parent": 35,
+      "order_mismatches": 0,
+      "exit_code": 0
+    },
+    "codex_p2_differential": {
+      "unit": "grabowski-job-b636a25595cd",
+      "models_attempted": 12000,
+      "baseline_render_exceptions": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "generic_geometry_differential": {
+      "unit": "grabowski-job-d04d3d39b461",
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_differential": {
+      "unit": "grabowski-job-6d59aae4ca0d",
+      "models_attempted": 2600,
+      "baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    },
+    "saturated_groups_differential": {
+      "unit": "grabowski-job-b8be5cef799d",
+      "models_attempted": 2200,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "unit": "grabowski-job-79f3ecf524da",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "unit": "grabowski-job-97097a56b6ad",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff": {
+      "unit": "grabowski-job-206eb9ee75f6",
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "red_green_pass": true,
+    "differential_replay_pass": true,
+    "native_renderer_suite_pass": true,
+    "chromium_browser_smoke_pass": true,
+    "ruff_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Immutable technical candidate snapshot before final make validate and exact-head reviews; the separate publication fixture is validated later without rewriting this receipt. No aesthetic, Captain, OCI, Commonthing or productive serving acceptance is inferred. All ancestor evidence remains byte-identical.",
+  "evidence_digest": "cf2b4674c701be5a52d3a7752da78be3763e5ec821fbd3dc61e41a6d52fa052b"
+}

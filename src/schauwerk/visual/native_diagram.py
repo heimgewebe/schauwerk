@@ -3470,6 +3470,7 @@ def render_native_diagram(
     process_adjacent_label_x: dict[str, float] = {}
     process_adjacent_label_y: dict[str, float] = {}
     process_adjacent_route_y: dict[str, float | tuple[float, float]] = {}
+    process_adjacent_target_port_x: dict[str, float] = {}
     occupied_process_adjacent_corridors: set[tuple[int, int]] = set()
     process_outer_label_right = max(
         (right for _, _, right, _ in packed_process_label_bounds),
@@ -3583,6 +3584,7 @@ def render_native_diagram(
             def direct_process_cubic(
                 edge_id: str,
                 route_y: float | None = None,
+                target_port_x: float | None = None,
             ) -> tuple[
                 tuple[float, float],
                 tuple[float, float],
@@ -3604,7 +3606,11 @@ def render_native_diagram(
 
                 if source[1] != target[1]:
                     start_x = source[0] + _NODE_WIDTH / 2
-                    end_x = target[0] + _NODE_WIDTH / 2
+                    end_x = (
+                        target_port_x
+                        if target_port_x is not None and source[1] < target[1]
+                        else target[0] + _NODE_WIDTH / 2
+                    )
                     if source[1] < target[1]:
                         start_y = source[1] + _NODE_HEIGHT
                         end_y = target[1]
@@ -3805,6 +3811,38 @@ def render_native_diagram(
                     for x, edge_id, width in candidates
                 ]
 
+            # Long same-column peers keep physical, centered endpoint stems.
+            # A label-aware cubic detour must not repaint those fixed strokes;
+            # exhausting the local gap falls back to the existing outer gutter.
+            fixed_long_stems: list[tuple[float, float, float]] = []
+            for other in model["edges"]:
+                if (
+                    str(other["kind"]) == "feedback"
+                    or other["from"] == other["to"]
+                    or str(other["id"]) in candidate_ids
+                ):
+                    continue
+                other_source = positions[str(other["from"])]
+                other_target = positions[str(other["to"])]
+                if (
+                    other_source[0] != other_target[0]
+                    or abs(other_source[1] - other_target[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                ):
+                    continue
+                descending = other_source[1] < other_target[1]
+                start_y = other_source[1] + _NODE_HEIGHT if descending else other_source[1]
+                end_y = other_target[1] if descending else other_target[1] + _NODE_HEIGHT
+                direction = 1 if descending else -1
+                for a, b in (
+                    (start_y, start_y + direction * process_row_gap / 2),
+                    (end_y - direction * process_row_gap / 2, end_y),
+                ):
+                    fixed_long_stems.append((
+                        other_source[0] + _NODE_WIDTH / 2,
+                        min(a, b), max(a, b),
+                    ))
+
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
                 edge = edges_by_id[edge_id]
@@ -3822,6 +3860,7 @@ def render_native_diagram(
                 # Other anchored branch labels follow their own established
                 # corridor planner and must not demote locally safe routes.
                 endpoint_ids = {str(edge["from"]), str(edge["to"])}
+                fixed_selfloop_hit = False
                 for x, anchor_id, box_width, box_height, fixed in (
                     corridor_groups[corridor]
                 ):
@@ -3830,19 +3869,25 @@ def render_native_diagram(
                     anchor_edge = edges_by_id[anchor_id]
                     if anchor_edge["from"] != anchor_edge["to"]:
                         continue
-                    # Self-loop labels sit to the right of their source.
-                    # Only forward cubics cross that anchored label band;
-                    # reverse peers keep their established local planner.
-                    if source[0] >= target[0] or box_height > 29:
+                    # Either forward or reverse cubics can cross this
+                    # single-line anchored self-loop label band. Multiline
+                    # fixed labels retain their separate physical planner.
+                    if box_height > 29:
                         continue
                     if str(anchor_edge["from"]) not in endpoint_ids:
                         continue
+                    # The fixed one-line self-loop is rendered at
+                    # row_top - 18, not at the corridor midpoint. Using
+                    # the midpoint falsely accepts lower cubics through
+                    # its actual text; keep the existing lane envelope.
+                    loop_label_y = positions[str(anchor_edge["from"])][1] - 18
                     box = (
                         x - box_width / 2,
-                        corridor_center - box_height / 2,
+                        loop_label_y - box_height / 2,
                         box_width, float(box_height),
                     )
                     if _cubic_hull_intersects_box(points, box):
+                        fixed_selfloop_hit = True
                         peer_boxes.append(box)
                 if source[1] == target[1]:
                     endpoints = {str(edge["from"]), str(edge["to"])}
@@ -3885,20 +3930,54 @@ def render_native_diagram(
                 route_candidates.sort(
                     key=lambda value: (abs(value - default_route_y), value)
                 )
-                safe_route_y = next(
-                    (
-                        value
-                        for value in route_candidates
-                        if not any(
-                            _cubic_hull_intersects_box(
-                                direct_process_cubic(edge_id, value),
-                                peer_box,
-                            )
-                            for peer_box in peer_boxes
+                def safe_local_cubic(
+                    route_y: float, target_port_x: float | None = None
+                ) -> bool:
+                    trial = direct_process_cubic(
+                        edge_id, route_y, target_port_x=target_port_x
+                    )
+                    if any(
+                        _cubic_hull_intersects_box(trial, peer_box)
+                        for peer_box in peer_boxes
+                    ):
+                        return False
+                    return not fixed_selfloop_hit or not any(
+                        abs(endpoint[0] - fixed_x) < 4
+                        and min(max(endpoint[1], control[1]), fixed_high)
+                        - max(min(endpoint[1], control[1]), fixed_low) > 4
+                        for endpoint, control in (
+                            (trial[0], trial[1]), (trial[3], trial[2])
                         )
-                    ),
+                        for fixed_x, fixed_low, fixed_high in fixed_long_stems
+                    )
+
+                safe_route_y = next(
+                    (value for value in route_candidates if safe_local_cubic(value)),
                     None,
                 )
+                if (
+                    safe_route_y is None
+                    and fixed_selfloop_hit
+                    and fixed_long_stems
+                    and source[1] < target[1]
+                ):
+                    # Keep the same row-gap cubic. The existing target-card
+                    # port override offers real in-card entrances when its
+                    # center is occupied by a fixed long peer's endpoint stem.
+                    for target_port_x in (
+                        target[0] + 16.0,
+                        target[0] + _NODE_WIDTH - 16.0,
+                    ):
+                        safe_route_y = next(
+                            (
+                                value for value in route_candidates
+                                if safe_local_cubic(value, target_port_x)
+                            ),
+                            None,
+                        )
+                        if safe_route_y is not None:
+                            process_adjacent_target_port_x[edge_id] = target_port_x
+                            break
                 if safe_route_y is None:
                     return False
                 candidate_route_y[edge_id] = safe_route_y
@@ -6767,7 +6846,9 @@ def render_native_diagram(
                 process_same_row_source_port_x=card_source_port_x,
                 process_same_row_target_port_x=(
                     card_target_port_x if card_target_port_x is not None
-                    else shared_target_port_x.get(str(edge["id"]))
+                    else process_adjacent_target_port_x.get(
+                        str(edge["id"]), shared_target_port_x.get(str(edge["id"]))
+                    )
                 ),
                 row_corridor_label_x=row_corridor_label_x.get(str(edge["id"])),
                 narrative_parallel_gutter_x=narrative_parallel_gutter_x.get(str(edge["id"])),

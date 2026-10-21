@@ -8630,3 +8630,107 @@ def test_pr206_codex_adjacent_cubic_clears_anchored_selfloop_label(
     model["edges"] = list(reversed(model["edges"]))
     other = _parse(render_native_diagram(model))
     assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_reverse_adjacent_cubic_clears_anchored_loop_label(
+    reverse_order: bool,
+) -> None:
+    """A reverse peer cubic must clear a fixed one-line shared-target loop."""
+    model = _p2_feedback_geometry_model((3, 2))
+    edges = [
+        {"id": "e0", "from": "n3", "to": "n1",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n1", "to": "n1",
+         "kind": "risk", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == len(edges)
+    assert _p2_cubic_path_clears_box(paths["e0"], labels["e1"])
+    assert _p2_linear_path_clears_box(paths["e0"], labels["e1"])
+    model["edges"] = list(reversed(model["edges"]))
+    inverted = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(inverted), _edge_label_boxes(inverted)
+    )
+
+
+@pytest.mark.parametrize("reverse_flow", [False, True])
+@pytest.mark.parametrize("loop_label", ["x", "link", "Approve", "long label"])
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_adjacent_cubic_repack_clears_one_line_selfloop_label(
+    reverse_flow: bool, loop_label: str, reverse_order: bool
+) -> None:
+    """Rerouting around a flow label may not cut a fixed endpoint label."""
+    model = _p2_feedback_geometry_model((3, 2))
+    edges = [
+        {"id": "e0", "from": "n3" if reverse_flow else "n1",
+         "to": "n1" if reverse_flow else "n3",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n1", "to": "n1",
+         "kind": "risk", "label": loop_label},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == 2
+    assert _p2_cubic_path_clears_box(paths["e0"], labels["e1"])
+    assert _p2_linear_path_clears_box(paths["e0"], labels["e1"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_anchored_cubic_reroute_preserves_long_vertical_endpoint_stem(
+    reverse_order: bool,
+) -> None:
+    """A loop-label detour must not repaint a long peer's fixed port stem."""
+    model = _p2_feedback_geometry_model((6, 3, 2, 2, 2))
+    records = [
+        ("n9", "n1", "flow", "link"),
+        ("n10", "n1", "flow", "link"),
+        ("n12", "n1", "risk", "link"),
+        ("n8", "n1", "flow", "Approve"),
+        ("n1", "n1", "flow", "link"),
+        ("n3", "n0", "risk", "a somewhat longer relation label"),
+        ("n8", "n0", "feedback", "Approve"),
+        ("n6", "n1", "risk", "a somewhat longer relation label"),
+    ]
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(records)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    paths = _edge_paths(_parse(render_native_diagram(model)))
+
+    def vertical_stems(path: str) -> list[tuple[float, float, float]]:
+        segments = _p2_orthogonal_segments(path)
+        # Cubic endpoint controls are physically straight when their x
+        # coordinate equals the endpoint's x. M/L-only tests miss them.
+        for match in re.finditer(
+            r"(?:M|L) ([-0-9.]+) ([-0-9.]+) "
+            r"C ([-0-9.]+) ([-0-9.]+), ([-0-9.]+) ([-0-9.]+), "
+            r"([-0-9.]+) ([-0-9.]+)", path
+        ):
+            v = tuple(float(s) for s in match.groups())
+            points = [(v[i], v[i + 1]) for i in (0, 2, 4, 6)]
+            segments.extend(((points[0], points[1]), (points[2], points[3])))
+        return [
+            (a[0], min(a[1], b[1]), max(a[1], b[1]))
+            for a, b in segments
+            if abs(a[0] - b[0]) < 0.01 and abs(a[1] - b[1]) > 4
+        ]
+
+    long_stems = vertical_stems(paths["e5"])
+    local_stems = vertical_stems(paths["e7"])
+    assert long_stems and local_stems
+    for first_x, first_low, first_high in long_stems:
+        for peer_x, peer_low, peer_high in local_stems:
+            overlap = min(first_high, peer_high) - max(first_low, peer_low)
+            assert abs(first_x - peer_x) >= 4 or overlap <= 4, (
+                "new semantic stem overlap", paths["e5"], paths["e7"]
+            )

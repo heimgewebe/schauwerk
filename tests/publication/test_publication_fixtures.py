@@ -12270,8 +12270,65 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in final_sideport["source_bindings"].items():
+    # Historical four-group bytes remain immutable. Only the new terminal
+    # reverse-cubic successor binds the current candidate Source/Test bytes.
+    reverse_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-reverse-anchored-cubic-p2-successor-acceptance-receipt.json"
+    )
+    reverse = json.loads(reverse_path.read_text(encoding="utf-8"))
+    assert reverse["schema_version"] == (
+        "schauwerk-schaubild-feedback-reverse-anchored-cubic-p2-successor.v1"
+    )
+    assert reverse["scope"] == "technical-candidate-only"
+    assert reverse["based_on_pr_head"] == (
+        "a9d8a2e26d7d99fef6bec3e04d4490021c852a71"
+    )
+    assert reverse["parent_evidence"] == {
+        "schema_version": final_sideport["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-four-group-sideport-anchored-selfloop-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(final_sideport_path.read_bytes()).hexdigest(),
+        "evidence_digest": final_sideport["evidence_digest"],
+    }
+    assert reverse["predecessor_source_bindings"] == final_sideport["source_bindings"]
+    assert reverse["evidence_digest"] == digest_mapping(reverse, "evidence_digest")
+    assert set(reverse["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in reverse["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["comment_id"] for f in reverse["codex_review_findings"]] == [
+        4333332488,
+    ]
+    assert reverse["regression_tests"] == [
+        "test_pr206_codex_reverse_adjacent_cubic_clears_anchored_loop_label",
+        "test_pr206_adjacent_cubic_repack_clears_one_line_selfloop_label",
+        "test_pr206_anchored_cubic_reroute_preserves_long_vertical_endpoint_stem",
+    ]
+    current_checks = reverse["test_receipts"]
+    assert current_checks["label_matrix_red"]["failed_variants"] == 8
+    assert current_checks["physical_stem_red"]["failed_variants"] == 2
+    assert current_checks["targeted_green"]["passed_variants"] == 22
+    assert current_checks["main_parent_label_matrix"]["new_hits_vs_main"] == 0
+    assert current_checks["main_parent_label_matrix"]["order_mismatches"] == 0
+    assert current_checks["codex_p2_differential"]["new_render_exceptions"] == 0
+    assert current_checks["generic_geometry_differential"]["models_compared"] == 20000
+    assert current_checks["generic_geometry_differential"]["new_card_or_label_hits"] == 0
+    assert current_checks["physical_stroke_differential"]["new_physical_overlap_pairs"] == 0
+    assert current_checks["physical_stroke_differential"]["new_label_hits"] == 0
+    assert current_checks["saturated_groups_differential"]["models_attempted"] == 2200
+    assert current_checks["chromium_browser_smoke"]["passed_cases"] == 30
+    for gate in (
+        "full_make_validate_pass", "visual_acceptance_pass",
+        "independent_exact_head_review_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert reverse["local_checks"][gate] is False
     assert [f["comment_id"] for f in final_sideport["codex_review_findings"]] == [
         4329563532, 4329563542
     ]
