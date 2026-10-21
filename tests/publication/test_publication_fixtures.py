@@ -12329,8 +12329,69 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in sidegap["source_bindings"].items():
+    # Historic Codex side-gap successor remains immutable; only the new
+    # R3 successor binds the exact current committed candidate bytes.
+    r3_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-r3-sidegap-wide-label-cubic-clearance-successor-acceptance-receipt.json"
+    )
+    r3_sidegap = json.loads(r3_path.read_text(encoding="utf-8"))
+    assert r3_sidegap["schema_version"] == (
+        "schauwerk-schaubild-feedback-r3-sidegap-wide-label-cubic-clearance-successor.v1"
+    )
+    assert r3_sidegap["scope"] == "technical-candidate-only"
+    assert r3_sidegap["based_on_pr_head"] == (
+        "f177b849251f2be96e89931f1476814f3c568463"
+    )
+    assert r3_sidegap["parent_evidence"] == {
+        "schema_version": sidegap["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-selfloop-sidegap-saturation-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(sidegap_path.read_bytes()).hexdigest(),
+        "evidence_digest": sidegap["evidence_digest"],
+    }
+    assert r3_sidegap["predecessor_source_bindings"] == sidegap["source_bindings"]
+    assert r3_sidegap["evidence_digest"] == digest_mapping(
+        r3_sidegap, "evidence_digest"
+    )
+    assert set(r3_sidegap["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in r3_sidegap["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["severity"] for f in r3_sidegap["independent_review_findings"]] == [
+        "P2", "P2",
+    ]
+    assert all(
+        finding["disposition"] == "locally-addressed-exact-head-review-pending"
+        for finding in r3_sidegap["independent_review_findings"]
+    )
+    assert r3_sidegap["regression_tests"][:2] == [
+        "test_pr206_r3_wide_sidegap_label_does_not_exhaust_card_detours",
+        "test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour",
+    ]
+    r3_checks = r3_sidegap["test_receipts"]
+    assert r3_checks["review_rejection"]["verdict"] == "NEEDS_CHANGE"
+    assert r3_checks["review_rejection"]["material_findings"] == 2
+    assert r3_checks["targeted_current_green"]["passed_variants"] == 26
+    assert r3_checks["main_vs_candidate_label_matrix"]["new_card_or_label_hits"] == 0
+    assert r3_checks["p2_differential"]["new_render_exceptions"] == 0
+    assert r3_checks["geometry_differential"]["models_compared"] == 20000
+    assert r3_checks["geometry_differential"]["new_card_or_label_hits"] == 0
+    assert r3_checks["physical_stroke_differential"]["new_physical_overlap_pairs"] == 0
+    assert r3_checks["physical_stroke_differential"]["new_label_hits"] == 0
+    assert r3_checks["saturated_group_differential"]["models_attempted"] == 2200
+    assert r3_checks["chrome_browser_smoke"]["passed_cases"] == 30
+    for gate in (
+        "full_make_validate_pass", "visual_acceptance_pass",
+        "independent_exact_head_review_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert r3_sidegap["local_checks"][gate] is False
     assert [f["comment_id"] for f in sidegap["codex_review_findings"]] == [
         4333987894,
     ]

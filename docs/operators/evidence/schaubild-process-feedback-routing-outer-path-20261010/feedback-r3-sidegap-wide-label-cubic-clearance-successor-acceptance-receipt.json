@@ -1,0 +1,122 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-r3-sidegap-wide-label-cubic-clearance-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "f177b849251f2be96e89931f1476814f3c568463",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-selfloop-sidegap-saturation-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-selfloop-sidegap-saturation-p2-successor-acceptance-receipt.json",
+    "file_sha256": "07b1a4098d2bd29cc3a1572d10cb178b1f2c9bfb890ed1e2b1bc2a65e4275771",
+    "evidence_digest": "e47db00830fa83fab81da82fd21402ed4237e98e55658d0137b09bc5cefa0028"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "45035d080b5c97905eeb5b1fc2555cbc416b5039f87cb9fb020fdb2b9cdedec8",
+    "tests/visual/test_native_diagram.py": "3332e7342d7f8037fc77d6b41a868a99e850ed7940e2802d108c967f17a0b28d"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9d2bdaae6af76b8595969feafaed430c64fbe99f1255b243cd46c7c73dbb5cab",
+    "tests/visual/test_native_diagram.py": "d016255ad924ff3c8a16272c855bda263bbba2ae3055746d856db47957d48483"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "independent_review_findings": [
+    {
+      "severity": "P2",
+      "reviewed_head": "f177b849251f2be96e89931f1476814f3c568463",
+      "review_unit": "grabowski-job-10229165e0f7",
+      "disposition": "locally-addressed-exact-head-review-pending",
+      "summary": "One-line 3px sidegap label candidates may miss a legal full-width intergroup midpoint for wrapped labels"
+    },
+    {
+      "severity": "P2",
+      "reviewed_head": "f177b849251f2be96e89931f1476814f3c568463",
+      "review_unit": "grabowski-job-10229165e0f7",
+      "disposition": "locally-addressed-exact-head-review-pending",
+      "summary": "Axis-aligned reservations omit physical curved peer Bezier strokes; now conservatively checked against each proposed sidegap segment"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_r3_wide_sidegap_label_does_not_exhaust_card_detours",
+    "test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour",
+    "test_pr206_adjacent_cubic_repack_clears_one_line_selfloop_label",
+    "test_pr206_anchored_cubic_reroute_preserves_long_vertical_endpoint_stem"
+  ],
+  "test_receipts": {
+    "review_rejection": {
+      "unit": "grabowski-job-10229165e0f7",
+      "verdict": "NEEDS_CHANGE",
+      "material_findings": 2
+    },
+    "actual_stale_corridor_pre_fix": {
+      "unit": "grabowski-job-d7d582ee5b57",
+      "proof": "gap_direction -1 requires y410..462, stale prior y628..680"
+    },
+    "targeted_current_green": {
+      "unit": "grabowski-job-acd6068651f3",
+      "passed_variants": 26,
+      "exit_code": 0
+    },
+    "main_vs_candidate_label_matrix": {
+      "unit": "grabowski-job-ecfe5ca9991f",
+      "models_compared": 64,
+      "new_card_or_label_hits": 0,
+      "new_render_exceptions": 0,
+      "reverse_order_mismatches": 0,
+      "exit_code": 0
+    },
+    "p2_differential": {
+      "unit": "grabowski-job-3719474001d2",
+      "models_attempted": 12000,
+      "baseline_render_exceptions": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "geometry_differential": {
+      "unit": "grabowski-job-dcd553db6b6e",
+      "models_compared": 20000,
+      "new_card_or_label_hits": 0,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_differential": {
+      "unit": "grabowski-job-ad81141a1859",
+      "models_attempted": 2600,
+      "baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    },
+    "saturated_group_differential": {
+      "unit": "grabowski-job-ad9edede7c83",
+      "models_attempted": 2200,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "unit": "grabowski-job-53928acef8a4",
+      "exit_code": 0
+    },
+    "chrome_browser_smoke": {
+      "unit": "grabowski-job-2146e28dbd7a",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "lint_compile_registry": {
+      "unit": "grabowski-job-fa7359f4ab28",
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "red_green_pass": true,
+    "differential_replay_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only: add labels at physically verified midpoint of sufficiently wide intergroup gap, retain preexisting fallback, check actual curved C peers against each accepted side-gap polyline L segment; current gap bounds must be computed before deriving its label Y center. A 198px label in this model inherits one older outer-path-vs-peer-label crossing already present on true main, so this successor does not claim global elimination of all historic crossings. Old R3 NEEDS_CHANGE remains binding for predecessor and is not upgraded. Original receipts and acceptance unchanged. Formal make validate, final-head reviews, visual acceptance, Captain, OCI and serving all separately gated.",
+  "evidence_digest": "6e0fd3e9735a00e75b3dc75ca59d0183abe209a0910e8f42c727217b53902256"
+}

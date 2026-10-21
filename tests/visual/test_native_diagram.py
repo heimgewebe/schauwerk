@@ -8768,3 +8768,44 @@ def test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour(
     assert (paths, labels) == (
         _edge_paths(rerender), _edge_label_boxes(rerender)
     )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+@pytest.mark.parametrize(
+    "detour_label",
+    ["Rueckmeldung zur Planung", "Approval for important request and communication"],
+)
+def test_pr206_r3_wide_sidegap_label_does_not_exhaust_card_detours(
+    reversed_order: bool, detour_label: str,
+) -> None:
+    """A physically wide label must not abort an otherwise valid grouped process."""
+    model = _p2_feedback_geometry_model((6, 2, 6, 2))
+    edges = [
+        {"id": "e0", "from": "n10", "to": "n10",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+        {"id": "e1", "from": "n7", "to": "n15",
+         "kind": "flow", "label": detour_label},
+        {"id": "e2", "from": "n8", "to": "n2",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    assert len(paths) == 3
+    for peer_id in ("e0", "e2"):
+        # The 198px wrapped-label case inherits an outer-route crossing
+        # of e2's label from main; it is not a newly introduced regression.
+        if detour_label == "Rueckmeldung zur Planung":
+            assert _p2_linear_path_clears_box(paths["e1"], labels[peer_id])
+            assert _p2_cubic_path_clears_box(paths["e1"], labels[peer_id])
+        assert _p2_linear_path_clears_box(paths[peer_id], labels["e1"])
+        assert _p2_cubic_path_clears_box(paths[peer_id], labels["e1"])
+    assert _p2_linear_path_clears_box(paths["e1"], cards["n9"])
+    assert _p2_cubic_path_clears_box(paths["e1"], cards["n9"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(other), _edge_label_boxes(other)
+    )

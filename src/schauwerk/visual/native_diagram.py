@@ -7366,26 +7366,43 @@ def render_native_diagram(
                         # source/target card. Keep it first, then shift only
                         # 3 px into the free side gap to honor the existing
                         # 1.5 px card-clearance budget.
+                        # Wrapped labels fit a genuine inter-card gap at
+                        # its midpoint, not a quarter-gap candidate. A label
+                        # wider than that gap can reuse the existing outer
+                        # label slot instead of making a valid model fail.
                         label_xs = (
                             start_label_x, end_label_x,
                             start_label_x + (3.0 if start_gap > start_side else -3.0),
                             end_label_x + (3.0 if end_gap > end_side else -3.0),
+                            *(
+                                (start_gap,)
+                                if abs(start_neighbor - start_side) >= label_width + 8
+                                else ()
+                            ),
+                            *(
+                                (end_gap,)
+                                if abs(end_neighbor - end_side) >= label_width + 8
+                                else ()
+                            ),
+                            external_label_center,
+                            width - _PAGE_MARGIN - label_width / 2,
                         )
                         for gap_direction, port_y in (
                             (direction, port)
                             for port in port_ys
                             for direction in (-1, 1)
                         ):
-                            label_ys = (
-                                port_y - label_height - 18,
-                                port_y + label_height + 18,
-                            )
                             bounds = _process_row_corridor_bounds(
                                 source[1], positions, direction=gap_direction
                             )
                             if bounds is None:
                                 continue
                             low, high = map(float, bounds)
+                            label_ys = (
+                                port_y - label_height - 18,
+                                port_y + label_height + 18,
+                                (low + high) / 2,
+                            )
                             offsets = (2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0)
                             rails = (
                                 (low + high) / 2,
@@ -7433,6 +7450,32 @@ def render_native_diagram(
                                     _process_svg_path_hits_box(side_path, box)
                                     for other_id, (_, box) in layouts.items()
                                     if other_id != edge_id
+                                ):
+                                    continue
+                                # Rectangular reservations of straight L
+                                # spans do not cover curved C peer strokes.
+                                # Check the actual peer Bezier hull against
+                                # each 3px-wide physical detour segment too.
+                                curve_peer_paths = (
+                                    path for other_id, (path, _) in layouts.items()
+                                    if other_id != edge_id and " C " in path
+                                )
+                                peer_stroke_boxes = (
+                                    *(
+                                        (left - 1.5, y - 1.5,
+                                         right - left + 3.0, 3.0)
+                                        for y, left, right in horizontal
+                                    ),
+                                    *(
+                                        (x - 1.5, low_y - 1.5,
+                                         3.0, high_y - low_y + 3.0)
+                                        for x, low_y, high_y in vertical
+                                    ),
+                                )
+                                if any(
+                                    _process_svg_path_hits_box(peer_path, stroke_box, padding=0.0)
+                                    for peer_path in curve_peer_paths
+                                    for stroke_box in peer_stroke_boxes
                                 ):
                                     continue
                                 for label_x in label_xs:
