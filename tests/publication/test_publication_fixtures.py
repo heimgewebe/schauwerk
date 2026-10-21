@@ -12300,8 +12300,61 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in reverse["source_bindings"].items():
+    # Immutable predecessor binds its historic Source/Test bytes, not HEAD.
+    sidegap_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-selfloop-sidegap-saturation-p2-successor-acceptance-receipt.json"
+    )
+    sidegap = json.loads(sidegap_path.read_text(encoding="utf-8"))
+    assert sidegap["schema_version"] == (
+        "schauwerk-schaubild-feedback-selfloop-sidegap-saturation-p2-successor.v1"
+    )
+    assert sidegap["scope"] == "technical-candidate-only"
+    assert sidegap["based_on_pr_head"] == (
+        "3bf454584f96136096d1d09f535b83507381693f"
+    )
+    assert sidegap["parent_evidence"] == {
+        "schema_version": reverse["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-reverse-anchored-cubic-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(reverse_path.read_bytes()).hexdigest(),
+        "evidence_digest": reverse["evidence_digest"],
+    }
+    assert sidegap["predecessor_source_bindings"] == reverse["source_bindings"]
+    assert sidegap["evidence_digest"] == digest_mapping(sidegap, "evidence_digest")
+    assert set(sidegap["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in sidegap["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["comment_id"] for f in sidegap["codex_review_findings"]] == [
+        4333987894,
+    ]
+    assert sidegap["regression_tests"] == [
+        "test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour",
+    ]
+    sidegap_checks = sidegap["test_receipts"]
+    assert sidegap_checks["targeted_red"]["failed_variants"] == 2
+    assert sidegap_checks["targeted_green"]["passed_variants"] == 6
+    assert sidegap_checks["main_vs_candidate_label_matrix"]["models_compared"] == 64
+    assert sidegap_checks["main_vs_candidate_label_matrix"]["new_render_exceptions"] == 0
+    assert sidegap_checks["main_vs_candidate_label_matrix"]["new_card_or_label_hits"] == 0
+    assert sidegap_checks["p2_12000"]["new_render_exceptions"] == 0
+    assert sidegap_checks["generic_geometry_20000"]["new_card_or_label_hits"] == 0
+    assert sidegap_checks["physical_stroke_2600"]["new_physical_overlap_pairs"] == 0
+    assert sidegap_checks["physical_stroke_2600"]["new_label_hits"] == 0
+    assert sidegap_checks["saturated_groups_2200"]["models_attempted"] == 2200
+    assert sidegap_checks["chromium_browser_smoke"]["passed_cases"] == 30
+    for gate in (
+        "full_make_validate_pass", "visual_acceptance_pass",
+        "independent_exact_head_review_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert sidegap["local_checks"][gate] is False
     assert [f["comment_id"] for f in reverse["codex_review_findings"]] == [
         4333332488,
     ]

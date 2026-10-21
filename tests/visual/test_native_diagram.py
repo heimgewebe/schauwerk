@@ -8734,3 +8734,37 @@ def test_pr206_anchored_cubic_reroute_preserves_long_vertical_endpoint_stem(
             assert abs(first_x - peer_x) >= 4 or overlap <= 4, (
                 "new semantic stem overlap", paths["e5"], paths["e7"]
             )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour(
+    reverse_order: bool,
+) -> None:
+    """A fixed wrapped loop label must not make a card-safe edge unrenderable."""
+    model = _p2_feedback_geometry_model((6, 2, 6, 2))
+    edges = [
+        {"id": "e0", "from": "n10", "to": "n10",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+        {"id": "e1", "from": "n7", "to": "n15",
+         "kind": "flow", "label": "long label"},
+        {"id": "e2", "from": "n8", "to": "n2",
+         "kind": "flow", "label": "a somewhat longer relation label"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    assert len(paths) == 3
+    assert _p2_linear_path_clears_box(paths["e1"], cards["n9"])
+    assert _p2_cubic_path_clears_box(paths["e1"], cards["n9"])
+    for peer_id in ("e0", "e2"):
+        assert _p2_linear_path_clears_box(paths["e1"], labels[peer_id])
+        assert _p2_cubic_path_clears_box(paths["e1"], labels[peer_id])
+        assert _p2_linear_path_clears_box(paths[peer_id], labels["e1"])
+        assert _p2_cubic_path_clears_box(paths[peer_id], labels["e1"])
+    model["edges"] = list(reversed(model["edges"]))
+    rerender = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(rerender), _edge_label_boxes(rerender)
+    )

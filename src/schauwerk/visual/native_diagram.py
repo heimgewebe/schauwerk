@@ -7360,9 +7360,16 @@ def render_native_diagram(
                             center_port_y - 16.0,
                             center_port_y + 16.0,
                         )
+                        start_label_x = (start_side + start_gap) / 2
+                        end_label_x = (end_side + end_gap) / 2
+                        # The label midpoint may be just 0.5 px from the
+                        # source/target card. Keep it first, then shift only
+                        # 3 px into the free side gap to honor the existing
+                        # 1.5 px card-clearance budget.
                         label_xs = (
-                            (start_side + start_gap) / 2,
-                            (end_side + end_gap) / 2,
+                            start_label_x, end_label_x,
+                            start_label_x + (3.0 if start_gap > start_side else -3.0),
+                            end_label_x + (3.0 if end_gap > end_side else -3.0),
                         )
                         for gap_direction, port_y in (
                             (direction, port)

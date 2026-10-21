@@ -1,0 +1,108 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-selfloop-sidegap-saturation-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "3bf454584f96136096d1d09f535b83507381693f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-reverse-anchored-cubic-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-reverse-anchored-cubic-p2-successor-acceptance-receipt.json",
+    "file_sha256": "10bc11ed651f35f948c4a8e75a0c340e3b0189821319b46ee23c3c34e47ba6ac",
+    "evidence_digest": "cf2b4674c701be5a52d3a7752da78be3763e5ec821fbd3dc61e41a6d52fa052b"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "ad3a5638d4e9cfb6e0c2f021d18164755c93814928f61c2a2dfdc86a74c42e03",
+    "tests/visual/test_native_diagram.py": "250f4cf63bd7aca97032ceb673641b87dcf076371d7e290e9416f8d1e16ef112"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9d2bdaae6af76b8595969feafaed430c64fbe99f1255b243cd46c7c73dbb5cab",
+    "tests/visual/test_native_diagram.py": "d016255ad924ff3c8a16272c855bda263bbba2ae3055746d856db47957d48483"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_findings": [
+    {
+      "comment_id": 4333987894,
+      "reviewed_head": "3bf454584f96136096d1d09f535b83507381693f",
+      "severity": "P2",
+      "disposition": "reproduced-RED-and-remediated-local-technical-candidate",
+      "summary": "Valid (6,2,6,2) grouped process fails when selfloop long label and long cross-card detour exhaust original mid-gap label placement"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_saturated_loop_label_uses_clear_intergroup_detour"
+  ],
+  "test_receipts": {
+    "targeted_red": {
+      "unit": "grabowski-job-a38e2b9a302c",
+      "failed_variants": 2,
+      "expected_exit_code": 1
+    },
+    "targeted_green": {
+      "unit": "grabowski-job-6b8c0af41784",
+      "passed_variants": 6,
+      "exit_code": 0
+    },
+    "main_vs_candidate_label_matrix": {
+      "unit": "grabowski-job-ec936a8481f5",
+      "models_compared": 64,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "reverse_order_mismatches": 0,
+      "exit_code": 0
+    },
+    "p2_12000": {
+      "unit": "grabowski-job-93ff43c33efa",
+      "models_attempted": 12000,
+      "baseline_render_exceptions": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "generic_geometry_20000": {
+      "unit": "grabowski-job-d722491f1c5f",
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_2600": {
+      "unit": "grabowski-job-6bad7a3141a4",
+      "models_attempted": 2600,
+      "baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    },
+    "saturated_groups_2200": {
+      "unit": "grabowski-job-2fb3dfddb9af",
+      "models_attempted": 2200,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "unit": "grabowski-job-0a765d4e049d",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "unit": "grabowski-job-4eed4eef9b26",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff_compile_registry": {
+      "unit": "grabowski-job-9036c579e36c",
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "red_green_pass": true,
+    "differential_replay_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only. Existing intergroup sideport label midpoints receive a 3px additional in-gap candidate when standard card-safe corridors saturate. Actual SVG label, card and peer-stroke collision checks still gate adoption. Both input orders are invariant. Historical technical evidence unchanged. Final full validation, exact-head independent review, visual acceptance, Captain, OCI and live serving remain separate gates.",
+  "evidence_digest": "e47db00830fa83fab81da82fd21402ed4237e98e55658d0137b09bc5cefa0028"
+}
