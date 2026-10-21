@@ -6220,6 +6220,41 @@ def render_native_diagram(
     if intent == "process" and model["groups"] and feedback_edges:
         reserved_feedback_legs: list[tuple[float, float, float]] = []
         reserved_feedback_gutters: list[tuple[float, float, float]] = []
+        # Protect shifted horizontal feedback rails against physical process
+        # rails already chosen by the long-branch planner. Do not replan
+        # unrelated vertical gutters: broader reservations regressed valid
+        # peer-stem geometry in the 2,600-model physical cohort.
+        process_peer_spans: list[tuple[str, float, float, float]] = []
+        for process_peer in model["edges"]:
+            if str(process_peer["kind"]) == "feedback":
+                continue
+            peer_id = str(process_peer["id"])
+            peer_path, _, _, _ = _edge_geometry(
+                positions[str(process_peer["from"])],
+                positions[str(process_peer["to"])],
+                self_loop=process_peer["from"] == process_peer["to"],
+                lane=lane_ranks[peer_id],
+                kind=str(process_peer["kind"]),
+                canvas_width=width,
+                canvas_height=height,
+                intent=intent,
+                process_row_gap=process_row_gap,
+                non_process_row_gap=non_process_row_gap,
+                long_branch_slot=long_branch_slots.get(peer_id),
+                long_branch_count=effective_long_branch_count,
+                long_branch_route_count=len(long_branch_slots),
+                long_branch_label_y=long_branch_label_y.get(peer_id),
+                anchored_branch_gutter_x=anchored_branch_gutter_x.get(peer_id),
+                long_vertical_gutter_x=long_vertical_gutter_x.get(peer_id),
+                long_vertical_label_y=long_vertical_label_y.get(peer_id),
+                process_branch_gutter_x=process_branch_gutter_x.get(peer_id),
+                process_adjacent_route_y=process_adjacent_route_y.get(peer_id),
+            )
+            spans = _process_axis_aligned_stroke_spans(peer_path)
+            if spans is not None:
+                process_peer_spans.extend(
+                    span for span in spans if span[0] == "h"
+                )
         # Same-row feedbacks are already physically routed. They are not
         # eligible for this replanning, but their actual drawn L legs must
         # reserve the lane before cross-row peers select a new ordinate.
@@ -6392,6 +6427,14 @@ def render_native_diagram(
                         and min(proposed_gutter[2], peer_high)
                         - max(proposed_gutter[1], peer_low) > 4
                         for peer_x, peer_low, peer_high in reserved_feedback_gutters
+                    )
+                    or (
+                        shift != 0 and any(
+                            direction == "h" and abs(y - line) < 4
+                        and min(right, high) - max(left, low) > 4
+                        for left, right, y in proposed
+                            for direction, line, low, high in process_peer_spans
+                        )
                     )
                     or any(
                         left < box_right + 2 and right > box_left - 2

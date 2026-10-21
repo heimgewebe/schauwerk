@@ -1,0 +1,139 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-codex-process-rail-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "b43908bc110de33b8f8660935a1df5686c49082c",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-clearance-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-r3-physical-semantic-clearance-successor-acceptance-receipt.json",
+    "file_sha256": "debc2015721578a5915e78c29d353790e0a650a602d5dbb8522c3cef79d1ce2b",
+    "evidence_digest": "4d470df0fd217e6bd69e0c12b2a79c86fd66285504ed9e295aed40d47bdfd52f"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "1241f0d05c8954e99563833dd3644682612b4437ac76cd4a6a5de61ccfb9ac44",
+    "tests/visual/test_native_diagram.py": "cea7ec328d9b3987858552e32f8180dbc780965d23935172d58cc05f74b18f72"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "90e4f8ea2581434da26f75cfe6359ebf9acab2dff0016339002109610640da9f",
+    "tests/visual/test_native_diagram.py": "cb6c43c76cb28c0271a99c86d56e0c61f6c1e2775c87acb3fa787c793a646b1c"
+  },
+  "review_finding": {
+    "provider": "Codex GitHub",
+    "severity": "P2",
+    "reviewed_head": "b43908bc110de33b8f8660935a1df5686c49082c",
+    "comment_id": 4341341832,
+    "review_thread_id": "PRRT_kwDOTGqvHc6u7jF-",
+    "summary": "Replanned feedback horizontal target rail overpainted an existing different process branch (at y=602)",
+    "disposition": "published-head RED 2/2 reproduced; target physical rail guard GREEN both orders; exact successor independent review pending"
+  },
+  "regression_tests": [
+    "test_pr206_codex_shifted_feedback_rail_clears_planned_process_branch",
+    "test_pr206_codex_feedback_physical_guard_preserves_fixed_sideport"
+  ],
+  "test_receipts": {
+    "codex_exact_published_red": {
+      "unit": "grabowski-job-3265f2470c2b",
+      "status": "succeeded",
+      "argv_sha256": "eca004fe68e27d8d6e08c1a198e52de80984ec06d086620a9eb28352276226fa",
+      "finalization_receipt_sha256": "3870d1bf9250d8b731e07b8424c922516d273a8ca2171e2b8ab0a97c9b06e601",
+      "models_or_variants": 2
+    },
+    "historical_actual_main_12k": {
+      "unit": "grabowski-job-59dc8cb1d8c0",
+      "status": "succeeded",
+      "argv_sha256": "60d95d47edaeeebd5565a1a5f320bff84cfa7cefcc947da59e1337753d9509a7",
+      "finalization_receipt_sha256": "cea45731c43c83e0852fe438e79c6948cf60631eb8258432777ce3dbccb32316",
+      "models_or_variants": 12000
+    },
+    "geometry_actual_main_20k": {
+      "unit": "grabowski-job-021c29bf24ab",
+      "status": "succeeded",
+      "argv_sha256": "3b43743cde82d15e4cbc75611618bcc9b62a82334c9164dbd237d8162905b9d6",
+      "finalization_receipt_sha256": "72b2b8845dee9e59990904cfef3574227b1b217ba750496e568de413edadf8c3",
+      "models_or_variants": 20000
+    },
+    "physical_strokes_2600": {
+      "unit": "grabowski-job-839561139151",
+      "status": "succeeded",
+      "argv_sha256": "8cabfde42d067987d670175e1f52e4cb9a76718faad6c407bf958123018269bb",
+      "finalization_receipt_sha256": "f93b119fab4c656fade93589296e1c0350e9da4a61af14280a8e263eaa998bc9",
+      "models_or_variants": 2600
+    },
+    "saturated_groups_2200": {
+      "unit": "grabowski-job-6d0a7f5d8605",
+      "status": "succeeded",
+      "argv_sha256": "155f67b9cd1e9f9c0356ad9d242cf2c772fa468c26fc19dc129945f3209a2384",
+      "finalization_receipt_sha256": "48f65182c0b3b533663625b16f129eb0330740da4f63fe8610e8f5a9f5610fdc",
+      "models_or_variants": 2200
+    },
+    "semantic_proximity_2200": {
+      "unit": "grabowski-job-a821e3f1585e",
+      "status": "succeeded",
+      "argv_sha256": "f6a95a54bc5fdafca7bc3bf5517512f541eb5f714ce0a7cff71b353af81d2731",
+      "finalization_receipt_sha256": "15580a657e48390926c4c01065a0162e28cec787a1263a955701eeb37f0f6f57",
+      "models_or_variants": 2200
+    },
+    "native_and_editor": {
+      "unit": "grabowski-job-d1b87b944122",
+      "status": "succeeded",
+      "argv_sha256": "fe065ba6b2fed010bf0899a76d378014a000ff2f549d2df9ead414c0d2302c29",
+      "finalization_receipt_sha256": "5f5c07d96df144bd1d83ca4b3ec055427c3386b9ad377d308fc5f1b3485fbc89"
+    },
+    "chrome_smokes": {
+      "unit": "grabowski-job-12a17bc6cc97",
+      "status": "succeeded",
+      "argv_sha256": "ad2644a3f90212db7cedd45196ccacc9b084faa9f19db99ce42d1acfddabd414",
+      "finalization_receipt_sha256": "f9d8605184179516d3e4db68c7be497a184d24c99abec4cf55888afb95b03dea",
+      "models_or_variants": 30
+    },
+    "ruff": {
+      "unit": "grabowski-job-8a0c19ed6448",
+      "status": "succeeded",
+      "argv_sha256": "1f2cb303ff2d6a3886e19f01079da6704522ea41c86b302f9c24652a8b2e4b65",
+      "finalization_receipt_sha256": "c01aa8a7adfb411203822ca2684addb867d35ba50870893571d1f1f19065c8bb"
+    }
+  },
+  "rejected_approaches": [
+    {
+      "reason": "Broad process rail/stem reservations introduce 14 physical peer overlaps",
+      "unit": "grabowski-job-22ee1d4b879e",
+      "new_physical_overlap_pairs": 14,
+      "status": "failed"
+    },
+    {
+      "reason": "Reserving shift-only vertical spans introduces 3 new peer overlaps",
+      "unit": "grabowski-job-24e3718c263e",
+      "new_physical_overlap_pairs": 3,
+      "status": "failed"
+    }
+  ],
+  "measured_semantic_label_proximity": {
+    "models": 2200,
+    "candidate_newly_far_labels": 0,
+    "candidate_became_near_labels": 122,
+    "candidate_increased_canvas_width_cases": 0,
+    "inherited_semantically_far_labels_remain": true
+  },
+  "local_checks": {
+    "immutable_parent_byte_unchanged": true,
+    "red_fail_first_b439_both_orders": true,
+    "local_targeted_green_and_negative_both_orders": true,
+    "deterministic_main_vs_candidate_12k_pass": true,
+    "differential_geometry_20k_pass": true,
+    "physical_stroke_2600_pass": true,
+    "saturated_group_2200_pass": true,
+    "semantic_proximity_2200_pass": true,
+    "native_editor_pass": true,
+    "chromium_smoke_30_pass": true,
+    "ruff_pass": true,
+    "full_make_validate_pass": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Exactly pinned local technical successor only. Two RED variants reproduced against published b43908; final guard preserves accepted unshifted feedback routes and checks only shifted horizontal physical process rails. 12k model cohort classifies 23 historical bf7-only render errors and zero new Main failures; 20k geometric cohort, 2600 physical-stroke cohort, 2200 saturated cohort succeeded with no newly recorded tracked collisions/exceptions. Semantic proximity cohort improves 122 formerly far labels and introduces zero additional far labels or wider canvases under the measured 320-px threshold; inherited physical/stroke and far-label issues remain explicitly outside claimed acceptance. This document confers no exact-head independent review, visual acceptance, Captain, OCI or production authority.",
+  "evidence_digest": "f1ffdcdd520d98388747340dd9a588bb8a1b4370737f64ec244862406c45a6a2"
+}

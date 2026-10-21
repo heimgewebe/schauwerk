@@ -9242,3 +9242,56 @@ def test_pr206_r3_physical_path_parser_accepts_exponent_and_rejects_nonfinite() 
     assert native._process_axis_aligned_stroke_spans(
         "M 0 0 L NaN 10"
     ) is None
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_shifted_feedback_rail_clears_planned_process_branch(
+    reverse_order: bool,
+) -> None:
+    """A feedback ordinate cannot overpaint an unrelated long process rail."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((5, 3))
+    edges = [
+        {"id": "e0", "from": "n4", "to": "n5", "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n4", "to": "n6", "kind": "feedback", "label": "Approve"},
+        {"id": "e2", "from": "n3", "to": "n3", "kind": "feedback", "label": "long label"},
+        {"id": "e3", "from": "n7", "to": "n4", "kind": "risk", "label": "long label"},
+        {"id": "e4", "from": "n5", "to": "n2", "kind": "flow", "label": "long label"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert not native._process_paths_share_physical_stroke(paths["e1"], paths["e4"])
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_feedback_physical_guard_preserves_fixed_sideport(
+    reverse_order: bool,
+) -> None:
+    """A broad guard once sent this accepted return onto three peer stems."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((3, 6))
+    edges = [
+        {"id": "e0", "from": "n4", "to": "n6", "kind": "risk", "label": "Approve"},
+        {"id": "e1", "from": "n3", "to": "n6", "kind": "risk", "label": "Approve"},
+        {"id": "e2", "from": "n1", "to": "n4", "kind": "feedback", "label": "Approve"},
+        {"id": "e3", "from": "n7", "to": "n4", "kind": "risk", "label": "Approve"},
+        {"id": "e4", "from": "n2", "to": "n4", "kind": "feedback",
+         "label": "a somewhat longer relation label"},
+        {"id": "e5", "from": "n3", "to": "n4", "kind": "feedback",
+         "label": "a somewhat longer relation label"},
+        {"id": "e6", "from": "n1", "to": "n8", "kind": "feedback", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    for peer in ("e0", "e2", "e3"):
+        assert not native._process_paths_share_physical_stroke(
+            paths["e4"], paths[peer]
+        ), peer
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
