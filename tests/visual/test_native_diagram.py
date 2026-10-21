@@ -8836,3 +8836,202 @@ def test_pr206_codex_packed_label_clears_fixed_long_peer_source_stem(
     assert (paths, labels) == (
         _edge_paths(other), _edge_label_boxes(other)
     )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_unrelated_anchored_loop_label_clears_reverse_cubic(
+    reverse_order: bool,
+) -> None:
+    """Even an unrelated loop label is physical, if the local cubic crosses."""
+    model = _p2_feedback_geometry_model((2, 6, 5))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n1",
+         "kind": "flow", "label": "link"},
+        {"id": "e1", "from": "n3", "to": "n0",
+         "kind": "risk", "label": "Approve"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == 2
+    assert _p2_linear_path_clears_box(paths["e1"], labels["e0"])
+    assert _p2_cubic_path_clears_box(paths["e1"], labels["e0"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_packed_label_clears_fixed_long_peer_target_stem(
+    reverse_order: bool,
+) -> None:
+    """A label at a source card cannot cover a long peer's target stem."""
+    model = _p2_feedback_geometry_model((4, 5))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n6",
+         "kind": "risk", "label": "x"},
+        {"id": "e1", "from": "n2", "to": "n2",
+         "kind": "flow", "label": "link"},
+        {"id": "e2", "from": "n3", "to": "n1",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e3", "from": "n0", "to": "n5",
+         "kind": "flow", "label": "Approve"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == 4
+    assert _p2_linear_path_clears_box(paths["e2"], labels["e0"])
+    assert _p2_cubic_path_clears_box(paths["e2"], labels["e0"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    "edges",
+    [
+        [
+            {"id": "e00", "from": "n8", "to": "n17", "kind": "risk", "label": "x"},
+            {"id": "e01", "from": "n10", "to": "n9", "kind": "flow", "label": "Approve"},
+            {"id": "e02", "from": "n1", "to": "n13", "kind": "risk",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e03", "from": "n16", "to": "n2", "kind": "feedback",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e04", "from": "n13", "to": "n13", "kind": "risk",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e05", "from": "n14", "to": "n11", "kind": "feedback",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e06", "from": "n6", "to": "n4", "kind": "flow", "label": "link"},
+            {"id": "e07", "from": "n4", "to": "n1", "kind": "flow", "label": "Approve"},
+        ],
+        [
+            {"id": "e00", "from": "n8", "to": "n17", "kind": "risk", "label": "x"},
+            {"id": "e01", "from": "n10", "to": "n9", "kind": "flow",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e02", "from": "n14", "to": "n6", "kind": "feedback", "label": "Approve"},
+            {"id": "e03", "from": "n16", "to": "n1", "kind": "flow", "label": "Approve"},
+            {"id": "e04", "from": "n7", "to": "n8", "kind": "risk", "label": "Approve"},
+            {"id": "e05", "from": "n8", "to": "n8", "kind": "feedback", "label": "x"},
+            {"id": "e06", "from": "n2", "to": "n2", "kind": "flow",
+                "label": "a somewhat longer relation label",
+            },
+        ],
+        [
+            {"id": "e00", "from": "n8", "to": "n17", "kind": "risk", "label": "Approve"},
+            {"id": "e01", "from": "n10", "to": "n9", "kind": "flow", "label": "link"},
+            {"id": "e02", "from": "n14", "to": "n7", "kind": "flow", "label": "link"},
+            {"id": "e03", "from": "n1", "to": "n11", "kind": "feedback", "label": "x"},
+            {"id": "e04", "from": "n12", "to": "n4", "kind": "flow", "label": "Approve"},
+            {"id": "e05", "from": "n16", "to": "n11", "kind": "flow", "label": "Approve"},
+            {"id": "e06", "from": "n1", "to": "n15", "kind": "feedback", "label": "x"},
+            {"id": "e07", "from": "n3", "to": "n16", "kind": "risk", "label": "Approve"},
+            {"id": "e08", "from": "n0", "to": "n12", "kind": "flow",
+                "label": "a somewhat longer relation label",
+            },
+            {"id": "e09", "from": "n17", "to": "n6", "kind": "flow",
+                "label": "a somewhat longer relation label",
+            },
+        ],
+    ],
+    ids=["seed-344", "seed-2559", "seed-3873"],
+)
+def test_pr206_main_diff_saturated_valid_process_diagram_renders(
+    edges: list[dict], reverse_order: bool,
+) -> None:
+    """The true Main renders these three models; PR206 must not start aborting."""
+    model = _p2_feedback_geometry_model((6, 4, 5, 3))
+    model["edges"] = copy.deepcopy(list(reversed(edges)) if reverse_order else edges)
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == len(edges)
+    assert len(labels) == len(edges)
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    ("sizes", "relations", "foreign_edge_id", "foreign_label_id"),
+    [
+        (
+            (4,),
+            [
+                ("e0", "n2", "n2", "risk", "link"),
+                ("e1", "n3", "n2", "flow", "Approve"),
+                ("e2", "n1", "n1", "flow", "link"),
+                ("e3", "n3", "n0", "flow", "link"),
+                ("e4", "n3", "n0", "risk", "Approve"),
+            ],
+            "e1",
+            "e2",
+        ),
+        (
+            (3, 3),
+            [
+                ("e0", "n1", "n1", "risk", "link"),
+                ("e1", "n1", "n4", "flow", "a somewhat longer relation label"),
+                ("e2", "n0", "n5", "flow", "a somewhat longer relation label"),
+                ("e3", "n1", "n3", "risk", "Approve"),
+            ],
+            "e2",
+            "e1",
+        ),
+        (
+            (2, 2),
+            [
+                ("e0", "n0", "n3", "flow", "link"),
+                ("e1", "n0", "n2", "feedback", "Approve"),
+                ("e2", "n1", "n3", "feedback", "a somewhat longer relation label"),
+                ("e3", "n0", "n2", "flow", "a somewhat longer relation label"),
+                ("e4", "n1", "n1", "flow", "Approve"),
+            ],
+            "e0",
+            "e4",
+        ),
+        (
+            (3, 2),
+            [
+                ("e0", "n0", "n4", "flow", "a somewhat longer relation label"),
+                ("e1", "n3", "n2", "flow", "a somewhat longer relation label"),
+                ("e2", "n1", "n1", "flow", "Approve"),
+                ("e3", "n1", "n2", "risk", "link"),
+                ("e4", "n2", "n1", "feedback", "Approve"),
+            ],
+            "e0",
+            "e2",
+        ),
+    ],
+    ids=["loop-independent", "long-label-final-rail", "loop-outer", "loop-adjacent"],
+)
+def test_pr206_main_diff_final_label_clearance(
+    sizes: tuple[int, ...],
+    relations: list[tuple[str, str, str, str, str]],
+    foreign_edge_id: str,
+    foreign_label_id: str,
+    reverse_order: bool,
+) -> None:
+    """Prevent four real Main-to-PR label crossings in both input orders."""
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": edge_id, "from": source, "to": target, "kind": kind, "label": label}
+        for edge_id, source, target, kind, label in relations
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert _p2_linear_path_clears_box(paths[foreign_edge_id], labels[foreign_label_id])
+    assert _p2_cubic_path_clears_box(paths[foreign_edge_id], labels[foreign_label_id])
+
+    model["edges"] = list(reversed(model["edges"]))
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels, root.attrib["viewBox"]) == (
+        _edge_paths(reordered),
+        _edge_label_boxes(reordered),
+        reordered.attrib["viewBox"],
+    )

@@ -12397,8 +12397,75 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in fixed_peer_stem_successor["source_bindings"].items():
+    # Every historical successor retains its own fixed source revision. The
+    # next create-only successor, not its predecessor, binds current code.
+    assert hashlib.sha256(fixed_peer_stem_path.read_bytes()).hexdigest() == (
+        "7883fa4b4de1d85a9d0e3b11d0217e50819c5aa35ec2ddf09801686275b1ac4c"
+    )
+    pr206_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-pr206-final-label-clearance-successor-acceptance-receipt.json"
+    )
+    pr206_final = json.loads(pr206_path.read_text(encoding="utf-8"))
+    assert pr206_final["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-final-label-clearance-successor.v1"
+    )
+    assert pr206_final["scope"] == "technical-candidate-only"
+    assert pr206_final["based_on_pr_head"] == (
+        "ef683491764f3c75c7bafb5852cf852a9021d78d"
+    )
+    assert pr206_final["compared_against_main_head"] == (
+        "cea2ca6364bcb9564ee30bc21af6194c3b4401f4"
+    )
+    assert pr206_final["parent_evidence"] == {
+        "schema_version": fixed_peer_stem_successor["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-fixed-long-source-stem-label-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(fixed_peer_stem_path.read_bytes()).hexdigest(),
+        "evidence_digest": fixed_peer_stem_successor["evidence_digest"],
+    }
+    assert pr206_final["predecessor_source_bindings"] == (
+        fixed_peer_stem_successor["source_bindings"]
+    )
+    assert pr206_final["evidence_digest"] == digest_mapping(
+        pr206_final, "evidence_digest"
+    )
+    assert set(pr206_final["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in pr206_final["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["comment_id"] for f in pr206_final["codex_review_findings"]] == [
+        4336118369, 4336118379,
+    ]
+    final_receipts = pr206_final["test_receipts"]
+    assert final_receipts["codex_two_p2_red"]["failed_variants"] == 4
+    assert final_receipts["main_diff_three_saturated_red"]["failed_variants"] == 6
+    assert final_receipts["targeted_green"]["passed_variants"] == 18
+    assert final_receipts["historical_actual_main_12k"]["models_attempted"] == 12000
+    assert final_receipts["historical_actual_main_12k"]["historical_bf7_errors"] == 23
+    assert (
+        final_receipts["historical_actual_main_12k"][
+            "new_main_vs_candidate_render_exceptions"
+        ]
+        == 0
+    )
+    assert final_receipts["geometry_actual_main_20k"]["models_compared"] == 20000
+    assert final_receipts["geometry_actual_main_20k"]["new_card_or_label_hits"] == 0
+    assert final_receipts["physical_strokes_2600"]["new_physical_overlap_pairs"] == 0
+    assert final_receipts["physical_strokes_2600"]["new_label_hits"] == 0
+    assert final_receipts["saturated_groups_2200"]["models_attempted"] == 2200
+    assert final_receipts["chrome_browser_smoke"]["passed_cases"] == 30
+    for gate in (
+        "visual_acceptance_pass", "independent_exact_head_review_pass",
+        "captain_merge_authorized", "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert pr206_final["local_checks"][gate] is False
     assert [f["comment_id"] for f in fixed_peer_stem_successor["codex_review_findings"]] == [
         4335683017,
     ]

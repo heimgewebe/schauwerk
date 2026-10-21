@@ -1,0 +1,190 @@
+{
+  "based_on_pr_head": "ef683491764f3c75c7bafb5852cf852a9021d78d",
+  "codex_review_findings": [
+    {
+      "comment_id": 4336118369,
+      "disposition": "RED-reproduced-then-local-GREEN-exact-published-head-review-pending",
+      "reviewed_head": "ef683491764f3c75c7bafb5852cf852a9021d78d",
+      "severity": "P2",
+      "summary": "Unrelated anchored selfloop label intersected reverse cubic"
+    },
+    {
+      "comment_id": 4336118379,
+      "disposition": "RED-reproduced-then-local-GREEN-exact-published-head-review-pending",
+      "reviewed_head": "ef683491764f3c75c7bafb5852cf852a9021d78d",
+      "severity": "P2",
+      "summary": "Packed label intersected fixed long peer target stem"
+    }
+  ],
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "evidence_digest": "0634569427f03902ec55a6f833f464e4dc206adc681e43dc13e112c0cf1068e4",
+  "independent_review_findings": [
+    {
+      "disposition": "Main-vs-candidate-12k-replayed; 23 historical bf7 failures did not fail Main or corrected candidate; independent successor review still pending",
+      "reviewed_head": "ef683491764f3c75c7bafb5852cf852a9021d78d",
+      "reviewer": "Claude Opus 5.5",
+      "severity": "P2",
+      "verdict": "NEEDS_CHANGE"
+    }
+  ],
+  "local_checks": {
+    "captain_merge_authorized": false,
+    "chromium_smoke_pass": true,
+    "commonthing_serving_verified": false,
+    "differential_replay_pass": true,
+    "full_make_validate_pass": false,
+    "immutable_parent_receipt_byte_unchanged": true,
+    "independent_exact_head_review_pass": false,
+    "main_baseline_classification_pass": true,
+    "oci_registry_published": false,
+    "red_green_pass": true,
+    "source_digest_bound": true,
+    "visual_acceptance_pass": false
+  },
+  "notes": "Technical candidate only. Historical parent receipt and acceptances immutable. RED Codex P2 variants and actual-Main same-row ValueErrors corrected using physical collision checks, selective fixed target stem label relocation, ordered label-only final readback and bounded existing detours. 23 old bf7 render failures all rendered on real Main and final candidate. Rejected broad forward-anchored fallback because its 2600 physical cohort gained 305 overlapping semantic strokes. Later candidate has zero new recorded physical overlaps, card/label hits or render exceptions versus the cited per-cohort references. This receipt does not confer final independent R3 approval, visual acceptance, Captain merge, OCI or production success.",
+  "parent_evidence": {
+    "evidence_digest": "8ecbedfacff6046c3875f4c575dfaf287387a001b76369398ba2e45c7295b59b",
+    "file_sha256": "7883fa4b4de1d85a9d0e3b11d0217e50819c5aa35ec2ddf09801686275b1ac4c",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-fixed-long-source-stem-label-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-feedback-fixed-long-source-stem-label-p2-successor.v1"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6910502859a333d18af02f5d5fe1808e9e6f88541f8b79443540fd7c4914ced3",
+    "tests/visual/test_native_diagram.py": "8450ef28628f0ccf49e0e4cc0951098876f73fd40bcf9472f31583faa4a84577"
+  },
+  "regression_tests": [
+    "test_pr206_codex_unrelated_anchored_loop_label_clears_reverse_cubic",
+    "test_pr206_codex_packed_label_clears_fixed_long_peer_target_stem",
+    "test_pr206_main_diff_saturated_valid_process_diagram_renders",
+    "test_pr206_main_diff_final_label_clearance",
+    "test_pr205_p2_failed_stem_pack_does_not_mask_anchored_peer",
+    "test_pr206_codex_packed_label_clears_fixed_long_peer_source_stem"
+  ],
+  "schema_version": "schauwerk-schaubild-feedback-pr206-final-label-clearance-successor.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c208f8777a820599aa173d65633d5de2dc6d18c08d4bbea12dc3c1756d103eb5",
+    "tests/visual/test_native_diagram.py": "4aad25de508b44368a916d0997a6d807ee5efc8f5d77cd54ece7764dc04f7430"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "test_receipts": {
+    "chrome_browser_smoke": {
+      "argv_sha256": "851360fb3aba03ec4943c3eb24e14a3ddc5d1121cb05dc0c4f0f0d662d46850c",
+      "finalization_file_sha256": "cd67cfbb7f3148a0a1fb81fc28718e0aea9b5435f6b17f4553e1faeff397a68f",
+      "passed_cases": 30,
+      "status": "succeeded",
+      "unit": "grabowski-job-56b4e16cae2f"
+    },
+    "codex_two_p2_red": {
+      "argv_sha256": "137bcfac9ee8fdb2645fb5d4ed7418c4679c44c2f592108241d66f62e2f7c56e",
+      "failed_variants": 4,
+      "finalization_file_sha256": "c3535676370f34a1eafd807c939c7aad6fbbdf7f2b790bcb6f5bcf105220dd40",
+      "status": "failed",
+      "unit": "grabowski-job-066c7d95f0f0"
+    },
+    "geometry_actual_main_20k": {
+      "argv_sha256": "5ae69c3ba0b6d90fbe45206a59f5c969358cce59449bfdba927b54a2c31876ea",
+      "finalization_file_sha256": "ae08bf0b711d33be55cd800581c85dfdcca1417eeba3174704f16a21ec41bf81",
+      "models_compared": 20000,
+      "new_candidate_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "status": "succeeded",
+      "unit": "grabowski-job-f709b21b3d56"
+    },
+    "historical_actual_main_12k": {
+      "argv_sha256": "651e8024138d16dac100358d0d17d65598734725fd50128c9b8bfbc884ffcdb8",
+      "finalization_file_sha256": "e4a853b0be6c2850ee51d4041888dd5b6a0acef6a943c0f0d9af3b884997ef8b",
+      "historical_also_main_errors": 0,
+      "historical_bf7_errors": 23,
+      "historical_error_indices": [
+        92,
+        344,
+        460,
+        498,
+        1146,
+        1562,
+        1774,
+        2057,
+        2559,
+        3311,
+        3354,
+        3873,
+        5356,
+        5907,
+        6365,
+        7443,
+        8036,
+        9733,
+        9762,
+        10061,
+        10680,
+        11621,
+        11768
+      ],
+      "models_attempted": 12000,
+      "new_main_vs_candidate_render_exceptions": 0,
+      "status": "succeeded",
+      "unit": "grabowski-job-f18d29fd990c"
+    },
+    "historical_stroke_main_reclassification": {
+      "actual_main_renders": true,
+      "argv_sha256": "f6ca601880f0145060ca0a25920c4a1f4c72a6a096c3186c7810119571442e7d",
+      "case_index": 96,
+      "final_candidate_renders": true,
+      "finalization_file_sha256": "7f3980a4e753afc786b44fc38c34d5df43b0a7a8b09cc1c5acde908f344c4db0",
+      "reference_dirty_renderer_failed": true,
+      "seed": 20520261072,
+      "status": "succeeded",
+      "unit": "grabowski-job-cebe266882f1"
+    },
+    "initial_full_validate": {
+      "argv_sha256": "75380c84996c33958933d6e21e515c57677f7eb72def791669f6f1824aea38ea",
+      "failed_tests": 1,
+      "failure_reason": "old terminal predecessor still compared historic SHA to live bytes; successor fixture not yet added",
+      "finalization_file_sha256": "7a44bd02adc04cd1cc675a8508c13091c94bb20afce957a9edf5d1a433dc7899",
+      "passed_tests": 1909,
+      "status": "failed",
+      "unit": "grabowski-job-46fd6d08aca5"
+    },
+    "main_diff_three_saturated_red": {
+      "argv_sha256": "55b39fb0be90af3abe474ce01d4ab9cb6d446d5b9d1e68cd4912a2a2fbb60803",
+      "failed_variants": 6,
+      "finalization_file_sha256": "6fd1ebffddf5529e4744eb507d747904753c1b6bbcc0ff7ad6fde61b4e9de7f7",
+      "status": "failed",
+      "unit": "grabowski-job-891d677dfd9b"
+    },
+    "native_renderer_suite": {
+      "argv_sha256": "730de9e018ec67a609ce56bbdabf84122d1932910daf730b550d123ae858a9ee",
+      "finalization_file_sha256": "9dc48bb7ebafe52b7a2301227bb6df37c90cba11c764f00d63b778b9c23f73a0",
+      "status": "succeeded",
+      "unit": "grabowski-job-5129160d0252"
+    },
+    "physical_strokes_2600": {
+      "argv_sha256": "ace405edb10bde156d2064caa5b671e27002c4348aa7b71d9700f4f09136adbd",
+      "finalization_file_sha256": "728a4b55e9e722f3900037f5be24a35df843b7ee9a1b4a882cdfe58cf52eaa68",
+      "historic_local_baseline_errors": 1,
+      "models_attempted": 2600,
+      "new_label_hits": 0,
+      "new_physical_overlap_pairs": 0,
+      "order_dependent": 0,
+      "status": "succeeded",
+      "unit": "grabowski-job-447fa0b7a00c"
+    },
+    "saturated_groups_2200": {
+      "argv_sha256": "3a5c8069c644fbf4701bbcad988e263a119494e61be700e36b02ee7e69c20c8f",
+      "finalization_file_sha256": "fbc4a843a0db722204badd651343c9b67bfad939f8cb5567647546273511c397",
+      "models_attempted": 2200,
+      "new_card_or_label_hits": 0,
+      "new_render_exceptions": 0,
+      "status": "succeeded",
+      "unit": "grabowski-job-ce0adfa8b8b4"
+    },
+    "targeted_green": {
+      "argv_sha256": "26844d1c5cf80ea91d7841081277940233208ce7271b5c760bcd2354f03063c4",
+      "finalization_file_sha256": "f45be8772b0712bd42c01192174fc0e5b44c7a867a867c8ab81569b4edf73fdf",
+      "passed_variants": 18,
+      "status": "succeeded",
+      "unit": "grabowski-job-541b58106760"
+    }
+  }
+}

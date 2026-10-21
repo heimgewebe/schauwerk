@@ -3890,7 +3890,13 @@ def render_native_diagram(
                     # fixed labels retain their separate physical planner.
                     if box_height > 29:
                         continue
-                    if str(anchor_edge["from"]) not in endpoint_ids:
+                    # An unrelated one-line anchor constrains reverse cubics
+                    # here. Broadening forward packs demotes otherwise valid
+                    # peer routes into overlapping outer rails.
+                    if (
+                        str(anchor_edge["from"]) not in endpoint_ids
+                        and source[1] <= target[1]
+                    ):
                         continue
                     # The fixed one-line self-loop is rendered at
                     # row_top - 18, not at the corridor midpoint. Using
@@ -4038,6 +4044,19 @@ def render_native_diagram(
                 {edge_id: corridor_center for _, edge_id, _ in candidates}
             )
             process_adjacent_route_y.update(candidate_route_y)
+            # A successful horizontal pack can place its final label across
+            # a fixed long peer's target stem. Flag only the actual stem
+            # intersections for the existing late label-only reposition.
+            for candidate_id, (left, top, box_width, box_height) in (
+                candidate_boxes.items()
+            ):
+                if any(
+                    left - 1.5 < x < left + box_width + 1.5
+                    and top - 1.5 < high
+                    and top + box_height + 1.5 > low
+                    for x, low, high in fixed_long_peer_stems({candidate_id})
+                ):
+                    singleton_fixed_long_label_ids.add(candidate_id)
             packed_corridor_label_boxes[corridor].extend(candidate_boxes.values())
             return True
 
@@ -4119,10 +4138,7 @@ def render_native_diagram(
                         < natural_x + label_width / 2 + 1.5
                         and center_y - label_height / 2 - 1.5 < high
                         and center_y + label_height / 2 + 1.5 > low
-                        for x, low, high in fixed_long_peer_stems(
-                            {edge_id},
-                            shared_source=str(edges_by_id[edge_id]["from"]),
-                        )
+                        for x, low, high in fixed_long_peer_stems({edge_id})
                     )
                     if fixed_stem_hit:
                         # Keep the established route. The later final-layout
@@ -6047,7 +6063,6 @@ def render_native_diagram(
                         )
 
     grouped_feedback_rail_replanned = False
-    feedback_rail_exhausted = False
     # Grouped feedback peer routes can occupy the same physical row-gap rail
     # even with distinct endpoint pairs. Resolve only overlapping local legs
     # after the existing label/side-port planners have fixed their decisions.
@@ -6151,7 +6166,6 @@ def render_native_diagram(
                 # Two immutable same-row plans cannot own one semantic stroke.
                 # Reuse the existing collision-checked outer footer for the
                 # later sorted relation; never merely change SVG paint order.
-                feedback_rail_exhausted = True
                 grouped_feedback_rail_replanned = True
                 feedback_outer_footer_ids.add(fixed_id)
                 feedback_footer_ids.add(fixed_id)
@@ -6249,7 +6263,6 @@ def render_native_diagram(
                 # The finite local search is exhausted. Promote this relation
                 # before the existing, collision-checked outer side-port
                 # planner runs; never render a rejected original rail.
-                feedback_rail_exhausted = True
                 feedback_outer_footer_ids.add(edge_id)
                 feedback_footer_ids.add(edge_id)
                 feedback_local_gutter_x.pop(edge_id, None)
@@ -7088,17 +7101,46 @@ def render_native_diagram(
                     ),
                     default=own_center,
                 ) + label_step
-                label_centers = tuple(dict.fromkeys((
+                # Only card-blocked same-row detours reach this planner.
+                # A label in a genuine row-card gap can keep their stroke
+                # local when every existing candidate sits on a card.
+                row_cards = sorted({
+                    (float(x), float(x + _NODE_WIDTH))
+                    for x, y in positions.values()
+                    if y == source[1]
+                })
+                gap_centers = sorted(
+                    (
+                        (right + next_left) / 2
+                        for (_, right), (next_left, _) in zip(
+                            row_cards, row_cards[1:]
+                        )
+                        if next_left - right >= label_width + 8
+                    ),
+                    key=lambda x: (abs(x - own_center), x),
+                )
+                normal_label_centers = (
                     own_center,
                     own_center - label_step,
                     own_center + label_step,
                     source_center, target_center,
                     external_label_center,
                     width - _PAGE_MARGIN - label_width / 2,
+                )
+                # The first row already reserves intergroup candidates in
+                # its own established planner. Preserve those priorities.
+                gap_only_centers = (
+                    tuple(x for x in gap_centers if x not in normal_label_centers)
+                    if source[1] != min(y for _, y in positions.values())
+                    else ()
+                )
+                label_centers = tuple(dict.fromkeys((
+                    *normal_label_centers, *gap_only_centers,
                 )))
                 accepted = False
                 source_stem_fallback = None
                 source_port_fallback = None
+                gap_label_fallback = None
                 for direction in (-1, 1):
                     corridor = _process_row_corridor_bounds(
                         source[1], positions, direction=direction
@@ -7324,6 +7366,17 @@ def render_native_diagram(
                                     rendered_box, label_box
                                 ))
                             ):
+                                continue
+                            if candidate_x in gap_only_centers:
+                                # This extra label gap is a last resort only:
+                                # never replace a previously successful side
+                                # port or centered original label placement.
+                                if not source_stem_overlap and gap_label_fallback is None:
+                                    gap_label_fallback = (
+                                        reroute, rendered_box, rerendered,
+                                        channel_y, rail_left, rail_right,
+                                        candidate_verticals,
+                                    )
                                 continue
                             if source_stem_overlap:
                                 # Remember an otherwise valid route, but first
@@ -7587,10 +7640,15 @@ def render_native_diagram(
                 if not accepted and (
                     source_port_fallback is not None
                     or source_stem_fallback is not None
+                    or gap_label_fallback is not None
                 ):
-                    # Prefer a clear side inset to shared physical stems;
-                    # retain the fixed-source fallback only as last resort.
-                    fallback = source_port_fallback or source_stem_fallback
+                    # Existing centered, inset and side-gap routes keep their
+                    # precedence; use the new row-card label slot only when
+                    # all of them have failed.
+                    fallback = (
+                        source_port_fallback or source_stem_fallback
+                        or gap_label_fallback
+                    )
                     assert fallback is not None
                     (fallback_path, fallback_label, fallback_frag,
                      fallback_y, fallback_left, fallback_right,
@@ -7602,6 +7660,162 @@ def render_native_diagram(
                     )
                     reserved_detour_verticals.extend(fallback_stems)
                     accepted = True
+                if not accepted:
+                    # Last resort: a card-free near-card rail may be blocked
+                    # solely by a movable peer label. Test one local label
+                    # displacement, leaving every existing route unchanged.
+                    upper = _process_row_corridor_bounds(
+                        source[1], positions, direction=-1
+                    )
+                    if upper is not None:
+                        candidate_y = float(upper[1] - 2)
+                        node_port = float(source[1])
+                        candidate_path = (
+                            f"M {source_center:.1f} {node_port:.1f} "
+                            f"L {source_center:.1f} {candidate_y:.1f} "
+                            f"L {target_center:.1f} {candidate_y:.1f} "
+                            f"L {target_center:.1f} {node_port:.1f}"
+                        )
+                        candidate_stems = (
+                            (source_center, candidate_y, node_port),
+                            (target_center, candidate_y, node_port),
+                        )
+                        candidate_left = min(source_center, target_center)
+                        candidate_right = max(source_center, target_center)
+                        blocked_labels = [
+                            other_id for other_id, (_, other_box) in layouts.items()
+                            if other_id != edge_id and _process_svg_path_hits_box(
+                                candidate_path, other_box
+                            )
+                        ]
+                        clear_others = (
+                            len(blocked_labels) == 1
+                            and not _process_svg_path_hits_box(
+                                candidate_path, original_box
+                            )
+                            and not any(
+                                _process_svg_path_hits_box(candidate_path, box)
+                                for node_id, box in card_boxes.items()
+                                if node_id not in {
+                                    str(edge["from"]), str(edge["to"])
+                                }
+                            )
+                            and not any(
+                                abs(candidate_y - y) < 4
+                                and min(candidate_right, right)
+                                - max(candidate_left, left) > 4
+                                for y, left, right in reserved_detour_rails
+                            )
+                            and not any(
+                                abs(x - peer_x) < 4
+                                and min(high, peer_high) - max(low, peer_low) > 4
+                                for x, low, high in candidate_stems
+                                for peer_x, peer_low, peer_high
+                                in reserved_detour_verticals
+                            )
+                        )
+                        if clear_others:
+                            blocked_id = blocked_labels[0]
+                            peer = next(
+                                item for item in paint_edges
+                                if str(item["id"]) == blocked_id
+                            )
+                            if peer["from"] != peer["to"]:
+                                peer_path, peer_box = layouts[blocked_id]
+                                bx, by, bw, bh = peer_box
+                                peer_center = bx + bw / 2
+                                safe_gaps = sorted(
+                                    (
+                                        (right + next_left) / 2
+                                        for (_, right), (next_left, _) in zip(
+                                            row_cards, row_cards[1:]
+                                        )
+                                        if next_left - right >= bw + 8
+                                    ),
+                                    key=lambda value: (
+                                        abs(value - peer_center), value
+                                    ),
+                                )
+                                for dy in (-bh - 3, bh + 3, -2 * bh - 6):
+                                    if accepted:
+                                        break
+                                    new_top = by + dy
+                                    for new_x in safe_gaps:
+                                        new_box = (
+                                            new_x - bw / 2, new_top, bw, bh
+                                        )
+                                        if (
+                                            new_box[0] < 8
+                                            or new_box[0] + bw > width - 8
+                                            or new_top < 112
+                                            or new_top + bh > height - 8
+                                            or _process_svg_path_hits_box(
+                                                candidate_path, new_box
+                                            )
+                                            or any(
+                                                _process_svg_path_hits_box(
+                                                    path, new_box
+                                                )
+                                                for path, _ in layouts.values()
+                                            )
+                                            or any(
+                                                new_box[0] < box[0] + box[2] + 2
+                                                and box[0] < new_box[0] + bw + 2
+                                                and new_top < box[1] + box[3] + 2
+                                                and box[1] < new_top + bh + 2
+                                                for other_id, (_, box)
+                                                in layouts.items()
+                                                if other_id != blocked_id
+                                            )
+                                            or any(
+                                                new_box[0] < cx + cw + 1.5
+                                                and cx - 1.5 < new_box[0] + bw
+                                                and new_top < cy + ch + 1.5
+                                                and cy - 1.5 < new_top + bh
+                                                for cx, cy, cw, ch
+                                                in card_boxes.values()
+                                            )
+                                        ):
+                                            continue
+                                        moved_peer = render_planned_edge(
+                                            peer,
+                                            label_position_override=(
+                                                new_x, new_top + bh / 2
+                                            ),
+                                        )
+                                        moved_path, moved_box = planned_svg_parts(
+                                            moved_peer
+                                        )
+                                        rerouted_edge = render_planned_edge(
+                                            edge,
+                                            label_x_override=own_center,
+                                            route_y_override=candidate_y,
+                                            label_position_override=(
+                                                own_center, top + label_height / 2
+                                            ),
+                                            card_target_port_x=target_center,
+                                            card_source_port_x=source_center,
+                                        )
+                                        new_path, new_label = planned_svg_parts(
+                                            rerouted_edge
+                                        )
+                                        if (
+                                            moved_path != peer_path
+                                            or moved_box != new_box
+                                            or new_path != candidate_path
+                                            or new_label != original_box
+                                        ):
+                                            continue
+                                        layouts[blocked_id] = moved_path, moved_box
+                                        planned_edge_lines[blocked_id] = moved_peer
+                                        layouts[edge_id] = new_path, new_label
+                                        planned_edge_lines[edge_id] = rerouted_edge
+                                        reserved_detour_rails.append(
+                                            (candidate_y, candidate_left, candidate_right)
+                                        )
+                                        reserved_detour_verticals.extend(candidate_stems)
+                                        accepted = True
+                                        break
                 if not accepted:
                     # The observed route crosses a real foreign card. Never
                     # silently publish that known-invalid curve.
@@ -7688,50 +7902,17 @@ def render_native_diagram(
         # return even though its own path has a clear right-hand gutter.
         # Resolve only actual collisions caused by a repacked label or a
         # long return: paths and unrelated label anchors remain unchanged.
-        if (
-            process_branch_gutter_x or long_vertical_label_x
-            or long_branch_slots or feedback_rail_exhausted
-            or singleton_fixed_long_label_ids
-        ):
+        if intent == "process" and model["groups"]:
             final_layout = {
                 edge_id: planned_svg_parts(fragment)
                 for edge_id, fragment in planned_edge_lines.items()
             }
-            affected_routes = (
-                set(process_branch_gutter_x)
-                | set(long_vertical_gutter_x)
-                | set(long_branch_slots)
-            )
-            # A newly moved target entrance can remove the old reason that
-            # triggered label repacking, even though another already visible
-            # peer route still crosses the label. Check every actual peer path
-            # for labels of that shared target before accepting the SVG.
-            shifted_entrance_targets = {
-                str(edge["to"])
-                for edge in paint_edges
-                if str(edge["id"]) in shared_target_port_x
-            }
             for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
                 edge_id = str(edge["id"])
-                if (
-                    str(edge["kind"]) == "feedback"
-                    or edge["from"] == edge["to"]
-                ):
+                if edge["from"] == edge["to"]:
                     continue
                 path, old_box = final_layout[edge_id]
-                if (
-                    edge_id not in singleton_fixed_long_label_ids
-                    and edge_id not in process_branch_gutter_x
-                    and edge_id not in long_vertical_label_x
-                    and str(edge["to"]) not in shifted_entrance_targets
-                    and not any(
-                        (other_id in affected_routes or feedback_rail_exhausted)
-                        and _process_svg_path_hits_box(other_path, old_box)
-                        for other_id, (other_path, _) in final_layout.items()
-                        if other_id != edge_id
-                    )
-                ):
-                    continue
+
                 left, top, box_width, box_height = old_box
                 hit_foreign_path = any(
                     _process_svg_path_hits_box(other_path, old_box)
@@ -7758,6 +7939,7 @@ def render_native_diagram(
                     8, -8, 16, -16, 24, -24, 32, -32,
                     40, -40, 48, -48, 56, -56, 64, -64,
                     80, -80, 96, -96, 128, -128, 160, -160,
+                    width - 8 - box_width - left, 8 - left,
                 )
                 placements = (
                     *((0, dy) for dy in vertical_offsets),
@@ -7766,7 +7948,7 @@ def render_native_diagram(
                         for dx in horizontal_offsets
                         for dy in (
                             (0, *vertical_offsets)
-                            if feedback_rail_exhausted
+                            if True
                             else (0, 8, -8, 16, -16, 24, -24)
                         )
                     ),
@@ -7820,6 +8002,120 @@ def render_native_diagram(
                         continue
                     planned_edge_lines[edge_id] = fragment
                     final_layout[edge_id] = new_path, actual_box
+                    break
+
+        # A same-row outer fallback can still cut through a fixed self-loop
+        # label. Move only its horizontal rail within the already available
+        # row gap, leaving every physical label and card in place.
+        if process_branch_gutter_x:
+            latest_layout = {
+                edge_id: planned_svg_parts(fragment)
+                for edge_id, fragment in planned_edge_lines.items()
+            }
+            for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+                edge_id = str(edge["id"])
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                if (
+                    edge_id not in process_branch_gutter_x
+                    or str(edge["kind"]) == "feedback"
+                    or edge["from"] == edge["to"]
+                    or source[1] != target[1]
+                    or 'data-route="process-row-gutter"' not in (
+                        planned_edge_lines[edge_id][0]
+                    )
+                ):
+                    continue
+                path, own_box = latest_layout[edge_id]
+                if not any(
+                    _process_svg_path_hits_box(path, other_box)
+                    for other_id, (_, other_box) in latest_layout.items()
+                    if other_id != edge_id
+                ):
+                    continue
+                corridor = _process_row_corridor_bounds(
+                    source[1], positions, direction=-1
+                )
+                if corridor is None:
+                    continue
+                low, high = map(float, corridor)
+                preferred = (low + high) / 2
+                ys = {low + 2, high - 2, preferred}
+                for _, (_, other_box) in latest_layout.items():
+                    _, top, _, label_height = other_box
+                    ys.update((top - 2, top + label_height + 2))
+                ordered_ys = sorted(
+                    (y for y in ys if low + 1.5 < y < high - 1.5),
+                    key=lambda y: (abs(y - preferred), y),
+                )
+                for lane_y in ordered_ys:
+                    fragment = render_planned_edge(
+                        edge,
+                        route_y_override=(lane_y, lane_y),
+                        label_position_override=(
+                            own_box[0] + own_box[2] / 2,
+                            own_box[1] + own_box[3] / 2,
+                        ),
+                    )
+                    new_path, new_box = planned_svg_parts(fragment)
+                    if new_path == path or new_box != own_box:
+                        continue
+                    if any(
+                        _process_svg_path_hits_box(new_path, other_box)
+                        for _, other_box in latest_layout.values()
+                    ):
+                        continue
+                    if any(
+                        _process_svg_path_hits_box(
+                            new_path,
+                            (float(x), float(y),
+                             float(_NODE_WIDTH), float(_NODE_HEIGHT)),
+                        )
+                        for node_id, (x, y) in positions.items()
+                        if node_id not in {
+                            str(edge["from"]), str(edge["to"])
+                        }
+                    ):
+                        continue
+                    # Compare physical axis-aligned SVG stroke spans, not
+                    # merely perpendicular crossings between independent edges.
+                    def physical_spans(d):
+                        tokens=re.findall(r"[MLC]|-?\d+(?:\.\d+)?",d)
+                        cursor=None
+                        parts=[]
+                        index=0
+                        while index<len(tokens):
+                            op=tokens[index]
+                            index+=1
+                            count=6 if op=="C" else 2
+                            vals=tuple(float(v) for v in tokens[index:index+count])
+                            index+=count
+                            end=vals[-2:]
+                            if cursor is not None:
+                                segments=(
+                                    ((cursor,end),) if op=="L" else
+                                    ((cursor,vals[:2]),(vals[2:4],end))
+                                    if op=="C" else ()
+                                )
+                                for (x1,y1),(x2,y2) in segments:
+                                    if abs(x1-x2)<.01 and abs(y1-y2)>4:
+                                        parts.append(("v",round(x1,1),min(y1,y2),max(y1,y2)))
+                                    if abs(y1-y2)<.01 and abs(x1-x2)>4:
+                                        parts.append(("h",round(y1,1),min(x1,x2),max(x1,x2)))
+                            cursor=end
+                        return parts
+                    trial_spans=physical_spans(new_path)
+                    if any(
+                        a[0]==b[0] and abs(a[1]-b[1])<4
+                        and min(a[3],b[3])-max(a[2],b[2])>4
+                        for peer_id,(peer_path,_) in latest_layout.items()
+                        if peer_id!=edge_id
+                        for a in trial_spans
+                        for b in physical_spans(peer_path)
+                    ):
+                        continue
+                    planned_edge_lines[edge_id] = fragment
+                    latest_layout[edge_id] = new_path, new_box
                     break
 
     # A reserved shared-target entrance may reach a *final* peer label even
@@ -7906,6 +8202,106 @@ def render_native_diagram(
             # If every alternative fails, preserve the previously renderable
             # geometry. A blanket exception here regressed 318 valid inputs
             # in the four deterministic 5,000-model differential cohorts.
+
+    # A final physical label-only clearance pass runs after port and rail
+    # rerouting. Move only a blocked process label; never change its path.
+    if intent == "process" and model["groups"]:
+        final_layout = {
+            str(edge["id"]): planned_svg_parts(planned_edge_lines[str(edge["id"])])
+            for edge in paint_edges
+        }
+        vertical_shifts = (
+            8, -8, 16, -16, 24, -24, 32, -32,
+            40, -40, 48, -48, 56, -56, 64, -64,
+        )
+        horizontal_shifts = tuple(
+            shift
+            for step in range(8, 129, 8)
+            for shift in (step, -step)
+        )
+        placements = (
+            *((0, dy) for dy in vertical_shifts),
+            *((dx, 0) for dx in horizontal_shifts),
+            *(
+                (dx, dy)
+                for dx in horizontal_shifts
+                for dy in (8, -8, 16, -16, 24, -24)
+            ),
+        )
+        for edge in sorted(paint_edges, key=lambda item: str(item["id"])):
+            edge_id = str(edge["id"])
+            if str(edge["kind"]) == "feedback":
+                continue
+            own_path, old_box = final_layout[edge_id]
+            if not any(
+                _process_svg_path_hits_box(peer_path, old_box)
+                for peer_id, (peer_path, _) in final_layout.items()
+                if peer_id != edge_id
+            ):
+                continue
+            left, top, box_width, box_height = old_box
+            for dx, dy in placements:
+                trial = (left + dx, top + dy, box_width, box_height)
+                if (
+                    trial[0] < 8 or trial[0] + box_width > width - 8
+                    or trial[1] < 104 or trial[1] + box_height > height - 8
+                ):
+                    continue
+                if any(
+                    trial[0] < bx + _NODE_WIDTH + 1.5
+                    and bx - 1.5 < trial[0] + box_width
+                    and trial[1] < by + _NODE_HEIGHT + 1.5
+                    and by - 1.5 < trial[1] + box_height
+                    for bx, by in positions.values()
+                ):
+                    continue
+                if any(
+                    trial[0] < box[0] + box[2] + 2
+                    and box[0] < trial[0] + box_width + 2
+                    and trial[1] < box[1] + box[3] + 2
+                    and box[1] < trial[1] + box_height + 2
+                    for peer_id, (_, box) in final_layout.items()
+                    if peer_id != edge_id
+                ):
+                    continue
+                if any(
+                    _process_svg_path_hits_box(path, trial)
+                    for path, _ in final_layout.values()
+                ):
+                    continue
+                # Preserve an already accepted same-row-gutter lane while
+                # moving only its label. A plain rerender otherwise silently
+                # restores the default rail and fails the exact-path guard.
+                route_override = None
+                if 'data-route="process-row-gutter"' in (
+                    planned_edge_lines[edge_id][0]
+                ):
+                    lane = re.match(
+                        r"^M [-0-9.]+ [-0-9.]+ L [-0-9.]+ ([-0-9.]+) L ",
+                        own_path,
+                    )
+                    if lane is not None:
+                        route_override = (float(lane.group(1)),) * 2
+                fragment = render_planned_edge(
+                    edge,
+                    route_y_override=route_override,
+                    label_position_override=(
+                        left + box_width / 2 + dx,
+                        top + box_height / 2 + dy,
+                    ),
+                )
+                new_path, actual_box = planned_svg_parts(fragment)
+                if (
+                    new_path != own_path
+                    or any(
+                        abs(one - other) > 0.01
+                        for one, other in zip(actual_box, trial)
+                    )
+                ):
+                    continue
+                final_layout[edge_id] = own_path, actual_box
+                planned_edge_lines[edge_id] = fragment
+                break
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])
