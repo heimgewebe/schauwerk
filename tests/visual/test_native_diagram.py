@@ -8567,3 +8567,66 @@ def test_pr206_independent_p1_vertical_adjacent_gutter_handles_dual_y() -> None:
         "M 190.0 580.0 L 190.0 596.0 L 418.0 596.0 "
         "L 418.0 616.0 L 190.0 616.0 L 190.0 632.0"
     )
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr206_codex_four_group_saturated_source_sideport_stays_renderable(
+    reversed_order: bool,
+) -> None:
+    """An occupied shared source port must not invalidate a safe alternate."""
+    model = _p2_feedback_geometry_model((4, 5, 4, 2))
+    relations = (
+        ("n10", "n2", "feedback", "x"),
+        ("n10", "n11", "flow", "Approve"),
+        ("n0", "n8", "risk", "x"),
+        ("n13", "n3", "feedback", "Approve"),
+        ("n7", "n1", "flow", "link"),
+        ("n0", "n12", "feedback", "long label"),
+        ("n1", "n8", "flow", "x"),
+        ("n2", "n11", "flow", "x"),
+        ("n13", "n8", "flow", "long label"),
+    )
+    edges = [
+        {"id": f"e{i:02}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels, cards = (
+        _edge_paths(root), _edge_label_boxes(root), _node_boxes(root)
+    )
+    assert len(paths) == len(edges)
+    assert paths["e07"].startswith("M 315.0 ")
+    assert paths["e07"].endswith("L 977.0 707.0")
+    for node_id, box in cards.items():
+        if node_id not in {"n2", "n11"}:
+            assert _p2_linear_path_clears_box(paths["e07"], box), node_id
+    for edge_id, box in labels.items():
+        assert _p2_linear_path_clears_box(paths["e07"], box), edge_id
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+
+@pytest.mark.parametrize("reversed_order", [False, True])
+def test_pr206_codex_adjacent_cubic_clears_anchored_selfloop_label(
+    reversed_order: bool,
+) -> None:
+    """An anchored self-loop label is a physical obstacle to a peer cubic."""
+    model = _p2_feedback_geometry_model((3, 2))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n3",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n1", "to": "n1",
+         "kind": "risk", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reversed_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == 2
+    assert _p2_cubic_path_clears_box(paths["e0"], labels["e1"])
+    assert _p2_linear_path_clears_box(paths["e0"], labels["e1"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))

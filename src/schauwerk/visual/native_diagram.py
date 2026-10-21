@@ -3817,6 +3817,33 @@ def render_native_diagram(
                     if peer_id != edge_id
                 ]
                 peer_boxes.extend(foreign_boxes)
+                # Self-loop labels are fixed above their source card. A
+                # branch sharing that endpoint must not cut their text.
+                # Other anchored branch labels follow their own established
+                # corridor planner and must not demote locally safe routes.
+                endpoint_ids = {str(edge["from"]), str(edge["to"])}
+                for x, anchor_id, box_width, box_height, fixed in (
+                    corridor_groups[corridor]
+                ):
+                    if not fixed or anchor_id in candidate_ids:
+                        continue
+                    anchor_edge = edges_by_id[anchor_id]
+                    if anchor_edge["from"] != anchor_edge["to"]:
+                        continue
+                    # Self-loop labels sit to the right of their source.
+                    # Only forward cubics cross that anchored label band;
+                    # reverse peers keep their established local planner.
+                    if source[0] >= target[0] or box_height > 29:
+                        continue
+                    if str(anchor_edge["from"]) not in endpoint_ids:
+                        continue
+                    box = (
+                        x - box_width / 2,
+                        corridor_center - box_height / 2,
+                        box_width, float(box_height),
+                    )
+                    if _cubic_hull_intersects_box(points, box):
+                        peer_boxes.append(box)
                 if source[1] == target[1]:
                     endpoints = {str(edge["from"]), str(edge["to"])}
                     if any(
@@ -7242,16 +7269,29 @@ def render_native_diagram(
                         )
                         start_gap = (start_side + start_neighbor) / 2
                         end_gap = (end_side + end_neighbor) / 2
-                        port_y = float(source[1] + _NODE_HEIGHT / 2)
+                        center_port_y = float(source[1] + _NODE_HEIGHT / 2)
+                        # The center side-port is preferred, but another peer
+                        # may already own that exact row ordinate.
+                        port_ys = (
+                            center_port_y,
+                            center_port_y - 8.0,
+                            center_port_y + 8.0,
+                            center_port_y - 16.0,
+                            center_port_y + 16.0,
+                        )
                         label_xs = (
                             (start_side + start_gap) / 2,
                             (end_side + end_gap) / 2,
                         )
-                        label_ys = (
-                            port_y - label_height - 18,
-                            port_y + label_height + 18,
-                        )
-                        for gap_direction in (-1, 1):
+                        for gap_direction, port_y in (
+                            (direction, port)
+                            for port in port_ys
+                            for direction in (-1, 1)
+                        ):
+                            label_ys = (
+                                port_y - label_height - 18,
+                                port_y + label_height + 18,
+                            )
                             bounds = _process_row_corridor_bounds(
                                 source[1], positions, direction=gap_direction
                             )

@@ -12218,8 +12218,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in sideport["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    # This historical source revision is retained but does not bind the terminal build.
     assert sideport["review_findings"][0]["comment_id"] == 4328507158
     assert sideport["review_findings"][1]["unit"] == "grabowski-job-4fc79a066b6a"
     assert sideport["test_receipts"]["targeted_red"]["failed_variants"] == 5
@@ -12235,6 +12234,62 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "commonthing_serving_verified",
     ):
         assert sideport["local_checks"][gate] is False
+
+    # Exact terminal four-group / anchored-selfloop Source+Test successor.
+    final_sideport_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-four-group-sideport-anchored-selfloop-p2-successor-acceptance-receipt.json"
+    )
+    final_sideport = json.loads(
+        final_sideport_path.read_text(encoding="utf-8")
+    )
+    assert final_sideport["schema_version"] == (
+        "schauwerk-schaubild-feedback-four-group-sideport-anchored-selfloop-p2-successor.v1"
+    )
+    assert final_sideport["scope"] == "technical-candidate-only"
+    assert final_sideport["based_on_pr_head"] == (
+        "eff6bb90f4c0c5c1ae7eec62c309b884b49e832b"
+    )
+    assert final_sideport["parent_evidence"] == {
+        "schema_version": sideport["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-three-group-sideport-r3-tuple-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(sideport_path.read_bytes()).hexdigest(),
+        "evidence_digest": sideport["evidence_digest"],
+    }
+    assert final_sideport["evidence_digest"] == digest_mapping(
+        final_sideport, "evidence_digest"
+    )
+    assert final_sideport["predecessor_source_bindings"] == (
+        sideport["source_bindings"]
+    )
+    assert set(final_sideport["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in final_sideport["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["comment_id"] for f in final_sideport["codex_review_findings"]] == [
+        4329563532, 4329563542
+    ]
+    verified_final = final_sideport["test_receipts"]
+    assert verified_final["targeted_red"]["failed_variants"] == 4
+    assert verified_final["codex_p2_differential"]["new_render_exceptions"] == 0
+    assert verified_final["generic_geometry_differential"]["models_compared"] == 20000
+    assert verified_final["generic_geometry_differential"]["new_card_or_label_hits"] == 0
+    assert verified_final["physical_stroke_differential"]["new_physical_overlap_pairs"] == 0
+    assert verified_final["physical_stroke_differential"]["new_label_hits"] == 0
+    for gate in (
+        "visual_acceptance_pass",
+        "independent_exact_head_review_pass",
+        "captain_merge_authorized",
+        "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert final_sideport["local_checks"][gate] is False
 
     assert outer_local["codex_review_findings"][0]["comment_id"] == 4321776076
     assert outer_local["regression_tests"] == [
