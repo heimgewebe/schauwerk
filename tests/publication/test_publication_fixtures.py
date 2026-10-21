@@ -12361,8 +12361,82 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in r3_sidegap["source_bindings"].items():
+    # Historical R3 successor keeps its original revision binding;
+    # the terminal Codex fixed-stem successor alone binds live Source/Test.
+    fixed_peer_stem_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-fixed-long-source-stem-label-p2-successor-acceptance-receipt.json"
+    )
+    fixed_peer_stem_successor = json.loads(
+        fixed_peer_stem_path.read_text(encoding="utf-8")
+    )
+    assert fixed_peer_stem_successor["schema_version"] == (
+        "schauwerk-schaubild-feedback-fixed-long-source-stem-label-p2-successor.v1"
+    )
+    assert fixed_peer_stem_successor["scope"] == "technical-candidate-only"
+    assert fixed_peer_stem_successor["based_on_pr_head"] == (
+        "1fc02aa59eddbc98347f82347543a343b64e077b"
+    )
+    assert fixed_peer_stem_successor["parent_evidence"] == {
+        "schema_version": r3_sidegap["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-r3-sidegap-wide-label-cubic-clearance-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(r3_path.read_bytes()).hexdigest(),
+        "evidence_digest": r3_sidegap["evidence_digest"],
+    }
+    assert fixed_peer_stem_successor["predecessor_source_bindings"] == (
+        r3_sidegap["source_bindings"]
+    )
+    assert fixed_peer_stem_successor["evidence_digest"] == digest_mapping(
+        fixed_peer_stem_successor, "evidence_digest"
+    )
+    assert set(fixed_peer_stem_successor["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in fixed_peer_stem_successor["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert [f["comment_id"] for f in fixed_peer_stem_successor["codex_review_findings"]] == [
+        4335683017,
+    ]
+    assert fixed_peer_stem_successor["regression_tests"] == [
+        "test_pr206_codex_packed_label_clears_fixed_long_peer_source_stem",
+        "test_pr205_codex_same_row_card_detour_stabilizes_paint_order",
+    ]
+    fixed_peer_stem_checks = fixed_peer_stem_successor["test_receipts"]
+    assert fixed_peer_stem_checks["original_red"]["failed_variants"] == 2
+    assert fixed_peer_stem_checks["targeted_green"]["passed_tests"] == 3
+    assert fixed_peer_stem_checks["rejected_broad_label_pack"][
+        "new_physical_overlap_pairs"
+    ] == 368
+    assert fixed_peer_stem_checks["codex_p2_differential"][
+        "new_render_exceptions"
+    ] == 0
+    assert fixed_peer_stem_checks["generic_geometry_differential"][
+        "models_compared"
+    ] == 20000
+    assert fixed_peer_stem_checks["generic_geometry_differential"][
+        "new_card_or_label_hits"
+    ] == 0
+    assert fixed_peer_stem_checks["physical_stroke_differential"][
+        "new_physical_overlap_pairs"
+    ] == 0
+    assert fixed_peer_stem_checks["physical_stroke_differential"][
+        "new_label_hits"
+    ] == 0
+    assert fixed_peer_stem_checks["saturated_group_differential"][
+        "models_attempted"
+    ] == 2200
+    assert fixed_peer_stem_checks["chromium_browser_smoke"]["passed_cases"] == 30
+    for gate in (
+        "full_make_validate_pass", "visual_acceptance_pass",
+        "independent_exact_head_review_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert fixed_peer_stem_successor["local_checks"][gate] is False
     assert [f["severity"] for f in r3_sidegap["independent_review_findings"]] == [
         "P2", "P2",
     ]

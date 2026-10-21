@@ -3552,6 +3552,52 @@ def render_native_diagram(
             tuple[int, int], list[tuple[float, float, float, float]]
         ] = defaultdict(list)
 
+        def fixed_long_peer_stems(
+            excluded_ids: set[str],
+            *,
+            shared_source: str | None = None,
+        ) -> list[tuple[float, float, float]]:
+            """Physical centered endpoint stems of noncandidate long columns."""
+            spans: list[tuple[float, float, float]] = []
+            for other in model["edges"]:
+                if (
+                    str(other["kind"]) == "feedback"
+                    or other["from"] == other["to"]
+                    or str(other["id"]) in excluded_ids
+                    or (
+                        shared_source is not None
+                        and str(other["from"]) != shared_source
+                    )
+                ):
+                    continue
+                other_source = positions[str(other["from"])]
+                other_target = positions[str(other["to"])]
+                if (
+                    other_source[0] != other_target[0]
+                    or abs(other_source[1] - other_target[1])
+                    <= _NODE_HEIGHT + process_row_gap
+                ):
+                    continue
+                descending = other_source[1] < other_target[1]
+                start_y = (
+                    other_source[1] + _NODE_HEIGHT if descending
+                    else other_source[1]
+                )
+                end_y = (
+                    other_target[1] if descending
+                    else other_target[1] + _NODE_HEIGHT
+                )
+                direction = 1 if descending else -1
+                for a, b in (
+                    (start_y, start_y + direction * process_row_gap / 2),
+                    (end_y - direction * process_row_gap / 2, end_y),
+                ):
+                    spans.append((
+                        other_source[0] + _NODE_WIDTH / 2,
+                        min(a, b), max(a, b),
+                    ))
+            return spans
+
         def try_horizontal_adjacent_pack(
             movable_items: Sequence[tuple[float, str, float, int, bool]],
             fixed_items: Sequence[tuple[float, str, float, int, bool]],
@@ -3721,6 +3767,8 @@ def render_native_diagram(
                     ):
                         return False
 
+            fixed_long_stems = fixed_long_peer_stems(candidate_ids)
+
             # Only same-column adjacent branches have node-centered
             # vertical endpoint stems across an entire row-gap corridor.
             # Move only a label that actually covers such a stem; demoting
@@ -3810,38 +3858,6 @@ def render_native_diagram(
                     if edge_id == candidate_id else (x, edge_id, width)
                     for x, edge_id, width in candidates
                 ]
-
-            # Long same-column peers keep physical, centered endpoint stems.
-            # A label-aware cubic detour must not repaint those fixed strokes;
-            # exhausting the local gap falls back to the existing outer gutter.
-            fixed_long_stems: list[tuple[float, float, float]] = []
-            for other in model["edges"]:
-                if (
-                    str(other["kind"]) == "feedback"
-                    or other["from"] == other["to"]
-                    or str(other["id"]) in candidate_ids
-                ):
-                    continue
-                other_source = positions[str(other["from"])]
-                other_target = positions[str(other["to"])]
-                if (
-                    other_source[0] != other_target[0]
-                    or abs(other_source[1] - other_target[1])
-                    <= _NODE_HEIGHT + process_row_gap
-                ):
-                    continue
-                descending = other_source[1] < other_target[1]
-                start_y = other_source[1] + _NODE_HEIGHT if descending else other_source[1]
-                end_y = other_target[1] if descending else other_target[1] + _NODE_HEIGHT
-                direction = 1 if descending else -1
-                for a, b in (
-                    (start_y, start_y + direction * process_row_gap / 2),
-                    (end_y - direction * process_row_gap / 2, end_y),
-                ):
-                    fixed_long_stems.append((
-                        other_source[0] + _NODE_WIDTH / 2,
-                        min(a, b), max(a, b),
-                    ))
 
             candidate_route_y: dict[str, float] = {}
             for _, edge_id, _ in candidates:
@@ -4025,6 +4041,7 @@ def render_native_diagram(
             packed_corridor_label_boxes[corridor].extend(candidate_boxes.values())
             return True
 
+        singleton_fixed_long_label_ids: set[str] = set()
         for corridor, items in corridor_groups.items():
             upper_bottom, lower_top = corridor
             available_height = lower_top - upper_bottom
@@ -4094,6 +4111,24 @@ def render_native_diagram(
                         for left, top, box_width, box_height
                         in packed_corridor_label_boxes[corridor]
                     )
+                    # A natural singleton can cover a longer peer's fixed
+                    # source/target stem even without a second local label.
+                    # Reuse the existing movable pack before outer fallback.
+                    fixed_stem_hit = any(
+                        natural_x - label_width / 2 - 1.5 < x
+                        < natural_x + label_width / 2 + 1.5
+                        and center_y - label_height / 2 - 1.5 < high
+                        and center_y + label_height / 2 + 1.5 > low
+                        for x, low, high in fixed_long_peer_stems(
+                            {edge_id},
+                            shared_source=str(edges_by_id[edge_id]["from"]),
+                        )
+                    )
+                    if fixed_stem_hit:
+                        # Keep the established route. The later final-layout
+                        # pass can move only a label that a real peer stroke
+                        # still intersects, without repacking the whole edge.
+                        singleton_fixed_long_label_ids.add(edge_id)
                     # Later one-item clusters must also honor earlier packs.
                     # The header still reserves the singleton slot if clear.
                     if (
@@ -7656,6 +7691,7 @@ def render_native_diagram(
         if (
             process_branch_gutter_x or long_vertical_label_x
             or long_branch_slots or feedback_rail_exhausted
+            or singleton_fixed_long_label_ids
         ):
             final_layout = {
                 edge_id: planned_svg_parts(fragment)
@@ -7684,7 +7720,8 @@ def render_native_diagram(
                     continue
                 path, old_box = final_layout[edge_id]
                 if (
-                    edge_id not in process_branch_gutter_x
+                    edge_id not in singleton_fixed_long_label_ids
+                    and edge_id not in process_branch_gutter_x
                     and edge_id not in long_vertical_label_x
                     and str(edge["to"]) not in shifted_entrance_targets
                     and not any(

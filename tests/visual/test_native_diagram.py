@@ -8809,3 +8809,30 @@ def test_pr206_r3_wide_sidegap_label_does_not_exhaust_card_detours(
     assert (paths, labels) == (
         _edge_paths(other), _edge_label_boxes(other)
     )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_packed_label_clears_fixed_long_peer_source_stem(
+    reverse_order: bool,
+) -> None:
+    """Packing cannot leave a peer's long source stem through its label."""
+    model = _p2_feedback_geometry_model((4, 5))
+    edges = [
+        {"id": "e0", "from": "n1", "to": "n8",
+         "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n5", "to": "n6",
+         "kind": "flow", "label": "link"},
+        {"id": "e2", "from": "n5", "to": "n7",
+         "kind": "risk", "label": "x"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == 3
+    assert _p2_linear_path_clears_box(paths["e2"], labels["e1"])
+    assert _p2_cubic_path_clears_box(paths["e2"], labels["e1"])
+    model["edges"] = list(reversed(model["edges"]))
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(other), _edge_label_boxes(other)
+    )

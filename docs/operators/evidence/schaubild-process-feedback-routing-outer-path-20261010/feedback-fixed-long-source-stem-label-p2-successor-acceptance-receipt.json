@@ -1,0 +1,123 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-fixed-long-source-stem-label-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "1fc02aa59eddbc98347f82347543a343b64e077b",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-r3-sidegap-wide-label-cubic-clearance-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-r3-sidegap-wide-label-cubic-clearance-successor-acceptance-receipt.json",
+    "file_sha256": "847fe1c513c9fe2d47e7a3ed5154326c3b85985b0a1cdb5544e97aa414071d8f",
+    "evidence_digest": "6e0fd3e9735a00e75b3dc75ca59d0183abe209a0910e8f42c727217b53902256"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "45035d080b5c97905eeb5b1fc2555cbc416b5039f87cb9fb020fdb2b9cdedec8",
+    "tests/visual/test_native_diagram.py": "3332e7342d7f8037fc77d6b41a868a99e850ed7940e2802d108c967f17a0b28d"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6910502859a333d18af02f5d5fe1808e9e6f88541f8b79443540fd7c4914ced3",
+    "tests/visual/test_native_diagram.py": "8450ef28628f0ccf49e0e4cc0951098876f73fd40bcf9472f31583faa4a84577"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_findings": [
+    {
+      "comment_id": 4335683017,
+      "reviewed_head": "1fc02aa59eddbc98347f82347543a343b64e077b",
+      "severity": "P2",
+      "summary": "Adjacent packed link label intersects longer same-source branch's physically fixed vertical source stem in grouped (4,5) process",
+      "disposition": "reproduced-RED-and-remediated-local-technical-candidate"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_packed_label_clears_fixed_long_peer_source_stem",
+    "test_pr205_codex_same_row_card_detour_stabilizes_paint_order"
+  ],
+  "test_receipts": {
+    "original_red": {
+      "unit": "grabowski-job-9b7b8388db16",
+      "failed_variants": 2,
+      "expected_exit_code": 1
+    },
+    "targeted_green": {
+      "unit": "grabowski-job-a63e2045dfe7",
+      "passed_tests": 3,
+      "exit_code": 0
+    },
+    "true_main_candidate_geometry": {
+      "unit": "grabowski-job-1beeb5f8b069",
+      "main_canvas_width": 1260,
+      "candidate_canvas_width": 1028,
+      "source_stem_clear_both_orders": true,
+      "exit_code": 0
+    },
+    "rejected_broad_label_pack": {
+      "units": [
+        "grabowski-job-6ff2f0cc638c",
+        "grabowski-job-2efbb2379ed2"
+      ],
+      "new_physical_overlap_pairs": 368,
+      "new_label_hits": 64,
+      "new_saturated_label_hits": 25,
+      "disposition": "rejected_before_current_candidate"
+    },
+    "rejected_unscoped_label_only": {
+      "unit": "grabowski-job-d0d56a9d7d69",
+      "new_saturated_label_hits": 3,
+      "disposition": "rejected_before_current_candidate"
+    },
+    "codex_p2_differential": {
+      "unit": "grabowski-job-dc6684a6b539",
+      "models_attempted": 12000,
+      "baseline_render_exceptions": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "generic_geometry_differential": {
+      "unit": "grabowski-job-1e5aad6d8baa",
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_differential": {
+      "unit": "grabowski-job-f336a14eff28",
+      "models_attempted": 2600,
+      "baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    },
+    "saturated_group_differential": {
+      "unit": "grabowski-job-a9152642cc56",
+      "models_attempted": 2200,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "unit": "grabowski-job-e3ae94dd726b",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "unit": "grabowski-job-4dd578e2a685",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff_compile_registry": {
+      "unit": "grabowski-job-b6b68e3bb038",
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "red_green_pass": true,
+    "differential_replay_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate only. A confirmed (4,5) grouped model with flow n1→n8 Approve, flow n5→n6 link and risk n5→n7 x had 2 RED cases where natural singleton label at x619..673 masked another semantic fixed source stem x646; true main clears via x1000 label. Prefer minimal late label-only adjustment from existing final physical SVG planner for the same-source long branch, keeping all route geometry and width bound. Overbroad multi-cluster repacking caused 368 new stroke overlaps, 64 new label hits and 25 saturation label hits and was discarded. Final exact-source deterministic geometry cohorts passed. Historical receipts/acceptances unchanged. Full make validate, visual acceptance, exact-head independent review, Captain, OCI, production are separate and not yet granted.",
+  "evidence_digest": "8ecbedfacff6046c3875f4c575dfaf287387a001b76369398ba2e45c7295b59b"
+}
