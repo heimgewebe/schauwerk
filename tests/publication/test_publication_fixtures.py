@@ -12586,8 +12586,101 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in dense["source_bindings"].items():
+    # Both published technical receipts are immutable, historical revisions.
+    assert hashlib.sha256(dense_path.read_bytes()).hexdigest() == (
+        "e75758fb94fa12aa094bb6d0213132949491badc6c219ea317c013d419e4341f"
+    )
+    assert dense["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "29a1a64c7aa457d9d656ca9d3ad39e27b78599e29d32ec64fd54a9fbab68acf1"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "aa7988d014b01a01b8e535ea38353eb4fba9c930c25c23c97442971e6ef4faf4"
+        ),
+    }
+    dense_finalization_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / (
+            "feedback-pr206-dense-single-group-validation-"
+            "finalization-successor-acceptance-receipt.json"
+        )
+    )
+    dense_finalization = json.loads(
+        dense_finalization_path.read_text(encoding="utf-8")
+    )
+    assert hashlib.sha256(dense_finalization_path.read_bytes()).hexdigest() == (
+        "0fe7150a85b36f8d0258e0a679b26af07e441a8735121be5b9a63939e3c34b93"
+    )
+    assert dense_finalization["parent_evidence"] == {
+        "schema_version": dense["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-dense-single-group-feedback-reorder-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(dense_path.read_bytes()).hexdigest(),
+        "evidence_digest": dense["evidence_digest"],
+    }
+    assert dense_finalization["predecessor_source_bindings"] == dense["source_bindings"]
+    assert dense_finalization["source_bindings"] == dense["source_bindings"]
+    assert dense_finalization["evidence_digest"] == digest_mapping(
+        dense_finalization, "evidence_digest"
+    )
+    assert dense_finalization["local_checks"]["full_make_validate_pass"] is True
+    r3_physical_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / (
+            "feedback-pr206-r3-physical-semantic-finalization-"
+            "successor-acceptance-receipt.json"
+        )
+    )
+    r3_physical = json.loads(r3_physical_path.read_text(encoding="utf-8"))
+    assert r3_physical["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-finalization-successor.v1"
+    )
+    assert r3_physical["scope"] == "technical-candidate-only"
+    assert hashlib.sha256(r3_physical_path.read_bytes()).hexdigest() == (
+        "bcf449f187896bdb3176016d02964fdc959350952230fcad1186ad19bf644050"
+    )
+    assert r3_physical["parent_evidence"] == {
+        "schema_version": dense_finalization["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-dense-single-group-validation-finalization-"
+            "successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(dense_finalization_path.read_bytes()).hexdigest(),
+        "evidence_digest": dense_finalization["evidence_digest"],
+    }
+    assert r3_physical["predecessor_source_bindings"] == dense["source_bindings"]
+    assert r3_physical["evidence_digest"] == digest_mapping(
+        r3_physical, "evidence_digest"
+    )
+    for name, expected in r3_physical["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert r3_physical["measured_differentials"]["actual_main_12000"][
+        "new_render_exceptions_vs_actual_main"
+    ] == 0
+    assert r3_physical["measured_differentials"]["physical_strokes_against_70d_2600"][
+        "new_physical_stroke_overlaps"
+    ] == 0
+    assert r3_physical["measured_differentials"]["semantic_ownership_2200"][
+        "newly_ambiguous"
+    ] == 0
+    assert all(
+        record["status"] == "succeeded"
+        and len(record["argv_sha256"]) == 64
+        and len(record["finalization_receipt_sha256"]) == 64
+        for record in r3_physical["test_receipts"].values()
+    )
+    assert r3_physical["local_checks"]["full_make_validate_pass"] is True
+    for gate in (
+        "independent_exact_head_review_pass", "visual_acceptance_pass",
+        "captain_merge_authorized", "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert r3_physical["local_checks"][gate] is False
     assert dense["codex_confirmed_p2"]["comment_id"] == 4341811267
     assert dense["codex_confirmed_p2"]["local_green_variants_on_candidate"] == 2
     assert dense["measured_differentials"]["actual_main_12k"][

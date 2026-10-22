@@ -1744,6 +1744,40 @@ def _process_near_path_label_boxes(
     ))
 
 
+def _process_label_path_distance_sq(
+    path: str, box: tuple[float, float, float, float]
+) -> float | None:
+    """Measured squared label-centre distance to actual SVG M/L/C strokes."""
+    segments = _process_svg_stroke_segments(path)
+    if not segments:
+        return None
+    x, y = box[0] + box[2] / 2, box[1] + box[3] / 2
+    best = math.inf
+    for segment in segments:
+        if len(segment) == 2:
+            points = segment
+        else:
+            start, a, b, end = segment
+            points = tuple(
+                (
+                    (1-t)**3 * start[0] + 3*(1-t)**2*t*a[0]
+                    + 3*(1-t)*t*t*b[0] + t**3*end[0],
+                    (1-t)**3 * start[1] + 3*(1-t)**2*t*a[1]
+                    + 3*(1-t)*t*t*b[1] + t**3*end[1],
+                )
+                for t in (step / 32 for step in range(33))
+            )
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            dx, dy = x2 - x1, y2 - y1
+            length_sq = dx*dx + dy*dy
+            fraction = (
+                min(1.0, max(0.0, ((x-x1)*dx + (y-y1)*dy) / length_sq))
+                if length_sq else 0.0
+            )
+            best = min(best, (x-x1-fraction*dx)**2 + (y-y1-fraction*dy)**2)
+    return best
+
+
 def _process_label_near_own_path(
     path: str,
     box: tuple[float, float, float, float],
@@ -8501,60 +8535,6 @@ def render_native_diagram(
             if not rerender_accepted:
                 feedback_path_y[edge_id] = current_y
 
-    # A shifted return may be physically safe while its packed footer label
-    # remains hundreds of pixels from that actual SVG path. Relocate only
-    # that label beside its own final stroke, without changing any route or
-    # a previously accepted canvas. Use the same physical label/card guards
-    # as the late process-label clearance pass.
-    if intent == "process" and model["groups"] and shifted_feedback_rail_ids:
-        label_layout = {
-            edge_id: planned_svg_parts(fragment)
-            for edge_id, fragment in planned_edge_lines.items()
-        }
-        for edge_id in sorted(shifted_feedback_rail_ids):
-            own_path, old_box = label_layout[edge_id]
-            if _process_label_near_own_path(own_path, old_box):
-                continue
-            for trial in _process_near_path_label_boxes(own_path, old_box):
-                if (
-                    trial[0] < 8 or trial[0] + trial[2] > width - 8
-                    or trial[1] < 104 or trial[1] + trial[3] > height - 8
-                    or not _process_label_near_own_path(own_path, trial)
-                    or any(
-                        _process_svg_path_hits_box(path, trial)
-                        for path, _ in label_layout.values()
-                    )
-                    or any(
-                        trial[0] < x + _NODE_WIDTH + 1.5
-                        and x - 1.5 < trial[0] + trial[2]
-                        and trial[1] < y + _NODE_HEIGHT + 1.5
-                        and y - 1.5 < trial[1] + trial[3]
-                        for x, y in positions.values()
-                    )
-                    or any(
-                        trial[0] < other[0] + other[2] + 2
-                        and other[0] < trial[0] + trial[2] + 2
-                        and trial[1] < other[1] + other[3] + 2
-                        and other[1] < trial[1] + trial[3] + 2
-                        for other_id, (_, other) in label_layout.items()
-                        if other_id != edge_id
-                    )
-                ):
-                    continue
-                fragment = render_planned_edge(
-                    peer_by_id[edge_id],
-                    label_position_override=(
-                        trial[0] + trial[2] / 2,
-                        trial[1] + trial[3] / 2,
-                    ),
-                )
-                candidate_path, candidate_box = planned_svg_parts(fragment)
-                if candidate_path != own_path or candidate_box != trial:
-                    continue
-                planned_edge_lines[edge_id] = fragment
-                label_layout[edge_id] = candidate_path, candidate_box
-                break
-
     # A final physical label-only clearance pass runs after port and rail
     # rerouting. Move only a blocked process label; never change its path.
     if intent == "process" and model["groups"]:
@@ -8660,6 +8640,226 @@ def render_native_diagram(
                     continue
                 final_layout[edge_id] = own_path, actual_box
                 planned_edge_lines[edge_id] = fragment
+                break
+
+    # Final-byte-only rescue of grouped feedback that still covers an actual
+    # non-feedback horizontal stroke. Reuse the existing bounded side-port
+    # planner, without moving any already accepted peer SVG geometry.
+    if intent == "process" and model["groups"] and feedback_edges:
+        late_layout = {
+            edge_id: planned_svg_parts(fragment)
+            for edge_id, fragment in planned_edge_lines.items()
+        }
+        by_edge_id = {str(edge["id"]): edge for edge in paint_edges}
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            if edge_id in feedback_outer_footer_ids:
+                continue
+            old_path, old_box = late_layout[edge_id]
+            horizontal = _process_axis_aligned_stroke_spans(old_path)
+            peer_paths = {
+                pid: path for pid, (path, _) in late_layout.items()
+                if pid != edge_id
+            }
+            peer_spans = {
+                pid: _process_axis_aligned_stroke_spans(path)
+                for pid, path in peer_paths.items()
+            }
+            if (
+                horizontal is None
+                or any(s is None for s in peer_spans.values())
+                or not any(
+                    str(by_edge_id[pid]["kind"]) != "feedback"
+                    and _process_physical_spans_overlap(
+                        tuple(s for s in horizontal if s[0] == "h"),
+                        tuple(s for s in spans if s[0] == "h"),
+                    )
+                    for pid, spans in peer_spans.items()
+                )
+            ):
+                continue
+            obstacles = tuple(
+                (box[0], box[1], box[0] + box[2], box[1] + box[3])
+                for pid, (_, box) in late_layout.items() if pid != edge_id
+            ) + tuple(
+                (float(x), float(y), float(x + _NODE_WIDTH), float(y + _NODE_HEIGHT))
+                for x, y in positions.values()
+            )
+            reserved_verticals = tuple(
+                (fixed, begin, end)
+                for spans in peer_spans.values()
+                for axis, fixed, begin, end in spans if axis == "v"
+            )
+            stroke_boxes = tuple(
+                (begin, fixed - 1, end, fixed + 1)
+                if axis == "h" else (fixed - 1, begin, fixed + 1, end)
+                for spans in peer_spans.values()
+                for axis, fixed, begin, end in spans
+            )
+            metrics = _edge_label_metrics(edge, positions, intent)
+            label_y = (
+                feedback_base_bottom + 10
+                + feedback_slots[edge_id] * _FEEDBACK_LABEL_LANE_STEP
+                + metrics.height / 2
+            )
+            was_footer = edge_id in feedback_footer_ids
+            original_y = feedback_path_y.get(edge_id)
+            for slot in range(len(outer_feedback_parallel_slots), feedback_count + 32):
+                ports = _safe_process_feedback_outer_ports(
+                    positions[str(edge["from"])], positions[str(edge["to"])],
+                    canvas_width=width, canvas_height=height,
+                    label_width=metrics.width, label_height=metrics.height,
+                    label_y=label_y, parallel_route_slot=slot,
+                    obstacles=obstacles, label_only_obstacles=stroke_boxes,
+                    reserved_verticals=reserved_verticals,
+                )
+                if ports is None:
+                    continue
+                feedback_outer_footer_ids.add(edge_id)
+                feedback_footer_ids.add(edge_id)
+                outer_feedback_parallel_slots[edge_id] = slot
+                outer_feedback_ports_by_id[edge_id] = ports
+                feedback_path_y.pop(edge_id, None)
+                fragment = render_planned_edge(edge)
+                candidate_path, candidate_box = planned_svg_parts(fragment)
+                acceptable = (
+                    not any(
+                        _process_paths_share_physical_stroke(candidate_path, path)
+                        for path in peer_paths.values()
+                    )
+                    and not any(
+                        _process_svg_path_hits_box(candidate_path, box)
+                        for pid, (_, box) in late_layout.items() if pid != edge_id
+                    )
+                    and not any(
+                        _process_svg_path_hits_box(candidate_path, (
+                            float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT)
+                        ))
+                        for node_id, (x, y) in positions.items()
+                        if node_id not in {str(edge["from"]), str(edge["to"])}
+                    )
+                    and not any(
+                        _process_svg_path_hits_box(path, candidate_box)
+                        for path in peer_paths.values()
+                    )
+                    and not any(
+                        candidate_box[0] < box[0] + box[2] + 2
+                        and box[0] < candidate_box[0] + candidate_box[2] + 2
+                        and candidate_box[1] < box[1] + box[3] + 2
+                        and box[1] < candidate_box[1] + candidate_box[3] + 2
+                        for pid, (_, box) in late_layout.items() if pid != edge_id
+                    )
+                    and candidate_box[0] >= 8
+                    and candidate_box[0] + candidate_box[2] <= width - 8
+                    and candidate_box[1] >= 104
+                    and candidate_box[1] + candidate_box[3] <= height - 8
+                    and _process_label_near_own_path(candidate_path, candidate_box)
+                    and all(
+                        (old_distance := _process_label_path_distance_sq(old_path, peer_box))
+                        is not None
+                        and (own_distance := _process_label_path_distance_sq(peer_path, peer_box))
+                        is not None
+                        and (
+                            own_distance >= old_distance
+                            or any(
+                                (other_distance := _process_label_path_distance_sq(
+                                    other_path, peer_box
+                                )) is not None and other_distance <= own_distance
+                                for other_id, (other_path, _) in late_layout.items()
+                                if other_id != peer_id
+                            )
+                            or (
+                                (candidate_distance := _process_label_path_distance_sq(
+                                    candidate_path, peer_box
+                                ))
+                                is not None and candidate_distance > own_distance
+                            )
+                        )
+                        for peer_id, (peer_path, peer_box) in late_layout.items()
+                        if peer_id != edge_id and str(by_edge_id[peer_id]["kind"]) == "feedback"
+                    )
+                )
+                if acceptable:
+                    planned_edge_lines[edge_id] = fragment
+                    late_layout[edge_id] = candidate_path, candidate_box
+                    break
+                feedback_outer_footer_ids.remove(edge_id)
+                if not was_footer:
+                    feedback_footer_ids.remove(edge_id)
+                outer_feedback_parallel_slots.pop(edge_id)
+                outer_feedback_ports_by_id.pop(edge_id)
+                if original_y is None:
+                    feedback_path_y.pop(edge_id, None)
+                else:
+                    feedback_path_y[edge_id] = original_y
+
+    # After final physical routing, a feedback label can be nearer to a
+    # foreign stroke. Reposition only such labels on their own accepted path;
+    # never move the path or expand the previously accepted canvas.
+    if intent == "process" and model["groups"] and feedback_edges:
+        label_layout = {
+            edge_id: planned_svg_parts(fragment)
+            for edge_id, fragment in planned_edge_lines.items()
+        }
+        feedback_by_id = {str(edge["id"]): edge for edge in feedback_edges}
+        for edge_id in sorted(feedback_by_id):
+            own_path, old_box = label_layout[edge_id]
+            old_distance = _process_label_path_distance_sq(own_path, old_box)
+            if old_distance is None:
+                continue
+            if all(
+                (peer_distance := _process_label_path_distance_sq(peer_path, old_box))
+                is not None and peer_distance > old_distance
+                for peer_id, (peer_path, _) in label_layout.items()
+                if peer_id != edge_id
+            ):
+                continue
+            for trial in _process_near_path_label_boxes(own_path, old_box)[:1024]:
+                if (
+                    trial[0] < 8 or trial[0] + trial[2] > width - 8
+                    or trial[1] < 104 or trial[1] + trial[3] > height - 8
+                    or not _process_label_near_own_path(own_path, trial)
+                    or any(
+                        _process_svg_path_hits_box(path, trial)
+                        for path, _ in label_layout.values()
+                    )
+                    or any(
+                        trial[0] < x + _NODE_WIDTH + 1.5
+                        and x - 1.5 < trial[0] + trial[2]
+                        and trial[1] < y + _NODE_HEIGHT + 1.5
+                        and y - 1.5 < trial[1] + trial[3]
+                        for x, y in positions.values()
+                    )
+                    or any(
+                        trial[0] < other[0] + other[2] + 2
+                        and other[0] < trial[0] + trial[2] + 2
+                        and trial[1] < other[1] + other[3] + 2
+                        and other[1] < trial[1] + trial[3] + 2
+                        for other_id, (_, other) in label_layout.items()
+                        if other_id != edge_id
+                    )
+                ):
+                    continue
+                own_distance = _process_label_path_distance_sq(own_path, trial)
+                if own_distance is None or any(
+                    (peer_distance := _process_label_path_distance_sq(peer_path, trial))
+                    is None or peer_distance <= own_distance
+                    for peer_id, (peer_path, _) in label_layout.items()
+                    if peer_id != edge_id
+                ):
+                    continue
+                fragment = render_planned_edge(
+                    feedback_by_id[edge_id],
+                    label_position_override=(
+                        trial[0] + trial[2] / 2,
+                        trial[1] + trial[3] / 2,
+                    ),
+                )
+                candidate_path, candidate_box = planned_svg_parts(fragment)
+                if candidate_path != own_path or candidate_box != trial:
+                    continue
+                planned_edge_lines[edge_id] = fragment
+                label_layout[edge_id] = candidate_path, candidate_box
                 break
 
     for edge in paint_edges:

@@ -9449,3 +9449,281 @@ def test_pr206_codex_dense_single_group_feedback_renders(reverse_order: bool) ->
     raw["edges"].reverse()
     reordered = _parse(render_native_diagram(raw))
     assert (paths, labels) == (_edge_paths(reordered), _edge_label_boxes(reordered))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    ("sizes", "relations", "pair"),
+    [
+        (
+            (4, 4, 6),
+            [
+                ("n12", "n3", "risk", "Approve"),
+                ("n9", "n3", "risk", "Approve"),
+                ("n12", "n2", "flow", "a somewhat longer relation label"),
+                ("n8", "n7", "feedback", "a somewhat longer relation label"),
+                ("n11", "n6", "feedback", "link"),
+                ("n2", "n7", "feedback", "Approve"),
+                ("n8", "n9", "flow", "link"),
+            ],
+            ("e1", "e5"),
+        ),
+        (
+            (4, 4, 6),
+            [
+                ("n7", "n0", "risk", "link"),
+                ("n11", "n0", "risk", "Approve"),
+                ("n6", "n0", "risk", "a somewhat longer relation label"),
+                ("n5", "n10", "feedback", "Approve"),
+                ("n0", "n0", "feedback", "link"),
+                ("n8", "n8", "flow", "a somewhat longer relation label"),
+                ("n0", "n1", "feedback", "a somewhat longer relation label"),
+                ("n13", "n11", "flow", "Approve"),
+            ],
+            ("e2", "e6"),
+        ),
+        (
+            (2, 5, 2, 6, 3),
+            [
+                ("n7", "n8", "risk", "a somewhat longer relation label"),
+                ("n5", "n8", "risk", "link"),
+                ("n11", "n13", "feedback", "Approve"),
+                ("n10", "n12", "feedback", "a somewhat longer relation label"),
+                ("n8", "n12", "risk", "link"),
+            ],
+            ("e1", "e2"),
+        ),
+    ],
+    ids=("upward-rail", "short-loop-corridor", "dense-branch-target"),
+)
+def test_pr206_r3_late_feedback_must_not_add_horizontal_peer_overpaint(
+    sizes: tuple[int, ...], relations: list[tuple[str, str, str, str]],
+    pair: tuple[str, str], reverse_order: bool,
+) -> None:
+    """Actual 70d9 source was horizontally clear; current 1528 head is RED."""
+    from schauwerk.visual import native_diagram as native
+
+    raw = _p2_feedback_geometry_model(sizes)
+    raw["edges"] = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    if reverse_order:
+        raw["edges"].reverse()
+    root = _parse(render_native_diagram(raw))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    first = native._process_axis_aligned_stroke_spans(paths[pair[0]])
+    second = native._process_axis_aligned_stroke_spans(paths[pair[1]])
+    assert first is not None and second is not None
+    assert not native._process_physical_spans_overlap(
+        tuple(segment for segment in first if segment[0] == "h"),
+        tuple(segment for segment in second if segment[0] == "h"),
+    )
+    for edge_id, path in paths.items():
+        for peer_id, label in labels.items():
+            if edge_id != peer_id:
+                assert _p2_linear_path_clears_box(path, label)
+                assert _p2_cubic_path_clears_box(path, label)
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(reordered), _edge_label_boxes(reordered))
+
+
+def _p2_label_path_distance_sq(
+    path: str, box: tuple[float, float, float, float],
+) -> float:
+    """Independent test-side centre-to-M/L/C-stroke distance."""
+    from schauwerk.visual import native_diagram as native
+
+    segments = native._process_svg_stroke_segments(path)
+    assert segments
+    cx, cy = box[0] + box[2] / 2, box[1] + box[3] / 2
+    shortest = float("inf")
+    for segment in segments:
+        if len(segment) == 2:
+            points = segment
+        else:
+            p, a, b, q = segment
+            points = tuple(
+                (
+                    (1-t)**3*p[0] + 3*(1-t)**2*t*a[0]
+                    + 3*(1-t)*t*t*b[0] + t**3*q[0],
+                    (1-t)**3*p[1] + 3*(1-t)**2*t*a[1]
+                    + 3*(1-t)*t*t*b[1] + t**3*q[1],
+                )
+                for t in (step / 32 for step in range(33))
+            )
+        for (x1, y1), (x2, y2) in zip(points, points[1:]):
+            dx, dy = x2 - x1, y2 - y1
+            squared = dx*dx + dy*dy
+            offset = min(1, max(0, ((cx-x1)*dx+(cy-y1)*dy)/squared)) if squared else 0
+            shortest = min(shortest, (cx-x1-offset*dx)**2+(cy-y1-offset*dy)**2)
+    return shortest
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    ("sizes", "relations", "label_id"),
+    [
+        (
+            (6, 4, 3, 5, 4),
+            [
+                ("n10", "n18", "flow", "Approve"),
+                ("n13", "n19", "feedback", "link"),
+                ("n3", "n14", "risk", "x"),
+                ("n17", "n13", "flow", "long label"),
+                ("n4", "n3", "risk", "a somewhat longer relation label"),
+                ("n6", "n16", "risk", "a somewhat longer relation label"),
+                ("n15", "n1", "flow", "Approve"),
+                ("n12", "n21", "flow", "long label"),
+                ("n6", "n20", "feedback", "a somewhat longer relation label"),
+                ("n6", "n4", "feedback", "link"),
+                ("n21", "n21", "risk", "long label"),
+            ],
+            "e8",
+        ),
+        (
+            (6, 5, 3, 6, 2),
+            [
+                ("n6", "n14", "risk", "Approve"),
+                ("n5", "n7", "flow", "Approve"),
+                ("n4", "n19", "risk", "Approve"),
+                ("n19", "n11", "flow", "x"),
+                ("n18", "n17", "feedback", "a somewhat longer relation label"),
+                ("n19", "n0", "flow", "a somewhat longer relation label"),
+                ("n18", "n6", "feedback", "link"),
+                ("n12", "n11", "flow", "x"),
+                ("n14", "n21", "flow", "x"),
+            ],
+            "e6",
+        ),
+    ],
+    ids=("wrapped-foreign-rail", "parallel-close-rail"),
+)
+def test_pr206_r3_detached_label_must_identify_own_stroke(
+    sizes: tuple[int, ...], relations: list[tuple[str, str, str, str]],
+    label_id: str, reverse_order: bool,
+) -> None:
+    raw = _p2_feedback_geometry_model(sizes)
+    raw["edges"] = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    if reverse_order:
+        raw["edges"].reverse()
+    root = _parse(render_native_diagram(raw))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    own = _p2_label_path_distance_sq(paths[label_id], labels[label_id])
+    assert own < min(
+        _p2_label_path_distance_sq(path, labels[label_id])
+        for edge_id, path in paths.items() if edge_id != label_id
+    )
+    raw["edges"].reverse()
+    other = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+@pytest.mark.parametrize(
+    ("sizes", "relations", "owner_label_id", "previously_overpainted"),
+    [
+        (
+            (4, 2, 3),
+            [
+                ("n0", "n6", "risk", "Approve"),
+                ("n0", "n3", "feedback", "x"),
+                ("n7", "n4", "flow", "x"),
+                ("n6", "n0", "feedback", "Approve"),
+                ("n0", "n3", "feedback", "Approve"),
+                ("n4", "n7", "feedback", "x"),
+                ("n7", "n6", "flow", "Approve"),
+                ("n2", "n1", "flow", "Approve"),
+                ("n1", "n3", "risk", "x"),
+            ],
+            "e4", ("e3", "e6"),
+        ),
+        (
+            (4, 5, 2, 4, 2),
+            [
+                ("n0", "n15", "flow", "long label"),
+                ("n7", "n8", "feedback", "link"),
+                ("n4", "n6", "feedback", "a somewhat longer relation label"),
+                ("n1", "n2", "risk", "Approve"),
+                ("n14", "n0", "risk", "Approve"),
+                ("n13", "n5", "flow", "link"),
+                ("n1", "n4", "feedback", "a somewhat longer relation label"),
+            ],
+            "e2", ("e4", "e6"),
+        ),
+        (
+            (2, 2, 3),
+            [
+                ("n0", "n4", "risk", "long label"),
+                ("n2", "n1", "risk", "x"),
+                ("n3", "n2", "flow", "Approve"),
+                ("n2", "n5", "feedback", "link"),
+                ("n1", "n6", "flow", "Approve"),
+                ("n5", "n4", "flow", "x"),
+                ("n2", "n6", "feedback", "long label"),
+                ("n6", "n3", "feedback", "link"),
+                ("n5", "n3", "feedback", "long label"),
+                ("n6", "n5", "flow", "a somewhat longer relation label"),
+            ],
+            "e7", ("e8", "e9"),
+        ),
+        (
+            (4, 2, 3, 5, 3),
+            [
+                ("n6", "n14", "flow", "Approve"),
+                ("n0", "n8", "risk", "Approve"),
+                ("n16", "n3", "flow", "x"),
+                ("n16", "n5", "flow", "link"),
+                ("n7", "n0", "risk", "link"),
+                ("n10", "n1", "feedback", "Approve"),
+                ("n7", "n1", "risk", "long label"),
+                ("n4", "n15", "flow", "Approve"),
+                ("n11", "n11", "feedback", "a somewhat longer relation label"),
+            ],
+            "e8", ("e1", "e5"),
+        ),
+    ],
+    ids=("single-group-return", "intergroup-footer", "adjacent-peer",
+         "anchored-feedback-loop"),
+)
+def test_pr206_r3_late_sideport_preserves_foreign_label_ownership(
+    sizes: tuple[int, ...], relations: list[tuple[str, str, str, str]],
+    owner_label_id: str, previously_overpainted: tuple[str, str],
+    reverse_order: bool,
+) -> None:
+    """Avoid exchanging a hidden physical rail for an ambiguously owned label."""
+    from schauwerk.visual import native_diagram as native
+
+    raw = _p2_feedback_geometry_model(sizes)
+    raw["edges"] = [
+        {"id": f"e{index}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for index, (source, target, kind, label) in enumerate(relations)
+    ]
+    if reverse_order:
+        raw["edges"].reverse()
+    root = _parse(render_native_diagram(raw))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == len(labels) == len(relations)
+    own = _p2_label_path_distance_sq(
+        paths[owner_label_id], labels[owner_label_id]
+    )
+    assert own < min(
+        _p2_label_path_distance_sq(path, labels[owner_label_id])
+        for edge_id, path in paths.items()
+        if edge_id != owner_label_id
+    )
+    assert not native._process_paths_share_physical_stroke(
+        paths[previously_overpainted[0]], paths[previously_overpainted[1]]
+    )
+    for edge_id, path in paths.items():
+        if edge_id != owner_label_id:
+            assert _p2_linear_path_clears_box(path, labels[owner_label_id])
+            assert _p2_cubic_path_clears_box(path, labels[owner_label_id])
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(reordered), _edge_label_boxes(reordered))
