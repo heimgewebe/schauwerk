@@ -9295,3 +9295,109 @@ def test_pr206_codex_feedback_physical_guard_preserves_fixed_sideport(
     model["edges"].reverse()
     other = _parse(render_native_diagram(model))
     assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("case", [0, 1, 2])
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_r3_shifted_feedback_does_not_exchange_stem_for_horizontal_overpaint(
+    case: int,
+    reverse_order: bool,
+) -> None:
+    """A pre-existing vertical peer contact cannot excuse a *new* covered rail."""
+    from schauwerk.visual import native_diagram as native
+
+    cases = (
+        (
+            (3, 2, 4, 2, 4),
+            (
+                ("n3", "n14", "risk", "Approve"),
+                ("n11", "n14", "risk", "Approve"),
+                ("n7", "n14", "risk", "a somewhat longer relation label"),
+                ("n11", "n11", "feedback", "link"),
+                ("n2", "n11", "flow", "link"),
+                ("n3", "n12", "feedback", "a somewhat longer relation label"),
+                ("n14", "n3", "risk", "link"),
+            ),
+            ("e5", "e6"),
+        ),
+        (
+            (6, 4, 5),
+            (
+                ("n0", "n8", "flow", "link"),
+                ("n14", "n8", "flow", "Approve"),
+                ("n10", "n5", "feedback", "Approve"),
+                ("n1", "n5", "flow", "link"),
+                ("n4", "n0", "feedback", "Approve"),
+                ("n3", "n5", "feedback", "Approve"),
+                ("n5", "n7", "feedback", "link"),
+            ),
+            ("e5", "e6"),
+        ),
+        (
+            (4, 5),
+            (
+                ("n6", "n2", "flow", "Approve"),
+                ("n0", "n2", "risk", "Approve"),
+                ("n8", "n2", "flow", "a somewhat longer relation label"),
+                ("n4", "n6", "feedback", "link"),
+                ("n1", "n5", "feedback", "link"),
+                ("n0", "n8", "flow", "Approve"),
+                ("n8", "n6", "flow", "a somewhat longer relation label"),
+            ),
+            ("e3", "e4"),
+        ),
+    )
+    sizes, relations, pair = cases[case]
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{index}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for index, (source, target, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    a = native._process_axis_aligned_stroke_spans(paths[pair[0]])
+    b = native._process_axis_aligned_stroke_spans(paths[pair[1]])
+    assert a is not None and b is not None
+    # The pre-existing vertical contact may remain, but a new horizontal
+    # rail overlap on top of it would hide an additional semantic stroke.
+    assert not native._process_physical_spans_overlap(
+        tuple(span for span in a if span[0] == "h"),
+        tuple(span for span in b if span[0] == "h"),
+    )
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_r3_footer_label_keeps_own_visible_route_after_feedback_shift(
+    reverse_order: bool,
+) -> None:
+    """A shifted local feedback return must not abandon its packed footer label."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((3, 3, 4, 6, 6))
+    relations = (
+        ("n0", "n6", "risk", "Approve"),
+        ("n14", "n4", "feedback", "a somewhat longer relation label"),
+        ("n10", "n1", "flow", "link"),
+        ("n21", "n14", "flow", "long label"),
+        ("n18", "n14", "risk", "Approve"),
+        ("n14", "n16", "risk", "link"),
+        ("n5", "n20", "flow", "x"),
+        ("n12", "n21", "feedback", "a somewhat longer relation label"),
+        ("n10", "n5", "feedback", "long label"),
+        ("n5", "n8", "flow", "Approve"),
+    )
+    edges = [
+        {"id": f"e{index}", "from": src, "to": dst,
+         "kind": kind, "label": label}
+        for index, (src, dst, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert native._process_label_near_own_path(paths["e1"], labels["e1"])
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))

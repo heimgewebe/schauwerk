@@ -12512,8 +12512,77 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in codex_rail["source_bindings"].items():
+    # Published Codex P2 is a fixed predecessor. Only the new create-only
+    # R3 final-SVG technical successor binds the current renderer/test bytes.
+    assert hashlib.sha256(codex_rail_path.read_bytes()).hexdigest() == (
+        "de453dba72d5460656eabb5ca2f41ff4f1a7228c15b2be7d4abfebc78e1ea215"
+    )
+    r3_final_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-pr206-r3-final-svg-axis-clearance-successor-acceptance-receipt.json"
+    )
+    r3_final = json.loads(r3_final_path.read_text(encoding="utf-8"))
+    assert r3_final["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-r3-final-svg-axis-clearance-successor.v1"
+    )
+    assert r3_final["scope"] == "technical-candidate-only"
+    assert r3_final["based_on_published_pr_head"] == (
+        "70d9c9154505205f920ff70f8e9ca8c68e0bbd0c"
+    )
+    assert r3_final["parent_evidence"] == {
+        "schema_version": codex_rail["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-codex-process-rail-p2-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(codex_rail_path.read_bytes()).hexdigest(),
+        "evidence_digest": codex_rail["evidence_digest"],
+    }
+    assert r3_final["predecessor_source_bindings"] == (
+        codex_rail["source_bindings"]
+    )
+    assert r3_final["evidence_digest"] == digest_mapping(
+        r3_final, "evidence_digest"
+    )
+    assert set(r3_final["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in r3_final["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert r3_final["differential_published_to_candidate_2200"][
+        "new_semantically_far_labels"
+    ] == 0
+    assert r3_final["differential_published_to_candidate_2200"][
+        "height_grew_models"
+    ] == 0
+    assert r3_final["differential_published_to_candidate_2200"][
+        "new_width_expansion_models"
+    ] == 0
+    assert r3_final["differential_published_to_candidate_2200"][
+        "new_semantically_near_labels"
+    ] == 348
+    for scope, minimum in (
+        ("historical_actual_main_12k", 12000),
+        ("geometry_actual_main_20k", 20000),
+        ("physical_strokes_2600", 2600),
+        ("saturated_groups_2200", 2200),
+        ("semantic_published_delta_2200", 2200),
+        ("chrome_browser_smoke", 30),
+    ):
+        assert r3_final["test_receipts"][scope]["models_or_cases"] == minimum
+    assert all(
+        record["status"] == "succeeded"
+        and len(record["finalization_receipt_sha256"]) == 64
+        for record in r3_final["test_receipts"].values()
+    )
+    for gate in (
+        "independent_exact_head_review_pass", "visual_acceptance_pass",
+        "captain_merge_authorized", "oci_registry_published",
+        "commonthing_serving_verified",
+    ):
+        assert r3_final["local_checks"][gate] is False
     assert codex_rail["review_finding"]["comment_id"] == 4341341832
     assert codex_rail["test_receipts"]["codex_exact_published_red"][
         "models_or_variants"
