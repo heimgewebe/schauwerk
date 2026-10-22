@@ -1,0 +1,65 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-actual-label-position-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate: count only diagonal target corridors in shared vertical packing and use the rendered same-row label ordinate when vetting local long returns; preserve earlier saturated feedback, selfloop, outer path and label-only stroke fixes.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-label-only-strokes-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-label-only-strokes-p2-successor-acceptance-receipt.json",
+    "file_sha256": "9415a647e66e0f4d545528afc53aeae2ce1ffdd29755e2a6644c50c0c086b471",
+    "evidence_digest": "4f6b5dde088e5ede56b12a50c8ca9f8e1efdcdef5cca05c75238c8e4dfaeb6ec"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "72e8dc58c8f7f29c414fa105d144c8d35532968b8c70fce20b86c689e1031d42",
+    "tests/visual/test_native_diagram.py": "f765e894a4f3dbbe7e0bccfe4017aa48ce43aab128163f8e7abcd25031f1452a"
+  },
+  "regression_tests": [
+    "test_pr205_p2_diagonal_source_count_preserves_vertical_peer_label",
+    "test_pr205_p2_long_return_respects_actual_same_row_label",
+    "test_pr205_p2_stroke_obstacles_do_not_exhaust_safe_outer_routes",
+    "test_pr205_p2_stem_pack_preserves_safe_peer_lane"
+  ],
+  "test_receipts": {
+    "focused_red": {
+      "task_id": "dd5f9c2f40644ca4bb914e80",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "focused_green": {
+      "task_id": "69b376f414a94c34ab12ab69",
+      "passed_tests": 2,
+      "exit_code": 0
+    },
+    "native_suite": {
+      "task_id": "80aee4308c5e4d1fb71b59ca",
+      "passed_tests": 222,
+      "exit_code": 0
+    },
+    "chrome_smoke": {
+      "task_id": "00676196cad8424babc34cc0",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "pre_patch_red_reproduced": true,
+    "exact_source_green": true,
+    "native_suite_passed": true,
+    "chrome_smoke_passed": true,
+    "immutable_parent_preserved": true,
+    "source_and_tests_digest_bound": true,
+    "full_make_validate_after_receipt_pass": false,
+    "fresh_ci_for_new_git_head_pass": false,
+    "independent_final_head_approved": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "exact_source_bound_technical_candidate_pending_full_validation_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "fresh complete make validate on this exact successor",
+    "independent exact-head full-stack review and settlement of nine Parent P2 threads",
+    "visual acceptance of the changed renderer",
+    "authorized Captain integration",
+    "tested OCI promotion, Commonthing release-lock update or productive browser convergence"
+  ],
+  "evidence_digest": "f2df7a9e15e4d7683eaa40094d43caa0bb0572b412a1409ad9b16f93b52b9bcd"
+}

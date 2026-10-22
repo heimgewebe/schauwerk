@@ -1,0 +1,51 @@
+{
+  "based_on_pr_head": "4ed7150efee622ee05c59493ac8260a1bf52ccbe",
+  "checks": {
+    "accepted_18_node_process_canvas_width_preserved": true,
+    "accepted_intermediate_label_collision_remedy_retained": true,
+    "captain_merge_authorized": false,
+    "fresh_browser_pixel_acceptance": false,
+    "full_exact_head_github_ci_passed": false,
+    "full_local_validate_passed": false,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 180,
+    "ruff_check_passed": true,
+    "two_label_order_reversal_regressions_green": true,
+    "two_nondeterministic_label_failfirst_cases_reproduced": true
+  },
+  "does_not_establish": [
+    "final GitHub CI on a later published HEAD",
+    "independent review bound to successor HEAD",
+    "browser pixel acceptance of successor",
+    "Captain merge or main integration",
+    "production deployment"
+  ],
+  "evidence_digest": "95469d8641a38e4a83ef80659dc92124c579b000129ce095d3f633a07a77f329",
+  "parent_evidence": {
+    "evidence_digest": "8b8decde4e88c7c2dca1e5df6af1a0cee850dc6eab80f253022244f7b82b9cd9",
+    "file_sha256": "60fa6742c4aacfffd41bd9edce8183ed43c778831ca637e74265f772c771cba5",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-intermediate-local-branch-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-intermediate-local-branch-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_speculative_peer_relocation_rolls_back_on_outer_route[x]",
+    "test_pr204_p2_speculative_peer_relocation_rolls_back_on_outer_route[Intervening flow label]"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-transactional-peer-move-p2-successor.v1",
+  "scope": "Tenth Codex P2: speculative intermediate peer label moves must be deferred until entire local long-branch route is accepted, otherwise discarded when outer fallback selected",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "695729ad3a5b4ba594d08aeaa26698c096cfe847b38937c001d7a933dc41641b",
+    "tests/visual/test_native_diagram.py": "5429fa2064aad77943f66f7740f993a71b0dd2d085cd428accae2e0932b6d2f9"
+  },
+  "status": "tenth_codex_p2_order_invariance_two_failfirst_cases_corrected_green_local_ci_independent_review_pending",
+  "test_receipts": {
+    "complete_native_suite_lifecycle_sha256": "e1c8ee5637d182f60700f58cbcdf6cd1d8458efe209056a69ade0c88eb4bda47",
+    "complete_native_suite_task": "4a65085bc2e04804bfae8a77",
+    "focused_green_lifecycle_sha256": "ca8174cbd34a5eb543cb158a31e384ca7cf20213b2a155e327e9e169cc2fe9ad",
+    "focused_green_task": "ce6fda273f65451a9deedab7",
+    "two_fail_first_lifecycle_sha256": "014c15d647fc8862bfb8b7f2088291ba9304d1428b9659f86e1817bfa14c2a1d",
+    "two_fail_first_task": "dc753a6b46bd447b81d89dea"
+  }
+}

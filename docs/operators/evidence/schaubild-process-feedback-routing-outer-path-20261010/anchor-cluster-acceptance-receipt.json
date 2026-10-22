@@ -1,0 +1,52 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-anchor-cluster.v1",
+  "scope": "codex-p2-grouped-anchor-corridor-and-cross-cluster-label-packing",
+  "recorded_at": "2026-10-10T13:43:26.291+00:00",
+  "status": "source_verified_exact_head_ci_and_review_pending",
+  "functional_head": "6d85cf0b523149431947cf590bd29307ab05488e",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-parallel-long.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/parallel-long-acceptance-receipt.json",
+    "file_sha256": "3b8551ce17bd8f5e34eb3c4955244d07f88c6006d88b9b22be8c696561d3fc6f",
+    "evidence_digest": "cb177ed08b79caed05d36750e55e708392deb68bc441fcca0e049610d66644d8"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3755c771a03c7fd553f17b80bd31404fab37b50eeccf0d334d18dfdce051b08e",
+    "tests/visual/test_native_diagram.py": "c3575b6c034bdbd77835160e0995cce04dd3151722d9ccd6fb8fe58c8196bee5"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "two_p2_fail_first_regressions_reproduced": true,
+    "two_p2_regressions_pass_after_fix": true,
+    "full_native_diagram_suite_passed": true,
+    "native_diagram_passed_count": 159,
+    "ruff_check_passed": true,
+    "git_diff_check_passed": true,
+    "full_exact_head_ci_passed": false,
+    "fresh_visual_browser_acceptance": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "review_threads": [
+      "PRRT_kwDOTGqvHc6rEBpk",
+      "PRRT_kwDOTGqvHc6rEJRM"
+    ],
+    "fail_first_task_id": "7ae6ace982994f248cc0cc57",
+    "full_native_diagram_task_id": "1430aff9d30d4b89a40183a4",
+    "ruff_task_id": "0fd1bfca71b14118b7207de9",
+    "code_variant_countercheck_task_id": "0a4b06c1a108446e8e20d8a0",
+    "regression_tests": [
+      "test_grouped_packed_route_clears_anchored_long_branch_label",
+      "test_grouped_horizontal_packs_reserve_other_corridor_clusters"
+    ]
+  },
+  "does_not_establish": [
+    "fresh exact-head GitHub CI",
+    "independent decision-bound reviewer PASS",
+    "fresh visual browser/pixel acceptance",
+    "Captain merge readiness",
+    "production deployment"
+  ],
+  "evidence_digest": "9a533997da5add95b133d12fea54882ec82a429ff619109d85dd71ce204756bb"
+}

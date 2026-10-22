@@ -1,0 +1,100 @@
+{
+  "based_on_published_pr_head": "89be9f0f8936a022410533d16bbaf89eb2f75059",
+  "corrections": {
+    "nested_source_labels": "Validate each shifted local branch lane after nested label avoidance, preserve safe subset, use only a card-free gap between target-group columns for oversubscribed branches",
+    "node_group_canvas": "Real 18-node process feedback remains locally routed; upper bound and label avoidance regressions pass"
+  },
+  "evidence_digest": "584b99d48ff81dd0037595cd39fccbcc780de208bacc82be6239ad9b9835de60",
+  "limitations": [
+    "Technical candidate only. Browser smoke establishes functional behavior, not separate aesthetic/visual acceptance.",
+    "An earlier full make validate failed due to the temporarily stale terminal source-binding fixture; this receipt predates the final full make validate rerun.",
+    "Do not infer merge, deployment or production authority from successful local technical checks."
+  ],
+  "local_checks": {
+    "captain_merge_authorized": false,
+    "commonthing_serving_verified": false,
+    "exact_source_and_test_bindings_valid": true,
+    "full_make_validate_pass": false,
+    "independent_exact_head_review_pass": false,
+    "local_lane_matrix_17211_pass": true,
+    "native_renderer_suite_pass": true,
+    "new_postshift_regressions_green": true,
+    "oci_registry_published": false,
+    "physical_differential_900_pass": true,
+    "real_18node_regression_green": true,
+    "real_chrome_smoke_30_pass": true,
+    "ruff_pass": true,
+    "visual_acceptance_pass": false
+  },
+  "measured_differentials": {
+    "local_gutter_17211": {
+      "candidate_models": 17211,
+      "invalid_assigned_lanes": 0
+    },
+    "published_head_900": {
+      "changed_paths": 215,
+      "models": 900,
+      "new_physical_stroke_overlaps": 0,
+      "new_render_exceptions": 0
+    }
+  },
+  "parent_evidence": {
+    "evidence_digest": "5a35506200a18c4e51d4844ad40dcff15842e06afe7a324a5bf59db9d93a8893",
+    "file_sha256": "40d9925138652928c01a3296c2cbbc6eaf31b34a3d1dcdcbf06a24f9db842d45",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-review-comments-20261022-physical-differential-finalization-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-feedback-pr206-review-physical-differential-finalization.v1"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "dd2b61f80640fab187ae55cde5dd571ec57a2e4ac1c8282312bed397bcb52d7d",
+    "tests/visual/test_native_diagram.py": "9f4a3315e29797c2464057932793155851a5a9069a2db635d02613fb0acfc4c0"
+  },
+  "review_sources": [
+    "https://github.com/heimgewebe/schauwerk/pull/206#issuecomment-6336045757",
+    "https://github.com/heimgewebe/schauwerk/pull/206"
+  ],
+  "schema_version": "schauwerk-schaubild-feedback-pr206-internal-gap-finalization.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "6b3587fe0d6acabad79350d017ef77bd9cfff4289003900c9d836c3a17d35abe",
+    "tests/visual/test_native_diagram.py": "adf8fbb48d2304905301913199b414e4ad39d2e81ac2d6d7978fb9e63eb42c09"
+  },
+  "test_receipts": {
+    "actual_chrome_browser_smoke_30": {
+      "argv_sha256": "f7f7f2a61412e72358b7aba6dd168c89b450182afa46c576447a5096ea1051c0",
+      "finalization_receipt_sha256": "4549ecea79de8c2a6abb014bc73664227e644b5562cd3a33d33d3061dad9f1c1",
+      "status": "succeeded",
+      "unit": "grabowski-job-9937ee2254b7"
+    },
+    "complex_real_18node_and_two_lane_regressions": {
+      "argv_sha256": "159a18eef5a55a0c5b098bc3c4429cf85910ffbcb04d179f1c25b505fb0b4dc2",
+      "finalization_receipt_sha256": "c8d23f6f54a9c3de79d595bc1dcb7ec3eb9c92e916a4f0f72c0300f032893053",
+      "status": "succeeded",
+      "unit": "grabowski-job-65988c9d2da6"
+    },
+    "full_native_renderer_suite": {
+      "argv_sha256": "5aaee4626fc5abfecb851dd087766261cb55830e80c55b131028ed9e4f6752e5",
+      "finalization_receipt_sha256": "9eb7c9cd982b68e41c5c62fbe2a8d67613e3f0289f9c0cf1c49a7238522ed32d",
+      "status": "succeeded",
+      "unit": "grabowski-job-ee8f13cf6cb1"
+    },
+    "physical_differential_seed_2061022_900": {
+      "argv_sha256": "865ea29392798a525791d4a23a454833b49b67f2c89b5e2c33fb8b05f2c591d1",
+      "finalization_receipt_sha256": "5810c9059b4b5b906b22908dcda232c906ce214795c82eb257590b1e1925d5c7",
+      "status": "succeeded",
+      "unit": "grabowski-job-c4bfd8e7a701"
+    },
+    "ruff_exact_candidate": {
+      "argv_sha256": "1b873bc835632de028be07e6bfc3555922204e34ad0b5e96418a70f20ff1a294",
+      "finalization_receipt_sha256": "e4d5e8b000798b7e9f8ce10ba23414e36aabc349c32c6f400aa15af83a856c06",
+      "status": "succeeded",
+      "unit": "grabowski-job-3fdb232ce139"
+    },
+    "single_column_lane_legality_seed_2061022_17211": {
+      "argv_sha256": "ab9175c232d69e2bb8f41517518e66d269d37f1fd2ebc38bfdb885a926e5b444",
+      "finalization_receipt_sha256": "9bb18510e599b090a1eaf4597d314ea534ec9d822c5f5870a3a6076139eb12d7",
+      "status": "succeeded",
+      "unit": "grabowski-job-46f8417371dd"
+    }
+  },
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f"
+}

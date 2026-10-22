@@ -1,0 +1,261 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-review-collision-fix.v1",
+  "scope": "schaubild-process-feedback-routing-review-collision-remediation",
+  "accepted_at": "2026-10-06T05:54:52.631002+00:00",
+  "base_product_head": "8ec2042d565008a171d46b84415065904748e29b",
+  "functional_head": "70354608040281d4a6e4a24c92f889a59325f66f",
+  "review_source_heads": [
+    {
+      "review_id": 5423854550,
+      "source_head": "4f2a37835612aa3ca699d6b823737f74054a295b",
+      "comment_ids": [
+        4191590053,
+        4191590057
+      ]
+    },
+    {
+      "review_id": 5424014470,
+      "source_head": "7e5e82cad542e7a5eb4a83e5ab88a0164cc4aab5",
+      "comment_ids": [
+        4191730584
+      ]
+    }
+  ],
+  "parent_evidence": {
+    "evidence_digest": "13d5a91b7ed685a294892b3c8cb95544d80d928b4d666bb05781603bdcbf707c",
+    "file_sha256": "c2f157e32eaf816df9f38f09cfb983f45f0d2cc687378623638466177e3c6005",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-review-fix-20261006/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-review-fix.v1"
+  },
+  "checks": {
+    "historical_parent_acceptance_left_immutable": true,
+    "codex_feedback_path_p2_reproduced_and_addressed": true,
+    "codex_local_gutter_label_footprint_p2_reproduced_and_addressed": true,
+    "codex_target_corridor_path_p2_reproduced_and_addressed": true,
+    "feedback_path_clears_corridor_labels": true,
+    "local_long_branch_label_footprint_node_clear": true,
+    "target_corridor_path_clears_label": true,
+    "target_corridor_regression_order_independent": true,
+    "exact_head_native_diagram_suite_passed": true,
+    "pre_successor_full_validate_failed_only_on_binding_gate": true,
+    "exact_head_product_browser_pixel_readback_accepted": true,
+    "exact_head_review_fixtures_browser_pixel_readback_accepted": true,
+    "independent_observer_readback_passed": true,
+    "git_diff_check_passed": true,
+    "publication_successor_binding_added": true
+  },
+  "check_evidence": {
+    "advisory_review_findings": [
+      {
+        "review_id": 5423854550,
+        "comment_id": 4191590053,
+        "severity": "P2",
+        "source_head": "4f2a37835612aa3ca699d6b823737f74054a295b",
+        "finding": "feedback return path crossed an otherwise separate corridor label",
+        "result": "reproduced_and_addressed"
+      },
+      {
+        "review_id": 5423854550,
+        "comment_id": 4191590057,
+        "severity": "P2",
+        "source_head": "4f2a37835612aa3ca699d6b823737f74054a295b",
+        "finding": "local long-branch gutter admitted a label footprint that could overlap cards",
+        "result": "reproduced_and_addressed"
+      },
+      {
+        "review_id": 5424014470,
+        "comment_id": 4191730584,
+        "severity": "P2",
+        "source_head": "7e5e82cad542e7a5eb4a83e5ab88a0164cc4aab5",
+        "finding": "local long-branch route crossed a target-corridor label",
+        "result": "reproduced_and_addressed"
+      }
+    ],
+    "native_diagram_suite": {
+      "functional_head": "70354608040281d4a6e4a24c92f889a59325f66f",
+      "task_id": "b739e8634a6e495ca4ad8ca4",
+      "lifecycle_receipt_sha256": "45eb63eb32a8b2104b3dfe95e1e10fe03c52b983fa0b9b100cc1f6e096bcdb38",
+      "passed_count": 151,
+      "result": "passed"
+    },
+    "pre_successor_full_validate": {
+      "functional_head": "70354608040281d4a6e4a24c92f889a59325f66f",
+      "task_id": "482d9284c6ba4651a9671d06",
+      "lifecycle_receipt_sha256": "3ae60e3a0aba48daf7b03c930f9185c52e45c174287b5e65896585f6fc4759e2",
+      "passed_count": 1660,
+      "failed_count": 1,
+      "failing_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions",
+      "failure_class": "expected_successor_binding_gate",
+      "result": "expected_binding_gate_failure"
+    },
+    "visual_readback": {
+      "functional_head": "70354608040281d4a6e4a24c92f889a59325f66f",
+      "task_id": "9311850b095a4d00bc7c488b",
+      "lifecycle_receipt_sha256": "66bcaeb53e619433547696ea8cbae38add37bb9295196bf5444def2bcc4d5c1f",
+      "product": {
+        "source_svg_sha256": "7442688408acfeb9a146f1058f3a0b2ea8518ab9d21e24e1153be9a4ed3bc519",
+        "browser_png_sha256": "b20714e821173ab4200dce711d2022c55dbf7a965d9101cbfe3f339fb74a1142",
+        "browser_png_bytes": 190180,
+        "canvas": {
+          "width": 2588.0,
+          "height": 1118.0
+        },
+        "node_count": 18,
+        "feedback_label_box": [
+          1565.5,
+          399.5,
+          118.0,
+          29.0
+        ],
+        "feedback_node_collision": false,
+        "feedback_label_overlaps": [],
+        "previous_accepted_png_sha256": "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91",
+        "output_changed_from_parent": true,
+        "visual_observations": {
+          "new_planning_label_local_and_readable": true,
+          "feedback_return_traceable": true,
+          "labels_do_not_cover_nodes": true,
+          "overall_process_layout_remains_legible": true
+        },
+        "result": "accepted"
+      },
+      "crossing": {
+        "browser_png_sha256": "e3a27ee6dab6c75920f5a92cf6007e17bd2a8b9f4edbcd1406510824eb61137d",
+        "source_svg_sha256": "61779f5f8d72b4d8bff8a0f67cec45e6cba5799961e81214552f97024b5bb55d",
+        "canvas": {
+          "width": 1028.0,
+          "height": 664.0
+        },
+        "corridor": {
+          "upper_bottom": 362.0,
+          "lower_top": 414.0
+        },
+        "label_boxes": {
+          "cross_down": [
+            99.0,
+            364.0,
+            182.0,
+            48.0
+          ],
+          "cross_up": [
+            563.0,
+            364.0,
+            166.0,
+            48.0
+          ]
+        },
+        "inside_corridor": {
+          "cross_down": true,
+          "cross_up": true
+        },
+        "node_collision": {
+          "cross_down": false,
+          "cross_up": false
+        },
+        "labels_overlap": false,
+        "result": "accepted"
+      },
+      "long_label": {
+        "browser_png_sha256": "d06a201a30f0af0f45d81e2b44c6fb7b85ed2490d50cf0725b24c23d53c30df5",
+        "source_svg_sha256": "e1a3169096c7a43f3d29972396a9b9a438ab86b5eb9b5bd78ec71a10f4b71fe2",
+        "canvas": {
+          "width": 1028.0,
+          "height": 882.0
+        },
+        "label_box": [
+          483.0,
+          364.0,
+          212.0,
+          48.0
+        ],
+        "node_collision": false,
+        "uses_outer_gutter": true,
+        "result": "accepted"
+      },
+      "feedback_path": {
+        "browser_png_sha256": "dedc7a40a00e6edac42342211e16357303d14fd9032a86ecf17ca8cda97321be",
+        "source_svg_sha256": "393c1ca837e9765b99f10f857fe8385b1311feb057bd0384c5fc04fab388b678",
+        "canvas": {
+          "width": 1028.0,
+          "height": 664.0
+        },
+        "feedback_box": [
+          728.0,
+          590.0,
+          110.0,
+          29.0
+        ],
+        "branch_box": [
+          394.0,
+          373.5,
+          48.0,
+          29.0
+        ],
+        "node_collision": {
+          "feedback": false,
+          "branch": false
+        },
+        "labels_overlap": false,
+        "feedback_path_hits_branch_label": false,
+        "result": "accepted"
+      },
+      "target_corridor": {
+        "browser_png_sha256": "4e2b130a53c5887d55dd47dcfe75e1eae4db1b9b80d99eebd8458842125a05cd",
+        "source_svg_sha256": "1b5f7cc7ab2ce987a28b36411ac62cd86e76c109e0c6bf53f10a7602214190fd",
+        "canvas": {
+          "width": 1260.0,
+          "height": 882.0
+        },
+        "long_label_box": [
+          319.0,
+          365.5,
+          198.0,
+          29.0
+        ],
+        "short_label_box": [
+          1000.0,
+          575.0,
+          198.0,
+          48.0
+        ],
+        "node_collision": {
+          "long": false,
+          "short": false
+        },
+        "long_path_hits_short_label": false,
+        "result": "accepted"
+      },
+      "result": "accepted"
+    },
+    "independent_observer_readback": {
+      "observer": "grosser-adler",
+      "functional_head": "70354608040281d4a6e4a24c92f889a59325f66f",
+      "worktree_clean": true,
+      "untracked_present": false,
+      "observed_at": "2026-10-06T05:49:43.348189Z",
+      "result": "passed"
+    },
+    "git_diff_check": {
+      "base_sha": "7e5e82cad542e7a5eb4a83e5ab88a0164cc4aab5",
+      "head_sha": "70354608040281d4a6e4a24c92f889a59325f66f",
+      "diff_sha256": "8ae73ab28168d456ff627284a797f790c30e12a36bcc60aa3f0574190e4b6e7e",
+      "diff_bytes": 20522,
+      "result": "passed"
+    }
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9c3de29b20ed7f54ef25915f378d800a0b739579a34308ba453361ecdfa92001",
+    "tests/visual/test_native_diagram.py": "ce7ac0f86cb9f544a96182128608200837cea832acb1016c252440a64f63d534"
+  },
+  "does_not_establish": [
+    "full validation on the later successor-evidence head",
+    "independent observer readback on the later successor-evidence head",
+    "decision-bound independent reviewer PASS on the later successor-evidence head",
+    "GitHub CI success on the later successor-evidence head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ],
+  "evidence_digest": "aa649692fa0958e28afec8c81a2bb68c7d3e2ed1094388984df6687119a0226e"
+}

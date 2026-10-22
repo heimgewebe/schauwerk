@@ -1,0 +1,68 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-review-closure.v1",
+  "scope": "P2-source-only-revision-readback",
+  "recorded_at": "2026-10-10T05:27:26Z",
+  "status": "source_revision_verified_visual_and_decision_review_pending",
+  "functional_head": "45d2f02105c42125fa64888be4cf6d31c30ba21d",
+  "base_product_head": "8ec2042d565008a171d46b84415065904748e29b",
+  "parent_evidence": {
+    "evidence_digest": "aa649692fa0958e28afec8c81a2bb68c7d3e2ed1094388984df6687119a0226e",
+    "file_sha256": "5d8452f104bb5c051886393fe9139f11771c92e720b8bfab4c86291d8e25eaa9",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-review-collision-fix-20261006/acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-review-collision-fix.v1"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "538b680496ae9fe6e7d820802fb77cbb3b1fde8fc453438416ba9990e5e0c83d",
+    "tests/visual/test_native_diagram.py": "b484b61ffa563c304bada7364dec38cdd07d8a2d77657cf55047ca8a3bed98fa"
+  },
+  "checks": {
+    "historical_parent_immutable": true,
+    "prior_fix_reused": true,
+    "fail_first_feedback_collision_reproduced": true,
+    "five_targeted_tests_passed": true,
+    "full_renderer_tests_passed": true,
+    "ruff_and_diff_check_passed": true,
+    "full_validate_failed_only_historical_sha_gate": true,
+    "fresh_browser_visual_accepted": false,
+    "independent_reviewer_pass": false,
+    "captain_merge_authorized": false
+  },
+  "check_evidence": {
+    "prior_unpublished_fix": "92bfb542dbfa844090c87af1bb90f7b3946a2f44",
+    "functional_fix": "45d2f02105c42125fa64888be4cf6d31c30ba21d",
+    "red_regression": {
+      "task_id": "382de27d02cb4b4192befe95",
+      "state": "expected_fail",
+      "observed_segment_x": 310.0,
+      "foreign_label": [
+        282.0,
+        343.5,
+        198.0,
+        29.0
+      ]
+    },
+    "five_regressions": {
+      "task_id": "3e11414ed83443878d619dbc",
+      "passed": 5
+    },
+    "complete_renderer": {
+      "task_id": "0c8ed66d17dc476bac08ab3b",
+      "result": "pass"
+    },
+    "pre_successor_validate": {
+      "task_id": "271915bfcd714b04b8a464f6",
+      "passed": 1664,
+      "failed": 1,
+      "failed_test": "tests/publication/test_publication_fixtures.py::test_infrastructure_hardening_acceptance_and_successor_bind_security_revisions"
+    }
+  },
+  "does_not_establish": [
+    "fresh browser-pixel acceptance",
+    "independent exact-diff review",
+    "head-bound complete CI after successor",
+    "Captain merge clearance",
+    "merge",
+    "deployment"
+  ],
+  "evidence_digest": "5b21265c48f106985cfd648acb49743f0b043a2de5589e64eae18a0d0eece16a"
+}

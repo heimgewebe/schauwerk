@@ -1,0 +1,170 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-r3-final-svg-axis-clearance-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "70d9c9154505205f920ff70f8e9ca8c68e0bbd0c",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-codex-process-rail-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-codex-process-rail-p2-successor-acceptance-receipt.json",
+    "file_sha256": "de453dba72d5460656eabb5ca2f41ff4f1a7228c15b2be7d4abfebc78e1ea215",
+    "evidence_digest": "f1ffdcdd520d98388747340dd9a588bb8a1b4370737f64ec244862406c45a6a2"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "90e4f8ea2581434da26f75cfe6359ebf9acab2dff0016339002109610640da9f",
+    "tests/visual/test_native_diagram.py": "cb6c43c76cb28c0271a99c86d56e0c61f6c1e2775c87acb3fa787c793a646b1c"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "5671d355a3d9c57b3c24adafbc0618033781429c78bec4da1b0ecad536ca6b5e",
+    "tests/visual/test_native_diagram.py": "78f83101586b384fd4094988788a9638ea3964210480bcffc0a7c611e5c472ea"
+  },
+  "independent_review_predecessor": {
+    "review_job": "grabowski-job-6da12d0ce945",
+    "review_attempt_sha256": "30a07a8ba589f368f1bae2b2b3582bb02a66a9ae6f88ddcba8ce4d46e8f89e80",
+    "reviewed_head": "70d9c9154505205f920ff70f8e9ca8c68e0bbd0c",
+    "verdict": "NEEDS_CHANGE",
+    "findings": [
+      {
+        "severity": "P3",
+        "resolution": "Retired stale pre-feedback nonfeedback _edge_geometry preview; late collision re-evaluation uses actual planned rendered peer SVG, strict parsed axis spans, and monotonic path/contact orientation guards"
+      },
+      {
+        "severity": "P3",
+        "resolution": "Separately measured exact published head to candidate 2,200 seeds, including feedback/nonfeedback path changes, height and width, and newly far semantic labels"
+      }
+    ],
+    "successor_review_still_required": true
+  },
+  "differential_published_to_candidate_2200": {
+    "reference": "published exact 70d9c9154505205f920ff70f8e9ca8c68e0bbd0c",
+    "candidate_renderer_sha256": "5671d355a3d9c57b3c24adafbc0618033781429c78bec4da1b0ecad536ca6b5e",
+    "models_compared": 2200,
+    "feedback_path_changes": 82,
+    "models_with_changed_feedback_paths": 74,
+    "nonfeedback_path_changes": 0,
+    "previous_semantically_far_labels": 2886,
+    "candidate_semantically_far_labels": 2538,
+    "new_semantically_far_labels": 0,
+    "new_semantically_near_labels": 348,
+    "height_grew_models": 0,
+    "height_shrank_models": 1,
+    "max_height_growth": 0,
+    "new_width_expansion_models": 0
+  },
+  "actual_main_12000": {
+    "cases": 12000,
+    "legacy_bf7_errors_only": 23,
+    "new_candidate_render_exceptions_vs_current_main": 0
+  },
+  "physical_2600": {
+    "models": 2600,
+    "new_physical_stroke_overlap_pairs": 0,
+    "new_foreign_label_hits": 0,
+    "historical_local_baseline_errors": 1
+  },
+  "geometry_20000": {
+    "models": 20000,
+    "new_foreign_label_or_card_hits": 0,
+    "new_render_exceptions": 0
+  },
+  "rejected_nonproduction_candidates": [
+    {
+      "renderer_sha256": "6d552570adf04dc30e13bdb9c31f5a594d0d141fbc3a9f03a8a373ea68063c6c",
+      "reason": "Three newly overpainted physical horizontal peer strokes",
+      "job": "grabowski-job-2ee817c0dcd7"
+    },
+    {
+      "renderer_sha256": "504ffcef9815de0e74fcb27ed03331a4035fe9de4429f707e085e0f9870510e6",
+      "reason": "4 new physical overlaps, nine newly far labels and height enlargement in 127 models",
+      "jobs": [
+        "grabowski-job-17edb5665866",
+        "grabowski-job-1e4388f6882d"
+      ]
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_shifted_feedback_rail_clears_planned_process_branch",
+    "test_pr206_codex_feedback_physical_guard_preserves_fixed_sideport",
+    "test_pr206_r3_shifted_feedback_does_not_exchange_stem_for_horizontal_overpaint",
+    "test_pr206_r3_footer_label_keeps_own_visible_route_after_feedback_shift",
+    "test_grouped_crossing_two_line_process_labels_stay_inside_row_corridor"
+  ],
+  "test_receipts": {
+    "historical_actual_main_12k": {
+      "unit": "grabowski-job-65736ec14ffc",
+      "status": "succeeded",
+      "argv_sha256": "1fe76b5d4a3ca19fd373215dddd892eab89f00562ded2730698787dfe7ff34d0",
+      "finalization_receipt_sha256": "e3cf1c9e9e183d29d3eb05a1611a7fa9aaedaf5b5022a34704dd605e5bb3a6fa",
+      "models_or_cases": 12000
+    },
+    "geometry_actual_main_20k": {
+      "unit": "grabowski-job-12e02d074352",
+      "status": "succeeded",
+      "argv_sha256": "196b252ba93816f96535073d8dd513574c0c1a56047eacd0b88c3ec84245ac81",
+      "finalization_receipt_sha256": "6730c086e2d0eff7c2c58b9f90d00b7aa8b6c694f47db7499ae8661b07c2b08e",
+      "models_or_cases": 20000
+    },
+    "physical_strokes_2600": {
+      "unit": "grabowski-job-ba808e11cea1",
+      "status": "succeeded",
+      "argv_sha256": "94b0ee7489a1e7a423dea7717e2b9a7c3534a812cf6a0fb097a2dc3cdfbf22a6",
+      "finalization_receipt_sha256": "e8715c2efe3ee3653695951c6a5d7914c88bfb655386103bdfcd7ac39bffc56b",
+      "models_or_cases": 2600
+    },
+    "saturated_groups_2200": {
+      "unit": "grabowski-job-119620dbe46f",
+      "status": "succeeded",
+      "argv_sha256": "cf00bd733007aa7ca7033f6e7b324aba1b67c21e5c48425619fbad9c6ea50669",
+      "finalization_receipt_sha256": "d3aa216a089f2d2b89381289a4ea31869405dc10ce553b4e3102182a878a3256",
+      "models_or_cases": 2200
+    },
+    "semantic_published_delta_2200": {
+      "unit": "grabowski-job-4ca3917c3edc",
+      "status": "succeeded",
+      "argv_sha256": "7443774f132be0898e581fdc1e0a984a1ea51aa264981d998a94691d9c8d30e8",
+      "finalization_receipt_sha256": "236a011a90ab3cd475bede1833106895e7c928f8f3bfb25d75d1622f36f8827b",
+      "models_or_cases": 2200
+    },
+    "native_renderer_and_editor_suite": {
+      "unit": "grabowski-job-dc39ea5e56b8",
+      "status": "succeeded",
+      "argv_sha256": "fe065ba6b2fed010bf0899a76d378014a000ff2f549d2df9ead414c0d2302c29",
+      "finalization_receipt_sha256": "3c22a4c8aeb8b4c68b57706f0fc766461a27898e0c45769f4c69b942e707a182"
+    },
+    "chrome_browser_smoke": {
+      "unit": "grabowski-job-a1809e9d8c41",
+      "status": "succeeded",
+      "argv_sha256": "ad2644a3f90212db7cedd45196ccacc9b084faa9f19db99ce42d1acfddabd414",
+      "finalization_receipt_sha256": "06cad67edd2df6121d287f101e1082a644c7822a7fe2bc7dff8209d3116d7da9",
+      "models_or_cases": 30
+    },
+    "ruff_check": {
+      "unit": "grabowski-job-22c0e8a2d78f",
+      "status": "succeeded",
+      "argv_sha256": "1f2cb303ff2d6a3886e19f01079da6704522ea41c86b302f9c24652a8b2e4b65",
+      "finalization_receipt_sha256": "fd9df3af906099a9f520d095dde2ca8a329d19096175cac20e42283caccddcdd"
+    }
+  },
+  "local_checks": {
+    "historical_parent_bytes_unchanged": true,
+    "verified_exact_source_and_test_bindings": true,
+    "red_green_codex_p2_models_pass": true,
+    "axis_specific_regressions_green": true,
+    "actual_main_12k_pass": true,
+    "geometry_actual_main_20k_pass": true,
+    "physical_2600_pass": true,
+    "saturated_2200_pass": true,
+    "semantic_delta_2200_pass": true,
+    "native_and_editor_pass": true,
+    "chromium_smoke_30_pass": true,
+    "ruff_pass": true,
+    "full_make_validate_pass": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "limitations": "Predecessor independent NEEDS_CHANGE is not cleared by these local technical tests. The 12k comparison excludes 23 historical bf7-only errors, not actual Main errors. The 2600 physical differential is relative to the seeded prior candidate, not proof that every inherited stroke collision vanished. Semantic threshold remains the project's 320 px measured rule, not artistic acceptance. New independent exact committed-head review, Captain permission, OCI and serving browser proof remain open.",
+  "evidence_digest": "60762ec8eb88423316e24b9adebe32b2a34b7f7b2dfbb5cb4a9c6a098d726279"
+}

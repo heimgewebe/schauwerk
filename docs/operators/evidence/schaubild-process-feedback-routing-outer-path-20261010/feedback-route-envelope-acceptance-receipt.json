@@ -1,0 +1,43 @@
+{
+  "based_on_pr_head": "a29f7b42115c8b434f56c9ca4c0cb1b0d54d5277",
+  "checks": {
+    "bounded_128_case_readonly_geometry_sweep_zero_overlap": true,
+    "captain_merge_authorized": false,
+    "fresh_visual_browser_acceptance": false,
+    "full_exact_head_ci_passed": false,
+    "grouped_cross_row_target_leg_regression_still_passes": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 167,
+    "ruff_check_passed": true,
+    "two_feedback_full_route_p2_regressions_pass": true,
+    "two_full_route_label_collisions_fail_first_reproduced": true
+  },
+  "does_not_establish": [
+    "published final PR head",
+    "full exact-head CI",
+    "independent exact-head R3 PASS",
+    "full visual browser pixel acceptance",
+    "Captain merge",
+    "production deployment"
+  ],
+  "evidence_digest": "7515ac884535f87070f769f0da7b8efd2fc8a8fe39c89ba77429dd7f26a6ea64",
+  "parent_evidence": {
+    "evidence_digest": "fc8ffe04398cff4f3bd18ba4bdce47c4de4160f281143a5831c867c20c41692b",
+    "file_sha256": "d59b9c6b424b37d55d8e505947794b43947f928bbc0199db6ba1e4c25da5720c",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-path-clearance-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-path-clearance.v1"
+  },
+  "regression_tests": [
+    "test_grouped_feedback_entire_footer_route_clears_peer_label[n1-n4-n4-n5]",
+    "test_grouped_feedback_entire_footer_route_clears_peer_label[n4-n5-n5-n0]",
+    "test_grouped_cross_row_feedback_target_leg_clears_foreign_flow_label"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-route-envelope.v1",
+  "scope": "codex-p2-grouped-feedback-full-footer-route-horizontal-source-target-and-vertical-gutter-label-clearance",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3d7dd38c49a8cedeaa263e81b8d2168f6dbcd19ffa1f40909597ad57e2885ccf",
+    "tests/visual/test_native_diagram.py": "e6869035063ccd0422af4bab2a9f37d0f058bd9407521fcf36891b9b14d65f42"
+  },
+  "status": "candidate_geometry_regression_verified_exact_head_ci_review_pending"
+}

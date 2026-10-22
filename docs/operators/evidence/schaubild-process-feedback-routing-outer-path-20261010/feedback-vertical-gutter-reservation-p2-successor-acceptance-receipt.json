@@ -1,0 +1,144 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-vertical-gutter-reservation-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "0a544f981f9968ed605ad27dcb6c259581e58792",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-reserved-same-row-rail-exhaustion-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-reserved-same-row-rail-exhaustion-p2-successor-acceptance-receipt.json",
+    "file_sha256": "e0c36bca845fd51e6f97f7380eb753d58421d91243f252e4c0dc782bec76d3c4",
+    "evidence_digest": "ce14cb044e03f7d89d15870879357703a354a60ca05d7611927243e888f63ea4"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "4fa69acbbb468b0816596b24c6334e421b525587d2da6fdc4bad1e61b6c27e52",
+    "tests/visual/test_native_diagram.py": "0c7068f60ba59a8167c94ffbaf291e15a4f7508683a84199c4a0275d406e65a6"
+  },
+  "codex_review_findings": [
+    {
+      "comment_id": 4321575695,
+      "severity": "P2",
+      "reviewed_head": "0a544f981f9968ed605ad27dcb6c259581e58792",
+      "disposition": "reproduced-and-remediated",
+      "summary": "vertical feedback gutter stroke collinearity after horizontal rail shifts"
+    }
+  ],
+  "regression_tests": [
+    "test_pr205_codex_new_vertical_gutter_overlaps_are_reserved"
+  ],
+  "test_receipts": {
+    "vertical_gutter_red": {
+      "task_id": "70165a7a1e6a42818d3de6cc",
+      "baseline_head": "0a544f981f9968ed605ad27dcb6c259581e58792",
+      "failed_tests": 6,
+      "exit_code": 1
+    },
+    "targeted_green": {
+      "task_id": "81be5f88748c466dbe94a187",
+      "exit_code": 0
+    },
+    "native_diagram_suite": {
+      "task_id": "f346ae79eea549fdb9c83cfe",
+      "exit_code": 0
+    },
+    "vertical_gutter_differential": {
+      "task_id": "bbd7efbf6e9649ad8d488624",
+      "fixed_seed": 20520261051,
+      "models_compared": 1000,
+      "baseline_vertical_overlap_pairs": 2271,
+      "current_vertical_overlap_pairs": 0,
+      "new_vertical_overlap_pairs": 0,
+      "comparison_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3"
+    },
+    "grouped_feedback_differential": {
+      "task_id": "a459a743a6b348a09846e8f8",
+      "fixed_seed": 20520261031,
+      "models_compared": 1600,
+      "baseline_render_exceptions": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "baseline_horizontal_overlap_pairs": 837,
+      "current_horizontal_overlap_pairs": 0,
+      "new_horizontal_overlap_pairs": 0,
+      "comparison_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3",
+      "renderer_sha256": "4fa69acbbb468b0816596b24c6334e421b525587d2da6fdc4bad1e61b6c27e52"
+    },
+    "saturated_feedback_differential": {
+      "task_id": "7419f1cff52f442f98088ee5",
+      "fixed_seed": 20520261050,
+      "models_compared": 600,
+      "baseline_render_exceptions": 0,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "baseline_horizontal_overlap_pairs": 2052,
+      "current_horizontal_overlap_pairs": 0,
+      "new_horizontal_overlap_pairs": 0,
+      "comparison_head": "bbc7dafc0f7ca50daf1d6074cc353c2f6ec7dcf3"
+    },
+    "head_differential_fuzz": [
+      {
+        "task_id": "c5c06b46281b4896b8cab50a",
+        "seed": 20520261021,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "57e2badfa4a4428482e39a28",
+        "seed": 20520261022,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "f4cc2087109c48c8919b6059",
+        "seed": 20520261023,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      },
+      {
+        "task_id": "0b48f20750b6451d8db2be79",
+        "seed": 20520261024,
+        "models_compared": 5000,
+        "baseline_render_exceptions": 0,
+        "new_render_exceptions": 0,
+        "new_card_or_label_hits": 0
+      }
+    ],
+    "chromium_browser_smoke": {
+      "task_id": "33a20ff30aa043b4941ce908",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "temporary_chrome_visual_readback": {
+      "task_id": "ed00e7eff2d7472baaac577b",
+      "model": "(2,)*14 plus 14 competing feedback relations",
+      "pixel_capture_succeeded": true,
+      "visual_acceptance_pass": false,
+      "observation": "At whole-diagram scale labels are tiny and outer return spans dominate visual balance"
+    },
+    "pre_successor_make_validate": {
+      "task_id": "36778ff4fe374dd2b15b7570",
+      "passed_count": 1824,
+      "failed_count": 1,
+      "exit_code": 2,
+      "result": "expected_previous_terminal_source_binding_failure"
+    }
+  },
+  "local_checks": {
+    "historical_parent_receipt_byte_unchanged": true,
+    "source_revision_exactly_bound": true,
+    "vertical_feedback_gutter_occupancy_red_green_reproduced": true,
+    "no_new_render_exceptions_in_sampled_models": true,
+    "full_make_validate_after_new_successor_pending": true,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Create-only technical candidate, not aesthetic or production acceptance. Baseline comparisons vary by receipt as recorded. Dense diagrams may still be visually unreadable at full-canvas fit; do not infer global zero-collision proof from finite sampled cohorts. Changes to source require a distinct immutable successor.",
+  "evidence_digest": "36d778fd4f1b3df331fb272ea70fd2254122680e1858559d6db5ffd7858f52e6"
+}

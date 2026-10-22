@@ -1,0 +1,54 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-parallel-paint-p2-successor.v1",
+  "based_on_pr_head": "3b29dc122d6e387039d300cfa060c5ff6d0d08ad",
+  "scope": "Make two semantic grouped feedback relations with identical directed endpoints use distinct preplanned outer rails; sort SVG paint order only when group-gap fallback is used",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-sideport-group-gap-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-sideport-group-gap-p2-successor-acceptance-receipt.json",
+    "file_sha256": "49fba076859172a61e407492673910c3e0d5029491b16260f1ba5cbfc93614ec",
+    "evidence_digest": "859cef5f4f461b6a49ffd9cff872b0e91cabca55530873c916d29bb6de37abfc"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "0c0db341c5f11a40ce33f3ec0e1ac2450690d0d886c8c452398988077cfa4455",
+    "tests/visual/test_native_diagram.py": "7847aed8b030bb29a6b87fb0f70ce5c62b62ad79e3b218762ad9d158ebb956e2"
+  },
+  "regression_tests": [
+    "test_pr204_p2_parallel_same_endpoints_have_separate_visible_routes",
+    "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap"
+  ],
+  "local_checks": {
+    "exact_parent_head_red_reproduced": true,
+    "both_focused_green": true,
+    "full_native_suite_green": true,
+    "ruff_passed": true,
+    "historical_parent_receipt_preserved": true,
+    "full_make_validate_passed": true,
+    "browser_smoke_passed": true,
+    "github_exact_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "local_1734_tests_and_30_browser_pass_pending_ci_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "visual acceptance on the changed revision",
+    "exhaustive proof of collision-free routing outside tested fixtures",
+    "independent exact-head review",
+    "GitHub-CI on committed successor",
+    "Captain merge authority",
+    "production release convergence"
+  ],
+  "test_receipts": {
+    "full_make_validate": {
+      "task_id": "9043b687882d4fde953d2c6b",
+      "passed_tests": 1734,
+      "exit_code": 0
+    },
+    "browser_smoke": {
+      "task_id": "424d2c5340ff459793d125f0",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "evidence_digest": "08cf3bf53139d2383704e3da6ed3af57f161f965bf98d949c25769afd1d28d7c"
+}

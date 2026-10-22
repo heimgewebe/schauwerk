@@ -1,0 +1,63 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-nonouter-stroke-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate only: after real P2 RED, reserve actual horizontal SVG stroke segments of non-outer feedback selfloops in the existing safe outer side-port footer-label planner; prevent textual concealment without relaxing card/peer label collision checking; preserve deterministic routing.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-cubic-target-clearance-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-cubic-target-clearance-p2-successor-acceptance-receipt.json",
+    "file_sha256": "681e29c8216aa7aa783d20a8312706e9d3644d71c1a4594253ccf387ec102352",
+    "evidence_digest": "53bb2216939cfeee801e33f68dc4ddf62a6ac83b6f4909764e76f79582e3ee4a"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "9398dd74ef572311315609ed33052c8f86f44da80b8a654d99c4260c31cf80c1",
+    "tests/visual/test_native_diagram.py": "9a82dc886bcfd1bfce2aca6ab6727b5adc6ea1382cc860d1e824fcd12b65500e"
+  },
+  "regression_tests": [
+    "test_pr205_p2_forced_footer_clears_local_selfloop_stroke",
+    "test_pr205_p2_parallel_feedback_self_loops_do_not_coincide",
+    "test_pr204_p2_two_outer_feedback_returns_clear_each_others_footer_labels",
+    "test_pr204_p2_saturated_side_ports_expand_only_needed_group_gap"
+  ],
+  "test_receipts": {
+    "focused_pre_fix_red": {
+      "task_id": "030bb2b14df64102a9ed4b51",
+      "failed_tests": 1,
+      "exit_code": 1
+    },
+    "focused_green_pre_test_hygiene": {
+      "task_id": "ff505952ce2643aba897c85c",
+      "passed_tests": 4,
+      "exit_code": 0
+    },
+    "current_native_diagram_suite": {
+      "task_id": "df6eb98fb1964774b91bb750",
+      "exit_code": 0
+    },
+    "current_browser_smoke": {
+      "task_id": "128ecdc1ca3b48ce9a8dc796",
+      "passed_cases": 30,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "actual_pre_fix_p2_reproduced": true,
+    "focused_green": true,
+    "full_native_suite_green": true,
+    "chrome_smoke_green": true,
+    "historical_parent_byte_preserved": true,
+    "full_make_validate_after_current_receipt_passed": false,
+    "exact_new_published_head_ci_passed": false,
+    "independent_current_source_full_diff_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "source_sha_bound_technical_candidate_pending_make_validate_new_github_ci_independent_review_explicit_visual_acceptance_captain",
+  "does_not_establish": [
+    "complete make validate after current publication-binding fixture update",
+    "published exact head with fresh GitHub CI and trusted independent review",
+    "visually accepted design or semantic readability in all diagrams",
+    "Captain-integrated parent PR #204 and child PR #205",
+    "immutable OCI digest tested and promoted, Commonthing release-lock convergence or productive runtime acceptance"
+  ],
+  "evidence_digest": "0d2e155eb0492ad4ce7a3e27c417c72d58654879923f4e878e34c592c9c78bd1"
+}

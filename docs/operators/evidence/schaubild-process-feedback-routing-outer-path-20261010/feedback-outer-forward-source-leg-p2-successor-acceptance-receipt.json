@@ -1,0 +1,39 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-outer-source-leg-p2-successor.v1",
+  "based_on_pr_head": "1c31233d1e622e5f6da2dbf3af8f62b3a8917732",
+  "scope": "Fix reproduced outer forward source-leg crossing a local long-branch label; deterministic reverse-edge ordering and unchanged historical evidence",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-long-vertical-leg-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-long-vertical-leg-p2-successor-acceptance-receipt.json",
+    "file_sha256": "ad2f6b5c26ed973ffd834d3275b77861ffba617d9062c1f4d31e469b23b0444b",
+    "evidence_digest": "26af961c42160243b31090d46e267af091b3c0f4d986f9c1826a9b6581d4d8bc"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "8cc4ae8925e9f9595ad19fd728d6914eef01297f3ea6721a7c0c97538b149fe4",
+    "tests/visual/test_native_diagram.py": "acf63e46ca040b51e390578e97b78392d9ac1065cca2c24869d481f22c773612"
+  },
+  "regression_tests": [
+    "test_pr204_p2_outer_forward_source_leg_clears_local_long_label"
+  ],
+  "local_checks": {
+    "red_reproduced": true,
+    "focused_green": true,
+    "full_native_suite_green": true,
+    "ruff_passed": true,
+    "historical_parent_receipt_preserved": true,
+    "full_make_validate_passed": false,
+    "exact_published_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "codex_threads_settled": false,
+    "captain_merge_authorized": false
+  },
+  "status": "local_outer_source_leg_fix_pending_full_validation_ci_independent_review_captain",
+  "does_not_establish": [
+    "complete full-suite validation on immutable successor acceptance",
+    "GitHub CI on an exact published head",
+    "independent revision-bound P1/P2-free review",
+    "Captain merge authority",
+    "production convergence"
+  ],
+  "evidence_digest": "8447014e6586927aeda1c9d3f9fbd5e28c94af74fd4669643449f21816a72785"
+}

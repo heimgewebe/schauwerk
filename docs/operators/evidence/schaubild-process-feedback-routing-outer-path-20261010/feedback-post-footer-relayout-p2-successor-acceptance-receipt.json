@@ -1,0 +1,42 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-post-footer-relayout-p2-successor.v1",
+  "based_on_pr_head": "f6059f99a8fe050931692f82ffb2bb53e1f4784b",
+  "scope": "Create-only acceptance descendant for an unpublished preserved native feedback footer-label relayout candidate; correct safe side-port exhaustion without weakening clearance",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-local-footer-label-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-local-footer-label-p2-successor-acceptance-receipt.json",
+    "file_sha256": "e499b43c46c2cb98f5007f29394cbf85bf1fef83416e3fae064f8ca34d56cd35",
+    "evidence_digest": "cb721f7388d80e15ac150b7f6e0a32d5bcb77fe0f292fc737c5bb8967d5ce7b7"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "eba85758385ef78d9105d9964bd32aedea05668acdbbb2b84cee4443ff4aae1e",
+    "tests/visual/test_native_diagram.py": "4ca84e08aee1c1615e79f891a90727d36fcdcb24ae01535e4ad1ff2a2df9d02c"
+  },
+  "regression_tests": [
+    "test_pr204_p2_grouped_side_ports_survive_dense_intercolumn_labels",
+    "test_pr204_p2_five_parallel_feedbacks_have_distinct_visible_routes",
+    "test_pr204_p2_seven_parallel_feedbacks_do_not_exhaust_safe_outer_routes",
+    "test_pr204_p2_risk_label_saturation_has_safe_outer_feedback_routes"
+  ],
+  "local_checks": {
+    "native_diagram_suite_command": "/home/alex/repos/schauwerk/.venv/bin/python -B -m pytest -o pythonpath=src tests/visual/test_native_diagram.py -q",
+    "native_diagram_suite_passed": true,
+    "ruff_command": "/home/alex/repos/schauwerk/.venv/bin/python -B -m ruff check src/schauwerk/visual/native_diagram.py tests/visual/test_native_diagram.py",
+    "ruff_passed": true,
+    "parent_receipt_preserved": true,
+    "complete_local_validate_passed": false,
+    "exact_published_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "codex_threads_settled": false,
+    "captain_merge_authorized": false
+  },
+  "does_not_establish": [
+    "full local validate PASS",
+    "independent revision-bound review PASS",
+    "GitHub CI on a published successor head",
+    "Captain merge authorization",
+    "production deployment or browser pixel acceptance"
+  ],
+  "status": "local_renderer_candidate_preserved_pending_successor_acceptance_full_suite_review_and_captain",
+  "evidence_digest": "68bbf99a68c28fb621cd097fbe26fb4da46063b5e47b31241ce97c03dfa5acdd"
+}

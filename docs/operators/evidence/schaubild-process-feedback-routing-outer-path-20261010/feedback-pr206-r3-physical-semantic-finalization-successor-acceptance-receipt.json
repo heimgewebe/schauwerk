@@ -1,0 +1,160 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-finalization-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "1528aede0fbc30f1bc5d1b1c04f0f6fd0beff897",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "compared_against_published_r3_head": "70d9c9154505205f920ff70f8e9ca8c68e0bbd0c",
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-dense-single-group-validation-finalization-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-dense-single-group-validation-finalization-successor-acceptance-receipt.json",
+    "file_sha256": "0fe7150a85b36f8d0258e0a679b26af07e441a8735121be5b9a63939e3c34b93",
+    "evidence_digest": "ff863f63829ac29d846e5b88c6f63e2ebf54805825825f4fdebe5fbbb9c56f4d"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "29a1a64c7aa457d9d656ca9d3ad39e27b78599e29d32ec64fd54a9fbab68acf1",
+    "tests/visual/test_native_diagram.py": "aa7988d014b01a01b8e535ea38353eb4fba9c930c25c23c97442971e6ef4faf4"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "40a62cd01be5c36032836960a61aeb9f775fcd128f9b65f898309a985b77cebb",
+    "tests/visual/test_native_diagram.py": "c11eea7b612977c4e5d6931f47523cf8ffa53d335e726d9e2758e5f0c82a9573"
+  },
+  "review_predecessor": {
+    "unit": "grabowski-job-ddda4e82fb46",
+    "reviewed_pr_head": "fe3f4e9f4ebb056e38057d9ae288205263d6d955",
+    "review_verdict": "NEEDS_CHANGE",
+    "remaining_exact_committed_head_review_required": true
+  },
+  "new_red_green": {
+    "dense_single_group_9_edges_2_orders": "GREEN (parent receipt)",
+    "new_late_actual_svg_horizontal_peer_overpaint_3_cases_6_orders": "GREEN",
+    "new_foreign_label_ownership_2_cases_4_orders": "GREEN",
+    "new_sideport_label_and_stroke_joint_4_cases_8_orders": "GREEN"
+  },
+  "measured_differentials": {
+    "actual_main_12000": {
+      "models": 12000,
+      "old_bf7_only_errors": 23,
+      "new_render_exceptions_vs_actual_main": 0
+    },
+    "geometry_20000": {
+      "models": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_foreign_label_hits": 0
+    },
+    "physical_strokes_against_70d_2600": {
+      "models": 2600,
+      "new_physical_stroke_overlaps": 0,
+      "new_foreign_label_hits": 0
+    },
+    "saturated_groups_2200": {
+      "models": 2200,
+      "new_card_label_hits_or_render_exceptions": 0
+    },
+    "semantic_ownership_2200": {
+      "models": 2200,
+      "feedback_labels_compared": 4082,
+      "previously_ambiguous": 2698,
+      "current_ambiguous": 269,
+      "previously_ambiguous_now_clear": 2429,
+      "newly_ambiguous": 0
+    },
+    "chrome_smokes": {
+      "passed": 30
+    },
+    "full_python_suite": {
+      "passed": 1953
+    }
+  },
+  "test_receipts": {
+    "actual_main_renderability_12000": {
+      "unit": "grabowski-job-303307e5932c",
+      "argv_sha256": "3e04659f918756ab79f6c2c2a58b09fd3211772d762e27071fb9d8f47d207312",
+      "finalization_receipt_sha256": "f09dd9aecac22f4f7cca96c3931cb95e9c611ea4bcd6c52fe16d3fbce472472e",
+      "status": "succeeded",
+      "models_or_cases": 12000
+    },
+    "main_cards_labels_geometry_20000": {
+      "unit": "grabowski-job-11e723d153e7",
+      "argv_sha256": "d6f87d5e62734e21e0f5816fd6ae1f9ec888648f6b6f681914839e416abd2af3",
+      "finalization_receipt_sha256": "776b28a9d74e77e90cdd2e8e9d7a639f92074e1e0a5ae6ed95c6bd5e8bb20497",
+      "status": "succeeded",
+      "models_or_cases": 20000
+    },
+    "actual_svg_stroke_vs_published_70d_2600": {
+      "unit": "grabowski-job-22fe377f2e0f",
+      "argv_sha256": "7d8873a8297b3d51913f95ed11d0544b1419ddc18f164aac743e8843df70fa5b",
+      "finalization_receipt_sha256": "78af4b90c82692cb8bb445133e676161e3e67e74d2195411e11bd9212bef254d",
+      "status": "succeeded",
+      "models_or_cases": 2600
+    },
+    "saturated_groups_2200": {
+      "unit": "grabowski-job-7337a012e0c6",
+      "argv_sha256": "b54b7fb2a8afab7e8cf6d0506cb01db0d611fb48270028789b9b0af12f789193",
+      "finalization_receipt_sha256": "0689ac956cd400b8134e706959398169e05e10c66557dd8219bea4e053e500b4",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "semantic_ownership_vs_published_1528_2200": {
+      "unit": "grabowski-job-2a923d236242",
+      "argv_sha256": "3145d5c63003ace75a1d7e9921c97f3e1d85cd4015853f61eb1def3c4bf30dbd",
+      "finalization_receipt_sha256": "63b3506171e2534ea60cb106bbbe76fec7a41df5425a78189362df1d0bcb8123",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "label_proximity_2200": {
+      "unit": "grabowski-job-27227ec92d27",
+      "argv_sha256": "701a9398c46afff947669173386d73640a746871a00d20684749483a45fddea7",
+      "finalization_receipt_sha256": "83f7c17e985f604c7f2bcf1b2d9fc132b5dc50c3d0f976f96a556e38a6388fd4",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "native_renderer_document_editor_suite": {
+      "unit": "grabowski-job-ff1e89de69de",
+      "argv_sha256": "5ef33cc83803dde972e704c057eead98d7885714aac5e831ba6c19ec38bda54f",
+      "finalization_receipt_sha256": "d77f1f84f8e8aa69c164f0401efc65922c54db9a362754bc6cbfe4c3ecb0c1d3",
+      "status": "succeeded"
+    },
+    "chrome_browser_smoke_30": {
+      "unit": "grabowski-job-ca2c2351974c",
+      "argv_sha256": "26192a84345240363c4a279ea983b918a1af8ffd539cc06bacee917f2270dd3c",
+      "finalization_receipt_sha256": "0d1ee62bd778d725e7a30c1bafe54913b8566f3c85f6760d7cbb4ae80b067c22",
+      "status": "succeeded",
+      "models_or_cases": 30
+    },
+    "targeted_p2_p3_20": {
+      "unit": "grabowski-job-2f3ae64f7e74",
+      "argv_sha256": "ce7488192357c94598375a0ac7339547bf57fde0c384c9ceefc488bae40aaf9f",
+      "finalization_receipt_sha256": "e021716e01054e11809c89b5874ec5b313aec846f34736ca62c524e620be3ad5",
+      "status": "succeeded",
+      "models_or_cases": 20
+    },
+    "full_make_validate": {
+      "unit": "grabowski-job-53ffaa13ec18",
+      "argv_sha256": "72f2506fd221945d3af5c9e5594c12b7c95ed2599be315fa0903052275fbd48a",
+      "finalization_receipt_sha256": "77e64af3a5ac6ee5e8e8ce82b4ad96d2512b5b58e9a2b8c12706f5e3c042781d",
+      "status": "succeeded",
+      "models_or_cases": 1953
+    }
+  },
+  "local_checks": {
+    "exact_source_test_sha_verified": true,
+    "dense_single_group_p2_green": true,
+    "late_svg_physical_p2_green": true,
+    "foreign_label_ownership_p3_green": true,
+    "main_renderability_12000_pass": true,
+    "main_geometry_20000_pass": true,
+    "physical_svg_2600_pass": true,
+    "saturated_2200_pass": true,
+    "semantic_label_ownership_2200_pass": true,
+    "chrome_smoke_30_pass": true,
+    "full_make_validate_pass": true,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "limitations": "Current technical candidate only. No independent exact committed-head or cumulative PR approval; remaining 269 geometrically ambiguous feedback-label ownerships in this deterministic cohort were inherited, not all cleared. The 2600 differential proves no new sampled h/v overlaps against actual published 70d9, not universally collision-free diagrams. Old immutable evidence not changed. Real visual acceptance, Captain merge, OCI digest and actual Commonthing production runtime/browser acceptance require separate fresh evidence.",
+  "evidence_digest": "e56e51f59f62e80e6ecec0280f188a3a58f0651b199308cfc83b6af7e3265844"
+}

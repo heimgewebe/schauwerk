@@ -1,0 +1,159 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-dense-single-group-reorder-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "fe3f4e9f4ebb056e38057d9ae288205263d6d955",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-r3-final-svg-axis-clearance-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-r3-final-svg-axis-clearance-successor-acceptance-receipt.json",
+    "file_sha256": "3642b27f0f6779c6148a3893cb8c6688c4aaa319a9bca54805d0a9ec70f5082e",
+    "evidence_digest": "60762ec8eb88423316e24b9adebe32b2a34b7f7b2dfbb5cb4a9c6a098d726279"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "5671d355a3d9c57b3c24adafbc0618033781429c78bec4da1b0ecad536ca6b5e",
+    "tests/visual/test_native_diagram.py": "78f83101586b384fd4094988788a9638ea3964210480bcffc0a7c611e5c472ea"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "29a1a64c7aa457d9d656ca9d3ad39e27b78599e29d32ec64fd54a9fbab68acf1",
+    "tests/visual/test_native_diagram.py": "aa7988d014b01a01b8e535ea38353eb4fba9c930c25c23c97442971e6ef4faf4"
+  },
+  "codex_confirmed_p2": {
+    "review_thread_id": "PRRT_kwDOTGqvHc6u8pxB",
+    "comment_id": 4341811267,
+    "original_failure": "no collision-free process feedback side-port route",
+    "test_model": "single-group 5 nodes, 9 edges",
+    "edge_input_orders_checked": 2,
+    "red_variants_on_published_head": 2,
+    "local_green_variants_on_candidate": 2,
+    "mitigation": "retry only after the original 66 safe plans fail, with reversed feedback allocation priority under unchanged physical clearance checks",
+    "candidate_planner_attempt_budget": 132
+  },
+  "measured_differentials": {
+    "actual_main_12k": {
+      "models": 12000,
+      "old_bf7_only_render_errors": 23,
+      "new_candidate_render_errors_vs_actual_main": 0
+    },
+    "geometry_20k": {
+      "models": 20000,
+      "new_card_label_hits": 0,
+      "new_render_errors": 0
+    },
+    "physical_2600": {
+      "models": 2600,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "known_historical_baseline_errors": 1
+    },
+    "saturated_groups_2200": {
+      "models": 2200,
+      "changed_models": 901,
+      "strict_regression_gate": "pass"
+    },
+    "semantic_proximity_2200": {
+      "models": 2200,
+      "feedback_path_changes": 82,
+      "models_with_feedback_changes": 74,
+      "nonfeedback_path_changes": 0,
+      "newly_far_labels": 0,
+      "newly_near_labels": 348,
+      "width_expansion_models": 0,
+      "height_growth_models": 0
+    },
+    "browser_smoke": {
+      "cases": 30,
+      "status": "passed"
+    }
+  },
+  "test_receipts": {
+    "actual_main_12k": {
+      "unit": "grabowski-job-e43a39e7b051",
+      "argv_sha256": "c85a9dee6978ed476e2a2fe5f37cf5f5400f21db9768a35fd0607c02c4c4df35",
+      "finalization_receipt_sha256": "01bc50940a4477d261b98ce2ac1468034536f0445d87618c920b2410e0643833",
+      "status": "succeeded",
+      "models_or_cases": 12000
+    },
+    "geometry_main_20k": {
+      "unit": "grabowski-job-f901243cf76a",
+      "argv_sha256": "1af01cd8e6dab9d6d2b79e23b2be9c8188f51649478ce7d28fabc060613af05f",
+      "finalization_receipt_sha256": "be82d5eb11bcbaec03611a1300cd5be05e621bb3d6c7dd5d349782208f59e9ae",
+      "status": "succeeded",
+      "models_or_cases": 20000
+    },
+    "physical_strokes_2600": {
+      "unit": "grabowski-job-ab9faebab1bb",
+      "argv_sha256": "8afbe9cf6a0e6c2cfb2b86164fa9814d0552cfa260b825a7d6bea8055b5e326e",
+      "finalization_receipt_sha256": "65267893b9e2fe4873a379d49864a7b232aa6891e2253b3c6d7d20c09611f210",
+      "status": "succeeded",
+      "models_or_cases": 2600
+    },
+    "saturated_group_2200": {
+      "unit": "grabowski-job-cbf8a8dacd7c",
+      "argv_sha256": "64d1b633cabafbd03d20b9f1ff9c773ae9e5e8f3b4d8ed8370b26bdf85b845d6",
+      "finalization_receipt_sha256": "571ada7a6137fc37cdb3fb7f625dc503b7416c2dd83c902b9537860da6a6f55d",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "semantic_proximity_2200": {
+      "unit": "grabowski-job-30fc6849ea48",
+      "argv_sha256": "fab2c3da0007b4b997b811c16618d9f81b9f764adce1b7a19f12f906d86770fc",
+      "finalization_receipt_sha256": "5bdd64472ac3ca0e08181bfd8514b465b5a0854c05f98b913309909c841d5dd7",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "chrome_browser_smoke": {
+      "unit": "grabowski-job-af1ed78090f0",
+      "argv_sha256": "8435325077682c8b367723a753badf39e6e117c2f37a24ec070e89a38d7bc0b2",
+      "finalization_receipt_sha256": "f84c716295ba19745228b93436fbfe7d9bb37256e9749c2fe2417d6b033330de",
+      "status": "succeeded",
+      "models_or_cases": 30
+    }
+  },
+  "failed_intermediate_make_validate": {
+    "unit": "grabowski-job-a4e5ba238cac",
+    "finalization_receipt_sha256": "a689fca3c77a811169eaadcce072c0d581ebaf455eaa83140ea8cbbf4da58f80",
+    "passed_pytests": 1934,
+    "failed_pytests": 1,
+    "reason": "historical terminal receipt fixture still compared immutable predecessor source bindings with new live candidate bytes; additive publication fixture successor required"
+  },
+  "independent_review_predecessor": {
+    "unit": "grabowski-job-ddda4e82fb46",
+    "source_commit": "fe3f4e9f4ebb056e38057d9ae288205263d6d955",
+    "verdict": "NEEDS_CHANGE",
+    "open_material_findings": [
+      "late shifted-feedback physical repair P2",
+      "relocated feedback-label attribution P3",
+      "full validation receipt chronology P3"
+    ]
+  },
+  "additional_read_only_r3_diagnostics": {
+    "emitted_svg_paths_parsed": 2316,
+    "emitted_svg_paths_unparsed": 0,
+    "unrepaired_preexisting_shifted_feedback_peer_overlap_models_in_1500": 97,
+    "models_in_70d_comparison": 200,
+    "new_peer_stroke_pairs_vs_70d_in_200": 0,
+    "ambiguous_relocated_labels_in_850_seeded_models": 110,
+    "relocated_labels_in_850_seeded_models": 138,
+    "remaining_material_review_required": true
+  },
+  "local_checks": {
+    "dense_p2_red_reproduced": true,
+    "dense_p2_green_both_orders": true,
+    "full_native_python_suite_without_publication_fixture_pass": true,
+    "full_make_validate_pass": false,
+    "chrome_browser_smoke_30_pass": true,
+    "actual_main_12k_pass": true,
+    "geometry_actual_main_20k_pass": true,
+    "physical_stroke_2600_pass": true,
+    "saturated_group_2200_pass": true,
+    "semantic_proximity_2200_pass": true,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "limitations": "Local technical candidate only: the original reviewer NEEDS_CHANGE remains material; 110/138 inspected relocated labels were geometrically nearer a foreign path in a bounded 850-model sample. The 2600 physical cohort uses the historical seeded reference and does not prove all inherited overlaps are absent. A fresh independent cumulative review, visual acceptance, Captain authority, exact OCI digest and consumer production are absent. The first make validate failed only at a stale historical-source publication fixture and must be rerun after additive successor binding.",
+  "evidence_digest": "73bde0b9ab744792af9cdf36b74088af66c56388ca6ffcc47e38579641de8db9"
+}

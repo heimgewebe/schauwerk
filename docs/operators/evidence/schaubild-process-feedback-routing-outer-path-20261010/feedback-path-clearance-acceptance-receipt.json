@@ -1,0 +1,42 @@
+{
+  "based_on_pr_head": "ecae22f41f20e306bf15e8bbd21d2723e8ffa470",
+  "checks": {
+    "captain_merge_authorized": false,
+    "fresh_visual_browser_acceptance": false,
+    "full_exact_head_ci_passed": false,
+    "grouped_feedback_target_and_source_path_leg_regression_passes": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "native_diagram_passed_count": 165,
+    "new_codex_p2_fail_first_reproduced": true,
+    "ruff_check_passed": true
+  },
+  "does_not_establish": [
+    "published final PR head",
+    "full exact-head GitHub CI",
+    "independent decision-bound review PASS",
+    "fresh browser pixels",
+    "production deployment",
+    "Captain merge authorization"
+  ],
+  "evidence_digest": "fc8ffe04398cff4f3bd18ba4bdce47c4de4160f281143a5831c867c20c41692b",
+  "parent_evidence": {
+    "evidence_digest": "6e43aa96f48c17618208d48d1d4908b945dac050633c6f8db62d64233bca2504",
+    "file_sha256": "f8693d9c32053df9b7262e8973c0ff9f77c39b3077ff482a0e415c9b88851123",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/cluster-occupancy-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-cluster-occupancy.v1"
+  },
+  "regression_tests": [
+    "test_grouped_cross_row_feedback_target_leg_clears_foreign_flow_label",
+    "test_grouped_pack_reserves_later_singleton_label_other_cluster",
+    "test_grouped_pack_reserves_anchored_label_in_foreign_cluster",
+    "test_local_group_long_branch_target_leg_clears_other_corridor_label"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-path-clearance.v1",
+  "scope": "codex-p2-cross-row-grouped-feedback-footer-path-target-and-source-label-clearance",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "fb878c4b6fe3b4102cc3a0b71b9194c43a3ff88b251f65c681a34ae318b1b3a6",
+    "tests/visual/test_native_diagram.py": "575e03956e94ff96731dad5147ef310a35449890a3d8e3d2f421180f07610099"
+  },
+  "status": "candidate_geometry_regression_verified_exact_head_ci_review_pending"
+}

@@ -1,0 +1,129 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-first-row-paint-order-p2-successor.v1",
+  "based_on_pr_head": "6a3bc3f8ba614b19b59895cb23a3415656471938",
+  "scope": "Technical-only, create-once successor. Exact current renderer/test revision fixes Codex same-row first-row foreign-card bypass and permutation-dependent paint order, uses existing header-to-card corridor with finite candidate scan and real SVG obstacle checks, preserves earlier accepted paths and historical immutable receipts.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-same-row-card-topport-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-same-row-card-topport-p2-successor-acceptance-receipt.json",
+    "file_sha256": "c3ec5a5b44dd0c47a9295e5580b86be4766ce332100cb0309a318fea9d0e33a3",
+    "evidence_digest": "fe92dd711be7d38f1827668a2dc02d3232ec69b1d655de075306b56e48059deb"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "c3a96bdcfd626e6f3ab22f6f33d442f11cd2ef1b6e3d665857f26c709d515e9e",
+    "tests/visual/test_native_diagram.py": "295f96c3e593664b298ac88834eb75e3b90f5c379398508748d384c54369dff4"
+  },
+  "regression_tests": [
+    "test_pr205_codex_first_row_cross_card_uses_safe_detour",
+    "test_pr205_codex_same_row_card_detour_stabilizes_paint_order",
+    "test_pr205_codex_first_row_differential_failures",
+    "test_pr205_codex_first_row_differential_label_clearance"
+  ],
+  "test_receipts": {
+    "codex_two_p2_red": {
+      "task_id": "70de3e4742cb44a3b5d9f672",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "codex_two_p2_green": {
+      "task_id": "701fa17ef6d54068b4cd1837",
+      "passed_tests": 2,
+      "exit_code": 0
+    },
+    "first_row_differential_red": {
+      "task_id": "877751e65c2844e3b189dd9f",
+      "failed_cases": 5,
+      "exit_code": 1
+    },
+    "first_row_focused_green": {
+      "task_id": "b36770af3fa44ea78af70e7c",
+      "passed_cases": 6,
+      "exit_code": 0
+    },
+    "full_native_diagram_suite": {
+      "task_id": "cfdbb2cab1a245c4accba5ff",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "task_id": "d917fdde12a24dcd87e9e1ea",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff_compile_registry": {
+      "task_id": "0bd476e47eef44dc84f923f2",
+      "exit_code": 0
+    },
+    "deterministic_head_differential_fuzz": [
+      {
+        "seed": 20520261021,
+        "task_id": "f61845c10bbd44729077170d",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      },
+      {
+        "seed": 20520261022,
+        "task_id": "87d360054e9745049718542e",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      },
+      {
+        "seed": 20520261023,
+        "task_id": "d51ebdc099954ace85ec8b20",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      },
+      {
+        "seed": 20520261024,
+        "task_id": "414024badfb649d381dc99dc",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      },
+      {
+        "seed": 20520261025,
+        "task_id": "486d0a3df7f5493c81da3f58",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      },
+      {
+        "seed": 20520261026,
+        "task_id": "5362a9dd6bd5411fb01ab31f",
+        "cases": 5000,
+        "new_render_exceptions": 0,
+        "new_card_intersections": 0,
+        "new_foreign_label_intersections": 0
+      }
+    ]
+  },
+  "local_checks": {
+    "codex_p2_red_green_reproduced": true,
+    "first_row_route_collision_guards_retained": true,
+    "detour_paint_order_stable": true,
+    "differential_comparison_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+    "historical_receipts_byte_unchanged": true,
+    "final_source_and_tests_digest_bound": true,
+    "full_make_validate_after_receipt_pass": false,
+    "independent_exact_successor_review_pass": false,
+    "visual_acceptance_pass": false,
+    "github_ci_for_new_pr_head_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "revision_bound_technical_candidate_pending_full_validation_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "fresh make validate including updated publication fixture",
+    "independent exact-head code/security review for new candidate",
+    "visually accepted Chrome screenshot/layout aesthetics",
+    "settlement of nine historical PR204 review threads",
+    "Captain PR merge authorization",
+    "promoted immutable OCI digest, Commonthing lock or production Serving convergence"
+  ],
+  "evidence_digest": "2012a484228ffbd23eb98354ee215ccad5f1149f45fc493939b6e7fd473139bf"
+}

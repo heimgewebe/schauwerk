@@ -1,0 +1,82 @@
+{
+  "kind": "grabowski_self_review",
+  "schema_version": 1,
+  "review_mode": "critical_diff_review",
+  "verdict": "PASS",
+  "base_sha": "8ec2042d565008a171d46b84415065904748e29b",
+  "head_sha": "6fc31855eb300a654428981e955cefb9e2a5b248",
+  "functional_diff_sha256": "15793554756643c3be6f8b67332bf21e403f6caa1fbcf32a78bdb606bf8eb4d5",
+  "functional_diff_bytes": 45029,
+  "pre_review_worktree": {
+    "tracked_diff_sha256": "8ef03939349500173f4acc87cada0fb7734ff5b73504c43cdc00667b4cdfa99c",
+    "tracked_diff_bytes": 6997,
+    "acceptance_receipt_sha256": "ed1aea00f98cdb9af19c1340de1d5254256a9cd498d7a9960647742faf6893bd",
+    "publication_fixture_sha256": "d8b79626391c3ba7352ae53e96597c994294c2be7a2d6f453817115a2cc4d3e5"
+  },
+  "reviewed_files": [
+    "src/schauwerk/visual/native_diagram.py",
+    "tests/visual/test_native_diagram.py",
+    "tests/publication/test_publication_fixtures.py",
+    "docs/operators/evidence/schaubild-process-feedback-routing-20261005/acceptance-receipt.json"
+  ],
+  "review_focus": [
+    "process routing remains local where safe without changing non-process feedback semantics",
+    "risk and true long branches retain the established outer-gutter fallback",
+    "a single process-feedback label leaves the footer only when its natural box clears every node and packed process label",
+    "multiple feedback edges and collision cases retain the existing footer fallback",
+    "the real 18-node regression proves local path, local label, compact canvas, and no node or edge-label collision",
+    "historical immutable acceptance receipts remain byte-unchanged and the new successor binds exactly the revised renderer and test bytes",
+    "publication precedence resolves those two current bytes through the new successor before older Schaubild evidence",
+    "browser pixel readback is bound to the exact functional renderer revision",
+    "the full current worktree passes Ruff, compile, registry validation, and all repository tests"
+  ],
+  "iterations": [
+    {
+      "iteration": 1,
+      "finding": "A broad routing rewrite would risk regressing accepted long and risk branch geometry.",
+      "resolution": "The implementation confines local group channels to adjacent ordinary process branches, explicitly excludes feedback and risk from that helper, and leaves the existing global long-branch fallback in place."
+    },
+    {
+      "iteration": 2,
+      "finding": "Moving the feedback label locally merely because the path is local could introduce label-to-node or label-to-label collisions.",
+      "resolution": "The renderer computes the natural feedback label box and removes footer forcing only when that box clears both all node rectangles and packed process-label bounds; otherwise the footer fallback remains."
+    },
+    {
+      "iteration": 3,
+      "finding": "The compact result could be a special-case success while same-row, bottom-footer, multi-feedback, long-branch, or risk geometry regressed.",
+      "resolution": "The exact 18-node regression and the complete native-diagram module pass on the functional head, including the existing footer, long-branch, risk, and feedback regression coverage."
+    },
+    {
+      "iteration": 4,
+      "finding": "Changing accepted renderer/test bytes invalidates historical digest bindings and must not be hidden by rewriting old receipts.",
+      "resolution": "A new process-feedback-routing acceptance receipt parents the latest Schaubild acceptance, binds exactly native_diagram.py and test_native_diagram.py, and publication precedence supersedes only those current bytes while historical receipts remain immutable."
+    },
+    {
+      "iteration": 5,
+      "finding": "Focused tests and geometry assertions alone would not establish that the final diagram is visually usable or that the repository still validates as a whole.",
+      "resolution": "The exact Chrome screenshot shows the local readable 'neue Planung' label without node or edge-label overlap, canvas remains 2588x1118 with 152px right reserve, and post-successor make validate passes Ruff, compile, registry validation, and 1657/1657 tests."
+    }
+  ],
+  "validation": {
+    "target_regression_task_id": "2138cfb9d3344c12998d7188",
+    "target_regression_lifecycle_receipt_sha256": "af5d3c1abda60bd65af0b4e6716552e065c3e1d0339d0a85fb040565ad85949d",
+    "native_diagram_suite_task_id": "2e091d122da34c9291404ca3",
+    "native_diagram_suite_lifecycle_receipt_sha256": "59b54774fe605593923913fa81ce7e1f7eb2b7077c574bf060a983e5268cc7ca",
+    "successor_publication_gate_task_id": "3f09942bac794eafb42f6283",
+    "successor_publication_gate_lifecycle_receipt_sha256": "c523e7b604aa8f06baec94dd1f6c7bc5c58f4dcdcc5acd51b46f358085fa8755",
+    "successor_full_validate_task_id": "abe74299d54140f88fe290a3",
+    "successor_full_validate_lifecycle_receipt_sha256": "c18b9a76c662c3787c7df44f7a2eed8a497b0f82368b62b1bd5f88260a1baccf",
+    "successor_full_validate_passed_count": 1657,
+    "browser_png_sha256": "4c4ea60eaa7e4455e850502555a7c07ae26a8c8cca7b5cb936f31208879b1a91",
+    "visual_result": "accepted"
+  },
+  "terminal_findings": [],
+  "does_not_establish": [
+    "independent review",
+    "GitHub CI success on the later committed head",
+    "Captain merge readiness",
+    "merge to main",
+    "runtime image publication",
+    "Commonthing release-lock promotion or production deployment"
+  ]
+}

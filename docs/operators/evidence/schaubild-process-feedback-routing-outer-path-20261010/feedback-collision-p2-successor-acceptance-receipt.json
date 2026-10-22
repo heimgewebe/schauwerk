@@ -1,0 +1,60 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-collision-p2-successor.v1",
+  "based_on_pr_head": "1199ed66d35349cc8abfb6dc2066933db4886ebc",
+  "scope": "Technical candidate only: reserve card obstacles during late grouped feedback-gutter moves and long-branch endpoint legs during adjacent label packing, preserving existing deterministic routing and outer fallback",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-selfloop-peer-paint-order-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-selfloop-peer-paint-order-p2-successor-acceptance-receipt.json",
+    "file_sha256": "9759e1e6924acd749e56b905d683a59f59c8f6079d74ee6626678563c5c7e1d2",
+    "evidence_digest": "dc17e1e83764cc44ee0273e27d0ba080469f868a9578752d786f99d22d1a0ae2"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "8b86c63217c0b42efaa0a03d26eb4e208f1985a76ff81edd714973484da2e4c1",
+    "tests/visual/test_native_diagram.py": "48032e370b48a894ca7af76d17eab80912ce4c151ba4b22e99f9f6907aa4d5a5"
+  },
+  "regression_tests": [
+    "test_pr204_p2_late_shifted_feedback_gutter_avoids_foreign_cards",
+    "test_pr204_p2_packed_adjacent_label_clears_outer_risk_target_leg"
+  ],
+  "test_receipts": {
+    "pre_fix_red": {
+      "task_id": "45d8a0c286d748c386d77ce4",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "post_fix_focused_green": {
+      "task_id": "f824adce2067496a8eb99951",
+      "passed_tests": 2,
+      "exit_code": 0
+    },
+    "pre_successor_full_validate": {
+      "task_id": "0b88050c7cad4e09bbe0200a",
+      "passed_tests": 1737,
+      "failed_tests": 1,
+      "exit_code": 2,
+      "failure_class": "historical_successor_digest_binding_gate"
+    }
+  },
+  "local_checks": {
+    "pre_fix_red_reproduced": true,
+    "post_fix_focused_green": true,
+    "pre_successor_full_validate_ran": true,
+    "pre_successor_full_validate_passed": false,
+    "historical_parent_receipt_preserved": true,
+    "github_exact_head_ci_passed": false,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "post_fix_focused_green_technical_candidate_pending_complete_current_validate_browser_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "full validate on the new successor chain",
+    "browser smoke of corrected candidate",
+    "GitHub CI on a published corrected head",
+    "independent current-head whole-diff review",
+    "visual acceptance of new line layout",
+    "any Captain merge authority",
+    "OCI publish or Commonthing production convergence"
+  ],
+  "evidence_digest": "413ec418bd98e7c2da7c342ceb1641a63218f8484cf625823a29bb4416eec215"
+}

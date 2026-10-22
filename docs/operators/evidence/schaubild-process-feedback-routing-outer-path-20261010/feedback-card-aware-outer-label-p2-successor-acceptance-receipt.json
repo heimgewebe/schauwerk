@@ -1,0 +1,83 @@
+{
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-card-aware-outer-label-p2-successor.v1",
+  "based_on_pr_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca",
+  "scope": "Technical candidate: source-bound label-aware same-row route around intermediate cards, then move only actually blocked outer labels without changing unrelated routes; retain original historical evidence and prevent visual/release gate inheritance.",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-actual-label-position-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-actual-label-position-p2-successor-acceptance-receipt.json",
+    "file_sha256": "12585e5f63b07963b0d1543053b192f7931d77ed50a8d09fe73eb1d43eeff24f",
+    "evidence_digest": "f2df7a9e15e4d7683eaa40094d43caa0bb0572b412a1409ad9b16f93b52b9bcd"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "04eb5eb1a05cbf0617c807ebbc109345a407a5835825f2f72cf5a2d89ab5812b",
+    "tests/visual/test_native_diagram.py": "aa7306609a588fe6e5a9011886b913fd5bf4cc26a8771e37435223585b6794e7"
+  },
+  "regression_tests": [
+    "test_pr205_p2_same_row_multi_group_curve_clears_intermediate_card",
+    "test_pr205_review_same_row_card_detour_clears_selfloop_label",
+    "test_pr205_review_repacked_vertical_keeps_other_source_leg_clear",
+    "test_pr205_p2_reviewed_return_clears_actual_foreign_label",
+    "test_pr205_p2_differential_outer_label_clears_foreign_return"
+  ],
+  "test_receipts": {
+    "five_collisions_red": {
+      "task_id": "c82af8014e03425f83c656c7",
+      "failed_tests": 5,
+      "exit_code": 1
+    },
+    "differential_outer_labels_red": {
+      "task_id": "ae49d55ed4b74360958d4a7b",
+      "failed_tests": 2,
+      "exit_code": 1
+    },
+    "focused_label_and_card_green": {
+      "task_id": "5f19602a25884ddf89009110",
+      "passed_tests": 4,
+      "exit_code": 0
+    },
+    "native_suite": {
+      "task_id": "f347aa2854944f4eb74657dd",
+      "exit_code": 0
+    },
+    "chromium_browser_smoke": {
+      "task_id": "dd135c8cb38a40969fcf6b67",
+      "passed_cases": 30,
+      "exit_code": 0
+    },
+    "ruff_compile_registry": {
+      "task_id": "998dbbceccfc4754b68a0a69",
+      "exit_code": 0
+    },
+    "deterministic_head_differential_fuzz": {
+      "task_id": "116082c4fc7042e39ff2ffec",
+      "fixed_seed": 20520261019,
+      "compared_models": 2500,
+      "new_card_intersections": 0,
+      "new_foreign_label_intersections": 0,
+      "comparison_head": "b6d4fd105bee2180c2499eb16a75cb91c845acca"
+    }
+  },
+  "local_checks": {
+    "pre_fix_red_reproduced": true,
+    "focused_green": true,
+    "native_suite_passed": true,
+    "chrome_smoke_passed": true,
+    "ruff_compile_registry_passed": true,
+    "immutable_parent_preserved": true,
+    "source_and_tests_digest_bound": true,
+    "full_make_validate_after_receipt_pass": false,
+    "independent_exact_successor_review_pass": false,
+    "visual_acceptance_pass": false,
+    "fresh_ci_for_new_pr_head_pass": false,
+    "captain_merge_authorized": false
+  },
+  "status": "revision_bound_technical_candidate_pending_full_validation_independent_review_visual_acceptance_captain",
+  "does_not_establish": [
+    "complete make validate after creation of this candidate and its publication fixture",
+    "independent exact final change-set release authorization or settlement of unresolved Parent P2 review threads",
+    "visual acceptance of actual browser-visible renderer output",
+    "Captain merge authorization",
+    "OCI digest promotion, Commonthing release-lock change or productive Serving to Main convergence"
+  ],
+  "evidence_digest": "0fff8f70164bb9f4176e95d737e8e45f20986cd083347735eebf7928e2496be1"
+}

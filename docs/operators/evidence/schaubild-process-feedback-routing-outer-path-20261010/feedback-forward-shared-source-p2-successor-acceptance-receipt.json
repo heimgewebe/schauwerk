@@ -1,0 +1,52 @@
+{
+  "based_on_pr_head": "cec5787c9a521e5c30b1e0700218f66a30497832",
+  "checks": {
+    "accepted_noncolliding_preimage_layouts_preserved": true,
+    "captain_merge_authorized": false,
+    "fresh_browser_pixel_acceptance": false,
+    "full_exact_head_github_ci_passed": false,
+    "full_exact_head_local_validation_passed": false,
+    "full_renderer_test_passed_count": 176,
+    "git_diff_check_passed": true,
+    "historical_parent_immutable": true,
+    "independent_exact_head_review_pass": false,
+    "ruff_check_passed": true,
+    "two_forward_shared_source_p2_fail_first_reproduced": true,
+    "two_forward_shared_source_p2_variants_green": true
+  },
+  "does_not_establish": [
+    "final GitHub CI on published forward-shared-source successor",
+    "independent reviewer verdict for new head",
+    "pixel-correct browser evidence for new head",
+    "Captain merge or main integration",
+    "production deployment"
+  ],
+  "evidence_digest": "62208381e81a96581e66d9ec51a3d6448b0d2b939e4d5fdf6365f5551d52a753",
+  "parent_evidence": {
+    "evidence_digest": "106045783d035876f7faa478e52184be4506e53530922ef54cfc4af7375b3d86",
+    "file_sha256": "7d3bd5eb6c53ad3f34cc67c23a453cb00fd0924ec2534de4d1c02f35a4aaae9c",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-two-postreview-p2-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-process-feedback-routing-feedback-two-postreview-p2-successor.v1"
+  },
+  "regression_tests": [
+    "test_pr204_p2_forward_shared_endpoint_local_leg_clears_peer_label[a long two-line relation label]",
+    "test_pr204_p2_forward_shared_endpoint_local_leg_clears_peer_label[Nebenprozess mit Titel]"
+  ],
+  "schema_version": "schauwerk-schaubild-process-feedback-routing-forward-shared-source-p2-successor.v1",
+  "scope": "eighth Codex P2: forward shared source card adjacent label intersects a long local branch; preserve noncollision layouts",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "3699b8c90800790e6c7cf13c5844428c096c90077b9414ba8f5ff5406218f613",
+    "tests/visual/test_native_diagram.py": "e700b3d892d7be8b8e695f2ec20b06387122c9dadedd4b039e6354b34e38c39a"
+  },
+  "status": "eighth_codex_p2_forward_shared_source_regressed_local_suite_green_exact_github_ci_review_pending",
+  "test_receipts": {
+    "fail_first_lifecycle_sha256": "5e8bd0deabc80411070ac064cb24a2a970eb9dc3d08db140a920064b92294cae",
+    "fail_first_task": "a9023c8744124ab3b6bcc4b9",
+    "full_renderer_suite_lifecycle_sha256": "724e02c26c469d0c6782649456c0fa52fa4461cf61809b400af87664146d5a1f",
+    "full_renderer_suite_task": "0223b05246d14192b0e61942",
+    "preimage_geometry_green_task": "ec7e7d69312b44f7ad85345f",
+    "preimage_geometry_lifecycle_sha256": "1945a3559f2cc6b83a5ba03d0ff605ac4ac29a1a1516eeb9f8e50a7b7dd1864f",
+    "source_gap_green_lifecycle_sha256": "ba58910971ace80a73a883366c8a9f68433664679274a23af39b3124e4262b2c",
+    "source_gap_green_task": "863426955d664aedb78a2ca9"
+  }
+}

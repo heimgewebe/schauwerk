@@ -1,0 +1,110 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-four-group-sideport-anchored-selfloop-p2-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_pr_head": "eff6bb90f4c0c5c1ae7eec62c309b884b49e832b",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-three-group-sideport-r3-tuple-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-three-group-sideport-r3-tuple-successor-acceptance-receipt.json",
+    "file_sha256": "06fb0d55624de192a0e1866ef53ce94f36ba4a666b15375bc157edf112ad4306",
+    "evidence_digest": "0dc773702807db3da4a15297d13c1b275a2d9fe5f72bbb574240513c0ced5737"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "94bf17c6251582b7f0cd63a103dc4d330e30f0b7876b1f1380bb24cc114f3e9c",
+    "tests/visual/test_native_diagram.py": "71c7b8d2dd23b1ea218f6a33aa4714a03964a14f512f8e6023d8560d987668da"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "edaf936c8585692e5ca79233f6115117c64db1ac7043dbd0eb9c4e38472308d9",
+    "tests/visual/test_native_diagram.py": "1078549293fd5368876dc05315792630d6dbad23c1a8180dc84478c04f805f1c"
+  },
+  "successor_writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "codex_review_findings": [
+    {
+      "comment_id": 4329563532,
+      "severity": "P2",
+      "reviewed_head": "eff6bb90f4c0c5c1ae7eec62c309b884b49e832b",
+      "disposition": "reproduced-RED-and-remediated-local-candidate",
+      "summary": "saturated four-group process raised ValueError despite clear alternative source-side port"
+    },
+    {
+      "comment_id": 4329563542,
+      "severity": "P2",
+      "reviewed_head": "eff6bb90f4c0c5c1ae7eec62c309b884b49e832b",
+      "disposition": "reproduced-RED-and-remediated-local-candidate",
+      "summary": "adjacent cubic cross anchored one-line self-loop label"
+    }
+  ],
+  "regression_tests": [
+    "test_pr206_codex_four_group_saturated_source_sideport_stays_renderable",
+    "test_pr206_codex_adjacent_cubic_clears_anchored_selfloop_label"
+  ],
+  "test_receipts": {
+    "targeted_red": {
+      "failed_variants": 4,
+      "expected_exit_code": 1
+    },
+    "targeted_green": {
+      "passed_variants": 4,
+      "exit_code": 0
+    },
+    "native_renderer_suite": {
+      "test_file": "tests/visual/test_native_diagram.py",
+      "exit_code": 0
+    },
+    "rejected_overbroad_intermediate": {
+      "unit": "grabowski-job-cf7a69c67d58",
+      "new_physical_overlap_pairs": 2,
+      "new_label_hits": 1,
+      "result": "rejected-before-current-candidate"
+    },
+    "codex_p2_differential": {
+      "unit": "grabowski-job-8c1feed74b4e",
+      "fixed_seed": 20620261020,
+      "models_attempted": 12000,
+      "baseline_render_errors": 23,
+      "new_render_exceptions": 0,
+      "exit_code": 0
+    },
+    "generic_geometry_differential": {
+      "unit": "grabowski-job-a8ee8950c4c8",
+      "seeds": [
+        20520261021,
+        20520261022,
+        20520261023,
+        20520261024
+      ],
+      "models_compared": 20000,
+      "new_render_exceptions": 0,
+      "new_card_or_label_hits": 0,
+      "exit_code": 0
+    },
+    "physical_stroke_differential": {
+      "unit": "grabowski-job-fa5597b889c8",
+      "seeds": [
+        20520261071,
+        20520261072,
+        20520261073,
+        20520261074
+      ],
+      "models_attempted": 2600,
+      "models_compared": 2599,
+      "baseline_render_errors": 1,
+      "new_physical_overlap_pairs": 0,
+      "new_label_hits": 0,
+      "exit_code": 0
+    }
+  },
+  "local_checks": {
+    "immutable_parent_receipt_byte_unchanged": true,
+    "source_digest_bound": true,
+    "red_green_pass": true,
+    "differential_replay_pass": true,
+    "full_make_validate_pass": false,
+    "visual_acceptance_pass": false,
+    "independent_exact_head_review_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "notes": "Technical candidate, not aesthetic or production acceptance. The latest two Codex P2 findings were independently reproduced on the published parent SHA and corrected in the existing route planner; source-side port y offsets are tried only after ordinary same-row routes exhaust, and only forward one-line anchored shared-endpoint self-loop labels block adjacent cubics. A broad anchored label reservation was rejected due 2 new physical stroke overlaps and 1 new label hit. Parent evidence remains byte-immutable. Earlier accepted CI and R3 verdicts do not carry to this new source revision. All release gates remain separate.",
+  "evidence_digest": "9cdf992729d4e4429d557a8a037599df6540ff82b184dcd31710141ac68fcfc4"
+}
