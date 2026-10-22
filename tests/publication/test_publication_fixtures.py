@@ -12549,8 +12549,70 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram.py",
     }
-    for name, expected in r3_final["source_bindings"].items():
+    # The R3 final receipt remains an immutable historical source binding.
+    assert hashlib.sha256(r3_final_path.read_bytes()).hexdigest() == (
+        "3642b27f0f6779c6148a3893cb8c6688c4aaa319a9bca54805d0a9ec70f5082e"
+    )
+    assert r3_final["source_bindings"] == {
+        "src/schauwerk/visual/native_diagram.py": (
+            "5671d355a3d9c57b3c24adafbc0618033781429c78bec4da1b0ecad536ca6b5e"
+        ),
+        "tests/visual/test_native_diagram.py": (
+            "78f83101586b384fd4094988788a9638ea3964210480bcffc0a7c611e5c472ea"
+        ),
+    }
+    dense_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-pr206-dense-single-group-feedback-reorder-p2-successor-acceptance-receipt.json"
+    )
+    dense = json.loads(dense_path.read_text(encoding="utf-8"))
+    assert dense["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-dense-single-group-reorder-p2-successor.v1"
+    )
+    assert dense["scope"] == "technical-candidate-only"
+    assert dense["parent_evidence"] == {
+        "schema_version": r3_final["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-r3-final-svg-axis-clearance-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(r3_final_path.read_bytes()).hexdigest(),
+        "evidence_digest": r3_final["evidence_digest"],
+    }
+    assert dense["predecessor_source_bindings"] == r3_final["source_bindings"]
+    assert dense["evidence_digest"] == digest_mapping(dense, "evidence_digest")
+    assert set(dense["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    for name, expected in dense["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert dense["codex_confirmed_p2"]["comment_id"] == 4341811267
+    assert dense["codex_confirmed_p2"]["local_green_variants_on_candidate"] == 2
+    assert dense["measured_differentials"]["actual_main_12k"][
+        "new_candidate_render_errors_vs_actual_main"
+    ] == 0
+    assert dense["measured_differentials"]["geometry_20k"][
+        "new_card_label_hits"
+    ] == 0
+    assert dense["measured_differentials"]["physical_2600"][
+        "new_physical_overlap_pairs"
+    ] == 0
+    assert dense["measured_differentials"]["semantic_proximity_2200"][
+        "newly_far_labels"
+    ] == 0
+    assert all(
+        record["status"] == "succeeded"
+        and len(record["finalization_receipt_sha256"]) == 64
+        for record in dense["test_receipts"].values()
+    )
+    for gate in (
+        "full_make_validate_pass", "independent_exact_head_review_pass",
+        "visual_acceptance_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert dense["local_checks"][gate] is False
     assert r3_final["differential_published_to_candidate_2200"][
         "new_semantically_far_labels"
     ] == 0

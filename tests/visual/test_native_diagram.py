@@ -9401,3 +9401,51 @@ def test_pr206_r3_footer_label_keeps_own_visible_route_after_feedback_shift(
     model["edges"].reverse()
     other = _parse(render_native_diagram(model))
     assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_dense_single_group_feedback_renders(reverse_order: bool) -> None:
+    """Valid single-group feedback must not exhaust side-port allocation."""
+    raw = _p2_feedback_geometry_model((5,))
+    raw["edges"] = [
+        {"id": "e0", "from": "n1", "to": "n4", "kind": "feedback", "label": "x"},
+        {"id": "e1", "from": "n3", "to": "n2", "kind": "feedback", "label": "x"},
+        {"id": "e2", "from": "n4", "to": "n0", "kind": "feedback", "label": "x"},
+        {"id": "e3", "from": "n4", "to": "n1", "kind": "feedback", "label": "x"},
+        {"id": "e4", "from": "n2", "to": "n4", "kind": "feedback", "label": "x"},
+        {"id": "e5", "from": "n4", "to": "n4", "kind": "flow", "label": "link"},
+        {"id": "e6", "from": "n3", "to": "n1", "kind": "flow", "label": "x"},
+        {"id": "e7", "from": "n2", "to": "n3", "kind": "flow", "label": "x"},
+        {"id": "e8", "from": "n1", "to": "n2", "kind": "flow", "label": "x"},
+    ]
+    if reverse_order:
+        raw["edges"].reverse()
+    root = _parse(render_native_diagram(raw))
+    paths = _edge_paths(root)
+    labels = _edge_label_boxes(root)
+    cards = _node_boxes(root)
+    assert set(paths) == set(labels) == {f"e{index}" for index in range(9)}
+    for edge in raw["edges"]:
+        edge_id, path = edge["id"], paths[edge["id"]]
+        for other_id, box in labels.items():
+            if other_id != edge_id:
+                assert _p2_linear_path_clears_box(path, box)
+                assert _p2_cubic_path_clears_box(path, box)
+        for node_id, box in cards.items():
+            if node_id not in {edge["from"], edge["to"]}:
+                assert _p2_linear_path_clears_box(path, box)
+                assert _p2_cubic_path_clears_box(path, box)
+    from schauwerk.visual import native_diagram as native
+    # Main also overpaints these same two adjoining vertical flow stubs;
+    # they are historical, not a newly accepted physical collision.
+    previous_stroke_pairs = {("e6", "e7"), ("e6", "e8")}
+    actual_stroke_pairs = {
+        (first_id, second_id)
+        for first_id, first_path in paths.items()
+        for second_id, second_path in paths.items()
+        if first_id < second_id
+        and native._process_paths_share_physical_stroke(first_path, second_path)
+    }
+    assert actual_stroke_pairs <= previous_stroke_pairs
+    raw["edges"].reverse()
+    reordered = _parse(render_native_diagram(raw))
+    assert (paths, labels) == (_edge_paths(reordered), _edge_label_boxes(reordered))

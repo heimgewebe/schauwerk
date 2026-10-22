@@ -1,0 +1,101 @@
+{
+  "schema_version": "schauwerk-schaubild-feedback-pr206-dense-single-group-validation-finalization-successor.v1",
+  "scope": "technical-candidate-only",
+  "based_on_published_pr_head": "fe3f4e9f4ebb056e38057d9ae288205263d6d955",
+  "compared_against_main_head": "cea2ca6364bcb9564ee30bc21af6194c3b4401f4",
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f",
+  "parent_evidence": {
+    "schema_version": "schauwerk-schaubild-feedback-pr206-dense-single-group-reorder-p2-successor.v1",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-dense-single-group-feedback-reorder-p2-successor-acceptance-receipt.json",
+    "file_sha256": "e75758fb94fa12aa094bb6d0213132949491badc6c219ea317c013d419e4341f",
+    "evidence_digest": "73bde0b9ab744792af9cdf36b74088af66c56388ca6ffcc47e38579641de8db9"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "29a1a64c7aa457d9d656ca9d3ad39e27b78599e29d32ec64fd54a9fbab68acf1",
+    "tests/visual/test_native_diagram.py": "aa7988d014b01a01b8e535ea38353eb4fba9c930c25c23c97442971e6ef4faf4"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "29a1a64c7aa457d9d656ca9d3ad39e27b78599e29d32ec64fd54a9fbab68acf1",
+    "tests/visual/test_native_diagram.py": "aa7988d014b01a01b8e535ea38353eb4fba9c930c25c23c97442971e6ef4faf4"
+  },
+  "checks_from_immediately_preceding_successor": {
+    "actual_main_12k": {
+      "unit": "grabowski-job-e43a39e7b051",
+      "argv_sha256": "c85a9dee6978ed476e2a2fe5f37cf5f5400f21db9768a35fd0607c02c4c4df35",
+      "finalization_receipt_sha256": "01bc50940a4477d261b98ce2ac1468034536f0445d87618c920b2410e0643833",
+      "status": "succeeded",
+      "models_or_cases": 12000
+    },
+    "geometry_main_20k": {
+      "unit": "grabowski-job-f901243cf76a",
+      "argv_sha256": "1af01cd8e6dab9d6d2b79e23b2be9c8188f51649478ce7d28fabc060613af05f",
+      "finalization_receipt_sha256": "be82d5eb11bcbaec03611a1300cd5be05e621bb3d6c7dd5d349782208f59e9ae",
+      "status": "succeeded",
+      "models_or_cases": 20000
+    },
+    "physical_strokes_2600": {
+      "unit": "grabowski-job-ab9faebab1bb",
+      "argv_sha256": "8afbe9cf6a0e6c2cfb2b86164fa9814d0552cfa260b825a7d6bea8055b5e326e",
+      "finalization_receipt_sha256": "65267893b9e2fe4873a379d49864a7b232aa6891e2253b3c6d7d20c09611f210",
+      "status": "succeeded",
+      "models_or_cases": 2600
+    },
+    "saturated_group_2200": {
+      "unit": "grabowski-job-cbf8a8dacd7c",
+      "argv_sha256": "64d1b633cabafbd03d20b9f1ff9c773ae9e5e8f3b4d8ed8370b26bdf85b845d6",
+      "finalization_receipt_sha256": "571ada7a6137fc37cdb3fb7f625dc503b7416c2dd83c902b9537860da6a6f55d",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "semantic_proximity_2200": {
+      "unit": "grabowski-job-30fc6849ea48",
+      "argv_sha256": "fab2c3da0007b4b997b811c16618d9f81b9f764adce1b7a19f12f906d86770fc",
+      "finalization_receipt_sha256": "5bdd64472ac3ca0e08181bfd8514b465b5a0854c05f98b913309909c841d5dd7",
+      "status": "succeeded",
+      "models_or_cases": 2200
+    },
+    "chrome_browser_smoke": {
+      "unit": "grabowski-job-af1ed78090f0",
+      "argv_sha256": "8435325077682c8b367723a753badf39e6e117c2f37a24ec070e89a38d7bc0b2",
+      "finalization_receipt_sha256": "f84c716295ba19745228b93436fbfe7d9bb37256e9749c2fe2417d6b033330de",
+      "status": "succeeded",
+      "models_or_cases": 30
+    }
+  },
+  "full_make_validate": {
+    "unit": "grabowski-job-d11795549043",
+    "argv_sha256": "72f2506fd221945d3af5c9e5594c12b7c95ed2599be315fa0903052275fbd48a",
+    "origin_sha256": "6245dcb30552bd4b54cab9e6f16da635db57ed75167b221705f03394741dd40a",
+    "finalization_receipt_sha256": "f6a69b29fceb6130671e77b9b730c69883ace5a6738abfa6d30bbfac9577b657",
+    "finalization_payload_sha256": "d0b277ff15bcc98661db38d13519490c588d00798742af8cd9bf8dae5d5ab043",
+    "status": "succeeded",
+    "python": "/home/alex/repos/schauwerk/.venv/bin/python",
+    "python_tests_passed": 1935,
+    "ruff_check_pass": true,
+    "compile_check_pass": true,
+    "registry_validation_pass": true
+  },
+  "regression_test": "test_pr206_codex_dense_single_group_feedback_renders",
+  "open_review_constraints": [
+    "R3 P2 late actual-svg rerouting needs independent committed-head confirmation; bounded 400-model SVG parser observation had no unparseable paths and 200-model comparison against 70d had no new overlaps, not a universal safety proof",
+    "R3 P3 relocated feedback label visual assignment remains material: 110/138 relocated labels in 850 deterministic inspected models nearer foreign than own edge; strict alternative introduced far labels and was not accepted",
+    "Historical GitHub review threads require exact-head treatment"
+  ],
+  "local_checks": {
+    "full_make_validate_pass": true,
+    "dense_p2_green_both_orders": true,
+    "actual_main_12k_pass": true,
+    "geometry_20k_pass": true,
+    "physical_2600_pass": true,
+    "saturated_group_2200_pass": true,
+    "semantic_proximity_2200_pass": true,
+    "chrome_browser_smoke_30_pass": true,
+    "independent_exact_head_review_pass": false,
+    "visual_acceptance_pass": false,
+    "captain_merge_authorized": false,
+    "oci_registry_published": false,
+    "commonthing_serving_verified": false
+  },
+  "limitations": "This immutable technical receipt is created only after valid full-validate finalization and binds exact renderer/test revision. A Source-/Test-edit invalidates it. The reviewer issues and unresolved material label ownership remain open; no R3 visual or Captain approval, OCI publish, Commonthing lock, or production browser readback is claimed. The full validation predates only this additive evidence file.",
+  "evidence_digest": "ff863f63829ac29d846e5b88c6f63e2ebf54805825825f4fdebe5fbbb9c56f4d"
+}

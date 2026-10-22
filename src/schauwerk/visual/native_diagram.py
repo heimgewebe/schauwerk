@@ -6465,11 +6465,14 @@ def render_native_diagram(
         # Replanning makes formerly sealed vertical corridors available
         # without ever relaxing card/label obstacle clearance.
         initial_outer_width, initial_outer_height = width, height
-        for attempt in range(66):
-            if attempt == 33:
+        # Preserve the original id-ordered greedy allocation. Only if
+        # all 66 accepted-first plans fail, retry allocating constrained
+        # later peers first. Slots and geometry checks remain unchanged.
+        for attempt in range(132):
+            if attempt and attempt % 33 == 0:
                 width, height = initial_outer_width, initial_outer_height
             extra_gutter = attempt % 33
-            relayout_phase = attempt >= 33
+            relayout_phase = attempt % 66 >= 33
             peer_feedback_boxes: list[tuple[float, float, float, float]] = []
             peer_horizontal_strokes: list[tuple[float, float, float, float]] = []
             peer_footer_trial: dict[str, float] = {}
@@ -6641,7 +6644,9 @@ def render_native_diagram(
                     for left, top, right, bottom in peer_horizontal_strokes
                     if right - left <= 2.1 and bottom - top > 4
                 ]
-                for edge in feedback_edges:
+                for edge in (
+                    feedback_edges if attempt < 66 else reversed(feedback_edges)
+                ):
                     edge_id = str(edge["id"])
                     if edge_id not in feedback_outer_footer_ids:
                         continue
