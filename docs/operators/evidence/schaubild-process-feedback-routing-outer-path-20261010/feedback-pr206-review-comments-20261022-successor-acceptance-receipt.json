@@ -1,0 +1,73 @@
+{
+  "based_on_published_pr_head": "89be9f0f8936a022410533d16bbaf89eb2f75059",
+  "checks": {
+    "captain_merge_authorized": false,
+    "commonthing_production_verified": false,
+    "focused_new_p2_cases_green": true,
+    "full_make_validate_pass": false,
+    "full_native_renderer_passed": true,
+    "independent_exact_head_review_pass": false,
+    "new_differential_cohort_complete": false,
+    "oci_registry_published": false,
+    "ruff_passed": true,
+    "source_and_test_sha256_verified": true,
+    "visual_acceptance_pass": false
+  },
+  "corrections": [
+    "Remove an unsafe duplicate row-gutter relocation and check actual foreign strokes before accepting reroutes",
+    "Bound shared endpoint stem tolerance to inherited fixed vertical spans and reroute genuinely colliding distinct source ports",
+    "Reserve wide unrelated one-line self-loop labels against forward adjacent cubics while preserving narrow-anchor behavior",
+    "Parse finite M/L/C SVG paths consistently and fail closed on malformed geometry",
+    "Keep late feedback rescues clear of their own label and discard stale peer-label overrides transactionally",
+    "Reuse cached sampled path-distance geometry and deterministic bounded candidate selection",
+    "Remove unreachable SHA-branch cases; bind the live renderer and tests only through the terminal successor"
+  ],
+  "evidence_digest": "ca7292cd6b8f45e8f16ef2a31f561897289b816881336bddb04d80113a417e38",
+  "limitations": [
+    "Earlier physical differential counterexamples are individually repaired; a fresh complete source-bound cohort is not claimed.",
+    "Historical acceptance receipts remain immutable; this document does not replace independent exact-head review or visual acceptance.",
+    "No Captain merge, OCI publication, or Commonthing production readback is established."
+  ],
+  "parent_evidence": {
+    "evidence_digest": "e56e51f59f62e80e6ecec0280f188a3a58f0651b199308cfc83b6af7e3265844",
+    "file_sha256": "bcf449f187896bdb3176016d02964fdc959350952230fcad1186ad19bf644050",
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-r3-physical-semantic-finalization-successor-acceptance-receipt.json",
+    "schema_version": "schauwerk-schaubild-feedback-pr206-r3-physical-semantic-finalization-successor.v1"
+  },
+  "predecessor_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "40a62cd01be5c36032836960a61aeb9f775fcd128f9b65f898309a985b77cebb",
+    "tests/visual/test_native_diagram.py": "c11eea7b612977c4e5d6931f47523cf8ffa53d335e726d9e2758e5f0c82a9573"
+  },
+  "review_sources": [
+    "https://github.com/heimgewebe/schauwerk/pull/206#issuecomment-6336045757",
+    "https://github.com/heimgewebe/schauwerk/pull/206"
+  ],
+  "schema_version": "schauwerk-schaubild-feedback-pr206-review-comments-20261022-successor.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "fabd703528d5ed8469fa14d4cfea78495d74fe9225190c4c3387d615182fe1b0",
+    "tests/visual/test_native_diagram.py": "c8f0d7f1de3c73efad15a23ee403c734445affbace7b43fefed0c54822817fb5"
+  },
+  "test_receipts": {
+    "full_native_renderer": {
+      "argv_sha256": "5aaee4626fc5abfecb851dd087766261cb55830e80c55b131028ed9e4f6752e5",
+      "finalization_receipt_sha256": "a1771c380b16bbb9f80f3b20461fc651d5cfc7eae9f7b048699caf961f27b7ee",
+      "status": "succeeded",
+      "unit": "grabowski-job-eb97017bbe2e"
+    },
+    "ruff": {
+      "argv_sha256": "1b873bc835632de028be07e6bfc3555922204e34ad0b5e96418a70f20ff1a294",
+      "finalization_receipt_sha256": "59778ea1f627d046acc11690739a6e91bdbe3f9d82064f8d3d939a0568cbea38",
+      "status": "succeeded",
+      "unit": "grabowski-job-7aea86195641"
+    },
+    "targeted_regressions": {
+      "argv_sha256": "d015926659c06d41ee3787429aef1a30afb06f064edb4706ef510a63206b52d5",
+      "finalization_receipt_sha256": "ffb9ef97dbdaf45568c038a15ee5c1e9a4d11a0c748523a7c57f383211272b22",
+      "passed_cases": 8,
+      "status": "succeeded",
+      "unit": "grabowski-job-5ca9ff762e04"
+    }
+  },
+  "writer_lane_id": "6be9265f85ecd24bc2feae7c67912b4f"
+}

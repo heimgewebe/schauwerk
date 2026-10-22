@@ -9727,3 +9727,434 @@ def test_pr206_r3_late_sideport_preserves_foreign_label_ownership(
     raw["edges"].reverse()
     reordered = _parse(render_native_diagram(raw))
     assert (paths, labels) == (_edge_paths(reordered), _edge_label_boxes(reordered))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_r3_rescued_feedback_preserves_flow_and_risk_label_owners(
+    reverse_order: bool,
+) -> None:
+    """Physical rail repair must not steal a flow or risk edge's label."""
+    model = _p2_feedback_geometry_model((4, 4, 6))
+    relations = (
+        ("n12", "n3", "risk", "Approve"),
+        ("n9", "n3", "risk", "Approve"),
+        ("n12", "n2", "flow", "a somewhat longer relation label"),
+        ("n8", "n7", "feedback", "a somewhat longer relation label"),
+        ("n11", "n6", "feedback", "link"),
+        ("n2", "n7", "feedback", "Approve"),
+        ("n8", "n9", "flow", "link"),
+    )
+    edges = [
+        {"id": f"e{i}", "from": start, "to": end,
+         "kind": kind, "label": label}
+        for i, (start, end, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    for owner_id in ("e0", "e1", "e2", "e6"):
+        own_distance = _p2_label_path_distance_sq(
+            paths[owner_id], labels[owner_id]
+        )
+        assert own_distance < min(
+            _p2_label_path_distance_sq(path, labels[owner_id])
+            for peer_id, path in paths.items() if peer_id != owner_id
+        )
+        for peer_id, peer_path in paths.items():
+            if peer_id != owner_id:
+                assert _p2_linear_path_clears_box(
+                    peer_path, labels[owner_id]
+                )
+                assert _p2_cubic_path_clears_box(
+                    peer_path, labels[owner_id]
+                )
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
+
+@pytest.mark.parametrize(
+    ("path", "box"),
+    [
+        ("M 50 200 C 250 220, 480 400, 760 480 L 800 400 L 800 850",
+         (100.0, 300.0, 212.0, 29.0)),
+        ("M 2 100 L 800 140 L 250 140 L 250 800",
+         (60.0, 120.0, 78.0, 48.0)),
+    ],
+)
+def test_pr206_r3_bounded_1024_label_candidates_keep_exact_priority_and_distance(
+    path: str, box: tuple[float, float, float, float],
+) -> None:
+    """Capped top candidates equal the original exact geometric ranking."""
+    from schauwerk.visual import native_diagram as native
+
+    all_candidates = native._process_near_path_label_boxes(path, box)
+    bounded = native._process_near_path_label_boxes(path, box, limit=1024)
+    assert len(all_candidates) > 1024
+    assert bounded == all_candidates[:1024]
+    assert native._process_label_path_distance_sq(
+        path, box
+    ) == pytest.approx(_p2_label_path_distance_sq(path, box), abs=1e-8)
+    assert native._process_sampled_svg_lines.cache_info().maxsize == 256
+    assert native._process_svg_stroke_segments.cache_info().maxsize == 512
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_row_gutter_rail_cannot_overpaint_long_peer(
+    reverse_order: bool,
+) -> None:
+    """A corrected same-row rail must not borrow another edge's physical span."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((2, 3, 4))
+    edges = [
+        {"id": "e0", "from": "n0", "to": "n4", "kind": "flow", "label": "Approve"},
+        {"id": "e1", "from": "n2", "to": "n8", "kind": "risk",
+         "label": "a somewhat longer relation label"},
+        {"id": "e2", "from": "n5", "to": "n6", "kind": "risk", "label": "link"},
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    original = _parse(render_native_diagram(model))
+    paths = _edge_paths(original)
+    labels = _edge_label_boxes(original)
+    assert not native._process_paths_share_physical_stroke(paths["e1"], paths["e2"])
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
+
+@pytest.mark.parametrize(
+    ("path", "box", "expected"),
+    [
+        ("M 2e2 4e2 L 2e2 3e2", (195., 345., 10., 10.), True),
+        ("M 2e2 4e2 L 2e2 3e2", (0., 345., 10., 10.), False),
+        ("M 2e2 4e2 C 2e2 3.5e2 2e2 3.2e2 2e2 3e2",
+         (195., 345., 10., 10.), True),
+        ("M 0 0 L NaN 10", (90., 90., 10., 10.), True),
+        ("M 0 0 Z", (90., 90., 10., 10.), True),
+        ("M 0 0 L 100 0", (25., -2., 10., 4.), True),
+        ("M 0 0 L 100 0", (25., 90., 10., 4.), False),
+        ("M 0 0", (0., 0., 10., 10.), False),
+    ],
+)
+def test_pr206_review_svg_box_hit_parser_finite_exponents_and_fail_closed(
+    path: str, box: tuple[float, float, float, float], expected: bool
+) -> None:
+    """All source/label guards must parse the same finite SVG geometry."""
+    from schauwerk.visual import native_diagram as native
+
+    assert native._process_svg_path_hits_box(
+        path, box, padding=0.0
+    ) is expected
+
+@pytest.mark.parametrize(
+    ("path", "box", "distance_limit"),
+    [
+        ("M 0 0 L 100 0 L 100 50", (20., 5., 5., 5.), 10.),
+        ("M 0 0 L 100 0 L 100 50", (20., 50., 5., 5.), 0.),
+        ("M 50 200 C 250 220 480 400 760 480 L 800 400 L 800 850",
+         (100., 300., 212., 29.), 320.),
+        ("M 50 200 C 250 220 480 400 760 480 L 800 400 L 800 850",
+         (100., 300., 212., 29.), 10.),
+    ],
+)
+def test_pr206_review_near_own_label_uses_measured_cached_path_distance(
+    path: str, box: tuple[float, float, float, float], distance_limit: float
+) -> None:
+    """A boolean clearance check and squared stroke distance must agree."""
+    from schauwerk.visual import native_diagram as native
+
+    measured = native._process_label_path_distance_sq(path, box)
+    assert native._process_label_near_own_path(
+        path, box, max_distance=distance_limit
+    ) == (measured is not None and measured <= distance_limit**2)
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_codex_unrelated_forward_wide_loop_label_clear(
+    reverse_order: bool,
+) -> None:
+    """A wide anchored loop label blocks an unrelated forward local cubic."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((5, 5, 3))
+    relations = (
+        ("n10", "n4", "feedback", "link"),
+        ("n4", "n4", "risk", "Rueckmeldung zur Planung"),
+        ("n6", "n11", "risk", "long label"),
+        ("n10", "n9", "risk", "long label"),
+        ("n11", "n8", "risk", "x"),
+        ("n3", "n9", "risk", "x"),
+    )
+    edges = [
+        {"id": f"e{i}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert not native._process_svg_path_hits_box(paths["e5"], labels["e1"])
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_same_endpoint_fixed_stem_may_not_hide_unrelated_rail(
+    reverse_order: bool,
+) -> None:
+    """Shared card stems are fixed; an unrelated long rail must remain clear."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((2, 6, 5, 3))
+    relations = (
+        ("n1", "n0", "flow", "x"),
+        ("n15", "n3", "risk", "Approve"),
+        ("n10", "n15", "flow", "link"),
+        ("n10", "n15", "risk", "a somewhat longer relation label"),
+        ("n3", "n5", "flow", "Approve"),
+        ("n11", "n2", "risk", "Approve"),
+    )
+    edges = [
+        {"id": f"e{i:02d}", "from": a, "to": b,
+         "kind": kind, "label": label}
+        for i, (a, b, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert not native._process_paths_share_physical_stroke(
+        paths["e01"], paths["e02"]
+    )
+    model["edges"].reverse()
+    other = _parse(render_native_diagram(model))
+    assert (paths, labels) == (_edge_paths(other), _edge_label_boxes(other))
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_distinct_sources_in_same_column_have_separate_stems(
+    reverse_order: bool,
+) -> None:
+    """Different source cards may not share a painted vertical stem."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model((6,))
+    relations = (
+        ("n3", "n0", "risk", "x"),
+        ("n2", "n1", "feedback", "link"),
+        ("n1", "n5", "flow", "link"),
+        ("n3", "n5", "flow", "a somewhat longer relation label"),
+        ("n5", "n5", "risk", "a somewhat longer relation label"),
+        ("n4", "n3", "feedback", "a somewhat longer relation label"),
+        ("n1", "n5", "flow", "Approve"),
+    )
+    edges = [
+        {"id": f"e{i:02d}", "from": a, "to": b,
+         "kind": kind, "label": label}
+        for i, (a, b, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    svg = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(svg), _edge_label_boxes(svg)
+    assert not native._process_paths_share_physical_stroke(
+        paths["e03"], paths["e06"]
+    )
+    assert not native._process_svg_path_hits_box(
+        paths["e03"], labels["e04"]
+    )
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations", "pairs", "near_owner"),
+    [
+        (
+            (3, 2),
+            (
+                ("n3", "n4", "flow", "x"),
+                ("n0", "n3", "flow", "link"),
+                ("n3", "n1", "flow", "link"),
+                ("n1", "n4", "feedback", "a somewhat longer relation label"),
+                ("n0", "n4", "feedback", "Approve"),
+            ),
+            (("e00", "e04"),), None,
+        ),
+        (
+            (3, 2, 5),
+            (
+                ("n2", "n7", "feedback", "a somewhat longer relation label"),
+                ("n5", "n4", "feedback", "link"),
+                ("n2", "n1", "feedback", "link"),
+                ("n8", "n7", "flow", "a somewhat longer relation label"),
+                ("n4", "n4", "risk", "Approve"),
+                ("n0", "n3", "risk", "x"),
+            ),
+            (("e00", "e03"),), None,
+        ),
+        (
+            (6, 3, 5),
+            (
+                ("n8", "n7", "flow", "a somewhat longer relation label"),
+                ("n7", "n7", "feedback", "Approve"),
+                ("n9", "n10", "flow", "Approve"),
+                ("n13", "n7", "feedback", "a somewhat longer relation label"),
+                ("n5", "n10", "flow", "link"),
+                ("n3", "n4", "feedback", "a somewhat longer relation label"),
+                ("n3", "n11", "risk", "x"),
+            ),
+            (("e00", "e01"),), None,
+        ),
+        (
+            (6, 5, 3),
+            (
+                ("n6", "n7", "risk", "x"),
+                ("n13", "n6", "flow", "link"),
+                ("n7", "n12", "feedback", "a somewhat longer relation label"),
+                ("n4", "n5", "risk", "a somewhat longer relation label"),
+                ("n4", "n4", "feedback", "Approve"),
+                ("n7", "n5", "feedback", "a somewhat longer relation label"),
+            ),
+            (("e03", "e04"),), None,
+        ),
+        (
+            (6, 4, 6, 5),
+            (
+                ("n20", "n4", "feedback", "x"),
+                ("n14", "n11", "flow", "a somewhat longer relation label"),
+                ("n14", "n4", "feedback", "a somewhat longer relation label"),
+                ("n10", "n8", "feedback", "Approve"),
+                ("n11", "n13", "risk", "link"),
+                ("n2", "n18", "feedback", "x"),
+                ("n14", "n17", "flow", "link"),
+                ("n11", "n9", "flow", "link"),
+            ),
+            (("e04", "e05"), ("e05", "e07")), "e05",
+        ),
+    ],
+    ids=("adjacent-target", "shared-feedback-target", "feedback-self-loop",
+         "risk-self-loop", "local-same-row-lane"),
+)
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_pr206_new_physical_peer_rail_differential_cases(
+    sizes: tuple[int, ...],
+    relations: tuple[tuple[str, str, str, str], ...],
+    pairs: tuple[tuple[str, str], ...],
+    near_owner: str | None,
+    reverse_order: bool,
+) -> None:
+    """Preserve distinct semantic strokes under both relation insertion orders."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model(sizes)
+    edges = [
+        {"id": f"e{i:02d}", "from": source, "to": target,
+         "kind": kind, "label": label}
+        for i, (source, target, kind, label) in enumerate(relations)
+    ]
+    model["edges"] = list(reversed(edges)) if reverse_order else edges
+    root = _parse(render_native_diagram(model))
+    paths, labels = _edge_paths(root), _edge_label_boxes(root)
+    assert len(paths) == len(relations)
+    for first, second in pairs:
+        assert not native._process_paths_share_physical_stroke(
+            paths[first], paths[second]
+        ), (first, second, paths)
+    if near_owner is not None:
+        assert native._process_label_near_own_path(
+            paths[near_owner], labels[near_owner]
+        )
+        for other, box in labels.items():
+            if other != near_owner:
+                assert not native._process_svg_path_hits_box(
+                    paths[near_owner], box
+                )
+    model["edges"].reverse()
+    reordered = _parse(render_native_diagram(model))
+    assert (paths, labels) == (
+        _edge_paths(reordered), _edge_label_boxes(reordered)
+    )
+
+
+@pytest.mark.parametrize(
+    ("sizes", "relations"),
+    [
+        (
+            (6, 4),
+            (
+                ("n5", "n9", "link"),
+                ("n5", "n7", "link"),
+                ("n4", "n7", "a somewhat longer relation label"),
+            ),
+        ),
+        (
+            (6, 3, 3, 4),
+            (
+                ("n3", "n6", "x"),
+                ("n5", "n6", "Approve"),
+                ("n3", "n7", "Approve"),
+                ("n5", "n7", "link"),
+                ("n9", "n15", "link"),
+            ),
+        ),
+    ],
+    ids=("right-bound", "post-shift-shared-lane"),
+)
+def test_pr206_local_group_branch_gutters_remain_in_separate_legal_lanes(
+    sizes: tuple[int, ...],
+    relations: tuple[tuple[str, str, str], ...],
+) -> None:
+    """A nested label shift cannot escape its group gap or reuse a peer lane."""
+    from schauwerk.visual import native_diagram as native
+
+    model = _p2_feedback_geometry_model(sizes)
+    model["edges"] = [
+        {"id": f"e{i:02d}", "from": source, "to": target,
+         "kind": "flow", "label": label}
+        for i, (source, target, label) in enumerate(relations)
+    ]
+    group_positions: dict[str, tuple[int, int]] = {}
+    slots: dict[str, int] = {}
+    groups = []
+    for group_index, group in enumerate(model["groups"]):
+        group_id = str(group["id"])
+        groups.append((group_id, group_id, 0, 0, 0, 0))
+        slots[group_id] = 0
+        for node in model["nodes"]:
+            if str(node["group"]) != group_id:
+                continue
+            group_positions[str(node["id"])] = (
+                65 + 456 * group_index,
+                196 + 218 * slots[group_id],
+            )
+            slots[group_id] += 1
+    gutters = native._process_local_group_branch_gutter_x(
+        model, group_positions, groups, process_row_gap=52
+    )
+    by_id = {str(edge["id"]): edge for edge in model["edges"]}
+    for edge_id, x in gutters.items():
+        edge = by_id[edge_id]
+        low = group_positions[str(edge["from"])][0] + native._NODE_WIDTH + 8
+        high = group_positions[str(edge["to"])][0] - 8
+        assert low <= x <= high, (edge_id, x, low, high)
+    for index, edge_id in enumerate(sorted(gutters)):
+        edge = by_id[edge_id]
+        for other_id in sorted(gutters)[index + 1:]:
+            other = by_id[other_id]
+            if (
+                group_positions[str(edge["from"])][0]
+                != group_positions[str(other["from"])][0]
+            ):
+                continue
+            assert abs(gutters[edge_id] - gutters[other_id]) >= (
+                native._PROCESS_LANE_STEP
+            ), (edge_id, other_id, gutters)
+    # Returning to the existing outer fallback must not make valid inputs fail.
+    _parse(render_native_diagram(model))
+    model["edges"].reverse()
+    _parse(render_native_diagram(model))

@@ -12657,8 +12657,171 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert r3_physical["evidence_digest"] == digest_mapping(
         r3_physical, "evidence_digest"
     )
-    for name, expected in r3_physical["source_bindings"].items():
+    # Historical source hashes are immutable proof of prior revisions, not
+    # assertions against later renderer bytes. Bind only the terminal
+    # source/test successor to this checkout's exact current files.
+    review_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / "feedback-pr206-review-comments-20261022-successor-acceptance-receipt.json"
+    )
+    review = json.loads(review_path.read_text(encoding="utf-8"))
+    assert hashlib.sha256(review_path.read_bytes()).hexdigest() == (
+        "34fd2827298e3ed4637c6021f7bf97d6f22074912b50bfa441cf4d0d4ba2d413"
+    )
+    assert review["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-review-comments-20261022-successor.v1"
+    )
+    assert review["scope"] == "technical-candidate-only"
+    assert review["based_on_published_pr_head"] == (
+        "89be9f0f8936a022410533d16bbaf89eb2f75059"
+    )
+    assert review["parent_evidence"] == {
+        "schema_version": r3_physical["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-r3-physical-semantic-finalization-"
+            "successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(r3_physical_path.read_bytes()).hexdigest(),
+        "evidence_digest": r3_physical["evidence_digest"],
+    }
+    assert review["predecessor_source_bindings"] == r3_physical["source_bindings"]
+    assert review["evidence_digest"] == digest_mapping(review, "evidence_digest")
+    assert set(review["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram.py",
+    }
+    # Earlier source bindings remain verifiable as immutable revisions.
+    # Only the new terminal successor binds the exact renderer/test bytes.
+    physical_final_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / (
+            "feedback-pr206-review-comments-20261022-physical-differential-"
+            "finalization-successor-acceptance-receipt.json"
+        )
+    )
+    physical_final = json.loads(
+        physical_final_path.read_text(encoding="utf-8")
+    )
+    assert hashlib.sha256(physical_final_path.read_bytes()).hexdigest() == (
+        "40d9925138652928c01a3296c2cbbc6eaf31b34a3d1dcdcbf06a24f9db842d45"
+    )
+    assert physical_final["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-review-physical-differential-finalization.v1"
+    )
+    assert physical_final["scope"] == "technical-candidate-only"
+    assert physical_final["based_on_published_pr_head"] == (
+        "89be9f0f8936a022410533d16bbaf89eb2f75059"
+    )
+    assert physical_final["parent_evidence"] == {
+        "schema_version": review["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-review-comments-20261022-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(review_path.read_bytes()).hexdigest(),
+        "evidence_digest": review["evidence_digest"],
+    }
+    assert physical_final["predecessor_source_bindings"] == review["source_bindings"]
+    assert physical_final["evidence_digest"] == digest_mapping(
+        physical_final, "evidence_digest"
+    )
+    assert set(physical_final["source_bindings"]) == set(review["source_bindings"])
+    # The first two immutable review successors are historical revisions.
+    # Only this final technical successor binds the current source/test bytes.
+    local_final_path = (
+        SCHAUBILD_PROCESS_FEEDBACK_ROUTING_OUTER_PATH_EVIDENCE
+        / (
+            "feedback-pr206-review-comments-20261022-internal-gap-"
+            "finalization-successor-acceptance-receipt.json"
+        )
+    )
+    local_final = json.loads(local_final_path.read_text(encoding="utf-8"))
+    assert hashlib.sha256(local_final_path.read_bytes()).hexdigest() == (
+        "da5d37c0597bcefca01e1adb999faa259681d7ef1cc632a9fedb0b4a7d9e5aa4"
+    )
+    assert local_final["schema_version"] == (
+        "schauwerk-schaubild-feedback-pr206-internal-gap-finalization.v1"
+    )
+    assert local_final["scope"] == "technical-candidate-only"
+    assert local_final["based_on_published_pr_head"] == (
+        "89be9f0f8936a022410533d16bbaf89eb2f75059"
+    )
+    assert local_final["parent_evidence"] == {
+        "schema_version": physical_final["schema_version"],
+        "path": (
+            "docs/operators/evidence/"
+            "schaubild-process-feedback-routing-outer-path-20261010/"
+            "feedback-pr206-review-comments-20261022-physical-differential-"
+            "finalization-successor-acceptance-receipt.json"
+        ),
+        "file_sha256": hashlib.sha256(physical_final_path.read_bytes()).hexdigest(),
+        "evidence_digest": physical_final["evidence_digest"],
+    }
+    assert local_final["predecessor_source_bindings"] == physical_final[
+        "source_bindings"
+    ]
+    assert local_final["evidence_digest"] == digest_mapping(
+        local_final, "evidence_digest"
+    )
+    assert set(local_final["source_bindings"]) == set(physical_final["source_bindings"])
+    for name, expected in local_final["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert local_final["measured_differentials"]["published_head_900"][
+        "new_render_exceptions"
+    ] == 0
+    assert local_final["measured_differentials"]["published_head_900"][
+        "new_physical_stroke_overlaps"
+    ] == 0
+    assert local_final["measured_differentials"]["local_gutter_17211"][
+        "invalid_assigned_lanes"
+    ] == 0
+    assert all(
+        record["status"] == "succeeded"
+        and len(record["argv_sha256"]) == 64
+        and len(record["finalization_receipt_sha256"]) == 64
+        for record in local_final["test_receipts"].values()
+    )
+    for gate in (
+        "full_make_validate_pass", "independent_exact_head_review_pass",
+        "visual_acceptance_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_serving_verified",
+    ):
+        assert local_final["local_checks"][gate] is False
+    assert physical_final["resolution"]["physical_peer_overlap_recheck"][
+        "new_render_exceptions"
+    ] == 0
+    assert physical_final["resolution"]["physical_peer_overlap_recheck"][
+        "new_semantic_physical_overlaps"
+    ] == 0
+    assert physical_final["resolution"]["new_permanent_pair_regressions"][
+        "passed"
+    ] == 10
+    assert physical_final["resolution"]["new_chrome_browser_smoke"][
+        "checks"
+    ] == 30
+    for successor_receipt in (review, physical_final):
+        assert all(
+            record["status"] == "succeeded"
+            and len(record["argv_sha256"]) == 64
+            and len(record["finalization_receipt_sha256"]) == 64
+            for record in successor_receipt["test_receipts"].values()
+        )
+    for gate in (
+        "full_make_validate_pass", "independent_exact_head_review_pass",
+        "visual_acceptance_pass", "captain_merge_authorized",
+        "oci_registry_published", "commonthing_production_verified",
+    ):
+        assert physical_final["local_checks"][gate] is False
+    for gate in (
+        "full_make_validate_pass", "new_differential_cohort_complete",
+        "independent_exact_head_review_pass", "visual_acceptance_pass",
+        "captain_merge_authorized", "oci_registry_published",
+        "commonthing_production_verified",
+    ):
+        assert review["checks"][gate] is False
     assert r3_physical["measured_differentials"]["actual_main_12000"][
         "new_render_exceptions_vs_actual_main"
     ] == 0
@@ -13238,48 +13401,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/surfaces/miro/credentials.py",
         "tests/miro/test_credentials.py",
     }
+    # Renderer/test revisions are bound by their terminal immutable successor,
+    # not by this older infrastructure receipt or unreachable branch aliases.
+    assert set(receipt["implementation_file_sha256"]).isdisjoint(
+        feedback_safe_sideports_p2_superseded_files
+    )
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in feedback_safe_sideports_p2_superseded_files:
-            assert shared_target_label_successor["source_bindings"][name] == current
-        elif name in feedback_transactional_peer_move_p2_superseded_files:
-            assert transactional["source_bindings"][name] == current
-        elif name in feedback_intermediate_local_branch_p2_superseded_files:
-            assert intermediate["source_bindings"][name] == current
-        elif name in feedback_forward_shared_source_p2_superseded_files:
-            assert forward_p2["source_bindings"][name] == current
-        elif name in feedback_postreview_two_p2_superseded_files:
-            assert postreview["source_bindings"][name] == current
-        elif name in feedback_five_p2_superseded_files:
-            assert five_p2["source_bindings"][name] == current
-        elif name in process_feedback_routing_feedback_route_envelope_superseded_files:
-            assert feedback_route["source_bindings"][name] == current
-        elif name in process_feedback_routing_feedback_path_clearance_superseded_files:
-            assert feedback_path["source_bindings"][name] == current
-        elif name in process_feedback_routing_cluster_occupancy_superseded_files:
-            assert cluster_occupancy["source_bindings"][name] == current
-        elif name in process_feedback_routing_long_leg_superseded_files:
-            assert outer_local["source_bindings"][name] == current
-        elif name in process_feedback_routing_feedback_fullpath_superseded_files:
-            assert feedback_fullpath["source_bindings"][name] == current
-        elif name in process_feedback_routing_anchor_cluster_superseded_files:
-            assert anchor_cluster["source_bindings"][name] == current
-        elif name in process_feedback_routing_parallel_long_superseded_files:
-            assert parallel_long["source_bindings"][name] == current
-        elif name in process_feedback_routing_outer_path_superseded_files:
-            assert process_feedback_routing_outer_path["source_bindings"][name] == current
-        elif name in process_feedback_routing_review_closure_superseded_files:
-            assert process_feedback_routing_review_closure["source_bindings"][name] == current
-        elif name in process_feedback_routing_review_collision_fix_superseded_files:
-            assert (
-                process_feedback_routing_review_collision_fix["source_bindings"][name]
-                == current
-            )
-        elif name in process_feedback_routing_review_fix_superseded_files:
-            assert process_feedback_routing_review_fix["source_bindings"][name] == current
-        elif name in process_feedback_routing_superseded_files:
-            assert process_feedback_routing["source_bindings"][name] == current
-        elif name in single_workspace_status_refit_superseded_files:
+        if name in single_workspace_status_refit_superseded_files:
             assert status_refit_acceptance["source_bindings"][name] == current
         elif name in single_workspace_legacy_tools_superseded_files:
             assert legacy_tools_acceptance["source_bindings"][name] == current
