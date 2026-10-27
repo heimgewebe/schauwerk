@@ -26,6 +26,7 @@ from jsonschema import Draft202012Validator
 from .capability_fallbacks import (
     CANVAS_DIAGRAM_READBACK_TOOL,
     CANVAS_DIAGRAM_TOOLS,
+    CANVAS_SEARCH_DIAGRAM_TOOLS,
     LEGACY_DIAGRAM_TOOLS,
     resolve_bundle_operations,
 )
@@ -743,14 +744,26 @@ def validate_native_bundle(value: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def required_tools(bundle: Mapping[str, Any]) -> tuple[str, ...]:
-    tools = {"user_who_am_i", "context_explore", "board_list_items"}
+    canvas_search_only = bool(bundle["operations"]) and all(
+        operation.get("inventory_transport") == "canvas_search"
+        for operation in bundle["operations"]
+    )
+    tools = (
+        {"user_who_am_i", "canvas_search"}
+        if canvas_search_only
+        else {"user_who_am_i", "context_explore", "board_list_items"}
+    )
     for operation in bundle["operations"]:
         kind = operation["kind"]
         if kind == "layout":
             tools.update({"layout_get_dsl", "layout_create", "layout_read"})
         elif kind == "diagram":
             if operation.get("native_transport") == "canvas_diagram":
-                tools.update(CANVAS_DIAGRAM_TOOLS)
+                tools.update(
+                    CANVAS_SEARCH_DIAGRAM_TOOLS
+                    if operation.get("inventory_transport") == "canvas_search"
+                    else CANVAS_DIAGRAM_TOOLS
+                )
             else:
                 tools.update(LEGACY_DIAGRAM_TOOLS)
         elif kind == "document":
@@ -1804,6 +1817,22 @@ async def execute_native_bundle(
                 operation["operation_id"], prefix="canvas"
             )
         execution_operations.append(operation)
+    canvas_search_only = bool(execution_operations) and all(
+        operation.get("inventory_transport") == "canvas_search"
+        for operation in execution_operations
+    )
+    if canvas_search_only:
+        # Search overviews prove counts, not unique candidates after an uncertain
+        # create. Never silently retry a remote mutation without full item inventory.
+        if resume_receipt is not None:
+            raise NativeBundleError(
+                "current Miro Canvas search transport requires manual reconciliation on resume"
+            )
+        for read_tool in ("canvas_search", CANVAS_DIAGRAM_READBACK_TOOL):
+            if schemas[read_tool]["output_schema"] is None:
+                raise NativeBundleError(
+                    f"live Miro catalogue lacks an output schema for {read_tool}"
+                )
     required = required_tools({"operations": execution_operations})
     missing = sorted(set(required) - set(schemas))
     if missing:
@@ -1993,6 +2022,38 @@ async def execute_native_bundle(
         }
 
     async def read_complete_inventory() -> tuple[dict[str, Any], list[Any]]:
+        if canvas_search_only:
+            payload = await invoke(
+                "canvas_search",
+                _base_arguments(board_url, {"result_mode": "overview"}),
+            )
+            count = payload.get("total_items")
+            if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+                raise MiroToolError("Miro Canvas search inventory count is invalid")
+            item_types = payload.get("item_types")
+            if item_types is None and count == 0:
+                item_types = {}
+            if not isinstance(item_types, Mapping):
+                raise MiroToolError("Miro Canvas search inventory lacks item type counts")
+            if any(
+                not isinstance(name, str)
+                or isinstance(number, bool)
+                or not isinstance(number, int)
+                or number < 0
+                for name, number in item_types.items()
+            ) or sum(item_types.values()) != count:
+                raise MiroToolError("Miro Canvas search inventory counts are inconsistent")
+            if not isinstance(payload.get("overview"), Mapping):
+                raise MiroToolError("Miro Canvas search inventory lacks overview")
+            return (
+                {
+                    "item_count": count,
+                    "page_count": 1,
+                    "transport": "canvas_search",
+                    "item_types_digest": _digest(dict(item_types)),
+                },
+                [],
+            )
         cursor: str | None = None
         seen_cursors: set[str] = set()
         items: list[Any] = []
@@ -2259,9 +2320,19 @@ async def execute_native_bundle(
         if any(not identity.get(field) for field in identity_fields):
             raise MiroToolError("Miro identity readback is incomplete")
         before_inventory, before_inventory_items = await read_complete_inventory()
-        before_context = _context_summary(
-            await invoke("context_explore", _base_arguments(board_url, {}))
-        )
+        if canvas_search_only:
+            repeated_inventory, _ = await read_complete_inventory()
+            if repeated_inventory != before_inventory:
+                raise MiroToolError("Miro Canvas search inventory drifted during preflight")
+            before_context = {
+                "transport": "canvas_search",
+                "item_count": before_inventory["item_count"],
+                "context_get_available": False,
+            }
+        else:
+            before_context = _context_summary(
+                await invoke("context_explore", _base_arguments(board_url, {}))
+            )
         if resume is not None:
             baseline_inventory = resume["preflight"]["inventory"]
             resume_item_delta = before_inventory["item_count"] - baseline_inventory["item_count"]
@@ -2420,7 +2491,16 @@ async def execute_native_bundle(
                             raise MiroToolError("Miro Canvas diagram creation did not succeed")
                         created_count = _integer(created, "created_count")
                         failed_items = created.get("failed_items", [])
-                        if not isinstance(failed_items, list) or failed_items or created_count != 1:
+                        skipped_items = created.get("skipped", [])
+                        if (
+                            not isinstance(failed_items, list)
+                            or failed_items
+                            or created_count != 1
+                            or (
+                                canvas_search_only
+                                and (not isinstance(skipped_items, list) or skipped_items)
+                            )
+                        ):
                             raise MiroToolError("Miro Canvas diagram creation was not exact")
                         result_svg = created.get("result_svg")
                         if not isinstance(result_svg, str):
@@ -2436,25 +2516,59 @@ async def execute_native_bundle(
                         if not isinstance(item_id, str):  # pragma: no cover - evidence invariant
                             raise MiroToolError("Miro Canvas diagram item id is absent")
                         item_url = _canvas_item_url(target_url, item_id)
-                    context = await invoke("context_get", _base_arguments(item_url, {}))
-                    context_evidence = _context_diagram_evidence(
-                        context,
-                        expected_title=operation["title"],
-                        expected_source=operation["canvas_mermaid_source"],
-                    )
+                    if canvas_search_only:
+                        context_evidence = None
+                    else:
+                        context = await invoke("context_get", _base_arguments(item_url, {}))
+                        context_evidence = _context_diagram_evidence(
+                            context,
+                            expected_title=operation["title"],
+                            expected_source=operation["canvas_mermaid_source"],
+                        )
                     svg_schema_available = (
                         CANVAS_DIAGRAM_READBACK_TOOL in schemas
                         and schemas[CANVAS_DIAGRAM_READBACK_TOOL]["output_schema"] is not None
                     )
                     svg_readback_evidence: dict[str, Any] | None = None
                     if svg_schema_available:
+                        readback_arguments = (
+                            {"widget_ids": [item_id]}
+                            if canvas_search_only and not reconcile_pending
+                            else {}
+                        )
                         svg_payload = await invoke(
                             CANVAS_DIAGRAM_READBACK_TOOL,
-                            _base_arguments(item_url, {}),
+                            _base_arguments(item_url, readback_arguments),
                         )
                         readback_svg = svg_payload.get("svg", svg_payload.get("result_svg"))
                         if not isinstance(readback_svg, str):
                             raise MiroToolError("Miro Canvas SVG readback lacks SVG")
+                        if canvas_search_only:
+                            item_count = svg_payload.get("item_count")
+                            skipped_count = svg_payload.get("skipped_count")
+                            if (
+                                svg_payload.get("success") is not True
+                                or isinstance(item_count, bool)
+                                or not isinstance(item_count, int)
+                                or item_count < 1
+                                or skipped_count != 0
+                            ):
+                                raise MiroToolError(
+                                    "Miro Canvas scoped SVG readback was incomplete"
+                                )
+                            try:
+                                marked_ids = [
+                                    element.get("data-miro-id")
+                                    for element in ET.fromstring(readback_svg).iter()
+                                    if element.get("data-miro-id") == item_id
+                                ]
+                            except ET.ParseError as exc:
+                                raise MiroToolError("Miro Canvas scoped SVG is invalid") from exc
+                            if len(marked_ids) != 1:
+                                raise MiroToolError(
+                                    "Miro Canvas scoped SVG did not uniquely identify "
+                                    "the created item"
+                                )
                         svg_readback_evidence = _canvas_svg_evidence(
                             readback_svg,
                             expected_title=operation["title"],
@@ -3028,9 +3142,19 @@ async def execute_native_bundle(
                 checkpoint(build_receipt(success=False, error_code="in_progress"))
 
         after_inventory, _after_inventory_items = await read_complete_inventory()
-        after_context = _context_summary(
-            await invoke("context_explore", _base_arguments(board_url, {}))
-        )
+        if canvas_search_only:
+            repeated_inventory, _ = await read_complete_inventory()
+            if repeated_inventory != after_inventory:
+                raise MiroToolError("Miro Canvas search inventory drifted during postflight")
+            after_context = {
+                "transport": "canvas_search",
+                "item_count": after_inventory["item_count"],
+                "context_get_available": False,
+            }
+        else:
+            after_context = _context_summary(
+                await invoke("context_explore", _base_arguments(board_url, {}))
+            )
         baseline_inventory = (original_preflight or {"inventory": before_inventory}).get(
             "inventory"
         )
@@ -3038,6 +3162,8 @@ async def execute_native_bundle(
             raise MiroToolError("native execution lacks a baseline board inventory")
         observed_delta = after_inventory["item_count"] - baseline_inventory["item_count"]
         expected_delta = _expected_inventory_visible_net_item_delta(completed)
+        if canvas_search_only and observed_delta != expected_delta:
+            raise MiroToolError("Miro Canvas search postflight count does not match creates")
         if observed_delta < expected_delta:
             raise MiroToolError(
                 "Miro board inventory did not expose all created native items "

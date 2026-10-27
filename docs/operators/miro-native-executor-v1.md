@@ -62,7 +62,9 @@ schauwerk miro native apply BOARD_ALIAS BUNDLE.json \
 Vor der ersten Mutation:
 
 1. wird die verbundene Miro-Identität geprüft;
-2. werden das vollständig paginierte Board-Inventar und der semantische Kontext gelesen;
+2. werden das vollständig paginierte Board-Inventar und der semantische Kontext gelesen.
+   Ausschließlich für reine Flowchart-Canvas-Bundles darf stattdessen ein zweimal
+   identisch gelesenes, typzählungskonsistentes `canvas_search`-Inventar dienen;
 3. wird der aktuelle MCP-Werkzeugkatalog geladen;
 4. werden alle benötigten Werkzeuge auf Anwesenheit geprüft.
 
@@ -73,7 +75,8 @@ Vor jedem Werkzeugaufruf werden die Argumente gegen dessen live geliefertes Eing
 | Lane | Mutation | Readback |
 | --- | --- | --- |
 | Layout-Bühne | `layout_create` | zuvor `layout_get_dsl`, danach `layout_read` mit Item- und Skip-Zahlen |
-| Diagramm | `diagram_create` | zuvor `diagram_get_dsl`, danach `context_get` |
+| Diagramm (Legacy) | `diagram_create` | zuvor `diagram_get_dsl`, danach `context_get` |
+| Canvas-Diagramm (aktueller MCP-Katalog, create-only) | `canvas_create_from_svg` | zweimal stabiler `canvas_search`-Preflight; `result_svg` mit exakt einer Diagramm-ID; `canvas_read_as_svg` mit `widget_ids=[ID]` und null Skips; zweimal stabiler Postflight mit exakt erwarteter Item-Differenz |
 | Dokument | `doc_create` | `doc_get`, normalisierter Inhaltsvergleich |
 | Dokumentupdate | `doc_update` | vorher und nachher `doc_get`; Ausgangsdigest, exakter Ersatz und steigende Content-Version |
 | Tabelle | `table_create`, optional `table_sync_rows`, `table_update_view` | vollständig paginiertes `table_list_rows`; jede eingereichte Zeile muss zellenweise vorkommen; Layout-Rückgabe |
@@ -85,7 +88,14 @@ Vor jedem Werkzeugaufruf werden die Argumente gegen dessen live geliefertes Eing
 | Prototyp | HTML-PUT und `prototype_create` | SHA-256 jedes Screens, getrenntes Upload-Transportmittel ohne Miro-OAuth und danach `context_get` |
 | Kommentar | `comment_create` | vollständig paginiertes `comment_list_comments`, ID- und Inhaltsreconciliation |
 
-Nach Abschluss werden Board-Inventar und Kontext erneut gelesen.
+Nach Abschluss werden Board-Inventar und Kontext erneut gelesen. Bei der eingeschränkten
+Canvas-Search-Lane ersetzen zwei stabile, typkonsistente Provider-Zählungen diese
+alten Werkzeuge. Diese Counts sind keine vollständige Item-Reconciliation und
+begründen ausdrücklich **keine** automatische Wiederaufnahme nach einem unklaren
+Schreibvorgang. Der neue Pfad benötigt gültige Provider-Ausgabeschemas und
+verweigert `resume_receipt` vor jeder Mutation. Für gemischte Bundles, ältere
+Layout-/Dokumentpfade und alle bestehenden Wartungsoperationen bleibt die
+vollständige bisherige Inventar- und Kontextvoraussetzung erhalten.
 
 ## Checkpoints und Resume
 
@@ -98,6 +108,7 @@ Miro bietet keine globale Transaktion über mehrere Itemtypen. Der Executor beha
 - Bereits verifizierte Operationen werden nicht wiederholt.
 - Kommentare werden vor einer Wiederholung über alle paginierten Kommentare auf exakt gleichen Inhalt geprüft. So wird ein Providererfolg erkannt, der vor dem lokalen Checkpoint stattgefunden hat.
 - Eine unklare, bereits begonnene Nicht-Kommentar-Mutation wird nicht automatisch wiederholt, sondern verlangt manuelle Reconciliation.
+- **Canvas-Search-Lane:** Jeder Resume-Versuch ist gesperrt, auch bei vermeintlich verifiziertem Präfix, weil das neue Provider-Inventar keine vollständig eindeutigen Kandidaten für einen sicheren automatischen Replay liefert.
 - Vor dem Fortsetzen muss das aktuelle Board-Inventar mindestens alle im verifizierten Präfix erwarteten Items enthalten.
 - Digest-inkonsistente, boardfremde oder strukturell widersprüchliche Belege werden abgewiesen.
 - Eine nicht wartende Board-Sperre verhindert parallele Mutationen desselben Boards; eine zweite Sperre schützt denselben Receipt-Ausgabepfad auch über verschiedene Boards hinweg.

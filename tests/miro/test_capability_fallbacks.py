@@ -167,3 +167,42 @@ def test_diagram_resolution_uses_canvas_as_alternative_native_transport() -> Non
     assert report["operation_resolutions"][0]["native_transport"] == "canvas_diagram"
     assert report["execution_operations"][0]["native_transport"] == "canvas_diagram"
     assert report["truth_boundary"]["canvas_diagram_is_alternative_native_transport"] is True
+
+def test_current_provider_canvas_search_resolves_diagram_without_legacy_inventory() -> None:
+    from schauwerk.surfaces.miro.capability_fallbacks import CANVAS_SEARCH_DIAGRAM_TOOLS
+
+    observed = set(CANVAS_SEARCH_DIAGRAM_TOOLS) | {"user_who_am_i", "board_search_boards"}
+    report = resolve_bundle_operations([diagram_operation()], observed)
+
+    assert report["baseline_missing_tools"] == []
+    assert report["blocked_count"] == 0
+    assert report["native_count"] == 1
+    assert report["execution_operations"][0]["native_transport"] == "canvas_diagram"
+    assert report["execution_operations"][0]["inventory_transport"] == "canvas_search"
+    assert "context_get" not in report["operation_resolutions"][0]["native_tools"]
+    assert "board_list_items" not in report["operation_resolutions"][0]["native_tools"]
+
+
+def test_current_provider_does_not_admit_mixed_bundle_without_old_inventory() -> None:
+    from schauwerk.surfaces.miro.capability_fallbacks import CANVAS_SEARCH_DIAGRAM_TOOLS
+
+    observed = set(CANVAS_SEARCH_DIAGRAM_TOOLS) | {"user_who_am_i"}
+    report = resolve_bundle_operations([diagram_operation(), creation_operations()[0]], observed)
+
+    assert report["blocked_count"] == 2
+    assert "board_list_items" in report["baseline_missing_tools"]
+    assert "context_explore" in report["baseline_missing_tools"]
+
+def test_no_legacy_inventory_does_not_select_incomplete_legacy_diagram_path() -> None:
+    from schauwerk.surfaces.miro.capability_fallbacks import CANVAS_SEARCH_DIAGRAM_TOOLS
+
+    observed = (
+        set(CANVAS_SEARCH_DIAGRAM_TOOLS)
+        | set(LEGACY_DIAGRAM_TOOLS)
+        | {"user_who_am_i"}
+    )
+    report = resolve_bundle_operations([diagram_operation()], observed)
+
+    assert report["blocked_count"] == 0
+    assert report["operation_resolutions"][0]["native_transport"] == "canvas_diagram"
+    assert report["execution_operations"][0]["inventory_transport"] == "canvas_search"

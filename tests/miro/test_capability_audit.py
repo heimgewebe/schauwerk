@@ -248,3 +248,27 @@ def test_current_canvas_catalogue_is_an_integrated_native_diagram_transport() ->
         "intentionally_not_integrated"
     )
     assert report["provider_fallbacks"]["canvas_native_is_provider_fallback"] is False
+
+def test_current_provider_canvas_search_native_lane_without_legacy_context() -> None:
+    from schauwerk.surfaces.miro.capability_fallbacks import CANVAS_SEARCH_DIAGRAM_TOOLS
+
+    report = audit_tool_catalogue(catalogue("user_who_am_i", *sorted(CANVAS_SEARCH_DIAGRAM_TOOLS)))
+    lane = report["high_value_lanes"]["native_diagram"]
+
+    assert lane["available"] is True
+    assert lane["effective_available"] is True
+    assert lane["mode"] == "native"
+    assert lane["native_transport"] == "canvas_diagram"
+    assert lane["canvas_search_inventory_available"] is True
+    assert lane["canvas_svg_readback_available"] is True
+    assert "native_diagram" not in report["unavailable_lanes"]
+
+def test_legacy_diagram_availability_does_not_claim_missing_canvas_tools() -> None:
+    from schauwerk.surfaces.miro.capability_fallbacks import LEGACY_DIAGRAM_TOOLS
+
+    report = audit_tool_catalogue(catalogue("user_who_am_i", *sorted(LEGACY_DIAGRAM_TOOLS)))
+    lane = report["high_value_lanes"]["native_diagram"]
+
+    assert lane["native_transport"] == "legacy_diagram"
+    assert lane["canvas_native_available"] is False
+    assert lane["canvas_native_missing_tools"]
