@@ -24,6 +24,16 @@ def _catalogue() -> ToolCatalogue:
     )
 
 
+def test_offline_doctor_prefers_desktop_login_when_credentials_missing(tmp_path) -> None:
+    client = _client(tmp_path)
+    result = asyncio.run(client.doctor(check_live=False))
+
+    assert result["safe_for_live_board_operations"] is False
+    assert result["recommended_next_command"].startswith(
+        "Run `schauwerk miro login --json` in a desktop terminal"
+    )
+
+
 def test_live_status_reports_success_without_persisting_health(tmp_path, monkeypatch) -> None:
     client = _client(tmp_path)
 
@@ -89,7 +99,9 @@ def test_doctor_reports_renewal_required_and_persists_health(tmp_path, monkeypat
     assert receipt["live_authorized"] is False
     assert receipt["renewal_required"] is True
     assert receipt["safe_for_live_board_operations"] is False
-    assert "login" in receipt["recommended_next_command"]
+    assert "Run `schauwerk miro login --json` in a desktop terminal" in receipt[
+        "recommended_next_command"
+    ]
     assert result["auth_history"]["recent"][-1]["renewal_required"] is True
 
 
