@@ -981,6 +981,7 @@ def _canvas_svg_evidence(
     expected_source: str,
     local_id: str | None,
     require_item_id: bool,
+    require_source_match: bool = True,
 ) -> dict[str, Any]:
     if not svg.strip() or re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", svg, re.IGNORECASE):
         raise MiroToolError("Miro Canvas returned unsafe or empty diagram SVG")
@@ -1026,7 +1027,7 @@ def _canvas_svg_evidence(
         raise MiroToolError("Miro Canvas SVG diagram geometry does not match")
     source = "".join(diagram.itertext())
     source_matches = _canvas_svg_source_matches(source, expected_source)
-    if not source_matches:
+    if not source_matches and require_source_match:
         raise MiroToolError("Miro Canvas SVG diagram source does not match")
 
     item_ids = {
@@ -2511,6 +2512,10 @@ async def execute_native_bundle(
                             expected_source=operation["canvas_mermaid_source"],
                             local_id=operation["canvas_local_id"],
                             require_item_id=True,
+                            # Miro may return a provisional SVG before normalizing
+                            # its source. It is *never* the final content proof:
+                            # scoped provider readback must still match exactly.
+                            require_source_match=not canvas_search_only,
                         )
                         item_id = created_evidence.pop("item_id")
                         if not isinstance(item_id, str):  # pragma: no cover - evidence invariant
@@ -2538,7 +2543,10 @@ async def execute_native_bundle(
                         )
                         svg_payload = await invoke(
                             CANVAS_DIAGRAM_READBACK_TOOL,
-                            _base_arguments(item_url, readback_arguments),
+                            _base_arguments(
+                                target_url if canvas_search_only else item_url,
+                                readback_arguments,
+                            ),
                         )
                         readback_svg = svg_payload.get("svg", svg_payload.get("result_svg"))
                         if not isinstance(readback_svg, str):
@@ -2550,7 +2558,7 @@ async def execute_native_bundle(
                                 svg_payload.get("success") is not True
                                 or isinstance(item_count, bool)
                                 or not isinstance(item_count, int)
-                                or item_count < 1
+                                or item_count != 1
                                 or skipped_count != 0
                             ):
                                 raise MiroToolError(
@@ -2568,6 +2576,14 @@ async def execute_native_bundle(
                                 raise MiroToolError(
                                     "Miro Canvas scoped SVG did not uniquely identify "
                                     "the created item"
+                                )
+                            returned_url = svg_payload.get("miro_url")
+                            if (
+                                not isinstance(returned_url, str)
+                                or _board_key(returned_url) != _board_key(target_url)
+                            ):
+                                raise MiroToolError(
+                                    "Miro Canvas scoped SVG readback changed target board"
                                 )
                         svg_readback_evidence = _canvas_svg_evidence(
                             readback_svg,

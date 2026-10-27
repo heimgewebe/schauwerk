@@ -2679,12 +2679,16 @@ class CurrentCanvasSearchOnlyMiro(CurrentCanvasMiro):
         preflight_drift: bool = False,
         postflight_extra: bool = False,
         svg_skipped: bool = False,
+        provisional_create_source_drift: bool = False,
+        persisted_readback_source_drift: bool = False,
     ) -> None:
         super().__init__()
         self.search_reads = 0
         self.preflight_drift = preflight_drift
         self.postflight_extra = postflight_extra
         self.svg_skipped = svg_skipped
+        self.provisional_create_source_drift = provisional_create_source_drift
+        self.persisted_readback_source_drift = persisted_readback_source_drift
 
     async def __call__(self, tool: str, arguments: dict) -> dict:
         if tool == "canvas_search":
@@ -2711,13 +2715,23 @@ class CurrentCanvasSearchOnlyMiro(CurrentCanvasMiro):
             return {**result, "format_name": "diagramming", "notation": "flowchart"}
         if tool == "canvas_create_from_svg":
             result = await super().__call__(tool, arguments)
-            return {**result, "message": "Created Canvas diagram"}
+            returned_svg = result["result_svg"]
+            if self.provisional_create_source_drift:
+                marker = 'data-type="diagram"'
+                start = returned_svg.index(">", returned_svg.index(marker)) + 1
+                returned_svg = returned_svg[:start] + "\n\n" + returned_svg[start:]
+            return {**result, "message": "Created Canvas diagram", "result_svg": returned_svg}
         if tool == "canvas_read_as_svg":
             assert len(arguments["widget_ids"]) == 1
             assert arguments["widget_ids"][0] in self.canvas_svgs
-            result = await super().__call__(tool, arguments)
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            returned_svg = self.canvas_svgs[arguments["widget_ids"][0]]
+            if self.persisted_readback_source_drift:
+                marker = 'data-type="diagram"'
+                start = returned_svg.index(">", returned_svg.index(marker)) + 1
+                returned_svg = returned_svg[:start] + "\n\n" + returned_svg[start:]
             return {
-                **result,
+                "svg": returned_svg,
                 "success": True,
                 "item_count": 1,
                 "skipped_count": 1 if self.svg_skipped else 0,
@@ -2842,3 +2856,41 @@ def test_current_provider_canvas_requires_svg_readback_schema_before_create() ->
             )
         )
     assert fake.calls == []
+
+def test_current_provider_provisional_source_drift_requires_persisted_readback() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(provisional_create_source_drift=True)
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=current_canvas_search_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=current_diagram_bundle(),
+        )
+    )
+
+    readback = receipt["completed_operations"][0]["readback"]
+    assert receipt["success"] is True
+    assert readback["created_svg"]["source_matches"] is False
+    assert readback["canvas_svg_verified"] is True
+    assert readback["canvas_svg_readback"]["source_matches"] is True
+    assert [name for name, _ in fake.calls].count("canvas_create_from_svg") == 1
+
+
+def test_current_provider_persisted_source_drift_fails_even_when_create_result_exact() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(persisted_readback_source_drift=True)
+    checkpoints: list[dict] = []
+    with pytest.raises(NativeExecutionError, match="source does not match"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+                checkpoint=lambda value: checkpoints.append(copy.deepcopy(value)),
+            )
+        )
+    assert checkpoints[-1]["partial_mutation"] is True
+    assert checkpoints[-1]["success"] is False
+    assert [name for name, _ in fake.calls].count("canvas_create_from_svg") == 1

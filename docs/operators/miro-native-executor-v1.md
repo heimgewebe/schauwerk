@@ -76,7 +76,7 @@ Vor jedem Werkzeugaufruf werden die Argumente gegen dessen live geliefertes Eing
 | --- | --- | --- |
 | Layout-Bühne | `layout_create` | zuvor `layout_get_dsl`, danach `layout_read` mit Item- und Skip-Zahlen |
 | Diagramm (Legacy) | `diagram_create` | zuvor `diagram_get_dsl`, danach `context_get` |
-| Canvas-Diagramm (aktueller MCP-Katalog, create-only) | `canvas_create_from_svg` | zweimal stabiler `canvas_search`-Preflight; `result_svg` mit exakt einer Diagramm-ID; `canvas_read_as_svg` mit `widget_ids=[ID]` und null Skips; zweimal stabiler Postflight mit exakt erwarteter Item-Differenz |
+| Canvas-Diagramm (aktueller MCP-Katalog, create-only) | `canvas_create_from_svg` | zweimal stabiler `canvas_search`-Preflight; `result_svg` mit exakt einer Diagramm-ID und gültiger Struktur; **endgültige Inhaltsautorität** ausschließlich `canvas_read_as_svg` mit `widget_ids=[ID]`, exakt einer ID und null Skips; zweimal stabiler Postflight mit exakt erwarteter Item-Differenz |
 | Dokument | `doc_create` | `doc_get`, normalisierter Inhaltsvergleich |
 | Dokumentupdate | `doc_update` | vorher und nachher `doc_get`; Ausgangsdigest, exakter Ersatz und steigende Content-Version |
 | Tabelle | `table_create`, optional `table_sync_rows`, `table_update_view` | vollständig paginiertes `table_list_rows`; jede eingereichte Zeile muss zellenweise vorkommen; Layout-Rückgabe |
@@ -90,7 +90,10 @@ Vor jedem Werkzeugaufruf werden die Argumente gegen dessen live geliefertes Eing
 
 Nach Abschluss werden Board-Inventar und Kontext erneut gelesen. Bei der eingeschränkten
 Canvas-Search-Lane ersetzen zwei stabile, typkonsistente Provider-Zählungen diese
-alten Werkzeuge. Diese Counts sind keine vollständige Item-Reconciliation und
+alten Werkzeuge. Der unmittelbare `canvas_create_from_svg`-Rückgabe-SVG-Inhalt kann
+von der nach Miro-Persistierung normalisierten Fassung abweichen. Die Quellsemantik
+gilt deshalb erst nach erfolgreichem, exaktem `canvas_read_as_svg`-Inhaltsabgleich
+als verifiziert; ohne ihn wird niemals Erfolg behauptet. Diese Counts sind keine vollständige Item-Reconciliation und
 begründen ausdrücklich **keine** automatische Wiederaufnahme nach einem unklaren
 Schreibvorgang. Der neue Pfad benötigt gültige Provider-Ausgabeschemas und
 verweigert `resume_receipt` vor jeder Mutation. Für gemischte Bundles, ältere
