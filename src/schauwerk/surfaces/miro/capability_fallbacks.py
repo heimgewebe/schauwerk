@@ -21,6 +21,17 @@ CANVAS_DIAGRAM_TOOLS = frozenset(
     }
 )
 CANVAS_DIAGRAM_READBACK_TOOL = "canvas_read_as_svg"
+# Current Miro MCP exposes board-wide counts via canvas_search and scoped SVG readback.
+# Only isolated, creation-only diagram bundles may use this transport.
+CANVAS_SEARCH_DIAGRAM_TOOLS = frozenset(
+    {
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+        "canvas_read_as_svg",
+        "canvas_search",
+    }
+)
 
 NATIVE_OPERATION_TOOLS: dict[str, frozenset[str]] = {
     "layout": LAYOUT_TOOLS,
@@ -196,7 +207,21 @@ def resolve_bundle_operations(
     """Resolve each operation to native, deterministic fallback, or blocked before mutation."""
 
     observed = set(observed_tools)
-    baseline_missing = sorted(BASELINE_TOOLS - observed)
+    canvas_search_only = (
+        bool(operations)
+        and all(
+            operation.get("kind") == "diagram" and operation.get("diagram_type") == "flowchart"
+            for operation in operations
+        )
+        and CANVAS_SEARCH_DIAGRAM_TOOLS.issubset(observed)
+        and "user_who_am_i" in observed
+        # The old diagram transports also need context_get. Merely having the
+        # old inventory tools does not make that route complete.
+        and not (BASELINE_TOOLS | {"context_get"}).issubset(observed)
+    )
+    baseline_missing = sorted(
+        (frozenset({"user_who_am_i"}) if canvas_search_only else BASELINE_TOOLS) - observed
+    )
     resolved: list[dict[str, Any]] = []
     execution_operations: list[dict[str, Any]] = []
     blocked_tools: set[str] = set(baseline_missing)
@@ -204,7 +229,11 @@ def resolve_bundle_operations(
     for operation in operations:
         kind = str(operation.get("kind"))
         native_transport: str | None = None
-        if kind == "diagram" and LEGACY_DIAGRAM_TOOLS.issubset(observed):
+        if (
+            kind == "diagram"
+            and LEGACY_DIAGRAM_TOOLS.issubset(observed)
+            and not canvas_search_only
+        ):
             native_tools = LEGACY_DIAGRAM_TOOLS
             missing_native: list[str] = []
             native_transport = "legacy_diagram"
@@ -215,12 +244,24 @@ def resolve_bundle_operations(
             kind == "diagram"
             and operation.get("diagram_type") == "flowchart"
             and CANVAS_DIAGRAM_TOOLS.issubset(observed)
+            and not canvas_search_only
         ):
             native_tools = CANVAS_DIAGRAM_TOOLS
             missing_native = []
             native_transport = "canvas_diagram"
             mode = "native"
             execution = {**operation, "native_transport": native_transport}
+            fallback = None
+        elif kind == "diagram" and canvas_search_only:
+            native_tools = CANVAS_SEARCH_DIAGRAM_TOOLS
+            missing_native = []
+            native_transport = "canvas_diagram"
+            mode = "native"
+            execution = {
+                **operation,
+                "native_transport": native_transport,
+                "inventory_transport": "canvas_search",
+            }
             fallback = None
         else:
             native_tools = operation_tools(operation)

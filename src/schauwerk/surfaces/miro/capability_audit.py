@@ -14,6 +14,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from .capability_fallbacks import (
     CANVAS_DIAGRAM_READBACK_TOOL,
     CANVAS_DIAGRAM_TOOLS,
+    CANVAS_SEARCH_DIAGRAM_TOOLS,
     CREATION_FALLBACKS,
     LAYOUT_TOOLS,
     LEGACY_DIAGRAM_TOOLS,
@@ -282,18 +283,30 @@ def _lane_status(observed: set[str], lane: str, tools: tuple[str, ...]) -> dict[
 
 def _native_diagram_lane_status(observed: set[str]) -> dict[str, Any]:
     legacy_available = LEGACY_DIAGRAM_TOOLS.issubset(observed)
-    canvas_available = CANVAS_DIAGRAM_TOOLS.issubset(observed)
+    canvas_legacy_available = CANVAS_DIAGRAM_TOOLS.issubset(observed)
+    canvas_search_available = (
+        CANVAS_SEARCH_DIAGRAM_TOOLS.issubset(observed) and "user_who_am_i" in observed
+    )
+    canvas_available = canvas_legacy_available or canvas_search_available
     effective_available = legacy_available or canvas_available
     if legacy_available:
         transport = "legacy_diagram"
         selected_tools = LEGACY_DIAGRAM_TOOLS
+    elif canvas_legacy_available:
+        transport = "canvas_diagram"
+        selected_tools = CANVAS_DIAGRAM_TOOLS
+    elif canvas_search_available:
+        transport = "canvas_diagram"
+        selected_tools = CANVAS_SEARCH_DIAGRAM_TOOLS
     else:
-        transport = "canvas_diagram" if canvas_available else None
+        transport = None
         selected_tools = min(
-            (LEGACY_DIAGRAM_TOOLS, CANVAS_DIAGRAM_TOOLS),
+            (LEGACY_DIAGRAM_TOOLS, CANVAS_DIAGRAM_TOOLS, CANVAS_SEARCH_DIAGRAM_TOOLS),
             key=lambda tools: (len(tools - observed), tools != LEGACY_DIAGRAM_TOOLS),
         )
-    relevant_tools = LEGACY_DIAGRAM_TOOLS | CANVAS_DIAGRAM_TOOLS | {CANVAS_DIAGRAM_READBACK_TOOL}
+    relevant_tools = (
+        LEGACY_DIAGRAM_TOOLS | CANVAS_DIAGRAM_TOOLS | CANVAS_SEARCH_DIAGRAM_TOOLS
+    )
     missing = sorted(selected_tools - observed) if not effective_available else []
     return {
         "available": effective_available,
@@ -310,7 +323,14 @@ def _native_diagram_lane_status(observed: set[str]) -> dict[str, Any]:
         "legacy_native_available": legacy_available,
         "legacy_native_missing_tools": sorted(LEGACY_DIAGRAM_TOOLS - observed),
         "canvas_native_available": canvas_available,
-        "canvas_native_missing_tools": sorted(CANVAS_DIAGRAM_TOOLS - observed),
+        "canvas_native_missing_tools": sorted(
+            min(
+                (CANVAS_DIAGRAM_TOOLS, CANVAS_SEARCH_DIAGRAM_TOOLS),
+                key=lambda tools: (len(tools - observed), tools != CANVAS_DIAGRAM_TOOLS),
+            )
+            - observed
+        ),
+        "canvas_search_inventory_available": canvas_search_available,
         "canvas_svg_readback_available": CANVAS_DIAGRAM_READBACK_TOOL in observed,
     }
 

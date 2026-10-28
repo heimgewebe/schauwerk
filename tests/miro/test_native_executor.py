@@ -2660,3 +2660,296 @@ def test_missing_maintenance_tool_does_not_fallback() -> None:
                 bundle=bundle,
             )
         )
+
+def current_canvas_search_tools() -> list[dict]:
+    return catalogue(
+        "user_who_am_i",
+        "canvas_get_canvas_composer_skill",
+        "canvas_load_format_skill",
+        "canvas_create_from_svg",
+        "canvas_search",
+        "canvas_read_as_svg",
+    )
+
+
+class CurrentCanvasSearchOnlyMiro(CurrentCanvasMiro):
+    def __init__(
+        self,
+        *,
+        preflight_drift: bool = False,
+        postflight_extra: bool = False,
+        svg_skipped: bool = False,
+        provisional_create_source_drift: bool = False,
+        persisted_readback_source_drift: bool = False,
+    ) -> None:
+        super().__init__()
+        self.search_reads = 0
+        self.preflight_drift = preflight_drift
+        self.postflight_extra = postflight_extra
+        self.svg_skipped = svg_skipped
+        self.provisional_create_source_drift = provisional_create_source_drift
+        self.persisted_readback_source_drift = persisted_readback_source_drift
+
+    async def __call__(self, tool: str, arguments: dict) -> dict:
+        if tool == "canvas_search":
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            assert arguments["result_mode"] == "overview"
+            self.search_reads += 1
+            count = len(self.canvas_svgs)
+            if self.preflight_drift and self.search_reads == 2:
+                count += 1
+            if self.postflight_extra and self.canvas_svgs:
+                count += 1
+            return {
+                "total_items": count,
+                "total_results": count,
+                "overview": {
+                    "container_count": 0,
+                    "containers": {},
+                    "loose_content": {"items": count, "regions": 0, "isolated": count},
+                },
+                "item_types": {"diagram": count} if count else None,
+            }
+        if tool == "canvas_load_format_skill":
+            result = await super().__call__(tool, arguments)
+            return {**result, "format_name": "diagramming", "notation": "flowchart"}
+        if tool == "canvas_create_from_svg":
+            result = await super().__call__(tool, arguments)
+            returned_svg = result["result_svg"]
+            if self.provisional_create_source_drift:
+                marker = 'data-type="diagram"'
+                start = returned_svg.index(">", returned_svg.index(marker)) + 1
+                returned_svg = returned_svg[:start] + "\n\n" + returned_svg[start:]
+            return {**result, "message": "Created Canvas diagram", "result_svg": returned_svg}
+        if tool == "canvas_read_as_svg":
+            assert len(arguments["widget_ids"]) == 1
+            assert arguments["widget_ids"][0] in self.canvas_svgs
+            self.calls.append((tool, copy.deepcopy(arguments)))
+            returned_svg = self.canvas_svgs[arguments["widget_ids"][0]]
+            if self.persisted_readback_source_drift:
+                marker = 'data-type="diagram"'
+                start = returned_svg.index(">", returned_svg.index(marker)) + 1
+                returned_svg = returned_svg[:start] + "\n\n" + returned_svg[start:]
+            return {
+                "svg": returned_svg,
+                "success": True,
+                "item_count": 1,
+                "skipped_count": 1 if self.svg_skipped else 0,
+                "message": "Read scoped diagram",
+                "miro_url": BOARD_URL,
+            }
+        return await super().__call__(tool, arguments)
+
+
+def test_current_provider_canvas_search_only_creates_and_verifies_exact_diagram() -> None:
+    fake = CurrentCanvasSearchOnlyMiro()
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=current_canvas_search_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=current_diagram_bundle(),
+        )
+    )
+    calls = [name for name, _arguments in fake.calls]
+    assert receipt["success"] is True
+    assert receipt["partial_mutation"] is False
+    assert receipt["preflight"]["inventory"]["transport"] == "canvas_search"
+    assert receipt["preflight"]["inventory"]["item_count"] == 0
+    assert receipt["postflight"]["inventory"]["item_count"] == 1
+    assert receipt["observed_item_count_delta"] == 1
+    assert calls.count("canvas_search") == 4
+    assert calls.count("canvas_create_from_svg") == 1
+    assert calls.count("canvas_read_as_svg") == 1
+    assert "board_list_items" not in calls
+    assert "context_explore" not in calls
+    assert "context_get" not in calls
+    readback = receipt["completed_operations"][0]["readback"]
+    assert readback["context"] is None
+    assert readback["canvas_svg_verified"] is True
+    assert readback["created_svg"]["title_matches"] is True
+    assert readback["canvas_svg_readback"]["source_matches"] is True
+    assert BOARD_URL not in json.dumps(receipt)
+    assert "flowchart LR" not in json.dumps(receipt)
+
+
+def test_current_provider_canvas_search_preflight_drift_fails_before_mutation() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(preflight_drift=True)
+    with pytest.raises(NativeExecutionError, match="inventory drifted during preflight"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+    assert "canvas_create_from_svg" not in [tool for tool, _ in fake.calls]
+
+
+def test_current_provider_canvas_scoped_svg_skipped_fails_with_partial_receipt() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(svg_skipped=True)
+    checkpoints: list[dict] = []
+    with pytest.raises(NativeExecutionError, match="scoped SVG readback was incomplete"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+                checkpoint=lambda value: checkpoints.append(copy.deepcopy(value)),
+            )
+        )
+    assert [tool for tool, _ in fake.calls].count("canvas_create_from_svg") == 1
+    assert checkpoints[-1]["partial_mutation"] is True
+    assert checkpoints[-1]["mutation_attempted"] is True
+    assert checkpoints[-1]["success"] is False
+
+
+def test_current_provider_canvas_postflight_extra_items_fail_closed() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(postflight_extra=True)
+    with pytest.raises(NativeExecutionError, match="postflight count does not match creates"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+
+
+def test_current_provider_canvas_resume_requires_manual_reconciliation() -> None:
+    fake = CurrentCanvasSearchOnlyMiro()
+    with pytest.raises(NativeBundleError, match="manual reconciliation"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+                resume_receipt={},
+            )
+        )
+    assert fake.calls == []
+
+
+def test_current_provider_canvas_requires_svg_readback_schema_before_create() -> None:
+    fake = CurrentCanvasSearchOnlyMiro()
+    tools = current_canvas_search_tools()
+    next(tool for tool in tools if tool["name"] == "canvas_read_as_svg")[
+        "output_schema"
+    ] = None
+    with pytest.raises(NativeBundleError, match="lacks an output schema"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=tools,
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+    assert fake.calls == []
+
+def test_current_provider_provisional_source_drift_requires_persisted_readback() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(provisional_create_source_drift=True)
+    receipt = asyncio.run(
+        execute_native_bundle(
+            call_tool=fake,
+            tool_catalogue=current_canvas_search_tools(),
+            board_alias="native-test",
+            board_url=BOARD_URL,
+            bundle=current_diagram_bundle(),
+        )
+    )
+
+    readback = receipt["completed_operations"][0]["readback"]
+    assert receipt["success"] is True
+    assert readback["created_svg"]["source_matches"] is False
+    assert readback["canvas_svg_verified"] is True
+    assert readback["canvas_svg_readback"]["source_matches"] is True
+    assert [name for name, _ in fake.calls].count("canvas_create_from_svg") == 1
+
+
+def test_current_provider_persisted_source_drift_fails_even_when_create_result_exact() -> None:
+    fake = CurrentCanvasSearchOnlyMiro(persisted_readback_source_drift=True)
+    checkpoints: list[dict] = []
+    with pytest.raises(NativeExecutionError, match="source does not match"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+                checkpoint=lambda value: checkpoints.append(copy.deepcopy(value)),
+            )
+        )
+    assert checkpoints[-1]["partial_mutation"] is True
+    assert checkpoints[-1]["success"] is False
+    assert [name for name, _ in fake.calls].count("canvas_create_from_svg") == 1
+
+
+@pytest.mark.parametrize("attack", ["foreign_marker", "detached_marker", "wrong_diagram_item"])
+def test_current_provider_rejects_spoofed_scoped_svg_item_identity(attack: str) -> None:
+    """Persisted content must be inside the unique created item's marker, not a sibling."""
+
+    class SpoofedReadback(CurrentCanvasSearchOnlyMiro):
+        async def __call__(self, tool: str, arguments: dict) -> dict:
+            result = await super().__call__(tool, arguments)
+            if tool != "canvas_read_as_svg":
+                return result
+            svg = result["svg"]
+            item_marker = ' data-miro-id="42" data-type="diagram"'
+            assert item_marker in svg
+            if attack == "foreign_marker":
+                svg = svg.replace("</svg>", '<g data-miro-id="999"></g></svg>', 1)
+            elif attack == "detached_marker":
+                svg = svg.replace(item_marker, ' data-type="diagram"', 1)
+                svg = svg.replace("</svg>", '<g data-miro-id="42"></g></svg>', 1)
+            else:
+                svg = svg.replace(item_marker, ' data-miro-id="999" data-type="diagram"', 1)
+                svg = svg.replace("</svg>", '<g data-miro-id="42"></g></svg>', 1)
+            return {**result, "svg": svg}
+
+    fake = SpoofedReadback()
+    with pytest.raises(NativeExecutionError, match="scoped SVG"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+    assert [name for name, _arguments in fake.calls].count("canvas_create_from_svg") == 1
+
+
+def test_current_provider_scoped_svg_allows_structural_ancestor_frames() -> None:
+    """Miro includes ancestor frames in scoped SVG; they are not sibling items."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<g data-miro-id="100" data-type="frame">'
+        '<g data-miro-id="101" data-type="frame">'
+        '<foreignObject data-miro-id="42" data-type="diagram" '
+        'data-title="Target" width="1600" height="900">'
+        'flowchart LR\nA --> B'
+        '</foreignObject></g></g></svg>'
+    )
+    result = _canvas_svg_evidence(
+        svg,
+        expected_title="Target",
+        expected_source="flowchart LR\nA --> B",
+        local_id=None,
+        require_item_id=False,
+        scoped_item_id="42",
+    )
+    assert result["item_id"] == "42"
+    assert result["source_matches"] is True
