@@ -199,13 +199,18 @@ class MiroMCPClient:
         if local_status.get("credential_error"):
             return "Inspect local OAuth state permissions, then run `schauwerk miro login`."
         if not local_status.get("local_state_present"):
-            return "Run `schauwerk miro login --no-browser --manual-callback --json`."
+            return (
+                "Run `schauwerk miro login --json` in a desktop terminal, "
+                "or `schauwerk miro login --no-browser --manual-callback --json` "
+                "on a headless host."
+            )
         if not live_status.get("checked"):
             return "Run `schauwerk miro doctor --json` before live board operations."
         if live_status.get("renewal_required") is True:
             return (
-                "Run `schauwerk miro login --no-browser --manual-callback --json`, "
-                "then rerun `schauwerk miro doctor --json`."
+                "Run `schauwerk miro login --json` in a desktop terminal "
+                "(or `schauwerk miro login --no-browser --manual-callback --json` "
+                "on a headless host), then rerun `schauwerk miro doctor --json`."
             )
         return "Inspect the live MCP/network error before live board operations."
 

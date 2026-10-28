@@ -62,12 +62,28 @@ Interpretation:
 
 ## Renew Miro login
 
+On a graphical workstation (including heim-pc/NixOS), run the default browser-based
+login **from a desktop terminal**. It opens the complete authorization URL directly
+and handles the loopback callback, avoiding corrupted URLs from terminal selection:
+
 ```bash
 cd /home/alex/repos/schauwerk
-.venv/bin/python -m schauwerk miro login --no-browser --manual-callback --json
+.venv/bin/python -I -m schauwerk miro login --json
 ```
 
-Use the printed Miro authorization URL, authorize it in the browser, then paste the final callback URL into the terminal prompt.
+Complete Miro consent and select the board's team in the browser. The running login
+receives the callback on `http://127.0.0.1:41739/callback` automatically.
+
+Only on headless hosts, use the manual fallback:
+
+```bash
+.venv/bin/python -I -m schauwerk miro login --no-browser --manual-callback --json
+```
+
+Copy the **entire** authorization URL, including the absolute `redirect_uri` (with
+`http://`), without trimming wrapped terminal lines. A relative or truncated
+`redirect_uri` causes Miro `invalid_request` before login. After approving access,
+paste the full final callback URL into the waiting terminal.
 
 After renewal, rerun:
 
