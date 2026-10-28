@@ -206,3 +206,18 @@ def test_no_legacy_inventory_does_not_select_incomplete_legacy_diagram_path() ->
     assert report["blocked_count"] == 0
     assert report["operation_resolutions"][0]["native_transport"] == "canvas_diagram"
     assert report["execution_operations"][0]["inventory_transport"] == "canvas_search"
+
+
+def test_canvas_search_prefers_complete_search_when_old_inventory_lacks_context_get() -> None:
+    """Extra legacy inventory tools must not disable a complete Canvas search lane."""
+    from schauwerk.surfaces.miro.capability_fallbacks import CANVAS_SEARCH_DIAGRAM_TOOLS
+
+    observed = set(BASELINE_TOOLS | CANVAS_SEARCH_DIAGRAM_TOOLS)
+    assert "context_get" not in observed
+    report = resolve_bundle_operations([diagram_operation()], observed)
+
+    assert report["blocked_count"] == 0
+    assert report["baseline_missing_tools"] == []
+    assert report["native_count"] == 1
+    assert report["execution_operations"][0]["native_transport"] == "canvas_diagram"
+    assert report["execution_operations"][0]["inventory_transport"] == "canvas_search"

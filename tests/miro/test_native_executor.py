@@ -2894,3 +2894,62 @@ def test_current_provider_persisted_source_drift_fails_even_when_create_result_e
     assert checkpoints[-1]["partial_mutation"] is True
     assert checkpoints[-1]["success"] is False
     assert [name for name, _ in fake.calls].count("canvas_create_from_svg") == 1
+
+
+@pytest.mark.parametrize("attack", ["foreign_marker", "detached_marker", "wrong_diagram_item"])
+def test_current_provider_rejects_spoofed_scoped_svg_item_identity(attack: str) -> None:
+    """Persisted content must be inside the unique created item's marker, not a sibling."""
+
+    class SpoofedReadback(CurrentCanvasSearchOnlyMiro):
+        async def __call__(self, tool: str, arguments: dict) -> dict:
+            result = await super().__call__(tool, arguments)
+            if tool != "canvas_read_as_svg":
+                return result
+            svg = result["svg"]
+            item_marker = ' data-miro-id="42" data-type="diagram"'
+            assert item_marker in svg
+            if attack == "foreign_marker":
+                svg = svg.replace("</svg>", '<g data-miro-id="999"></g></svg>', 1)
+            elif attack == "detached_marker":
+                svg = svg.replace(item_marker, ' data-type="diagram"', 1)
+                svg = svg.replace("</svg>", '<g data-miro-id="42"></g></svg>', 1)
+            else:
+                svg = svg.replace(item_marker, ' data-miro-id="999" data-type="diagram"', 1)
+                svg = svg.replace("</svg>", '<g data-miro-id="42"></g></svg>', 1)
+            return {**result, "svg": svg}
+
+    fake = SpoofedReadback()
+    with pytest.raises(NativeExecutionError, match="scoped SVG"):
+        asyncio.run(
+            execute_native_bundle(
+                call_tool=fake,
+                tool_catalogue=current_canvas_search_tools(),
+                board_alias="native-test",
+                board_url=BOARD_URL,
+                bundle=current_diagram_bundle(),
+            )
+        )
+    assert [name for name, _arguments in fake.calls].count("canvas_create_from_svg") == 1
+
+
+def test_current_provider_scoped_svg_allows_structural_ancestor_frames() -> None:
+    """Miro includes ancestor frames in scoped SVG; they are not sibling items."""
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<g data-miro-id="100" data-type="frame">'
+        '<g data-miro-id="101" data-type="frame">'
+        '<foreignObject data-miro-id="42" data-type="diagram" '
+        'data-title="Target" width="1600" height="900">'
+        'flowchart LR\nA --> B'
+        '</foreignObject></g></g></svg>'
+    )
+    result = _canvas_svg_evidence(
+        svg,
+        expected_title="Target",
+        expected_source="flowchart LR\nA --> B",
+        local_id=None,
+        require_item_id=False,
+        scoped_item_id="42",
+    )
+    assert result["item_id"] == "42"
+    assert result["source_matches"] is True

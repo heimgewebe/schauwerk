@@ -982,6 +982,7 @@ def _canvas_svg_evidence(
     local_id: str | None,
     require_item_id: bool,
     require_source_match: bool = True,
+    scoped_item_id: str | None = None,
 ) -> dict[str, Any]:
     if not svg.strip() or re.search(r"<!\s*(?:DOCTYPE|ENTITY)\b", svg, re.IGNORECASE):
         raise MiroToolError("Miro Canvas returned unsafe or empty diagram SVG")
@@ -993,6 +994,42 @@ def _canvas_svg_evidence(
         raise MiroToolError("Miro Canvas diagram readback is not SVG")
 
     scope = root
+    if scoped_item_id is not None:
+        # Miro may include ancestor frames for geometry. Other marked items
+        # are admissible only on the ancestor chain of the requested item;
+        # sibling or descendant IDs cannot supply its diagram content.
+        marked = [
+            element for element in root.iter()
+            if element.get("data-miro-id") is not None
+        ]
+        selected = [
+            element for element in marked
+            if element.get("data-miro-id") == scoped_item_id
+        ]
+        if (
+            _CANVAS_ITEM_ID.fullmatch(scoped_item_id) is None
+            or len(selected) != 1
+            or any(
+                _CANVAS_ITEM_ID.fullmatch(element.get("data-miro-id", "")) is None
+                for element in marked
+            )
+        ):
+            raise MiroToolError(
+                "Miro Canvas scoped SVG did not uniquely identify the created item"
+            )
+        scope = selected[0]
+        parents = {
+            child: parent for parent in root.iter() for child in parent
+        }
+        ancestors: set[ET.Element] = set()
+        parent = parents.get(scope)
+        while parent is not None:
+            ancestors.add(parent)
+            parent = parents.get(parent)
+        if any(element is not scope and element not in ancestors for element in marked):
+            raise MiroToolError(
+                "Miro Canvas scoped SVG contains an unrelated item id"
+            )
     if local_id is not None:
         local_matches = [element for element in root.iter() if element.get("id") == local_id]
         if len(local_matches) != 1:
@@ -1003,6 +1040,18 @@ def _canvas_svg_evidence(
         for element in scope.iter()
         if _xml_local_name(element.tag) == "foreignObject" and element.get("data-type") == "diagram"
     ]
+    if scoped_item_id is not None:
+        # Reject a matching diagram outside the marked item's subtree, or
+        # additional diagrams hidden beside it in the provider SVG.
+        all_diagrams = [
+            element for element in root.iter()
+            if _xml_local_name(element.tag) == "foreignObject"
+            and element.get("data-type") == "diagram"
+        ]
+        if len(diagrams) != 1 or len(all_diagrams) != 1:
+            raise MiroToolError(
+                "Miro Canvas scoped SVG lacks exactly one diagram bound to the created item"
+            )
     if len(diagrams) != 1:
         if local_id is not None:
             raise MiroToolError("Miro Canvas SVG lacks exactly one structured diagram")
@@ -2591,6 +2640,7 @@ async def execute_native_bundle(
                             expected_source=operation["canvas_mermaid_source"],
                             local_id=None,
                             require_item_id=False,
+                            scoped_item_id=item_id if canvas_search_only else None,
                         )
                         svg_readback_evidence.pop("item_id", None)
                     if created_evidence is None:

@@ -215,7 +215,9 @@ def resolve_bundle_operations(
         )
         and CANVAS_SEARCH_DIAGRAM_TOOLS.issubset(observed)
         and "user_who_am_i" in observed
-        and not BASELINE_TOOLS.issubset(observed)
+        # The old diagram transports also need context_get. Merely having the
+        # old inventory tools does not make that route complete.
+        and not (BASELINE_TOOLS | {"context_get"}).issubset(observed)
     )
     baseline_missing = sorted(
         (frozenset({"user_who_am_i"}) if canvas_search_only else BASELINE_TOOLS) - observed
