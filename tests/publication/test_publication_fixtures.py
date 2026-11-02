@@ -1896,6 +1896,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     assert json_canvas_text_fit["evidence_digest"] == digest_mapping(
         json_canvas_text_fit, "evidence_digest"
     )
+    full_editor_technical_superseded_files = {
+        "src/schauwerk/visual/standalone_editor.py",
+        "Dockerfile",
+    }
     assert set(json_canvas_text_fit["source_bindings"]) == (
         json_canvas_text_fit_superseded_files
     )
@@ -1909,6 +1913,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | focus_default_review_fix_superseded_files
             | single_workspace_exports_superseded_files
             | process_feedback_routing_superseded_files
+            | full_editor_technical_superseded_files
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -13593,3 +13598,29 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     }
     assert "Miro live authorization" in receipt["does_not_establish"]
     assert "GitHub repository security settings" in receipt["does_not_establish"]
+
+
+
+def test_schaubild_full_editing_source_supersession_is_technically_bound() -> None:
+    """New bundle source has exact technical evidence; old acceptance stays unchanged."""
+    technical = json.loads(
+        (ROOT / "docs/operators/evidence/schaubild-full-editing-20261102/technical-proof.json")
+        .read_text(encoding="utf-8")
+    )
+    assert technical["schema_version"] == "schauwerk-schaubild-full-editing-technical-proof.v1"
+    assert technical["supersedes_source_bindings"] == ["src/schauwerk/visual/standalone_editor.py"]
+    assert technical["validation"]["browser_chromium_edit_save_reload_export"] is True
+    assert technical["validation"]["headless_browser_viewports"] == [
+        [390, 844], [768, 1024], [1280, 900]
+    ]
+    assert technical["validation"]["native_image_build"] is True
+    assert technical["validation"]["container_import_runtime"] is True
+    assert technical["validation"]["native_http_render_api"] is True
+    assert technical["does_not_establish"] == [
+        "visual_user_acceptance",
+        "production_deployment",
+        "commonthing_live_function",
+    ]
+    for path, digest in technical["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
+    assert technical["evidence_digest"] == digest_mapping(technical, "evidence_digest")

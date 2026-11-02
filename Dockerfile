@@ -35,6 +35,7 @@ COPY src/schauwerk/resources/native_viewer/__init__.py \
      /app/src/schauwerk/resources/native_viewer/
 COPY src/schauwerk/resources/standalone_editor/__init__.py \
      src/schauwerk/resources/standalone_editor/assets.py \
+     src/schauwerk/resources/standalone_editor/representation_editor.py \
      /app/src/schauwerk/resources/standalone_editor/
 
 RUN chmod -R a=rX /app/src
