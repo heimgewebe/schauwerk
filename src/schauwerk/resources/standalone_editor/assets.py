@@ -2318,7 +2318,7 @@ function showStart() {
   pendingInitialCollisionSafeLayout = false;
   pendingCreationDefaults = false;
   pendingExport = null;
-  exportRequestVersion += 1;
+  if (typeof exportRequestVersion === "number") exportRequestVersion += 1;
   editorReady = false;
   nativeCanvasRenderStale = false;
   renderedNativeCanvasSnapshot = null;
@@ -3049,7 +3049,7 @@ async function renderedImageToPdfBlob(imageBlob) {
 }
 
 async function exportNative(format) {
-  const requestedVersion = exportRequestVersion;
+  const requestedVersion = format === "pdf" ? exportRequestVersion : 0;
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Schaubild ist noch nicht bereit");
     return;
@@ -3109,7 +3109,7 @@ async function exportNative(format) {
     try {
       const svgBlob = new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" });
       const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
-      if (requestedVersion !== exportRequestVersion) return;
+      if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
       prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
       setStatus(format === "pdf"
         ? "PDF aus aktueller nativer Darstellung bereit"
@@ -3117,7 +3117,7 @@ async function exportNative(format) {
           ? "SVG aus aktuellem Canvas-Dokument bereit"
           : "SVG aus aktueller nativer Darstellung bereit");
     } catch (_) {
-      if (requestedVersion === exportRequestVersion) {
+      if (format !== "pdf" || requestedVersion === exportRequestVersion) {
         setStatus("PDF konnte nicht vorbereitet werden");
       }
     }
@@ -3134,11 +3134,11 @@ async function exportNative(format) {
     const svg = await response.text();
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
-    if (requestedVersion !== exportRequestVersion) return;
+    if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
     prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
     setStatus(format === "pdf" ? "PDF bereit" : "SVG bereit");
   } catch (_) {
-    if (requestedVersion === exportRequestVersion) {
+    if (format !== "pdf" || requestedVersion === exportRequestVersion) {
       setStatus(format === "pdf" ? "PDF konnte nicht vorbereitet werden" : "SVG konnte nicht vorbereitet werden");
     }
   }
@@ -3290,7 +3290,9 @@ window.addEventListener("message", (event) => {
       } else if (wanted === "png" || wanted === "svg" || wanted === "pdf") {
         const responseFormat = wanted === "pdf" ? "png" : wanted;
         if (message.format !== responseFormat) throw new Error("Unerwartete Exportantwort.");
-        validatedData = validateExportDataUri(message.data, responseFormat);
+        validatedData = wanted === "pdf"
+          ? validateExportDataUri(message.data, "png")
+          : validateExportDataUri(message.data, wanted);
         if (typeof message.xml === "string") saveDraft(validateDiagramXml(message.xml));
         filename = `${safeFilename(currentTitle)}.${wanted}`;
         label = wanted.toUpperCase();

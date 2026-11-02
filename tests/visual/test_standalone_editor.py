@@ -49,69 +49,6 @@ def _js_string_constant(source: str, name: str) -> str:
     return str(json.loads(match.group("value")))
 
 
-
-def test_pdf_export_blob_is_valid_single_page_and_landscape_or_portrait(tmp_path: Path) -> None:
-    if not shutil.which("node"):
-        pytest.skip("node is not installed")
-
-    from PIL import Image
-
-    output = tmp_path / "editor"
-    build_standalone_editor(output)
-    module_source = (output / "canvas-import.js").read_bytes()
-    module_url = "data:text/javascript;base64," + base64.b64encode(module_source).decode("ascii")
-    jpeg_stream = io.BytesIO()
-    Image.new("RGB", (4, 2), (255, 255, 255)).save(jpeg_stream, format="JPEG")
-    jpeg_encoded = base64.b64encode(jpeg_stream.getvalue()).decode("ascii")
-
-    code = """
-import { jpegToPdfBlob } from __MODULE__;
-const jpeg = Uint8Array.from(Buffer.from(__JPEG__, "base64"));
-for (const [w, h, mediaBox] of [
-  [1800, 900, "/MediaBox [0 0 1190.55 841.89]"],
-  [900, 1800, "/MediaBox [0 0 841.89 1190.55]"],
-]) {
-  const blob = jpegToPdfBlob(jpeg, w, h);
-  if (blob.type !== "application/pdf") throw new Error("PDF MIME type is wrong");
-  const bytes = Buffer.from(await blob.arrayBuffer());
-  const text = bytes.toString("latin1");
-  if (!text.startsWith("%PDF-1.4\\n") || !text.endsWith("%%EOF\\n")) {
-    throw new Error("PDF header/trailer is invalid");
-  }
-  if (!text.includes(mediaBox) || !text.includes("/Width " + w + " /Height " + h)
-      || !text.includes("/Count 1") || !text.includes("/DCTDecode")) {
-    throw new Error("PDF is missing image/page metadata");
-  }
-  if (bytes.indexOf(Buffer.from(jpeg)) < 0) throw new Error("PDF omits JPEG data");
-  const offsetMatch = /startxref\\n(\\d+)\\n%%EOF/.exec(text);
-  if (!offsetMatch) throw new Error("PDF xref offset is missing");
-  const xref = Number(offsetMatch[1]);
-  if (text.slice(xref, xref + 5) !== "xref\\n") throw new Error("PDF xref offset is wrong");
-  const entries = text.slice(xref).split("\\n");
-  if (entries[1] !== "0 6") throw new Error("PDF xref object count is wrong");
-  for (let number = 1; number <= 5; number += 1) {
-    const offset = Number(entries[2 + number].slice(0, 10));
-    if (!text.startsWith(number + " 0 obj\\n", offset)) {
-      throw new Error("PDF object offset is wrong: " + number);
-    }
-  }
-}
-for (const invalid of [
-  () => jpegToPdfBlob(Uint8Array.from([0, 1, 2, 3]), 4, 2),
-  () => jpegToPdfBlob(jpeg, 0, 2),
-  () => jpegToPdfBlob(jpeg, 9000, 2),
-]) {
-  try { invalid(); throw new Error("invalid PDF input accepted"); }
-  catch (error) { if (error.message === "invalid PDF input accepted") throw error; }
-}
-""".replace("__MODULE__", repr(module_url)).replace("__JPEG__", repr(jpeg_encoded))
-    run = subprocess.run(
-        ["node", "--input-type=module", "-e", code],
-        text=True, capture_output=True, check=False, timeout=20,
-    )
-    assert run.returncode == 0, run.stderr
-
-
 def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
 
@@ -204,7 +141,7 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert "enforceReadableInitialScale(message.scale);" in app_js
     assert 'actionName: "zoomIn"' in app_js
     assert 'format: "xml"' not in app_js
-    assert "validateExportDataUri(message.data, responseFormat)" in app_js
+    assert "validateExportDataUri(message.data, wanted)" in app_js
     assert "exportDataUriToBlob(validatedData, wanted)" in app_js
     assert "downloadDataUri(" not in app_js
     assert "preparedDownloadUrl = URL.createObjectURL(blob)" in app_js
@@ -232,11 +169,6 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
     assert 'id="projectButton"' in index_html
     assert 'data-export="png"' in index_html
     assert 'data-export="svg"' in index_html
-    assert 'data-export="pdf"' in index_html
-    assert "jpegToPdfBlob" in helper_js
-    assert "renderedImageToPdfBlob" in app_js
-    assert 'format === "png" || format === "pdf"' in app_js
-    assert 'wanted === "png" || wanted === "svg" || wanted === "pdf"' in app_js
     assert 'id="fontDefaultInput" type="number" min="8" max="72" step="1"' in index_html
     assert 'id="fontDecreaseButton"' in index_html
     assert 'id="fontPanelButton"' in index_html
@@ -562,7 +494,6 @@ let currentNativeCanvas = null;
 let currentLegacyXml = null;
 let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
 let nativeCanvasRenderStale = false;
-let exportRequestVersion = 0;
 let currentTitle = "Representation";
 let liveSvgValue = '<svg xmlns="http://www.w3.org/2000/svg" id="live"></svg>';
 let statusText = "";
