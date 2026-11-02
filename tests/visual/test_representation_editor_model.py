@@ -282,7 +282,28 @@ function assertSaved(model) {
 }
 try {
   const isReload = sessionStorage.getItem("schauwerk-editor-e2e-reload") === "1";
-  if (isReload) {
+  const isRecoveryReload = sessionStorage.getItem("schauwerk-editor-e2e-recovery") === "1";
+  if (isRecoveryReload) {
+    sessionStorage.removeItem("schauwerk-editor-e2e-recovery");
+    const oldDigest = sessionStorage.getItem("schauwerk-editor-e2e-old-digest");
+    sessionStorage.removeItem("schauwerk-editor-e2e-old-digest");
+    await until(()=>!document.querySelector("#restoreButton").hidden,
+      "Stored failed edit was not available after reload",1200);
+    document.querySelector("#restoreButton").click();
+    const frameDigest=()=>document.querySelector("#editorFrame")
+      ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
+    await until(()=>Boolean(frameDigest()) && frameDigest() !== oldDigest,
+      "Failed rename recovery did not render",1200);
+    const newDigest=frameDigest();
+    const positions=JSON.parse(localStorage.getItem(
+      "schauwerk.native-viewer.layout.v1."+newDigest)||"{}");
+    if (positions.alpha?.x!==37 || positions.alpha?.y!==19 ||
+        positions.b?.x!==6 || positions.b?.y!==-13 || positions.a) {
+      throw new Error("Recovered local draft lost renamed-node displacement");
+    }
+    assertSaved(saved());
+    document.documentElement.dataset.fullEditorBrowser = "pass";
+  } else if (isReload) {
     sessionStorage.removeItem("schauwerk-editor-e2e-reload");
     await until(()=>!document.querySelector("#restoreButton").hidden,"restore button missing");
     document.querySelector("#restoreButton").click();
@@ -346,8 +367,21 @@ try {
     change(field(newEdge,"Ziel","select"),"node_1");
     document.querySelector("#contentSaveButton").click();
     const retryMode=new URLSearchParams(location.search);
+    if (retryMode.has("reload-recovery")) {
+      await until(()=>!document.querySelector("#nativeRetryButton").hidden,
+        "Recoverable render failure was not observed",1200);
+      const draft = Object.keys(localStorage).map(key => {
+        try { return JSON.parse(localStorage.getItem(key)); } catch (_) { return null; }
+      }).find(item => item?.layoutIdMapping?.nodeIds?.a === "alpha");
+      if (draft?.validInputDigest !== oldDigest) {
+        throw new Error("Recovery draft lacks exact old-ID mapping");
+      }
+      sessionStorage.setItem("schauwerk-editor-e2e-old-digest", oldDigest);
+      sessionStorage.setItem("schauwerk-editor-e2e-recovery", "1");
+      location.reload();
+    } else {
     if (retryMode.has("retry") || retryMode.has("reopen") ||
-        retryMode.has("resubmit")) {
+        retryMode.has("resubmit") || retryMode.has("reopen-resubmit")) {
       await until(()=>!document.querySelector("#nativeRetryButton").hidden,
         "Transient renderer failure did not offer retry",1200);
       if (retryMode.has("resubmit")) {
@@ -358,7 +392,7 @@ try {
         document.querySelector("#contentSaveButton").click();
       } else {
         dialog.close("cancel");
-        if (retryMode.has("reopen")) {
+        if (retryMode.has("reopen") || retryMode.has("reopen-resubmit")) {
           document.querySelector(".workspace-tools-menu").open=true;
           document.querySelector("#contentEditButton").click();
           await until(()=>dialog.open && row("Element · alpha"),
@@ -366,6 +400,12 @@ try {
           // A remount starts at the pending IDs. Compose old-to-current mapping.
           change(field(row("Element · alpha"),"Titel","input"),"Neue Beschriftung");
           document.querySelector("#contentSaveButton").click();
+          if (retryMode.has("reopen-resubmit")) {
+            await until(()=>!document.querySelector("#nativeRetryButton").hidden
+              && !document.querySelector("#contentSaveButton").disabled,
+              "Second failed save did not preserve open form",1200);
+            document.querySelector("#contentSaveButton").click();
+          }
         } else {
           document.querySelector("#nativeRetryButton").click();
         }
@@ -391,6 +431,7 @@ try {
     }
     sessionStorage.setItem("schauwerk-editor-e2e-reload","1");
     location.reload();
+    }
   }
 } catch (error) {
   document.documentElement.dataset.fullEditorBrowser = "fail";
@@ -403,7 +444,8 @@ try {
     ("width", "height", "retry_mode"),
     [(1280, 900, ""), (768, 1024, ""), (390, 844, ""),
      (1280, 900, "retry"), (1280, 900, "reopen"),
-     (1280, 900, "resubmit")],
+     (1280, 900, "resubmit"), (1280, 900, "reopen-resubmit"),
+     (1280, 900, "reload-recovery")],
 )
 def test_canonical_editor_browser_reopen_structure_and_export(
     tmp_path: Path, width: int, height: int, retry_mode: str
@@ -454,7 +496,9 @@ def test_canonical_editor_browser_reopen_structure_and_export(
             cls = type(self)
             if self.path == "/api/native-viewer":
                 cls.post_count += 1
-                if cls.post_count == 2:
+                if cls.post_count == 2 or (
+                    retry_mode == "reopen-resubmit" and cls.post_count == 3
+                ):
                     size = int(self.headers.get("Content-Length", "0"))
                     self.rfile.read(size)
                     self._send_json(

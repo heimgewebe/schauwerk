@@ -393,39 +393,102 @@ copyAiGuideButton.addEventListener("click", async () => {{
     if (mapping) pendingCanonicalLayoutRemap = null;""",
         1,
     )
+    # Keep original source ID mappings in the same recovery draft as the
+    # failed representation. Without this, reload preserves content but loses
+    # the user's manually displaced nodes after renaming their IDs.
+    native_draft_literal = (
+        "  const draft = {\n"
+        "    title: safeFilename(title),\n"
+        "    representation,\n"
+        "    savedAt: Date.now(),\n"
+        "  };"
+    )
+    if app_js.count(native_draft_literal) != 1:
+        raise StandaloneEditorError("native draft persistence template has drifted")
+    app_js = app_js.replace(
+        native_draft_literal,
+        native_draft_literal + """
+  if (
+    typeof pendingCanonicalLayoutRemap !== "undefined"
+    && pendingCanonicalLayoutRemap?.representation === representation
+    && recovery?.validInputDigest === pendingCanonicalLayoutRemap.previousDigest
+  ) {
+    draft.layoutIdMapping = {
+      previousDigest: pendingCanonicalLayoutRemap.previousDigest,
+      nodeIds: pendingCanonicalLayoutRemap.nodeIds,
+    };
+  }""",
+        1,
+    )
+
+    native_restore_literal = (
+        "    void launchNative(\n"
+        "      {\n"
+        "        nativeRepresentation: draft.representation,\n"
+    )
+    if app_js.count(native_restore_literal) != 1:
+        raise StandaloneEditorError("native draft restore template has drifted")
+    app_js = app_js.replace(
+        native_restore_literal,
+        """    // Bind the recovered candidate to the exact original layout digest.
+    // A local draft without this proof retains its old restore behavior.
+    if (typeof pendingCanonicalLayoutRemap !== "undefined") {
+      const stored = draft.layoutIdMapping;
+      const entries = stored?.nodeIds && typeof stored.nodeIds === "object"
+        && !Array.isArray(stored.nodeIds)
+        ? Object.entries(stored.nodeIds) : null;
+      const currentIds = new Set(
+        Array.isArray(draft.representation?.nodes)
+          ? draft.representation.nodes.map(node => node.id) : [],
+      );
+      const valid = stored?.previousDigest === draft.validInputDigest
+        && /^[0-9a-f]{64}$/.test(String(stored?.previousDigest || ""))
+        && entries !== null && entries.length <= currentIds.size
+        && entries.every(([from, to]) =>
+          /^[a-z][a-z0-9_]{0,63}$/.test(from)
+          && /^[a-z][a-z0-9_]{0,63}$/.test(to)
+          && currentIds.has(to));
+      pendingCanonicalLayoutRemap = valid
+        ? { previousDigest: stored.previousDigest,
+            nodeIds: Object.fromEntries(entries),
+            representation: draft.representation }
+        : null;
+    }
+""" + native_restore_literal,
+        1,
+    )
     rendered["app.js"] = (
         app_js
         + "\n"
         + REPRESENTATION_EDITOR_JS
         + r"""
 let canonicalRepresentationForm = null;
-let canonicalRepresentationFormBaseline = null;
+let canonicalRepresentationFormSourceIds = null;
 let pendingCanonicalLayoutRemap = null;
 renderRepresentationContentEditor = (representation) => {
-  canonicalRepresentationFormBaseline = representation;
+  // Freeze the original source IDs at mount time, not at each submit.
+  // Repeated transient failures may replace the candidate object, while this
+  // form's baseline remains the same until the user actually reopens it.
+  const retained = nativeCanvasRenderStale
+    && pendingCanonicalLayoutRemap?.representation === representation
+    && pendingCanonicalLayoutRemap.previousDigest === currentNativeInputDigest
+    ? pendingCanonicalLayoutRemap.nodeIds : null;
+  canonicalRepresentationFormSourceIds = retained
+    ? { ...retained }
+    : Object.fromEntries(representation.nodes.map(node => [node.id, node.id]));
   canonicalRepresentationForm = mountRepresentationEditor(elements.contentFields, representation);
   return canonicalRepresentationForm.first;
 };
 representationFromContentEditor = () => {
   if (!canonicalRepresentationForm) return null;
-  // A failed render keeps the edited representation as the retry candidate.
-  // Reopening its form starts at already-renamed IDs, but the saved offsets
-  // still belong to the previous successfully rendered representation.
-  const previous = nativeCanvasRenderStale
-    && pendingCanonicalLayoutRemap?.representation === currentRepresentation
-    && pendingCanonicalLayoutRemap.previousDigest === currentNativeInputDigest
-    // Composition is needed only after remounting against the pending state.
-    // Re-submitting an unchanged open form already carries original source IDs.
-    && canonicalRepresentationFormBaseline === currentRepresentation
-    ? pendingCanonicalLayoutRemap : null;
   try {
     const value = canonicalRepresentationForm.getValue();
     const currentIds = canonicalRepresentationForm.getNodeIdMapping();
-    const nodeIds = previous
-      ? Object.fromEntries(Object.entries(previous.nodeIds)
-          .filter(([, current]) => Object.hasOwn(currentIds, current))
-          .map(([original, current]) => [original, currentIds[current]]))
-      : currentIds;
+    const nodeIds = Object.fromEntries(
+      Object.entries(canonicalRepresentationFormSourceIds)
+        .filter(([, baseline]) => Object.hasOwn(currentIds, baseline))
+        .map(([original, baseline]) => [original, currentIds[baseline]]),
+    );
     pendingCanonicalLayoutRemap = {
       previousDigest: currentNativeInputDigest,
       nodeIds,
