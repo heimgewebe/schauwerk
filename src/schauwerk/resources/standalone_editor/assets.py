@@ -3187,8 +3187,12 @@ window.addEventListener("message", (event) => {
         message.canvas &&
         typeof message.canvas === "object"
       ) {
-        exportRequestVersion += 1;
-        clearPreparedDownload();
+        const previousCanvas = nativeCanvasSnapshot(currentNativeCanvas);
+        const incomingCanvas = nativeCanvasSnapshot(message.canvas);
+        if (previousCanvas === null || incomingCanvas === null || previousCanvas !== incomingCanvas) {
+          exportRequestVersion += 1;
+          clearPreparedDownload();
+        }
         currentNativeDocument = message.document;
         currentNativeCanvas = message.canvas;
         const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);
