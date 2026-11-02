@@ -193,3 +193,227 @@ const data=JSON.parse(JSON.stringify(sample));
 data.intent='knowledge_map';
 assert.throws(()=>validate(data),/JSON Canvas/);
 """)
+
+
+def test_composed_product_bundle_exposes_complete_editor_without_extra_asset() -> None:
+    """Keep the standalone four-file output compatible with existing deployments."""
+    from schauwerk.visual.standalone_editor import EDITOR_ORIGIN, _render_assets
+
+    assets = _render_assets(
+        editor_origin=EDITOR_ORIGIN,
+        editor_url=f"{EDITOR_ORIGIN}/",
+        public_base_path="/schaubild",
+    )
+    assert set(assets) == {"app.js", "canvas-import.js", "index.html", "styles.css"}
+    assert "mountRepresentationEditor" in assets["app.js"]
+    assert 'renderRepresentationContentEditor = (representation)' in assets["app.js"]
+    assert "representationFromContentEditor = ()" in assets["app.js"]
+    assert "Schaubild bearbeiten</h2>" in assets["index.html"]
+    assert "Struktur, Typen und Zuordnungen bleiben unverändert" not in assets["index.html"]
+
+
+BROWSER_EDITOR_SMOKE_JS = r"""const until = async (condition, label, attempts = 700) => {
+  for (let i=0;i<attempts;i++) {
+    if (condition()) return;
+    await new Promise(resolve => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+function row(legend) {
+  return [...document.querySelectorAll("#contentFields fieldset.content-entry")]
+    .find(box => box.querySelector(":scope > legend")?.textContent?.trim() === legend);
+}
+function field(row, caption, selector) {
+  const label = [...row.querySelectorAll("label")]
+    .find(element => element.querySelector(":scope > span")?.textContent?.trim() === caption);
+  if (!label) throw new Error("Field missing: "+caption);
+  const control = label.querySelector(selector);
+  if (!control) throw new Error("Control missing: "+caption);
+  return control;
+}
+function change(input, value, type="change") {
+  input.value = value;
+  input.dispatchEvent(new Event(type,{bubbles:true}));
+}
+function press(box, caption) {
+  const button = [...box.querySelectorAll(":scope > button")]
+    .find(element => element.textContent?.trim() === caption);
+  if (!button) throw new Error("Button missing: "+caption);
+  button.click();
+}
+function saved() {
+  for (const key of Object.keys(localStorage)) {
+    try {
+      const record=JSON.parse(localStorage.getItem(key));
+      if (record?.representation?.schema_version === "schauwerk-representation-input.v1"
+        && record.representation.id === "e2e_demo") return record.representation;
+    } catch (_) {}
+  }
+  return null;
+}
+function assertSaved(model) {
+  if (!model || model.groups.length !== 2 || model.nodes.length !== 3 ||
+      model.edges.length !== 2) throw new Error("Structural mutations did not autosave");
+  if (!model.groups.some(group=>group.id==="team")) throw new Error("Group ID lost");
+  if (!model.nodes.some(node=>node.id==="alpha" && node.group==="team")) {
+    throw new Error("Renamed node/group references lost");
+  }
+  if (!model.nodes.some(node=>node.id==="node_1" && node.kind==="risk")) {
+    throw new Error("Node creation and kind edit lost");
+  }
+  if (!model.edges.some(edge=>edge.id==="edge_1" &&
+    edge.kind==="feedback" && edge.from==="alpha" && edge.to==="node_1")) {
+      throw new Error("Edge creation, kind or reattachment lost");
+  }
+}
+try {
+  const isReload = sessionStorage.getItem("schauwerk-editor-e2e-reload") === "1";
+  if (isReload) {
+    sessionStorage.removeItem("schauwerk-editor-e2e-reload");
+    await until(()=>!document.querySelector("#restoreButton").hidden,"restore button missing");
+    document.querySelector("#restoreButton").click();
+    await until(()=>!document.querySelector("#workspace").hidden &&
+      document.querySelector("#editorFrame")?.src?.includes("/native/") &&
+      !document.querySelector("#contentEditButton").hidden,"restored editor not ready");
+    assertSaved(saved());
+    const restoredMenu=document.querySelector(".workspace-tools-menu");
+    restoredMenu.open=true;
+    await until(()=>document.querySelector("#contentEditButton").getBoundingClientRect().width>0,
+      "Restored editing action not reachable");
+    document.querySelector("#contentEditButton").click();
+    await until(()=>document.querySelector("#contentDialog").open, "restored editor form missing");
+    if (!row("Element · alpha") || !row("Gruppe · team")) {
+      throw new Error("Restored editable structures missing");
+    }
+    document.documentElement.dataset.fullEditorBrowser = "pass";
+  } else {
+    const source = {
+      schema_version:"schauwerk-representation-input.v1",id:"e2e_demo",
+      title:"Diagramm",purpose:"Echte Bearbeitung",intent:"process",
+      groups:[{id:"g",label:"Alte Gruppe"}],
+      nodes:[{id:"a",label:"Alpha",kind:"concept",group:"g"},
+             {id:"b",label:"Beta",kind:"human"}],
+      edges:[{id:"ab",from:"a",to:"b",label:"Folgt",kind:"flow"}],
+      requirements:{formal_relations:true},requested_formats:["canvas"]
+    };
+    document.querySelector("#sourceInput").value=JSON.stringify(source);
+    document.querySelector("#openPasteButton").click();
+    await until(()=>!document.querySelector("#workspace").hidden &&
+      document.querySelector("#editorFrame")?.src?.includes("/native/") &&
+      !document.querySelector("#contentEditButton").hidden,"canonical edit action not ready");
+    const toolsMenu=document.querySelector(".workspace-tools-menu");
+    toolsMenu.open=true;
+    await until(()=>document.querySelector("#contentEditButton").getBoundingClientRect().width>0,
+      "Editing action not reachable in Tools");
+    document.querySelector("#contentEditButton").click();
+    const dialog=document.querySelector("#contentDialog");
+    await until(()=>dialog.open && row("Gruppe · g"),"canonical edit form missing");
+    const bounds=dialog.getBoundingClientRect();
+    if (bounds.left < -2 || bounds.right > innerWidth+2) {
+      throw new Error("Edit dialog exceeds viewport: "+JSON.stringify({
+        width:innerWidth,left:bounds.left,right:bounds.right
+      }));
+    }
+    change(field(row("Gruppe · g"),"ID","input"),"team");
+    change(field(row("Element · a"),"ID","input"),"alpha");
+    press(row("Gruppen"),"+ Gruppe");
+    press(row("Elemente"),"+ Element");
+    change(field(row("Element · node_1"),"Typ","select"),"risk");
+    press(row("Verbindungen"),"+ Verbindung");
+    const newEdge=row("Verbindung · edge_1");
+    change(field(newEdge,"Typ","select"),"feedback");
+    change(field(newEdge,"Anfang","select"),"alpha");
+    change(field(newEdge,"Ziel","select"),"node_1");
+    document.querySelector("#contentSaveButton").click();
+    await until(()=>!dialog.open && saved()?.nodes.length === 3,
+      "Native save did not finish",1200);
+    assertSaved(saved());
+    const button=document.querySelector("#projectButton");
+    button.click();
+    const dl=document.querySelector("#downloadLink");
+    if (dl.hidden || !dl.download.endsWith(".schauwerk.json")) {
+      throw new Error("Editable project export missing");
+    }
+    sessionStorage.setItem("schauwerk-editor-e2e-reload","1");
+    location.reload();
+  }
+} catch (error) {
+  document.documentElement.dataset.fullEditorBrowser = "fail";
+  document.documentElement.dataset.fullEditorError = String(error?.stack||error);
+}
+"""
+
+
+@pytest.mark.parametrize(("width", "height"), [(1280, 900), (768, 1024), (390, 844)])
+def test_canonical_editor_browser_reopen_structure_and_export(
+    tmp_path: Path, width: int, height: int
+) -> None:
+    """End-to-end local Chrome: edit, persist, export and reload a canonical diagram."""
+    import os
+    import shutil
+    import subprocess
+    import threading
+    from functools import partial
+    from http.server import ThreadingHTTPServer
+
+    from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_standalone_editor
+
+    chrome = (
+        os.environ.get("CHROME_BIN")
+        or shutil.which("google-chrome")
+        or shutil.which("chromium")
+        or shutil.which("chromium-browser")
+    )
+    if not chrome:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome/Chromium required for canonical editor browser test in CI")
+        pytest.skip("Chrome/Chromium unavailable")
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    (output / "canonical-full-editor-browser.js").write_text(
+        BROWSER_EDITOR_SMOKE_JS,
+        encoding="utf-8",
+    )
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    assert index.count("</body>") == 1
+    index_path.write_text(
+        index.replace(
+            "</body>",
+            '<script type="module" src="canonical-full-editor-browser.js"></script></body>',
+        ),
+        encoding="utf-8",
+    )
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(_EditorRequestHandler, directory=str(output)),
+    )
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        profile = tmp_path / "chrome-profile"
+        command = [
+            chrome,
+            "--headless=new",
+            "--no-first-run",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--run-all-compositor-stages-before-draw",
+            f"--window-size={width},{height}",
+            "--virtual-time-budget=25000",
+            f"--user-data-dir={profile}",
+            "--dump-dom",
+            f"http://127.0.0.1:{server.server_address[1]}/",
+        ]
+        result = subprocess.run(command, capture_output=True, text=True, timeout=50)
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=3)
+    assert result.returncode == 0, result.stderr[-4000:]
+    assert 'data-full-editor-browser="pass"' in result.stdout, (
+        result.stdout[-3000:] + "\n" + result.stderr[-2500:]
+    )

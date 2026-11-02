@@ -31,6 +31,7 @@ from typing import Any, Final
 from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
+from schauwerk.resources.standalone_editor.representation_editor import REPRESENTATION_EDITOR_JS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
 from schauwerk.visual.json_fidelity import (
     JsonFidelityError,
@@ -360,7 +361,56 @@ copyAiGuideButton.addEventListener("click", async () => {{
   }}
 }});
 """
-    rendered["app.js"] = app_js
+    # Build the canonical editing form into the existing app.js module.
+    # Keep the four-file standalone output contract and fail on template drift.
+    for marker in (
+        "function renderRepresentationContentEditor(representation) {",
+        "function representationFromContentEditor() {",
+        "function setContentDialogFeedback(message) {",
+    ):
+        if app_js.count(marker) != 1:
+            raise StandaloneEditorError(
+                "canonical representation editing integration template has drifted"
+            )
+    rendered["app.js"] = (
+        app_js
+        + "\n"
+        + REPRESENTATION_EDITOR_JS
+        + r"""
+let canonicalRepresentationForm = null;
+renderRepresentationContentEditor = (representation) => {
+  canonicalRepresentationForm = mountRepresentationEditor(elements.contentFields, representation);
+  return canonicalRepresentationForm.first;
+};
+representationFromContentEditor = () => {
+  if (!canonicalRepresentationForm) return null;
+  try {
+    return canonicalRepresentationForm.getValue();
+  } catch (error) {
+    setContentDialogFeedback(
+      error instanceof Error ? error.message : "Eingaben konnten nicht geprüft werden."
+    );
+    return null;
+  }
+};
+"""
+    )
+    replacement_markers = {
+        '<h2 id="contentDialogTitle">Texte im Schaubild</h2>': (
+            '<h2 id="contentDialogTitle">Schaubild bearbeiten</h2>'
+        ),
+        "Titel, Zweck, Gruppen, Elemente und Verbindungen bearbeiten. "
+        "Struktur, Typen und Zuordnungen bleiben unverändert.": (
+            "Titel, Zweck, Typen, Gruppen, Elemente, Verbindungen und "
+            "Zuordnungen bearbeiten. Änderungen werden erst mit Übernehmen aktiv."
+        ),
+    }
+    for previous, replacement in replacement_markers.items():
+        if rendered["index.html"].count(previous) != 1:
+            raise StandaloneEditorError(
+                "canonical representation editing dialog template has drifted"
+            )
+        rendered["index.html"] = rendered["index.html"].replace(previous, replacement, 1)
     return rendered
 
 
