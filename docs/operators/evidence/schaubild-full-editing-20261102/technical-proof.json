@@ -4,14 +4,14 @@
     "production_deployment",
     "commonthing_live_function"
   ],
-  "evidence_digest": "067421d2c8d27674318d1a564749ccbbc20bbf780a0543e8cbd4d1c7ca842a57",
+  "evidence_digest": "f6d27e34554e90405e8a29ea430cac648e30404324032343ca5fb1fd1202a81e",
   "historical_acceptance_receipts_unchanged": true,
   "schema_version": "schauwerk-schaubild-full-editing-technical-proof.v1",
   "scope": "canonical-representation-editing-forms-and-native-bundle",
   "source_bindings": {
     "Dockerfile": "7969a31566e3722f77867627d39c91b1d4a52567f49e6ad5f33b35e7385da7b4",
     "src/schauwerk/resources/standalone_editor/representation_editor.py": "8f4f2a0c524cbd5ddfd23818fecafab19da698ebfc5014e25b229ac7d7b14725",
-    "src/schauwerk/visual/standalone_editor.py": "c9f567e8225d3048b270a42be4e13b2b9c6014267518202b36c2f4201e14ba74"
+    "src/schauwerk/visual/standalone_editor.py": "329a33e108d1ad7ba665c4dc81e1028756c668bef76131816960fe0c0601e77b"
   },
   "status": "technical_proof_only",
   "supersedes_source_bindings": [
@@ -40,6 +40,7 @@
     "native_image_build": true,
     "renamed_node_layout_offsets_preserved": true,
     "renamed_node_layout_offsets_preserved_after_reopen": true,
+    "renamed_node_layout_offsets_preserved_on_resubmit": true,
     "renamed_node_layout_offsets_preserved_on_retry": true,
     "standalone_bundle_filenames_unchanged": true
   }

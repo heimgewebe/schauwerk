@@ -346,21 +346,29 @@ try {
     change(field(newEdge,"Ziel","select"),"node_1");
     document.querySelector("#contentSaveButton").click();
     const retryMode=new URLSearchParams(location.search);
-    if (retryMode.has("retry") || retryMode.has("reopen")) {
+    if (retryMode.has("retry") || retryMode.has("reopen") ||
+        retryMode.has("resubmit")) {
       await until(()=>!document.querySelector("#nativeRetryButton").hidden,
         "Transient renderer failure did not offer retry",1200);
-      dialog.close("cancel");
-      if (retryMode.has("reopen")) {
-        document.querySelector(".workspace-tools-menu").open=true;
-        document.querySelector("#contentEditButton").click();
-        await until(()=>dialog.open && row("Element · alpha"),
-          "Previously renamed node not available after failed render",1200);
-        // Reopen the pending edited representation, make another real edit,
-        // and save it: the original offset ID must survive both operations.
-        change(field(row("Element · alpha"),"Titel","input"),"Neue Beschriftung");
+      if (retryMode.has("resubmit")) {
+        // Same form, original source IDs: compose must NOT be applied again.
+        if (!dialog.open || !row("Element · alpha")) {
+          throw new Error("Original edit form did not remain open after failure");
+        }
         document.querySelector("#contentSaveButton").click();
       } else {
-        document.querySelector("#nativeRetryButton").click();
+        dialog.close("cancel");
+        if (retryMode.has("reopen")) {
+          document.querySelector(".workspace-tools-menu").open=true;
+          document.querySelector("#contentEditButton").click();
+          await until(()=>dialog.open && row("Element · alpha"),
+            "Previously renamed node not available after failed render",1200);
+          // A remount starts at the pending IDs. Compose old-to-current mapping.
+          change(field(row("Element · alpha"),"Titel","input"),"Neue Beschriftung");
+          document.querySelector("#contentSaveButton").click();
+        } else {
+          document.querySelector("#nativeRetryButton").click();
+        }
       }
     }
     await until(()=>!dialog.open && saved()?.nodes.length === 3,
@@ -394,7 +402,8 @@ try {
 @pytest.mark.parametrize(
     ("width", "height", "retry_mode"),
     [(1280, 900, ""), (768, 1024, ""), (390, 844, ""),
-     (1280, 900, "retry"), (1280, 900, "reopen")],
+     (1280, 900, "retry"), (1280, 900, "reopen"),
+     (1280, 900, "resubmit")],
 )
 def test_canonical_editor_browser_reopen_structure_and_export(
     tmp_path: Path, width: int, height: int, retry_mode: str

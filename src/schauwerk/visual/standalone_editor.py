@@ -399,8 +399,10 @@ copyAiGuideButton.addEventListener("click", async () => {{
         + REPRESENTATION_EDITOR_JS
         + r"""
 let canonicalRepresentationForm = null;
+let canonicalRepresentationFormBaseline = null;
 let pendingCanonicalLayoutRemap = null;
 renderRepresentationContentEditor = (representation) => {
+  canonicalRepresentationFormBaseline = representation;
   canonicalRepresentationForm = mountRepresentationEditor(elements.contentFields, representation);
   return canonicalRepresentationForm.first;
 };
@@ -412,6 +414,9 @@ representationFromContentEditor = () => {
   const previous = nativeCanvasRenderStale
     && pendingCanonicalLayoutRemap?.representation === currentRepresentation
     && pendingCanonicalLayoutRemap.previousDigest === currentNativeInputDigest
+    // Composition is needed only after remounting against the pending state.
+    // Re-submitting an unchanged open form already carries original source IDs.
+    && canonicalRepresentationFormBaseline === currentRepresentation
     ? pendingCanonicalLayoutRemap : null;
   try {
     const value = canonicalRepresentationForm.getValue();
