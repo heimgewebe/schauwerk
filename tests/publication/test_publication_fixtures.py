@@ -9567,6 +9567,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_status_refit_superseded_files
     )
     for name, expected in status_refit_acceptance["source_bindings"].items():
+        if name == "src/schauwerk/resources/standalone_editor/assets.py":
+            # The PDF-export revision supersedes this source revision, not the
+            # immutable status-refit acceptance bound to its original digest.
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(status_refit_acceptance["checks"].values())
     status_checks = status_refit_acceptance["check_evidence"]
