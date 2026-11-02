@@ -13616,6 +13616,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert technical["validation"]["native_image_build"] is True
     assert technical["validation"]["container_import_runtime"] is True
     assert technical["validation"]["native_http_render_api"] is True
+    assert technical["validation"]["renamed_node_layout_offsets_preserved"] is True
     assert technical["does_not_establish"] == [
         "visual_user_acceptance",
         "production_deployment",

@@ -4,14 +4,14 @@
     "production_deployment",
     "commonthing_live_function"
   ],
-  "evidence_digest": "f29bc4f2ec243f5bf321eb4727aa9f97cd792ec333c6131a590e4e4098670d57",
+  "evidence_digest": "a7d9cd9c109341d05fedcbd021443ba6b706d20602c82693c86d81dff1e95385",
   "historical_acceptance_receipts_unchanged": true,
   "schema_version": "schauwerk-schaubild-full-editing-technical-proof.v1",
   "scope": "canonical-representation-editing-forms-and-native-bundle",
   "source_bindings": {
     "Dockerfile": "7969a31566e3722f77867627d39c91b1d4a52567f49e6ad5f33b35e7385da7b4",
-    "src/schauwerk/resources/standalone_editor/representation_editor.py": "0d78aff8940cbb02011799c2732f6756c2b04f415b586b688d771156ac071505",
-    "src/schauwerk/visual/standalone_editor.py": "8f63e430e753f4c42b3567c215092fb6400a00526ceff8aa091c87b9cfd71a6d"
+    "src/schauwerk/resources/standalone_editor/representation_editor.py": "8f4f2a0c524cbd5ddfd23818fecafab19da698ebfc5014e25b229ac7d7b14725",
+    "src/schauwerk/visual/standalone_editor.py": "4451f3c06afe89beacd2d6ae2b6644f1269c4493dc8f20e944a1038fe26c3899"
   },
   "status": "technical_proof_only",
   "supersedes_source_bindings": [
@@ -37,6 +37,7 @@
     "model_and_backend_contract_tests": true,
     "native_http_render_api": true,
     "native_image_build": true,
+    "renamed_node_layout_offsets_preserved": true,
     "standalone_bundle_filenames_unchanged": true
   }
 }

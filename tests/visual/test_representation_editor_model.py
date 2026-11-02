@@ -16,7 +16,7 @@ def run_js(tmp_path: Path, assertions: str) -> None:
         pytest.skip("Node unavailable")
     (tmp_path / "model.mjs").write_text(REPRESENTATION_EDITOR_JS, encoding="utf-8")
     program = (
-        "import {changeRepresentation as change,validateRepresentation as validate,mountRepresentationEditor as mount} from './model.mjs';\n"
+        "import {changeRepresentation as change,validateRepresentation as validate,mountRepresentationEditor as mount,remapRepresentationLayoutOverrides as remap} from './model.mjs';\n"
         "import assert from 'node:assert/strict';\n"
         "const sample={schema_version:'schauwerk-representation-input.v1',id:'test',"
         "title:'Schaubild',purpose:'Test',intent:'process',groups:[{id:'g',label:'Gruppe'}],"
@@ -139,6 +139,20 @@ const titleLabel=descendants(container).find(el=>el.tagName==='label' && el.chil
 assert.ok(titleLabel);
 titleLabel.children[1].input('Neuer Titel');
 assert.equal(form.getValue().title,'Neuer Titel');
+assert.deepEqual(form.getNodeIdMapping(),{a:'a',b:'b'});
+const nodeA=descendants(container).find(el=>el.tagName==='fieldset' &&
+  el.children[0]?.textContent==='Element · a');
+const nodeAId=descendants(nodeA).find(el=>el.tagName==='label' &&
+  el.children[0]?.textContent==='ID').children[1];
+nodeAId.change('alpha');
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',b:'b'});
+const nodeB=descendants(container).find(el=>el.tagName==='fieldset' &&
+  el.children[0]?.textContent==='Element · b');
+descendants(nodeB).find(el=>el.tagName==='button' &&
+  el.textContent==='Element löschen').click();
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha'});
+assert.deepEqual({...remap({a:{x:27,y:41},b:{x:-8,y:3}},form.getNodeIdMapping())},
+  {alpha:{x:27,y:41}});
 """)
 
 
@@ -308,6 +322,11 @@ try {
     document.querySelector("#contentEditButton").click();
     const dialog=document.querySelector("#contentDialog");
     await until(()=>dialog.open && row("Gruppe · g"),"canonical edit form missing");
+    const oldDigest=document.querySelector("#editorFrame")
+      ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
+    if (!oldDigest) throw new Error("Native viewer old digest missing");
+    localStorage.setItem("schauwerk.native-viewer.layout.v1."+oldDigest,
+      JSON.stringify({a:{x:37,y:19},b:{x:6,y:-13}}));
     const bounds=dialog.getBoundingClientRect();
     if (bounds.left < -2 || bounds.right > innerWidth+2) {
       throw new Error("Edit dialog exceeds viewport: "+JSON.stringify({
@@ -328,6 +347,17 @@ try {
     await until(()=>!dialog.open && saved()?.nodes.length === 3,
       "Native save did not finish",1200);
     assertSaved(saved());
+    const newDigest=document.querySelector("#editorFrame")
+      ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
+    if (!newDigest || newDigest===oldDigest) {
+      throw new Error("Native save did not change representation digest");
+    }
+    const positions=JSON.parse(localStorage.getItem(
+      "schauwerk.native-viewer.layout.v1."+newDigest)||"{}");
+    if (positions.alpha?.x!==37 || positions.alpha?.y!==19 ||
+        positions.b?.x!==6 || positions.b?.y!==-13 || positions.a) {
+      throw new Error("Dragged node coordinates lost on ID rename");
+    }
     const button=document.querySelector("#projectButton");
     button.click();
     const dl=document.querySelector("#downloadLink");

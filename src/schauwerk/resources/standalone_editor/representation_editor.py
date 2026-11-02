@@ -200,8 +200,25 @@ function button(parent, caption, callback) {
   parent.append(control);
 }
 
+export function remapRepresentationLayoutOverrides(overrides, nodeIdMapping) {
+  if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
+    throw new Error("Gespeicherte Knotenpositionen sind ungültig.");
+  }
+  const migrated = Object.create(null);
+  for (const [originalId, currentId] of Object.entries(nodeIdMapping)) {
+    if (!ID_PATTERN.test(originalId) || !ID_PATTERN.test(currentId)) {
+      throw new Error("Ungültige ID bei der Positionsübernahme.");
+    }
+    if (Object.prototype.hasOwnProperty.call(overrides, originalId)) {
+      migrated[currentId] = overrides[originalId];
+    }
+  }
+  return migrated;
+}
+
 export function mountRepresentationEditor(container, representation) {
   let draft = clone(representation);
+  const originalNodeIds = new Map(draft.nodes.map(node => [node.id, node.id]));
   delete draft.input_digest;
   draft.requirements ||= {};
   draft.requested_formats ||= [];
@@ -212,6 +229,11 @@ export function mountRepresentationEditor(container, representation) {
   function mutate(action) {
     try {
       draft = changeRepresentation(draft, action);
+      if (action.type === "remove-node") {
+        for (const [original, current] of originalNodeIds) {
+          if (current === action.id) originalNodeIds.delete(original);
+        }
+      }
       render();
     } catch (error) { feedbackText(error instanceof Error ? error.message : "Bearbeitung fehlgeschlagen."); }
   }
@@ -219,6 +241,11 @@ export function mountRepresentationEditor(container, representation) {
     if (value === id) return;
     try {
       draft = changeRepresentation(draft, {type, id, value});
+      if (type === "rename-node") {
+        for (const [original, current] of originalNodeIds) {
+          if (current === id) originalNodeIds.set(original, value);
+        }
+      }
       render();
     } catch (error) {
       field.value = id;
@@ -299,7 +326,8 @@ export function mountRepresentationEditor(container, representation) {
   return {
     get first() { return first; },
     getValue() { return validateRepresentation(draft); },
-    getDraft() { return clone(draft); }
+    getDraft() { return clone(draft); },
+    getNodeIdMapping() { return Object.fromEntries(originalNodeIds); }
   };
 }
 """

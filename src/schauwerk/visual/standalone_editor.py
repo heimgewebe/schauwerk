@@ -372,25 +372,59 @@ copyAiGuideButton.addEventListener("click", async () => {{
             raise StandaloneEditorError(
                 "canonical representation editing integration template has drifted"
             )
+    # Only rewrite the one layout write site in the generated module.
+    # On canonical edits, map offsets from the original node IDs to their
+    # current IDs before the replacement viewer loads.
+    layout_write = (
+        "localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(parsed));"
+    )
+    if app_js.count(layout_write) != 1:
+        raise StandaloneEditorError("native layout-migration template has drifted")
+    app_js = app_js.replace(
+        layout_write,
+        """const mapping = typeof pendingCanonicalLayoutRemap !== "undefined"
+      && pendingCanonicalLayoutRemap?.previousDigest === previousDigest
+      ? pendingCanonicalLayoutRemap.nodeIds : null;
+    const migrated = mapping
+      ? remapRepresentationLayoutOverrides(parsed, mapping)
+      : parsed;
+    localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(migrated));""",
+        1,
+    )
     rendered["app.js"] = (
         app_js
         + "\n"
         + REPRESENTATION_EDITOR_JS
         + r"""
 let canonicalRepresentationForm = null;
+let pendingCanonicalLayoutRemap = null;
 renderRepresentationContentEditor = (representation) => {
   canonicalRepresentationForm = mountRepresentationEditor(elements.contentFields, representation);
   return canonicalRepresentationForm.first;
 };
 representationFromContentEditor = () => {
+  pendingCanonicalLayoutRemap = null;
   if (!canonicalRepresentationForm) return null;
   try {
-    return canonicalRepresentationForm.getValue();
+    const value = canonicalRepresentationForm.getValue();
+    pendingCanonicalLayoutRemap = {
+      previousDigest: currentNativeInputDigest,
+      nodeIds: canonicalRepresentationForm.getNodeIdMapping(),
+    };
+    return value;
   } catch (error) {
     setContentDialogFeedback(
       error instanceof Error ? error.message : "Eingaben konnten nicht geprüft werden."
     );
     return null;
+  }
+};
+const originalSaveRepresentationContentEditor = saveRepresentationContentEditor;
+saveRepresentationContentEditor = async () => {
+  try {
+    return await originalSaveRepresentationContentEditor();
+  } finally {
+    pendingCanonicalLayoutRemap = null;
   }
 };
 """
