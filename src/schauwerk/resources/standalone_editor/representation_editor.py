@@ -5,6 +5,8 @@ from __future__ import annotations
 
 REPRESENTATION_EDITOR_JS = r"""// No-build canonical Schaubild representation editor.
 export const INTENTS = ["architecture","process","sequence","state","timeline","comparison","knowledge_map","narrative","presentation","mixed"];
+// Native drawing cannot render knowledge_map; JSON Canvas is the product fallback.
+const NATIVE_INTENTS = INTENTS.filter(value => value !== "knowledge_map");
 export const NODE_KINDS = ["human","system","service","store","decision","risk","action","evidence","concept"];
 export const EDGE_KINDS = ["authority","flow","evidence","feedback","risk","association"];
 export const FORMATS = ["mermaid","canvas","miro_native","table","document"];
@@ -92,6 +94,7 @@ export function validateRepresentation(source) {
   if (typeof source.title !== "string" || !source.title.trim() || source.title.length > 160) throw new Error("Titel muss 1–160 Zeichen enthalten.");
   if (typeof source.purpose !== "string" || !source.purpose.trim() || source.purpose.length > 500) throw new Error("Zweck muss 1–500 Zeichen enthalten.");
   if (!INTENTS.includes(source.intent)) throw new Error("Unbekannte Darstellungsabsicht.");
+  if (source.intent === "knowledge_map") throw new Error("Wissenskarten bitte als JSON Canvas bearbeiten.");
   if (!Array.isArray(source.groups) || !Array.isArray(source.nodes) || !Array.isArray(source.edges) || source.nodes.length === 0) {
     throw new Error("Mindestens ein Element und vollständige Gruppen-/Verbindungslisten erforderlich.");
   }
@@ -233,7 +236,7 @@ export function mountRepresentationEditor(container, representation) {
     }, "Schaubild-ID");
     input(root, "Titel", draft.title, value => { draft.title = value; }, {required:true,maxLength:160});
     input(root, "Zweck", draft.purpose, value => { draft.purpose = value; }, {required:true,multiline:true,maxLength:500});
-    select(root, "Darstellungsabsicht", draft.intent, INTENTS.map(value => ({value})), value => { draft.intent = value; });
+    select(root, "Darstellungsabsicht", draft.intent, NATIVE_INTENTS.map(value => ({value})), value => { draft.intent = value; });
     const requirements = section(container, "Anforderungen");
     for (const key of REQUIREMENTS) {
       const line = el("label", "content-field");

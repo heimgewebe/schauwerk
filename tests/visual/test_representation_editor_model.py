@@ -78,7 +78,7 @@ def test_all_fields_and_stale_digest(tmp_path: Path) -> None:
     run_js(tmp_path, """
 let edited=JSON.parse(JSON.stringify(sample));
 edited.id='other_name';
-edited.intent='knowledge_map';
+edited.intent='narrative';
 edited.requirements={formal_relations:false,rich_text:true};
 edited.requested_formats=['canvas','mermaid','document'];
 edited.nodes[1].kind='evidence';
@@ -139,4 +139,57 @@ const titleLabel=descendants(container).find(el=>el.tagName==='label' && el.chil
 assert.ok(titleLabel);
 titleLabel.children[1].input('Neuer Titel');
 assert.equal(form.getValue().title,'Neuer Titel');
+""")
+
+
+def test_mutated_js_model_is_accepted_by_real_backend(tmp_path: Path) -> None:
+    """Round-trip field edits and cascades through the backend contract."""
+    import json
+
+    from schauwerk.visual.representation import validate_representation_input
+
+    (tmp_path / "model.mjs").write_text(REPRESENTATION_EDITOR_JS, encoding="utf-8")
+    script = r"""
+import {changeRepresentation as change,validateRepresentation as validate} from './model.mjs';
+const start={schema_version:'schauwerk-representation-input.v1',id:'diagramm',title:'Vorher',
+purpose:'Überblick',intent:'process',groups:[{id:'team',label:'Team'}],
+nodes:[{id:'one',label:'Erster',kind:'human',group:'team'},
+{id:'two',label:'Zweiter',kind:'system',summary:'Status'}],
+edges:[{id:'link',from:'one',to:'two',label:'Beziehung',kind:'flow'}],
+requirements:{formal_relations:true},requested_formats:['canvas']};
+let current=change(start,{type:'rename-node',id:'one',value:'actor'});
+current=change(current,{type:'rename-group',id:'team',value:'gruppe'});
+current=change(current,{type:'add-node'});
+current=change(current,{type:'add-edge'});
+current=change(current,{type:'remove-edge',id:'link'});
+current.intent='narrative';
+current.nodes[1].summary='Geänderter Inhalt';
+current.nodes[0].kind='evidence';
+current.edges[0].kind='feedback';
+current.requirements.rich_text=true;
+current.requested_formats=['mermaid','canvas','document'];
+console.log(JSON.stringify(validate(current)));
+"""
+    (tmp_path / "check.mjs").write_text(script, encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(tmp_path / "check.mjs")],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert result.returncode == 0, result.stderr
+    parsed = json.loads(result.stdout)
+    backend = validate_representation_input(parsed)
+    assert backend["nodes"][0]["id"] == "actor"
+    assert backend["nodes"][0]["group"] == "gruppe"
+    assert backend["edges"][0]["from"] == "actor"
+    assert backend["edges"][0]["kind"] == "feedback"
+    assert backend["requirements"]["rich_text"] is True
+
+
+def test_unsupported_native_knowledge_map_requires_canvas(tmp_path: Path) -> None:
+    run_js(tmp_path, """
+const data=JSON.parse(JSON.stringify(sample));
+data.intent='knowledge_map';
+assert.throws(()=>validate(data),/JSON Canvas/);
 """)
