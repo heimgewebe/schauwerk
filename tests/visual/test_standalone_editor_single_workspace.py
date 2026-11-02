@@ -116,11 +116,17 @@ try {
   const projectButton = document.querySelector("#projectButton");
   const pngButton = document.querySelector('[data-export="png"]');
   const svgButton = document.querySelector('[data-export="svg"]');
+  const pdfButton = document.querySelector('[data-export="pdf"]');
   if (projectButton.textContent.trim() !== "Canvas") {
     throw new Error(`native Canvas export mislabeled as ${projectButton.textContent}`);
   }
-  if (!pngButton.hidden || svgButton.hidden) {
+  if (!pngButton.hidden || svgButton.hidden || !pdfButton || pdfButton.hidden || pdfButton.disabled) {
     throw new Error("native export capability visibility drifted");
+  }
+  const pdfRect = pdfButton.getBoundingClientRect();
+  const pdfHit = document.elementFromPoint(pdfRect.left + pdfRect.width / 2, pdfRect.top + pdfRect.height / 2);
+  if (pdfRect.height < 40 || pdfRect.width < 44 || !pdfHit || !(pdfHit === pdfButton || pdfButton.contains(pdfHit))) {
+    throw new Error("PDF export action is not reachable in the menu");
   }
   const exportSummaryRect = exportMenu.querySelector("summary").getBoundingClientRect();
   if (exportSummaryRect.height < 40) {
@@ -369,6 +375,38 @@ try {
   const stageAfterExport = stage.getBoundingClientRect();
   if (!almost(stageAfterExport.width, innerWidth) || !almost(stageAfterExport.height, innerHeight)) {
     throw new Error("prepared export reduced canvas geometry");
+  }
+
+  if (innerWidth === 1366) {
+    // The product CSP intentionally restricts fetch(blob:); capture the real
+    // exported Blob before an Object URL is assigned to the download anchor.
+    const createObjectURL = URL.createObjectURL;
+    let pdfBlob = null;
+    URL.createObjectURL = (blob) => {
+      if (blob.type === "application/pdf") pdfBlob = blob;
+      return createObjectURL.call(URL, blob);
+    };
+    try {
+      exportMenu.open = true;
+      pdfButton.click();
+      await waitUntil(() => {
+        const download = document.querySelector("#downloadLink");
+        return !download.hidden && download.download.endsWith(".pdf");
+      }, "PDF download was not prepared");
+    } finally {
+      URL.createObjectURL = createObjectURL;
+    }
+    if (!pdfBlob || pdfBlob.type !== "application/pdf" || pdfBlob.size < 1000) {
+      throw new Error("PDF download is not a meaningful PDF blob");
+    }
+    const pdfSource = await pdfBlob.text();
+    if (!pdfSource.startsWith("%PDF-1.4\n") ||
+        !pdfSource.includes("/Type /Page ") ||
+        !pdfSource.includes("/DCTDecode") ||
+        !pdfSource.includes("/Count 1") ||
+        !pdfSource.includes("/MediaBox [0 0")) {
+      throw new Error("PDF download lacks page and diagram image");
+    }
   }
 
   document.querySelector("#workspaceCloseButton").click();
