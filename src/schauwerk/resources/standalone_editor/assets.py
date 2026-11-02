@@ -119,6 +119,7 @@ INDEX_HTML = r"""<!doctype html>
             <button class="button compact" id="projectButton" type="button">Projekt</button>
             <button class="button compact output-button" data-export="png" type="button">PNG</button>
             <button class="button compact output-button" data-export="svg" type="button">SVG</button>
+            <button class="button compact output-button" data-export="pdf" type="button">PDF</button>
           </div>
         </details>
 
@@ -1396,6 +1397,65 @@ export function exportDataUriToBlob(value, format) {
   return new Blob([bytes], { type: mimeType });
 }
 
+
+/** Wrap a browser-encoded JPEG in a single-page, printable A3 PDF. */
+export function jpegToPdfBlob(imageBytes, imageWidth, imageHeight) {
+  if (!(imageBytes instanceof Uint8Array)
+      || imageBytes.byteLength < 4 || imageBytes.byteLength > 32 * 1024 * 1024
+      || imageBytes[0] !== 0xff || imageBytes[1] !== 0xd8
+      || imageBytes[imageBytes.length - 2] !== 0xff
+      || imageBytes[imageBytes.length - 1] !== 0xd9) {
+    throw new Error("PDF-Export benötigt ein gültiges JPEG-Bild.");
+  }
+  if (!Number.isInteger(imageWidth) || !Number.isInteger(imageHeight)
+      || imageWidth < 1 || imageHeight < 1 || imageWidth > 8192 || imageHeight > 8192) {
+    throw new Error("PDF-Export hat ungültige Bildabmessungen.");
+  }
+  const [pageWidth, pageHeight] = imageWidth >= imageHeight
+    ? [1190.55, 841.89] : [841.89, 1190.55];
+  const margin = 28;
+  const fit = Math.min((pageWidth - 2 * margin) / imageWidth, (pageHeight - 2 * margin) / imageHeight);
+  const width = (imageWidth * fit).toFixed(3);
+  const height = (imageHeight * fit).toFixed(3);
+  const left = ((pageWidth - imageWidth * fit) / 2).toFixed(3);
+  const bottom = ((pageHeight - imageHeight * fit) / 2).toFixed(3);
+  const content = "q\n" + width + " 0 0 " + height + " " + left + " " + bottom
+    + " cm\n/Im1 Do\nQ\n";
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const offsets = [0];
+  let byteCount = 0;
+  function append(value) {
+    const bytes = typeof value === "string" ? encoder.encode(value) : value;
+    chunks.push(bytes);
+    byteCount += bytes.byteLength;
+  }
+  function pdfObject(number, values) {
+    offsets[number] = byteCount;
+    append(number + " 0 obj\n");
+    for (const value of values) append(value);
+    append("\nendobj\n");
+  }
+  append("%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n");
+  pdfObject(1, ["<< /Type /Catalog /Pages 2 0 R >>"]);
+  pdfObject(2, ["<< /Type /Pages /Kids [3 0 R] /Count 1 >>"]);
+  pdfObject(3, ["<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + pageWidth + " "
+    + pageHeight + "] /Resources << /XObject << /Im1 4 0 R >> >> /Contents 5 0 R >>"]);
+  pdfObject(4, ["<< /Type /XObject /Subtype /Image /Width " + imageWidth
+    + " /Height " + imageHeight + " /ColorSpace /DeviceRGB /BitsPerComponent 8"
+    + " /Filter /DCTDecode /Length " + imageBytes.byteLength + " >>\nstream\n",
+    imageBytes, "\nendstream"]);
+  pdfObject(5, ["<< /Length " + encoder.encode(content).byteLength + " >>\nstream\n",
+    content, "endstream"]);
+  const xref = byteCount;
+  append("xref\n0 6\n0000000000 65535 f \n");
+  for (let number = 1; number <= 5; number += 1) {
+    append(String(offsets[number]).padStart(10, "0") + " 00000 n \n");
+  }
+  append("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+  return new Blob(chunks, { type: "application/pdf" });
+}
+
 export function validateDiagramXml(value) {
   if (typeof value !== "string" || !value || value.length > MAX_PROJECT_XML_CHARS) {
     throw new Error("Projekt-XML ist ungültig oder zu groß.");
@@ -1630,7 +1690,7 @@ export function jsonCanvasToDrawioXml(source, options = {}) {
 }
 """
 
-APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
+APP_JS = r"""import { COLLISION_SAFE_LAYOUT_CONFIG, MAX_CONFIGURABLE_FONT_SIZE, MAX_INPUT_BYTES, MIN_CONFIGURABLE_FONT_SIZE, READABILITY_ZOOM_FACTOR, READABLE_EDGE_FONT_SIZE, READABLE_NODE_FONT_SIZE, detectInput, emptyDrawioXml, exportDataUriToBlob, jpegToPdfBlob, jsonCanvasToDrawioXml, readabilityZoomStepCount, validateDiagramXml, validateExportDataUri, validateInputText } from "./canvas-import.js";
 
 const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
@@ -1690,6 +1750,7 @@ let currentNativeUrl = null;
 let activeEngine = "legacy";
 let currentTitle = "Schaubild";
 let pendingExport = null;
+let exportRequestVersion = 0;
 let preparedDownloadUrl = null;
 let editorReady = false;
 let loadIntentGeneration = 0;
@@ -1705,6 +1766,8 @@ let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
+  // A new document invalidates an in-flight asynchronous PDF rasterization.
+  if (typeof exportRequestVersion === "number") exportRequestVersion += 1;
   return loadIntentGeneration;
 }
 
@@ -2941,7 +3004,53 @@ function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
   }
 }
 
+
+/** Convert the complete rendered diagram to a local PDF, without external services. */
+async function renderedImageToPdfBlob(imageBlob) {
+  if (!(imageBlob instanceof Blob) || imageBlob.size > 24 * 1024 * 1024) {
+    throw new Error("PDF-Quelldatei ist ungültig oder zu groß.");
+  }
+  const imageUrl = URL.createObjectURL(imageBlob);
+  try {
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("Diagramm konnte nicht als Bild geladen werden."));
+      image.src = imageUrl;
+    });
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    if (!(sourceWidth > 0 && sourceHeight > 0)) {
+      throw new Error("Diagramm hat keine gültige Größe.");
+    }
+    // Keep real PNG pixels, but render SVG at print quality; cap Safari memory.
+    const baseScale = imageBlob.type.startsWith("image/svg+xml") ? 3 : 1;
+    const scale = Math.min(baseScale, 5200 / Math.max(sourceWidth, sourceHeight),
+      Math.sqrt(16000000 / (sourceWidth * sourceHeight)));
+    const width = Math.max(1, Math.round(sourceWidth * scale));
+    const height = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("PDF-Bildfläche konnte nicht angelegt werden.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, width, height);
+    context.drawImage(image, 0, 0, width, height);
+    const prefix = "data:image/jpeg;base64,";
+    const jpeg = canvas.toDataURL("image/jpeg", 0.94);
+    if (!jpeg.startsWith(prefix) || jpeg.length > 44 * 1024 * 1024) {
+      throw new Error("PDF-Rasterbild konnte nicht erzeugt werden.");
+    }
+    const bytes = Uint8Array.from(atob(jpeg.slice(prefix.length)), (char) => char.charCodeAt(0));
+    return jpegToPdfBlob(bytes, width, height);
+  } finally {
+    URL.revokeObjectURL(imageUrl);
+  }
+}
+
 async function exportNative(format) {
+  const requestedVersion = format === "pdf" ? exportRequestVersion : 0;
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Schaubild ist noch nicht bereit");
     return;
@@ -2980,7 +3089,7 @@ async function exportNative(format) {
     setStatus("PNG ist für dieses Schaubild noch nicht verfügbar");
     return;
   }
-  if (format !== "svg") {
+  if (format !== "svg" && format !== "pdf") {
     setStatus("Exportformat wird nicht unterstützt");
     return;
   }
@@ -2998,16 +3107,21 @@ async function exportNative(format) {
       : true,
   });
   if (liveSvg !== null) {
-    prepareDownload(
-      new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" }),
-      safeFilename(currentTitle) + ".svg",
-      "SVG",
-    );
-    setStatus(
-      currentNativeCanvas
-        ? "SVG aus aktuellem Canvas-Dokument bereit"
-        : "SVG aus aktueller nativer Darstellung bereit",
-    );
+    try {
+      const svgBlob = new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" });
+      const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
+      if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
+      prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
+      setStatus(format === "pdf"
+        ? "PDF aus aktueller nativer Darstellung bereit"
+        : currentNativeCanvas
+          ? "SVG aus aktuellem Canvas-Dokument bereit"
+          : "SVG aus aktueller nativer Darstellung bereit");
+    } catch (_) {
+      if (format !== "pdf" || requestedVersion === exportRequestVersion) {
+        setStatus("PDF konnte nicht vorbereitet werden");
+      }
+    }
     return;
   }
   if (currentNativeCanvas) {
@@ -3019,18 +3133,20 @@ async function exportNative(format) {
     const response = await fetch(assetUrl, { cache: "no-store" });
     if (!response.ok) throw new Error("SVG konnte nicht gelesen werden.");
     const svg = await response.text();
-    prepareDownload(
-      new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
-      safeFilename(currentTitle) + ".svg",
-      "SVG",
-    );
-    setStatus("SVG bereit");
+    const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
+    if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
+    prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
+    setStatus(format === "pdf" ? "PDF bereit" : "SVG bereit");
   } catch (_) {
-    setStatus("SVG konnte nicht vorbereitet werden");
+    if (format !== "pdf" || requestedVersion === exportRequestVersion) {
+      setStatus(format === "pdf" ? "PDF konnte nicht vorbereitet werden" : "SVG konnte nicht vorbereitet werden");
+    }
   }
 }
 
 function exportDiagram(format) {
+  exportRequestVersion += 1;
   if (activeEngine === "native") {
     void exportNative(format);
     return;
@@ -3051,7 +3167,7 @@ function exportDiagram(format) {
     postToEditor({ action: "export", format: "svg", embedImages: false, border: 0 });
     return;
   }
-  if (format === "png") {
+  if (format === "png" || format === "pdf") {
     postToEditor({ action: "export", format: "png", scale: 3, border: 24, background: "#ffffff", size: "diagram" });
     return;
   }
@@ -3071,6 +3187,12 @@ window.addEventListener("message", (event) => {
         message.canvas &&
         typeof message.canvas === "object"
       ) {
+        const previousCanvas = nativeCanvasSnapshot(currentNativeCanvas);
+        const incomingCanvas = nativeCanvasSnapshot(message.canvas);
+        if (previousCanvas === null || incomingCanvas === null || previousCanvas !== incomingCanvas) {
+          exportRequestVersion += 1;
+          clearPreparedDownload();
+        }
         currentNativeDocument = message.document;
         currentNativeCanvas = message.canvas;
         const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);
@@ -3172,9 +3294,12 @@ window.addEventListener("message", (event) => {
         saveDraft(validatedXml);
         filename = `${safeFilename(currentTitle)}.drawio`;
         label = "Projekt";
-      } else if (wanted === "png" || wanted === "svg") {
-        if (message.format !== wanted) throw new Error("Unerwartete Exportantwort.");
-        validatedData = validateExportDataUri(message.data, wanted);
+      } else if (wanted === "png" || wanted === "svg" || wanted === "pdf") {
+        const responseFormat = wanted === "pdf" ? "png" : wanted;
+        if (message.format !== responseFormat) throw new Error("Unerwartete Exportantwort.");
+        validatedData = wanted === "pdf"
+          ? validateExportDataUri(message.data, "png")
+          : validateExportDataUri(message.data, wanted);
         if (typeof message.xml === "string") saveDraft(validateDiagramXml(message.xml));
         filename = `${safeFilename(currentTitle)}.${wanted}`;
         label = wanted.toUpperCase();
@@ -3187,6 +3312,20 @@ window.addEventListener("message", (event) => {
     }
 
     try {
+      if (wanted === "pdf") {
+        const requestedVersion = exportRequestVersion;
+        const pngBlob = exportDataUriToBlob(validatedData, "png");
+        void renderedImageToPdfBlob(pngBlob).then((pdfBlob) => {
+          if (requestedVersion !== exportRequestVersion) return;
+          prepareDownload(pdfBlob, filename, label);
+          setStatus("Export bereit · „" + label + " speichern“ tippen");
+        }).catch(() => {
+          if (requestedVersion === exportRequestVersion) {
+            setStatus("PDF konnte nicht zum Speichern vorbereitet werden");
+          }
+        });
+        return;
+      }
       const blob = wanted === "drawio"
         ? new Blob([validatedXml], { type: "application/xml;charset=utf-8" })
         : exportDataUriToBlob(validatedData, wanted);
