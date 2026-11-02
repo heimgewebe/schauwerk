@@ -1659,3 +1659,231 @@ try {
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+@pytest.mark.parametrize("hosted_document", [False, True])
+def test_native_viewer_observation_mode_scrolls_without_mutating(
+    tmp_path: Path,
+    hosted_document: bool,
+) -> None:
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Google Chrome is required for observation-mode regression")
+        raise AssertionError("unreachable")
+
+    if hosted_document:
+        source = {
+            "nodes": [
+                {"id": "a", "type": "text", "x": 40, "y": 60, "width": 200,
+                 "height": 120, "text": "A"},
+                {"id": "b", "type": "text", "x": 390, "y": 140, "width": 200,
+                 "height": 120, "text": "B"},
+            ],
+            "edges": [{"id": "ab", "fromNode": "a", "toNode": "b"}],
+        }
+        model = json_canvas_to_editing_document(source, title="Beobachten")
+    else:
+        model = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    output = tmp_path / "observation-viewer"
+    build_native_viewer(model, output)
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    app_tag = '<script type="module" src="app.js"></script>'
+    assert index.count(app_tag) == 1
+
+    browser_probe = r"""
+<script>
+Element.prototype.setPointerCapture = function () {};
+Element.prototype.releasePointerCapture = function () {};
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const waitUntil = async (predicate, label, attempts = 250) => {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(label);
+};
+const firePointer = (target, type, id, x, y) => target.dispatchEvent(
+  new PointerEvent(type, {
+    bubbles: true, pointerId: id, pointerType: "touch",
+    clientX: x, clientY: y, button: 0,
+    buttons: type === "pointerup" || type === "pointercancel" ? 0 : 1,
+    isPrimary: true,
+  }),
+);
+const mutationMessages = [];
+if (window.parent !== window) {
+  window.parent.addEventListener("message", (event) => {
+    if (event.source === window && (
+      event.data?.event === "native-document-change"
+      || event.data?.event === "native-document-rebuild"
+    )) mutationMessages.push(event.data);
+  });
+}
+const resultRoot = window.parent.document.documentElement;
+try {
+  const viewport = document.querySelector("#nativeViewport");
+  const canvas = document.querySelector("#nativeCanvas");
+  const svg = document.querySelector("#nativeDiagram");
+  const toggle = document.querySelector("#observationMode");
+  const reset = document.querySelector("#resetLayout");
+  const edit = document.querySelector(".edit-controls");
+  const node = svg.querySelector('[data-source-kind="node"]');
+  const edge = svg.querySelector('[data-source-kind="edge"]');
+  const editText = document.querySelector("#editText");
+  const addNode = document.querySelector("#addNode");
+  if (!node || !toggle || !reset || !edge) throw new Error("viewer fixture incomplete");
+  await waitUntil(
+    () => canvas.style.transform.includes("scale(") && toggle.textContent === "Beobachten",
+    "initial viewer not ready",
+  );
+  // A local layout sentinel makes accidental reset/persistence observable.
+  const key = "schauwerk.native-viewer.layout.v1." + svg.dataset.inputDigest;
+  localStorage.setItem(key, JSON.stringify({ sentinel: { x: 7, y: 13 } }));
+  const stored = localStorage.getItem(key);
+  const modelBefore = document.querySelector("#nativeModel").textContent;
+  const nodeBefore = node.getAttribute("transform");
+  if (window.parent !== window) {
+    // Initial hosted-document publication is part of startup, not an edit.
+    await waitUntil(() => mutationMessages.length > 0, "host did not receive initial state");
+  }
+  mutationMessages.length = 0;
+  const edgePath = edge.querySelector("path");
+  const edgeBefore = edgePath?.getAttribute("d");
+
+  toggle.click();
+  if (toggle.getAttribute("aria-pressed") !== "true"
+      || toggle.textContent !== "Bearbeiten"
+      || !reset.disabled
+      || edit.hidden !== true
+      || !viewport.classList.contains("is-observing")) {
+    throw new Error("observation-mode controls were not locked");
+  }
+  if (window.parent !== window && editText && !editText.disabled) {
+    throw new Error("text editing remained available while observing");
+  }
+
+  const startView = canvas.style.transform;
+  firePointer(node, "pointerdown", 81, 180, 170);
+  firePointer(viewport, "pointermove", 81, 310, 230);
+  firePointer(viewport, "pointerup", 81, 310, 230);
+  if (canvas.style.transform === startView) {
+    throw new Error("touch pan starting on a node did not navigate");
+  }
+  const afterTouch = canvas.style.transform;
+  node.dispatchEvent(new WheelEvent("wheel", {
+    bubbles: true, cancelable: true, deltaY: 140, deltaX: 28,
+  }));
+  if (canvas.style.transform === afterTouch) {
+    throw new Error("mouse wheel over a node did not scroll the viewport");
+  }
+  const beforeZoom = canvas.style.transform;
+  document.querySelector("#zoomIn").click();
+  if (canvas.style.transform === beforeZoom) {
+    throw new Error("view-only zoom button did not zoom");
+  }
+  firePointer(node, "pointerdown", 91, 180, 170);
+  firePointer(viewport, "pointerdown", 92, 230, 175);
+  const beforePinch = canvas.style.transform;
+  firePointer(viewport, "pointermove", 92, 340, 175);
+  if (canvas.style.transform === beforePinch) {
+    throw new Error("view-only two-finger pinch did not zoom");
+  }
+  firePointer(viewport, "pointerup", 92, 340, 175);
+  firePointer(viewport, "pointerup", 91, 180, 170);
+
+  // Even artificially dispatched mutation events must remain harmless.
+  for (const id of [
+    "resetLayout", "addNode", "addEdge", "editText",
+    "reattachSource", "reattachTarget", "deleteSelection", "saveText",
+  ]) {
+    document.querySelector("#" + id)?.dispatchEvent(
+      new MouseEvent("click", { bubbles: true }),
+    );
+  }
+  node.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  edge.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+  node.dispatchEvent(new KeyboardEvent("keydown", {
+    bubbles: true, key: "Enter",
+  }));
+  document.querySelector("#fitView").click();
+  if (node.getAttribute("transform") !== nodeBefore
+      || edgePath?.getAttribute("d") !== edgeBefore
+      || document.querySelector("#nativeModel").textContent !== modelBefore
+      || localStorage.getItem(key) !== stored
+      || document.querySelector("#textDialog").open
+      || document.querySelector("#selectionStatus").textContent !== "Keine Auswahl") {
+    throw new Error("observation mode changed diagram state or selection");
+  }
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  if (mutationMessages.length !== 0) {
+    throw new Error("observation mode published a document mutation");
+  }
+
+  toggle.click();
+  if (toggle.getAttribute("aria-pressed") !== "false"
+      || toggle.textContent !== "Beobachten"
+      || reset.disabled
+      || (edit.hidden && window.parent !== window)) {
+    throw new Error("editing was not restored after observation mode");
+  }
+  const original = node.getAttribute("transform");
+  firePointer(node, "pointerdown", 95, 180, 170);
+  firePointer(viewport, "pointermove", 95, 215, 205);
+  if (node.getAttribute("transform") === original) {
+    throw new Error("regular drag did not resume after leaving observation mode");
+  }
+  // Switching modes in the middle of a drag must roll back its uncommitted edit.
+  toggle.click();
+  if (node.getAttribute("transform") !== original) {
+    throw new Error("entering observation mode did not roll back active drag");
+  }
+  firePointer(viewport, "pointerup", 95, 215, 205);
+  resultRoot.dataset.observerRegression = "pass";
+} catch (error) {
+  resultRoot.dataset.observerRegression = "fail";
+  resultRoot.dataset.observerRegressionError = String(error?.message || error);
+}
+</script>
+"""
+    index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
+    if hosted_document:
+        _write_document_probe_host(output)
+
+    class QuietObserverHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietObserverHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    port = int(server.server_address[1])
+    try:
+        try:
+            completed = subprocess.run(
+                [
+                    chrome, "--headless=new",
+                    f"--user-data-dir={tmp_path / 'observation-chrome-profile'}",
+                    "--no-first-run", "--disable-gpu", "--disable-dev-shm-usage",
+                    "--no-sandbox", "--run-all-compositor-stages-before-draw",
+                    "--virtual-time-budget=12000", "--dump-dom",
+                    f"http://127.0.0.1:{port}/"
+                    + ("host.html" if hosted_document else ""),
+                ],
+                check=False, text=True, capture_output=True, timeout=20,
+            )
+        except subprocess.TimeoutExpired:
+            _skip_or_fail_browser("Chrome observation-mode browser probe timed out")
+            raise AssertionError("unreachable")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-observer-regression="pass"' in completed.stdout, completed.stdout
+    assert 'data-observer-regression="fail"' not in completed.stdout, completed.stdout

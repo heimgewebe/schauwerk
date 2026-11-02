@@ -1063,6 +1063,12 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
     }
+    # New observation-mode implementation supersedes only these source files;
+    # historical immutable receipts remain verified against their own revisions.
+    observation_mode_superseded_files = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }
     single_workspace_dual_notch_superseded_files = {
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_standalone_editor_single_workspace.py",
@@ -9096,7 +9102,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_host_retry_superseded_files
     )
     for path, sha in host_retry_acceptance["source_bindings"].items():
-        if path in single_workspace_ci_save_font_superseded_files:
+        if path in (single_workspace_ci_save_font_superseded_files
+                    | observation_mode_superseded_files):
             continue
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == sha
     assert all(host_retry_acceptance["checks"].values())
