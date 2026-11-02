@@ -384,11 +384,13 @@ copyAiGuideButton.addEventListener("click", async () => {{
         layout_write,
         """const mapping = typeof pendingCanonicalLayoutRemap !== "undefined"
       && pendingCanonicalLayoutRemap?.previousDigest === previousDigest
+      && pendingCanonicalLayoutRemap?.representation === currentRepresentation
       ? pendingCanonicalLayoutRemap.nodeIds : null;
     const migrated = mapping
       ? remapRepresentationLayoutOverrides(parsed, mapping)
       : parsed;
-    localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(migrated));""",
+    localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(migrated));
+    if (mapping) pendingCanonicalLayoutRemap = null;""",
         1,
     )
     rendered["app.js"] = (
@@ -410,6 +412,7 @@ representationFromContentEditor = () => {
     pendingCanonicalLayoutRemap = {
       previousDigest: currentNativeInputDigest,
       nodeIds: canonicalRepresentationForm.getNodeIdMapping(),
+      representation: value,
     };
     return value;
   } catch (error) {
@@ -424,7 +427,9 @@ saveRepresentationContentEditor = async () => {
   try {
     return await originalSaveRepresentationContentEditor();
   } finally {
-    pendingCanonicalLayoutRemap = null;
+    // A transient renderer failure keeps the edited representation for Retry.
+    // Keep its exact ID mapping until a successful rerender or edit discard.
+    if (!nativeCanvasRenderStale) pendingCanonicalLayoutRemap = null;
   }
 };
 """

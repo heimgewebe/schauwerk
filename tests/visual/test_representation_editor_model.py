@@ -322,9 +322,10 @@ try {
     document.querySelector("#contentEditButton").click();
     const dialog=document.querySelector("#contentDialog");
     await until(()=>dialog.open && row("Gruppe · g"),"canonical edit form missing");
-    const oldDigest=document.querySelector("#editorFrame")
+    const frameDigest=()=>document.querySelector("#editorFrame")
       ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
-    if (!oldDigest) throw new Error("Native viewer old digest missing");
+    await until(()=>Boolean(frameDigest()),"Native viewer old digest missing",1200);
+    const oldDigest=frameDigest();
     localStorage.setItem("schauwerk.native-viewer.layout.v1."+oldDigest,
       JSON.stringify({a:{x:37,y:19},b:{x:6,y:-13}}));
     const bounds=dialog.getBoundingClientRect();
@@ -344,14 +345,18 @@ try {
     change(field(newEdge,"Anfang","select"),"alpha");
     change(field(newEdge,"Ziel","select"),"node_1");
     document.querySelector("#contentSaveButton").click();
+    if (new URLSearchParams(location.search).has("retry")) {
+      await until(()=>!document.querySelector("#nativeRetryButton").hidden,
+        "Transient renderer failure did not offer retry",1200);
+      dialog.close("cancel");
+      document.querySelector("#nativeRetryButton").click();
+    }
     await until(()=>!dialog.open && saved()?.nodes.length === 3,
       "Native save did not finish",1200);
     assertSaved(saved());
-    const newDigest=document.querySelector("#editorFrame")
-      ?.contentDocument?.querySelector("#nativeDiagram")?.dataset?.inputDigest;
-    if (!newDigest || newDigest===oldDigest) {
-      throw new Error("Native save did not change representation digest");
-    }
+    await until(()=>Boolean(frameDigest()) && frameDigest()!==oldDigest,
+      "Native save did not change representation digest",1200);
+    const newDigest=frameDigest();
     const positions=JSON.parse(localStorage.getItem(
       "schauwerk.native-viewer.layout.v1."+newDigest)||"{}");
     if (positions.alpha?.x!==37 || positions.alpha?.y!==19 ||
@@ -374,9 +379,13 @@ try {
 """
 
 
-@pytest.mark.parametrize(("width", "height"), [(1280, 900), (768, 1024), (390, 844)])
+@pytest.mark.parametrize(
+    ("width", "height", "transient_retry"),
+    [(1280, 900, False), (768, 1024, False), (390, 844, False),
+     (1280, 900, True)],
+)
 def test_canonical_editor_browser_reopen_structure_and_export(
-    tmp_path: Path, width: int, height: int
+    tmp_path: Path, width: int, height: int, transient_retry: bool
 ) -> None:
     """End-to-end local Chrome: edit, persist, export and reload a canonical diagram."""
     import os
@@ -384,6 +393,7 @@ def test_canonical_editor_browser_reopen_structure_and_export(
     import subprocess
     import threading
     from functools import partial
+    from http import HTTPStatus
     from http.server import ThreadingHTTPServer
 
     from schauwerk.visual.standalone_editor import _EditorRequestHandler, build_standalone_editor
@@ -416,9 +426,27 @@ def test_canonical_editor_browser_reopen_structure_and_export(
         encoding="utf-8",
     )
 
+    class FailSecondNativeRender(_EditorRequestHandler):
+        post_count = 0
+
+        def do_POST(self) -> None:  # noqa: N802
+            cls = type(self)
+            if self.path == "/api/native-viewer":
+                cls.post_count += 1
+                if cls.post_count == 2:
+                    size = int(self.headers.get("Content-Length", "0"))
+                    self.rfile.read(size)
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE,
+                        {"error": "synthetic transient native renderer interruption"},
+                    )
+                    return
+            super().do_POST()
+
+    handler = FailSecondNativeRender if transient_retry else _EditorRequestHandler
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
-        partial(_EditorRequestHandler, directory=str(output)),
+        partial(handler, directory=str(output)),
     )
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
@@ -436,7 +464,8 @@ def test_canonical_editor_browser_reopen_structure_and_export(
             "--virtual-time-budget=25000",
             f"--user-data-dir={profile}",
             "--dump-dom",
-            f"http://127.0.0.1:{server.server_address[1]}/",
+            f"http://127.0.0.1:{server.server_address[1]}/"
+            + ("?retry=1" if transient_retry else ""),
         ]
         result = subprocess.run(command, capture_output=True, text=True, timeout=50)
     finally:
