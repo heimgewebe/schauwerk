@@ -208,3 +208,81 @@ const wait = async (predicate, label) => {
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+def test_pending_native_pdf_is_discarded_after_document_switch(tmp_path: Path) -> None:
+    """An async conversion of diagram A must never become diagram B's download."""
+    if not shutil.which("node"):
+        pytest.skip("node is not installed")
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    app = (output / "app.js").read_text(encoding="utf-8")
+    invalidate = app[
+        app.index("function invalidateLoadIntents()"):
+        app.index("function setStatus(")
+    ]
+    native = app[
+        app.index("async function exportNative(format)"):
+        app.index("function exportDiagram(format)")
+    ]
+    assert "invalidateLoadIntents();" in app[
+        app.index("function launchLegacy(load)"):app.index("function nativeTokenFromUrl(")
+    ]
+    assert "invalidateLoadIntents();" in app[
+        app.index("async function launchNative(load, options = {})"):
+        app.index("const preserveActiveFrame", app.index("async function launchNative("))
+    ]
+    change_event = app[
+        app.index('if (message.event === "native-document-change")'):
+        app.index('if (message.event === "native-document-rebuild")')
+    ]
+    assert "exportRequestVersion += 1;" in change_event
+    assert "clearPreparedDownload();" in change_event
+
+    code = r"""
+let loadIntentGeneration = 0;
+let exportRequestVersion = 0;
+let editorReady = true;
+let currentRepresentation = {title: "First"};
+let currentNativeDocument = null;
+let currentNativeCanvas = null;
+let currentLegacyXml = null;
+let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
+let currentTitle = "First";
+let nativeCanvasRenderStale = false;
+let prepared = null;
+let pendingPdf = null;
+function setStatus() {}
+function clearPreparedDownload() { prepared = null; }
+function prepareDownload(blob, filename, label) {
+  prepared = {blob, filename, label};
+}
+function safeFilename(title) { return title; }
+function serializeNativeFrameSvg() { return '<svg xmlns="http://www.w3.org/2000/svg"/>'; }
+function nativeCanvasDiffersFromRendered() { return false; }
+function renderedImageToPdfBlob() {
+  return new Promise((resolve) => { pendingPdf = resolve; });
+}
+""" + invalidate + native + r"""
+const oldExport = exportNative("pdf");
+if (typeof pendingPdf !== "function") throw new Error("first PDF did not begin");
+invalidateLoadIntents();
+currentTitle = "Second";
+currentRepresentation = {title: "Second"};
+pendingPdf(new Blob(["%PDF-1.4\n"], {type: "application/pdf"}));
+await oldExport;
+if (prepared !== null) throw new Error("stale PDF attached to new document");
+
+pendingPdf = null;
+const newExport = exportNative("pdf");
+if (typeof pendingPdf !== "function") throw new Error("second PDF did not begin");
+pendingPdf(new Blob(["%PDF-1.4\n"], {type: "application/pdf"}));
+await newExport;
+if (!prepared || prepared.filename !== "Second.pdf" || prepared.label !== "PDF") {
+  throw new Error("current PDF export was incorrectly rejected");
+}
+"""
+    result = subprocess.run(
+        ["node", "--input-type=module", "-e", code],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr[-3000:]

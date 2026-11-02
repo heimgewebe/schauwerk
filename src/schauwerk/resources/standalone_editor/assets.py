@@ -1766,6 +1766,8 @@ let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
+  // A new document invalidates an in-flight asynchronous PDF rasterization.
+  if (typeof exportRequestVersion === "number") exportRequestVersion += 1;
   return loadIntentGeneration;
 }
 
@@ -2318,7 +2320,6 @@ function showStart() {
   pendingInitialCollisionSafeLayout = false;
   pendingCreationDefaults = false;
   pendingExport = null;
-  if (typeof exportRequestVersion === "number") exportRequestVersion += 1;
   editorReady = false;
   nativeCanvasRenderStale = false;
   renderedNativeCanvasSnapshot = null;
@@ -3186,6 +3187,8 @@ window.addEventListener("message", (event) => {
         message.canvas &&
         typeof message.canvas === "object"
       ) {
+        exportRequestVersion += 1;
+        clearPreparedDownload();
         currentNativeDocument = message.document;
         currentNativeCanvas = message.canvas;
         const draftSaved = saveNativeCanvasDraft(message.document, message.canvas);
