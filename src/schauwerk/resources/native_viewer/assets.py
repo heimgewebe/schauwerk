@@ -29,6 +29,7 @@ INDEX_HTML = r"""<!doctype html>
           <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
+          <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
         <details class="edit-controls document-only" hidden>
@@ -260,6 +261,11 @@ button:focus-visible {
   border-color: transparent;
   background: transparent;
 }
+.view-controls #observationMode[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
 .edit-controls {
   position: relative;
   min-width: 0;
@@ -364,6 +370,10 @@ button:focus-visible {
   filter: drop-shadow(0 0 5px rgba(99, 91, 255, 0.42));
 }
 .native-diagram [data-source-kind="edge"] { cursor: pointer; }
+.viewer-stage.is-observing .native-diagram [data-source-kind="node"],
+.viewer-stage.is-observing .native-diagram [data-source-kind="edge"] { cursor: grab; }
+.viewer-stage.is-observing.is-panning .native-diagram [data-source-kind="node"],
+.viewer-stage.is-observing.is-panning .native-diagram [data-source-kind="edge"] { cursor: grabbing; }
 .native-diagram [data-source-kind="edge"].is-selected > path {
   stroke-width: 4px !important;
   filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
@@ -946,6 +956,7 @@ const zoomIn = document.querySelector("#zoomIn");
 const zoomOut = document.querySelector("#zoomOut");
 const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
+const observationButton = document.querySelector("#observationMode");
 const editControls = document.querySelector(".edit-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
@@ -1008,6 +1019,7 @@ let edgeCreateSource = null;
 let edgeReattach = null;
 let textEditTarget = null;
 let gesture = null;
+let observationMode = false;
 const activePointers = new Map();
 // Restore automatic fitting after a motionless pointer sequence, never after a manual view change.
 let pointerAutoFitBefore = null;
@@ -1272,7 +1284,7 @@ function canvasFromDocument(document) {
 }
 
 function publishDocumentState(eventName = "native-document-change", document = documentSnapshot()) {
-  if (!documentEditorHosted || !document) return;
+  if (observationMode || !documentEditorHosted || !document) return;
   const boundedDocument = boundedDocumentState(document);
   const canvasState = canvasFromDocument(boundedDocument);
   if (!canvasState) return;
@@ -1283,7 +1295,7 @@ function publishDocumentState(eventName = "native-document-change", document = d
 }
 
 function rebuildDocument(document) {
-  if (!documentEditorHosted || !document) return;
+  if (observationMode || !documentEditorHosted || !document) return;
   sourceModel = boundedDocumentState(document);
   overrides = Object.create(null);
   publishDocumentState("native-document-rebuild", sourceModel);
@@ -1558,6 +1570,14 @@ function updateDocumentToolbarState() {
     "Auswahl löschen",
     "Zuerst ein Element oder eine Verbindung auswählen",
   );
+  if (observationMode) {
+    for (const button of [
+      addNodeButton, addEdgeButton, editTextButton,
+      reattachSourceButton, reattachTargetButton, deleteSelectionButton,
+    ]) {
+      if (button instanceof HTMLButtonElement) button.disabled = true;
+    }
+  }
 }
 
 function selectEdge(edgeId) {
@@ -1751,6 +1771,7 @@ for (const node of svg.querySelectorAll('[data-source-kind="node"]')) {
   node.setAttribute("role", "button");
   node.setAttribute("aria-selected", "false");
   node.addEventListener("keydown", (event) => {
+    if (observationMode) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectNode(sourceId);
@@ -1805,6 +1826,63 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
 }
 applyAllNodeTransforms();
 
+// View-only mode is session-local: it never edits source, layout overrides or drafts.
+// Cancel any in-progress edit before allowing an event on the diagram to pan instead.
+function setObservationMode(enabled) {
+  observationMode = Boolean(enabled);
+  if (gesture?.kind === "drag") {
+    setNodeOffset(
+      gesture.sourceId,
+      gesture.rollbackOffset.x,
+      gesture.rollbackOffset.y,
+    );
+    applyNodeTransform(gesture.sourceId);
+    nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
+  }
+  for (const pointerId of activePointers.keys()) {
+    try { viewport.releasePointerCapture(pointerId); } catch (_) { /* Pointer already released. */ }
+  }
+  activePointers.clear();
+  gesture = null;
+  viewport.classList.remove("is-panning");
+  viewport.classList.toggle("is-observing", observationMode);
+  pointerAutoFitBefore = null;
+  pointerChangedView = false;
+  pointerMovedNode = false;
+  pointerFitPending = false;
+  edgeCreateSource = null;
+  edgeReattach = null;
+  textEditTarget = null;
+  if (textDialog instanceof HTMLDialogElement && textDialog.open) textDialog.close();
+  selectNode(null);
+  if (editControls instanceof HTMLDetailsElement) {
+    editControls.open = false;
+    editControls.hidden = observationMode || !documentEditorHosted;
+  }
+  if (resetLayout instanceof HTMLButtonElement) resetLayout.disabled = observationMode;
+  if (observationButton instanceof HTMLButtonElement) {
+    observationButton.setAttribute("aria-pressed", String(observationMode));
+    observationButton.setAttribute(
+      "aria-label",
+      observationMode ? "Bearbeitungsmodus einschalten" : "Beobachtungsmodus einschalten",
+    );
+    observationButton.textContent = observationMode ? "Bearbeiten" : "Beobachten";
+    observationButton.title = observationMode
+      ? "Bearbeitung und Verschieben wieder erlauben"
+      : "Schaubild nur betrachten, ohne Elemente zu verändern";
+  }
+  if (interactionHint) {
+    interactionHint.textContent = observationMode
+      ? "Beobachten · Scrollen · Wischen · Zoomen"
+      : documentEditorHosted
+        ? "Verschieben · Zoomen · Text · Elemente & Verbindungen"
+        : "Verschieben · Zoomen · Auswählen";
+  }
+  updateDocumentToolbarState();
+  setStatus(observationMode ? "Beobachtungsmodus · keine Änderungen" : "Bearbeitung wieder aktiv");
+}
+observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;
   // The first pointer suspends fit; pure taps restore the previously active mode.
@@ -1832,6 +1910,21 @@ viewport.addEventListener("pointerdown", (event) => {
     return;
   }
   if (activePointers.size > 1) return;
+
+  // In observation mode *every* single-pointer gesture is view navigation,
+  // even if its origin is a node or edge. Touch pinch above remains enabled.
+  if (observationMode) {
+    gesture = {
+      kind: "pan",
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startView: { ...view },
+      moved: false,
+    };
+    viewport.classList.add("is-panning");
+    return;
+  }
 
   if (node) {
     const sourceId = node.dataset.sourceId;
@@ -1946,6 +2039,7 @@ viewport.addEventListener("pointermove", (event) => {
     return;
   }
   if (gesture.kind === "drag") {
+    if (observationMode) return;
     const screenDx = event.clientX - gesture.startX;
     const screenDy = event.clientY - gesture.startY;
     if (!gesture.moved && Math.hypot(screenDx, screenDy) < DRAG_THRESHOLD_PX) return;
@@ -2040,7 +2134,7 @@ viewport.addEventListener("wheel", (event) => {
 }, { passive: false });
 
 function openTextEditor() {
-  if (!documentEditorHosted || !(textDialog instanceof HTMLDialogElement) || !(textInput instanceof HTMLTextAreaElement)) return;
+  if (observationMode || !documentEditorHosted || !(textDialog instanceof HTMLDialogElement) || !(textInput instanceof HTMLTextAreaElement)) return;
   const document = documentSnapshot();
   const item = selectedId
     ? document.nodes.find((node) => String(node.id) === selectedId)
@@ -2056,7 +2150,7 @@ function openTextEditor() {
 }
 
 function deleteSelection() {
-  if (!documentEditorHosted) return;
+  if (observationMode || !documentEditorHosted) return;
   const document = documentSnapshot();
   if (selectedId) {
     document.nodes = document.nodes.filter((node) => String(node.id) !== selectedId);
@@ -2079,6 +2173,7 @@ if (documentEditorHosted) {
   if (authorityHint) authorityHint.textContent = "Dokument wird lokal gesichert";
   updateDocumentToolbarState();
   addNodeButton?.addEventListener("click", () => {
+    if (observationMode) return;
     const document = documentSnapshot();
     if (!documentMutationWithinProductLimits(document, { addNodes: 1 })) return;
     const id = uniqueId("node_", [...document.nodes, ...document.edges]);
@@ -2096,6 +2191,7 @@ if (documentEditorHosted) {
     rebuildDocument(document);
   });
   addEdgeButton?.addEventListener("click", () => {
+    if (observationMode) return;
     if (!selectedId) {
       setStatus("Für eine neue Verbindung zuerst ein Element auswählen");
       return;
@@ -2106,6 +2202,7 @@ if (documentEditorHosted) {
   });
   editTextButton?.addEventListener("click", openTextEditor);
   const beginReattach = (endpoint) => {
+    if (observationMode) return;
     if (!selectedEdgeId) {
       setStatus("Zuerst eine Verbindung auswählen");
       return;
@@ -2123,6 +2220,7 @@ if (documentEditorHosted) {
   reattachTargetButton?.addEventListener("click", () => beginReattach("to"));
   deleteSelectionButton?.addEventListener("click", deleteSelection);
   saveTextButton?.addEventListener("click", () => {
+    if (observationMode) return;
     if (!textEditTarget || !(textInput instanceof HTMLTextAreaElement)) return;
     const document = documentSnapshot();
     const collection = textEditTarget.kind === "node" ? document.nodes : document.edges;
@@ -2143,6 +2241,7 @@ if (documentEditorHosted) {
   });
   for (const node of nodes.values()) {
     node.addEventListener("dblclick", (event) => {
+      if (observationMode) return;
       event.preventDefault();
       selectNode(node.dataset.sourceId || null);
       openTextEditor();
@@ -2150,6 +2249,7 @@ if (documentEditorHosted) {
   }
   for (const edgeState of edges.values()) {
     edgeState.element?.addEventListener("dblclick", (event) => {
+      if (observationMode) return;
       event.preventDefault();
       selectEdge(edgeState.element.dataset.sourceId || null);
       openTextEditor();
@@ -2185,6 +2285,7 @@ if (embeddedNativeViewer && typeof MutationObserver === "function") {
   } catch (_) { /* cross-origin host is not observable */ }
 }
 resetLayout.addEventListener("click", () => {
+  if (observationMode) return;
   overrides = {};
   if (!documentMode) {
     try { localStorage.removeItem(STORAGE_KEY); } catch (_) { /* no persistence */ }
