@@ -345,11 +345,23 @@ try {
     change(field(newEdge,"Anfang","select"),"alpha");
     change(field(newEdge,"Ziel","select"),"node_1");
     document.querySelector("#contentSaveButton").click();
-    if (new URLSearchParams(location.search).has("retry")) {
+    const retryMode=new URLSearchParams(location.search);
+    if (retryMode.has("retry") || retryMode.has("reopen")) {
       await until(()=>!document.querySelector("#nativeRetryButton").hidden,
         "Transient renderer failure did not offer retry",1200);
       dialog.close("cancel");
-      document.querySelector("#nativeRetryButton").click();
+      if (retryMode.has("reopen")) {
+        document.querySelector(".workspace-tools-menu").open=true;
+        document.querySelector("#contentEditButton").click();
+        await until(()=>dialog.open && row("Element · alpha"),
+          "Previously renamed node not available after failed render",1200);
+        // Reopen the pending edited representation, make another real edit,
+        // and save it: the original offset ID must survive both operations.
+        change(field(row("Element · alpha"),"Titel","input"),"Neue Beschriftung");
+        document.querySelector("#contentSaveButton").click();
+      } else {
+        document.querySelector("#nativeRetryButton").click();
+      }
     }
     await until(()=>!dialog.open && saved()?.nodes.length === 3,
       "Native save did not finish",1200);
@@ -380,12 +392,12 @@ try {
 
 
 @pytest.mark.parametrize(
-    ("width", "height", "transient_retry"),
-    [(1280, 900, False), (768, 1024, False), (390, 844, False),
-     (1280, 900, True)],
+    ("width", "height", "retry_mode"),
+    [(1280, 900, ""), (768, 1024, ""), (390, 844, ""),
+     (1280, 900, "retry"), (1280, 900, "reopen")],
 )
 def test_canonical_editor_browser_reopen_structure_and_export(
-    tmp_path: Path, width: int, height: int, transient_retry: bool
+    tmp_path: Path, width: int, height: int, retry_mode: str
 ) -> None:
     """End-to-end local Chrome: edit, persist, export and reload a canonical diagram."""
     import os
@@ -443,7 +455,7 @@ def test_canonical_editor_browser_reopen_structure_and_export(
                     return
             super().do_POST()
 
-    handler = FailSecondNativeRender if transient_retry else _EditorRequestHandler
+    handler = FailSecondNativeRender if retry_mode else _EditorRequestHandler
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
         partial(handler, directory=str(output)),
@@ -465,7 +477,7 @@ def test_canonical_editor_browser_reopen_structure_and_export(
             f"--user-data-dir={profile}",
             "--dump-dom",
             f"http://127.0.0.1:{server.server_address[1]}/"
-            + ("?retry=1" if transient_retry else ""),
+            + (f"?{retry_mode}=1" if retry_mode else ""),
         ]
         result = subprocess.run(command, capture_output=True, text=True, timeout=50)
     finally:

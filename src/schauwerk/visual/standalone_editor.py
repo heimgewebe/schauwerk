@@ -405,13 +405,25 @@ renderRepresentationContentEditor = (representation) => {
   return canonicalRepresentationForm.first;
 };
 representationFromContentEditor = () => {
-  pendingCanonicalLayoutRemap = null;
   if (!canonicalRepresentationForm) return null;
+  // A failed render keeps the edited representation as the retry candidate.
+  // Reopening its form starts at already-renamed IDs, but the saved offsets
+  // still belong to the previous successfully rendered representation.
+  const previous = nativeCanvasRenderStale
+    && pendingCanonicalLayoutRemap?.representation === currentRepresentation
+    && pendingCanonicalLayoutRemap.previousDigest === currentNativeInputDigest
+    ? pendingCanonicalLayoutRemap : null;
   try {
     const value = canonicalRepresentationForm.getValue();
+    const currentIds = canonicalRepresentationForm.getNodeIdMapping();
+    const nodeIds = previous
+      ? Object.fromEntries(Object.entries(previous.nodeIds)
+          .filter(([, current]) => Object.hasOwn(currentIds, current))
+          .map(([original, current]) => [original, currentIds[current]]))
+      : currentIds;
     pendingCanonicalLayoutRemap = {
       previousDigest: currentNativeInputDigest,
-      nodeIds: canonicalRepresentationForm.getNodeIdMapping(),
+      nodeIds,
       representation: value,
     };
     return value;
