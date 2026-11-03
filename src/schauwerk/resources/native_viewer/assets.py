@@ -1880,8 +1880,30 @@ function setObservationMode(enabled) {
   }
   updateDocumentToolbarState();
   setStatus(observationMode ? "Beobachtungsmodus · keine Änderungen" : "Bearbeitung wieder aktiv");
+  if (documentEditorHosted && window.parent !== window) {
+    window.parent.postMessage(
+      { event: "native-observation-mode", enabled: observationMode },
+      window.location.origin,
+    );
+  }
 }
 observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+window.addEventListener("keydown", (event) => {
+  if (!documentEditorHosted || observationMode || (!event.ctrlKey && !event.metaKey) ||
+      event.altKey || event.isComposing || textDialog?.open) return;
+  if (event.target instanceof Element &&
+      event.target.closest('input,textarea,[contenteditable],[role="textbox"]')) return;
+  const key = String(event.key || "").toLowerCase();
+  const direction = key === "z"
+    ? (event.shiftKey ? "redo" : "undo")
+    : (key === "y" && !event.shiftKey ? "redo" : null);
+  if (!direction) return;
+  event.preventDefault();
+  window.parent.postMessage(
+    { event: "native-history-command", direction },
+    window.location.origin,
+  );
+});
 
 viewport.addEventListener("pointerdown", (event) => {
   if (event.pointerType === "mouse" && event.button !== 0) return;

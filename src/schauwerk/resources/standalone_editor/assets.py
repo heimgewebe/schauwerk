@@ -108,6 +108,10 @@ INDEX_HTML = r"""<!doctype html>
               <button class="button compact" id="layoutButton" type="button">Ordnen</button>
               <button class="button compact" id="contentEditButton" type="button" hidden>Inhalt</button>
               <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
+              <div class="native-history-controls" id="nativeHistoryControls" role="group" aria-label="Änderungsverlauf" hidden>
+                <button class="button compact" id="nativeUndoButton" type="button" disabled title="Letzte Änderung rückgängig machen (Strg/⌘+Z)">Rückgängig</button>
+                <button class="button compact" id="nativeRedoButton" type="button" disabled title="Änderung wiederholen (Strg/⌘+Umschalt+Z)">Wiederholen</button>
+              </div>
             </div>
           </div>
         </details>
@@ -1729,6 +1733,9 @@ const elements = {
   contentCancelButton: document.querySelector("#contentCancelButton"),
   contentSaveButton: document.querySelector("#contentSaveButton"),
   legacyEditButton: document.querySelector("#legacyEditButton"),
+  nativeHistoryControls: document.querySelector("#nativeHistoryControls"),
+  nativeUndoButton: document.querySelector("#nativeUndoButton"),
+  nativeRedoButton: document.querySelector("#nativeRedoButton"),
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
@@ -1765,6 +1772,13 @@ let currentNativeInputDigest = "";
 let pendingInitialCollisionSafeLayout = false;
 let pendingCreationDefaults = false;
 let preferredNodeFontSize = PRODUCT_DEFAULT_NODE_FONT_SIZE;
+const NATIVE_HISTORY_MAX_STATES = 24;
+const NATIVE_HISTORY_MAX_ENTRY_CHARS = 2 * 1024 * 1024;
+const NATIVE_HISTORY_MAX_TOTAL_CHARS = 8 * 1024 * 1024;
+let nativeUndoStack = [];
+let nativeRedoStack = [];
+let nativeHistoryBusy = false;
+let nativeHistoryObservationMode = false;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -1778,6 +1792,106 @@ function setError(message) {
   elements.error.textContent = message || "";
   elements.error.hidden = !message;
 }
+
+function nativeHistorySnapshot() {
+  if (!currentNativeDocument || !currentNativeCanvas ||
+      currentNativeDocument.schema_version !== "schauwerk-native-editing-document.v1") return null;
+  try {
+    const serialized = JSON.stringify({
+      nativeDocument: currentNativeDocument,
+      nativeCanvas: currentNativeCanvas,
+    });
+    return serialized.length <= NATIVE_HISTORY_MAX_ENTRY_CHARS ? serialized : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function pushNativeHistory(stack, snapshot) {
+  if (!snapshot) return;
+  stack.push(snapshot);
+  while (
+    stack.length > NATIVE_HISTORY_MAX_STATES ||
+    stack.reduce((total, item) => total + item.length, 0) > NATIVE_HISTORY_MAX_TOTAL_CHARS
+  ) stack.shift();
+}
+
+function syncNativeHistoryControls() {
+  const native = activeEngine === "native";
+  const nativeCanvas = native && Boolean(currentNativeCanvas);
+  const historyAvailable = nativeCanvas &&
+    (nativeUndoStack.length > 0 || nativeRedoStack.length > 0);
+  elements.nativeHistoryControls.hidden = !nativeCanvas;
+  const blocked = nativeHistoryBusy || nativeHistoryObservationMode ||
+    !editorReady || nativeCanvasRenderStale || !nativeCanvas;
+  elements.nativeUndoButton.disabled = blocked || nativeUndoStack.length === 0;
+  elements.nativeRedoButton.disabled = blocked || nativeRedoStack.length === 0;
+  const toolsMenu = document.querySelector(".workspace-tools-menu");
+  if (toolsMenu instanceof HTMLDetailsElement) {
+    toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml || historyAvailable);
+    if (toolsMenu.hidden) toolsMenu.open = false;
+  }
+  syncWorkspaceMenuOpenState();
+  syncWorkspaceBarHeight();
+}
+
+function resetNativeHistory() {
+  nativeUndoStack = [];
+  nativeRedoStack = [];
+  nativeHistoryBusy = false;
+  nativeHistoryObservationMode = false;
+  syncNativeHistoryControls();
+}
+
+async function moveNativeHistory(direction) {
+  if (activeEngine !== "native" || !editorReady || nativeHistoryBusy ||
+      nativeHistoryObservationMode || nativeCanvasRenderStale) return;
+  const source = direction === "undo" ? nativeUndoStack : nativeRedoStack;
+  const destination = direction === "undo" ? nativeRedoStack : nativeUndoStack;
+  const previous = nativeHistorySnapshot();
+  if (!source.length || !previous) return;
+  let target;
+  try { target = JSON.parse(source[source.length - 1]); } catch (_) { return; }
+  if (!target?.nativeDocument || !target?.nativeCanvas) return;
+  nativeHistoryBusy = true;
+  syncNativeHistoryControls();
+  try {
+    const result = await launchNative({
+      nativeDocument: target.nativeDocument,
+      nativeCanvas: target.nativeCanvas,
+      sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+    }, { preserveActiveFrame: true });
+    if (result?.ok &&
+        nativeCanvasSnapshot(currentNativeCanvas) === nativeCanvasSnapshot(target.nativeCanvas)) {
+      source.pop();
+      pushNativeHistory(destination, previous);
+      setStatus(direction === "undo"
+        ? "Rückgängig · lokal gesichert"
+        : "Wiederholt · lokal gesichert");
+    }
+  } finally {
+    nativeHistoryBusy = false;
+    syncNativeHistoryControls();
+  }
+}
+
+function nativeHistoryKeyDirection(event) {
+  if ((!event.ctrlKey && !event.metaKey) || event.altKey || event.isComposing) return null;
+  const key = String(event.key || "").toLowerCase();
+  if (key === "z") return event.shiftKey ? "redo" : "undo";
+  if (key === "y" && !event.shiftKey) return "redo";
+  return null;
+}
+window.addEventListener("keydown", (event) => {
+  if (activeEngine !== "native" || !currentNativeCanvas || nativeHistoryObservationMode ||
+      elements.contentDialog?.open) return;
+  if (event.target instanceof Element &&
+      event.target.closest('input,textarea,[contenteditable],[role="textbox"]')) return;
+  const direction = nativeHistoryKeyDirection(event);
+  if (!direction) return;
+  event.preventDefault();
+  void moveNativeHistory(direction);
+});
 
 function syncWorkspaceMenuOpenState(event) {
   // Safari and other older engines may ignore exclusive <details name> groups.
@@ -1818,13 +1932,9 @@ function setEngineMode(mode) {
     control.disabled = native;
   }
   elements.layoutButton.hidden = native;
-  const toolsMenu = document.querySelector(".workspace-tools-menu");
-  if (toolsMenu instanceof HTMLDetailsElement) {
-    // Legacy font/layout actions are available even without a native representation.
-    toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml);
-    if (toolsMenu.hidden) toolsMenu.open = false;
-  }
-  syncWorkspaceMenuOpenState();
+  // The native Canvas Tools menu only appears after an undoable mutation.
+  // Empty workspaces retain the compact toolbar; legacy tools remain visible.
+  syncNativeHistoryControls();
 
   const pngButton = document.querySelector('[data-export="png"]');
   if (pngButton instanceof HTMLButtonElement) {
@@ -2310,6 +2420,7 @@ function syncWorkspaceBarHeight() {
 
 function showStart() {
   invalidateLoadIntents();
+  resetNativeHistory();
   setWorkspaceActive(false);
   for (const menu of document.querySelectorAll(".workspace-menu[open]")) {
     menu.open = false;
@@ -2345,6 +2456,7 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
+  resetNativeHistory();
   const detected = detectInput(validateInputText(raw), {
     allowExtensionOnlyCanvas: /\.canvas$/i.test(String(title)),
   });
@@ -2413,10 +2525,12 @@ function replaceEditorFrame() {
   frame.removeAttribute("src");
   previous.replaceWith(frame);
   elements.frame = frame;
+  nativeHistoryObservationMode = false;
   return frame;
 }
 
 function launch(load) {
+  resetNativeHistory();
   if (load?.nativeRepresentation || load?.nativeDocument || load?.nativeImport) {
     void launchNative(load);
     return;
@@ -2425,6 +2539,7 @@ function launch(load) {
 }
 
 function launchLegacy(load) {
+  resetNativeHistory();
   invalidateLoadIntents();
   clearPreparedDownload();
   pendingExport = null;
@@ -3194,6 +3309,10 @@ window.addEventListener("message", (event) => {
         if (previousCanvas === null || incomingCanvas === null || previousCanvas !== incomingCanvas) {
           exportRequestVersion += 1;
           clearPreparedDownload();
+          if (!nativeHistoryBusy && previousCanvas !== null && incomingCanvas !== null) {
+            pushNativeHistory(nativeUndoStack, nativeHistorySnapshot());
+            nativeRedoStack = [];
+          }
         }
         currentNativeDocument = message.document;
         currentNativeCanvas = message.canvas;
@@ -3212,13 +3331,39 @@ window.addEventListener("message", (event) => {
         message.document &&
         message.document.schema_version === "schauwerk-native-editing-document.v1" &&
         message.canvas &&
-        typeof message.canvas === "object"
+        typeof message.canvas === "object" &&
+        !nativeHistoryBusy
       ) {
+        const previous = nativeHistorySnapshot();
+        const incoming = nativeCanvasSnapshot(message.canvas);
+        if (incoming === nativeCanvasSnapshot(currentNativeCanvas)) return;
+        nativeHistoryBusy = true;
+        syncNativeHistoryControls();
         void launchNative({
           nativeDocument: message.document,
           nativeCanvas: message.canvas,
           sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
-        }, { preserveActiveFrame: true });
+        }, { preserveActiveFrame: true }).then((result) => {
+          if (result?.ok && previous &&
+              nativeCanvasSnapshot(currentNativeCanvas) === incoming) {
+            pushNativeHistory(nativeUndoStack, previous);
+            nativeRedoStack = [];
+          }
+        }).finally(() => {
+          nativeHistoryBusy = false;
+          syncNativeHistoryControls();
+        });
+      }
+      return;
+    }
+    if (message.event === "native-observation-mode") {
+      nativeHistoryObservationMode = message.enabled === true;
+      syncNativeHistoryControls();
+      return;
+    }
+    if (message.event === "native-history-command") {
+      if (message.direction === "undo" || message.direction === "redo") {
+        void moveNativeHistory(message.direction);
       }
       return;
     }
@@ -3353,6 +3498,8 @@ elements.fileInput.addEventListener("change", () => {
   elements.fileInput.value = "";
   if (file) openFile(file);
 });
+elements.nativeUndoButton.addEventListener("click", () => { void moveNativeHistory("undo"); });
+elements.nativeRedoButton.addEventListener("click", () => { void moveNativeHistory("redo"); });
 elements.blankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
   const canvas = { nodes: [], edges: [] };
