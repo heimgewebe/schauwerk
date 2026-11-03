@@ -149,11 +149,23 @@ jobs:
           docker buildx imagetools create \
             --tag "$IMAGE:$GITHUB_SHA" \
             "$CANDIDATE_IMAGE@$candidate_digest"
-          final_digest="$(
-            docker buildx imagetools inspect "$IMAGE:$GITHUB_SHA" \
-              | awk '$1 == "Digest:" {print $2; exit}'
-          )"
-          test "$final_digest" = "$candidate_digest"
+          # GHCR can serve a newly copied tag slightly later than buildx create returns.
+          final_digest=""
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            inspect_output=""
+            if inspect_output="$(docker buildx imagetools inspect "$IMAGE:$GITHUB_SHA" 2>&1)"; then
+              final_digest="$(printf '%s\n' "$inspect_output" | awk '$1 == "Digest:" {print $2; exit}')"
+              if test "$final_digest" = "$candidate_digest"; then
+                break
+              fi
+            fi
+            if test "$attempt" -eq 10; then
+              printf 'Published digest mismatch after retries: expected=%s observed=%s\n' "$candidate_digest" "$final_digest" >&2
+              printf '%s\n' "$inspect_output" >&2
+              exit 1
+            fi
+            sleep 5
+          done
           printf '%s@%s\n' "$IMAGE" "$final_digest"
 
       - name: Logout from GHCR
