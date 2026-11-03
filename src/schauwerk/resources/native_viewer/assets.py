@@ -1283,13 +1283,13 @@ function canvasFromDocument(document) {
   return canvas;
 }
 
-function publishDocumentState(eventName = "native-document-change", document = documentSnapshot()) {
+function publishDocumentState(eventName = "native-document-change", document = documentSnapshot(), { startup = false } = {}) {
   if (observationMode || !documentEditorHosted || !document) return;
   const boundedDocument = boundedDocumentState(document);
   const canvasState = canvasFromDocument(boundedDocument);
   if (!canvasState) return;
   window.parent.postMessage(
-    { event: eventName, document: boundedDocument, canvas: canvasState },
+    { event: eventName, document: boundedDocument, canvas: canvasState, ...(startup ? { startup: true } : {}) },
     window.location.origin,
   );
 }
@@ -2339,7 +2339,8 @@ function initializeViewer() {
   const repaired = constrainAllNodesToCanvas();
   const repairPersisted = !repaired || persistOverrides();
   fit({ announce: repairPersisted && status.textContent === startupStatus });
-  if (documentEditorHosted) publishDocumentState();
+  // A freshly rendered frame confirms its initial state; it is not a user edit.
+  if (documentEditorHosted) publishDocumentState("native-document-change", documentSnapshot(), { startup: true });
 }
 const startupFallback = setTimeout(initializeViewer, 50);
 requestAnimationFrame(() => {

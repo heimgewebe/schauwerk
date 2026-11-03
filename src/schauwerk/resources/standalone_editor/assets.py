@@ -3306,9 +3306,14 @@ window.addEventListener("message", (event) => {
         message.canvas &&
         typeof message.canvas === "object"
       ) {
+        // A newly loaded viewer reports its state, not an edit. In-flight
+        // history transactions already own their exact source snapshot.
+        const startupSync = message.startup === true;
+        if (startupSync && nativeHistoryBusy) return;
         const previousCanvas = nativeCanvasSnapshot(currentNativeCanvas);
         const incomingCanvas = nativeCanvasSnapshot(message.canvas);
-        if (previousCanvas === null || incomingCanvas === null || previousCanvas !== incomingCanvas) {
+        if (!startupSync &&
+            (previousCanvas === null || incomingCanvas === null || previousCanvas !== incomingCanvas)) {
           exportRequestVersion += 1;
           clearPreparedDownload();
           if (!nativeHistoryBusy && previousCanvas !== null && incomingCanvas !== null) {
@@ -3322,7 +3327,7 @@ window.addEventListener("message", (event) => {
         setEngineMode("native");
         setStatus(
           draftSaved
-            ? "Gesichert"
+            ? (startupSync ? "Bereit · Änderungen werden lokal gesichert" : "Gesichert")
             : "Änderung aktiv · lokales Speichern nicht möglich",
         );
       }

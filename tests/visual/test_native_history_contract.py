@@ -78,7 +78,18 @@ const wait = async (predicate, label) => {
     try { if (predicate()) return; } catch (_) { /* frame is being replaced */ }
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  throw new Error(label);
+  throw new Error(label + " | state=" + JSON.stringify({
+    nodeCount: nodeCount(),
+    undoDisabled: document.querySelector("#nativeUndoButton")?.disabled,
+    redoDisabled: document.querySelector("#nativeRedoButton")?.disabled,
+    frameReadyState: frameDoc()?.readyState,
+    frameStatus: frameDoc()?.querySelector("#status")?.textContent,
+    frameAddDisabled: frameDoc()?.querySelector("#addNode")?.disabled,
+    status: document.querySelector("#status")?.textContent,
+    error: document.querySelector("#error")?.textContent,
+    frameInert: document.querySelector("#editorFrame")?.inert,
+    frameUrl: frameDoc()?.URL,
+  }));
 };
 const frameDoc = () => document.querySelector("#editorFrame")?.contentDocument;
 const nodeCount = () => frameDoc()?.querySelectorAll('[data-source-kind="node"]').length;
@@ -207,6 +218,8 @@ try {
             })
             assert "exceptionDetails" not in evaluated, evaluated.get("exceptionDetails")
             result = evaluated.get("result", {}).get("value", {})
+            if result.get("state") != "pass":
+                print("BROWSER_DIAG", json.dumps(result, ensure_ascii=False), flush=True)
             assert result.get("state") == "pass", result
     finally:
         proc.terminate()
