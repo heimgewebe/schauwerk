@@ -1850,6 +1850,12 @@ async function moveNativeHistory(direction) {
   const destination = direction === "undo" ? nativeRedoStack : nativeUndoStack;
   const previous = nativeHistorySnapshot();
   if (!source.length || !previous) return;
+  // A failed render must not leave the target as a saved draft while the
+  // visible frame and history stacks still describe the original state.
+  const activeDocument = currentNativeDocument;
+  const activeCanvas = currentNativeCanvas;
+  const activeFrame = elements.frame;
+  const activeUrl = currentNativeUrl;
   let target;
   try { target = JSON.parse(source[source.length - 1]); } catch (_) { return; }
   if (!target?.nativeDocument || !target?.nativeCanvas) return;
@@ -1868,6 +1874,26 @@ async function moveNativeHistory(direction) {
       setStatus(direction === "undo"
         ? "Rückgängig · lokal gesichert"
         : "Wiederholt · lokal gesichert");
+    } else if (result?.ok === false && nativeCanvasRenderStale &&
+               elements.frame === activeFrame && currentNativeUrl === activeUrl) {
+      // A transient failure leaves the original frame intact but inert and
+      // stages the rejected history target as a retry draft. Roll back that
+      // staging atomically to the frame's real source; keep both history stacks.
+      currentNativeDocument = activeDocument;
+      currentNativeCanvas = activeCanvas;
+      nativeCanvasRenderStale = false;
+      activeFrame.inert = false;
+      elements.nativeRetryButton.hidden = true;
+      const draftSaved = saveNativeCanvasDraft(activeDocument, activeCanvas);
+      setError(
+        (direction === "undo" ? "Rückgängig" : "Wiederholen")
+        + " konnte nicht übernommen werden. Der letzte gültige Dokumentzustand bleibt aktiv."
+        + (draftSaved ? "" : " Der lokale Entwurf konnte nicht wiederhergestellt werden."),
+      );
+      setStatus(
+        (direction === "undo" ? "Rückgängig" : "Wiederholen")
+        + " fehlgeschlagen · ursprünglicher Zustand erhalten",
+      );
     }
   } finally {
     nativeHistoryBusy = false;

@@ -117,6 +117,21 @@ try {
   await wait(() => nodeCount() === 1 && !undo.disabled, "Add did not enable undo");
   if (menu.hidden || !redo.disabled) throw new Error("New edit history state invalid");
 
+  // The test server rejects the first undo render once. The original
+  // rendered frame, history entry and locally saved draft must survive.
+  undo.click();
+  await wait(() => nodeCount() === 1 && !undo.disabled && redo.disabled &&
+    !document.querySelector("#editorFrame")?.inert &&
+    document.querySelector("#nativeRetryButton")?.hidden &&
+    document.querySelector("#status")?.textContent?.includes("Rückgängig fehlgeschlagen"),
+    "Rejected undo did not restore the previous live state");
+  const retainedDraft = JSON.parse(
+    localStorage.getItem("schauwerk.native-schaubild.draft.v1") || "null"
+  );
+  if (retainedDraft?.nativeCanvas?.nodes?.length !== 1) {
+    throw new Error("Rejected undo lost the previous saved document");
+  }
+
   undo.click();
   await wait(() => nodeCount() === 0 && !redo.disabled, "Undo did not restore empty Canvas");
   redo.click();
@@ -150,8 +165,19 @@ try {
   document.documentElement.dataset.nativeHistoryError = String(error?.message || error);
 }
 """
+    class _OneTransientHistoryFailure(_EditorRequestHandler):
+        render_requests = 0
+
+        def do_POST(self) -> None:  # noqa: N802
+            if self.path == "/api/native-viewer":
+                type(self).render_requests += 1
+                if type(self).render_requests == 3:
+                    self._send_json(503, {"error": "synthetic transient render failure"})
+                    return
+            super().do_POST()
+
     server = ThreadingHTTPServer(
-        ("127.0.0.1", 0), partial(_EditorRequestHandler, directory=str(output))
+        ("127.0.0.1", 0), partial(_OneTransientHistoryFailure, directory=str(output))
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
