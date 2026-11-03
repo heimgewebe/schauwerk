@@ -615,6 +615,9 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "scripts/ci/smoke-native-schaubild-runtime.sh",
         "tests/visual/test_standalone_editor.py",
     }
+    native_image_readback_superseded_files = {
+        ".github/workflows/native-schaubild-image.yml",
+    }
     for name, expected in schaubild_successor["source_bindings"].items():
         if name not in runtime_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -661,7 +664,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor.py",
     } | editor_superseded_files
     for name, expected in runtime_successor["source_bindings"].items():
-        if name not in (drawio_native_superseded_files | smoke_pipefail_superseded_files):
+        if name not in (
+            drawio_native_superseded_files
+            | smoke_pipefail_superseded_files
+            | native_image_readback_superseded_files
+        ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
 
     drawio_successor = json.loads(
