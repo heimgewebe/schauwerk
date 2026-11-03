@@ -31,7 +31,7 @@ INDEX_HTML = r"""<!doctype html>
           <p class="eyebrow">Schaubild</p>
           <h1>Vom Gedanken zum Schaubild.</h1>
           <p class="lede">Struktur rein, Schaubild auf. Öffne Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten – direkt in einem Arbeitsraum.</p>
-          <div class="format-strip" aria-label="Unterstützte Eingaben">
+          <div class="format-strip" role="group" aria-label="Unterstützte Eingaben">
             <span>Mermaid</span>
             <span>JSON Canvas</span>
             <span>draw.io</span>
@@ -52,7 +52,7 @@ INDEX_HTML = r"""<!doctype html>
           </div>
 
           <label class="paste-box" for="sourceInput">
-            <span class="visually-hidden">KI-Ergebnis hier einfügen</span>
+            <span class="visually-hidden">Schaubild-Quelle oder KI-Ergebnis hier einfügen</span>
             <textarea id="sourceInput" spellcheck="false" placeholder="Mermaid, JSON Canvas, draw.io oder Schauwerk-Daten hier einfügen …"></textarea>
           </label>
 
@@ -78,6 +78,7 @@ INDEX_HTML = r"""<!doctype html>
               </label>
               <p class="field-hint" id="fontDefaultHint">Gilt nur für neu erzeugte Elemente im Kompatibilitätseditor. Bestehende Formatierungen bleiben unverändert.</p>
               <div class="advanced-utility-actions">
+                <button class="button compact ghost" id="legacyBlankButton" type="button">Leeres draw.io-Projekt (Kompatibilität)</button>
                 <!-- SCHAUWERK_AI_HANDOFF_ACTION -->
               </div>
               <aside class="boundary-note">
@@ -173,7 +174,7 @@ STYLES_CSS = r""":root {
   --surface-raised: rgba(255, 255, 255, 0.88);
   --surface-soft: #f7f7fb;
   --ink: #161827;
-  --muted: #6f7280;
+  --muted: #666977;
   --line: #e3e4ec;
   --line-strong: #d4d6e1;
   --accent: #635bff;
@@ -1712,6 +1713,7 @@ const elements = {
   fileInput: document.querySelector("#fileInput"),
   blankButton: document.querySelector("#blankButton"),
   legacyFallbackButton: document.querySelector("#legacyFallbackButton"),
+  legacyBlankButton: document.querySelector("#legacyBlankButton"),
   restoreButton: document.querySelector("#restoreButton"),
   error: document.querySelector("#error"),
   frame: document.querySelector("#editorFrame"),
@@ -2946,7 +2948,7 @@ async function openFile(file) {
   if (!file) return;
   const loadIntent = invalidateLoadIntents();
   if (file.size > MAX_INPUT_BYTES) {
-    setError("Die Datei ist für diesen Spike zu groß (maximal 5 MB).\n");
+    setError("Die Datei ist zu groß (maximal 5 MB).\n");
     return;
   }
   try {
@@ -3352,6 +3354,20 @@ elements.fileInput.addEventListener("change", () => {
   if (file) openFile(file);
 });
 elements.blankButton.addEventListener("click", () => {
+  currentTitle = "Schaubild";
+  const canvas = { nodes: [], edges: [] };
+  launch({
+    nativeImport: {
+      schema_version: NATIVE_IMPORT_SCHEMA,
+      format: "json-canvas-1.0",
+      source: canvas,
+      title: currentTitle,
+    },
+    nativeCanvas: canvas,
+    sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
+  });
+});
+elements.legacyBlankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
   launch({ xml: emptyDrawioXml() });
 });

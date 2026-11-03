@@ -421,7 +421,7 @@ try {
     legacyToolsMenu.open = false;
   }
 
-  document.querySelector("#blankButton").click();
+  document.querySelector("#legacyBlankButton").click();
   // The external legacy iframe navigation runs in requestAnimationFrame; Chrome
   // virtual time can delay it. Host/footer geometry does not depend on that navigation.
   await waitUntil(
@@ -1194,7 +1194,7 @@ const wait = async (predicate, label) => {
       && !document.querySelector("#startView").hidden,
     "legacy tools test could not return to start",
   );
-  document.querySelector("#blankButton").click();
+  document.querySelector("#legacyBlankButton").click();
   await wait(
     () => !document.querySelector("#workspace").hidden
       && document.body.classList.contains("engine-legacy"),

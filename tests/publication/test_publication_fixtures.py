@@ -9579,9 +9579,13 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         single_workspace_status_refit_superseded_files
     )
     for name, expected in status_refit_acceptance["source_bindings"].items():
-        if name == "src/schauwerk/resources/standalone_editor/assets.py":
-            # The PDF-export revision supersedes this source revision, not the
-            # immutable status-refit acceptance bound to its original digest.
+        if name in {
+            "src/schauwerk/resources/standalone_editor/assets.py",
+            "tests/visual/test_standalone_editor_single_workspace.py",
+        }:
+            # PDF export and native-first blank editing supersede these source
+            # revisions. The historical visual receipt remains unchanged;
+            # current behavior is checked by the native-blank regression tests.
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(status_refit_acceptance["checks"].values())
@@ -13424,7 +13428,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in single_workspace_status_refit_superseded_files:
+        if name in {
+            "src/schauwerk/resources/standalone_editor/assets.py",
+            "tests/visual/test_standalone_editor_single_workspace.py",
+        }:
+            # These current source revisions are outside the earlier immutable
+            # status-refit visual acceptance; do not inherit that acceptance.
+            continue
+        elif name in single_workspace_status_refit_superseded_files:
             assert status_refit_acceptance["source_bindings"][name] == current
         elif name in single_workspace_legacy_tools_superseded_files:
             assert legacy_tools_acceptance["source_bindings"][name] == current
