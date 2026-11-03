@@ -896,6 +896,7 @@ let errorText = "";
 // This isolated harness extracts launchNative without the host toolbar.
 // Track its reset boundary instead of silently omitting the dependency.
 let nativeHistoryResetCalls = 0;
+let pendingNativeRebuildHistory = null;
 function resetNativeHistory() { nativeHistoryResetCalls += 1; }
 const store = new Map();
 globalThis.localStorage = {
@@ -1460,6 +1461,7 @@ let errorText = "";
 let replaceCalls = 0;
 let workspaceCalls = 0;
 let nativeCanvasDraftSaveSucceeds = false;
+let pendingNativeRebuildHistory = null;
 const nativeCanvasDraftSaves = [];
 const oldFrame = {
   inert: false,

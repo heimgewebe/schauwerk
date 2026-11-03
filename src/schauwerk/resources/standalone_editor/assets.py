@@ -1779,6 +1779,8 @@ let nativeUndoStack = [];
 let nativeRedoStack = [];
 let nativeHistoryBusy = false;
 let nativeHistoryObservationMode = false;
+// Preimage for a native edit that must survive a transient render failure.
+let pendingNativeRebuildHistory = null;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
@@ -1838,6 +1840,7 @@ function syncNativeHistoryControls() {
 function resetNativeHistory() {
   nativeUndoStack = [];
   nativeRedoStack = [];
+  pendingNativeRebuildHistory = null;
   nativeHistoryBusy = false;
   nativeHistoryObservationMode = false;
   syncNativeHistoryControls();
@@ -2482,10 +2485,20 @@ function showWorkspace() {
 }
 
 function prepareInput(raw, title = "Schaubild") {
-  resetNativeHistory();
+  // Reject invalid input without touching the active document's history.
+  // The successful document-launch boundary owns the actual reset.
   const detected = detectInput(validateInputText(raw), {
     allowExtensionOnlyCanvas: /\.canvas$/i.test(String(title)),
   });
+  // Validate all rejecting formats before touching the active document.
+  if (detected.kind === "json-canvas-rejected") throw new Error(detected.reason);
+  if (detected.kind === "unknown") {
+    throw new Error(
+      "Format nicht erkannt. Unterstützt werden Schauwerk Representation, Mermaid, .canvas und draw.io/XML.",
+    );
+  }
+  const validatedXml = detected.kind === "drawio"
+    ? validateDiagramXml(detected.text) : null;
   currentTitle = safeFilename(title.replace(/\.(canvas|mmd|mermaid|drawio|xml|json)$/i, ""));
   currentXml = null;
   currentRepresentation = null;
@@ -2520,11 +2533,8 @@ function prepareInput(raw, title = "Schaubild") {
       sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
     };
   }
-  if (detected.kind === "json-canvas-rejected") {
-    throw new Error(detected.reason);
-  }
   if (detected.kind === "drawio") {
-    const xml = validateDiagramXml(detected.text);
+    const xml = validatedXml;
     return {
       nativeImport: {
         schema_version: NATIVE_IMPORT_SCHEMA,
@@ -3041,10 +3051,24 @@ async function retryNativeRender() {
     retryLoad.nativeRepresentation && !retryLoad.nativeDocument
   );
   elements.nativeRetryButton.hidden = true;
-  await launchNative(
+  const pendingRebuild = pendingNativeRebuildHistory;
+  const result = await launchNative(
     retryLoad,
     { preserveActiveFrame: true, syncRepresentationTitle },
   );
+  if (pendingRebuild && pendingNativeRebuildHistory === pendingRebuild) {
+    if (result?.ok) {
+      if (nativeCanvasSnapshot(currentNativeCanvas) === pendingRebuild.incoming) {
+        pushNativeHistory(nativeUndoStack, pendingRebuild.previous);
+        nativeRedoStack = [];
+      }
+      pendingNativeRebuildHistory = null;
+    } else if (!nativeCanvasRenderStale) {
+      // A permanently rejected candidate was already restored by launchNative.
+      pendingNativeRebuildHistory = null;
+    }
+    syncNativeHistoryControls();
+  }
 }
 
 function loadPendingIntoEditor() {
@@ -3335,7 +3359,8 @@ window.addEventListener("message", (event) => {
         // A newly loaded viewer reports its state, not an edit. In-flight
         // history transactions already own their exact source snapshot.
         const startupSync = message.startup === true;
-        if (startupSync && nativeHistoryBusy) return;
+        if (nativeHistoryBusy ||
+            (pendingNativeRebuildHistory && nativeCanvasRenderStale)) return;
         const previousCanvas = nativeCanvasSnapshot(currentNativeCanvas);
         const incomingCanvas = nativeCanvasSnapshot(message.canvas);
         if (!startupSync &&
@@ -3365,11 +3390,13 @@ window.addEventListener("message", (event) => {
         message.document.schema_version === "schauwerk-native-editing-document.v1" &&
         message.canvas &&
         typeof message.canvas === "object" &&
-        !nativeHistoryBusy
+        !nativeHistoryBusy && !nativeCanvasRenderStale
       ) {
         const previous = nativeHistorySnapshot();
         const incoming = nativeCanvasSnapshot(message.canvas);
         if (incoming === nativeCanvasSnapshot(currentNativeCanvas)) return;
+        const pendingRebuild = { previous, incoming };
+        pendingNativeRebuildHistory = pendingRebuild;
         nativeHistoryBusy = true;
         syncNativeHistoryControls();
         void launchNative({
@@ -3377,11 +3404,17 @@ window.addEventListener("message", (event) => {
           nativeCanvas: message.canvas,
           sourceMetadata: { key: "schauwerkImportFormat", value: "json-canvas-1.0" },
         }, { preserveActiveFrame: true }).then((result) => {
-          if (result?.ok && previous &&
+          if (pendingNativeRebuildHistory !== pendingRebuild) return;
+          if (result?.ok &&
               nativeCanvasSnapshot(currentNativeCanvas) === incoming) {
             pushNativeHistory(nativeUndoStack, previous);
             nativeRedoStack = [];
+            pendingNativeRebuildHistory = null;
+          } else if (!nativeCanvasRenderStale) {
+            // Permanent rejection or completed recovery: no pending edit remains.
+            pendingNativeRebuildHistory = null;
           }
+          // Transient failure keeps the original history preimage for retry.
         }).finally(() => {
           nativeHistoryBusy = false;
           syncNativeHistoryControls();

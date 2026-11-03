@@ -23,7 +23,9 @@ def test_native_history_protocol_and_limits(tmp_path: Path) -> None:
     assert 'message.event === "native-document-change"' in host
     assert 'message.event === "native-observation-mode"' in host
     assert 'message.event === "native-history-command"' in host
-    assert 'if (result?.ok && previous &&' in host
+    assert "pendingNativeRebuildHistory = pendingRebuild;" in host
+    assert "if (pendingNativeRebuildHistory !== pendingRebuild) return;" in host
+    assert "pushNativeHistory(nativeUndoStack, pendingRebuild.previous);" in host
     assert "nativeUndoStack = [];" in host
     assert "nativeRedoStack = [];" in host
     assert not viewer  # Native viewer remains served by the API, not bundled in the shell.
@@ -114,10 +116,32 @@ try {
   }
 
   frameDoc().querySelector("#addNode").click();
-  await wait(() => nodeCount() === 1 && !undo.disabled, "Add did not enable undo");
+  await wait(() => nodeCount() === 0 && undo.disabled &&
+    !document.querySelector("#nativeRetryButton")?.hidden &&
+    document.querySelector("#editorFrame")?.inert,
+    "Rejected rebuild did not expose an inert original frame and retry");
+  const pendingDraft = JSON.parse(
+    localStorage.getItem("schauwerk.native-schaubild.draft.v1") || "null"
+  );
+  if (pendingDraft?.nativeCanvas?.nodes?.length !== 1) {
+    throw new Error("Failed rebuild did not preserve its edited candidate");
+  }
+  document.querySelector("#nativeRetryButton").click();
+  await wait(() => nodeCount() === 1 && !undo.disabled &&
+    document.querySelector("#nativeRetryButton")?.hidden &&
+    !document.querySelector("#editorFrame")?.inert,
+    "Successful rebuild retry did not commit the undo preimage");
   if (menu.hidden || !redo.disabled) throw new Error("New edit history state invalid");
 
-  // The test server rejects the first undo render once. The original
+  // A rejected user import must preserve the currently active history.
+  document.querySelector("#sourceInput").value = "{invalid json";
+  document.querySelector("#openPasteButton").click();
+  if (nodeCount() !== 1 || undo.disabled || !redo.disabled ||
+      !document.querySelector("#error")?.textContent?.includes("Format nicht erkannt")) {
+    throw new Error("Invalid import discarded active native document or history");
+  }
+
+  // The test server also rejects the first undo render once. The original
   // rendered frame, history entry and locally saved draft must survive.
   undo.click();
   await wait(() => nodeCount() === 1 && !undo.disabled && redo.disabled &&
@@ -172,7 +196,7 @@ try {
         def do_POST(self) -> None:  # noqa: N802
             if self.path == "/api/native-viewer":
                 type(self).render_requests += 1
-                if type(self).render_requests == 3:
+                if type(self).render_requests in {2, 4}:
                     self._send_json(503, {"error": "synthetic transient render failure"})
                     return
             super().do_POST()
