@@ -139,20 +139,50 @@ const titleLabel=descendants(container).find(el=>el.tagName==='label' && el.chil
 assert.ok(titleLabel);
 titleLabel.children[1].input('Neuer Titel');
 assert.equal(form.getValue().title,'Neuer Titel');
-assert.deepEqual(form.getNodeIdMapping(),{a:'a',b:'b',node_1:'node_1'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'a',b:'b'});
 const nodeA=descendants(container).find(el=>el.tagName==='fieldset' &&
   el.children[0]?.textContent==='Element · a');
 const nodeAId=descendants(nodeA).find(el=>el.tagName==='label' &&
   el.children[0]?.textContent==='ID').children[1];
 nodeAId.change('alpha');
-assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',b:'b',node_1:'node_1'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',b:'b'});
 const nodeB=descendants(container).find(el=>el.tagName==='fieldset' &&
   el.children[0]?.textContent==='Element · b');
 descendants(nodeB).find(el=>el.tagName==='button' &&
   el.textContent==='Element löschen').click();
-assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',node_1:'node_1'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha'});
 assert.deepEqual({...remap({a:{x:27,y:41},b:{x:-8,y:3}},form.getNodeIdMapping())},
   {alpha:{x:27,y:41}});
+// P2: reusing a renamed source ID must never overwrite its original offset.
+const source=JSON.parse(JSON.stringify(sample));
+source.nodes[0].id='node_1';
+source.edges[0].from='node_1';
+const reuseRoot=new Element('main');
+const reuseForm=mount(reuseRoot,source);
+const oldRow=descendants(reuseRoot).find(el=>el.tagName==='fieldset' &&
+  el.children[0]?.textContent==='Element · node_1');
+const oldId=descendants(oldRow).find(el=>el.tagName==='label' &&
+  el.children[0]?.textContent==='ID').children[1];
+oldId.change('alpha');
+descendants(reuseRoot).find(el=>el.tagName==='button' && el.textContent==='+ Element').click();
+assert.deepEqual(reuseForm.getValue().nodes.map(node=>node.id),['alpha','b','node_1']);
+assert.deepEqual(reuseForm.getNodeIdMapping(),{node_1:'alpha',b:'b'});
+assert.deepEqual({...remap({node_1:{x:27,y:41}},reuseForm.getNodeIdMapping())},
+  {alpha:{x:27,y:41}});
+// Once the native render succeeds, every node is a source node for its new digest.
+reuseForm.rebaseNodeIds();
+assert.deepEqual(reuseForm.getNodeIdMapping(),{alpha:'alpha',b:'b',node_1:'node_1'});
+assert.deepEqual({...remap({alpha:{x:27,y:41},node_1:{x:3,y:7}},reuseForm.getNodeIdMapping())},
+  {alpha:{x:27,y:41},node_1:{x:3,y:7}});
+// Removing and recreating an ID is also a new node, not the removed source node.
+const delRoot=new Element('main');
+const delForm=mount(delRoot,source);
+const delRow=descendants(delRoot).find(el=>el.tagName==='fieldset' &&
+  el.children[0]?.textContent==='Element · node_1');
+descendants(delRow).find(el=>el.tagName==='button' && el.textContent==='Element löschen').click();
+descendants(delRoot).find(el=>el.tagName==='button' && el.textContent==='+ Element').click();
+assert.deepEqual(delForm.getNodeIdMapping(),{b:'b'});
+assert.deepEqual({...remap({node_1:{x:27,y:41}},delForm.getNodeIdMapping())},{});
 """)
 
 

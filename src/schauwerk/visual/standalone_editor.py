@@ -516,11 +516,11 @@ saveRepresentationContentEditor = async () => {
     if (!nativeCanvasRenderStale && editorReady
         && canonicalRepresentationLastSubmitted === currentRepresentation
         && elements.contentDialog?.open && canonicalRepresentationForm) {
-      const renderedIds = new Set(currentRepresentation.nodes.map(node => node.id));
+      // The rendered digest is now authoritative. Rebase the still-open form
+      // to every current node, including newly created and reused IDs.
+      canonicalRepresentationForm.rebaseNodeIds();
       canonicalRepresentationFormSourceIds = Object.fromEntries(
-        Object.entries(canonicalRepresentationForm.getNodeIdMapping())
-          .filter(([, current]) => renderedIds.has(current))
-          .map(([baseline, current]) => [current, baseline]),
+        currentRepresentation.nodes.map(node => [node.id, node.id]),
       );
     }
     // A transient renderer failure keeps the edited representation for Retry.

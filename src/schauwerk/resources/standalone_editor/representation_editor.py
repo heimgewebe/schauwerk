@@ -229,12 +229,9 @@ export function mountRepresentationEditor(container, representation) {
   function mutate(action) {
     try {
       draft = changeRepresentation(draft, action);
-      if (action.type === "add-node") {
-        const newId = draft.nodes[draft.nodes.length - 1].id;
-        // It has no offsets in the old digest yet, but becomes a source node
-        // after a successful save even if the dialog remains open.
-        originalNodeIds.set(newId, newId);
-      }
+      // New nodes do not exist in the original rendered layout digest.
+      // Never claim their generated ID as an original ID: a renamed or
+      // removed source node may have used the same identifier.
       if (action.type === "remove-node") {
         for (const [original, current] of originalNodeIds) {
           if (current === action.id) originalNodeIds.delete(original);
@@ -333,7 +330,13 @@ export function mountRepresentationEditor(container, representation) {
     get first() { return first; },
     getValue() { return validateRepresentation(draft); },
     getDraft() { return clone(draft); },
-    getNodeIdMapping() { return Object.fromEntries(originalNodeIds); }
+    getNodeIdMapping() { return Object.fromEntries(originalNodeIds); },
+    rebaseNodeIds() {
+      // Only after a successful native render: all nodes now exist in the
+      // new layout digest, including added nodes and reused identifiers.
+      originalNodeIds.clear();
+      for (const node of draft.nodes) originalNodeIds.set(node.id, node.id);
+    }
   };
 }
 """
