@@ -123,7 +123,8 @@ try {
   await wait(() => nodeCount() === 1 && !undo.disabled && redo.disabled &&
     !document.querySelector("#editorFrame")?.inert &&
     document.querySelector("#nativeRetryButton")?.hidden &&
-    document.querySelector("#status")?.textContent?.includes("Rückgängig fehlgeschlagen"),
+    document.querySelector("#error")?.textContent?.includes(
+      "Rückgängig konnte nicht übernommen werden"),
     "Rejected undo did not restore the previous live state");
   const retainedDraft = JSON.parse(
     localStorage.getItem("schauwerk.native-schaubild.draft.v1") || "null"
