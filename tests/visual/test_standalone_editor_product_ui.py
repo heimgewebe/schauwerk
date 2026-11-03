@@ -54,7 +54,14 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     assert "body.engine-native .workspace-tools-menu:not(:has(" not in styles_css
     assert ".workspace-menu-label {" in styles_css
     assert "text-overflow: ellipsis;" in styles_css
-    assert 'toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml);' in app_js
+    assert (
+        "toolsMenu.hidden = native && "
+        "!(currentRepresentation || currentLegacyXml || historyAvailable);"
+    ) in app_js
+    assert 'id="nativeUndoButton"' in index_html
+    assert 'id="nativeRedoButton"' in index_html
+    assert 'id="nativeHistoryControls"' in index_html
+    assert "function moveNativeHistory(direction)" in app_js
     assert 'menu.addEventListener("toggle", syncWorkspaceMenuOpenState);' in app_js
     # Unsupported :has() must not invalidate the independent class fallback.
     assert "body.workspace-active.workspace-menu-open .topline {" in styles_css

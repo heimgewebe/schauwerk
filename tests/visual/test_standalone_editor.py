@@ -893,6 +893,11 @@ let editorReady = true;
 let currentTitle = "Original";
 let statusText = "";
 let errorText = "";
+// This isolated harness extracts launchNative without the host toolbar.
+// Track its reset boundary instead of silently omitting the dependency.
+let nativeHistoryResetCalls = 0;
+let pendingNativeRebuildHistory = null;
+function resetNativeHistory() { nativeHistoryResetCalls += 1; }
 const store = new Map();
 globalThis.localStorage = {
   getItem(key) { return store.has(String(key)) ? store.get(String(key)) : null; },
@@ -971,6 +976,9 @@ await launchNative(
   {nativeRepresentation: cloneJson(edited)},
   {preserveActiveFrame: true, syncRepresentationTitle: true},
 );
+if (nativeHistoryResetCalls !== 0) {
+  throw new Error("representation edit unexpectedly reset native history");
+}
 const migrated = JSON.parse(store.get(nativeLayoutStorageKey(newDigest)) || "{}");
 if (migrated?.n?.x !== 25 || migrated?.n?.y !== -15) {
   throw new Error("representation text edit did not migrate saved layout overrides");
@@ -1453,6 +1461,7 @@ let errorText = "";
 let replaceCalls = 0;
 let workspaceCalls = 0;
 let nativeCanvasDraftSaveSucceeds = false;
+let pendingNativeRebuildHistory = null;
 const nativeCanvasDraftSaves = [];
 const oldFrame = {
   inert: false,
@@ -1644,6 +1653,9 @@ let currentNativeUrl = null;
 let editorReady = false;
 let statusText = "";
 let errorText = "";
+// launchNative comes from production but the toolbar is not part of this harness.
+let nativeHistoryResetCalls = 0;
+function resetNativeHistory() { nativeHistoryResetCalls += 1; }
 const legacyXml = "<mxGraphModel><root/></mxGraphModel>";
 let legacyConverterCalls = 0;
 const preferredNodeFontSize = 24;
@@ -1732,6 +1744,9 @@ if (!errorText.includes("Das Original wurde nicht verändert")) {
 }
 if (!statusText.includes("Nativer Import abgelehnt") || !statusText.includes("Legacy verfügbar")) {
   throw new Error("native JSON Canvas rejection did not report generic legacy availability");
+}
+if (nativeHistoryResetCalls !== 1) {
+  throw new Error("opening an imported document did not reset native history once");
 }
 """
     subprocess.run(
