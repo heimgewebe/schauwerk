@@ -18,6 +18,7 @@ def test_native_history_protocol_and_limits(tmp_path: Path) -> None:
     assert "NATIVE_HISTORY_MAX_STATES = 24" in host
     assert "NATIVE_HISTORY_MAX_TOTAL_CHARS = 8 * 1024 * 1024" in host
     assert "nativeHistoryObservationMode" in host
+    assert "if (!preserveActiveFrame) resetNativeHistory();" in host
     assert 'message.event === "native-document-rebuild"' in host
     assert 'message.event === "native-document-change"' in host
     assert 'message.event === "native-observation-mode"' in host

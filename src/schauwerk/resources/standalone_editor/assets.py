@@ -2530,7 +2530,6 @@ function replaceEditorFrame() {
 }
 
 function launch(load) {
-  resetNativeHistory();
   if (load?.nativeRepresentation || load?.nativeDocument || load?.nativeImport) {
     void launchNative(load);
     return;
@@ -2584,6 +2583,9 @@ async function launchNative(load, options = {}) {
   const preserveActiveFrame = Boolean(
     options.preserveActiveFrame && editorReady && currentNativeUrl,
   );
+  // Only a new document resets history; native edits/undo use the
+  // existing active frame as the transactional preimage.
+  if (!preserveActiveFrame) resetNativeHistory();
   const activeFrame = elements.frame;
   const activeNativeUrl = currentNativeUrl;
   const activeRepresentation = currentRepresentation;
