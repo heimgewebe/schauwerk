@@ -1,0 +1,51 @@
+{
+  "does_not_establish": [
+    "visual_user_acceptance",
+    "production_deployment",
+    "commonthing_live_function"
+  ],
+  "evidence_digest": "2f26935e2a6a9ace9d5884450f01514399ca73c40ccfeec5856465216a829c9e",
+  "historical_acceptance_receipts_unchanged": true,
+  "schema_version": "schauwerk-schaubild-full-editing-technical-proof.v1",
+  "scope": "canonical-representation-editing-forms-and-native-bundle",
+  "source_bindings": {
+    "Dockerfile": "7969a31566e3722f77867627d39c91b1d4a52567f49e6ad5f33b35e7385da7b4",
+    "src/schauwerk/resources/standalone_editor/representation_editor.py": "2ebcca463e538c8e46ba412037531f8c5a77a27dc1bc71160cbe673b67c0ca1a",
+    "src/schauwerk/visual/standalone_editor.py": "5ff1f60e2788c5a77dabb92a609b58cead06805fa0495e22afe00492665e3e84"
+  },
+  "status": "technical_proof_only",
+  "supersedes_source_bindings": [
+    "src/schauwerk/visual/standalone_editor.py"
+  ],
+  "validation": {
+    "browser_chromium_edit_save_reload_export": true,
+    "chromium_native_iframe_ready_observed": true,
+    "container_import_runtime": true,
+    "headless_browser_viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        768,
+        1024
+      ],
+      [
+        1280,
+        900
+      ]
+    ],
+    "model_and_backend_contract_tests": true,
+    "native_http_render_api": true,
+    "native_image_build": true,
+    "renamed_node_layout_offsets_preserved": true,
+    "renamed_node_layout_offsets_preserved_after_draft_quota": true,
+    "renamed_node_layout_offsets_preserved_after_reopen": true,
+    "renamed_node_layout_offsets_preserved_after_repeated_failed_reopen": true,
+    "renamed_node_layout_offsets_preserved_on_recovery_draft_reload": true,
+    "renamed_node_layout_offsets_preserved_on_resubmit": true,
+    "renamed_node_layout_offsets_preserved_on_retry": true,
+    "reused_original_node_ids_preserved": true,
+    "standalone_bundle_filenames_unchanged": true
+  }
+}

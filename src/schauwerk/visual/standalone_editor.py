@@ -31,6 +31,7 @@ from typing import Any, Final
 from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
+from schauwerk.resources.standalone_editor.representation_editor import REPRESENTATION_EDITOR_JS
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
 from schauwerk.visual.json_fidelity import (
     JsonFidelityError,
@@ -360,7 +361,190 @@ copyAiGuideButton.addEventListener("click", async () => {{
   }}
 }});
 """
-    rendered["app.js"] = app_js
+    # Build the canonical editing form into the existing app.js module.
+    # Keep the four-file standalone output contract and fail on template drift.
+    for marker in (
+        "function renderRepresentationContentEditor(representation) {",
+        "function representationFromContentEditor() {",
+        "function setContentDialogFeedback(message) {",
+    ):
+        if app_js.count(marker) != 1:
+            raise StandaloneEditorError(
+                "canonical representation editing integration template has drifted"
+            )
+    # Only rewrite the one layout write site in the generated module.
+    # On canonical edits, map offsets from the original node IDs to their
+    # current IDs before the replacement viewer loads.
+    layout_write = (
+        "localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(parsed));"
+    )
+    if app_js.count(layout_write) != 1:
+        raise StandaloneEditorError("native layout-migration template has drifted")
+    app_js = app_js.replace(
+        layout_write,
+        """const mapping = typeof pendingCanonicalLayoutRemap !== "undefined"
+      && pendingCanonicalLayoutRemap?.previousDigest === previousDigest
+      && pendingCanonicalLayoutRemap?.representation === currentRepresentation
+      ? pendingCanonicalLayoutRemap.nodeIds : null;
+    const migrated = mapping
+      ? remapRepresentationLayoutOverrides(parsed, mapping)
+      : parsed;
+    localStorage.setItem(nativeLayoutStorageKey(nextDigest), JSON.stringify(migrated));
+    if (mapping) pendingCanonicalLayoutRemap = null;""",
+        1,
+    )
+    # Keep original source ID mappings in the same recovery draft as the
+    # failed representation. Without this, reload preserves content but loses
+    # the user's manually displaced nodes after renaming their IDs.
+    native_draft_literal = (
+        "  const draft = {\n"
+        "    title: safeFilename(title),\n"
+        "    representation,\n"
+        "    savedAt: Date.now(),\n"
+        "  };"
+    )
+    if app_js.count(native_draft_literal) != 1:
+        raise StandaloneEditorError("native draft persistence template has drifted")
+    app_js = app_js.replace(
+        native_draft_literal,
+        native_draft_literal + """
+  if (
+    typeof pendingCanonicalLayoutRemap !== "undefined"
+    && pendingCanonicalLayoutRemap?.representation === representation
+    && recovery?.validInputDigest === pendingCanonicalLayoutRemap.previousDigest
+  ) {
+    draft.layoutIdMapping = {
+      previousDigest: pendingCanonicalLayoutRemap.previousDigest,
+      nodeIds: pendingCanonicalLayoutRemap.nodeIds,
+    };
+  }""",
+        1,
+    )
+
+    native_restore_literal = (
+        "    void launchNative(\n"
+        "      {\n"
+        "        nativeRepresentation: draft.representation,\n"
+    )
+    if app_js.count(native_restore_literal) != 1:
+        raise StandaloneEditorError("native draft restore template has drifted")
+    app_js = app_js.replace(
+        native_restore_literal,
+        """    // Bind the recovered candidate to the exact original layout digest.
+    // A local draft without this proof retains its old restore behavior.
+    if (typeof pendingCanonicalLayoutRemap !== "undefined") {
+      const stored = draft.layoutIdMapping;
+      const entries = stored?.nodeIds && typeof stored.nodeIds === "object"
+        && !Array.isArray(stored.nodeIds)
+        ? Object.entries(stored.nodeIds) : null;
+      const currentIds = new Set(
+        Array.isArray(draft.representation?.nodes)
+          ? draft.representation.nodes.map(node => node.id) : [],
+      );
+      const valid = stored?.previousDigest === draft.validInputDigest
+        && /^[0-9a-f]{64}$/.test(String(stored?.previousDigest || ""))
+        && entries !== null && entries.length <= currentIds.size
+        && entries.every(([from, to]) =>
+          /^[a-z][a-z0-9_]{0,63}$/.test(from)
+          && /^[a-z][a-z0-9_]{0,63}$/.test(to)
+          && currentIds.has(to));
+      pendingCanonicalLayoutRemap = valid
+        ? { previousDigest: stored.previousDigest,
+            nodeIds: Object.fromEntries(entries),
+            representation: draft.representation }
+        : null;
+    }
+""" + native_restore_literal,
+        1,
+    )
+    rendered["app.js"] = (
+        app_js
+        + "\n"
+        + REPRESENTATION_EDITOR_JS
+        + r"""
+let canonicalRepresentationForm = null;
+let canonicalRepresentationFormSourceIds = null;
+let canonicalRepresentationLastSubmitted = null;
+let pendingCanonicalLayoutRemap = null;
+renderRepresentationContentEditor = (representation) => {
+  // Freeze the original source IDs at mount time, not at each submit.
+  // Repeated transient failures may replace the candidate object, while this
+  // form's baseline remains the same until the user actually reopens it.
+  const retained = nativeCanvasRenderStale
+    && pendingCanonicalLayoutRemap?.representation === representation
+    && pendingCanonicalLayoutRemap.previousDigest === currentNativeInputDigest
+    ? pendingCanonicalLayoutRemap.nodeIds : null;
+  canonicalRepresentationFormSourceIds = retained
+    ? { ...retained }
+    : Object.fromEntries(representation.nodes.map(node => [node.id, node.id]));
+  canonicalRepresentationForm = mountRepresentationEditor(elements.contentFields, representation);
+  return canonicalRepresentationForm.first;
+};
+representationFromContentEditor = () => {
+  if (!canonicalRepresentationForm) return null;
+  try {
+    const value = canonicalRepresentationForm.getValue();
+    canonicalRepresentationLastSubmitted = value;
+    const currentIds = canonicalRepresentationForm.getNodeIdMapping();
+    const nodeIds = Object.fromEntries(
+      Object.entries(canonicalRepresentationFormSourceIds)
+        .filter(([, baseline]) => Object.hasOwn(currentIds, baseline))
+        .map(([original, baseline]) => [original, currentIds[baseline]]),
+    );
+    pendingCanonicalLayoutRemap = {
+      previousDigest: currentNativeInputDigest,
+      nodeIds,
+      representation: value,
+    };
+    return value;
+  } catch (error) {
+    setContentDialogFeedback(
+      error instanceof Error ? error.message : "Eingaben konnten nicht geprüft werden."
+    );
+    return null;
+  }
+};
+const originalSaveRepresentationContentEditor = saveRepresentationContentEditor;
+saveRepresentationContentEditor = async () => {
+  try {
+    return await originalSaveRepresentationContentEditor();
+  } finally {
+    // Successful rendering advances the layout digest before local draft
+    // persistence. If saving the draft then fails, the form remains open and
+    // its original input IDs are older than the rendered node IDs. Rebase
+    // without remounting so another Apply cannot drop their new offsets.
+    if (!nativeCanvasRenderStale && editorReady
+        && canonicalRepresentationLastSubmitted === currentRepresentation
+        && elements.contentDialog?.open && canonicalRepresentationForm) {
+      // The rendered digest is now authoritative. Rebase the still-open form
+      // to every current node, including newly created and reused IDs.
+      canonicalRepresentationForm.rebaseNodeIds();
+      canonicalRepresentationFormSourceIds = Object.fromEntries(
+        currentRepresentation.nodes.map(node => [node.id, node.id]),
+      );
+    }
+    // A transient renderer failure keeps the edited representation for Retry.
+    if (!nativeCanvasRenderStale) pendingCanonicalLayoutRemap = null;
+  }
+};
+"""
+    )
+    replacement_markers = {
+        '<h2 id="contentDialogTitle">Texte im Schaubild</h2>': (
+            '<h2 id="contentDialogTitle">Schaubild bearbeiten</h2>'
+        ),
+        "Titel, Zweck, Gruppen, Elemente und Verbindungen bearbeiten. "
+        "Struktur, Typen und Zuordnungen bleiben unverändert.": (
+            "Titel, Zweck, Typen, Gruppen, Elemente, Verbindungen und "
+            "Zuordnungen bearbeiten. Änderungen werden erst mit Übernehmen aktiv."
+        ),
+    }
+    for previous, replacement in replacement_markers.items():
+        if rendered["index.html"].count(previous) != 1:
+            raise StandaloneEditorError(
+                "canonical representation editing dialog template has drifted"
+            )
+        rendered["index.html"] = rendered["index.html"].replace(previous, replacement, 1)
     return rendered
 
 
