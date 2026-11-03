@@ -1039,6 +1039,11 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "tests/visual/test_standalone_editor_single_workspace.py",
         "tests/visual/test_standalone_editor_font_controls.py",
     }
+    # Undo/redo updates an isolated Node harness, not the historical
+    # visually accepted source bytes; the original receipt remains immutable.
+    native_history_harness_superseded_files = {
+        "tests/visual/test_standalone_editor.py",
+    }
     single_workspace_review_p2_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
@@ -8840,7 +8845,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in (single_workspace_pinch_save_superseded_files
                     | single_workspace_host_retry_superseded_files
                     | single_workspace_ci_save_font_superseded_files
-                    | single_workspace_legacy_tools_superseded_files):
+                    | single_workspace_legacy_tools_superseded_files
+                    | native_history_harness_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_p2_acceptance["checks"].values())
@@ -13432,10 +13438,10 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     )
     for name, expected in receipt["implementation_file_sha256"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        if name in {
+        if name in (native_history_harness_superseded_files | {
             "src/schauwerk/resources/standalone_editor/assets.py",
             "tests/visual/test_standalone_editor_single_workspace.py",
-        }:
+        }):
             # These current source revisions are outside the earlier immutable
             # status-refit visual acceptance; do not inherit that acceptance.
             continue

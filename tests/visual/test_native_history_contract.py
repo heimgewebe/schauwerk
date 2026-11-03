@@ -111,9 +111,13 @@ try {
   redo.click();
   await wait(() => nodeCount() === 1 && !undo.disabled, "Redo did not restore new node");
   undo.click();
-  await wait(() => nodeCount() === 0, "Second undo did not restore empty Canvas");
+  await wait(() => nodeCount() === 0 && !redo.disabled &&
+    !document.querySelector("#editorFrame")?.inert &&
+    frameDoc()?.querySelector("#addNode")?.disabled === false,
+    "Second undo did not restore an editable Canvas");
   frameDoc().querySelector("#addNode").click();
-  await wait(() => nodeCount() === 1 && redo.disabled, "New branch kept stale redo");
+  await wait(() => nodeCount() === 1 && redo.disabled && !undo.disabled,
+    "New branch kept stale redo");
 
   const viewer = frameDoc();
   const source = viewer.querySelector("#nativeModel").textContent;
