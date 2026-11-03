@@ -464,6 +464,7 @@ copyAiGuideButton.addEventListener("click", async () => {{
         + r"""
 let canonicalRepresentationForm = null;
 let canonicalRepresentationFormSourceIds = null;
+let canonicalRepresentationLastSubmitted = null;
 let pendingCanonicalLayoutRemap = null;
 renderRepresentationContentEditor = (representation) => {
   // Freeze the original source IDs at mount time, not at each submit.
@@ -483,6 +484,7 @@ representationFromContentEditor = () => {
   if (!canonicalRepresentationForm) return null;
   try {
     const value = canonicalRepresentationForm.getValue();
+    canonicalRepresentationLastSubmitted = value;
     const currentIds = canonicalRepresentationForm.getNodeIdMapping();
     const nodeIds = Object.fromEntries(
       Object.entries(canonicalRepresentationFormSourceIds)
@@ -507,8 +509,21 @@ saveRepresentationContentEditor = async () => {
   try {
     return await originalSaveRepresentationContentEditor();
   } finally {
+    // Successful rendering advances the layout digest before local draft
+    // persistence. If saving the draft then fails, the form remains open and
+    // its original input IDs are older than the rendered node IDs. Rebase
+    // without remounting so another Apply cannot drop their new offsets.
+    if (!nativeCanvasRenderStale && editorReady
+        && canonicalRepresentationLastSubmitted === currentRepresentation
+        && elements.contentDialog?.open && canonicalRepresentationForm) {
+      const renderedIds = new Set(currentRepresentation.nodes.map(node => node.id));
+      canonicalRepresentationFormSourceIds = Object.fromEntries(
+        Object.entries(canonicalRepresentationForm.getNodeIdMapping())
+          .filter(([, current]) => renderedIds.has(current))
+          .map(([baseline, current]) => [current, baseline]),
+      );
+    }
     // A transient renderer failure keeps the edited representation for Retry.
-    // Keep its exact ID mapping until a successful rerender or edit discard.
     if (!nativeCanvasRenderStale) pendingCanonicalLayoutRemap = null;
   }
 };

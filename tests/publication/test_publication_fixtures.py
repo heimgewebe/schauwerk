@@ -13637,6 +13637,9 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     ):
         assert technical["validation"][proof_key] is True
     assert technical["validation"]["chromium_native_iframe_ready_observed"] is True
+    assert (
+        technical["validation"]["renamed_node_layout_offsets_preserved_after_draft_quota"] is True
+    )
     assert technical["does_not_establish"] == [
         "visual_user_acceptance",
         "production_deployment",

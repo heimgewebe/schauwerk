@@ -229,6 +229,12 @@ export function mountRepresentationEditor(container, representation) {
   function mutate(action) {
     try {
       draft = changeRepresentation(draft, action);
+      if (action.type === "add-node") {
+        const newId = draft.nodes[draft.nodes.length - 1].id;
+        // It has no offsets in the old digest yet, but becomes a source node
+        // after a successful save even if the dialog remains open.
+        originalNodeIds.set(newId, newId);
+      }
       if (action.type === "remove-node") {
         for (const [original, current] of originalNodeIds) {
           if (current === action.id) originalNodeIds.delete(original);

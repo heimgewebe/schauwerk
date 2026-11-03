@@ -139,18 +139,18 @@ const titleLabel=descendants(container).find(el=>el.tagName==='label' && el.chil
 assert.ok(titleLabel);
 titleLabel.children[1].input('Neuer Titel');
 assert.equal(form.getValue().title,'Neuer Titel');
-assert.deepEqual(form.getNodeIdMapping(),{a:'a',b:'b'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'a',b:'b',node_1:'node_1'});
 const nodeA=descendants(container).find(el=>el.tagName==='fieldset' &&
   el.children[0]?.textContent==='Element · a');
 const nodeAId=descendants(nodeA).find(el=>el.tagName==='label' &&
   el.children[0]?.textContent==='ID').children[1];
 nodeAId.change('alpha');
-assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',b:'b'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',b:'b',node_1:'node_1'});
 const nodeB=descendants(container).find(el=>el.tagName==='fieldset' &&
   el.children[0]?.textContent==='Element · b');
 descendants(nodeB).find(el=>el.tagName==='button' &&
   el.textContent==='Element löschen').click();
-assert.deepEqual(form.getNodeIdMapping(),{a:'alpha'});
+assert.deepEqual(form.getNodeIdMapping(),{a:'alpha',node_1:'node_1'});
 assert.deepEqual({...remap({a:{x:27,y:41},b:{x:-8,y:3}},form.getNodeIdMapping())},
   {alpha:{x:27,y:41}});
 """)
@@ -365,8 +365,50 @@ try {
     change(field(newEdge,"Typ","select"),"feedback");
     change(field(newEdge,"Anfang","select"),"alpha");
     change(field(newEdge,"Ziel","select"),"node_1");
-    document.querySelector("#contentSaveButton").click();
     const retryMode=new URLSearchParams(location.search);
+    let originalDraftSetItem = null;
+    if (retryMode.has("quota")) {
+      originalDraftSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === "schauwerk.native-schaubild.draft.v1") {
+          throw new DOMException("Synthetic full local storage", "QuotaExceededError");
+        }
+        return originalDraftSetItem.call(this, key, value);
+      };
+    }
+    document.querySelector("#contentSaveButton").click();
+    if (retryMode.has("quota")) {
+      await until(() => dialog.open &&
+        !document.querySelector("#contentSaveButton").disabled &&
+        frameDigest() !== oldDigest,
+        "Successful render with failed draft write did not leave the editor open", 1200);
+      Storage.prototype.setItem = originalDraftSetItem;
+      const intermediateDigest = frameDigest();
+      const intermediateLayout = JSON.parse(localStorage.getItem(
+        "schauwerk.native-viewer.layout.v1." + intermediateDigest) || "{}");
+      if (intermediateLayout.alpha?.x !== 37 || intermediateLayout.alpha?.y !== 19) {
+        throw new Error("Quota render lost initial manually moved node position");
+      }
+      change(field(row("Schaubild"), "Titel", "input"), "Nach Quota", "input");
+      document.querySelector("#contentSaveButton").click();
+      try {
+        await until(() => !dialog.open && frameDigest() !== intermediateDigest,
+          "Second save after quota did not update native rendering", 1200);
+      } catch (error) {
+        throw new Error("Quota second save state: " + JSON.stringify({
+          dialogOpen: dialog.open,
+          disabled: document.querySelector("#contentSaveButton").disabled,
+          previousDigest: intermediateDigest, nextDigest: frameDigest(),
+          savedTitle: saved()?.title,
+          feedback: document.querySelector("#contentDialogFeedback")?.textContent,
+          status: document.querySelector("#status")?.textContent,
+          titleField: field(row("Schaubild"), "Titel", "input").value,
+        }));
+      }
+      if (saved()?.title !== "Nach Quota") {
+        throw new Error("Updated title missing after local quota recovery");
+      }
+    }
     if (retryMode.has("reload-recovery")) {
       await until(()=>!document.querySelector("#nativeRetryButton").hidden,
         "Recoverable render failure was not observed",1200);
@@ -445,7 +487,7 @@ try {
     [(1280, 900, ""), (768, 1024, ""), (390, 844, ""),
      (1280, 900, "retry"), (1280, 900, "reopen"),
      (1280, 900, "resubmit"), (1280, 900, "reopen-resubmit"),
-     (1280, 900, "reload-recovery")],
+     (1280, 900, "reload-recovery"), (1280, 900, "quota")],
 )
 def test_canonical_editor_browser_reopen_structure_and_export(
     tmp_path: Path, width: int, height: int, retry_mode: str
@@ -508,7 +550,10 @@ def test_canonical_editor_browser_reopen_structure_and_export(
                     return
             super().do_POST()
 
-    handler = FailSecondNativeRender if retry_mode else _EditorRequestHandler
+    handler = (
+        FailSecondNativeRender if retry_mode and retry_mode != "quota"
+        else _EditorRequestHandler
+    )
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
         partial(handler, directory=str(output)),
@@ -538,6 +583,13 @@ def test_canonical_editor_browser_reopen_structure_and_export(
         server.server_close()
         worker.join(timeout=3)
     assert result.returncode == 0, result.stderr[-4000:]
+    if 'data-full-editor-browser="pass"' not in result.stdout:
+        import html
+        import re
+
+        match = re.search(r'data-full-editor-error="([^"]*)"', result.stdout)
+        if match:
+            pytest.fail(html.unescape(match.group(1)))
     assert 'data-full-editor-browser="pass"' in result.stdout, (
         result.stdout[-3000:] + "\n" + result.stderr[-2500:]
     )
