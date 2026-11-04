@@ -933,6 +933,7 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 """
 
 APP_JS = r"""import {
+  MAX_SCALE,
   MIN_SCALE,
   clampScale,
   fitView,
@@ -1689,6 +1690,51 @@ function zoomBy(factor, anchor = null) {
   applyView();
 }
 
+// Undo/Redo and native edits replace the embedded iframe after a successful
+// server render. Carry only a user-controlled view across that transactional
+// replacement: a new document or automatic fit must start with its own view.
+const MANUAL_VIEW_HANDOFF_KEY = "__schauwerkNativeManualViewHandoffV1";
+window.addEventListener("pagehide", () => {
+  if (!documentEditorHosted || autoFitActive) return;
+  try {
+    const oldFrame = window.frameElement;
+    const host = window.parent;
+    // A failed edit may also leave an inert frame. Leaving the workspace
+    // clears its active marker before removing the frame; do not hand that
+    // abandoned view to another document.
+    if (!oldFrame?.inert || !host.document.body.classList.contains("workspace-active") ||
+        host.document.querySelector("#nativeRetryButton")?.hidden === false ||
+        host.document.querySelector("#editorFrame") !== oldFrame) return;
+    if (![view.x, view.y, view.scale].every(Number.isFinite) || view.scale <= 0) return;
+    host[MANUAL_VIEW_HANDOFF_KEY] = {
+      oldFrame,
+      view: { x: view.x, y: view.y, scale: view.scale },
+      expiresAt: Date.now() + 45000,
+    };
+  } catch (_) { /* A foreign embed cannot transfer view-only state. */ }
+});
+
+function restoreManualViewAfterNativeFrameReplacement() {
+  if (!embeddedNativeViewer) return;
+  try {
+    const host = window.parent;
+    const pending = host[MANUAL_VIEW_HANDOFF_KEY];
+    if (!pending) return;
+    delete host[MANUAL_VIEW_HANDOFF_KEY];
+    const frame = window.frameElement;
+    if (!documentEditorHosted || !frame ||
+        host.document.querySelector("#editorFrame") !== frame ||
+        pending.oldFrame === frame || pending.oldFrame?.isConnected ||
+        !pending.oldFrame?.inert || Date.now() > pending.expiresAt) return;
+    const saved = pending.view;
+    if (![saved?.x, saved?.y, saved?.scale].every(Number.isFinite) ||
+        saved.scale <= 0 || saved.scale > MAX_SCALE) return;
+    view = { x: saved.x, y: saved.y, scale: saved.scale };
+    autoFitActive = false;
+    applyView();
+  } catch (_) { /* Standalone or cross-origin viewers retain default fit. */ }
+}
+
 function nodeFromTarget(target) {
   if (!(target instanceof Element)) return null;
   const candidate = target.closest('[data-source-kind="node"]');
@@ -2339,6 +2385,7 @@ function initializeViewer() {
   const repaired = constrainAllNodesToCanvas();
   const repairPersisted = !repaired || persistOverrides();
   fit({ announce: repairPersisted && status.textContent === startupStatus });
+  restoreManualViewAfterNativeFrameReplacement();
   // A freshly rendered frame confirms its initial state; it is not a user edit.
   if (documentEditorHosted) publishDocumentState("native-document-change", documentSnapshot(), { startup: true });
 }
