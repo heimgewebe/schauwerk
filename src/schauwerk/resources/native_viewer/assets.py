@@ -1699,7 +1699,12 @@ window.addEventListener("pagehide", () => {
   try {
     const oldFrame = window.frameElement;
     const host = window.parent;
-    if (!oldFrame?.inert || host.document.querySelector("#editorFrame") !== oldFrame) return;
+    // A failed edit may also leave an inert frame. Leaving the workspace
+    // clears its active marker before removing the frame; do not hand that
+    // abandoned view to another document.
+    if (!oldFrame?.inert || !host.document.body.classList.contains("workspace-active") ||
+        host.document.querySelector("#nativeRetryButton")?.hidden === false ||
+        host.document.querySelector("#editorFrame") !== oldFrame) return;
     if (![view.x, view.y, view.scale].every(Number.isFinite) || view.scale <= 0) return;
     host[MANUAL_VIEW_HANDOFF_KEY] = {
       oldFrame,

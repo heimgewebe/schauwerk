@@ -215,6 +215,24 @@ try {
     frameDoc()?.querySelector("#nativeCanvas")?.style.transform &&
     frameDoc()?.querySelector("#nativeCanvas")?.style.transform !== manualView,
     "A new diagram incorrectly inherited the previous document's manual view");
+
+  // A failed render keeps the old iframe inert and exposes Retry. Leaving for
+  // a NEW diagram must not transfer this abandoned view to that document.
+  frameDoc().querySelector("#zoomIn").click();
+  const abandonedView = frameDoc().querySelector("#nativeCanvas").style.transform;
+  document.querySelector("#editorFrame").inert = true;
+  document.querySelector("#nativeRetryButton").hidden = false;
+  document.querySelector("#homeLink").click();
+  await wait(() => document.querySelector("#startView")?.hidden === false,
+    "Failed-render navigation did not return home");
+  document.querySelector("#blankButton").click();
+  await wait(() => frameDoc()?.readyState === "complete" &&
+    frameDoc()?.querySelector("#addNode")?.disabled === false &&
+    document.querySelector("#status")?.textContent?.includes("Bereit"),
+    "Native viewer did not restart after abandoning the failed render");
+  if (frameDoc().querySelector("#nativeCanvas").style.transform === abandonedView) {
+    throw new Error("New diagram inherited abandoned failed-render viewport");
+  }
   document.documentElement.dataset.nativeHistoryBrowser = "pass";
 } catch (error) {
   document.documentElement.dataset.nativeHistoryBrowser = "fail";
