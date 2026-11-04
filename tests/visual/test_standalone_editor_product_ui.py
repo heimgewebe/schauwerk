@@ -68,7 +68,8 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
 
     assert "fontControls.hidden = native;" in app_js
     assert "elements.layoutButton.hidden = native;" in app_js
-    assert "pngButton.hidden = native;" in app_js
+    # PNG export is supported by the native editor; do not resurrect its old hide gate.
+    assert "pngButton.hidden = native;" not in app_js
     assert 'elements.projectButton.textContent = "Canvas";' in app_js
     assert 'elements.projectButton.textContent = "Original";' in app_js
     assert 'elements.projectButton.textContent = "Quelle";' in app_js

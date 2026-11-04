@@ -65,7 +65,8 @@ def test_single_workspace_keeps_exports_and_tools_compact_without_canvas_gutters
     assert 'document.body.classList.toggle("engine-legacy", !native);' in app_js
     assert 'fontControls.hidden = native;' in app_js
     assert 'elements.layoutButton.hidden = native;' in app_js
-    assert 'pngButton.hidden = native;' in app_js
+    # Native PNG export stays available: the former native-only hiding rule is gone.
+    assert 'pngButton.hidden = native;' not in app_js
     assert 'elements.projectButton.textContent = "Canvas";' in app_js
     assert 'elements.projectButton.textContent = "Original";' in app_js
     assert 'elements.projectButton.textContent = "Quelle";' in app_js
