@@ -18,6 +18,13 @@ def test_native_history_protocol_and_limits(tmp_path: Path) -> None:
     assert "NATIVE_HISTORY_MAX_STATES = 24" in host
     assert "NATIVE_HISTORY_MAX_TOTAL_CHARS = 8 * 1024 * 1024" in host
     assert "nativeHistoryObservationMode" in host
+    assert "let nativeFrameReady = false;" in host
+    assert "!nativeFrameReady || !editorReady || nativeCanvasRenderStale" in host
+    assert 'if (startupSync && activeEngine === "native" && !nativeCanvasRenderStale)' in host
+    assert "nativeFrameReady = true;" in host
+    assert "pendingNativeReadyStatus = null;" in host
+    assert "readyStatus = pendingNativeReadyStatus;" in host
+    assert 'setStatus("Ansicht wird geladen …");' in host
     assert "if (!preserveActiveFrame) resetNativeHistory();" in host
     assert 'message.event === "native-document-rebuild"' in host
     assert 'message.event === "native-document-change"' in host
