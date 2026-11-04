@@ -181,7 +181,7 @@ STYLES_CSS = r""":root {
   --muted: #666977;
   --line: #e3e4ec;
   --line-strong: #d4d6e1;
-  --accent: #635bff;
+  --accent: #5048e5;
   --accent-strong: #5048e5;
   --accent-soft: #efeeff;
   --danger: #a12b2b;
@@ -227,7 +227,7 @@ button, a, summary { -webkit-tap-highlight-color: transparent; }
   place-items: center;
   border-radius: 12px;
   color: #fff;
-  background: linear-gradient(145deg, #756dff, #5147e7 62%, #4039c8);
+  background: linear-gradient(145deg, #6058ed, #5147e7 62%, #4039c8);
   box-shadow: 0 9px 22px rgba(99, 91, 255, 0.26);
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -342,7 +342,7 @@ h1 {
   outline: none;
   transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
 }
-.paste-box textarea::placeholder { color: #9b9daa; }
+.paste-box textarea::placeholder { color: var(--muted); }
 .paste-box textarea:focus {
   border-color: rgba(99, 91, 255, 0.72);
   background: var(--surface);
@@ -393,10 +393,10 @@ h1 {
 .button.primary {
   border-color: var(--accent);
   color: #fff;
-  background: linear-gradient(180deg, #7068ff, var(--accent-strong));
+  background: linear-gradient(180deg, #5c54e9, #5048e5);
   box-shadow: 0 8px 20px rgba(99, 91, 255, 0.22);
 }
-.button.primary:hover { border-color: #4b43d8; background: linear-gradient(180deg, #675fff, #4941da); }
+.button.primary:hover { border-color: #4b43d8; background: linear-gradient(180deg, #5a51e3, #4941da); }
 .button.ghost { border-color: transparent; color: var(--muted); background: transparent; }
 .button.ghost:hover { border-color: var(--line); color: var(--ink); background: rgba(255, 255, 255, 0.64); }
 .button.compact { min-height: 36px; padding: 7px 10px; border-radius: 9px; font-size: 0.82rem; }

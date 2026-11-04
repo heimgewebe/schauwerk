@@ -49,6 +49,59 @@ def _js_string_constant(source: str, name: str) -> str:
     return str(json.loads(match.group("value")))
 
 
+def test_standalone_editor_light_and_dark_text_contrast_aa() -> None:
+    """Foreground colors meet WCAG AA against the corresponding light and dark surfaces."""
+    from schauwerk.resources.standalone_editor.assets import STYLES_CSS
+
+    def color(pattern: str) -> str:
+        match = re.search(pattern, STYLES_CSS, flags=re.MULTILINE | re.DOTALL)
+        assert match, pattern
+        return match.group(1)
+
+    def luminance(value: str) -> float:
+        channels = [int(value[i : i + 2], 16) / 255 for i in (1, 3, 5)]
+        linear = [
+            channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return sum(weight * level for weight, level in zip((0.2126, 0.7152, 0.0722), linear))
+
+    def contrast(foreground: str, background: str) -> float:
+        a, b = sorted((luminance(foreground), luminance(background)), reverse=True)
+        return (a + 0.05) / (b + 0.05)
+
+    accent = color(r"^  --accent: (#[0-9a-f]{6});$")
+    muted = color(r"^  --muted: (#[0-9a-f]{6});$")
+    dark_muted = color(r"@media \(prefers-color-scheme: dark\) \{[\s\S]*?--muted: (#[0-9a-f]{6});")
+    primary_top = color(
+        r"\.button\.primary \{[^}]*?background: linear-gradient\(180deg, (#[0-9a-f]{6}),"
+    )
+    primary_bottom = color(
+        r"\.button\.primary \{[^}]*?background: linear-gradient\(180deg, #[0-9a-f]{6}, (#[0-9a-f]{6})\);"
+    )
+    primary_hover_top = color(
+        r"\.button\.primary:hover \{[^}]*?background: linear-gradient\(180deg, (#[0-9a-f]{6}),"
+    )
+    brand_top = color(
+        r"\.brand-mark \{[^}]*?background: linear-gradient\(145deg, (#[0-9a-f]{6}),"
+    )
+    assert ".paste-box textarea::placeholder { color: var(--muted); }" in STYLES_CSS
+    pairs = {
+        "accent on page": (accent, "#f3f4f8"),
+        "accent on soft panel": (accent, "#efeeff"),
+        "muted on page": (muted, "#f3f4f8"),
+        "muted on white": (muted, "#ffffff"),
+        "placeholder on light textarea": (muted, "#f8f8fc"),
+        "placeholder on dark textarea": (dark_muted, "#171922"),
+        "primary gradient top": ("#ffffff", primary_top),
+        "primary gradient bottom in light and dark": ("#ffffff", primary_bottom),
+        "primary hover gradient top": ("#ffffff", primary_hover_top),
+        "brand glyph gradient top": ("#ffffff", brand_top),
+    }
+    for label, (text_color, background_color) in pairs.items():
+        assert contrast(text_color, background_color) >= 4.5, label
+
+
 def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> None:
     output = tmp_path / "editor"
 
