@@ -1051,6 +1051,13 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     native_history_harness_superseded_files = {
         "tests/visual/test_standalone_editor.py",
     }
+    # PR #218 enabled PNG in native mode and replaced two former hide-policy
+    # test assertions. Older acceptance receipts remain bound to historical
+    # source bytes; this exact later test revision supersedes those bindings.
+    native_png_export_test_superseded_files = {
+        "tests/visual/test_standalone_editor_font_controls.py",
+        "tests/visual/test_standalone_editor_product_ui.py",
+    }
     single_workspace_review_p2_superseded_files = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "src/schauwerk/resources/standalone_editor/assets.py",
@@ -8853,7 +8860,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
                     | single_workspace_host_retry_superseded_files
                     | single_workspace_ci_save_font_superseded_files
                     | single_workspace_legacy_tools_superseded_files
-                    | native_history_harness_superseded_files):
+                    | native_history_harness_superseded_files
+                    | native_png_export_test_superseded_files):
             continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert all(review_p2_acceptance["checks"].values())

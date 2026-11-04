@@ -119,7 +119,8 @@ try {
   if (projectButton.textContent.trim() !== "Canvas") {
     throw new Error(`native Canvas export mislabeled as ${projectButton.textContent}`);
   }
-  if (!pngButton.hidden || svgButton.hidden) {
+  // Native PNG is now available alongside SVG; only a hidden export is a regression.
+  if (pngButton.hidden || svgButton.hidden) {
     throw new Error("native export capability visibility drifted");
   }
   const exportSummaryRect = exportMenu.querySelector("summary").getBoundingClientRect();
