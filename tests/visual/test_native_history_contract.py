@@ -164,15 +164,28 @@ try {
     throw new Error("Rejected undo lost the previous saved document");
   }
 
+  // Manual zoom/pan is view-only. Undo and Redo must retain its exact
+  // transform even though the native renderer replaces the document iframe.
+  const priorFitView = frameDoc().querySelector("#nativeCanvas").style.transform;
+  frameDoc().querySelector("#zoomIn").click();
+  const manualView = frameDoc().querySelector("#nativeCanvas").style.transform;
+  if (!manualView || manualView === priorFitView) {
+    throw new Error("Manual zoom did not change the native viewport");
+  }
   undo.click();
-  await wait(() => nodeCount() === 0 && !redo.disabled, "Undo did not restore empty Canvas");
+  await wait(() => nodeCount() === 0 && !redo.disabled &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform === manualView,
+    "Undo lost the user's manual viewport");
   redo.click();
-  await wait(() => nodeCount() === 1 && !undo.disabled, "Redo did not restore new node");
+  await wait(() => nodeCount() === 1 && !undo.disabled &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform === manualView,
+    "Redo lost the user's manual viewport");
   undo.click();
   await wait(() => nodeCount() === 0 && !redo.disabled &&
     !document.querySelector("#editorFrame")?.inert &&
-    frameDoc()?.querySelector("#addNode")?.disabled === false,
-    "Second undo did not restore an editable Canvas");
+    frameDoc()?.querySelector("#addNode")?.disabled === false &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform === manualView,
+    "Second undo did not preserve the manual viewport or an editable Canvas");
   frameDoc().querySelector("#addNode").click();
   await wait(() => nodeCount() === 1 && redo.disabled && !undo.disabled,
     "New branch kept stale redo");
@@ -190,7 +203,36 @@ try {
   frameDoc().defaultView.dispatchEvent(new KeyboardEvent("keydown", {
     key: "z", ctrlKey: true, bubbles: true, cancelable: true,
   }));
-  await wait(() => nodeCount() === 0, "Ctrl+Z from viewer did not undo edit");
+  await wait(() => nodeCount() === 0 && !redo.disabled &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform === manualView,
+    "Ctrl+Z from viewer lost the manual view");
+  // Starting a separate diagram must not inherit the previous document's zoom.
+  document.querySelector("#homeLink").click();
+  await wait(() => document.querySelector("#startView")?.hidden === false,
+    "Returning home did not close the old native document");
+  document.querySelector("#blankButton").click();
+  await wait(() => frameDoc()?.readyState === "complete" &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform &&
+    frameDoc()?.querySelector("#nativeCanvas")?.style.transform !== manualView,
+    "A new diagram incorrectly inherited the previous document's manual view");
+
+  // A failed render keeps the old iframe inert and exposes Retry. Leaving for
+  // a NEW diagram must not transfer this abandoned view to that document.
+  frameDoc().querySelector("#zoomIn").click();
+  const abandonedView = frameDoc().querySelector("#nativeCanvas").style.transform;
+  document.querySelector("#editorFrame").inert = true;
+  document.querySelector("#nativeRetryButton").hidden = false;
+  document.querySelector("#homeLink").click();
+  await wait(() => document.querySelector("#startView")?.hidden === false,
+    "Failed-render navigation did not return home");
+  document.querySelector("#blankButton").click();
+  await wait(() => frameDoc()?.readyState === "complete" &&
+    frameDoc()?.querySelector("#addNode")?.disabled === false &&
+    document.querySelector("#status")?.textContent?.includes("Bereit"),
+    "Native viewer did not restart after abandoning the failed render");
+  if (frameDoc().querySelector("#nativeCanvas").style.transform === abandonedView) {
+    throw new Error("New diagram inherited abandoned failed-render viewport");
+  }
   document.documentElement.dataset.nativeHistoryBrowser = "pass";
 } catch (error) {
   document.documentElement.dataset.nativeHistoryBrowser = "fail";
