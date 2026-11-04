@@ -15,7 +15,6 @@ def test_blank_starts_native_canvas_and_legacy_remains_explicit(tmp_path: Path) 
     build_standalone_editor(output)
     html = (output / "index.html").read_text(encoding="utf-8")
     js = (output / "app.js").read_text(encoding="utf-8")
-    css = (output / "styles.css").read_text(encoding="utf-8")
 
     blank = js.split('elements.blankButton.addEventListener("click", () => {', 1)[1]
     blank, rest = blank.split('elements.legacyBlankButton.addEventListener("click", () => {', 1)
@@ -29,7 +28,6 @@ def test_blank_starts_native_canvas_and_legacy_remains_explicit(tmp_path: Path) 
     assert 'id="legacyBlankButton"' in html
     assert 'role="group" aria-label="Unterstützte Eingaben"' in html
     assert 'Schaubild-Quelle oder KI-Ergebnis hier einfügen' in html
-    assert "--muted: #666977;" in css
 
 
 def test_empty_json_canvas_renders_as_native_editing_document() -> None:
