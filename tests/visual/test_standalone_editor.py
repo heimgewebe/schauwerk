@@ -1456,6 +1456,8 @@ let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
 let editorReady = true;
+let nativeFrameReady = true;
+let pendingNativeReadyStatus = null;
 let statusText = "";
 let errorText = "";
 let replaceCalls = 0;
@@ -1491,6 +1493,7 @@ function showWorkspace() { workspaceCalls += 1; }
 function replaceEditorFrame() {
   replaceCalls += 1;
   replacementFrame.inert = false;
+  nativeFrameReady = false;
   elements.frame = replacementFrame;
   return replacementFrame;
 }
@@ -1797,6 +1800,8 @@ let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
 let editorReady = true;
+let nativeFrameReady = true;
+let pendingNativeReadyStatus = null;
 let statusText = "";
 let errorText = "";
 let replaceCalls = 0;
@@ -1830,6 +1835,7 @@ function showWorkspace() { workspaceCalls += 1; }
 function replaceEditorFrame() {
   replaceCalls += 1;
   replacementFrame.inert = false;
+  nativeFrameReady = false;
   elements.frame = replacementFrame;
   return replacementFrame;
 }

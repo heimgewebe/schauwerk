@@ -1762,6 +1762,8 @@ let pendingExport = null;
 let exportRequestVersion = 0;
 let preparedDownloadUrl = null;
 let editorReady = false;
+let nativeFrameReady = false;
+let pendingNativeReadyStatus = null;
 let loadIntentGeneration = 0;
 let nativeLaunchTail = Promise.resolve();
 let nativeSupersedeToken = "";
@@ -1825,7 +1827,7 @@ function syncNativeHistoryControls() {
     (nativeUndoStack.length > 0 || nativeRedoStack.length > 0);
   elements.nativeHistoryControls.hidden = !nativeCanvas;
   const blocked = nativeHistoryBusy || nativeHistoryObservationMode ||
-    !editorReady || nativeCanvasRenderStale || !nativeCanvas;
+    !nativeFrameReady || !editorReady || nativeCanvasRenderStale || !nativeCanvas;
   elements.nativeUndoButton.disabled = blocked || nativeUndoStack.length === 0;
   elements.nativeRedoButton.disabled = blocked || nativeRedoStack.length === 0;
   const toolsMenu = document.querySelector(".workspace-tools-menu");
@@ -1847,7 +1849,7 @@ function resetNativeHistory() {
 }
 
 async function moveNativeHistory(direction) {
-  if (activeEngine !== "native" || !editorReady || nativeHistoryBusy ||
+  if (activeEngine !== "native" || !editorReady || !nativeFrameReady || nativeHistoryBusy ||
       nativeHistoryObservationMode || nativeCanvasRenderStale) return;
   const source = direction === "undo" ? nativeUndoStack : nativeRedoStack;
   const destination = direction === "undo" ? nativeRedoStack : nativeUndoStack;
@@ -1874,9 +1876,14 @@ async function moveNativeHistory(direction) {
         nativeCanvasSnapshot(currentNativeCanvas) === nativeCanvasSnapshot(target.nativeCanvas)) {
       source.pop();
       pushNativeHistory(destination, previous);
-      setStatus(direction === "undo"
+      const completionStatus = direction === "undo"
         ? "Rückgängig · lokal gesichert"
-        : "Wiederholt · lokal gesichert");
+        : "Wiederholt · lokal gesichert";
+      if (nativeFrameReady) setStatus(completionStatus);
+      else {
+        pendingNativeReadyStatus = completionStatus;
+        setStatus("Ansicht wird geladen …");
+      }
     } else if (result?.ok === false && nativeCanvasRenderStale &&
                elements.frame === activeFrame && currentNativeUrl === activeUrl) {
       // A transient failure leaves the original frame intact but inert and
@@ -2561,6 +2568,8 @@ function replaceEditorFrame() {
   frame.removeAttribute("src");
   previous.replaceWith(frame);
   elements.frame = frame;
+  nativeFrameReady = false;
+  pendingNativeReadyStatus = null;
   nativeHistoryObservationMode = false;
   return frame;
 }
@@ -2765,6 +2774,11 @@ async function launchNative(load, options = {}) {
     );
     if (nativeDraftSaved === false) {
       setStatus("Bereit · Quelle nicht lokal speicherbar");
+    } else if (currentNativeCanvas && !nativeFrameReady) {
+      pendingNativeReadyStatus = representationLayoutMigrationFailed
+        ? readyStatus + " · gespeicherte Positionen konnten nicht übernommen werden"
+        : readyStatus;
+      setStatus("Ansicht wird geladen …");
     } else {
       setStatus(
         representationLayoutMigrationFailed
@@ -3359,8 +3373,18 @@ window.addEventListener("message", (event) => {
         // A newly loaded viewer reports its state, not an edit. In-flight
         // history transactions already own their exact source snapshot.
         const startupSync = message.startup === true;
+        let readyStatus = null;
+        if (startupSync && activeEngine === "native" && !nativeCanvasRenderStale) {
+          nativeFrameReady = true;
+          readyStatus = pendingNativeReadyStatus;
+          pendingNativeReadyStatus = null;
+          syncNativeHistoryControls();
+        }
         if (nativeHistoryBusy ||
-            (pendingNativeRebuildHistory && nativeCanvasRenderStale)) return;
+            (pendingNativeRebuildHistory && nativeCanvasRenderStale)) {
+          if (readyStatus) setStatus(readyStatus);
+          return;
+        }
         const previousCanvas = nativeCanvasSnapshot(currentNativeCanvas);
         const incomingCanvas = nativeCanvasSnapshot(message.canvas);
         if (!startupSync &&
@@ -3378,7 +3402,7 @@ window.addEventListener("message", (event) => {
         setEngineMode("native");
         setStatus(
           draftSaved
-            ? (startupSync ? "Bereit · Änderungen werden lokal gesichert" : "Gesichert")
+            ? (startupSync ? (readyStatus || "Bereit · Änderungen werden lokal gesichert") : "Gesichert")
             : "Änderung aktiv · lokales Speichern nicht möglich",
         );
       }
