@@ -27,6 +27,11 @@ def test_pdf_export_menu_and_browser_wiring(tmp_path: Path) -> None:
         assert entry in html
     assert "function jpegToPdfBlob(" in helper_js
     assert "async function renderedImageToPdfBlob(" in app_js
+    assert "async function renderedImageToPngBlob(" in app_js
+    assert "async function renderedImageToRasterCanvas(" in app_js
+    assert 'pngButton.disabled = native' not in app_js
+    assert 'pngButton.hidden = native' not in app_js
+    assert 'PNG ist für dieses Schaubild noch nicht verfügbar' not in app_js
     assert 'format === "png" || format === "pdf"' in app_js
     assert 'wanted === "png" || wanted === "svg" || wanted === "pdf"' in app_js
     assert 'validateExportDataUri(message.data, wanted)' in app_js
@@ -93,9 +98,12 @@ for (const invalid of [
 
 
 @pytest.mark.parametrize("width,height", [(1366, 900), (390, 844)])
-def test_pdf_export_real_chromium_download(tmp_path: Path, width: int, height: int) -> None:
+@pytest.mark.parametrize("format_name", ["pdf", "png"])
+def test_native_raster_export_real_chromium_download(
+    tmp_path: Path, width: int, height: int, format_name: str,
+) -> None:
     if os.environ.get("CI") and sys.version_info[:2] != (3, 12):
-        pytest.skip("Browser export is covered on the Python 3.12 CI lane")
+        pytest.skip("Raster export is covered on the Python 3.12 CI lane")
 
     chrome = (
         shutil.which("google-chrome")
@@ -104,7 +112,7 @@ def test_pdf_export_real_chromium_download(tmp_path: Path, width: int, height: i
     )
     if chrome is None:
         if os.environ.get("CI"):
-            pytest.fail("Chrome is required for PDF browser smoke")
+            pytest.fail("Chrome is required for raster browser smoke")
         pytest.skip("Chrome is not installed")
 
     output = tmp_path / "editor"
@@ -118,10 +126,12 @@ const wait = async (predicate, label) => {
   throw new Error(label);
 };
 (async () => {
-  let pdfBlob = null;
+  const exportFormat = "__FORMAT__";
+  const exportMime = exportFormat === "pdf" ? "application/pdf" : "image/png";
+  let exportBlob = null;
   const originalCreate = URL.createObjectURL;
   URL.createObjectURL = (blob) => {
-    if (blob.type === "application/pdf") pdfBlob = blob;
+    if (blob.type === exportMime) exportBlob = blob;
     return originalCreate.call(URL, blob);
   };
   const input = {
@@ -140,42 +150,55 @@ const wait = async (predicate, label) => {
   }, "native document did not load");
   const menu = document.querySelector(".workspace-export-menu");
   menu.open = true;
-  const pdf = document.querySelector('[data-export="pdf"]');
-  if (!pdf || pdf.hidden || pdf.disabled) throw new Error("PDF action unavailable");
-  const rect = pdf.getBoundingClientRect();
+  const button = document.querySelector('[data-export="' + exportFormat + '"]');
+  if (!button || button.hidden || button.disabled) throw new Error("Export action unavailable");
+  const rect = button.getBoundingClientRect();
   const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  if (rect.height < 40 || !hit || !(hit === pdf || pdf.contains(hit))) {
-    throw new Error("PDF action inaccessible");
+  if (rect.height < 40 || !hit || !(hit === button || button.contains(hit))) {
+    throw new Error("Export action inaccessible");
   }
-  pdf.click();
+  button.click();
   await wait(() => {
     const download = document.querySelector("#downloadLink");
-    return !download.hidden && download.download.endsWith(".pdf") && pdfBlob;
-  }, "PDF download was not prepared");
-  if (menu.open) throw new Error("PDF selection did not close the export menu");
-  if (pdfBlob.type !== "application/pdf" || pdfBlob.size < 1000)
-    throw new Error("PDF MIME or PDF size invalid");
-  const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
-  const prefix = new TextDecoder().decode(bytes.slice(0, 9));
-  if (!prefix.startsWith("%PDF-1.4")) throw new Error("PDF header missing");
-  const contents = new TextDecoder("latin1").decode(bytes);
-  if (!contents.includes("/Type /Page ")
-      || !contents.includes("/MediaBox [0 0")
-      || !contents.includes("/Count 1")
-      || !contents.includes("/Filter /DCTDecode")) {
-    throw new Error("PDF page/image stream missing");
+    return !download.hidden && download.download.endsWith("." + exportFormat) && exportBlob;
+  }, "Native image download was not prepared");
+  if (menu.open) throw new Error("Export selection did not close the menu");
+  if (exportBlob.type !== exportMime || exportBlob.size < 100)
+    throw new Error("Export MIME or image size invalid");
+  const bytes = new Uint8Array(await exportBlob.arrayBuffer());
+  if (exportFormat === "pdf") {
+    const prefix = new TextDecoder().decode(bytes.slice(0, 9));
+    if (!prefix.startsWith("%PDF-1.4")) throw new Error("PDF header missing");
+    const contents = new TextDecoder("latin1").decode(bytes);
+    if (!contents.includes("/Type /Page ")
+        || !contents.includes("/MediaBox [0 0")
+        || !contents.includes("/Count 1")
+        || !contents.includes("/Filter /DCTDecode")) {
+      throw new Error("PDF page/image stream missing");
+    }
+  } else {
+    const magic = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (!magic.every((byte, i) => bytes[i] === byte)) throw new Error("PNG header missing");
+    if (bytes.length < 24) throw new Error("PNG is truncated");
+    const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const width = data.getUint32(16);
+    const height = data.getUint32(20);
+    if (!(width > 0 && height > 0 && width <= 5200 && height <= 5200
+          && width * height <= 16000000)) {
+      throw new Error("PNG raster dimensions are invalid");
+    }
   }
-  document.documentElement.dataset.pdfExportSmoke = "pass";
+  document.documentElement.dataset.rasterExportSmoke = "pass";
 })().catch((error) => {
-  document.documentElement.dataset.pdfExportSmoke = "fail";
-  document.documentElement.dataset.pdfExportError = String(error?.message || error);
+  document.documentElement.dataset.rasterExportSmoke = "fail";
+  document.documentElement.dataset.rasterExportError = String(error?.message || error);
 });
-"""
-    (output / "pdf-export-smoke.js").write_text(probe_js, encoding="utf-8")
+""".replace("__FORMAT__", format_name)
+    (output / "raster-export-smoke.js").write_text(probe_js, encoding="utf-8")
     index_path = output / "index.html"
     markup = index_path.read_text(encoding="utf-8")
     index_path.write_text(
-        markup.replace("</body>", '<script type="module" src="pdf-export-smoke.js"></script></body>'),
+        markup.replace("</body>", '<script type="module" src="raster-export-smoke.js"></script></body>'),
         encoding="utf-8",
     )
     server = ThreadingHTTPServer(
@@ -203,13 +226,18 @@ const wait = async (predicate, label) => {
             capture_output=True, text=True, timeout=90, env=chrome_env, check=False,
         )
         assert result.returncode == 0, result.stderr[-1800:]
-        assert 'data-pdf-export-smoke="pass"' in result.stdout, result.stdout[:2500]
+        assert 'data-raster-export-smoke="pass"' in result.stdout, result.stdout[:2500]
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
 
-def test_pending_native_pdf_is_discarded_after_document_switch(tmp_path: Path) -> None:
+@pytest.mark.parametrize("format_name,mime", [
+    ("pdf", "application/pdf"), ("png", "image/png"),
+])
+def test_pending_native_raster_is_discarded_after_document_switch(
+    tmp_path: Path, format_name: str, mime: str,
+) -> None:
     """An async conversion of diagram A must never become diagram B's download."""
     if not shutil.which("node"):
         pytest.skip("node is not installed")
@@ -250,7 +278,7 @@ let currentNativeUrl = "/native/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/index.html";
 let currentTitle = "First";
 let nativeCanvasRenderStale = false;
 let prepared = null;
-let pendingPdf = null;
+let pendingRaster = null;
 function setStatus() {}
 function clearPreparedDownload() { prepared = null; }
 function prepareDownload(blob, filename, label) {
@@ -260,27 +288,32 @@ function safeFilename(title) { return title; }
 function serializeNativeFrameSvg() { return '<svg xmlns="http://www.w3.org/2000/svg"/>'; }
 function nativeCanvasDiffersFromRendered() { return false; }
 function renderedImageToPdfBlob() {
-  return new Promise((resolve) => { pendingPdf = resolve; });
+  return new Promise((resolve) => { pendingRaster = resolve; });
+}
+function renderedImageToPngBlob() {
+  return new Promise((resolve) => { pendingRaster = resolve; });
 }
 """ + invalidate + native + r"""
-const oldExport = exportNative("pdf");
-if (typeof pendingPdf !== "function") throw new Error("first PDF did not begin");
+const oldExport = exportNative("__FORMAT__");
+if (typeof pendingRaster !== "function") throw new Error("first export did not begin");
 invalidateLoadIntents();
 currentTitle = "Second";
 currentRepresentation = {title: "Second"};
-pendingPdf(new Blob(["%PDF-1.4\n"], {type: "application/pdf"}));
+pendingRaster(new Blob(["data"], {type: "__MIME__"}));
 await oldExport;
-if (prepared !== null) throw new Error("stale PDF attached to new document");
+if (prepared !== null) throw new Error("stale image attached to new document");
 
-pendingPdf = null;
-const newExport = exportNative("pdf");
-if (typeof pendingPdf !== "function") throw new Error("second PDF did not begin");
-pendingPdf(new Blob(["%PDF-1.4\n"], {type: "application/pdf"}));
+pendingRaster = null;
+const newExport = exportNative("__FORMAT__");
+if (typeof pendingRaster !== "function") throw new Error("second export did not begin");
+pendingRaster(new Blob(["data"], {type: "__MIME__"}));
 await newExport;
-if (!prepared || prepared.filename !== "Second.pdf" || prepared.label !== "PDF") {
-  throw new Error("current PDF export was incorrectly rejected");
+if (!prepared || prepared.filename !== "Second.__FORMAT__" || prepared.label !== "__LABEL__") {
+  throw new Error("current raster export was incorrectly rejected");
 }
 """
+    code = (code.replace("__FORMAT__", format_name)
+        .replace("__MIME__", mime).replace("__LABEL__", format_name.upper()))
     result = subprocess.run(
         ["node", "--input-type=module", "-e", code],
         capture_output=True, text=True, check=False, timeout=30,

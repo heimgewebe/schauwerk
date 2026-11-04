@@ -1972,12 +1972,6 @@ function setEngineMode(mode) {
   // Empty workspaces retain the compact toolbar; legacy tools remain visible.
   syncNativeHistoryControls();
 
-  const pngButton = document.querySelector('[data-export="png"]');
-  if (pngButton instanceof HTMLButtonElement) {
-    pngButton.disabled = native;
-    pngButton.hidden = native;
-  }
-
   if (native) {
     if (currentNativeCanvas) {
       elements.projectButton.textContent = "Canvas";
@@ -3188,10 +3182,10 @@ function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
 }
 
 
-/** Convert the complete rendered diagram to a local PDF, without external services. */
-async function renderedImageToPdfBlob(imageBlob) {
+/** Rasterize once for native PDF and PNG; cap size for Safari/mobile memory. */
+async function renderedImageToRasterCanvas(imageBlob) {
   if (!(imageBlob instanceof Blob) || imageBlob.size > 24 * 1024 * 1024) {
-    throw new Error("PDF-Quelldatei ist ungültig oder zu groß.");
+    throw new Error("Bildquelle ist ungültig oder zu groß.");
   }
   const imageUrl = URL.createObjectURL(imageBlob);
   try {
@@ -3206,7 +3200,6 @@ async function renderedImageToPdfBlob(imageBlob) {
     if (!(sourceWidth > 0 && sourceHeight > 0)) {
       throw new Error("Diagramm hat keine gültige Größe.");
     }
-    // Keep real PNG pixels, but render SVG at print quality; cap Safari memory.
     const baseScale = imageBlob.type.startsWith("image/svg+xml") ? 3 : 1;
     const scale = Math.min(baseScale, 5200 / Math.max(sourceWidth, sourceHeight),
       Math.sqrt(16000000 / (sourceWidth * sourceHeight)));
@@ -3216,24 +3209,46 @@ async function renderedImageToPdfBlob(imageBlob) {
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext("2d", { alpha: false });
-    if (!context) throw new Error("PDF-Bildfläche konnte nicht angelegt werden.");
+    if (!context) throw new Error("Bildfläche konnte nicht angelegt werden.");
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, width, height);
     context.drawImage(image, 0, 0, width, height);
-    const prefix = "data:image/jpeg;base64,";
-    const jpeg = canvas.toDataURL("image/jpeg", 0.94);
-    if (!jpeg.startsWith(prefix) || jpeg.length > 44 * 1024 * 1024) {
-      throw new Error("PDF-Rasterbild konnte nicht erzeugt werden.");
-    }
-    const bytes = Uint8Array.from(atob(jpeg.slice(prefix.length)), (char) => char.charCodeAt(0));
-    return jpegToPdfBlob(bytes, width, height);
+    return canvas;
   } finally {
     URL.revokeObjectURL(imageUrl);
   }
 }
 
+/** Export a rendered diagram to local PDF without an external service. */
+async function renderedImageToPdfBlob(imageBlob) {
+  const canvas = await renderedImageToRasterCanvas(imageBlob);
+  const prefix = "data:image/jpeg;base64,";
+  const jpeg = canvas.toDataURL("image/jpeg", 0.94);
+  if (!jpeg.startsWith(prefix) || jpeg.length > 44 * 1024 * 1024) {
+    throw new Error("PDF-Rasterbild konnte nicht erzeugt werden.");
+  }
+  const bytes = Uint8Array.from(atob(jpeg.slice(prefix.length)), (char) => char.charCodeAt(0));
+  return jpegToPdfBlob(bytes, canvas.width, canvas.height);
+}
+
+/** Export a high-resolution native PNG using the same bounded raster path. */
+async function renderedImageToPngBlob(imageBlob) {
+  const canvas = await renderedImageToRasterCanvas(imageBlob);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob || blob.type !== "image/png" || blob.size === 0 ||
+          blob.size > 64 * 1024 * 1024) {
+        reject(new Error("PNG-Rasterbild konnte nicht erzeugt werden."));
+      } else {
+        resolve(blob);
+      }
+    }, "image/png");
+  });
+}
+
 async function exportNative(format) {
-  const requestedVersion = format === "pdf" ? exportRequestVersion : 0;
+  const rasterExport = format === "pdf" || format === "png";
+  const requestedVersion = rasterExport ? exportRequestVersion : 0;
   if (!editorReady || (!currentRepresentation && !currentNativeDocument && !currentNativeCanvas && !currentLegacyXml) || !currentNativeUrl) {
     setStatus("Schaubild ist noch nicht bereit");
     return;
@@ -3268,11 +3283,7 @@ async function exportNative(format) {
     setStatus("Kanonische Quelle bereit");
     return;
   }
-  if (format === "png") {
-    setStatus("PNG ist für dieses Schaubild noch nicht verfügbar");
-    return;
-  }
-  if (format !== "svg" && format !== "pdf") {
+  if (format !== "svg" && !rasterExport) {
     setStatus("Exportformat wird nicht unterstützt");
     return;
   }
@@ -3292,17 +3303,19 @@ async function exportNative(format) {
   if (liveSvg !== null) {
     try {
       const svgBlob = new Blob([liveSvg], { type: "image/svg+xml;charset=utf-8" });
-      const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
-      if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
+      const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob)
+        : format === "png" ? await renderedImageToPngBlob(svgBlob) : svgBlob;
+      if (rasterExport && requestedVersion !== exportRequestVersion) return;
       prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
       setStatus(format === "pdf"
         ? "PDF aus aktueller nativer Darstellung bereit"
+        : format === "png" ? "PNG aus aktueller nativer Darstellung bereit"
         : currentNativeCanvas
           ? "SVG aus aktuellem Canvas-Dokument bereit"
           : "SVG aus aktueller nativer Darstellung bereit");
     } catch (_) {
-      if (format !== "pdf" || requestedVersion === exportRequestVersion) {
-        setStatus("PDF konnte nicht vorbereitet werden");
+      if (!rasterExport || requestedVersion === exportRequestVersion) {
+        setStatus(format === "png" ? "PNG konnte nicht vorbereitet werden" : "PDF konnte nicht vorbereitet werden");
       }
     }
     return;
@@ -3317,13 +3330,15 @@ async function exportNative(format) {
     if (!response.ok) throw new Error("SVG konnte nicht gelesen werden.");
     const svg = await response.text();
     const svgBlob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob) : svgBlob;
-    if (format === "pdf" && requestedVersion !== exportRequestVersion) return;
+    const result = format === "pdf" ? await renderedImageToPdfBlob(svgBlob)
+      : format === "png" ? await renderedImageToPngBlob(svgBlob) : svgBlob;
+    if (rasterExport && requestedVersion !== exportRequestVersion) return;
     prepareDownload(result, safeFilename(currentTitle) + "." + format, format.toUpperCase());
-    setStatus(format === "pdf" ? "PDF bereit" : "SVG bereit");
+    setStatus(format === "pdf" ? "PDF bereit" : format === "png" ? "PNG bereit" : "SVG bereit");
   } catch (_) {
-    if (format !== "pdf" || requestedVersion === exportRequestVersion) {
-      setStatus(format === "pdf" ? "PDF konnte nicht vorbereitet werden" : "SVG konnte nicht vorbereitet werden");
+    if (!rasterExport || requestedVersion === exportRequestVersion) {
+      setStatus(format === "pdf" ? "PDF konnte nicht vorbereitet werden"
+        : format === "png" ? "PNG konnte nicht vorbereitet werden" : "SVG konnte nicht vorbereitet werden");
     }
   }
 }
