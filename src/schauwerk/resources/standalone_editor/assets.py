@@ -178,7 +178,7 @@ STYLES_CSS = r""":root {
   --surface-raised: rgba(255, 255, 255, 0.88);
   --surface-soft: #f7f7fb;
   --ink: #161827;
-  --muted: #666977;
+  --muted: #5b5f6c;
   --line: #e3e4ec;
   --line-strong: #d4d6e1;
   --accent: #5048e5;

@@ -108,3 +108,57 @@ def test_product_shell_is_single_workspace_and_responsive(tmp_path: Path) -> Non
     assert "color: var(--ink);" in dark_status
     assert "background: var(--surface-raised);" in dark_status
     assert "border-color: var(--line-strong);" in dark_status
+
+def test_muted_text_remains_wcag_aa_readable_over_both_background_glows(
+    tmp_path: Path,
+) -> None:
+    """Even the combined maximum of both radial overlays must meet 4.5:1.
+
+    This is stricter than a single viewport: the two glows have distinct
+    centers, so their maximum opacities cannot normally coincide. The previous
+    light muted token failed on the real 360/390 px landing page at 4.36/4.39:1.
+    """
+    import re
+
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    css = (output / "styles.css").read_text(encoding="utf-8")
+    light_css, dark_css = css.split("@media (prefers-color-scheme: dark)", 1)
+    assert ".lede {" in light_css and "color: var(--muted);" in light_css
+
+    def css_color(scope: str, name: str) -> tuple[int, int, int]:
+        match = re.search(rf"--{name}:\s*#([0-9a-f]{{6}});", scope)
+        assert match, f"Missing CSS variable --{name}"
+        value = match.group(1)
+        return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
+
+    def luminance(rgb: tuple[int, int, int]) -> float:
+        def channel(value: int) -> float:
+            srgb = value / 255
+            return srgb / 12.92 if srgb <= 0.04045 else ((srgb + 0.055) / 1.055) ** 2.4
+
+        return sum(weight * channel(value) for weight, value in zip((0.2126, 0.7152, 0.0722), rgb))
+
+    for theme, scope in (("light", light_css), ("dark", dark_css)):
+        body = re.search(r"(?:^|\n)\s*body\s*\{([^{}]+)\}", scope)
+        assert body, f"No {theme} body background"
+        stops = re.findall(
+            r"radial-gradient\([^\n]*?rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)",
+            body.group(1),
+        )
+        assert len(stops) == 2, f"Unexpected {theme} radial gradient background"
+        background = css_color(scope, "bg")
+        # CSS paints the first background layer on top of the second.
+        for red, green, blue, alpha in reversed(stops):
+            opacity = float(alpha)
+            assert 0 <= opacity <= 1
+            background = tuple(
+                round(opacity * foreground + (1 - opacity) * underneath)
+                for foreground, underneath in zip((int(red), int(green), int(blue)), background)
+            )
+        foreground_luminance = luminance(css_color(scope, "muted"))
+        background_luminance = luminance(background)
+        ratio = (max(foreground_luminance, background_luminance) + 0.05) / (
+            min(foreground_luminance, background_luminance) + 0.05
+        )
+        assert ratio >= 4.5, f"{theme} muted text on overlapping glows: {ratio:.2f}:1"
