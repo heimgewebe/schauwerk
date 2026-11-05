@@ -2145,7 +2145,7 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
                 or not isinstance(value["representation"], dict)
             ):
                 raise D2PreviewError("D2 preview request contract is invalid")
-        except (UnicodeDecodeError, JsonFidelityError, D2PreviewError) as exc:
+        except (UnicodeDecodeError, json.JSONDecodeError, JsonFidelityError, D2PreviewError) as exc:
             self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
             return
         if not _D2_PREVIEW_WORKERS.acquire(blocking=False):

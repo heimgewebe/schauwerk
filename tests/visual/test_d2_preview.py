@@ -158,6 +158,33 @@ def test_preview_unconfigured_does_not_change_native_endpoint(
         thread.join(timeout=5)
 
 
+@pytest.mark.parametrize("invalid_json", [b"{", b'{"renderer":'])
+def test_d2_preview_malformed_json_returns_structured_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid_json: bytes,
+) -> None:
+    # Binary discovery succeeded; only the JSON admission path is under test.
+    import schauwerk.visual.standalone_editor as editor
+    monkeypatch.setattr(editor, "configured_d2_binary", lambda: Path("/not-executed/d2"))
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    server, thread = _start_server(output)
+    connection = HTTPConnection("127.0.0.1", int(server.server_address[1]), timeout=5)
+    try:
+        connection.request(
+            "POST", "/api/d2-preview", body=invalid_json,
+            headers={"Content-Type": "application/json"},
+        )
+        response = connection.getresponse()
+        payload = json.loads(response.read())
+        assert response.status == 422
+        assert isinstance(payload.get("error"), str) and payload["error"]
+    finally:
+        connection.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
 @pytest.mark.skipif(
     not D2_BINARY or not Path(D2_BINARY).is_file(),
     reason="D2 v0.9.0 binary optional",
