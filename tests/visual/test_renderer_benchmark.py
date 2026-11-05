@@ -64,6 +64,68 @@ def test_d2_source_preserves_all_semantic_labels_and_group_references() -> None:
         assert benchmark._quoted(benchmark._edge_label(edge)) in d2
 
 
+def _literal_interpolation_model() -> dict:
+    source = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    dollar_expression = "$" + "{nonexistent_variable}"
+    tricky_text = 'Quote " and apostrophe ' + "'" + r" C:\Temp & <tag> ü 🧪 "
+    source["groups"][0]["label"] = "Gruppe " + dollar_expression + " Prüfung"
+    source["nodes"][0]["label"] = "Knoten " + dollar_expression + ' "zitiert"'
+    source["nodes"][0]["summary"] = tricky_text
+    source["edges"][0]["label"] = "Kante " + dollar_expression + ' "quote"'
+    return source
+
+
+def test_d2_quoting_preserves_literal_interpolation_and_graphviz_quoting() -> None:
+    model = _literal_interpolation_model()
+    expected = "$" + "{nonexistent_variable}"
+    escaped = "\\" + expected
+    from schauwerk.visual.representation import validate_representation_input
+
+    normalized = validate_representation_input(model)
+    d2 = benchmark.d2_source(normalized)
+    dot = benchmark.graphviz_source(normalized)
+    for value in (
+        normalized["groups"][0]["label"],
+        benchmark._display_node(normalized["nodes"][0]),
+        benchmark._edge_label(normalized["edges"][0]),
+    ):
+        assert benchmark._d2_quoted(value) in d2
+        assert benchmark._quoted(value) in dot
+        assert escaped in benchmark._d2_quoted(value)
+    assert d2.count(escaped) == 3
+    assert expected in dot
+    assert "\\" + expected not in benchmark._quoted(expected)
+    assert model["nodes"][0]["label"].find(expected) >= 0
+
+
+@pytest.mark.parametrize("layout", ["dagre", "elk", "tala"])
+@pytest.mark.skipif(not shutil.which("d2"), reason="D2 binary is optional")
+def test_real_d2_literal_labels_preserve_unicode_quotes_and_variables(
+    tmp_path: Path, layout: str,
+) -> None:
+    model = _literal_interpolation_model()
+    path = tmp_path / "literal-values.json"
+    path.write_text(json.dumps(model, ensure_ascii=False), encoding="utf-8")
+    result = benchmark.run_benchmark([path], tmp_path / "out", (f"d2-{layout}",))
+    info = result["cases"][0]["engines"][f"d2-{layout}"]
+    assert info["status"] == "ok", info
+    assert info["svg_id_coverage"]["status"] == "structural_only", info
+    svg = ET.fromstring(
+        (tmp_path / "out" / path.stem / f"d2-{layout}.svg").read_bytes()
+    )
+    labels = [
+        "".join(item.itertext())
+        for item in svg.iter()
+        if item.tag == "{http://www.w3.org/2000/svg}text"
+    ]
+    from schauwerk.visual.representation import validate_representation_input
+
+    expected = validate_representation_input(model)
+    assert expected["groups"][0]["label"] in labels
+    assert benchmark._display_node(expected["nodes"][0]) in labels
+    assert benchmark._edge_label(expected["edges"][0]) in labels
+
+
 def test_svg_coverage_detects_missing_edges_in_graphviz() -> None:
     model = _model()
     ids = [
@@ -84,8 +146,9 @@ def test_svg_coverage_detects_missing_edges_in_graphviz() -> None:
 def test_d2_svg_coverage_never_claims_unverified_source_identifiers() -> None:
     svg = b'<svg xmlns="http://www.w3.org/2000/svg"/>'
     report = benchmark._id_coverage(svg, _model(), "d2-dagre")
-    assert report["status"] == "unverified"
-    assert report["expected_edges"] == len(_model()["edges"])
+    assert report["status"] == "incomplete"
+    assert report["edges"]["expected"] == len(_model()["edges"])
+    assert len(report["missing_edges"]) == len(_model()["edges"])
 
 
 def test_native_baseline_renders_valid_svg_and_binds_output(tmp_path: Path) -> None:
@@ -138,9 +201,88 @@ def test_d2_subprocess_is_limited_and_failure_reported(
     report = benchmark.run_benchmark([GOLDEN], tmp_path / "ab", ("d2-elk",))
     info = report["cases"][0]["engines"]["d2-elk"]
     assert argv_seen == ["/test/d2", "--layout=elk", "-", "-"]
-    assert info["status"] == "ok"
-    assert info["svg_id_coverage"]["status"] == "unverified"
+    assert info["status"] == "coverage_incomplete"
+    assert info["svg_id_coverage"]["status"] == "incomplete"
 
+
+
+
+def test_d2_svg_css_keys_prove_shape_and_parallel_edge_signatures() -> None:
+    import base64
+    import html
+
+    model = {
+        "groups": [{"id": "alpha", "label": "Bereich A"}, {"id": "beta", "label": "Bereich B"}],
+        "nodes": [
+            {"id": "a", "label": "Quelle", "kind": "concept", "group": "alpha"},
+            {"id": "b", "label": "Ziel", "kind": "decision", "group": "beta"},
+        ],
+        "edges": [
+            {"id": "e1", "from": "a", "to": "b", "label": "Weg", "kind": "flow"},
+            {"id": "e2", "from": "a", "to": "b", "label": "Risiko", "kind": "risk"},
+            {"id": "e3", "from": "a", "to": "a", "label": "Schleife", "kind": "feedback"},
+        ],
+    }
+
+    def css_group(key: str) -> str:
+        encoded = base64.b64encode(key.encode("utf-8")).decode("ascii")
+        return f'<g class="{encoded}"/>'
+
+    keys = [
+        "g_alpha",
+        "g_beta",
+        "g_alpha.n_a",
+        "g_beta.n_b",
+        "(g_alpha.n_a -&gt; g_beta.n_b)[0]",
+        "(g_alpha.n_a -&gt; g_beta.n_b)[1]",
+        "g_alpha.(n_a -&gt; n_a)[0]",
+    ]
+    texts = [
+        *(group["label"] for group in model["groups"]),
+        *(benchmark._display_node(node) for node in model["nodes"]),
+        *(benchmark._edge_label(edge) for edge in model["edges"]),
+    ]
+
+    def svg(*, keys: list[str] = keys, texts: list[str] = texts) -> bytes:
+        return (
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            + "".join(css_group(key) for key in keys)
+            + "".join(f"<text>{html.escape(value)}</text>" for value in texts)
+            + "</svg>"
+        ).encode("utf-8")
+
+    coverage = benchmark._id_coverage(svg(), model, "d2-tala")
+    assert coverage["status"] == "structural_only"
+    assert coverage["nodes"] == {"found": 2, "expected": 2}
+    assert coverage["groups"] == {"found": 2, "expected": 2}
+    assert coverage["edges"]["original_ids_embedded"] is False
+    assert coverage["edge_binding"]["e1"]["ordinal"] == 0
+    assert coverage["edge_binding"]["e2"]["ordinal"] == 1
+    assert coverage["edge_binding"]["e3"]["from"] == "g_alpha.n_a"
+
+    missing_edge = benchmark._id_coverage(svg(keys=keys[:-1]), model, "d2-elk")
+    assert missing_edge["status"] == "incomplete"
+    assert missing_edge["missing_edges"] == ["e3"]
+
+    missing_text = benchmark._id_coverage(svg(texts=texts[:-1]), model, "d2-dagre")
+    assert missing_text["status"] == "incomplete"
+    assert missing_text["missing_visible_text"] == ["Schleife [feedback]"]
+
+
+@pytest.mark.parametrize("layout", ["dagre", "elk", "tala"])
+@pytest.mark.skipif(not shutil.which("d2"), reason="D2 binary is optional")
+def test_real_d2_svg_proves_structural_coverage(tmp_path: Path, layout: str) -> None:
+    result = benchmark.run_benchmark(
+        [GOLDEN], tmp_path / f"d2-{layout}", (f"d2-{layout}",),
+    )
+    info = result["cases"][0]["engines"][f"d2-{layout}"]
+    assert info["status"] == "ok", info
+    coverage = info["svg_id_coverage"]
+    assert coverage["status"] == "structural_only"
+    assert coverage["missing_nodes"] == []
+    assert coverage["missing_groups"] == []
+    assert coverage["missing_edges"] == []
+    assert coverage["missing_visible_text"] == []
 
 def test_unknown_engine_and_existing_directory_are_rejected(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="unknown or duplicate"):

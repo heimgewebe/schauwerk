@@ -7,13 +7,17 @@ representation. External command-line renderers are optional, not dependencies.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
+import html
 import json
+import re
 import shutil
 import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +44,16 @@ def _quoted(value: Any) -> str:
     """Both DOT and D2 accept double-quoted, JSON-escaped one-line strings."""
     text = str(value).replace("\r", " ").replace("\n", " ")
     return json.dumps(text, ensure_ascii=False)
+
+
+def _d2_quoted(value: Any) -> str:
+    """D2 expands substitutions in double quotes, even for ordinary input text.
+
+    Insert the D2 literal-dollar escape *after* JSON-style string quoting to
+    avoid double-escaping the backslash. Single quotes would bypass expansion
+    but cannot represent values containing both quote types losslessly.
+    """
+    return _quoted(value).replace("$" + "{", "\\" + "$" + "{")
 
 
 def _display_node(node: dict[str, Any]) -> str:
@@ -113,19 +127,127 @@ def d2_source(model: dict[str, Any]) -> str:
         by_group[gid].append(node)
         node_keys[str(node["id"])] = f"g_{gid}.n_{node['id']}" if gid else f"n_{node['id']}"
     for node in by_group[None]:
-        lines.append(f"n_{node['id']}: {_quoted(_display_node(node))}")
+        lines.append(f"n_{node['id']}: {_d2_quoted(_display_node(node))}")
     for group in model["groups"]:
         gid = str(group["id"])
-        lines.append(f"g_{gid}: {_quoted(group['label'])} {{")
+        lines.append(f"g_{gid}: {_d2_quoted(group['label'])} {{")
         for node in by_group[gid]:
-            lines.append(f"  n_{node['id']}: {_quoted(_display_node(node))}")
+            lines.append(f"  n_{node['id']}: {_d2_quoted(_display_node(node))}")
         lines.append("}")
     for edge in model["edges"]:
         lines.append(
             f"{node_keys[str(edge['from'])]} -> {node_keys[str(edge['to'])]}:"
-            f" {_quoted(_edge_label(edge))}"
+            f" {_d2_quoted(_edge_label(edge))}"
         )
     return "\n".join(lines) + "\n"
+
+
+_D2_CONNECTION_KEY = re.compile(
+    r"^(?:(?P<scope>g_[a-z0-9_]+)\.)?\("
+    r"(?P<source>(?:g_[a-z0-9_]+\.)?n_[a-z0-9_]+)"
+    r" -> "
+    r"(?P<target>(?:g_[a-z0-9_]+\.)?n_[a-z0-9_]+)"
+    r"\)\[(?P<ordinal>\d+)\]$"
+)
+
+
+def _d2_decoded_svg_keys(root: ET.Element) -> set[str]:
+    """Read v0.9.0 CSS class keys; CSS class is not a source edge ID."""
+    found: set[str] = set()
+    for item in root.iter():
+        if item.tag != "{http://www.w3.org/2000/svg}g":
+            continue
+        for token in item.get("class", "").split():
+            if not re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", token):
+                continue
+            try:
+                key = base64.b64decode(token + "=" * (-len(token) % 4), validate=True)
+                found.add(html.unescape(key.decode("utf-8")))
+            except (ValueError, UnicodeError):
+                continue
+    return found
+
+
+def _d2_connection_identity(key: str) -> tuple[str, str, int] | None:
+    match = _D2_CONNECTION_KEY.fullmatch(key)
+    if match is None:
+        return None
+    scope = match.group("scope")
+    source = match.group("source")
+    target = match.group("target")
+    if scope:
+        if "." not in source:
+            source = f"{scope}.{source}"
+        if "." not in target:
+            target = f"{scope}.{target}"
+    return source, target, int(match.group("ordinal"))
+
+
+def _d2_svg_coverage(root: ET.Element, model: dict[str, Any]) -> dict[str, Any]:
+    """Verify graph structure, but never claim original edge IDs are in D2 SVG."""
+    keys = _d2_decoded_svg_keys(root)
+    group_keys = {str(group["id"]): f"g_{group['id']}" for group in model["groups"]}
+    node_keys: dict[str, str] = {}
+    for node in model["nodes"]:
+        group = node.get("group")
+        node_keys[str(node["id"])] = (
+            f"g_{group}.n_{node['id']}" if group else f"n_{node['id']}"
+        )
+
+    edge_ordinals: dict[tuple[str, str], int] = defaultdict(int)
+    expected_edges: dict[str, tuple[str, str, int]] = {}
+    for edge in model["edges"]:
+        pair = (node_keys[str(edge["from"])], node_keys[str(edge["to"])])
+        ordinal = edge_ordinals[pair]
+        edge_ordinals[pair] += 1
+        expected_edges[str(edge["id"])] = (*pair, ordinal)
+
+    decoded_edges = {
+        identity for key in keys if (identity := _d2_connection_identity(key)) is not None
+    }
+    missing_nodes = sorted(node_id for node_id, key in node_keys.items() if key not in keys)
+    missing_groups = sorted(group_id for group_id, key in group_keys.items() if key not in keys)
+    missing_edges = sorted(
+        edge_id for edge_id, signature in expected_edges.items() if signature not in decoded_edges
+    )
+    extra_edges = sorted(decoded_edges - set(expected_edges.values()))
+    visible_texts = [
+        "".join(item.itertext())
+        for item in root.iter()
+        if item.tag == "{http://www.w3.org/2000/svg}text"
+    ]
+    expected_texts = {
+        *(str(group["label"]) for group in model["groups"]),
+        *(_display_node(node) for node in model["nodes"]),
+        *(_edge_label(edge) for edge in model["edges"]),
+    }
+    missing_text = sorted(text for text in expected_texts if text not in visible_texts)
+    complete_structure = not (
+        missing_nodes or missing_groups or missing_edges or extra_edges or missing_text
+    )
+    return {
+        "status": "structural_only" if complete_structure else "incomplete",
+        "reason": (
+            "D2 SVG CSS-class keys prove graph shape and pair/ordinal coverage; "
+            "original source edge IDs require the explicit per-edge sidecar binding"
+        ),
+        "nodes": {"found": len(node_keys) - len(missing_nodes), "expected": len(node_keys)},
+        "groups": {"found": len(group_keys) - len(missing_groups), "expected": len(group_keys)},
+        "edges": {
+            "found": len(expected_edges) - len(missing_edges),
+            "expected": len(expected_edges),
+            "original_ids_embedded": False,
+        },
+        "missing_nodes": missing_nodes,
+        "missing_groups": missing_groups,
+        "missing_edges": missing_edges,
+        "unexpected_edge_signatures": [list(signature) for signature in extra_edges],
+        "missing_visible_text": missing_text,
+        "edge_binding": {
+            edge_id: {"from": source, "to": target, "ordinal": ordinal}
+            for edge_id, (source, target, ordinal) in expected_edges.items()
+        },
+    }
 
 
 def _id_coverage(svg: bytes, model: dict[str, Any], engine: str) -> dict[str, Any]:
@@ -160,16 +282,7 @@ def _id_coverage(svg: bytes, model: dict[str, Any], engine: str) -> dict[str, An
             "count": len(model["groups"]),
         }
     else:
-        # D2 encodes keys in classes rather than preserving source-edge IDs.
-        # The DSL and source-map are available, but SVG identity coverage is
-        # NOT established by a successful render.
-        return {
-            "status": "unverified",
-            "reason": "D2 SVG source ID/edge mapping requires separate verification",
-            "expected_nodes": len(model["nodes"]),
-            "expected_edges": len(model["edges"]),
-            "expected_groups": len(model["groups"]),
-        }
+        return _d2_svg_coverage(root, model)
     expected_nodes = {str(n["id"]) for n in model["nodes"]}
     expected_edges = {str(e["id"]) for e in model["edges"]}
     complete = (
