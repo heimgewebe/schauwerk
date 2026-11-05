@@ -1,15 +1,19 @@
 {
-  "change": "Card-safe same-row Knowledge Map edge detours, distinct label-height lanes and natural unbroken single-word labels on long crossing edges",
+  "change": "Card-safe same-row knowledge map edges, readable separate lanes and word-bound labels; fix both Codex P2 regressions (last-row SVG clipping and occupied row-corridor labels), including single-detour case.",
   "checks": {
+    "codex_p2_adjacent_row_label_red_to_green": "passed",
+    "codex_p2_last_row_viewbox_red_to_green": "passed",
+    "gate1_goldens": "passed",
     "gh_ci": "pending",
     "native_diagram_and_gate1_tests": "passed",
     "renderer_benchmark": "passed (optional variants skipped)",
     "ruff": "passed",
+    "single_detour_adjacent_label_red_to_green": "passed",
     "visual_acceptance": "pending"
   },
   "current_source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "466b26c5b12dc9f429beef4a9b47877a083d8984376d0ebcbafa7f92d2b8ad1b",
-    "tests/visual/test_native_diagram_gate1_proof.py": "633afccaed10a53c8ec35244b97dd06d0fb953113b936dac3a0230cdd379fd16"
+    "src/schauwerk/visual/native_diagram.py": "f28c71b3b4647eb820698e2538f6453b2ae772c5295acaff9feb9e087cce2a55",
+    "tests/visual/test_native_diagram_gate1_proof.py": "34e8ed59ff2779c6a55abbe3500861105c03eb2036ba2dd58388f13ae02156e7"
   },
   "invariants": [
     "Earlier evidence stays byte-for-byte intact",

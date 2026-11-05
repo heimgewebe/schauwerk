@@ -3418,11 +3418,67 @@ def render_native_diagram(
                 metrics = _edge_label_metrics(edge, positions, intent)
                 dense_by_row[source_y].append((str(edge["id"]), metrics.height))
         busy = {y: items for y, items in dense_by_row.items() if len(items) > 1}
-        if busy:
+        if dense_by_row:
+            # Adjacent-row labels already occupy the midpoint of the same
+            # physical gap. Reserve their central band before allocating the
+            # detours, instead of packing a detour directly over that label.
+            edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
+            center_reserved: set[int] = set()
+            for row_y, items in dense_by_row.items():
+                detour_boxes = []
+                for edge_id, _ in items:
+                    edge = edges_by_id[edge_id]
+                    left, right = sorted(
+                        (positions[str(edge["from"])][0],
+                         positions[str(edge["to"])][0])
+                    )
+                    metrics = _edge_label_metrics(edge, positions, intent)
+                    detour_boxes.append(
+                        ((left + _NODE_WIDTH + right) / 2, metrics.width)
+                    )
+                for other in model["edges"]:
+                    if str(other["kind"]) == "feedback" or other["from"] == other["to"]:
+                        continue
+                    source = positions[str(other["from"])]
+                    target = positions[str(other["to"])]
+                    if (
+                        min(source[1], target[1]) != row_y
+                        or max(source[1], target[1])
+                        != row_y + _NODE_HEIGHT + non_process_row_gap
+                    ):
+                        continue
+                    metrics = _edge_label_metrics(other, positions, intent)
+                    if source[0] == target[0]:
+                        center_x = source[0] + _NODE_WIDTH / 2
+                    else:
+                        left, right = sorted((source[0], target[0]))
+                        if (
+                            right - left - _NODE_WIDTH < metrics.width + 8
+                            or non_process_row_gap < metrics.height + 8
+                        ):
+                            continue
+                        center_x = (left + _NODE_WIDTH + right) / 2
+                    if any(
+                        abs(center_x - detour_x)
+                        < (metrics.width + detour_width) / 2 + 4
+                        for detour_x, detour_width in detour_boxes
+                    ):
+                        center_reserved.add(row_y)
+                        break
+            # An isolated detour also needs a reserved band when an existing
+            # adjacent-row label would otherwise be hidden. Uncontested
+            # single detours retain their original geometry and Goldens.
+            busy.update({
+                row_y: dense_by_row[row_y] for row_y in center_reserved
+            })
             needed_gap = max(
-                len(items) * (max(height for _, height in items) + 8) + 8
-                for items in busy.values()
-            )
+                (
+                    (2 * math.ceil(len(items) / 2) + 1)
+                    if row_y in center_reserved else len(items)
+                ) * (max(item_height for _, item_height in items) + 8) + 8
+                for row_y, items in busy.items()
+            ) if busy else non_process_row_gap
+            last_row_before_shift = max(y for _, y in positions.values())
             gap_extra = max(0, needed_gap - non_process_row_gap)
             if gap_extra:
                 row_y = sorted({y for _, y in positions.values()})
@@ -3445,12 +3501,47 @@ def render_native_diagram(
                     ]
                 height += extension
                 non_process_row_gap += gap_extra
-            for items in busy.values():
+            for row_y, items in busy.items():
                 lane_step = max(item_height for _, item_height in items) + 8
-                for index, (edge_id, _) in enumerate(sorted(items)):
-                    knowledge_map_detour_offsets[edge_id] = (
-                        index - (len(items) - 1) / 2
-                    ) * lane_step
+                ordered = sorted(items)
+                if row_y in center_reserved:
+                    half = math.ceil(len(ordered) / 2)
+                    slots = [
+                        slot for slot in range(-half, half + 1) if slot != 0
+                    ][:len(ordered)]
+                else:
+                    slots = [
+                        index - (len(ordered) - 1) / 2
+                        for index in range(len(ordered))
+                    ]
+                for (edge_id, _), slot in zip(ordered, slots):
+                    knowledge_map_detour_offsets[edge_id] = slot * lane_step
+            if last_row_before_shift in busy:
+                # The last row has only a page margin, not another full row
+                # corridor. Reserve the actual bottom of every detour label
+                # and its stroke, including the page margin in ungrouped SVGs.
+                last_y = max(y for _, y in positions.values())
+                last_label_bottom = max(
+                    last_y + _NODE_HEIGHT + non_process_row_gap / 2
+                    + knowledge_map_detour_offsets[edge_id] + label_height / 2
+                    for edge_id, label_height in busy[last_row_before_shift]
+                )
+                if regions:
+                    regions = [
+                        (
+                            group_id, label, x, y, region_width,
+                            max(region_height, math.ceil(last_label_bottom + 28 - y)),
+                        )
+                        for group_id, label, x, y, region_width, region_height in regions
+                    ]
+                    height = max(
+                        height,
+                        math.ceil(
+                            max(y + region_height for _, _, _, y, _, region_height in regions)
+                            + _PAGE_MARGIN
+                        ),
+                    )
+                height = max(height, math.ceil(last_label_bottom + _PAGE_MARGIN))
     long_vertical_gutter_x: dict[str, float] = {}
     long_vertical_label_y: dict[str, float] = {}
     long_vertical_label_x: dict[str, float] = {}

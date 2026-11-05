@@ -371,3 +371,107 @@ def test_knowledge_map_six_parallel_detours_have_distinct_label_lanes() -> None:
             assert not _boxes_overlap(detour_labels[first], detour_labels[second]), (
                 f"{first}/{second} overlap"
             )
+
+
+def _ungrouped_knowledge_map(
+    node_count: int, connections: list[tuple[int, int, str]],
+) -> dict:
+    model = copy.deepcopy(_load("system-landscape-v1.json"))
+    model["id"] = "ungrouped_knowledge_map_codex_p2"
+    model["groups"] = []
+    model["nodes"] = [
+        {
+            "id": f"n{index}",
+            "label": f"System {index}",
+            "kind": "system",
+            "group": None,
+            "summary": "Kollisionsprüfung",
+        }
+        for index in range(node_count)
+    ]
+    model["edges"] = [
+        {
+            "id": f"e{index}",
+            "from": f"n{source}",
+            "to": f"n{target}",
+            "label": label,
+            "kind": "flow",
+        }
+        for index, (source, target, label) in enumerate(connections)
+    ]
+    return model
+
+
+def _edge_boxes(
+    root: ET.Element,
+) -> dict[str, tuple[str | None, tuple[float, float, float, float]]]:
+    results = {}
+    for element in root.iter():
+        if element.get("data-source-kind") != "edge":
+            continue
+        rect = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        results[str(element.get("data-source-id"))] = (
+            element.get("data-route"),
+            _rect_box(rect),
+        )
+    return results
+
+
+def test_ungrouped_last_row_detour_labels_remain_inside_svg() -> None:
+    """Two detours on the only row must not fall below the saved SVG viewBox."""
+    model = _ungrouped_knowledge_map(
+        4, [(0, 3, "Alpha"), (0, 3, "Beta")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    for edge_id, (route, (x, y, width, height)) in boxes.items():
+        assert route == "knowledge-map-row-card-detour"
+        assert x >= 0 and x + width > 0
+        assert y >= 0
+        assert y + height + 8 <= canvas_height, (
+            edge_id, y + height, canvas_height
+        )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_knowledge_map_detours_avoid_adjacent_vertical_label() -> None:
+    """An existing row-corridor label reserves space in the same real gap."""
+    model = _ungrouped_knowledge_map(
+        8,
+        [
+            (0, 2, "Alpha"),
+            (0, 2, "Bravo"),
+            (0, 2, "Charlie"),
+            (1, 5, "Middle"),
+        ],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1", "e2", "e3"}
+    assert boxes["e3"][0] == "vertical"
+    for edge_id in ("e0", "e1", "e2"):
+        assert boxes[edge_id][0] == "knowledge-map-row-card-detour"
+        assert not _boxes_overlap(boxes[edge_id][1], boxes["e3"][1]), (
+            edge_id, boxes[edge_id], boxes["e3"]
+        )
+    for index, left in enumerate(("e0", "e1", "e2")):
+        for right in ("e0", "e1", "e2")[index + 1:]:
+            assert not _boxes_overlap(boxes[left][1], boxes[right][1])
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_single_detour_avoids_adjacent_vertical_label() -> None:
+    """Even one long same-row detour must not cover the existing row label."""
+    model = _ungrouped_knowledge_map(
+        8, [(0, 2, "Alpha"), (1, 5, "Middle")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert boxes["e1"][0] == "vertical"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
