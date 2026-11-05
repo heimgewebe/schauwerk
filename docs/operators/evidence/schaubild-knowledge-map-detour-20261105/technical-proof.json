@@ -1,19 +1,22 @@
 {
-  "change": "Card-safe same-row knowledge map edges, readable separate lanes and word-bound labels; fix both Codex P2 regressions (last-row SVG clipping and occupied row-corridor labels), including single-detour case.",
+  "change": "Knowledge-map card-safe same-row detours, separate label lanes and full-word labels; red-to-green fixes for three Codex P2 cases, singleton detours and two-line adjacent corridor labels.",
   "checks": {
+    "adversarial_30_layouts": "passed",
     "codex_p2_adjacent_row_label_red_to_green": "passed",
     "codex_p2_last_row_viewbox_red_to_green": "passed",
+    "codex_p2_single_last_row_detour_red_to_green": "passed",
     "gate1_goldens": "passed",
     "gh_ci": "pending",
     "native_diagram_and_gate1_tests": "passed",
     "renderer_benchmark": "passed (optional variants skipped)",
     "ruff": "passed",
     "single_detour_adjacent_label_red_to_green": "passed",
+    "tall_adjacent_row_labels_red_to_green": "passed",
     "visual_acceptance": "pending"
   },
   "current_source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "f28c71b3b4647eb820698e2538f6453b2ae772c5295acaff9feb9e087cce2a55",
-    "tests/visual/test_native_diagram_gate1_proof.py": "34e8ed59ff2779c6a55abbe3500861105c03eb2036ba2dd58388f13ae02156e7"
+    "src/schauwerk/visual/native_diagram.py": "f90bf677536fa7c2974adf3f4330908bfeafda11dfc8a55c6dc316a0f0fda394",
+    "tests/visual/test_native_diagram_gate1_proof.py": "85d37931381e62c941dc1250297ac74464265f86aa3dd543bdf393115b2c3b03"
   },
   "invariants": [
     "Earlier evidence stays byte-for-byte intact",

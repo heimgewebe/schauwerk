@@ -475,3 +475,41 @@ def test_single_detour_avoids_adjacent_vertical_label() -> None:
     assert boxes["e1"][0] == "vertical"
     assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_last_row_single_detour_survives_other_row_expansion() -> None:
+    """A busy earlier row must not clip one subsequent cross-card detour."""
+    connections = [
+        (0, 3, f"Flow {index}") for index in range(6)
+    ] + [(4, 7, "Final")]
+    model = _ungrouped_knowledge_map(8, connections)
+    root = ET.fromstring(render_native_diagram(model))
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    labels = _edge_boxes(root)
+    assert set(labels) == {f"e{index}" for index in range(7)}
+    route, (x, y, width, height) = labels["e6"]
+    assert route == "knowledge-map-row-card-detour"
+    assert x >= 0 and x + width > 0
+    assert y + height + 8 <= canvas_height, (
+        y + height, canvas_height
+    )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_tall_adjacent_row_labels_have_reserved_full_height() -> None:
+    """A two-line label needs more clearance than a one-line detour label."""
+    for count in (1, 2, 3, 6):
+        connections = [(0, 2, "Kurz") for _ in range(count)]
+        connections.append((1, 5, "Längere vertikale Rückmeldung"))
+        model = _ungrouped_knowledge_map(8, connections)
+        root = ET.fromstring(render_native_diagram(model))
+        boxes = _edge_boxes(root)
+        existing = boxes[f"e{count}"]
+        assert existing[0] == "vertical"
+        assert existing[1][3] > 26
+        for edge_id in (f"e{index}" for index in range(count)):
+            assert boxes[edge_id][0] == "knowledge-map-row-card-detour"
+            assert not _boxes_overlap(boxes[edge_id][1], existing[1]), (
+                count, edge_id, boxes[edge_id], existing
+            )
+        assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))

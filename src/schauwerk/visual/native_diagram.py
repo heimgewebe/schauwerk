@@ -3424,6 +3424,7 @@ def render_native_diagram(
             # detours, instead of packing a detour directly over that label.
             edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
             center_reserved: set[int] = set()
+            center_label_heights: dict[int, int] = {}
             for row_y, items in dense_by_row.items():
                 detour_boxes = []
                 for edge_id, _ in items:
@@ -3464,18 +3465,30 @@ def render_native_diagram(
                         for detour_x, detour_width in detour_boxes
                     ):
                         center_reserved.add(row_y)
-                        break
+                        center_label_heights[row_y] = max(
+                            center_label_heights.get(row_y, 0), metrics.height
+                        )
             # An isolated detour also needs a reserved band when an existing
             # adjacent-row label would otherwise be hidden. Uncontested
             # single detours retain their original geometry and Goldens.
             busy.update({
                 row_y: dense_by_row[row_y] for row_y in center_reserved
             })
+            lane_steps_by_row = {}
+            for row_y, items in busy.items():
+                highest_detour = max(h for _, h in items)
+                lane_steps_by_row[row_y] = max(
+                    highest_detour + 8,
+                    math.ceil(
+                        (highest_detour + center_label_heights.get(row_y, 0)) / 2
+                        + 8
+                    ),
+                )
             needed_gap = max(
                 (
                     (2 * math.ceil(len(items) / 2) + 1)
                     if row_y in center_reserved else len(items)
-                ) * (max(item_height for _, item_height in items) + 8) + 8
+                ) * lane_steps_by_row[row_y] + 8
                 for row_y, items in busy.items()
             ) if busy else non_process_row_gap
             last_row_before_shift = max(y for _, y in positions.values())
@@ -3502,7 +3515,7 @@ def render_native_diagram(
                 height += extension
                 non_process_row_gap += gap_extra
             for row_y, items in busy.items():
-                lane_step = max(item_height for _, item_height in items) + 8
+                lane_step = lane_steps_by_row[row_y]
                 ordered = sorted(items)
                 if row_y in center_reserved:
                     half = math.ceil(len(ordered) / 2)
@@ -3516,15 +3529,18 @@ def render_native_diagram(
                     ]
                 for (edge_id, _), slot in zip(ordered, slots):
                     knowledge_map_detour_offsets[edge_id] = slot * lane_step
-            if last_row_before_shift in busy:
-                # The last row has only a page margin, not another full row
-                # corridor. Reserve the actual bottom of every detour label
-                # and its stroke, including the page margin in ungrouped SVGs.
+            if last_row_before_shift in dense_by_row:
+                # A preceding busy row can increase the shared gap while the
+                # last row contains only one detour and no packed lane. Include
+                # every actual last-row detour, not only occupied multi-lanes.
+                # Unpacked detours use lane/3 with |lane| <= 16; 8 px safely
+                # bounds their natural offset without changing the route.
                 last_y = max(y for _, y in positions.values())
                 last_label_bottom = max(
                     last_y + _NODE_HEIGHT + non_process_row_gap / 2
-                    + knowledge_map_detour_offsets[edge_id] + label_height / 2
-                    for edge_id, label_height in busy[last_row_before_shift]
+                    + knowledge_map_detour_offsets.get(edge_id, 8.0)
+                    + label_height / 2
+                    for edge_id, label_height in dense_by_row[last_row_before_shift]
                 )
                 if regions:
                     regions = [
