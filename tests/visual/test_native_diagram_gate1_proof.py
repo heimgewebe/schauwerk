@@ -356,6 +356,14 @@ def test_knowledge_map_six_parallel_detours_have_distinct_label_lanes() -> None:
             bounds = _rect_box(rectangle)
             detour_labels[edge_id] = bounds
             assert all(not _boxes_overlap(bounds, box) for box in node_boxes.values())
+            if edge_id in {"stress14", "stress15"}:
+                # Full single words must not be torn into a final-letter line
+                # when the long intervening-card detour has abundant space.
+                labels = [
+                    item.text
+                    for item in element.findall(f".//{{{SVG_NAMESPACE}}}tspan")
+                ]
+                assert labels == [source["label"]], (edge_id, labels)
     assert routed_edges == set(source_edges)
     assert set(detour_labels) == {f"stress{index:02d}" for index in range(10, 16)}
     for index, first in enumerate(sorted(detour_labels)):

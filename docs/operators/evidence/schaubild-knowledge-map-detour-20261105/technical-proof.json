@@ -1,5 +1,5 @@
 {
-  "change": "Same-row knowledge-map card-safe edge detours and separate readable label-height lanes for dense 16-edge input",
+  "change": "Card-safe same-row Knowledge Map edge detours, distinct label-height lanes and natural unbroken single-word labels on long crossing edges",
   "checks": {
     "gh_ci": "pending",
     "native_diagram_and_gate1_tests": "passed",
@@ -8,8 +8,8 @@
     "visual_acceptance": "pending"
   },
   "current_source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "5c885916d54721f7790360efb9fc69422f67fc8770d54f6f21399bbe7ffec6dc",
-    "tests/visual/test_native_diagram_gate1_proof.py": "5909394d6c3bfae4927b586009fd7d6d54b0ab0c0b23a5be1a8fdf40201a5d15"
+    "src/schauwerk/visual/native_diagram.py": "466b26c5b12dc9f429beef4a9b47877a083d8984376d0ebcbafa7f92d2b8ad1b",
+    "tests/visual/test_native_diagram_gate1_proof.py": "633afccaed10a53c8ec35244b97dd06d0fb953113b936dac3a0230cdd379fd16"
   },
   "invariants": [
     "Earlier evidence stays byte-for-byte intact",

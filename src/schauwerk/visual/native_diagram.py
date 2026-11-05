@@ -741,6 +741,30 @@ def _edge_label_metrics(
             else (7 if intent == "narrative" else 8)
         )
     )
+    if (
+        intent == "knowledge_map"
+        and not feedback_label
+        and not vertical
+        and source_position[1] == target_position[1]
+        and any(
+            other_id not in {str(edge["from"]), str(edge["to"])}
+            and other_y == source_position[1]
+            and min(source_position[0], target_position[0]) + _NODE_WIDTH <= other_x
+            and other_x + _NODE_WIDTH <= max(source_position[0], target_position[0])
+            for other_id, (other_x, other_y) in positions.items()
+        )
+    ):
+        # A detour may have hundreds of pixels of horizontal space even when
+        # the old 8px-per-character label estimate splits a short full word.
+        words = str(edge["label"]).split()
+        if words:
+            widest_word = max(
+                _estimated_wrap_width(word, size=size) for word in words
+            )
+            width = min(
+                width_cap,
+                max(width, math.ceil(widest_word) + 2 * clip_padding + 4),
+            )
     lines = tuple(
         _bounded_wrapped(
             str(edge["label"]),
