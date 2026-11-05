@@ -108,3 +108,49 @@ Grabowski ist alleiniger Writer/Operator. Großer Adler liest bei konkretem Befu
 - https://d2lang.com/tour/man (D2 CLI)
 - https://d2lang.com/tour/layouts/ (D2 Layout-Engines)
 - https://graphviz.org/docs/outputs/svg/ (Graphviz SVG)
+
+## R02-Prüfstand 2026-11-05 (Prototyp, **nicht** produktiv)
+
+D2 v0.9.0 wurde aus dem offiziellen immutable GitHub-Release-Archiv
+`d2-v0.9.0-linux-amd64.tar.gz` nur in einen isolierten User-Cache entpackt.
+Der Archiv-SHA-256 wurde vor Ausführung gegen den vom GitHub-Release-Asset
+veröffentlichten Digest `5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9`
+verglichen; übereinstimmend. Das Binary meldete v0.9.0, einschließlich
+`dagre`, `elk` und `tala` als bundled Layout-Engines. Keine Systeminstallation,
+kein Server-Deployment und keine gemeinsame Runtime-Änderung.
+
+Drei bestehende Golden Cases mit derselben validierten Representation wurden
+revisionsgebunden gerendert. Beobachtete Einzel-Laufzeiten auf dem Heim-PC:
+
+| Case | Native | D2 Dagre | D2 ELK | D2 TALA |
+|---|---:|---:|---:|---:|
+| system-landscape | 4,7 ms | 27,9 ms | 27,9 ms | 97,9 ms |
+| decision-flow | 5,3 ms | 30,1 ms | 26,7 ms | 82,6 ms |
+| narrative-journey | 3,1 ms | 26,6 ms | 29,1 ms | 83,9 ms |
+
+Einzelmessungen nach Prozessaufruf, ohne Stabilitätskonfidenz und ohne
+objektive visuelle Qualitätswertung. Visuelle Sichtung des Decision-Flow-Falls:
+D2/TALA ist in diesem Fall wesentlich kompakter und bei Erstansicht
+vergleichsweise lesbarer als D2/Dagre und D2/ELK; letztere ergeben sehr breite
+Diagramme. Die Generatorlabels enthalten bislang bewusst Label, Typ und Summary,
+was für automatische Engines nicht unbedingt das optimale visuelle Profil ist.
+Das ist ein Prototypenbefund, keine ästhetische Acceptance und keine allgemeine
+Aussage zu anderen Diagrammtypen.
+
+**Strukturelle SVG-Gegenprobe:** D2 v0.9.0 kodiert Gruppen-, Shape- und
+Verbindungs-Schlüssel als Base64-CSS-Klassen. Der Benchmark kann auf allen neun
+D2-Golden-Ausgaben Knoten/Gruppen, Richtung und Anzahl der Kanten einschließlich
+paralleler Ordinale sowie sichtbare Beschriftungen vollständig wiederfinden.
+`structural_only` ist absichtlich **nicht** gleich `complete`: die originale
+Quell-Kanten-ID steht nicht direkt im D2-SVG und ist nur über ein separates
+quellgebundenes `edge_binding` ableitbar. Daraus darf ohne gesonderte Integration
+noch keine editierbare Produktinteraktion oder vollständige Source-ID-Autorität
+abgeleitet werden.
+
+D2/TALA bleibt der erste Kandidat für einen **read-only**, explizit anwählbaren
+alternativen Architektur-/Prozessrenderer. Bevor eine UI-Option entsteht, sind
+vollständige Edge-Identity-Bindung, SVG-Unbedenklichkeit, Tooltip/Unicode-/Text-
+Verifikation, reale visuelle Abnahme und Bounded Runtime/OCI-Packaging zu prüfen.
+Dagre/ELK bleiben evaluiert, aber in diesem Referenzfall kein automatischer Ersatz.
+Graphviz ist auf dem Operatorhost nicht installiert; sein CLI wurde dort deshalb
+noch nicht als echtes Renderer-Benchmark-Ergebnis behauptet.
