@@ -64,6 +64,68 @@ def test_d2_source_preserves_all_semantic_labels_and_group_references() -> None:
         assert benchmark._quoted(benchmark._edge_label(edge)) in d2
 
 
+def _literal_interpolation_model() -> dict:
+    source = json.loads(GOLDEN.read_text(encoding="utf-8"))
+    dollar_expression = "$" + "{nonexistent_variable}"
+    tricky_text = 'Quote " and apostrophe ' + "'" + r" C:\Temp & <tag> ü 🧪 "
+    source["groups"][0]["label"] = "Gruppe " + dollar_expression + " Prüfung"
+    source["nodes"][0]["label"] = "Knoten " + dollar_expression + ' "zitiert"'
+    source["nodes"][0]["summary"] = tricky_text
+    source["edges"][0]["label"] = "Kante " + dollar_expression + ' "quote"'
+    return source
+
+
+def test_d2_quoting_preserves_literal_interpolation_and_graphviz_quoting() -> None:
+    model = _literal_interpolation_model()
+    expected = "$" + "{nonexistent_variable}"
+    escaped = "\\" + expected
+    from schauwerk.visual.representation import validate_representation_input
+
+    normalized = validate_representation_input(model)
+    d2 = benchmark.d2_source(normalized)
+    dot = benchmark.graphviz_source(normalized)
+    for value in (
+        normalized["groups"][0]["label"],
+        benchmark._display_node(normalized["nodes"][0]),
+        benchmark._edge_label(normalized["edges"][0]),
+    ):
+        assert benchmark._d2_quoted(value) in d2
+        assert benchmark._quoted(value) in dot
+        assert escaped in benchmark._d2_quoted(value)
+    assert d2.count(escaped) == 3
+    assert expected in dot
+    assert "\\" + expected not in benchmark._quoted(expected)
+    assert model["nodes"][0]["label"].find(expected) >= 0
+
+
+@pytest.mark.parametrize("layout", ["dagre", "elk", "tala"])
+@pytest.mark.skipif(not shutil.which("d2"), reason="D2 binary is optional")
+def test_real_d2_literal_labels_preserve_unicode_quotes_and_variables(
+    tmp_path: Path, layout: str,
+) -> None:
+    model = _literal_interpolation_model()
+    path = tmp_path / "literal-values.json"
+    path.write_text(json.dumps(model, ensure_ascii=False), encoding="utf-8")
+    result = benchmark.run_benchmark([path], tmp_path / "out", (f"d2-{layout}",))
+    info = result["cases"][0]["engines"][f"d2-{layout}"]
+    assert info["status"] == "ok", info
+    assert info["svg_id_coverage"]["status"] == "structural_only", info
+    svg = ET.fromstring(
+        (tmp_path / "out" / path.stem / f"d2-{layout}.svg").read_bytes()
+    )
+    labels = [
+        "".join(item.itertext())
+        for item in svg.iter()
+        if item.tag == "{http://www.w3.org/2000/svg}text"
+    ]
+    from schauwerk.visual.representation import validate_representation_input
+
+    expected = validate_representation_input(model)
+    assert expected["groups"][0]["label"] in labels
+    assert benchmark._display_node(expected["nodes"][0]) in labels
+    assert benchmark._edge_label(expected["edges"][0]) in labels
+
+
 def test_svg_coverage_detects_missing_edges_in_graphviz() -> None:
     model = _model()
     ids = [

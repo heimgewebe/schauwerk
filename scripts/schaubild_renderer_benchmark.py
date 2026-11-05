@@ -46,6 +46,16 @@ def _quoted(value: Any) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
+def _d2_quoted(value: Any) -> str:
+    """D2 expands substitutions in double quotes, even for ordinary input text.
+
+    Insert the D2 literal-dollar escape *after* JSON-style string quoting to
+    avoid double-escaping the backslash. Single quotes would bypass expansion
+    but cannot represent values containing both quote types losslessly.
+    """
+    return _quoted(value).replace("$" + "{", "\\" + "$" + "{")
+
+
 def _display_node(node: dict[str, Any]) -> str:
     label = str(node["label"])
     kind = str(node["kind"])
@@ -117,17 +127,17 @@ def d2_source(model: dict[str, Any]) -> str:
         by_group[gid].append(node)
         node_keys[str(node["id"])] = f"g_{gid}.n_{node['id']}" if gid else f"n_{node['id']}"
     for node in by_group[None]:
-        lines.append(f"n_{node['id']}: {_quoted(_display_node(node))}")
+        lines.append(f"n_{node['id']}: {_d2_quoted(_display_node(node))}")
     for group in model["groups"]:
         gid = str(group["id"])
-        lines.append(f"g_{gid}: {_quoted(group['label'])} {{")
+        lines.append(f"g_{gid}: {_d2_quoted(group['label'])} {{")
         for node in by_group[gid]:
-            lines.append(f"  n_{node['id']}: {_quoted(_display_node(node))}")
+            lines.append(f"  n_{node['id']}: {_d2_quoted(_display_node(node))}")
         lines.append("}")
     for edge in model["edges"]:
         lines.append(
             f"{node_keys[str(edge['from'])]} -> {node_keys[str(edge['to'])]}:"
-            f" {_quoted(_edge_label(edge))}"
+            f" {_d2_quoted(_edge_label(edge))}"
         )
     return "\n".join(lines) + "\n"
 
