@@ -12812,7 +12812,38 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         local_final, "evidence_digest"
     )
     assert set(local_final["source_bindings"]) == set(physical_final["source_bindings"])
+    # An immutable acceptance for the previous route implementation does not
+    # attest newly changed source bytes. Prove the exact predecessor first,
+    # then bind only this one superseded source to a new technical candidate.
+    successor_path = (
+        ROOT / "docs/operators/evidence/schaubild-knowledge-map-detour-20261105"
+        / "technical-proof.json"
+    )
+    successor = json.loads(successor_path.read_text(encoding="utf-8"))
+    assert successor["schema_version"] == (
+        "schauwerk-knowledge-map-routing-technical-successor.v1"
+    )
+    assert successor["scope"] == "technical-candidate-only"
+    assert successor["predecessor_receipt"] == {
+        "path": str(local_final_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(local_final_path.read_bytes()).hexdigest(),
+        "predecessor_source_sha256": local_final["source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ],
+    }
+    assert set(successor["current_source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_diagram_gate1_proof.py",
+    }
+    for name, expected in successor["current_source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert successor["checks"]["visual_acceptance"] == "pending"
     for name, expected in local_final["source_bindings"].items():
+        if name == "src/schauwerk/visual/native_diagram.py":
+            assert expected == successor["predecessor_receipt"][
+                "predecessor_source_sha256"
+            ]
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert local_final["measured_differentials"]["published_head_900"][
         "new_render_exceptions"

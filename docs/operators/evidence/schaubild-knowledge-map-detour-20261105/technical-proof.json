@@ -1,0 +1,26 @@
+{
+  "change": "Same-row knowledge-map card-safe edge detours and separate readable label-height lanes for dense 16-edge input",
+  "checks": {
+    "gh_ci": "pending",
+    "native_diagram_and_gate1_tests": "passed",
+    "renderer_benchmark": "passed (optional variants skipped)",
+    "ruff": "passed",
+    "visual_acceptance": "pending"
+  },
+  "current_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "5c885916d54721f7790360efb9fc69422f67fc8770d54f6f21399bbe7ffec6dc",
+    "tests/visual/test_native_diagram_gate1_proof.py": "5909394d6c3bfae4927b586009fd7d6d54b0ab0c0b23a5be1a8fdf40201a5d15"
+  },
+  "invariants": [
+    "Earlier evidence stays byte-for-byte intact",
+    "Native Knowledge Map production cutover is not authorized by a technical test",
+    "No generated Fundus assets or external repository writes"
+  ],
+  "predecessor_receipt": {
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-review-comments-20261022-internal-gap-finalization-successor-acceptance-receipt.json",
+    "predecessor_source_sha256": "6b3587fe0d6acabad79350d017ef77bd9cfff4289003900c9d836c3a17d35abe",
+    "sha256": "da5d37c0597bcefca01e1adb999faa259681d7ef1cc632a9fedb0b4a7d9e5aa4"
+  },
+  "schema_version": "schauwerk-knowledge-map-routing-technical-successor.v1",
+  "scope": "technical-candidate-only"
+}
