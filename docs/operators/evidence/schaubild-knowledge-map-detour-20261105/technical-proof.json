@@ -1,9 +1,11 @@
 {
-  "change": "Knowledge-map card-safe same-row detours, separate label lanes and full-word labels; red-to-green fixes for three Codex P2 cases, singleton detours and two-line adjacent corridor labels.",
+  "change": "Knowledge map: card-safe long same-row edges, distinct labels, last-row bounds and source-aware vertical/multi-row corridor reservations. Four Codex P2 findings reproduced red-to-green with invariant-preserving regressions.",
   "checks": {
     "adversarial_30_layouts": "passed",
+    "adversarial_36_long_diagonal_layouts": "passed",
     "codex_p2_adjacent_row_label_red_to_green": "passed",
     "codex_p2_last_row_viewbox_red_to_green": "passed",
+    "codex_p2_multiline_diagonal_label_red_to_green": "passed",
     "codex_p2_single_last_row_detour_red_to_green": "passed",
     "gate1_goldens": "passed",
     "gh_ci": "pending",
@@ -15,8 +17,8 @@
     "visual_acceptance": "pending"
   },
   "current_source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "f90bf677536fa7c2974adf3f4330908bfeafda11dfc8a55c6dc316a0f0fda394",
-    "tests/visual/test_native_diagram_gate1_proof.py": "85d37931381e62c941dc1250297ac74464265f86aa3dd543bdf393115b2c3b03"
+    "src/schauwerk/visual/native_diagram.py": "21a78085f7aaa717210842cec587d57955dfa394682463bc32b07ece92388ff3",
+    "tests/visual/test_native_diagram_gate1_proof.py": "ae0b83f93d4b721befd83b54f4558abf09962a283c6b0dc3b39aceee24588aa0"
   },
   "invariants": [
     "Earlier evidence stays byte-for-byte intact",

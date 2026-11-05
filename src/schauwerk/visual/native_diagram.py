@@ -3442,13 +3442,37 @@ def render_native_diagram(
                         continue
                     source = positions[str(other["from"])]
                     target = positions[str(other["to"])]
-                    if (
-                        min(source[1], target[1]) != row_y
-                        or max(source[1], target[1])
-                        != row_y + _NODE_HEIGHT + non_process_row_gap
-                    ):
+                    if source[1] == target[1]:
                         continue
                     metrics = _edge_label_metrics(other, positions, intent)
+                    row_step = _NODE_HEIGHT + non_process_row_gap
+                    adjacent = (
+                        min(source[1], target[1]) == row_y
+                        and max(source[1], target[1]) == row_y + row_step
+                    )
+                    if not adjacent:
+                        # The existing row-corridor packer also puts long
+                        # diagonals in their middle physical gap. Treat their
+                        # natural label as an occupant before detour lanes
+                        # expand that gap; a second late packer cannot move
+                        # a detour whose path has already been determined.
+                        if (
+                            source[0] == target[0]
+                            or abs(source[1] - target[1]) <= row_step
+                        ):
+                            continue
+                        upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
+                        lower_top = max(source[1], target[1])
+                        label_y = (upper_bottom + lower_top) / 2
+                        corridor = _row_corridor_containing(label_y, positions)
+                        if (
+                            corridor is None
+                            or corridor != (
+                                row_y + _NODE_HEIGHT,
+                                row_y + row_step,
+                            )
+                        ):
+                            continue
                     if source[0] == target[0]:
                         center_x = source[0] + _NODE_WIDTH / 2
                     else:

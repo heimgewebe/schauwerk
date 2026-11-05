@@ -513,3 +513,16 @@ def test_tall_adjacent_row_labels_have_reserved_full_height() -> None:
                 count, edge_id, boxes[edge_id], existing
             )
         assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_long_diagonal_corridor_label_does_not_cover_detour() -> None:
+    """A 3-row diagonal label occupies the same middle physical corridor."""
+    model = _ungrouped_knowledge_map(
+        16, [(4, 7, "Alpha"), (0, 15, "Middle")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
