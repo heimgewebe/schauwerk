@@ -1,0 +1,59 @@
+{
+  "schema_version": "schauwerk-d2-readonly-preview-technical-proof.v1",
+  "scope": "opt-in-d2-tala-readonly-visualization",
+  "status": "technical_proof_only",
+  "base_commit": "484c5bba0c6923973d164370b13b7e1471812365",
+  "candidate_commit": "5ac49352f4b9540e79ef2ea10705f84a625848ed",
+  "historical_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-full-editing-20261102/technical-proof.json",
+    "sha256": "b22214a62ae874450f0a2e10fe65c35185e29937c2eefb497f7c0d1d5a1d8c65",
+    "changed": false
+  },
+  "source_bindings": {
+    "Dockerfile": "697026a9f693411dd5f5f2a42c43d78a6abf9f973b56896016b0cabaea41ca08",
+    "src/schauwerk/resources/standalone_editor/assets.py": "9108b4e64d3d850b0852f6fc35c3e0c27c1a03dac2eacbda45c550161fd778be",
+    "src/schauwerk/visual/d2_preview.py": "1773341e010c8ea1dac76cde0b5f6310ca0d378fb9bdff9bdc2ec95affc13627",
+    "src/schauwerk/visual/standalone_editor.py": "8c4f45ec3a7709e68a6ef61aac3e183d8d652be0f731336bfcc131bbf1f9aaa8",
+    "tests/visual/test_d2_preview.py": "579f1df123423a030b266e06214f8cdabf7ce6a29ab4b984d31f9fc8beda068d"
+  },
+  "external_d2": {
+    "version": "v0.9.0",
+    "source": "https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz",
+    "verified_archive_sha256": "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9",
+    "shipped_in_product_image": false
+  },
+  "validation": {
+    "headless_browser_viewports": [
+      [
+        390,
+        844
+      ],
+      [
+        1280,
+        800
+      ]
+    ],
+    "real_chromium_d2_preview_and_return": true,
+    "native_frame_draft_and_undo_preserved": true,
+    "native_png_pdf_regression": true,
+    "native_http_render_api_unmodified": true,
+    "d2_http_read_only_preview": true,
+    "d2_svg_source_structure_verified": true,
+    "d2_svg_passivity_rejects_active_external_content": true,
+    "default_unconfigured_d2_unavailable": true,
+    "pinned_d2_0_9_0_executed": true,
+    "focused_pytest_passed": 26,
+    "ruff_passed": true,
+    "python_compile_passed": true,
+    "registry_validation_passed": true,
+    "image_build_smoke_passed": true
+  },
+  "does_not_establish": [
+    "visual_user_acceptance",
+    "production_deployment",
+    "commonthing_live_function",
+    "d2_available_in_default_oci_image",
+    "historical_acceptance_inherited"
+  ],
+  "evidence_digest": "4a25bb236cd329aea6aa36a9ea3797427324f6e3f5fb8f69ae29b872b935ccea"
+}

@@ -13681,6 +13681,29 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "production_deployment",
         "commonthing_live_function",
     ]
-    for path, digest in technical["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest
     assert technical["evidence_digest"] == digest_mapping(technical, "evidence_digest")
+    successor_path = (
+        ROOT / "docs/operators/evidence/schaubild-d2-preview-20261105/technical-proof.json"
+    )
+    successor = json.loads(successor_path.read_text(encoding="utf-8"))
+    assert successor["schema_version"] == "schauwerk-d2-readonly-preview-technical-proof.v1"
+    assert successor["status"] == "technical_proof_only"
+    historical = successor["historical_technical_proof"]
+    assert historical["changed"] is False
+    assert historical["path"] == (
+        "docs/operators/evidence/schaubild-full-editing-20261102/technical-proof.json"
+    )
+    assert historical["sha256"] == hashlib.sha256(
+        (ROOT / historical["path"]).read_bytes()
+    ).hexdigest()
+    assert successor["evidence_digest"] == digest_mapping(successor, "evidence_digest")
+    assert successor["external_d2"]["shipped_in_product_image"] is False
+    assert successor["validation"]["focused_pytest_passed"] >= 26
+    assert successor["validation"]["real_chromium_d2_preview_and_return"] is True
+    assert successor["validation"]["native_frame_draft_and_undo_preserved"] is True
+    assert "historical_acceptance_inherited" in successor["does_not_establish"]
+    for name, old_digest in technical["source_bindings"].items():
+        current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        assert current == successor["source_bindings"].get(name, old_digest)
+    for name, digest in successor["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
