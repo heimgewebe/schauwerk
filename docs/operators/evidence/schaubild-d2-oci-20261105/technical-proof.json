@@ -1,0 +1,40 @@
+{
+  "schema_version": "schauwerk-d2-oci-source-supersession.v1",
+  "scope": "pinned-d2-v0.9.0-readonly-renderer-in-existing-oci-runtime",
+  "status": "technical_proof_only",
+  "original_oci_commit": "62d460ada119e2a36480999c6fb86d606fc16c25",
+  "historic_evidence_unchanged": {
+    "d2_preview": {
+      "path": "docs/operators/evidence/schaubild-d2-preview-20261105/technical-proof.json",
+      "sha256": "feb23ebb4b0a1d7444378bbe036eef39ab3ce3f1a655a6c6cbfadb26c5ee18e0"
+    },
+    "native_smoke": {
+      "path": "docs/operators/evidence/schaubild-native-smoke-pipefail-20261003/acceptance-receipt.json",
+      "sha256": "3e19d9b05f0793493bef788a899fcb0d90715ad6473e5a3f665f4793e7497d74"
+    }
+  },
+  "source_bindings": {
+    "Dockerfile": "c4f60a4f6fc782b5011b8b10bf6bc0728b044ed673ac56383338dfec79f26f49",
+    "scripts/ci/smoke-native-schaubild-runtime.sh": "935d864a056f525352c34a06492bd4b8d85e27e1b0feeb4e2d0e434e68415b3f"
+  },
+  "external_d2": {
+    "version": "v0.9.0",
+    "archive_sha256": "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9",
+    "binary_path": "/opt/schauwerk/d2/bin/d2",
+    "read_only": true
+  },
+  "validation": {
+    "local_oci_build_passed": true,
+    "local_container_http_native_passed": true,
+    "local_container_http_d2_tala_passed": true,
+    "github_pr_exact_head_build_smoke_passed": true
+  },
+  "does_not_establish": [
+    "github_full_matrix_success_after_this_successor",
+    "production_image_publication",
+    "commonthing_release_lock_integration",
+    "production_browser_acceptance",
+    "historic_visual_acceptance_inherited"
+  ],
+  "evidence_digest": "72cd776d0619490b3e43e86f6b4d5cdd939cca40157920ceb78ae9867449faeb"
+}

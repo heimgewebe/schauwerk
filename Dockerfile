@@ -1,3 +1,16 @@
+# syntax=docker/dockerfile:1.6
+FROM python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d AS d2-assets
+
+# The immutable vendor archive is verified at build time; no unpinned fetch.
+ADD --checksum=sha256:5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz /tmp/d2-v0.9.0.tar.gz
+RUN mkdir -p /opt/schauwerk/d2 \
+    && tar -xzf /tmp/d2-v0.9.0.tar.gz -C /opt/schauwerk/d2 --strip-components=1 \
+      d2-v0.9.0/bin/d2 \
+      d2-v0.9.0/LICENSE.txt \
+      d2-v0.9.0/THIRD_PARTY_NOTICES.txt \
+    && chmod -R a+rX /opt/schauwerk/d2 \
+    && /opt/schauwerk/d2/bin/d2 --version | grep -qx 'v0.9.0'
+
 FROM python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d
 
 ARG VCS_REF=unknown
@@ -7,7 +20,8 @@ LABEL org.opencontainers.image.source="https://github.com/heimgewebe/schauwerk" 
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/src
+    PYTHONPATH=/app/src \
+    SCHAUWERK_D2_PREVIEW_BINARY=/opt/schauwerk/d2/bin/d2
 
 WORKDIR /app
 RUN mkdir -p \
@@ -40,6 +54,9 @@ COPY src/schauwerk/resources/standalone_editor/__init__.py \
      /app/src/schauwerk/resources/standalone_editor/
 
 RUN chmod -R a=rX /app/src
+
+# The runtime image ships only D2 executable and license notices.
+COPY --from=d2-assets /opt/schauwerk/d2/ /opt/schauwerk/d2/
 
 USER 10001:10001
 EXPOSE 8765

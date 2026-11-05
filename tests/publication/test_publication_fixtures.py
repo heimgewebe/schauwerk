@@ -4570,10 +4570,24 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         smoke_pipefail, "evidence_digest"
     )
     assert set(smoke_pipefail["source_bindings"]) == smoke_pipefail_superseded_files
+    d2_oci_successor = json.loads(
+        (
+            ROOT / "docs/operators/evidence/schaubild-d2-oci-20261105/technical-proof.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert set(d2_oci_successor["source_bindings"]) == {
+        "Dockerfile",
+        "scripts/ci/smoke-native-schaubild-runtime.sh",
+    }
     for name, expected in smoke_pipefail["source_bindings"].items():
         if name in single_workspace_max_canvas_superseded_files:
             continue
-        if name not in content_editing_superseded_files:
+        if name in d2_oci_successor["source_bindings"]:
+            assert (
+                hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+                == d2_oci_successor["source_bindings"][name]
+            )
+        elif name not in content_editing_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert smoke_pipefail["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -13702,8 +13716,56 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert successor["validation"]["real_chromium_d2_preview_and_return"] is True
     assert successor["validation"]["native_frame_draft_and_undo_preserved"] is True
     assert "historical_acceptance_inherited" in successor["does_not_establish"]
+    # The OCI update changes only Dockerfile and runtime smoke. Prior source
+    # evidence is immutable; use a precisely bound technical successor instead.
+    oci_path = (
+        ROOT / "docs/operators/evidence/schaubild-d2-oci-20261105/technical-proof.json"
+    )
+    oci = json.loads(oci_path.read_text(encoding="utf-8"))
+    assert oci["historic_evidence_unchanged"]["d2_preview"] == {
+        "path": str(successor_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(successor_path.read_bytes()).hexdigest(),
+    }
+    assert set(oci["source_bindings"]) == {
+        "Dockerfile",
+        "scripts/ci/smoke-native-schaubild-runtime.sh",
+    }
+    latest_bindings = {**successor["source_bindings"], **oci["source_bindings"]}
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-        assert current == successor["source_bindings"].get(name, old_digest)
-    for name, digest in successor["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert current == latest_bindings.get(name, old_digest)
+    for name in successor["source_bindings"]:
+        assert (
+            hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+            == latest_bindings[name]
+        )
+
+
+def test_schaubild_d2_oci_supersession_binds_exact_changed_sources() -> None:
+    """OCI successor binds changed bytes, never rewrites historical acceptances."""
+    proof = json.loads(
+        (
+            ROOT / "docs/operators/evidence/schaubild-d2-oci-20261105/technical-proof.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert proof["schema_version"] == "schauwerk-d2-oci-source-supersession.v1"
+    assert proof["status"] == "technical_proof_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    for predecessor in proof["historic_evidence_unchanged"].values():
+        assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+            predecessor["sha256"]
+        )
+    assert set(proof["source_bindings"]) == {
+        "Dockerfile",
+        "scripts/ci/smoke-native-schaubild-runtime.sh",
+    }
+    for name, expected in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+    assert proof["external_d2"]["version"] == "v0.9.0"
+    assert (
+        proof["external_d2"]["archive_sha256"]
+        == "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9"
+    )
+    assert proof["external_d2"]["read_only"] is True
+    assert proof["validation"]["github_pr_exact_head_build_smoke_passed"] is True
+    assert "production_browser_acceptance" in proof["does_not_establish"]
