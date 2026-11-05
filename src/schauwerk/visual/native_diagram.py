@@ -1894,6 +1894,7 @@ def _edge_geometry(
     intent: str,
     process_row_gap: int = _PROCESS_ROW_GAP,
     non_process_row_gap: int = _ROW_GAP,
+    knowledge_map_detour_offset: float | None = None,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_route_count: int | None = None,
@@ -2641,6 +2642,55 @@ def _edge_geometry(
     if (
         route == "standard"
         and intent == "knowledge_map"
+        and source_y == target_y
+        and source_x != target_x
+        and label_height + 4 <= non_process_row_gap
+    ):
+        # Long same-row curves must not pass through cards between endpoints.
+        # Use existing inter-column gutters and the free gap below this row,
+        # without moving source nodes or changing unobstructed SVG geometry.
+        left_x, right_x = sorted((source_x, target_x))
+        if any(
+            left_x + node_width <= x and x + node_width <= right_x
+            and y < source_y + _NODE_HEIGHT and y + _NODE_HEIGHT > source_y
+            for x, y in obstacle_positions
+        ):
+            direction = 1.0 if source_x < target_x else -1.0
+            start_x = source_x + node_width if direction > 0 else source_x
+            end_x = target_x if direction > 0 else target_x + node_width
+            gutter_offset = min(24.0, (abs(end_x - start_x) - 32.0) / 4)
+            if gutter_offset >= 8.0:
+                source_gutter_x = start_x + direction * gutter_offset
+                target_gutter_x = end_x - direction * gutter_offset
+                port_y = source_y + _NODE_HEIGHT / 2
+                # Reserve a full label-height lane per parallel same-row
+                # detour: the previous 8px edge offsets obscured other labels.
+                clearance = (non_process_row_gap - label_height) / 2 - 2
+                lane_offset = (
+                    knowledge_map_detour_offset
+                    if knowledge_map_detour_offset is not None
+                    else lane / 3
+                )
+                corridor_y = (
+                    source_y + _NODE_HEIGHT + non_process_row_gap / 2
+                    + max(-clearance, min(clearance, lane_offset))
+                )
+                path = (
+                    f"M {start_x:.1f} {port_y:.1f} "
+                    f"L {source_gutter_x:.1f} {port_y:.1f} "
+                    f"L {source_gutter_x:.1f} {corridor_y:.1f} "
+                    f"L {target_gutter_x:.1f} {corridor_y:.1f} "
+                    f"L {target_gutter_x:.1f} {port_y:.1f} "
+                    f"L {end_x:.1f} {port_y:.1f}"
+                )
+                return (
+                    path, (source_gutter_x + target_gutter_x) / 2,
+                    corridor_y, "knowledge-map-row-card-detour",
+                )
+
+    if (
+        route == "standard"
+        and intent == "knowledge_map"
         and source_y != target_y
         and abs(source_y - target_y) <= _NODE_HEIGHT + non_process_row_gap
     ):
@@ -2724,6 +2774,7 @@ def _render_edge(
     intent: str,
     process_row_gap: int = _PROCESS_ROW_GAP,
     non_process_row_gap: int = _ROW_GAP,
+    knowledge_map_detour_offset: float | None = None,
     long_branch_slot: int | None = None,
     long_branch_count: int = 0,
     long_branch_route_count: int | None = None,
@@ -2846,6 +2897,7 @@ def _render_edge(
         intent=intent,
         process_row_gap=process_row_gap,
         non_process_row_gap=non_process_row_gap,
+        knowledge_map_detour_offset=knowledge_map_detour_offset,
         long_branch_slot=long_branch_slot,
         long_branch_count=long_branch_count,
         long_branch_route_count=long_branch_route_count,
@@ -3315,7 +3367,66 @@ def render_native_diagram(
                             for group_id, label, x, y, region_width, region_height in regions
                         ]
                     height += top_shift
+    # Densely connected knowledge maps need enough room for distinct edge
+    # labels in a row gap. Only expand diagrams containing multiple actual
+    # cross-card same-row detours; existing Goldens retain their geometry.
+    knowledge_map_detour_offsets: dict[str, float] = {}
     non_process_row_gap = _ROW_GAP if regions else _NON_PROCESS_ROW_GAP
+    if intent == "knowledge_map":
+        dense_by_row: dict[int, list[tuple[str, int]]] = defaultdict(list)
+        for edge in model["edges"]:
+            if str(edge["kind"]) == "feedback":
+                continue
+            source_id, target_id = str(edge["from"]), str(edge["to"])
+            source_x, source_y = positions[source_id]
+            target_x, target_y = positions[target_id]
+            if source_x == target_x or source_y != target_y:
+                continue
+            left_x, right_x = sorted((source_x, target_x))
+            obstructed = any(
+                other_id not in {source_id, target_id}
+                and other_y == source_y
+                and left_x + _NODE_WIDTH <= other_x
+                and other_x + _NODE_WIDTH <= right_x
+                for other_id, (other_x, other_y) in positions.items()
+            )
+            if obstructed:
+                metrics = _edge_label_metrics(edge, positions, intent)
+                dense_by_row[source_y].append((str(edge["id"]), metrics.height))
+        busy = {y: items for y, items in dense_by_row.items() if len(items) > 1}
+        if busy:
+            needed_gap = max(
+                len(items) * (max(height for _, height in items) + 8) + 8
+                for items in busy.values()
+            )
+            gap_extra = max(0, needed_gap - non_process_row_gap)
+            if gap_extra:
+                row_y = sorted({y for _, y in positions.values()})
+                old_step = _NODE_HEIGHT + non_process_row_gap
+                if any((y - row_y[0]) % old_step for y in row_y):
+                    raise ValueError("knowledge map rows are not aligned for label lanes")
+                positions = {
+                    node_id: (x, y + (y - row_y[0]) // old_step * gap_extra)
+                    for node_id, (x, y) in positions.items()
+                }
+                # Expand the background with the rows; reserve last-row space
+                # too when a last-row detour owns a corridor under the cards.
+                extension = (len(row_y) - 1) * gap_extra
+                if row_y[-1] in busy:
+                    extension += gap_extra
+                if regions:
+                    regions = [
+                        (group_id, label, x, y, region_width, region_height + extension)
+                        for group_id, label, x, y, region_width, region_height in regions
+                    ]
+                height += extension
+                non_process_row_gap += gap_extra
+            for items in busy.values():
+                lane_step = max(item_height for _, item_height in items) + 8
+                for index, (edge_id, _) in enumerate(sorted(items)):
+                    knowledge_map_detour_offsets[edge_id] = (
+                        index - (len(items) - 1) / 2
+                    ) * lane_step
     long_vertical_gutter_x: dict[str, float] = {}
     long_vertical_label_y: dict[str, float] = {}
     long_vertical_label_x: dict[str, float] = {}
@@ -7087,6 +7198,7 @@ def render_native_diagram(
                 intent=intent,
                 process_row_gap=process_row_gap,
                 non_process_row_gap=non_process_row_gap,
+                knowledge_map_detour_offset=knowledge_map_detour_offsets.get(str(edge["id"])),
                 long_branch_slot=long_branch_slots.get(str(edge["id"])),
                 long_branch_count=effective_long_branch_count,
                 long_branch_route_count=len(long_branch_slots),

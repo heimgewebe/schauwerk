@@ -292,3 +292,74 @@ def test_gate1_goldens_have_only_inactive_local_svg_resources() -> None:
                         r"url\(#native-(?:arrow-[a-z_]+|clip-[A-Za-z0-9_.:-]+)\)",
                         value,
                     )
+
+
+def test_knowledge_map_six_parallel_detours_have_distinct_label_lanes() -> None:
+    """A 16-edge stress case keeps every connection, path and label readable."""
+    original = _load("system-landscape-v1.json")
+    model = copy.deepcopy(original)
+    additions = [
+        ("world", "grabowski", "Lange Übergabe"),
+        ("world", "grabowski", "Parallele Freigabe"),
+        ("world", "grabowski", "Sicherungslinie"),
+        ("world", "chronik", "Langer Beobachtungsweg"),
+        ("chronik", "world", "Rückmeldung"),
+        ("bureau", "chronik", "Dienst-Sicht"),
+        ("world", "bureau", "Steuerungsaufgabe"),
+    ]
+    model["edges"].extend(
+        {
+            "id": f"stress{index:02d}",
+            "from": source,
+            "to": target,
+            "label": label,
+            "kind": "flow" if index < 14 else "evidence",
+        }
+        for index, (source, target, label) in enumerate(additions, 10)
+    )
+    assert len(model["edges"]) == 16
+    rendered = render_native_diagram(model)
+    assert rendered == render_native_diagram(copy.deepcopy(model))
+    assert _load("system-landscape-v1.json") == original
+    root = ET.fromstring(rendered)
+    node_boxes: dict[str, tuple[float, float, float, float]] = {}
+    for element in root.iter():
+        if element.get("data-source-kind") != "node":
+            continue
+        rectangle = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rectangle is not None
+        node_boxes[str(element.attrib["data-source-id"])] = _rect_box(rectangle)
+
+    source_edges = {str(edge["id"]): edge for edge in model["edges"]}
+    routed_edges: set[str] = set()
+    detour_labels: dict[str, tuple[float, float, float, float]] = {}
+    for element in root.iter():
+        edge_id = element.get("data-source-id")
+        if element.get("data-source-kind") != "edge" or edge_id not in source_edges:
+            continue
+        routed_edges.add(edge_id)
+        path = element.find(f"{{{SVG_NAMESPACE}}}path")
+        rectangle = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and rectangle is not None
+        source = source_edges[edge_id]
+        other_nodes = {
+            key: box for key, box in node_boxes.items()
+            if key not in {source["from"], source["to"]}
+        }
+        for px, py in _path_points(path.attrib["d"]):
+            assert all(
+                not (x + 0.2 < px < x + width - 0.2
+                     and y + 0.2 < py < y + height - 0.2)
+                for x, y, width, height in other_nodes.values()
+            ), f"{edge_id} crosses an unrelated node at {px:.1f}, {py:.1f}"
+        if element.get("data-route") == "knowledge-map-row-card-detour":
+            bounds = _rect_box(rectangle)
+            detour_labels[edge_id] = bounds
+            assert all(not _boxes_overlap(bounds, box) for box in node_boxes.values())
+    assert routed_edges == set(source_edges)
+    assert set(detour_labels) == {f"stress{index:02d}" for index in range(10, 16)}
+    for index, first in enumerate(sorted(detour_labels)):
+        for second in sorted(detour_labels)[index + 1:]:
+            assert not _boxes_overlap(detour_labels[first], detour_labels[second]), (
+                f"{first}/{second} overlap"
+            )
