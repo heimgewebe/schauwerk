@@ -32,6 +32,19 @@ from urllib.parse import unquote, urlsplit
 
 from schauwerk.resources.standalone_editor.assets import ASSETS
 from schauwerk.resources.standalone_editor.representation_editor import REPRESENTATION_EDITOR_JS
+from schauwerk.visual.d2_preview import (
+    RENDERER_ID as D2_RENDERER_ID,
+)
+from schauwerk.visual.d2_preview import (
+    SUPPORTED_INTENTS as D2_SUPPORTED_INTENTS,
+)
+from schauwerk.visual.d2_preview import (
+    D2PreviewError,
+    render_d2_tala,
+)
+from schauwerk.visual.d2_preview import (
+    configured_binary as configured_d2_binary,
+)
 from schauwerk.visual.drawio_import import DrawioImportError, drawio_xml_to_representation
 from schauwerk.visual.json_fidelity import (
     JsonFidelityError,
@@ -64,6 +77,9 @@ from schauwerk.visual.representation import RepresentationError, validate_repres
 MANIFEST_SCHEMA: Final = "schauwerk-standalone-editor-manifest.v2"
 NATIVE_RENDERER: Final = "schauwerk-native-diagram-v1"
 NATIVE_API_PATH: Final = "/api/native-viewer"
+D2_PREVIEW_API_PATH: Final = "/api/d2-preview"
+D2_CAPABILITIES_PATH: Final = "/api/renderer-capabilities"
+MAX_D2_PREVIEW_REQUEST_BYTES: Final = 512 * 1024
 NATIVE_IMPORT_SCHEMA: Final = "schauwerk-native-import-request.v1"
 NATIVE_SUPERSEDE_HEADER: Final = "X-Schauwerk-Native-Supersede"
 MAX_NATIVE_REQUEST_BYTES: Final = 5 * 1024 * 1024
@@ -79,6 +95,7 @@ MAX_TRUSTED_PROXY_SOURCE_CIDRS: Final = 8
 _LOCAL_ADMISSION_KEY: Final = "local"
 NATIVE_REQUEST_TIMEOUT_SECONDS: Final = 30.0
 NATIVE_SERVER_MAX_WORKERS: Final = 32
+_D2_PREVIEW_WORKERS = threading.BoundedSemaphore(2)
 EDITOR_ORIGIN: Final = "https://embed.diagrams.net"
 EMBED_QUERY: Final = (
     "embed=1&proto=json&configure=1&spin=1&lang=de&ui=simple&dark=auto&pages=0&grid=0&"
@@ -2034,10 +2051,137 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             handle.close()
         return True
 
+    def _serve_d2_capabilities(self, *, head_only: bool) -> bool:
+        if self.path != D2_CAPABILITIES_PATH:
+            return False
+        if self._native_admission_key() is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "trusted reverse proxy source was not established"},
+                write_body=not head_only,
+            )
+            return True
+        available = configured_d2_binary() is not None
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "schema_version": "schauwerk-renderer-capabilities.v1",
+                "renderers": (
+                    [
+                        {
+                            "id": D2_RENDERER_ID,
+                            "title": "D2 / TALA",
+                            "read_only": True,
+                            "supported_intents": sorted(D2_SUPPORTED_INTENTS),
+                        }
+                    ]
+                    if available else []
+                ),
+            },
+            write_body=not head_only,
+        )
+        return True
+
+    def _serve_d2_preview(self) -> None:
+        if self._reject_non_loopback_host():
+            return
+        if self._native_admission_key() is None:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "trusted reverse proxy source was not established"},
+            )
+            return
+        binary = configured_d2_binary()
+        if binary is None:
+            self._send_json(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "D2/TALA is not available in this runtime"},
+            )
+            return
+        media_type = self.headers.get("Content-Type", "").split(";", 1)[0].strip().casefold()
+        if media_type != "application/json":
+            self._send_json(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                {"error": "D2 preview requires application/json"},
+            )
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "-1"))
+        except ValueError:
+            length = -1
+        if length < 0:
+            self._send_json(
+                HTTPStatus.LENGTH_REQUIRED,
+                {"error": "valid Content-Length required"},
+            )
+            return
+        if length > MAX_D2_PREVIEW_REQUEST_BYTES:
+            self._send_json(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                {"error": "D2 preview input exceeds 512 KiB"},
+            )
+            return
+        try:
+            payload = self.rfile.read(length)
+        except (TimeoutError, OSError):
+            self.close_connection = True
+            return
+        if self._request_deadline_is_expired():
+            self.close_connection = True
+            return
+        if len(payload) != length:
+            self._send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "incomplete D2 preview request body"},
+            )
+            return
+        try:
+            value = parse_json_with_unique_object_members(payload.decode("utf-8"))
+            if (
+                not isinstance(value, dict)
+                or set(value) != {"schema_version", "renderer", "representation"}
+                or value["schema_version"] != "schauwerk-renderer-preview-request.v1"
+                or value["renderer"] != D2_RENDERER_ID
+                or not isinstance(value["representation"], dict)
+            ):
+                raise D2PreviewError("D2 preview request contract is invalid")
+        except (UnicodeDecodeError, json.JSONDecodeError, JsonFidelityError, D2PreviewError) as exc:
+            self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
+            return
+        if not _D2_PREVIEW_WORKERS.acquire(blocking=False):
+            self._send_json(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "D2 preview workers are currently occupied"},
+            )
+            return
+        try:
+            svg, digest = render_d2_tala(value["representation"], binary)
+        except (D2PreviewError, RepresentationError, UnicodeError) as exc:
+            self._send_json(HTTPStatus.UNPROCESSABLE_ENTITY, {"error": str(exc)})
+            return
+        finally:
+            _D2_PREVIEW_WORKERS.release()
+        if self._request_deadline_is_expired():
+            self.close_connection = True
+            return
+        try:
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "image/svg+xml; charset=utf-8")
+            self.send_header("Content-Length", str(len(svg)))
+            self.send_header("X-Schauwerk-Renderer", "d2-tala-v0.9.0")
+            self.send_header("X-Schauwerk-Input-Digest", digest)
+            self.send_header("X-Schauwerk-Output-SHA256", _sha256(svg))
+            self.end_headers()
+            self.wfile.write(svg)
+        except OSError:
+            self.close_connection = True
+
     def do_GET(self) -> None:  # noqa: N802
         if self._reject_non_loopback_host():
             return
         if self._reject_private_cache_path():
+            return
+        if self._serve_d2_capabilities(head_only=False):
             return
         if self._serve_native_bundle(head_only=False):
             return
@@ -2048,11 +2192,16 @@ class _EditorRequestHandler(SimpleHTTPRequestHandler):
             return
         if self._reject_private_cache_path(write_body=False):
             return
+        if self._serve_d2_capabilities(head_only=True):
+            return
         if self._serve_native_bundle(head_only=True):
             return
         super().do_HEAD()
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path == D2_PREVIEW_API_PATH:
+            self._serve_d2_preview()
+            return
         if self.path != NATIVE_API_PATH:
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})
             return

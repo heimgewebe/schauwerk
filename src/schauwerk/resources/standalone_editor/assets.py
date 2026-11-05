@@ -108,6 +108,7 @@ INDEX_HTML = r"""<!doctype html>
               <button class="button compact" id="layoutButton" type="button">Ordnen</button>
               <button class="button compact" id="contentEditButton" type="button" hidden>Inhalt</button>
               <button class="button compact ghost" id="legacyEditButton" type="button" hidden>Kompatibilität</button>
+              <button class="button compact ghost" id="d2PreviewButton" type="button" hidden aria-haspopup="dialog" aria-controls="d2PreviewDialog">D2 / TALA ansehen</button>
               <div class="native-history-controls" id="nativeHistoryControls" role="group" aria-label="Änderungsverlauf" hidden>
                 <button class="button compact" id="nativeUndoButton" type="button" disabled title="Letzte Änderung rückgängig machen (Strg/⌘+Z)">Rückgängig</button>
                 <button class="button compact" id="nativeRedoButton" type="button" disabled title="Änderung wiederholen (Strg/⌘+Umschalt+Z)">Wiederholen</button>
@@ -162,6 +163,23 @@ INDEX_HTML = r"""<!doctype html>
           <button class="button primary" id="contentSaveButton" type="submit">Übernehmen</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog class="d2-preview-dialog" id="d2PreviewDialog" aria-labelledby="d2PreviewTitle">
+      <div class="d2-preview-header">
+        <div>
+          <p class="panel-kicker">Alternative Darstellung · nur lesen</p>
+          <h2 id="d2PreviewTitle">D2 / TALA</h2>
+        </div>
+        <button class="button compact" id="d2PreviewCloseButton" type="button">Zurück zur Bearbeitung</button>
+      </div>
+      <p class="d2-preview-explanation">Diese Vorschau ändert weder die Quelle noch den Bearbeitungsverlauf. Das native Schaubild bleibt unverändert.</p>
+      <div class="d2-preview-stage">
+        <img id="d2PreviewImage" alt="Alternative D2/TALA-Darstellung des Schaubilds">
+      </div>
+      <div class="d2-preview-actions">
+        <a class="button compact" id="d2PreviewDownload" download>Diese Ansicht als SVG speichern</a>
+      </div>
     </dialog>
   </main>
   <script type="module" src="app.js"></script>
@@ -972,6 +990,42 @@ body.workspace-active .status {
   .editor-stage { background: #11131a; }
   .editor-wrap { border-color: #2b2e39; background: #fff; }
 }
+
+.d2-preview-dialog {
+  width: min(96vw, 1440px);
+  max-width: none;
+  height: min(94dvh, 980px);
+  max-height: 94dvh;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  padding: clamp(12px, 2vw, 20px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  flex-direction: column;
+  gap: 12px;
+}
+.d2-preview-dialog[open] { display: flex; }
+.d2-preview-dialog::backdrop { background: rgba(10, 12, 25, 0.68); }
+.d2-preview-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.d2-preview-header h2 { margin: 3px 0 0; font-size: 1.1rem; }
+.d2-preview-explanation { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.d2-preview-stage {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: center;
+}
+.d2-preview-stage img { display: block; width: 100%; height: auto; }
+.d2-preview-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 520px) {
+  .d2-preview-dialog { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  .d2-preview-header { align-items: flex-start; flex-wrap: wrap; }
+}
+
 """
 
 CANVAS_IMPORT_JS = r"""const DRAWIO_ROOT = /^(?:<\?xml\s+version\s*=\s*(?:"1\.[01]"|'1\.[01]')(?:\s+encoding\s*=\s*(?:"[A-Za-z][A-Za-z0-9._-]*"|'[A-Za-z][A-Za-z0-9._-]*'))?(?:\s+standalone\s*=\s*(?:"(?:yes|no)"|'(?:yes|no)'))?\s*\?>\s*)?<(?:mxfile|mxGraphModel)(?=[\s/>])/;
@@ -1701,6 +1755,8 @@ const EDITOR_ORIGIN = "__SCHAUWERK_EDITOR_ORIGIN__";
 const EDITOR_URL = "__SCHAUWERK_EDITOR_URL__";
 const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";
 const NATIVE_API_PATH = `${PUBLIC_BASE_PATH}/api/native-viewer`;
+const D2_CAPABILITIES_PATH = PUBLIC_BASE_PATH + "/api/renderer-capabilities";
+const D2_PREVIEW_API_PATH = PUBLIC_BASE_PATH + "/api/d2-preview";
 const NATIVE_IMPORT_SCHEMA = "schauwerk-native-import-request.v1";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const NATIVE_DRAFT_KEY = "schauwerk.native-schaubild.draft.v1";
@@ -1737,6 +1793,11 @@ const elements = {
   nativeUndoButton: document.querySelector("#nativeUndoButton"),
   nativeRedoButton: document.querySelector("#nativeRedoButton"),
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
+  d2PreviewButton: document.querySelector("#d2PreviewButton"),
+  d2PreviewDialog: document.querySelector("#d2PreviewDialog"),
+  d2PreviewImage: document.querySelector("#d2PreviewImage"),
+  d2PreviewDownload: document.querySelector("#d2PreviewDownload"),
+  d2PreviewCloseButton: document.querySelector("#d2PreviewCloseButton"),
   projectButton: document.querySelector("#projectButton"),
   downloadLink: document.querySelector("#downloadLink"),
   downloadCaption: document.querySelector("#downloadLink .download-caption"),
@@ -1757,6 +1818,9 @@ let currentLegacyXml = null;
 let pendingLegacyFallback = null;
 let currentNativeUrl = null;
 let activeEngine = "legacy";
+let d2PreviewAvailable = false;
+let d2PreviewUrl = null;
+let d2PreviewController = null;
 let currentTitle = "Schaubild";
 let pendingExport = null;
 let exportRequestVersion = 0;
@@ -1786,6 +1850,10 @@ let pendingNativeRebuildHistory = null;
 
 function invalidateLoadIntents() {
   loadIntentGeneration += 1;
+  if (typeof d2PreviewController !== "undefined") d2PreviewController?.abort();
+  if (typeof elements !== "undefined" && elements.d2PreviewDialog?.open) {
+    elements.d2PreviewDialog.close();
+  }
   // A new document invalidates an in-flight asynchronous PDF rasterization.
   if (typeof exportRequestVersion === "number") exportRequestVersion += 1;
   return loadIntentGeneration;
@@ -1920,7 +1988,7 @@ function nativeHistoryKeyDirection(event) {
 }
 window.addEventListener("keydown", (event) => {
   if (activeEngine !== "native" || !currentNativeCanvas || nativeHistoryObservationMode ||
-      elements.contentDialog?.open) return;
+      (elements.contentDialog?.open || elements.d2PreviewDialog?.open)) return;
   if (event.target instanceof Element &&
       event.target.closest('input,textarea,[contenteditable],[role="textbox"]')) return;
   const direction = nativeHistoryKeyDirection(event);
@@ -1940,6 +2008,88 @@ function syncWorkspaceMenuOpenState(event) {
   const hasOpenMenu = [...document.querySelectorAll(".workspace-menu")]
     .some((menu) => menu.open && !menu.hidden);
   document.body.classList.toggle("workspace-menu-open", hasOpenMenu);
+}
+
+function syncD2PreviewAction() {
+  const suitable = activeEngine === "native"
+    && Boolean(currentRepresentation)
+    && ["process", "architecture"].includes(currentRepresentation.intent);
+  elements.d2PreviewButton.hidden = !(d2PreviewAvailable && suitable);
+}
+
+async function discoverD2Preview() {
+  try {
+    const response = await fetch(D2_CAPABILITIES_PATH, { cache: "no-store" });
+    if (!response.ok) return;
+    const payload = await response.json();
+    d2PreviewAvailable = payload?.schema_version === "schauwerk-renderer-capabilities.v1"
+      && Array.isArray(payload?.renderers)
+      && payload.renderers.some((engine) =>
+        engine?.id === "d2-tala" && engine.read_only === true
+      );
+  } catch (_) {
+    d2PreviewAvailable = false;
+  } finally {
+    syncD2PreviewAction();
+  }
+}
+
+async function openD2Preview() {
+  if (
+    !d2PreviewAvailable || !currentRepresentation || !editorReady
+    || nativeCanvasRenderStale || activeEngine !== "native"
+    || elements.d2PreviewDialog.open
+  ) return;
+  const input = currentRepresentation;
+  const generation = loadIntentGeneration;
+  d2PreviewController?.abort();
+  const controller = new AbortController();
+  d2PreviewController = controller;
+  elements.d2PreviewButton.disabled = true;
+  setStatus("D2/TALA-Darstellung wird vorbereitet …");
+  try {
+    const response = await fetch(D2_PREVIEW_API_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        schema_version: "schauwerk-renderer-preview-request.v1",
+        renderer: "d2-tala",
+        representation: input,
+      }),
+    });
+    if (!response.ok) {
+      const rejected = await response.json().catch(() => ({}));
+      throw new Error(rejected?.error || "D2/TALA-Vorschau ist nicht verfügbar");
+    }
+    if (
+      response.headers.get("X-Schauwerk-Renderer") !== "d2-tala-v0.9.0"
+      || !(response.headers.get("Content-Type") || "").startsWith("image/svg+xml")
+    ) throw new Error("D2/TALA-Ausgabeformat ist unerwartet");
+    const payload = await response.arrayBuffer();
+    if (!payload.byteLength || payload.byteLength > 2 * 1024 * 1024) {
+      throw new Error("D2/TALA-Vorschau überschreitet die Ausgabegrenze");
+    }
+    if (
+      controller.signal.aborted || generation !== loadIntentGeneration
+      || input !== currentRepresentation || activeEngine !== "native"
+    ) return;
+    const url = URL.createObjectURL(new Blob([payload], { type: "image/svg+xml" }));
+    d2PreviewUrl = url;
+    elements.d2PreviewImage.src = url;
+    elements.d2PreviewDownload.href = url;
+    elements.d2PreviewDownload.download = safeFilename(currentTitle) + "-d2-tala.svg";
+    elements.d2PreviewDialog.showModal();
+    setStatus("D2/TALA nur zur Ansicht · Original unverändert");
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      setError(error instanceof Error ? error.message : "D2/TALA-Vorschau fehlgeschlagen");
+      setStatus("Native Darstellung bleibt unverändert");
+    }
+  } finally {
+    if (d2PreviewController === controller) d2PreviewController = null;
+    elements.d2PreviewButton.disabled = false;
+  }
 }
 
 function setEngineMode(mode) {
@@ -1987,6 +2137,7 @@ function setEngineMode(mode) {
     elements.projectButton.textContent = "Projekt";
     elements.projectButton.title = "Bearbeitbares draw.io-Projekt speichern";
   }
+  syncD2PreviewAction();
   syncWorkspaceBarHeight();
 }
 
@@ -3686,6 +3837,19 @@ document.querySelectorAll(".workspace-menu").forEach((menu) => {
 // Existing UI-state paths keep action-bar overlay clearance synchronized.
 window.addEventListener("resize", syncWorkspaceBarHeight);
 elements.nativeRetryButton.addEventListener("click", () => { void retryNativeRender(); });
+elements.d2PreviewButton.addEventListener("click", () => {
+  elements.d2PreviewButton.closest("details")?.removeAttribute("open");
+  void openD2Preview();
+});
+elements.d2PreviewCloseButton.addEventListener("click", () => {
+  elements.d2PreviewDialog.close();
+});
+elements.d2PreviewDialog.addEventListener("close", () => {
+  elements.d2PreviewImage.removeAttribute("src");
+  elements.d2PreviewDownload.removeAttribute("href");
+  if (d2PreviewUrl !== null) URL.revokeObjectURL(d2PreviewUrl);
+  d2PreviewUrl = null;
+});
 elements.projectButton.addEventListener("click", () => {
   const menu = elements.projectButton.closest("details");
   if (menu) menu.open = false;
@@ -3752,6 +3916,7 @@ if (initialQuery.get("new") === "1") {
   launch({ xml: emptyDrawioXml() });
 }
 
+void discoverD2Preview();
 elements.restoreButton.hidden = !readLatestDraft();
 """
 
