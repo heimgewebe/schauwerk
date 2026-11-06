@@ -1,0 +1,41 @@
+{
+  "change": "Knowledge Map native detours: card-safe SVG routing, row-label lanes independent of later X packing, last-row clipping prevention, and feedback footer below occupied detour labels.",
+  "checks": {
+    "adversarial_180_packed_label_layouts": "passed",
+    "adversarial_30_layouts": "passed",
+    "adversarial_36_long_diagonal_layouts": "passed",
+    "adversarial_48_feedback_detour_layouts": "passed",
+    "adversarial_64_vertical_return_layouts": "passed",
+    "codex_p2_adjacent_row_label_red_to_green": "passed",
+    "codex_p2_feedback_footer_collision_red_to_green": "passed",
+    "codex_p2_last_row_viewbox_red_to_green": "passed",
+    "codex_p2_long_vertical_same_column_red_to_green": "passed",
+    "codex_p2_multiline_diagonal_label_red_to_green": "passed",
+    "codex_p2_packed_corridor_labels_red_to_green": "passed",
+    "codex_p2_single_last_row_detour_red_to_green": "passed",
+    "gate1_goldens": "passed",
+    "gh_ci": "pending",
+    "native_diagram_and_gate1_tests": "passed",
+    "renderer_benchmark": "passed (optional variants skipped)",
+    "ruff": "passed",
+    "single_detour_adjacent_label_red_to_green": "passed",
+    "tall_adjacent_row_labels_red_to_green": "passed",
+    "visual_acceptance": "pending"
+  },
+  "current_source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "e66ad1b2061852001db92c237b1f46d5d39e5bfdfac253e82bbe4310422b943d",
+    "tests/visual/test_native_diagram_gate1_proof.py": "079ccc4eb43a6278902e2094dd728c35fe0fccfe95d4de1e70074d6fd7454b34"
+  },
+  "invariants": [
+    "Earlier evidence stays byte-for-byte intact",
+    "Native Knowledge Map production cutover is not authorized by a technical test",
+    "No generated Fundus assets or external repository writes"
+  ],
+  "predecessor_receipt": {
+    "path": "docs/operators/evidence/schaubild-process-feedback-routing-outer-path-20261010/feedback-pr206-review-comments-20261022-internal-gap-finalization-successor-acceptance-receipt.json",
+    "predecessor_source_sha256": "6b3587fe0d6acabad79350d017ef77bd9cfff4289003900c9d836c3a17d35abe",
+    "sha256": "da5d37c0597bcefca01e1adb999faa259681d7ef1cc632a9fedb0b4a7d9e5aa4"
+  },
+  "schema_version": "schauwerk-knowledge-map-routing-technical-successor.v1",
+  "scope": "technical-candidate-only"
+}
