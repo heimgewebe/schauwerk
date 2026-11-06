@@ -526,3 +526,16 @@ def test_long_diagonal_corridor_label_does_not_cover_detour() -> None:
     assert boxes["e0"][0] == "knowledge-map-row-card-detour"
     assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_long_same_column_label_reserves_detour_corridor() -> None:
+    """A multi-row vertical return occupies its source-row label corridor."""
+    model = _ungrouped_knowledge_map(
+        12, [(0, 2, "Alpha"), (1, 9, "Long vertical relation")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))

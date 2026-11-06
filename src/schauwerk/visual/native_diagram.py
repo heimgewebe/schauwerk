@@ -3451,29 +3451,49 @@ def render_native_diagram(
                         and max(source[1], target[1]) == row_y + row_step
                     )
                     if not adjacent:
-                        # The existing row-corridor packer also puts long
-                        # diagonals in their middle physical gap. Treat their
-                        # natural label as an occupant before detour lanes
-                        # expand that gap; a second late packer cannot move
-                        # a detour whose path has already been determined.
-                        if (
-                            source[0] == target[0]
-                            or abs(source[1] - target[1]) <= row_step
-                        ):
+                        # The later row-corridor packer reserves both long
+                        # same-column source corridors and long diagonal
+                        # middle corridors. Mirror those actual natural
+                        # positions before assigning immutable detour lanes.
+                        if abs(source[1] - target[1]) <= row_step:
                             continue
-                        upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
-                        lower_top = max(source[1], target[1])
-                        label_y = (upper_bottom + lower_top) / 2
-                        corridor = _row_corridor_containing(label_y, positions)
-                        if (
-                            corridor is None
-                            or corridor != (
+                        if source[0] == target[0]:
+                            direction = 1 if source[1] < target[1] else -1
+                            source_port_y = (
+                                source[1] + _NODE_HEIGHT
+                                if direction > 0 else source[1]
+                            )
+                            label_y = (
+                                source_port_y + direction * non_process_row_gap / 2
+                            )
+                            if label_y != (
+                                row_y + _NODE_HEIGHT + non_process_row_gap / 2
+                            ):
+                                continue
+                            center_x = (
+                                source[0] + _NODE_WIDTH / 2
+                                + source[0] + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET
+                            ) / 2
+                        else:
+                            upper_bottom = (
+                                min(source[1], target[1]) + _NODE_HEIGHT
+                            )
+                            lower_top = max(source[1], target[1])
+                            label_y = (upper_bottom + lower_top) / 2
+                            corridor = _row_corridor_containing(label_y, positions)
+                            if corridor != (
                                 row_y + _NODE_HEIGHT,
                                 row_y + row_step,
-                            )
-                        ):
-                            continue
-                    if source[0] == target[0]:
+                            ):
+                                continue
+                            left, right = sorted((source[0], target[0]))
+                            if (
+                                right - left - _NODE_WIDTH < metrics.width + 8
+                                or non_process_row_gap < metrics.height + 8
+                            ):
+                                continue
+                            center_x = (left + _NODE_WIDTH + right) / 2
+                    elif source[0] == target[0]:
                         center_x = source[0] + _NODE_WIDTH / 2
                     else:
                         left, right = sorted((source[0], target[0]))
