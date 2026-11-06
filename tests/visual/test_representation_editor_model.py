@@ -231,11 +231,38 @@ console.log(JSON.stringify(validate(current)));
     assert backend["requirements"]["rich_text"] is True
 
 
-def test_unsupported_native_knowledge_map_requires_canvas(tmp_path: Path) -> None:
+def test_structured_knowledge_map_native_form_validates_and_preserves_references(tmp_path: Path) -> None:
     run_js(tmp_path, """
 const data=JSON.parse(JSON.stringify(sample));
 data.intent='knowledge_map';
-assert.throws(()=>validate(data),/JSON Canvas/);
+data.requirements.free_spatial_layout=true;
+const normalized=validate(data);
+assert.equal(normalized.intent,'knowledge_map');
+assert.equal(normalized.requirements.free_spatial_layout,true);
+let edited=change(normalized,{type:'rename-node',id:'a',value:'concept_new'});
+edited=change(edited,{type:'add-edge'});
+edited.edges[1].from='concept_new';
+edited.edges[1].to='b';
+const accepted=validate(edited);
+assert.equal(accepted.edges[0].from,'concept_new');
+assert.equal(accepted.edges[1].to,'b');
+assert.equal(data.nodes[0].id,'a');
+class Element {
+  constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.scrollTop=0; this.textContent=''; }
+  append(...items) { this.children.push(...items); }
+  replaceChildren(...items) { this.children=[...items]; }
+  addEventListener(name,fn) { this.handlers[name]=fn; }
+  setAttribute(key,value) { this[key]=value; }
+}
+globalThis.document={createElement(tag){return new Element(tag)}};
+const container=new Element('main');
+const form=mount(container,normalized);
+function descendants(root) { return [root,...root.children.flatMap(descendants)]; }
+const intentRow=descendants(container).find(el=>el.tagName==='label' && el.children[0]?.textContent==='Darstellungsabsicht');
+const intentSelect=intentRow?.children[1];
+assert.ok(intentSelect);
+assert.ok(intentSelect.children.some(option=>option.value==='knowledge_map' && option.selected));
+assert.equal(form.getValue().intent,'knowledge_map');
 """)
 
 
@@ -623,3 +650,155 @@ def test_canonical_editor_browser_reopen_structure_and_export(
     assert 'data-full-editor-browser="pass"' in result.stdout, (
         result.stdout[-3000:] + "\n" + result.stderr[-2500:]
     )
+
+
+@pytest.mark.parametrize("width,height", [(1280, 900), (390, 844)])
+def test_native_knowledge_map_browser_roundtrip(
+    tmp_path: Path, width: int, height: int,
+) -> None:
+    """Actual native Knowledge Map import, rename, add, save, export and reload."""
+    import json
+    import os
+    import shutil
+    import threading
+    import time
+    from functools import partial
+    from http.server import ThreadingHTTPServer
+    from urllib.request import urlopen
+
+    from schauwerk.visual.standalone_editor import (
+        _EditorRequestHandler,
+        build_standalone_editor,
+    )
+
+    if os.environ.get("CI") and __import__("sys").version_info[:2] != (3, 12):
+        pytest.skip("browser native Knowledge Map gate is covered in Python 3.12 CI")
+
+    chrome = os.environ.get("CHROME_BIN") or shutil.which("google-chrome") or shutil.which("chromium")
+    if chrome is None:
+        if os.environ.get("CI"):
+            pytest.fail("Chrome required for native Knowledge Map browser cutover in CI")
+        pytest.skip("Chrome unavailable")
+
+    ws = pytest.importorskip("websockets.sync.client")
+    source = BROWSER_EDITOR_SMOKE_JS
+    assert source.count('intent:"process",') == 1
+    source = source.replace('intent:"process",', 'intent:"knowledge_map",', 1)
+    # After the structural edit, exercise the same rendered SVG export route.
+    marker = """    const button=document.querySelector("#projectButton");
+    button.click();"""
+    replacement = """    const svgButton=document.querySelector('[data-export="svg"]');
+    if (!svgButton || svgButton.hidden) throw new Error("Native SVG export unavailable");
+    svgButton.click();
+    await until(() => {
+      const link = document.querySelector("#downloadLink");
+      return !link.hidden && link.download.endsWith(".svg");
+    }, "Native Knowledge Map SVG export failed", 1200);
+    const button=document.querySelector("#projectButton");
+    button.click();"""
+    assert source.count(marker) == 1
+    source = source.replace(marker, replacement, 1)
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    (output / "knowledge-map-roundtrip.js").write_text(source, encoding="utf-8")
+    index_path = output / "index.html"
+    markup = index_path.read_text(encoding="utf-8")
+    assert markup.count("</body>") == 1
+    index_path.write_text(
+        markup.replace(
+            "</body>",
+            '<script type="module" src="knowledge-map-roundtrip.js"></script></body>',
+            1,
+        ),
+        encoding="utf-8",
+    )
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        partial(_EditorRequestHandler, directory=str(output)),
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    profile = tmp_path / "chrome-profile"
+    browser = subprocess.Popen(
+        [
+            chrome, "--headless=new", "--no-first-run", "--no-sandbox",
+            "--disable-gpu", "--disable-dev-shm-usage",
+            "--disable-background-networking",
+            "--remote-allow-origins=http://localhost",
+            "--remote-debugging-port=0", f"--user-data-dir={profile}", "about:blank",
+        ],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    try:
+        page = None
+        for _ in range(130):
+            if browser.poll() is not None:
+                pytest.fail("Chrome quit before DevTools startup")
+            try:
+                port = int((profile / "DevToolsActivePort").read_text().splitlines()[0])
+                with urlopen(f"http://127.0.0.1:{port}/json/list", timeout=2) as response:
+                    page = next(
+                        (item for item in json.load(response) if item.get("type") == "page"),
+                        None,
+                    )
+                if page:
+                    break
+            except (OSError, TimeoutError, ValueError, IndexError):
+                pass
+            time.sleep(0.12)
+        assert page is not None, "Chrome CDP startup failed"
+        with ws.connect(page["webSocketDebuggerUrl"], origin="http://localhost") as client:
+            current_id = 0
+
+            def cdp(method: str, params: dict | None = None) -> dict:
+                nonlocal current_id
+                current_id += 1
+                expected = current_id
+                client.send(json.dumps({
+                    "id": expected, "method": method, "params": params or {},
+                }))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    payload = json.loads(client.recv(timeout=max(0.1, deadline-time.monotonic())))
+                    if payload.get("id") == expected:
+                        assert "error" not in payload, payload.get("error")
+                        return payload.get("result", {})
+                raise AssertionError(f"Chrome CDP timeout on {method}")
+
+            cdp("Page.enable")
+            cdp("Runtime.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": width, "height": height,
+                "deviceScaleFactor": 1, "mobile": width < 600,
+            })
+            cdp("Page.navigate", {
+                "url": f"http://127.0.0.1:{server.server_address[1]}/",
+            })
+            for _ in range(240):
+                response = cdp("Runtime.evaluate", {
+                    "expression": (
+                        "({result:document.documentElement.dataset.fullEditorBrowser||'',"
+                        "error:document.documentElement.dataset.fullEditorError||'',"
+                        "view:document.querySelector('#editorFrame')?.getAttribute('src')||''})"
+                    ),
+                    "returnByValue": True,
+                })
+                readback = response.get("result", {}).get("value", {})
+                if readback.get("result") == "fail":
+                    pytest.fail("Knowledge Map E2E: " + str(readback.get("error")))
+                if readback.get("result") == "pass":
+                    assert "/native/" in readback.get("view", ""), readback
+                    break
+                time.sleep(0.12)
+            else:
+                pytest.fail("Native Knowledge Map browser E2E timed out: " + str(readback))
+    finally:
+        browser.terminate()
+        try:
+            browser.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            browser.kill()
+            browser.wait(timeout=6)
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)

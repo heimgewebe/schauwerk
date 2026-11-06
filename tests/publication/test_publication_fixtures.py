@@ -610,6 +610,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/resources/standalone_editor/assets.py",
         "src/schauwerk/visual/standalone_editor.py",
         "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_standalone_editor_ai_handoff.py",
     }
     smoke_pipefail_superseded_files = {
         "scripts/ci/smoke-native-schaubild-runtime.sh",
@@ -13816,11 +13817,48 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert "historical_visual_acceptance_inherited" in css["does_not_establish"]
     for name, digest in css["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+
+    # Native structured knowledge maps supersede only the new editor and
+    # admission sources. Older D2, full-editing and vector-PDF receipts remain
+    # immutable and cannot silently transfer aesthetic acceptance.
+    knowledge_map_path = (
+        ROOT / "docs/operators/evidence"
+        / "schaubild-knowledge-map-native-cutover-20261106/technical-proof.json"
+    )
+    knowledge_map = json.loads(knowledge_map_path.read_text(encoding="utf-8"))
+    assert knowledge_map["schema_version"] == (
+        "schauwerk-knowledge-map-native-cutover-technical-proof.v1"
+    )
+    assert knowledge_map["status"] == "technical_candidate_only"
+    assert knowledge_map["evidence_digest"] == digest_mapping(
+        knowledge_map, "evidence_digest"
+    )
+    assert set(knowledge_map["source_bindings"]) == {
+        "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/resources/standalone_editor/representation_editor.py",
+        "tests/visual/test_standalone_editor.py",
+        "tests/visual/test_representation_editor_model.py",
+        "tests/visual/test_standalone_editor_ai_handoff.py",
+    }
+    for predecessor in knowledge_map["historical_evidence_unchanged"].values():
+        assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+            predecessor["sha256"]
+        )
+    assert knowledge_map["checks"]["backend_native_api_knowledge_map_http_200_svg"] is True
+    assert knowledge_map["checks"]["chromium_mobile_emulation_edit_save_svg_export_reload"] is True
+    assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_image_objects"] == 0
+    assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_vector_operators"] >= 100
+    assert "native_representation_undo_redo" in knowledge_map["does_not_establish"]
+    for name, sha in knowledge_map["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+
     latest_bindings = {
         **successor["source_bindings"],
         **oci["source_bindings"],
         **vector["source_bindings"],
         **css["source_bindings"],
+
+        **knowledge_map["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
