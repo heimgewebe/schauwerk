@@ -125,7 +125,8 @@ INDEX_HTML = r"""<!doctype html>
             <button class="button compact" id="projectButton" type="button">Projekt</button>
             <button class="button compact output-button" data-export="png" type="button">PNG</button>
             <button class="button compact output-button" data-export="svg" type="button">SVG</button>
-            <button class="button compact output-button" data-export="pdf" type="button">PDF</button>
+            <button class="button compact output-button" data-export="pdf" type="button" title="PDF als hochaufgelöstes Bild herunterladen">PDF (Bild)</button>
+            <button class="button compact output-button" data-export="pdf-vector" type="button" title="Vektorgrafik im Druckdialog als PDF speichern">PDF (Vektor)</button>
           </div>
         </details>
 
@@ -1024,6 +1025,47 @@ body.workspace-active .status {
 @media (max-width: 520px) {
   .d2-preview-dialog { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
   .d2-preview-header { align-items: flex-start; flex-wrap: wrap; }
+}
+
+/* A standalone native SVG print tab reuses the same-origin stylesheet.
+   SVG stays vector data; the editor UI and existing raster PDF are untouched. */
+body.schaubild-vector-print {
+  display: block;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  color: #172033;
+  background: #fff;
+}
+body.schaubild-vector-print > svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+body.schaubild-vector-print > .print-instruction {
+  margin: 0 0 10px;
+  color: #334155;
+  font: 14px/1.4 system-ui, sans-serif;
+}
+body.schaubild-vector-print > .print-button {
+  margin: 0 0 12px;
+  padding: 9px 14px;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: 14px/1.4 system-ui, sans-serif;
+  cursor: pointer;
+}
+@media print {
+  body.schaubild-vector-print {
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  body.schaubild-vector-print > .print-instruction,
+  body.schaubild-vector-print > .print-button { display: none !important; }
+  body.schaubild-vector-print > svg { break-inside: avoid; }
 }
 
 """
@@ -3494,7 +3536,105 @@ async function exportNative(format) {
   }
 }
 
+/** Print the live native SVG as vectors; no JPEG embedding or server dependency. */
+function printNativeVectorPdf() {
+  if (activeEngine !== "native") {
+    setStatus("Vektor-PDF derzeit nur im nativen Renderer · PDF (Bild) bleibt verfügbar");
+    return;
+  }
+  if (!editorReady || !currentNativeUrl || nativeCanvasRenderStale) {
+    setStatus("Vektor-PDF benötigt eine aktuell gerenderte native Ansicht");
+    return;
+  }
+  const liveSvg = serializeNativeFrameSvg({
+    stripInputDigest: currentNativeCanvas
+      ? nativeCanvasDiffersFromRendered(currentNativeCanvas)
+      : true,
+  });
+  if (!liveSvg) {
+    setStatus("Aktuelle native SVG-Ausgabe ist noch nicht bereit");
+    return;
+  }
+  let vector;
+  try {
+    const parsed = new DOMParser().parseFromString(liveSvg, "image/svg+xml");
+    vector = parsed.documentElement;
+    if (vector?.localName !== "svg"
+        || vector.namespaceURI !== "http://www.w3.org/2000/svg"
+        || parsed.querySelector("parsererror, script, foreignObject, image, iframe, object, embed, a")) {
+      throw new Error("non-passive SVG");
+    }
+    // An event attribute on the root <svg> is active content, too.
+    for (const element of [vector, ...vector.querySelectorAll("*")]) {
+      for (const attribute of element.attributes) {
+        if (/^on/i.test(attribute.name)
+            || (/(?:^|:)href$/i.test(attribute.name) && !attribute.value.startsWith("#"))
+            || /url\s*\(\s*['"]?\s*(?!#)/i.test(attribute.value)) {
+          throw new Error("external or active SVG reference");
+        }
+      }
+    }
+  } catch (_) {
+    setStatus("Vektor-PDF kann nur sichere native SVG-Ausgaben drucken");
+    return;
+  }
+
+  // Open synchronously in the click gesture, so Safari can open a real tab.
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    setStatus("Druckfenster blockiert · Pop-ups für diese Seite erlauben");
+    return;
+  }
+  printWindow.opener = null;
+  const printDocument = printWindow.document;
+  printDocument.title = "Vektor-PDF · " + currentTitle;
+  printDocument.body.className = "schaubild-vector-print";
+  const instruction = printDocument.createElement("p");
+  instruction.className = "print-instruction";
+  instruction.textContent = "Im Druckdialog „Als PDF speichern“ wählen. Die Grafik bleibt vektorbasiert.";
+  printDocument.body.appendChild(instruction);
+  const manualPrint = printDocument.createElement("button");
+  manualPrint.className = "print-button";
+  manualPrint.type = "button";
+  manualPrint.textContent = "Drucken / Als PDF speichern";
+  // Safari may reject print() after the asynchronous stylesheet load. A
+  // direct tap in the opened tab must still work without reopening the editor.
+  manualPrint.addEventListener("click", () => {
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch (_) {
+      // Browser's own Print menu remains usable in this self-contained tab.
+    }
+  });
+  printDocument.body.appendChild(manualPrint);
+  const svg = printDocument.importNode(vector, true);
+  svg.setAttribute("width", "100%");
+  svg.removeAttribute("height");
+  printDocument.body.appendChild(svg);
+  const stylesheet = printDocument.createElement("link");
+  stylesheet.rel = "stylesheet";
+  stylesheet.href = new URL("styles.css", window.location.href).href;
+  const print = () => {
+    if (printWindow.closed) return;
+    try {
+      printWindow.focus();
+      printWindow.print();
+    } catch (_) {
+      // The tab remains usable for a manual Print / Save as PDF.
+    }
+  };
+  stylesheet.addEventListener("load", print, { once: true });
+  stylesheet.addEventListener("error", print, { once: true });
+  printDocument.head.appendChild(stylesheet);
+  setStatus("Vektor-PDF: Im Druckdialog „Als PDF speichern“ wählen");
+}
+
 function exportDiagram(format) {
+  if (format === "pdf-vector") {
+    printNativeVectorPdf();
+    return;
+  }
   exportRequestVersion += 1;
   if (activeEngine === "native") {
     void exportNative(format);
