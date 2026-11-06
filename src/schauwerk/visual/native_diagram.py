@@ -3422,21 +3422,16 @@ def render_native_diagram(
             # Adjacent-row labels already occupy the midpoint of the same
             # physical gap. Reserve their central band before allocating the
             # detours, instead of packing a detour directly over that label.
-            edges_by_id = {str(edge["id"]): edge for edge in model["edges"]}
+            # Occupants of a physical row gap can be moved horizontally by the
+            # later row_corridor_groups packer. Reserve their vertical label
+            # band regardless of natural x, so packed labels cannot move into
+            # a lane already allocated to a same-row card-detour.
             center_reserved: set[int] = set()
             center_label_heights: dict[int, int] = {}
-            for row_y, items in dense_by_row.items():
-                detour_boxes = []
-                for edge_id, _ in items:
-                    edge = edges_by_id[edge_id]
-                    left, right = sorted(
-                        (positions[str(edge["from"])][0],
-                         positions[str(edge["to"])][0])
-                    )
-                    metrics = _edge_label_metrics(edge, positions, intent)
-                    detour_boxes.append(
-                        ((left + _NODE_WIDTH + right) / 2, metrics.width)
-                    )
+            row_step = _NODE_HEIGHT + non_process_row_gap
+            for row_y in dense_by_row:
+                upper_gap = row_y + _NODE_HEIGHT
+                lower_gap = row_y + row_step
                 for other in model["edges"]:
                     if str(other["kind"]) == "feedback" or other["from"] == other["to"]:
                         continue
@@ -3445,18 +3440,21 @@ def render_native_diagram(
                     if source[1] == target[1]:
                         continue
                     metrics = _edge_label_metrics(other, positions, intent)
-                    row_step = _NODE_HEIGHT + non_process_row_gap
                     adjacent = (
                         min(source[1], target[1]) == row_y
-                        and max(source[1], target[1]) == row_y + row_step
+                        and max(source[1], target[1]) == lower_gap
                     )
-                    if not adjacent:
-                        # The later row-corridor packer reserves both long
-                        # same-column source corridors and long diagonal
-                        # middle corridors. Mirror those actual natural
-                        # positions before assigning immutable detour lanes.
-                        if abs(source[1] - target[1]) <= row_step:
+                    if adjacent:
+                        if source[0] != target[0]:
+                            left, right = sorted((source[0], target[0]))
+                            if (
+                                right - left - _NODE_WIDTH < metrics.width + 8
+                                or non_process_row_gap < metrics.height + 8
+                            ):
+                                continue
+                        elif non_process_row_gap < metrics.height:
                             continue
+                    elif abs(source[1] - target[1]) > row_step:
                         if source[0] == target[0]:
                             direction = 1 if source[1] < target[1] else -1
                             source_port_y = (
@@ -3466,52 +3464,28 @@ def render_native_diagram(
                             label_y = (
                                 source_port_y + direction * non_process_row_gap / 2
                             )
-                            if label_y != (
-                                row_y + _NODE_HEIGHT + non_process_row_gap / 2
-                            ):
+                            if label_y != (upper_gap + lower_gap) / 2:
                                 continue
-                            center_x = (
-                                source[0] + _NODE_WIDTH / 2
-                                + source[0] + _NODE_WIDTH + _CORRIDOR_GUTTER_OFFSET
-                            ) / 2
                         else:
-                            upper_bottom = (
-                                min(source[1], target[1]) + _NODE_HEIGHT
-                            )
+                            upper_bottom = min(source[1], target[1]) + _NODE_HEIGHT
                             lower_top = max(source[1], target[1])
-                            label_y = (upper_bottom + lower_top) / 2
-                            corridor = _row_corridor_containing(label_y, positions)
-                            if corridor != (
-                                row_y + _NODE_HEIGHT,
-                                row_y + row_step,
-                            ):
-                                continue
                             left, right = sorted((source[0], target[0]))
                             if (
                                 right - left - _NODE_WIDTH < metrics.width + 8
-                                or non_process_row_gap < metrics.height + 8
+                                or lower_top - upper_bottom < metrics.height + 8
                             ):
                                 continue
-                            center_x = (left + _NODE_WIDTH + right) / 2
-                    elif source[0] == target[0]:
-                        center_x = source[0] + _NODE_WIDTH / 2
+                            label_y = (upper_bottom + lower_top) / 2
+                            if _row_corridor_containing(
+                                label_y, positions
+                            ) != (upper_gap, lower_gap):
+                                continue
                     else:
-                        left, right = sorted((source[0], target[0]))
-                        if (
-                            right - left - _NODE_WIDTH < metrics.width + 8
-                            or non_process_row_gap < metrics.height + 8
-                        ):
-                            continue
-                        center_x = (left + _NODE_WIDTH + right) / 2
-                    if any(
-                        abs(center_x - detour_x)
-                        < (metrics.width + detour_width) / 2 + 4
-                        for detour_x, detour_width in detour_boxes
-                    ):
-                        center_reserved.add(row_y)
-                        center_label_heights[row_y] = max(
-                            center_label_heights.get(row_y, 0), metrics.height
-                        )
+                        continue
+                    center_reserved.add(row_y)
+                    center_label_heights[row_y] = max(
+                        center_label_heights.get(row_y, 0), metrics.height
+                    )
             # An isolated detour also needs a reserved band when an existing
             # adjacent-row label would otherwise be hidden. Uncontested
             # single detours retain their original geometry and Goldens.

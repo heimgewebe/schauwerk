@@ -539,3 +539,25 @@ def test_long_same_column_label_reserves_detour_corridor() -> None:
     assert boxes["e0"][0] == "knowledge-map-row-card-detour"
     assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_packed_adjacent_corridor_labels_avoid_single_detour() -> None:
+    """Final packing may shift two vertical labels into the detour's x range."""
+    model = _ungrouped_knowledge_map(
+        8,
+        [
+            (0, 3, "Alpha"),
+            (1, 5, "Long vertical relation"),
+            (1, 5, "Long vertical relation"),
+        ],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1", "e2"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    for edge_id in ("e1", "e2"):
+        assert boxes[edge_id][0] == "vertical"
+        assert not _boxes_overlap(boxes["e0"][1], boxes[edge_id][1]), (
+            edge_id, boxes,
+        )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
