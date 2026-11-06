@@ -1,0 +1,45 @@
+{
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "production_deployment",
+    "commonthing_live_function",
+    "automatically_downloaded_pdf_without_print_dialog",
+    "historical_visual_acceptance_inherited"
+  ],
+  "evidence_digest": "a92b65cd58d8c857d156eacad9574e9103f1cf066c65c8bca5e05a1eebc73fd7",
+  "predecessor_source_binding": {
+    "path": "src/schauwerk/resources/standalone_editor/assets.py",
+    "sha256": "9108b4e64d3d850b0852f6fc35c3e0c27c1a03dac2eacbda45c550161fd778be"
+  },
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-d2-preview-20261105/technical-proof.json",
+    "sha256": "feb23ebb4b0a1d7444378bbe036eef39ab3ce3f1a655a6c6cbfadb26c5ee18e0"
+  },
+  "product_behavior": {
+    "manual_safari_print": "Visible click-to-print button inside the print tab, hidden in printed PDF",
+    "raster_pdf": "Existing JPEG-backed PDF export preserved as a separate option",
+    "rendered_document_state": "Current native draft, loaded iframe and undo state unmodified",
+    "vector_print": "Same-origin native SVG in a new browser print tab, saved as PDF by browser/OS"
+  },
+  "schema_version": "schauwerk-vector-pdf-print-technical-proof.v1",
+  "scope": "standalone-editor-native-vector-pdf-print",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "7f8d537ab62d8ab0029dc08bbd76cf454fd1224477c3b9cf39f10ab452b21b27",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "acaa8846fc1085667540d54dd99fc46af47c2cd19fcd2909ad400103396e8fd6"
+  },
+  "status": "technical_candidate_only",
+  "validation": {
+    "chrome_desktop_cdp": true,
+    "chrome_mobile_emulation_cdp": true,
+    "existing_jpeg_pdf_regression": true,
+    "github_ci": "pending",
+    "native_state_preserved": true,
+    "node_js_syntax": true,
+    "popup_pdf_bytes": 16730,
+    "popup_pdf_raster_image_objects": 0,
+    "popup_pdf_sha256": "38c156f71fbb668ddb03ab99777ab2ab39dcd78ff28482a7df11b97e98bb885e",
+    "popup_pdf_vector_operator_count": 118,
+    "popup_real_browser_vector_pdf": true,
+    "ruff": true
+  }
+}

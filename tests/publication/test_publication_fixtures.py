@@ -13730,7 +13730,42 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "Dockerfile",
         "scripts/ci/smoke-native-schaubild-runtime.sh",
     }
-    latest_bindings = {**successor["source_bindings"], **oci["source_bindings"]}
+    # A vector-PDF print option supersedes precisely the editor asset source.
+    # It does not re-authorize historic D2/OCI acceptances or replace image PDF.
+    vector_path = (
+        ROOT / "docs/operators/evidence/schaubild-vector-pdf-print-20261106/technical-proof.json"
+    )
+    vector = json.loads(vector_path.read_text(encoding="utf-8"))
+    assert vector["schema_version"] == "schauwerk-vector-pdf-print-technical-proof.v1"
+    assert vector["status"] == "technical_candidate_only"
+    assert vector["predecessor_technical_proof"] == {
+        "path": str(successor_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(successor_path.read_bytes()).hexdigest(),
+    }
+    editor_path = "src/schauwerk/resources/standalone_editor/assets.py"
+    assert vector["predecessor_source_binding"] == {
+        "path": editor_path,
+        "sha256": successor["source_bindings"][editor_path],
+    }
+    assert set(vector["source_bindings"]) == {
+        editor_path, "tests/visual/test_standalone_editor_vector_pdf.py"
+    }
+    assert vector["evidence_digest"] == digest_mapping(vector, "evidence_digest")
+    assert vector["validation"]["popup_real_browser_vector_pdf"] is True
+    assert vector["validation"]["popup_pdf_raster_image_objects"] == 0
+    assert vector["validation"]["popup_pdf_vector_operator_count"] >= 100
+    assert vector["validation"]["native_state_preserved"] is True
+    assert vector["product_behavior"]["raster_pdf"] == (
+        "Existing JPEG-backed PDF export preserved as a separate option"
+    )
+    assert "historical_visual_acceptance_inherited" in vector["does_not_establish"]
+    for name, digest in vector["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    latest_bindings = {
+        **successor["source_bindings"],
+        **oci["source_bindings"],
+        **vector["source_bindings"],
+    }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
         assert current == latest_bindings.get(name, old_digest)
