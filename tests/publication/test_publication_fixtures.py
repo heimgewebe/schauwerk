@@ -13793,6 +13793,31 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert "historical_visual_acceptance_inherited" in vector["does_not_establish"]
     for name, digest in vector["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    # This revision changes the SVG parser; preserve the historical D2 proof
+    # and explicitly bind only the two new source/test artifacts.
+    css_path = (
+        ROOT / "docs/operators/evidence/schaubild-d2-svg-css-passive-20261106/technical-proof.json"
+    )
+    css = json.loads(css_path.read_text(encoding="utf-8"))
+    assert css["schema_version"] == "schauwerk-d2-svg-passive-source-supersession.v1"
+    assert css["status"] == "technical_candidate_only"
+    assert css["predecessor_technical_proof"] == {
+        "path": str(successor_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(successor_path.read_bytes()).hexdigest(),
+    }
+    css_source = "src/schauwerk/visual/d2_preview.py"
+    assert css["predecessor_source_binding"] == {
+        "path": css_source,
+        "sha256": successor["source_bindings"][css_source],
+    }
+    assert set(css["source_bindings"]) == {
+        css_source, "tests/visual/test_d2_preview.py",
+    }
+    assert css["evidence_digest"] == digest_mapping(css, "evidence_digest")
+    assert "historical_visual_acceptance_inherited" in css["does_not_establish"]
+    for name, digest in css["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+
     # Native structured knowledge maps supersede only the new editor and
     # admission sources. Older D2, full-editing and vector-PDF receipts remain
     # immutable and cannot silently transfer aesthetic acceptance.
@@ -13831,6 +13856,8 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **successor["source_bindings"],
         **oci["source_bindings"],
         **vector["source_bindings"],
+        **css["source_bindings"],
+
         **knowledge_map["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():

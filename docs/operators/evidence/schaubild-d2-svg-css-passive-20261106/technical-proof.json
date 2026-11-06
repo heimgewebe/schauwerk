@@ -1,0 +1,32 @@
+{
+  "does_not_establish": [
+    "github_full_matrix_success",
+    "production_image_publication",
+    "production_browser_acceptance",
+    "commonthing_live_function",
+    "historical_visual_acceptance_inherited"
+  ],
+  "evidence_digest": "bf3a9d1075d7f1e4825247666c10627df872ea8d23cade97ecf0b05f930457d5",
+  "predecessor_source_binding": {
+    "path": "src/schauwerk/visual/d2_preview.py",
+    "sha256": "1773341e010c8ea1dac76cde0b5f6310ca0d378fb9bdff9bdc2ec95affc13627"
+  },
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-d2-preview-20261105/technical-proof.json",
+    "sha256": "feb23ebb4b0a1d7444378bbe036eef39ab3ce3f1a655a6c6cbfadb26c5ee18e0"
+  },
+  "schema_version": "schauwerk-d2-svg-passive-source-supersession.v1",
+  "scope": "d2-v0.9.0-bounded-svg-css-font-resource-types",
+  "source_bindings": {
+    "src/schauwerk/visual/d2_preview.py": "e7edc8212fb2481e63a6fd31c976038fe38e6f9d8927063d67f6ae4c1fb65c1b",
+    "tests/visual/test_d2_preview.py": "433461e2aaf57f428e9e8eb7632cfe5b01f857e31b81458f2c5cd35c88e64212"
+  },
+  "status": "technical_candidate_only",
+  "validation": {
+    "bounded_parser_negative_positive_cases_10_passed": true,
+    "focused_d2_preview_pytest_19_passed": true,
+    "github_ci_at_proof_creation": "one_failure_source-binding-proof-needs-successor",
+    "local_d2_v0_9_0_oci_render_and_parser_passed": true,
+    "local_ruff_passed": true
+  }
+}
