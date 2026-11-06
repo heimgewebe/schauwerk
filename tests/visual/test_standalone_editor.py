@@ -139,7 +139,8 @@ def test_build_standalone_editor_writes_deterministic_bundle(tmp_path: Path) -> 
         "trusted_proxy_header": "X-Forwarded-For",
         "trusted_proxy_source_cidr_required": True,
     }
-    assert "representation-knowledge-map-native-cutover" in manifest["does_not_establish"]
+    assert manifest["native_renderer"]["admission"] == "representation-or-bounded-native-import"
+    assert "representation-knowledge-map-native-cutover" not in manifest["does_not_establish"]
     assert {item["path"] for item in manifest["files"]} == {
         "app.js",
         "canvas-import.js",
@@ -2610,15 +2611,38 @@ def test_native_product_admission_rejects_excessive_routing_pair_work() -> None:
         _native_product_input(value)
 
 
-def test_native_product_admission_accepts_process_and_fails_closed_for_knowledge_map() -> None:
+def test_native_product_admission_accepts_process_and_structured_knowledge_map() -> None:
     process = _golden_representation("decision-flow-v1.json")
     accepted = _native_product_input(process)
     assert accepted["intent"] == "process"
     assert re.fullmatch(r"[0-9a-f]{64}", str(accepted["input_digest"]))
 
     knowledge_map = _golden_representation("system-landscape-v1.json")
-    with pytest.raises(StandaloneEditorError, match="knowledge_map remains on the legacy"):
-        _native_product_input(knowledge_map)
+    admitted = _native_product_input(knowledge_map)
+    assert admitted["intent"] == "knowledge_map"
+    assert len(admitted["nodes"]) == len(knowledge_map["nodes"])
+    assert len(admitted["edges"]) == len(knowledge_map["edges"])
+    assert re.fullmatch(r"[0-9a-f]{64}", str(admitted["input_digest"]))
+    assert _native_product_input(knowledge_map) == admitted
+
+
+def test_native_product_admission_bounded_knowledge_map_keeps_routing_limits() -> None:
+    model = _golden_representation("system-landscape-v1.json")
+    model["groups"] = []
+    model["nodes"] = [
+        {"id": "left", "label": "Quelle", "kind": "concept"},
+        {"id": "right", "label": "Ziel", "kind": "concept"},
+    ]
+    count = 182
+    model["edges"] = [
+        {"id": f"link_{i}", "from": "left", "to": "right",
+         "label": f"Verbindung {i}", "kind": "association"}
+        for i in range(count)
+    ]
+    assert count <= standalone_editor.MAX_NATIVE_EDGES
+    assert count * count > standalone_editor.MAX_NATIVE_ROUTING_PAIRS
+    with pytest.raises(StandaloneEditorError, match="complexity limits"):
+        _native_product_input(model)
 
 
 def test_native_product_admission_imports_bounded_drawio_request() -> None:
@@ -4827,17 +4851,24 @@ def test_integrated_native_render_endpoint_builds_existing_renderer_bundle(tmp_p
         assert diagram_response.status == 200
         assert "<svg" in diagram_svg
 
-        blocked = json.dumps(_golden_representation("system-landscape-v1.json")).encode("utf-8")
+        knowledge_map = json.dumps(_golden_representation("system-landscape-v1.json")).encode("utf-8")
         connection.request(
             "POST",
             NATIVE_API_PATH,
-            body=blocked,
-            headers={"Content-Type": "application/json", "Content-Length": str(len(blocked))},
+            body=knowledge_map,
+            headers={"Content-Type": "application/json", "Content-Length": str(len(knowledge_map))},
         )
-        blocked_response = connection.getresponse()
-        blocked_body = json.loads(blocked_response.read().decode("utf-8"))
-        assert blocked_response.status == 422
-        assert "knowledge_map remains on the legacy" in blocked_body["error"]
+        accepted_response = connection.getresponse()
+        accepted_body = json.loads(accepted_response.read().decode("utf-8"))
+        assert accepted_response.status == 200
+        assert accepted_body["renderer"] == NATIVE_RENDERER
+        assert re.fullmatch(r"/native/[0-9a-f]{32}/index\.html", accepted_body["url"])
+        connection.request("GET", accepted_body["url"].replace("index.html", "diagram.svg"))
+        knowledge_svg_response = connection.getresponse()
+        knowledge_svg = knowledge_svg_response.read().decode("utf-8")
+        assert knowledge_svg_response.status == 200
+        assert "knowledge-map-card-safe" in knowledge_svg
+        assert "data-source-kind=\"edge\"" in knowledge_svg
         connection.close()
     finally:
         server.shutdown()

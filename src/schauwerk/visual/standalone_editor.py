@@ -119,12 +119,13 @@ AI_HANDOFF_PROMPT: Final = (
     "structured_comparison und portable_offline. Nicht benötigte Felder können fehlen. "
     "requested_formats ist eine Liste ohne Duplikate aus mermaid, canvas, miro_native, "
     "table und document; für ein reines natives Schaubild darf sie leer sein.\n\n"
-    "Für den nativen Schaubild-Produktpfad sind derzeit alle schema-gültigen Intents "
-    "außer knowledge_map zugelassen. Verwende process, sequence, state, timeline oder "
-    "narrative, wenn das fachlich passt. Für eine echte freie Wissens-/Konzeptkarte "
-    "(knowledge_map) gib stattdessen genau einen gültigen JSON-Canvas-1.0-json-Codeblock "
-    "aus; JSON Canvas wird im nativen dokumentgebundenen Editor geöffnet und behält "
-    "seine explizite Geometrie für den Roundtrip.\n\n"
+    "Für den nativen Schaubild-Produktpfad sind alle schema-gültigen Intents "
+    "einschließlich knowledge_map zugelassen. Wähle knowledge_map für strukturierte "
+    "Wissens- und Konzeptkarten mit automatisch angeordneten Knoten und Kanten. "
+    "Wenn der Nutzer ausdrücklich eine frei positionierbare Karte mit festen "
+    "Koordinaten braucht, gib stattdessen genau einen gültigen JSON-Canvas-1.0-"
+    "json-Codeblock aus; JSON Canvas bewahrt die explizite Geometrie beim "
+    "Bearbeiten, Speichern und Wiederöffnen.\n\n"
     "Beachte die inhaltlichen und gestalterischen Wünsche des Nutzers. Verwende kurze, "
     "gut lesbare Beschriftungen und strukturiere das Schaubild so, dass die wesentlichen "
     "Zusammenhänge schnell erkennbar sind. Kein Vorwort, keine Erklärung und keine "
@@ -706,11 +707,6 @@ def _native_product_input(value: Any) -> dict[str, Any]:
         normalized = validate_representation_input(candidate)
     except RepresentationError as exc:
         raise StandaloneEditorError(f"native representation input is invalid: {exc}") from exc
-    if normalized["intent"] == "knowledge_map":
-        raise StandaloneEditorError(
-            "knowledge_map remains on the legacy compatibility path until the "
-            "general native same-row/parallel routing boundary is hardened"
-        )
     group_count = len(normalized["groups"])
     node_count = len(normalized["nodes"])
     edge_count = len(normalized["edges"])
@@ -797,7 +793,7 @@ def build_standalone_editor(
             "runtime": "integrated-serve",
             "api_path": f"{normalized_base_path}{NATIVE_API_PATH}",
             "public_base_path": normalized_base_path,
-            "admission": "representation-except-knowledge-map-or-bounded-native-import",
+            "admission": "representation-or-bounded-native-import",
             "admission_scope": {
                 "key": "client-ip",
                 "max_pinned_entries_per_client": MAX_NATIVE_PINNED_ENTRIES_PER_CLIENT,
@@ -851,7 +847,6 @@ def build_standalone_editor(
             "representation-source-writeback",
             "native-png-export",
             "native-static-host-render-api",
-            "representation-knowledge-map-native-cutover",
             "bundled-legacy-editor-runtime",
             "static-host-security-header-enforcement",
             (

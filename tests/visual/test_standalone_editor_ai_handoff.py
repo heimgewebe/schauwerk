@@ -21,6 +21,9 @@ def test_ai_handoff_guide_is_copyable_and_tool_agnostic(tmp_path) -> None:
 
     assert "schauwerk-representation-input.v1" in AI_HANDOFF_PROMPT
     assert "knowledge_map" in AI_HANDOFF_PROMPT
+    assert "einschließlich knowledge_map zugelassen" in AI_HANDOFF_PROMPT
+    assert "strukturierte" in AI_HANDOFF_PROMPT
+    assert "frei positionierbare Karte" in AI_HANDOFF_PROMPT
     assert "JSON-Canvas-1.0" in AI_HANDOFF_PROMPT
     assert "json-Codeblock" in AI_HANDOFF_PROMPT
     assert "Kein Vorwort, keine Erklärung" in AI_HANDOFF_PROMPT

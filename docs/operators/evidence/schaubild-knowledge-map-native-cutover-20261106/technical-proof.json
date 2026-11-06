@@ -1,0 +1,58 @@
+{
+  "boundary": {
+    "bounded_admission": "existing node/group/edge and routing-pair complexity budgets unchanged",
+    "free_spatial_input": "JSON Canvas 1.0 retains coordinate authority; no automatic conversion to a representation",
+    "history": "native JSON Canvas undo/redo is unchanged; structured representation history is a separate feature",
+    "legacy_compatibility": "existing draw.io compatibility path unchanged",
+    "native_intents": "all canonical representation intents including knowledge_map"
+  },
+  "checks": {
+    "backend_native_api_knowledge_map_http_200_svg": true,
+    "chromium_desktop_edit_save_svg_export_reload": true,
+    "chromium_mobile_emulation_edit_save_svg_export_reload": true,
+    "excessive_routing_pair_work_still_rejected": true,
+    "github_ci": "pending",
+    "native_draft_unmodified_during_pdf_export": true,
+    "native_full_structural_and_golden_regressions": "passed",
+    "native_manifest_admission_updated": true,
+    "public_live_browser": "pending",
+    "real_knowledge_map_vector_pdf_bytes": 92955,
+    "real_knowledge_map_vector_pdf_image_objects": 0,
+    "real_knowledge_map_vector_pdf_sha256": "a7ceaa1eeb58a0b480a3c8eca9d374c4eaf3f0fc4153f1eaab39c9acfd01264b",
+    "real_knowledge_map_vector_pdf_vector_operators": 2268,
+    "ruff": true,
+    "structured_knowledge_map_js_form_rename_group_and_edge": true
+  },
+  "does_not_establish": [
+    "production_deployment",
+    "physical_ipad_safari_acceptance",
+    "historical_visual_acceptance_inherited",
+    "native_representation_undo_redo",
+    "absolute_free_spatial_positions_for_structured_representation"
+  ],
+  "evidence_digest": "e9cdc9e5c27a934dc70260eda15558b0e5e23999022fefa33b56f27f37ba7bee",
+  "historical_evidence_unchanged": {
+    "full_editing": {
+      "path": "docs/operators/evidence/schaubild-full-editing-20261102/technical-proof.json",
+      "sha256": "b22214a62ae874450f0a2e10fe65c35185e29937c2eefb497f7c0d1d5a1d8c65"
+    },
+    "knowledge_map_routing": {
+      "path": "docs/operators/evidence/schaubild-knowledge-map-detour-20261105/technical-proof.json",
+      "sha256": "2f289a508e9ada9b6ca134282b9aefd9726cb78a1d832e62dd2899e3c91afd7e"
+    },
+    "vector_pdf": {
+      "path": "docs/operators/evidence/schaubild-vector-pdf-print-20261106/technical-proof.json",
+      "sha256": "f339628bd12375845f9731d6948a6d334899ff6855f7205a18439fbbb4d5a629"
+    }
+  },
+  "schema_version": "schauwerk-knowledge-map-native-cutover-technical-proof.v1",
+  "scope": "native-structured-knowledge-map-representation",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/representation_editor.py": "ea46793c6ae82f4f5a7eac73221916c3356e677ef4dee3f1f7eaed2f5b5e586c",
+    "src/schauwerk/visual/standalone_editor.py": "1cc297fda547370d75cdcf7db4d2ed68ecc784e5a808e8648c13b05bc94e7984",
+    "tests/visual/test_representation_editor_model.py": "ba1dbf1ccec11751586b59fbc38ab75a3e710454b690a739eafc0622fdd3c99e",
+    "tests/visual/test_standalone_editor.py": "bf923868b0071019bf055db376b9f4f81541dc4b9b73d5349b77ad07c215e514",
+    "tests/visual/test_standalone_editor_ai_handoff.py": "0bc247a257a0e46efa71a357e4cb1d8c40a0cd718dbe876beb0fdffb68523d4e"
+  },
+  "status": "technical_candidate_only"
+}
