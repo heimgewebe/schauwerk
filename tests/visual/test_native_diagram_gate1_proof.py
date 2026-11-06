@@ -292,3 +292,290 @@ def test_gate1_goldens_have_only_inactive_local_svg_resources() -> None:
                         r"url\(#native-(?:arrow-[a-z_]+|clip-[A-Za-z0-9_.:-]+)\)",
                         value,
                     )
+
+
+def test_knowledge_map_six_parallel_detours_have_distinct_label_lanes() -> None:
+    """A 16-edge stress case keeps every connection, path and label readable."""
+    original = _load("system-landscape-v1.json")
+    model = copy.deepcopy(original)
+    additions = [
+        ("world", "grabowski", "Lange Übergabe"),
+        ("world", "grabowski", "Parallele Freigabe"),
+        ("world", "grabowski", "Sicherungslinie"),
+        ("world", "chronik", "Langer Beobachtungsweg"),
+        ("chronik", "world", "Rückmeldung"),
+        ("bureau", "chronik", "Dienst-Sicht"),
+        ("world", "bureau", "Steuerungsaufgabe"),
+    ]
+    model["edges"].extend(
+        {
+            "id": f"stress{index:02d}",
+            "from": source,
+            "to": target,
+            "label": label,
+            "kind": "flow" if index < 14 else "evidence",
+        }
+        for index, (source, target, label) in enumerate(additions, 10)
+    )
+    assert len(model["edges"]) == 16
+    rendered = render_native_diagram(model)
+    assert rendered == render_native_diagram(copy.deepcopy(model))
+    assert _load("system-landscape-v1.json") == original
+    root = ET.fromstring(rendered)
+    node_boxes: dict[str, tuple[float, float, float, float]] = {}
+    for element in root.iter():
+        if element.get("data-source-kind") != "node":
+            continue
+        rectangle = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rectangle is not None
+        node_boxes[str(element.attrib["data-source-id"])] = _rect_box(rectangle)
+
+    source_edges = {str(edge["id"]): edge for edge in model["edges"]}
+    routed_edges: set[str] = set()
+    detour_labels: dict[str, tuple[float, float, float, float]] = {}
+    for element in root.iter():
+        edge_id = element.get("data-source-id")
+        if element.get("data-source-kind") != "edge" or edge_id not in source_edges:
+            continue
+        routed_edges.add(edge_id)
+        path = element.find(f"{{{SVG_NAMESPACE}}}path")
+        rectangle = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert path is not None and rectangle is not None
+        source = source_edges[edge_id]
+        other_nodes = {
+            key: box for key, box in node_boxes.items()
+            if key not in {source["from"], source["to"]}
+        }
+        for px, py in _path_points(path.attrib["d"]):
+            assert all(
+                not (x + 0.2 < px < x + width - 0.2
+                     and y + 0.2 < py < y + height - 0.2)
+                for x, y, width, height in other_nodes.values()
+            ), f"{edge_id} crosses an unrelated node at {px:.1f}, {py:.1f}"
+        if element.get("data-route") == "knowledge-map-row-card-detour":
+            bounds = _rect_box(rectangle)
+            detour_labels[edge_id] = bounds
+            assert all(not _boxes_overlap(bounds, box) for box in node_boxes.values())
+            if edge_id in {"stress14", "stress15"}:
+                # Full single words must not be torn into a final-letter line
+                # when the long intervening-card detour has abundant space.
+                labels = [
+                    item.text
+                    for item in element.findall(f".//{{{SVG_NAMESPACE}}}tspan")
+                ]
+                assert labels == [source["label"]], (edge_id, labels)
+    assert routed_edges == set(source_edges)
+    assert set(detour_labels) == {f"stress{index:02d}" for index in range(10, 16)}
+    for index, first in enumerate(sorted(detour_labels)):
+        for second in sorted(detour_labels)[index + 1:]:
+            assert not _boxes_overlap(detour_labels[first], detour_labels[second]), (
+                f"{first}/{second} overlap"
+            )
+
+
+def _ungrouped_knowledge_map(
+    node_count: int, connections: list[tuple[int, int, str]],
+) -> dict:
+    model = copy.deepcopy(_load("system-landscape-v1.json"))
+    model["id"] = "ungrouped_knowledge_map_codex_p2"
+    model["groups"] = []
+    model["nodes"] = [
+        {
+            "id": f"n{index}",
+            "label": f"System {index}",
+            "kind": "system",
+            "group": None,
+            "summary": "Kollisionsprüfung",
+        }
+        for index in range(node_count)
+    ]
+    model["edges"] = [
+        {
+            "id": f"e{index}",
+            "from": f"n{source}",
+            "to": f"n{target}",
+            "label": label,
+            "kind": "flow",
+        }
+        for index, (source, target, label) in enumerate(connections)
+    ]
+    return model
+
+
+def _edge_boxes(
+    root: ET.Element,
+) -> dict[str, tuple[str | None, tuple[float, float, float, float]]]:
+    results = {}
+    for element in root.iter():
+        if element.get("data-source-kind") != "edge":
+            continue
+        rect = element.find(f"{{{SVG_NAMESPACE}}}rect")
+        assert rect is not None
+        results[str(element.get("data-source-id"))] = (
+            element.get("data-route"),
+            _rect_box(rect),
+        )
+    return results
+
+
+def test_ungrouped_last_row_detour_labels_remain_inside_svg() -> None:
+    """Two detours on the only row must not fall below the saved SVG viewBox."""
+    model = _ungrouped_knowledge_map(
+        4, [(0, 3, "Alpha"), (0, 3, "Beta")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    for edge_id, (route, (x, y, width, height)) in boxes.items():
+        assert route == "knowledge-map-row-card-detour"
+        assert x >= 0 and x + width > 0
+        assert y >= 0
+        assert y + height + 8 <= canvas_height, (
+            edge_id, y + height, canvas_height
+        )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_knowledge_map_detours_avoid_adjacent_vertical_label() -> None:
+    """An existing row-corridor label reserves space in the same real gap."""
+    model = _ungrouped_knowledge_map(
+        8,
+        [
+            (0, 2, "Alpha"),
+            (0, 2, "Bravo"),
+            (0, 2, "Charlie"),
+            (1, 5, "Middle"),
+        ],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1", "e2", "e3"}
+    assert boxes["e3"][0] == "vertical"
+    for edge_id in ("e0", "e1", "e2"):
+        assert boxes[edge_id][0] == "knowledge-map-row-card-detour"
+        assert not _boxes_overlap(boxes[edge_id][1], boxes["e3"][1]), (
+            edge_id, boxes[edge_id], boxes["e3"]
+        )
+    for index, left in enumerate(("e0", "e1", "e2")):
+        for right in ("e0", "e1", "e2")[index + 1:]:
+            assert not _boxes_overlap(boxes[left][1], boxes[right][1])
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_single_detour_avoids_adjacent_vertical_label() -> None:
+    """Even one long same-row detour must not cover the existing row label."""
+    model = _ungrouped_knowledge_map(
+        8, [(0, 2, "Alpha"), (1, 5, "Middle")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert boxes["e1"][0] == "vertical"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_last_row_single_detour_survives_other_row_expansion() -> None:
+    """A busy earlier row must not clip one subsequent cross-card detour."""
+    connections = [
+        (0, 3, f"Flow {index}") for index in range(6)
+    ] + [(4, 7, "Final")]
+    model = _ungrouped_knowledge_map(8, connections)
+    root = ET.fromstring(render_native_diagram(model))
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    labels = _edge_boxes(root)
+    assert set(labels) == {f"e{index}" for index in range(7)}
+    route, (x, y, width, height) = labels["e6"]
+    assert route == "knowledge-map-row-card-detour"
+    assert x >= 0 and x + width > 0
+    assert y + height + 8 <= canvas_height, (
+        y + height, canvas_height
+    )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_tall_adjacent_row_labels_have_reserved_full_height() -> None:
+    """A two-line label needs more clearance than a one-line detour label."""
+    for count in (1, 2, 3, 6):
+        connections = [(0, 2, "Kurz") for _ in range(count)]
+        connections.append((1, 5, "Längere vertikale Rückmeldung"))
+        model = _ungrouped_knowledge_map(8, connections)
+        root = ET.fromstring(render_native_diagram(model))
+        boxes = _edge_boxes(root)
+        existing = boxes[f"e{count}"]
+        assert existing[0] == "vertical"
+        assert existing[1][3] > 26
+        for edge_id in (f"e{index}" for index in range(count)):
+            assert boxes[edge_id][0] == "knowledge-map-row-card-detour"
+            assert not _boxes_overlap(boxes[edge_id][1], existing[1]), (
+                count, edge_id, boxes[edge_id], existing
+            )
+        assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_long_diagonal_corridor_label_does_not_cover_detour() -> None:
+    """A 3-row diagonal label occupies the same middle physical corridor."""
+    model = _ungrouped_knowledge_map(
+        16, [(4, 7, "Alpha"), (0, 15, "Middle")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_long_same_column_label_reserves_detour_corridor() -> None:
+    """A multi-row vertical return occupies its source-row label corridor."""
+    model = _ungrouped_knowledge_map(
+        12, [(0, 2, "Alpha"), (1, 9, "Long vertical relation")],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_packed_adjacent_corridor_labels_avoid_single_detour() -> None:
+    """Final packing may shift two vertical labels into the detour's x range."""
+    model = _ungrouped_knowledge_map(
+        8,
+        [
+            (0, 3, "Alpha"),
+            (1, 5, "Long vertical relation"),
+            (1, 5, "Long vertical relation"),
+        ],
+    )
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1", "e2"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    for edge_id in ("e1", "e2"):
+        assert boxes[edge_id][0] == "vertical"
+        assert not _boxes_overlap(boxes["e0"][1], boxes[edge_id][1]), (
+            edge_id, boxes,
+        )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_last_row_detour_avoids_feedback_footer_label() -> None:
+    """A footer feedback label must follow the detour's complete SVG bounds."""
+    model = _ungrouped_knowledge_map(
+        4, [(0, 2, "Alpha"), (0, 2, "Middle")],
+    )
+    model["edges"][1]["kind"] = "feedback"
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    assert all(y + h + 8 <= canvas_height for x, y, w, h in (
+        box for _, box in boxes.values()
+    ))
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
