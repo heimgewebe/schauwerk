@@ -41,10 +41,19 @@ _D2_CONNECTION_KEY = re.compile(
     r"\)\[(?P<ordinal>\d+)\]$"
 )
 _CSS_URL = re.compile(r"url\(\s*([\"']?)(.*?)\1\s*\)", re.IGNORECASE)
+_PASSIVE_WOFF_DATA_URL = re.compile(
+    r"data:(?:application/font-woff|font/woff);base64,[A-Za-z0-9+/]+={0,2}",
+    re.IGNORECASE,
+)
 
 
 class D2PreviewError(ValueError):
     """An alternative SVG cannot be proven source-bound and passive."""
+
+
+def _passive_svg_url(location: str) -> bool:
+    """Permit D2-local references and observed embedded WOFF font assets only."""
+    return location.startswith("#") or _PASSIVE_WOFF_DATA_URL.fullmatch(location) is not None
 
 
 def _d2_quoted(value: str) -> str:
@@ -173,7 +182,7 @@ def _assert_passive_svg(svg: bytes) -> ET.Element:
             if "url(" in value.casefold():
                 for match in _CSS_URL.finditer(value):
                     location = match.group(2).strip()
-                    if not (location.startswith("#") or location.startswith("data:")):
+                    if not _passive_svg_url(location):
                         raise D2PreviewError("D2 SVG includes an external URL")
         if local == "style":
             css = item.text or ""
@@ -181,7 +190,7 @@ def _assert_passive_svg(svg: bytes) -> ET.Element:
                 raise D2PreviewError("D2 SVG includes an external/active style")
             for match in _CSS_URL.finditer(css):
                 location = match.group(2).strip()
-                if not (location.startswith("#") or location.startswith("data:")):
+                if not _passive_svg_url(location):
                     raise D2PreviewError("D2 SVG stylesheet includes an external URL")
     return root
 

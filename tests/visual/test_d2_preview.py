@@ -62,6 +62,10 @@ def test_compiler_preserves_source_text_including_literal_variable_syntax() -> N
         '<a href="https://outside.example"><g/></a>',
         '<style>@import url(https://outside.example/style.css)</style>',
         '<rect fill="url(https://outside.example/x)"/>',
+        '<style>.x { font-family: url(data:text/html;base64,PGgxPkJBRDwvaDE+); }</style>',
+        '<style>.x { font-family: url(data:image/svg+xml;base64,PHN2Zy8+); }</style>',
+        '<rect fill="url(data:text/html;base64,PGgxPkJBRDwvaDE+)"/>',
+        '<rect fill="url(data:image/svg+xml;base64,PHN2Zy8+)"/>',
     ],
 )
 def test_passive_svg_rejects_active_or_external_content(malicious: str) -> None:
@@ -71,6 +75,24 @@ def test_passive_svg_rejects_active_or_external_content(malicious: str) -> None:
     ).encode("utf-8")
     with pytest.raises(D2PreviewError):
         _assert_passive_svg(source)
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "#mk-d2-123",
+        "data:application/font-woff;base64,d09GRgABAAAA",
+        "data:font/woff;base64,d09GRgABAAAA",
+    ],
+)
+def test_passive_svg_preserves_d2_embedded_fonts_and_local_urls(location: str) -> None:
+    source = (
+        '<svg xmlns="http://www.w3.org/2000/svg" data-d2-version="v0.9.0">'
+        + f'<style>.x {{ font-family: url({location}); }}</style>'
+        + f'<rect fill="url({location})"/>'
+        + "</svg>"
+    ).encode("utf-8")
+    _assert_passive_svg(source)
 
 
 def test_preview_requires_explicit_pinned_binary(monkeypatch: pytest.MonkeyPatch) -> None:
