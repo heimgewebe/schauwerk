@@ -561,3 +561,21 @@ def test_packed_adjacent_corridor_labels_avoid_single_detour() -> None:
             edge_id, boxes,
         )
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_last_row_detour_avoids_feedback_footer_label() -> None:
+    """A footer feedback label must follow the detour's complete SVG bounds."""
+    model = _ungrouped_knowledge_map(
+        4, [(0, 2, "Alpha"), (0, 2, "Middle")],
+    )
+    model["edges"][1]["kind"] = "feedback"
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = _edge_boxes(root)
+    assert set(boxes) == {"e0", "e1"}
+    assert boxes["e0"][0] == "knowledge-map-row-card-detour"
+    assert not _boxes_overlap(boxes["e0"][1], boxes["e1"][1]), boxes
+    _, _, _, canvas_height = map(float, root.attrib["viewBox"].split())
+    assert all(y + h + 8 <= canvas_height for x, y, w, h in (
+        box for _, box in boxes.values()
+    ))
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))

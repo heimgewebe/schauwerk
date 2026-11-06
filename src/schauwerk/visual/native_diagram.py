@@ -6322,6 +6322,21 @@ def render_native_diagram(
             if intent == "process"
             else max_node_bottom
         )
+        if intent == "knowledge_map":
+            # Feedback labels are a footer *after* the last row. A new
+            # below-card detour can occupy that original footer, so start the
+            # return labels under the actual detour label bounds instead.
+            last_row_y = max(y for _, y in positions.values())
+            if last_row_y in dense_by_row:
+                last_detour_bottom = max(
+                    last_row_y + _NODE_HEIGHT + non_process_row_gap / 2
+                    + knowledge_map_detour_offsets.get(edge_id, 8.0)
+                    + label_height / 2
+                    for edge_id, label_height in dense_by_row[last_row_y]
+                )
+                feedback_base_bottom = max(
+                    feedback_base_bottom, math.ceil(last_detour_bottom + 12)
+                )
         feedback_heights = [
             _edge_label_metrics(edge, positions, intent).height
             for edge in feedback_edges
@@ -6350,7 +6365,7 @@ def render_native_diagram(
                 + 8,
             )
         else:
-            height = max(height, max_node_bottom + 18 + feedback_heights[0])
+            height = max(height, feedback_base_bottom + 18 + feedback_heights[0])
     if feedback_outer_footer_ids:
         # Reserve a path-only footer below the semantic feedback label
         # pack.  The extra strip is requested only for saturated rows.

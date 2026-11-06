@@ -1,11 +1,13 @@
 {
-  "change": "Knowledge Map card-safe long same-row detours, clip-safe SVG viewBox and label-height lanes reserved against all actual physical corridor occupants independently of later horizontal label packing.",
+  "change": "Knowledge Map native detours: card-safe SVG routing, row-label lanes independent of later X packing, last-row clipping prevention, and feedback footer below occupied detour labels.",
   "checks": {
     "adversarial_180_packed_label_layouts": "passed",
     "adversarial_30_layouts": "passed",
     "adversarial_36_long_diagonal_layouts": "passed",
+    "adversarial_48_feedback_detour_layouts": "passed",
     "adversarial_64_vertical_return_layouts": "passed",
     "codex_p2_adjacent_row_label_red_to_green": "passed",
+    "codex_p2_feedback_footer_collision_red_to_green": "passed",
     "codex_p2_last_row_viewbox_red_to_green": "passed",
     "codex_p2_long_vertical_same_column_red_to_green": "passed",
     "codex_p2_multiline_diagonal_label_red_to_green": "passed",
@@ -21,8 +23,8 @@
     "visual_acceptance": "pending"
   },
   "current_source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "1168c8678831ba368243d6efc8d58d5b6ec7ebe3efa6366a674b8704d49973d0",
-    "tests/visual/test_native_diagram_gate1_proof.py": "f29a835bb431a6a95f7bfb86b27c6379b88b51e8231c58ee76122bbc00123504"
+    "src/schauwerk/visual/native_diagram.py": "e66ad1b2061852001db92c237b1f46d5d39e5bfdfac253e82bbe4310422b943d",
+    "tests/visual/test_native_diagram_gate1_proof.py": "079ccc4eb43a6278902e2094dd728c35fe0fccfe95d4de1e70074d6fd7454b34"
   },
   "invariants": [
     "Earlier evidence stays byte-for-byte intact",
