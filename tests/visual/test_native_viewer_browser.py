@@ -583,16 +583,26 @@ try {
     }
   };
   const acceptsRealOffsetHit = () => {
-    const matrix = edgePath.getScreenCTM();
-    if (!matrix) return false;
+    const rect = svg.getBoundingClientRect();
+    const box = svg.viewBox.baseVal;
+    if (!rect.width || !rect.height || !box.width || !box.height) return false;
+    // The SVG is translated and scaled by an HTML parent, not by its viewBox.
+    // Compute screen points from its actual DOM rect; getScreenCTM may omit an
+    // ancestor CSS transform in some browser revisions.
+    const sx = rect.width / box.width;
+    const sy = rect.height / box.height;
+    const toScreen = (point) => ({
+      x: rect.left + (point.x - box.x) * sx,
+      y: rect.top + (point.y - box.y) * sy,
+    });
     const length = edgePath.getTotalLength();
     for (const t of [0.16, 0.25, 0.34, 0.66, 0.75, 0.84]) {
       const point = edgePath.getPointAtLength(length * t);
       const prev = edgePath.getPointAtLength(length * (t - 0.015));
       const next = edgePath.getPointAtLength(length * (t + 0.015));
-      const start = new DOMPoint(prev.x, prev.y).matrixTransform(matrix);
-      const end = new DOMPoint(next.x, next.y).matrixTransform(matrix);
-      const center = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+      const start = toScreen(prev);
+      const end = toScreen(next);
+      const center = toScreen(point);
       const lengthPx = Math.hypot(end.x - start.x, end.y - start.y);
       if (lengthPx < 0.2) continue;
       for (const direction of [-1, 1]) {
