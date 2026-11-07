@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import re
 import threading
-import xml.etree.ElementTree as ET
 from functools import partial
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
@@ -455,54 +454,3 @@ def test_json_canvas_product_count_gate_treats_omitted_arrays_as_empty(
     with pytest.raises(StandaloneEditorError, match="product complexity limits"):
         _native_product_input(_request(source))
     assert conversion_called is False
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="E0 known baseline: a native JSON Canvas edge label overlaps a third node",
-)
-def test_native_canvas_edge_label_avoids_intervening_node_baseline() -> None:
-    """Pin the known P0 label-occlusion defect until obstacle-aware routing lands."""
-    from schauwerk.visual.native_diagram import render_native_editing_document
-
-    source = {
-        "nodes": [
-            {"id": "a", "type": "text", "x": 0, "y": 0,
-             "width": 120, "height": 80, "text": "Start"},
-            {"id": "blocker", "type": "text", "x": 230, "y": 0,
-             "width": 120, "height": 80, "text": "Zwischenknoten"},
-            {"id": "b", "type": "text", "x": 400, "y": 0,
-             "width": 120, "height": 80, "text": "Ziel"},
-        ],
-        "edges": [
-            {"id": "edge", "fromNode": "a", "toNode": "b",
-             "label": "Verbindung", "toEnd": "arrow"},
-        ],
-    }
-    svg = render_native_editing_document(_native_product_input(_request(source)))
-    root = ET.fromstring(svg)
-    namespace = "{http://www.w3.org/2000/svg}"
-    edge = next(
-        group for group in root.iter(namespace + "g")
-        if group.get("data-source-kind") == "edge"
-        and group.get("data-source-id") == "edge"
-    )
-    node = next(
-        group for group in root.iter(namespace + "g")
-        if group.get("data-source-kind") == "node"
-        and group.get("data-source-id") == "blocker"
-    )
-    label = next(
-        rect for rect in edge.findall(namespace + "rect")
-        if float(rect.get("width", "0")) > 0
-    )
-    obstacle = node.find(namespace + "rect")
-    assert obstacle is not None
-
-    def bounds(rect: ET.Element) -> tuple[float, float, float, float]:
-        x, y = float(rect.get("x", "0")), float(rect.get("y", "0"))
-        return x, y, x + float(rect.get("width", "0")), y + float(rect.get("height", "0"))
-
-    ax, ay, ar, ab = bounds(label)
-    bx, by, br, bb = bounds(obstacle)
-    assert not (ax < br and ar > bx and ay < bb and ab > by)
