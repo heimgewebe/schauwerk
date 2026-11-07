@@ -373,9 +373,7 @@ button:focus-visible {
 .native-diagram [data-source-kind="edge"] > path.native-edge-hit {
   fill: none;
   stroke: transparent !important;
-  stroke-width: 24px !important;
   pointer-events: stroke;
-  vector-effect: non-scaling-stroke;
   filter: none !important;
 }
 .native-diagram [data-source-kind="edge"]:focus-visible > path:not(.native-edge-hit) {
@@ -1040,6 +1038,7 @@ let pointerChangedView = false;
 let pointerMovedNode = false;
 let pointerFitPending = false;
 const DRAG_THRESHOLD_PX = 4;
+const EDGE_HIT_TARGET_SCREEN_PX = 24;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
 const FIT_OVERLAY_CLEARANCE = 8;
@@ -1316,6 +1315,13 @@ function rebuildDocument(document) {
 
 function applyView() {
   canvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+  // Canvas zoom is a CSS transform on the wrapping DIV, not SVG viewBox
+  // scaling. An SVG non-scaling stroke does not compensate this zoom.
+  // Keep the pointer target 24 actual CSS pixels wide at every zoom level.
+  const hitWidth = EDGE_HIT_TARGET_SCREEN_PX / view.scale;
+  for (const edgeState of edges.values()) {
+    edgeState.hitPath.setAttribute("stroke-width", hitWidth.toFixed(3));
+  }
   zoomValue.value = `${Math.round(view.scale * 100)} %`;
   zoomValue.textContent = zoomValue.value;
 }
@@ -1872,9 +1878,8 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
   hitPath.setAttribute("d", path.getAttribute("d") || "");
   hitPath.setAttribute("fill", "none");
   hitPath.setAttribute("stroke", "transparent");
-  hitPath.setAttribute("stroke-width", "24");
+  hitPath.setAttribute("stroke-width", String(EDGE_HIT_TARGET_SCREEN_PX / view.scale));
   hitPath.setAttribute("pointer-events", "stroke");
-  hitPath.setAttribute("vector-effect", "non-scaling-stroke");
   hitPath.setAttribute("aria-hidden", "true");
   edgeGroup.insertBefore(hitPath, labelRect);
   edgeGroup.setAttribute("tabindex", "0");
