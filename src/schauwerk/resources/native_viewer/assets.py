@@ -60,6 +60,22 @@ INDEX_HTML = r"""<!doctype html>
                 <option value="top">Oben</option>
                 <option value="bottom">Unten</option>
               </select>
+              <label for="edgeFromEnd">Startpfeil</label>
+              <select id="edgeFromEnd" aria-label="Pfeilrichtung am Anfang">
+                <option value="none">Keiner</option>
+                <option value="arrow">Pfeil</option>
+              </select>
+              <label for="edgeToEnd">Zielpfeil</label>
+              <select id="edgeToEnd" aria-label="Pfeilrichtung am Ziel">
+                <option value="none">Keiner</option>
+                <option value="arrow">Pfeil</option>
+              </select>
+              <label for="edgeKind">Beziehung</label>
+              <select id="edgeKind" aria-label="Beziehungstyp">
+                <option value="flow">Verbindung</option>
+                <option value="association">Assoziation</option>
+                <option value="feedback">Rückkopplung</option>
+              </select>
             </div>
             <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
           </div>
@@ -1037,6 +1053,9 @@ const smartRoutingButton = document.querySelector("#smartRouting");
 const edgePorts = document.querySelector("#edgePorts");
 const edgeFromPort = document.querySelector("#edgeFromPort");
 const edgeToPort = document.querySelector("#edgeToPort");
+const edgeFromEnd = document.querySelector("#edgeFromEnd");
+const edgeToEnd = document.querySelector("#edgeToEnd");
+const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
@@ -1814,6 +1833,9 @@ function updateDocumentToolbarState() {
     const edgeModel = sourceModel.edges.find(item => String(item.id) === selectedEdgeId);
     if (edgeFromPort instanceof HTMLSelectElement) edgeFromPort.value = edgeModel?.from_side || "";
     if (edgeToPort instanceof HTMLSelectElement) edgeToPort.value = edgeModel?.to_side || "";
+    if (edgeFromEnd instanceof HTMLSelectElement) edgeFromEnd.value = edgeModel?.from_end || "none";
+    if (edgeToEnd instanceof HTMLSelectElement) edgeToEnd.value = edgeModel?.to_end || "arrow";
+    if (edgeKind instanceof HTMLSelectElement) edgeKind.value = edgeModel?.source?.schauwerk?.kind || "flow";
   }
   setDocumentControlState(
     addNodeButton,
@@ -2421,6 +2443,32 @@ function changeSelectedEdgePort(property, value) {
 }
 edgeFromPort?.addEventListener("change", () => changeSelectedEdgePort("from_side", edgeFromPort.value));
 edgeToPort?.addEventListener("change", () => changeSelectedEdgePort("to_side", edgeToPort.value));
+function changeSelectedEdgeEnd(property, value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId ||
+      !["none", "arrow"].includes(value)) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  edge[property] = value;
+  rebuildDocument(snapshot);
+}
+function changeSelectedEdgeKind(value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId ||
+      !["flow", "association", "feedback"].includes(value)) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  edge.source = cloneJson(edge.source || {});
+  const extension = { ...(edge.source.schauwerk || {}) };
+  if (value === "flow") delete extension.kind;
+  else extension.kind = value;
+  if (Object.keys(extension).length) edge.source.schauwerk = extension;
+  else delete edge.source.schauwerk;
+  rebuildDocument(snapshot);
+}
+edgeFromEnd?.addEventListener("change", () => changeSelectedEdgeEnd("from_end", edgeFromEnd.value));
+edgeToEnd?.addEventListener("change", () => changeSelectedEdgeEnd("to_end", edgeToEnd.value));
+edgeKind?.addEventListener("change", () => changeSelectedEdgeKind(edgeKind.value));
 window.addEventListener("keydown", (event) => {
   if (!documentEditorHosted || observationMode || (!event.ctrlKey && !event.metaKey) ||
       event.altKey || event.isComposing || textDialog?.open) return;
