@@ -13791,8 +13791,47 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "Existing JPEG-backed PDF export preserved as a separate option"
     )
     assert "historical_visual_acceptance_inherited" in vector["does_not_establish"]
+    # The historical vector-PDF proof is immutable. Its old editor binding
+    # must be superseded by the new, independently bound history proof below.
     for name, digest in vector["source_bindings"].items():
+        if name != editor_path:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+
+    history_path = (
+        ROOT / "docs/operators/evidence"
+        / "schaubild-native-canvas-first-edit-history-20261107/technical-proof.json"
+    )
+    history = json.loads(history_path.read_text(encoding="utf-8"))
+    assert history["schema_version"] == (
+        "schauwerk-native-canvas-first-edit-history-technical-proof.v1"
+    )
+    assert history["status"] == "technical_candidate_only"
+    assert history["predecessor_technical_proof"] == {
+        "path": str(vector_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(vector_path.read_bytes()).hexdigest(),
+    }
+    assert history["predecessor_source_binding"] == {
+        "path": editor_path,
+        "sha256": vector["source_bindings"][editor_path],
+    }
+    assert set(history["source_bindings"]) == {
+        editor_path,
+        "tests/visual/test_native_history_contract.py",
+        "tests/visual/test_standalone_editor.py",
+    }
+    assert history["evidence_digest"] == digest_mapping(history, "evidence_digest")
+    assert history["validation"][
+        "local_webkitgtk_fixed_source_first_edit_without_arbitrary_sleep_passed"
+    ] is True
+    assert history["validation"]["local_chromium_browser_history_suite_passed"] is True
+    assert history["validation"][
+        "local_combined_product_ui_history_and_representation_pytest_passed"
+    ] == 25
+    assert "historical_visual_acceptance_inherited" in history["does_not_establish"]
+    assert "physical_ipad_safari_acceptance" in history["does_not_establish"]
+    for name, digest in history["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+
     # This revision changes the SVG parser; preserve the historical D2 proof
     # and explicitly bind only the two new source/test artifacts.
     css_path = (
@@ -13849,8 +13888,23 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_image_objects"] == 0
     assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_vector_operators"] >= 100
     assert "native_representation_undo_redo" in knowledge_map["does_not_establish"]
+    # Browser retry now respects startup-ACK, so the old Knowledge-Map test
+    # source binding is preserved as a predecessor, not silently rewritten.
+    assert history["additional_predecessor_technical_proof"] == {
+        "path": str(knowledge_map_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(knowledge_map_path.read_bytes()).hexdigest(),
+    }
+    retry_test = "tests/visual/test_standalone_editor.py"
+    assert history["additional_predecessor_source_binding"] == {
+        "path": retry_test,
+        "sha256": knowledge_map["source_bindings"][retry_test],
+    }
+    assert history["validation"][
+        "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed"
+    ] is True
     for name, sha in knowledge_map["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        if name != retry_test:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
     latest_bindings = {
         **successor["source_bindings"],
@@ -13859,6 +13913,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **css["source_bindings"],
 
         **knowledge_map["source_bindings"],
+        **history["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()

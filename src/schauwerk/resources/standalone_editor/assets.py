@@ -2751,7 +2751,8 @@ function prepareInput(raw, title = "Schaubild") {
 function replaceEditorFrame() {
   const previous = elements.frame;
   const frame = previous.cloneNode(false);
-  frame.inert = false;
+  // A hosted Canvas must receive its initial history preimage before user edits.
+  frame.inert = activeEngine === "native" && Boolean(currentNativeCanvas);
   frame.removeAttribute("src");
   previous.replaceWith(frame);
   elements.frame = frame;
@@ -3682,6 +3683,7 @@ window.addEventListener("message", (event) => {
         let readyStatus = null;
         if (startupSync && activeEngine === "native" && !nativeCanvasRenderStale) {
           nativeFrameReady = true;
+          elements.frame.inert = false;
           readyStatus = pendingNativeReadyStatus;
           pendingNativeReadyStatus = null;
           syncNativeHistoryControls();

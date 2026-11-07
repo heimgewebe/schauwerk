@@ -108,13 +108,17 @@ try {
   const menu = document.querySelector(".workspace-tools-menu");
   if (!undo || !redo || !menu) throw new Error("History buttons are missing");
   document.querySelector("#blankButton").click();
+  if (!document.querySelector("#editorFrame")?.inert) {
+    throw new Error("Canvas became interactive before its initial history snapshot");
+  }
   await wait(() => {
+    const frame = document.querySelector("#editorFrame");
     const viewer = frameDoc();
     const add = viewer?.querySelector("#addNode");
-    return viewer?.readyState === "complete" && add &&
+    return frame && !frame.inert && viewer?.readyState === "complete" && add &&
       !add.hidden && !add.disabled &&
       viewer.querySelector("#status")?.textContent?.includes("Ansicht angepasst");
-  }, "Native viewer module was not ready for edits");
+  }, "Native viewer startup acknowledgement did not unlock editing");
   if (!menu.hidden || !undo.disabled || !redo.disabled) {
     throw new Error("Empty native workspace exposed enabled history");
   }
