@@ -231,42 +231,53 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
       [x1 + 0.01, y0 - 0.01], [x1 + 0.01, y1 + 0.01],
     ]) vertexIndex(p);
   }
-  const graph = vertices.map(() => []);
-  for (let i = 0; i < vertices.length; i++) {
-    for (let j = i + 1; j < vertices.length; j++) {
-      if (clear(vertices[i], vertices[j], allBoxes)) {
-        const length = distance(vertices[i], vertices[j]);
-        graph[i].push([j, length]);
-        graph[j].push([i, length]);
+  const buildGraph = obstacles => {
+    const graph = vertices.map(() => []);
+    for (let i = 0; i < vertices.length; i++) {
+      for (let j = i + 1; j < vertices.length; j++) {
+        if (clear(vertices[i], vertices[j], obstacles)) {
+          const length = distance(vertices[i], vertices[j]);
+          graph[i].push([j, length]);
+          graph[j].push([i, length]);
+        }
       }
     }
-  }
-  let best = null;
-  for (const [si, ti, ss, ts, start, ex, ent, end] of candidates) {
-    const route = dijkstra(graph, vertexIndex(ex), vertexIndex(ent));
-    if (route === null) continue;
-    const poly = [];
-    for (const p of [start, ex, ...route.map(i => vertices[i]), ent, end]) {
-      if (!poly.length || distance(poly[poly.length - 1], p) > 0.001) poly.push(p);
+    return graph;
+  };
+  const bestRoute = graph => {
+    let best = null;
+    for (const [si, ti, ss, ts, start, ex, ent, end] of candidates) {
+      const route = dijkstra(graph, vertexIndex(ex), vertexIndex(ent));
+      if (route === null) continue;
+      const poly = [];
+      for (const p of [start, ex, ...route.map(i => vertices[i]), ent, end]) {
+        if (!poly.length || distance(poly[poly.length - 1], p) > 0.001) poly.push(p);
+      }
+      if (poly.slice(1).some((p, i) => !clear(poly[i], p, blocking))) continue;
+      let blocked = false;
+      for (let i = 1; i < poly.length - 2; i++) {
+        if (!clear(poly[i], poly[i + 1], allBoxes)) { blocked = true; break; }
+      }
+      if (blocked) continue;
+      let length = 0, turns = 0;
+      for (let i = 1; i < poly.length; i++) length += distance(poly[i - 1], poly[i]);
+      for (let i = 1; i < poly.length - 1; i++) {
+        const a = poly[i - 1], b = poly[i], c = poly[i + 1];
+        const cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+        if (Math.abs(cross) > 1e-3) turns++;
+      }
+      const score = length + turns * 3;
+      if (!best || score < best.score ||
+          (score === best.score && (si < best.si || (si === best.si && ti < best.ti))))
+        best = { score, si, ti, ss, ts, poly };
     }
-    if (poly.slice(1).some((p, i) => !clear(poly[i], p, blocking))) continue;
-    let blocked = false;
-    for (let i = 1; i < poly.length - 2; i++) {
-      if (!clear(poly[i], poly[i + 1], allBoxes)) { blocked = true; break; }
-    }
-    if (blocked) continue;
-    let length = 0, turns = 0;
-    for (let i = 1; i < poly.length; i++) length += distance(poly[i - 1], poly[i]);
-    for (let i = 1; i < poly.length - 1; i++) {
-      const a = poly[i - 1], b = poly[i], c = poly[i + 1];
-      const cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
-      if (Math.abs(cross) > 1e-3) turns++;
-    }
-    const score = length + turns * 3;
-    if (!best || score < best.score ||
-        (score === best.score && (si < best.si || (si === best.si && ti < best.ti))))
-      best = { score, si, ti, ss, ts, poly };
-  }
+    return best;
+  };
+  // Local candidates are collision-certified against every node; retry
+  // the full graph only when the truncated search cannot find a safe path.
+  let best = bestRoute(buildGraph(unique));
+  if (!best && unique.length !== allBoxes.length)
+    best = bestRoute(buildGraph(allBoxes));
   if (!best) return null;
   const { poly, ss, ts } = best;
   const label = labelPosition(poly);
