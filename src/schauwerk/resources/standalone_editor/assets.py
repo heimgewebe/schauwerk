@@ -3900,7 +3900,7 @@ elements.nativeUndoButton.addEventListener("click", () => { void moveNativeHisto
 elements.nativeRedoButton.addEventListener("click", () => { void moveNativeHistory("redo"); });
 elements.blankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
-  const canvas = { nodes: [], edges: [] };
+  const canvas = { nodes: [], edges: [], schauwerk: { edgeRouting: "smart" } };
   launch({
     nativeImport: {
       schema_version: NATIVE_IMPORT_SCHEMA,
