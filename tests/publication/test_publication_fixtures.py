@@ -26,10 +26,10 @@ def _smart_edge_source_proof() -> dict:
     """Current candidate supersedes changed bytes, never historical proofs."""
     path = (
         ROOT / "docs/operators/evidence"
-        / "schaubild-smart-edge-routing-20261107/technical-proof.json"
+        / "schaubild-smart-edge-routing-20261107/technical-proof-successor.json"
     )
     proof = json.loads(path.read_text(encoding="utf-8"))
-    assert proof["schema_version"] == "schauwerk-smart-edge-routing-technical-proof.v1"
+    assert proof["schema_version"] == "schauwerk-smart-edge-routing-technical-successor.v1"
     assert proof["scope"] == "technical-candidate-only"
     assert proof["status"] == "technical_candidate_only"
     assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
@@ -14043,9 +14043,14 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
         "src/schauwerk/resources/standalone_editor/assets.py",
         "tests/visual/test_native_canvas_smart_router.py",
         "tests/visual/test_native_canvas_smart_integration.py",
+        "tests/visual/test_native_viewer.py",
     }
     assert set(proof["source_bindings"]) == expected_paths
     assert set(proof["base_source_bindings"]) == expected_paths
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
