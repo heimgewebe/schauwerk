@@ -12850,7 +12850,40 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         "src/schauwerk/visual/native_diagram.py",
         "tests/visual/test_native_diagram_gate1_proof.py",
     }
+    # The historical knowledge-map proof remains immutable. A new Canvas-only
+    # label-clearance revision supersedes its source hash without inheriting
+    # the earlier visual acceptance or changing that proof's recorded bytes.
+    clearance_proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-canvas-edge-label-clearance-20261107"
+        / "technical-proof.json"
+    )
+    clearance = json.loads(clearance_proof_path.read_text(encoding="utf-8"))
+    assert clearance["schema_version"] == (
+        "schauwerk-canvas-edge-label-clearance-technical-proof.v1"
+    )
+    assert clearance["scope"] == "technical-candidate-only"
+    assert clearance["predecessor_technical_proof"] == {
+        "path": str(knowledge_map_successor_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(knowledge_map_successor_path.read_bytes()).hexdigest(),
+    }
+    assert clearance["predecessor_source_sha256"] == (
+        knowledge_map_successor["current_source_bindings"][
+            "src/schauwerk/visual/native_diagram.py"
+        ]
+    )
+    assert clearance["source_bindings"] == {
+        name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        for name in (
+            "src/schauwerk/visual/native_diagram.py",
+            "tests/visual/test_native_canvas_label_clearance.py",
+        )
+    }
+    assert clearance["evidence_digest"] == digest_mapping(clearance, "evidence_digest")
+    assert clearance["visual_acceptance"] == "pending"
     for name, expected in knowledge_map_successor["current_source_bindings"].items():
+        if name == "src/schauwerk/visual/native_diagram.py":
+            assert expected == clearance["predecessor_source_sha256"]
+            continue
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert knowledge_map_successor["checks"]["visual_acceptance"] == "pending"
     for name, expected in local_final["source_bindings"].items():

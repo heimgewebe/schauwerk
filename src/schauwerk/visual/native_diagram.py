@@ -12058,6 +12058,123 @@ def _canvas_text_layout(
     )
 
 
+
+def _canvas_relocate_occluded_edge_labels(
+    layouts: list[tuple[Any, ...]],
+    nodes: list[Mapping[str, Any]],
+) -> list[tuple[Any, ...]]:
+    """Keep Canvas relationship labels clear of opaque nodes and peer labels.
+
+    This changes only the displayed, derived label geometry. Source model,
+    cubic edge paths and labels already in clear space remain unchanged.
+    """
+    padding = 8.0
+    boxes = [
+        (
+            float(node["x"]),
+            float(node["y"]),
+            float(node["x"]) + float(node["width"]),
+            float(node["y"]) + float(node["height"]),
+        )
+        for node in nodes
+        if str(node["type"]) != "group"
+    ]
+    reserved: list[tuple[float, float, float, float]] = []
+    result: list[tuple[Any, ...]] = []
+
+    for layout in layouts:
+        text = str(layout[8])
+        if not _canvas_has_layout_content(text):
+            result.append(layout)
+            continue
+        original_x, original_y = float(layout[4]), float(layout[5])
+        half_w, half_h = float(layout[9]) / 2, float(layout[10]) / 2
+        occupied = boxes + reserved
+
+        def intersects(x: float, y: float) -> bool:
+            left, top = x - half_w, y - half_h
+            right, bottom = x + half_w, y + half_h
+            return any(
+                left < box[2] + padding
+                and right > box[0] - padding
+                and top < box[3] + padding
+                and bottom > box[1] - padding
+                for box in occupied
+            )
+
+        chosen = (original_x, original_y)
+        if intersects(*chosen):
+            # Prefer staying on/near the natural midpoint. Escaping just beyond
+            # an actual obstacle is more useful than growing the whole diagram.
+            candidates: list[tuple[float, float]] = []
+            for left, top, right, bottom in occupied:
+                candidates.extend(
+                    (
+                        (original_x, top - padding - half_h),
+                        (original_x, bottom + padding + half_h),
+                        (left - padding - half_w, original_y),
+                        (right + padding + half_w, original_y),
+                    )
+                )
+            for step in (16, 32, 48, 64, 96, 128, 192, 256, 384, 512):
+                candidates.extend(
+                    (
+                        (original_x, original_y - step),
+                        (original_x, original_y + step),
+                        (original_x - step, original_y),
+                        (original_x + step, original_y),
+                    )
+                )
+            if occupied:
+                candidates.extend(
+                    (
+                        (
+                            original_x,
+                            min(box[1] for box in occupied) - padding - half_h,
+                        ),
+                        (
+                            original_x,
+                            max(box[3] for box in occupied) + padding + half_h,
+                        ),
+                        (
+                            min(box[0] for box in occupied) - padding - half_w,
+                            original_y,
+                        ),
+                        (
+                            max(box[2] for box in occupied) + padding + half_w,
+                            original_y,
+                        ),
+                    )
+                )
+            # Ties prefer vertical displacement, preserving the reading order
+            # of horizontal connections. Stable generation order breaks ties.
+            candidates.sort(
+                key=lambda item: (
+                    (item[0] - original_x) ** 2
+                    + (item[1] - original_y) ** 2,
+                    item[0] != original_x,
+                )
+            )
+            chosen = next(
+                (position for position in candidates if not intersects(*position)),
+                chosen,
+            )
+        reserved.append(
+            (
+                chosen[0] - half_w,
+                chosen[1] - half_h,
+                chosen[0] + half_w,
+                chosen[1] + half_h,
+            )
+        )
+        if chosen == (original_x, original_y):
+            result.append(layout)
+        else:
+            result.append(layout[:4] + chosen + layout[6:])
+    return result
+
+
+
 def render_native_editing_document(document: Mapping[str, Any]) -> str:
     """Render one explicit-geometry document using the native editor SVG contract."""
 
@@ -12114,6 +12231,8 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 label_height,
             )
         )
+
+    edge_layouts = _canvas_relocate_occluded_edge_labels(edge_layouts, nodes)
 
     margin = 88
     if nodes:
