@@ -141,6 +141,16 @@ def validate_json_canvas(value: Any) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise NativeDocumentError("JSON Canvas input must be one object")
     _assert_javascript_safe_integers(value)
+    # Schauwerk's namespaced rendering preference belongs to the document,
+    # never to localStorage; absent means unchanged legacy Canvas routing.
+    if "schauwerk" in value:
+        extension = value["schauwerk"]
+        if not isinstance(extension, Mapping):
+            raise NativeDocumentError("schauwerk must be an object")
+        if "edgeRouting" in extension and extension["edgeRouting"] not in (
+            "simple", "smart",
+        ):
+            raise NativeDocumentError("schauwerk.edgeRouting must be simple or smart")
     nodes_value = value.get("nodes", [])
     edges_value = value.get("edges", [])
     if not isinstance(nodes_value, list) or not isinstance(edges_value, list):
