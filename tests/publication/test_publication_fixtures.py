@@ -13815,7 +13815,9 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "sha256": vector["source_bindings"][editor_path],
     }
     assert set(history["source_bindings"]) == {
-        editor_path, "tests/visual/test_native_history_contract.py",
+        editor_path,
+        "tests/visual/test_native_history_contract.py",
+        "tests/visual/test_standalone_editor.py",
     }
     assert history["evidence_digest"] == digest_mapping(history, "evidence_digest")
     assert history["validation"][
@@ -13886,8 +13888,23 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_image_objects"] == 0
     assert knowledge_map["checks"]["real_knowledge_map_vector_pdf_vector_operators"] >= 100
     assert "native_representation_undo_redo" in knowledge_map["does_not_establish"]
+    # Browser retry now respects startup-ACK, so the old Knowledge-Map test
+    # source binding is preserved as a predecessor, not silently rewritten.
+    assert history["additional_predecessor_technical_proof"] == {
+        "path": str(knowledge_map_path.relative_to(ROOT)),
+        "sha256": hashlib.sha256(knowledge_map_path.read_bytes()).hexdigest(),
+    }
+    retry_test = "tests/visual/test_standalone_editor.py"
+    assert history["additional_predecessor_source_binding"] == {
+        "path": retry_test,
+        "sha256": knowledge_map["source_bindings"][retry_test],
+    }
+    assert history["validation"][
+        "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed"
+    ] is True
     for name, sha in knowledge_map["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
+        if name != retry_test:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
     latest_bindings = {
         **successor["source_bindings"],

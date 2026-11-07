@@ -2147,9 +2147,10 @@ try {
     return (
       current !== firstFrame &&
       current?.src?.includes("/native/") &&
-      current.contentDocument?.querySelector("#nativeDiagram")
+      current.contentDocument?.querySelector("#nativeDiagram") &&
+      !current.inert
     );
-  }, "successful retry did not swap in a fresh native frame");
+  }, "successful retry did not finish native startup synchronization");
 
   const recoveredFrame = document.querySelector("#editorFrame");
   if (recoveredFrame.inert) {

@@ -1,4 +1,12 @@
 {
+  "additional_predecessor_source_binding": {
+    "path": "tests/visual/test_standalone_editor.py",
+    "sha256": "bf923868b0071019bf055db376b9f4f81541dc4b9b73d5349b77ad07c215e514"
+  },
+  "additional_predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-knowledge-map-native-cutover-20261106/technical-proof.json",
+    "sha256": "e305de01651bf56c8c7202d4d3a8f17c04d05f578e12c5c7f811b70d41b62f04"
+  },
   "does_not_establish": [
     "historical_visual_acceptance_inherited",
     "physical_ipad_safari_acceptance",
@@ -6,7 +14,7 @@
     "commonthing_live_first_edit",
     "native_representation_undo_redo"
   ],
-  "evidence_digest": "d2f3d851f5026ae4dac776422532fe1a5ba566ed071b01b548f9149fcdaf9739",
+  "evidence_digest": "2453a7498b6abf76330f28ab14006f02ebf85d940abd744658505abcbd74e89d",
   "predecessor_source_binding": {
     "path": "src/schauwerk/resources/standalone_editor/assets.py",
     "sha256": "7f8d537ab62d8ab0029dc08bbd76cf454fd1224477c3b9cf39f10ab452b21b27"
@@ -19,7 +27,8 @@
   "scope": "native-json-canvas-first-edit-inert-until-parent-history-startup-sync",
   "source_bindings": {
     "src/schauwerk/resources/standalone_editor/assets.py": "7c16e72ff5dee2053920d16867694dc595294c8aaffc49147b05a38f266fd30e",
-    "tests/visual/test_native_history_contract.py": "9dc105aa3f1a36786dc15130a932f49b41b14cc43ac2db09606f04f827734df9"
+    "tests/visual/test_native_history_contract.py": "9dc105aa3f1a36786dc15130a932f49b41b14cc43ac2db09606f04f827734df9",
+    "tests/visual/test_standalone_editor.py": "5655c6002d177a3f65ab4f5283de56790bfe0183fe6a8e488e3378bcdb5826da"
   },
   "status": "technical_candidate_only",
   "validation": {
@@ -35,6 +44,7 @@
         844
       ]
     ],
+    "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed": true,
     "local_combined_product_ui_history_and_representation_pytest_passed": 25,
     "local_webkitgtk_before_change_first_node_missing_undo_preimage": true,
     "local_webkitgtk_fixed_source_first_edit_without_arbitrary_sleep_passed": true,
