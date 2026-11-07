@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from .smart_router import SMART_ROUTER_JS
+
 INDEX_HTML = r"""<!doctype html>
 <html lang="de">
 <head>
@@ -29,6 +31,7 @@ INDEX_HTML = r"""<!doctype html>
           <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
+          <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
@@ -40,6 +43,24 @@ INDEX_HTML = r"""<!doctype html>
             <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
             <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
             <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
+            <div id="edgePorts" class="edge-port-controls document-only" hidden>
+              <label for="edgeFromPort">Anfangsseite</label>
+              <select id="edgeFromPort" aria-label="Anschlussseite am Anfang">
+                <option value="">Auto</option>
+                <option value="left">Links</option>
+                <option value="right">Rechts</option>
+                <option value="top">Oben</option>
+                <option value="bottom">Unten</option>
+              </select>
+              <label for="edgeToPort">Zielseite</label>
+              <select id="edgeToPort" aria-label="Anschlussseite am Ziel">
+                <option value="">Auto</option>
+                <option value="left">Links</option>
+                <option value="right">Rechts</option>
+                <option value="top">Oben</option>
+                <option value="bottom">Unten</option>
+              </select>
+            </div>
             <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
           </div>
         </details>
@@ -324,6 +345,27 @@ button:focus-visible {
 .edit-menu button:hover {
   border-color: var(--line);
   background: #fff;
+}
+.edge-port-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px;
+}
+.edge-port-controls label { font-size: 0.74rem; font-weight: 650; }
+.edge-port-controls select {
+  min-height: 38px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+}
+.view-controls #smartRouting[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 .document-editor-hosted .viewer-title { display: none; }
 .document-editor-hosted .viewer-heading {
@@ -942,7 +984,8 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 }
 """
 
-APP_JS = r"""import {
+APP_JS = r"""import { smartEdgeGeometry } from "./smart-router.js";
+import {
   MAX_SCALE,
   MIN_SCALE,
   clampScale,
@@ -968,6 +1011,10 @@ const zoomOut = document.querySelector("#zoomOut");
 const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
 const observationButton = document.querySelector("#observationMode");
+const smartRoutingButton = document.querySelector("#smartRouting");
+const edgePorts = document.querySelector("#edgePorts");
+const edgeFromPort = document.querySelector("#edgeFromPort");
+const edgeToPort = document.querySelector("#edgeToPort");
 const editControls = document.querySelector(".edit-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
@@ -1550,10 +1597,30 @@ function setDocumentControlState(
   control.title = enabled ? enabledTitle : disabledTitle;
 }
 
+function routingMode() {
+  return sourceModel?.source?.schauwerk?.edgeRouting === "smart" ? "smart" : "simple";
+}
+function updateRoutingControl() {
+  if (!(smartRoutingButton instanceof HTMLButtonElement)) return;
+  smartRoutingButton.hidden = !documentEditorHosted;
+  const active = routingMode() === "smart";
+  smartRoutingButton.disabled = observationMode;
+  smartRoutingButton.setAttribute("aria-pressed", String(active));
+  smartRoutingButton.setAttribute("aria-label",
+    active ? "Intelligente Kantenführung ausschalten" : "Intelligente Kantenführung einschalten");
+  smartRoutingButton.textContent = "Intelligente Kantenführung: " + (active ? "Ein" : "Aus");
+}
 function updateDocumentToolbarState() {
   if (!documentEditorHosted) return;
+  updateRoutingControl();
   const hasNode = Boolean(selectedId && nodes.has(selectedId));
   const hasEdge = Boolean(selectedEdgeId && edges.has(selectedEdgeId));
+  if (edgePorts instanceof HTMLElement) edgePorts.hidden = !hasEdge || observationMode;
+  if (hasEdge) {
+    const edgeModel = sourceModel.edges.find(item => String(item.id) === selectedEdgeId);
+    if (edgeFromPort instanceof HTMLSelectElement) edgeFromPort.value = edgeModel?.from_side || "";
+    if (edgeToPort instanceof HTMLSelectElement) edgeToPort.value = edgeModel?.to_side || "";
+  }
   setDocumentControlState(
     addNodeButton,
     true,
@@ -1980,6 +2047,25 @@ function setObservationMode(enabled) {
   }
 }
 observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+smartRoutingButton?.addEventListener("click", () => {
+  if (!documentEditorHosted || observationMode) return;
+  const next = routingMode() === "smart" ? "simple" : "smart";
+  const snapshot = documentSnapshot();
+  if (!snapshot) return;
+  snapshot.source.schauwerk = { ...(snapshot.source.schauwerk || {}), edgeRouting: next };
+  rebuildDocument(snapshot);
+});
+function changeSelectedEdgePort(property, value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  if (!["", "left", "right", "top", "bottom"].includes(value)) return;
+  edge[property] = value || null;
+  rebuildDocument(snapshot);
+}
+edgeFromPort?.addEventListener("change", () => changeSelectedEdgePort("from_side", edgeFromPort.value));
+edgeToPort?.addEventListener("change", () => changeSelectedEdgePort("to_side", edgeToPort.value));
 window.addEventListener("keydown", (event) => {
   if (!documentEditorHosted || observationMode || (!event.ctrlKey && !event.metaKey) ||
       event.altKey || event.isComposing || textDialog?.open) return;
@@ -2445,5 +2531,6 @@ requestAnimationFrame(() => {
 ASSETS = {
     "app.js": APP_JS,
     "interaction.js": INTERACTION_JS,
+    "smart-router.js": SMART_ROUTER_JS,
     "styles.css": STYLES_CSS,
 }
