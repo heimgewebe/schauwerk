@@ -1957,6 +1957,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_exports_superseded_files
             | process_feedback_routing_superseded_files
             | full_editor_technical_superseded_files
+            | set(_smart_edge_source_proof()["source_bindings"])
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
