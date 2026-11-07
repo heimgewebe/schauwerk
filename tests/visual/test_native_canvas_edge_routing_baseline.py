@@ -1,21 +1,15 @@
-"""Known-red geometry regression for follow-up obstacle-aware Canvas edge routing."""
+"""Positive geometry regression for labels clear of intervening Canvas nodes."""
 
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 
-import pytest
-
 from schauwerk.visual.native_diagram import render_native_editing_document
 from schauwerk.visual.standalone_editor import NATIVE_IMPORT_SCHEMA, _native_product_input
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="E0 baseline: a native Canvas edge label overlaps an intervening node",
-)
 def test_native_canvas_edge_label_avoids_intervening_node() -> None:
-    """Require obstacle-free labels once the smart-routing slice is implemented."""
+    """Keep labels visible independently of the future obstacle-aware path router."""
     source = {
         "nodes": [
             {
