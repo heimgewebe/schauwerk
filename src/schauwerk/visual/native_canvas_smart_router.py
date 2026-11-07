@@ -285,12 +285,12 @@ def route_edge(
     for si,ss in enumerate(source_sides):
         start=_side_anchor(source,ss,lane)
         start_exit=_add(start,NORMALS[ss],stub)
-        if not _clear(start,start_exit,blocking):
+        if not _clear(start,start_exit,(*blocking,target_box)):
             continue
         for ti,ts in enumerate(target_sides):
             end=_side_anchor(target,ts,lane)
             end_exit=_add(end,NORMALS[ts],stub)
-            if not _clear(end_exit,end,blocking):
+            if not _clear(end_exit,end,(*blocking,source_box)):
                 continue
             candidates.append((si,ti,ss,ts,start,start_exit,end_exit,end))
     if not candidates:
