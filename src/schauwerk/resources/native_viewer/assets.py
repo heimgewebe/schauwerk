@@ -441,7 +441,6 @@ button:focus-visible {
   stroke-width: 2px;
   cursor: crosshair;
   pointer-events: all;
-  vector-effect: non-scaling-stroke;
 }
 .native-diagram [data-connection-handles] .native-connection-create {
   fill: var(--accent-soft);
