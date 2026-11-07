@@ -601,7 +601,13 @@ try {
     const rect = svg.getBoundingClientRect();
     const box = svg.viewBox.baseVal;
     if (!rect.width || !rect.height || !box.width || !box.height) {
-      if (!hitDiagnostics.length) hitDiagnostics.push({reason: "unmeasurable-svg", svgRect: [rect.x, rect.y, rect.width, rect.height], viewBox: [box.x, box.y, box.width, box.height]});
+      if (!hitDiagnostics.length) {
+        hitDiagnostics.push({
+          reason: "unmeasurable-svg",
+          svgRect: [rect.x, rect.y, rect.width, rect.height],
+          viewBox: [box.x, box.y, box.width, box.height],
+        });
+      }
       return false;
     }
     // The SVG is translated and scaled by an HTML parent, not by its viewBox.
