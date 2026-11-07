@@ -649,7 +649,9 @@ try {
     throw new Error("Edge hit-target selection did not expose aria-selected");
   }
   edge.focus();
-  edge.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+  edge.dispatchEvent(new KeyboardEvent("keydown", {
+    key: "Enter", bubbles: true, cancelable: true,
+  }));
   if (edge.getAttribute("aria-selected") !== "true") {
     throw new Error("Keyboard edge selection did not work");
   }
