@@ -12512,7 +12512,26 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
         routing_conflict = route == "canvas-smart-conflict"
         conflict_attr = ' data-routing-conflict="true"' if routing_conflict else ""
-        dash_attr = ' stroke-dasharray="6 4"' if routing_conflict else ""
+        raw_relation = edge.get("source", {}).get("schauwerk", {})
+        relation_kind = (
+            raw_relation.get("kind", "flow")
+            if isinstance(raw_relation, Mapping)
+            else "flow"
+        )
+        relation_attr = (
+            f' data-relation-kind="{relation_kind}"'
+            if relation_kind != "flow"
+            else ""
+        )
+        dash_attr = (
+            ' stroke-dasharray="6 4"'
+            if routing_conflict
+            else ' stroke-dasharray="3 5"'
+            if relation_kind == "association"
+            else ' stroke-dasharray="10 5"'
+            if relation_kind == "feedback"
+            else ""
+        )
         line_stroke = "#c2410c" if routing_conflict else stroke
         canonical_stroke_attr = (
             f' data-canonical-stroke="{stroke}"' if smart_routing else ""
@@ -12535,7 +12554,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
                     f'data-route="{route}" data-lane="{lane:.1f}"'
-                    f'{conflict_attr}{canonical_stroke_attr}{edge_truncated_attribute}>'
+                    f'{conflict_attr}{relation_attr}{canonical_stroke_attr}{edge_truncated_attribute}>'
                 ),
                 f"<title>{_canvas_xml(edge_title)}</title>",
                 (
