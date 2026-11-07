@@ -220,6 +220,16 @@ def validate_json_canvas(value: Any) -> dict[str, Any]:
                 raise NativeDocumentError(f"{context}.{field} is invalid")
         _optional_text(edge, "label", context=context)
         _optional_text(edge, "color", context=context)
+        if "schauwerk" in edge:
+            extension = edge["schauwerk"]
+            if not isinstance(extension, Mapping):
+                raise NativeDocumentError(f"{context}.schauwerk must be an object")
+            if "kind" in extension and extension["kind"] not in (
+                "flow", "association", "feedback",
+            ):
+                raise NativeDocumentError(
+                    f"{context}.schauwerk.kind is unsupported"
+                )
 
     return normalized
 
