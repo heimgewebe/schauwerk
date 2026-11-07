@@ -582,6 +582,16 @@ try {
       throw new Error("Edge hit target failed to preserve 24 screen px at CSS zoom");
     }
   };
+  // The first edge has an intentionally 260px-wide label that covers its
+  // own 8px offset hit points. Probe the later, unlabeled parallel edge:
+  // its transparent path is painted above that label and tests the actual
+  // 24px hit area without conflating it with the label rectangle.
+  const unobstructedHitPath = svg.querySelector(
+    '[data-source-kind="edge"][data-source-id="node_1"] > path.native-edge-hit',
+  );
+  if (!(unobstructedHitPath instanceof SVGPathElement)) {
+    throw new Error("Unlabelled parallel edge hit target is missing");
+  }
   const acceptsRealOffsetHit = () => {
     const rect = svg.getBoundingClientRect();
     const box = svg.viewBox.baseVal;
@@ -595,11 +605,11 @@ try {
       x: rect.left + (point.x - box.x) * sx,
       y: rect.top + (point.y - box.y) * sy,
     });
-    const length = edgePath.getTotalLength();
+    const length = unobstructedHitPath.getTotalLength();
     for (const t of [0.16, 0.25, 0.34, 0.66, 0.75, 0.84]) {
-      const point = edgePath.getPointAtLength(length * t);
-      const prev = edgePath.getPointAtLength(length * (t - 0.015));
-      const next = edgePath.getPointAtLength(length * (t + 0.015));
+      const point = unobstructedHitPath.getPointAtLength(length * t);
+      const prev = unobstructedHitPath.getPointAtLength(length * (t - 0.015));
+      const next = unobstructedHitPath.getPointAtLength(length * (t + 0.015));
       const start = toScreen(prev);
       const end = toScreen(next);
       const center = toScreen(point);
@@ -615,8 +625,7 @@ try {
         const hit = document.elementFromPoint(x, y);
         if (
           hit instanceof SVGPathElement &&
-          hit.classList.contains("native-edge-hit") &&
-          svg.contains(hit)
+          hit === unobstructedHitPath
         ) return true;
       }
     }
