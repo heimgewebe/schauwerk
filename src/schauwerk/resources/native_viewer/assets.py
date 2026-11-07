@@ -451,7 +451,6 @@ button:focus-visible {
   stroke-width: 2.5px;
   stroke-dasharray: 6 5;
   pointer-events: none;
-  vector-effect: non-scaling-stroke;
 }
 
 .text-dialog {
