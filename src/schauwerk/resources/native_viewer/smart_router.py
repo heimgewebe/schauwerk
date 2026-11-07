@@ -187,11 +187,11 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   sourceSides.forEach((ss, si) => {
     const start = sideAnchor(source, ss, lane);
     const ex = add(start, NORMALS[ss], stub);
-    if (!clear(start, ex, blocking)) return;
+    if (!clear(start, ex, [...blocking, targetBox])) return;
     targetSides.forEach((ts, ti) => {
       const end = sideAnchor(target, ts, lane);
       const ent = add(end, NORMALS[ts], stub);
-      if (clear(ent, end, blocking))
+      if (clear(ent, end, [...blocking, sourceBox]))
         candidates.push([si, ti, ss, ts, start, ex, ent, end]);
     });
   });
