@@ -559,7 +559,22 @@ try {
     throw new Error("canvas browser probe DOM contract missing");
   }
 
+  const hitPath = edge.querySelector(":scope > path.native-edge-hit");
+  if (
+    !(hitPath instanceof SVGPathElement) ||
+    hitPath.getAttribute("pointer-events") !== "stroke" ||
+    hitPath.getAttribute("vector-effect") !== "non-scaling-stroke" ||
+    getComputedStyle(hitPath).strokeWidth !== "24px" ||
+    edge.getAttribute("tabindex") !== "0" ||
+    edge.getAttribute("role") !== "button" ||
+    !edge.getAttribute("aria-label")
+  ) {
+    throw new Error("Accessible edge hit target was not initialized");
+  }
   const basePath = edgePath.getAttribute("d") || "";
+  if (hitPath.getAttribute("d") !== basePath) {
+    throw new Error("Edge hit target does not initially match the visual curve");
+  }
   const baseMarker = edgePath.getAttribute("marker-end") || "";
   const rect = node.getBoundingClientRect();
   const x = (rect.left + rect.right) / 2;
@@ -569,6 +584,9 @@ try {
 
   if ((edgePath.getAttribute("d") || "") === basePath) {
     throw new Error("canvas incident edge path did not update during drag");
+  }
+  if (hitPath.getAttribute("d") !== edgePath.getAttribute("d")) {
+    throw new Error("Edge hit target did not follow the live path after drag");
   }
   if ((edgePath.getAttribute("marker-end") || "") !== baseMarker) {
     throw new Error("canvas edge marker binding changed during drag");
@@ -616,7 +634,7 @@ try {
   const edgeRectForSelection = edgePath.getBoundingClientRect();
   const edgeSelectX = (edgeRectForSelection.left + edgeRectForSelection.right) / 2;
   const edgeSelectY = (edgeRectForSelection.top + edgeRectForSelection.bottom) / 2;
-  firePointer(edgePath, "pointerdown", 32, edgeSelectX, edgeSelectY);
+  firePointer(hitPath, "pointerdown", 32, edgeSelectX, edgeSelectY);
   firePointer(viewport, "pointerup", 32, edgeSelectX, edgeSelectY);
   if (
     !initialAddEdge.disabled ||
@@ -626,6 +644,16 @@ try {
     initialDeleteSelection.disabled
   ) {
     throw new Error("edge selection did not expose exactly the edge-valid actions");
+  }
+  if (edge.getAttribute("aria-selected") !== "true") {
+    throw new Error("Edge hit-target selection did not expose aria-selected");
+  }
+  edge.focus();
+  edge.dispatchEvent(new KeyboardEvent("keydown", {
+    key: "Enter", bubbles: true, cancelable: true,
+  }));
+  if (edge.getAttribute("aria-selected") !== "true") {
+    throw new Error("Keyboard edge selection did not work");
   }
 
   firePointer(node, "pointerdown", 33, x, y);
