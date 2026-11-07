@@ -38,6 +38,7 @@ COPY src/schauwerk/visual/__init__.py \
      src/schauwerk/visual/drawio_import.py \
      src/schauwerk/visual/json_fidelity.py \
      src/schauwerk/visual/grapheme.py \
+     src/schauwerk/visual/native_canvas_smart_router.py \
      src/schauwerk/visual/native_diagram.py \
      src/schauwerk/visual/native_document.py \
      src/schauwerk/visual/native_viewer.py \
@@ -47,6 +48,7 @@ COPY src/schauwerk/visual/__init__.py \
 COPY src/schauwerk/resources/__init__.py /app/src/schauwerk/resources/__init__.py
 COPY src/schauwerk/resources/native_viewer/__init__.py \
      src/schauwerk/resources/native_viewer/assets.py \
+     src/schauwerk/resources/native_viewer/smart_router.py \
      /app/src/schauwerk/resources/native_viewer/
 COPY src/schauwerk/resources/standalone_editor/__init__.py \
      src/schauwerk/resources/standalone_editor/assets.py \
