@@ -355,6 +355,14 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert 'querySelectorAll(\'[data-source-kind="node"]\')' in app
     assert 'querySelector(\'[data-source-kind="edge"]\')' not in app
     assert 'edgeState.path.setAttribute("d"' in app
+    assert 'edgeState.hitPath.setAttribute("d", geometry.path)' in app
+    assert 'edgeState.hitPath.setAttribute("d", edgeState.basePath)' in app
+    assert 'hitPath.setAttribute("vector-effect", "non-scaling-stroke")' in app
+    assert 'edgeGroup.insertBefore(hitPath, labelRect)' in app
+    assert 'edgeGroup.setAttribute("tabindex", "0")' in app
+    assert 'edgeGroup.setAttribute("role", "button")' in app
+    assert 'path.native-edge-hit' in styles
+    assert 'stroke-width: 24px !important;' in styles
     assert "function updateIncidentEdges(sourceId)" in app
     assert 'addEventListener("pointerdown"' in app
     assert 'addEventListener("wheel"' in app
