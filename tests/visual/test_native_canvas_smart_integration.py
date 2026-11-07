@@ -176,3 +176,44 @@ def test_javascript_router_tracks_python_geometry_on_fixture(tmp_path: Path) -> 
     assert actual["toSide"] == expected.to_side
     assert actual["collisionFree"] is True
     assert actual["path"] == expected.path
+
+
+def test_relation_direction_and_type_survive_canvas_and_svg_roundtrip() -> None:
+    source = canvas()
+    edge = source["edges"][0]
+    edge["fromEnd"] = "arrow"
+    edge["toEnd"] = "none"
+    edge["schauwerk"] = {"kind": "association"}
+    document = json_canvas_to_editing_document(source)
+    exported = editing_document_to_json_canvas(normalize_editing_document(document))
+    assert exported["edges"] == source["edges"]
+    assert exported["schauwerk"]["edgeRouting"] == "smart"
+    rendered = edge_group(render(exported))
+    assert rendered.get("data-relation-kind") == "association"
+    assert rendered.get("data-route") == "canvas-smart"
+    path = rendered.find(SVG + "path")
+    assert path is not None
+    assert path.get("marker-start", "").startswith("url(")
+    assert path.get("marker-end") is None
+    assert path.get("stroke-dasharray") == "3 5"
+
+    edge["schauwerk"]["kind"] = "feedback"
+    feedback = edge_group(render(source))
+    assert feedback.get("data-relation-kind") == "feedback"
+    assert feedback.find(SVG + "path").get("stroke-dasharray") == "10 5"
+
+
+def test_relation_kind_validation_rejects_unsupported_values() -> None:
+    for kind in ("unknown", [], None, 3, False):
+        source = canvas()
+        source["edges"][0]["schauwerk"] = {"kind": kind}
+        with pytest.raises(NativeDocumentError):
+            validate_json_canvas(source)
+    source = canvas()
+    source["edges"][0]["schauwerk"] = "association"
+    with pytest.raises(NativeDocumentError):
+        validate_json_canvas(source)
+    source = canvas()
+    source["edges"][0]["schauwerk"] = {"kind": "association", "future": "preserved"}
+    normalized = validate_json_canvas(source)
+    assert normalized["edges"][0]["schauwerk"]["future"] == "preserved"
