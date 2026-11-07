@@ -3,7 +3,6 @@ import pytest
 
 from schauwerk.visual.native_canvas_smart_router import (
     _curve_hull_clear,
-    _segment_hits_rect,
     route_edge,
 )
 
