@@ -402,6 +402,7 @@ def build_native_viewer(
     static_payloads = {
         "app.js": ASSETS["app.js"].encode("utf-8"),
         "interaction.js": ASSETS["interaction.js"].encode("utf-8"),
+        "smart-router.js": ASSETS["smart-router.js"].encode("utf-8"),
         "styles.css": ASSETS["styles.css"].encode("utf-8"),
     }
     projected_payload_sizes = {
