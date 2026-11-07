@@ -1,0 +1,29 @@
+{
+  "change": "Place JSON Canvas edge-label rectangles outside occupied node and peer-label regions while retaining unaffected source, paths and original label geometry.",
+  "checks": {
+    "focused_tests": "4 passed locally in 0.06s; isolated module staging",
+    "github_ci": "pending new commit",
+    "no_static_path_rerouting": true,
+    "source_model_unchanged": true
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "viewer_live_drag_label_clearance",
+    "smart_edge_path_routing",
+    "physical_ipad_safari_acceptance",
+    "production_deployment"
+  ],
+  "evidence_digest": "f5e83e4e11cb9cb6749169e84ca1ce60fe7aef83cd92581a1f0525c3d70dfbc9",
+  "predecessor_source_sha256": "e66ad1b2061852001db92c237b1f46d5d39e5bfdfac253e82bbe4310422b943d",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-knowledge-map-detour-20261105/technical-proof.json",
+    "sha256": "2f289a508e9ada9b6ca134282b9aefd9726cb78a1d832e62dd2899e3c91afd7e"
+  },
+  "schema_version": "schauwerk-canvas-edge-label-clearance-technical-proof.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "4a3abc3d520cbdff842c3ee0c043db38be5768d35a38eed394aec221ba2c58a3",
+    "tests/visual/test_native_canvas_label_clearance.py": "ccbed8f0a51967623bcfa283a9bbb144e59cfb12b293775bdfbd949906bfd6a7"
+  },
+  "visual_acceptance": "pending"
+}
