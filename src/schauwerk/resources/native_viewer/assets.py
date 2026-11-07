@@ -435,6 +435,25 @@ button:focus-visible {
   stroke: #c2410c;
   stroke-width: 1px;
 }
+.native-diagram [data-connection-handles] .native-connection-handle {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 2px;
+  cursor: crosshair;
+  pointer-events: all;
+  vector-effect: non-scaling-stroke;
+}
+.native-diagram [data-connection-handles] .native-connection-create {
+  fill: var(--accent-soft);
+}
+.native-diagram [data-connection-handles] .native-connection-preview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  stroke-dasharray: 6 5;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
 
 .text-dialog {
   width: min(560px, calc(100vw - 28px));
@@ -1072,6 +1091,8 @@ const nodes = new Map();
 const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
+let handleLayer = null;
+let connectionPreview = null;
 let view = { x: 0, y: 0, scale: 1 };
 let fitScaleFloor = MIN_SCALE;
 let autoFitActive = true;
@@ -1377,6 +1398,7 @@ function applyView() {
   }
   zoomValue.value = `${Math.round(view.scale * 100)} %`;
   zoomValue.textContent = zoomValue.value;
+  if (handleLayer && gesture?.kind !== "connection") refreshConnectionHandles();
 }
 
 function applyNodeTransform(sourceId) {
@@ -1648,6 +1670,7 @@ function updateIncidentEdges(sourceId) {
     for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
   }
   relocateLiveEdgeLabels();
+  if (handleLayer) refreshConnectionHandles();
 }
 
 function constrainBoundsOffset(sourceId, bounds, box) {
@@ -1800,6 +1823,7 @@ function updateDocumentToolbarState() {
       if (button instanceof HTMLButtonElement) button.disabled = true;
     }
   }
+  refreshConnectionHandles();
 }
 
 function selectEdge(edgeId) {
@@ -1855,6 +1879,160 @@ function edgeFromTarget(target) {
   return candidate instanceof SVGGElement && svg.contains(candidate) ? candidate : null;
 }
 
+function createHandleElement(name, x, y, label) {
+  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  circle.setAttribute("cx", String(x));
+  circle.setAttribute("cy", String(y));
+  circle.setAttribute("r", String(Math.max(5, 11 / view.scale)));
+  circle.classList.add("native-connection-handle");
+  circle.setAttribute("data-connection-handle", name);
+  circle.setAttribute("pointer-events", "all");
+  circle.setAttribute("role", "button");
+  circle.setAttribute("aria-label", label);
+  circle.setAttribute("aria-hidden", "true"); // Keyboard alternatives are in Bearbeiten.
+  circle.setAttribute("tabindex", "-1");
+  return circle;
+}
+function refreshConnectionHandles() {
+  if (!documentEditorHosted) return;
+  if (!handleLayer) {
+    handleLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    handleLayer.setAttribute("data-connection-handles", "true");
+    svg.appendChild(handleLayer);
+  }
+  if (gesture?.kind === "connection") return;
+  handleLayer.replaceChildren();
+  if (observationMode) return;
+  if (selectedEdgeId && edges.has(selectedEdgeId)) {
+    const edgeState = edges.get(selectedEdgeId);
+    const line = edgeState.path;
+    try {
+      const total = line.getTotalLength();
+      for (const [endpoint, at] of [["from", 0], ["to", total]]) {
+        const point = line.getPointAtLength(at);
+        const circle = createHandleElement(
+          endpoint, point.x, point.y,
+          endpoint === "from" ? "Verbindungsanfang ziehen" : "Verbindungsziel ziehen"
+        );
+        circle.dataset.edgeId = selectedEdgeId;
+        handleLayer.appendChild(circle);
+      }
+    } catch (_) { /* Malformed paths remain selectable through the toolbar. */ }
+  } else if (selectedId && nodes.has(selectedId)) {
+    const current = nodeModelsAtLiveCoordinates().find(node => node.id === selectedId);
+    if (!current) return;
+    const circle = createHandleElement(
+      "create", current.x + current.width, current.y + current.height / 2,
+      "Neue Verbindung von diesem Element ziehen"
+    );
+    circle.classList.add("native-connection-create");
+    circle.dataset.sourceId = selectedId;
+    handleLayer.appendChild(circle);
+  }
+}
+function diagramPointAt(clientX, clientY) {
+  const matrix = svg.getScreenCTM();
+  if (!matrix) return null;
+  try {
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    return point.matrixTransform(matrix.inverse());
+  } catch (_) { return null; }
+}
+function nodeAtClientPoint(clientX, clientY) {
+  for (const item of document.elementsFromPoint(clientX, clientY)) {
+    const node = nodeFromTarget(item);
+    if (node) return node.dataset.sourceId || null;
+  }
+  return null;
+}
+function clearConnectionPreview() {
+  connectionPreview?.remove();
+  connectionPreview = null;
+}
+function beginConnectionGesture(handle, event) {
+  if (!documentEditorHosted || observationMode) return false;
+  const endpoint = handle.dataset.connectionHandle;
+  const edgeId = handle.dataset.edgeId || null;
+  const sourceId = handle.dataset.sourceId || null;
+  if (!(
+    (endpoint === "create" && sourceId && nodes.has(sourceId)) ||
+    ((endpoint === "from" || endpoint === "to") && edgeId && edges.has(edgeId))
+  )) return false;
+  const x = Number(handle.getAttribute("cx"));
+  const y = Number(handle.getAttribute("cy"));
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  if (edgeId) selectEdge(edgeId);
+  gesture = {
+    kind: "connection", pointerId: event.pointerId,
+    endpoint, edgeId, sourceId, x, y,
+    startX: event.clientX, startY: event.clientY, moved: false,
+  };
+  setStatus(endpoint === "create"
+    ? "Neue Verbindung zum Zielknoten ziehen"
+    : "Verbindungsende auf einen anderen Knoten ziehen");
+  return true;
+}
+function moveConnectionGesture(event) {
+  if (!gesture || gesture.kind !== "connection" || observationMode) return;
+  const dx = event.clientX - gesture.startX;
+  const dy = event.clientY - gesture.startY;
+  if (!gesture.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+  gesture.moved = true;
+  const point = diagramPointAt(event.clientX, event.clientY);
+  if (!point || !handleLayer) return;
+  if (!connectionPreview) {
+    connectionPreview = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    connectionPreview.classList.add("native-connection-preview");
+    handleLayer.insertBefore(connectionPreview, handleLayer.firstChild);
+  }
+  const midX = (gesture.x + point.x) / 2;
+  const midY = (gesture.y + point.y) / 2 - 22 / view.scale;
+  connectionPreview.setAttribute("d",
+    "M " + gesture.x + " " + gesture.y + " Q " + midX + " " + midY +
+    " " + point.x + " " + point.y);
+  const hovered = nodeAtClientPoint(event.clientX, event.clientY);
+  connectionPreview.setAttribute("stroke", hovered ? "#15803d" : "#635bff");
+}
+function finishConnectionGesture(ended, event) {
+  clearConnectionPreview();
+  const destination = (
+    event.type === "pointerup" && ended.moved
+    ? nodeAtClientPoint(event.clientX, event.clientY) : null
+  );
+  gesture = null;
+  if (!destination || observationMode || !documentEditorHosted) {
+    refreshConnectionHandles();
+    if (ended.moved) setStatus("Verbindung nicht geändert");
+    return;
+  }
+  const snapshot = documentSnapshot();
+  if (!snapshot) { refreshConnectionHandles(); return; }
+  if (ended.endpoint === "create") {
+    if (!documentMutationWithinProductLimits(snapshot, { addEdges: 1 })) {
+      refreshConnectionHandles();
+      return;
+    }
+    const id = uniqueId("edge_", [...snapshot.nodes, ...snapshot.edges]);
+    snapshot.edges.push({
+      id, from: ended.sourceId, to: destination, label: "",
+      from_side: null, to_side: null, from_end: "none", to_end: "arrow",
+      source: {},
+    });
+  } else {
+    const edge = snapshot.edges.find(item => String(item.id) === ended.edgeId);
+    if (!edge || edge[ended.endpoint] === destination) {
+      refreshConnectionHandles();
+      return;
+    }
+    edge[ended.endpoint] = destination;
+    edge.source = cloneJson(edge.source || {});
+    edge.source[ended.endpoint === "from" ? "fromNode" : "toNode"] = destination;
+  }
+  pointerMovedNode = true;
+  rebuildDocument(snapshot);
+}
 function localPoint(event) {
   const rect = viewport.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
@@ -1973,6 +2151,7 @@ function startPinchIfPossible() {
   const dy = second.y - first.y;
   const distance = Math.hypot(dx, dy);
   if (distance < 1) return false;
+  if (gesture?.kind === "connection") clearConnectionPreview();
   if (gesture?.kind === "drag") {
     if (gesture.moved) {
       setNodeOffset(
@@ -2127,6 +2306,7 @@ applyAllNodeTransforms();
 // Cancel any in-progress edit before allowing an event on the diagram to pan instead.
 function setObservationMode(enabled) {
   observationMode = Boolean(enabled);
+  clearConnectionPreview();
   if (gesture?.kind === "drag") {
     setNodeOffset(
       gesture.sourceId,
@@ -2232,8 +2412,10 @@ viewport.addEventListener("pointerdown", (event) => {
   }
   autoFitActive = false;
   const point = localPoint(event);
-  const node = nodeFromTarget(event.target);
-  const edge = node ? null : edgeFromTarget(event.target);
+  const handle = event.target instanceof Element
+    ? event.target.closest("[data-connection-handle]") : null;
+  const node = handle ? null : nodeFromTarget(event.target);
+  const edge = node || handle ? null : edgeFromTarget(event.target);
   activePointers.set(event.pointerId, {
     ...point,
     clientX: event.clientX,
@@ -2264,6 +2446,9 @@ viewport.addEventListener("pointerdown", (event) => {
     return;
   }
 
+  if (handle instanceof SVGCircleElement && svg.contains(handle)) {
+    if (beginConnectionGesture(handle, event)) return;
+  }
   if (node) {
     const sourceId = node.dataset.sourceId;
     if (documentEditorHosted && edgeReattach && sourceId) {
@@ -2364,6 +2549,10 @@ viewport.addEventListener("pointermove", (event) => {
     return;
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
+  if (gesture.kind === "connection") {
+    moveConnectionGesture(event);
+    return;
+  }
   if (gesture.kind === "pan") {
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
@@ -2404,7 +2593,9 @@ function finishPointer(event) {
   activePointers.delete(event.pointerId);
   try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* already released */ }
 
-  if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
+  if (endedGesture?.kind === "connection" && endedGesture.pointerId === event.pointerId) {
+    finishConnectionGesture(endedGesture, event);
+  } else if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
     if (event.type === "pointercancel" && endedGesture.moved) {
       setNodeOffset(
@@ -2640,7 +2831,17 @@ resetLayout.addEventListener("click", () => {
 });
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach);
+  const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach ||
+    gesture?.kind === "connection");
+  if (gesture?.kind === "connection") {
+    clearConnectionPreview();
+    gesture = null;
+    for (const pointerId of activePointers.keys()) {
+      try { viewport.releasePointerCapture(pointerId); } catch (_) { /* released */ }
+    }
+    activePointers.clear();
+    releasePointerAutoFitIfIdle();
+  }
   edgeCreateSource = null;
   edgeReattach = null;
   selectNode(null);
