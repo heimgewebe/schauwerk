@@ -609,7 +609,15 @@ try {
         const x = center.x - direction * 8 * (end.y - start.y) / lengthPx;
         const y = center.y + direction * 8 * (end.x - start.x) / lengthPx;
         if (x < 3 || y < 3 || x >= innerWidth - 3 || y >= innerHeight - 3) continue;
-        if (document.elementFromPoint(x, y) === hitPath) return true;
+        // Two intentionally parallel edges share a corridor in this fixture.
+        // Their 24px hit zones can overlap; Chrome returns the topmost peer.
+        // Check a genuine SVG edge hit target, not a synthetic dispatch.
+        const hit = document.elementFromPoint(x, y);
+        if (
+          hit instanceof SVGPathElement &&
+          hit.classList.contains("native-edge-hit") &&
+          svg.contains(hit)
+        ) return true;
       }
     }
     return false;
