@@ -217,3 +217,28 @@ def test_relation_kind_validation_rejects_unsupported_values() -> None:
     source["edges"][0]["schauwerk"] = {"kind": "association", "future": "preserved"}
     normalized = validate_json_canvas(source)
     assert normalized["edges"][0]["schauwerk"]["future"] == "preserved"
+
+
+def test_browser_router_rejects_endpoint_stub_penetration(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js unavailable")
+    module = tmp_path / "smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    a = {"id": "a", "type": "text", "x": 0, "y": 0, "width": 100, "height": 80}
+    b = {"id": "b", "type": "text", "x": 10, "y": 0, "width": 100, "height": 80}
+    check = tmp_path / "check.mjs"
+    check.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes = {json.dumps([a, b])};\n"
+        'const sidePairs = [["right", "right"], ["left", "left"]];\n'
+        'console.log(JSON.stringify(sidePairs.map(([fromSide, toSide]) => '
+        'smartEdgeGeometry(nodes[0], nodes[1], nodes, {fromSide, toSide}))));\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [node, str(check)], capture_output=True, text=True, timeout=12, check=True,
+    )
+    assert json.loads(result.stdout) == [None, None]
+    assert route_edge(a, b, [a, b], from_side="right", to_side="right") is None
+    assert route_edge(a, b, [a, b], from_side="left", to_side="left") is None
