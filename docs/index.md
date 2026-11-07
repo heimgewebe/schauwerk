@@ -62,6 +62,7 @@ summary: Canonical reading path for architecture, roadmap, and decisions.
 49. [Fundus Asset Core v1](fundus/asset-core-v1.md)
 50. [Fundus Adapter Benchmark v1](fundus/adapter-benchmark-v1.md)
 51. [Fundus Image Operations v1](fundus/image-operations-v1.md)
+52. [Schaubild – Intelligente Kantenführung und direkte Bearbeitung](plans/schaubild-smart-edge-routing-2026-11-07.md)
 
 ## Contracts
 
