@@ -80,3 +80,19 @@ def test_native_canvas_edge_label_avoids_intervening_node() -> None:
     ax, ay, ar, ab = bounds(label)
     bx, by, br, bb = bounds(node_rect)
     assert not (ax < br and ar > bx and ay < bb and ab > by)
+
+
+def test_native_viewer_edge_hit_targets_follow_real_path() -> None:
+    """Keyboard and pointer affordances are viewer-only and retained on reroute."""
+    from schauwerk.resources.native_viewer.assets import ASSETS
+
+    app = ASSETS["app.js"]
+    styles = ASSETS["styles.css"]
+    assert 'edgeState.hitPath.setAttribute("d", geometry.path)' in app
+    assert 'edgeState.hitPath.setAttribute("d", edgeState.basePath)' in app
+    assert 'hitPath.setAttribute("vector-effect", "non-scaling-stroke")' in app
+    assert 'edgeGroup.insertBefore(hitPath, labelRect)' in app
+    assert 'edgeGroup.setAttribute("tabindex", "0")' in app
+    assert 'edgeGroup.setAttribute("role", "button")' in app
+    assert 'path.native-edge-hit' in styles
+    assert 'stroke-width: 24px !important;' in styles
