@@ -118,6 +118,20 @@ const center = elem => {
     if (!preview?.getAttribute("d")?.includes(" Q ")) {
       throw new Error("curved live connection preview not visible");
     }
+    const hitStack = doc.elementsFromPoint(tx, ty);
+    const underNode = hitStack
+      .map(item => item.closest?.('[data-source-kind="node"]'))
+      .find(item => item?.dataset?.sourceId === dropId);
+    if (!underNode) {
+      throw new Error("drop location is not over target node: " + JSON.stringify({
+        dropId, tx, ty,
+        hitStack: hitStack.slice(0, 12).map(item =>
+          item.tagName + "/" + (item.getAttribute("data-source-id") || "")
+        ),
+        targetRect: target.getBoundingClientRect().toJSON(),
+        viewportRect: viewport.getBoundingClientRect().toJSON(),
+      }));
+    }
     fire(win, viewport, "pointerup", 44, tx, ty);
     await wait(() => events.length === 1, "host document rebuild");
     const latest = events[0].document;
