@@ -12199,7 +12199,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         isinstance(routing_options, Mapping)
         and routing_options.get("edgeRouting") == "smart"
     )
-    routing_attribute = ' data-edge-routing="smart"' if smart_routing else ""
+    routing_attribute = 'data-edge-routing="smart" ' if smart_routing else ""
 
     pair_counts: dict[tuple[str, str], int] = {}
     pair_slots: dict[tuple[str, str], int] = {}
@@ -12311,7 +12311,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'width="{view_width}" height="{view_height}" '
             f'data-renderer="schauwerk-native-diagram-v1" '
             f'data-intent="freeform" data-document-mode="json-canvas" '
-            f'{routing_attribute} '
+            f'{routing_attribute}'
             f'data-input-digest="{_canvas_xml(document["source_digest"])}"'
             f'{document_title_truncated_attribute}>'
         ),
