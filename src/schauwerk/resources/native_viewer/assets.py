@@ -1089,6 +1089,7 @@ const nodes = new Map();
 const baseTransforms = new Map();
 const edges = new Map();
 const incidentEdges = new Map();
+const lastRouteObstacles = new Map();
 let handleLayer = null;
 let connectionPreview = null;
 let view = { x: 0, y: 0, scale: 1 };
@@ -1423,6 +1424,15 @@ function applyAllNodeTransforms() {
     bulkEdgeUpdate = false;
   }
   for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  lastRouteObstacles.clear();
+  if (documentMode && routingMode() === "smart") {
+    for (const node of nodeModelsAtLiveCoordinates()) {
+      lastRouteObstacles.set(node.id, [
+        node.x - 24, node.y - 24,
+        node.x + node.width + 24, node.y + node.height + 24,
+      ]);
+    }
+  }
   relocateLiveEdgeLabels();
 }
 
@@ -1614,6 +1624,13 @@ function updateEdgeGeometry(edgeId) {
       edgeState.hitPath.setAttribute("d", result.path);
       edgeState.naturalLabelX = result.labelX;
       edgeState.naturalLabelY = result.labelY;
+      const routePoints = result.points;
+      edgeState.routeBounds = [
+        Math.min(...routePoints.map(point => point[0])) - 24,
+        Math.min(...routePoints.map(point => point[1])) - 24,
+        Math.max(...routePoints.map(point => point[0])) + 24,
+        Math.max(...routePoints.map(point => point[1])) + 24,
+      ];
       placeLiveEdgeConflict(edgeState, false);
     } else {
       const box = svg.viewBox.baseVal;
@@ -1626,6 +1643,7 @@ function updateEdgeGeometry(edgeId) {
       edgeState.hitPath.setAttribute("d", fallback.path);
       edgeState.naturalLabelX = fallback.labelX;
       edgeState.naturalLabelY = fallback.labelY;
+      edgeState.routeBounds = null;
       placeLiveEdgeConflict(edgeState, true);
     }
     return;
@@ -1662,8 +1680,29 @@ function updateEdgeGeometry(edgeId) {
 
 function updateIncidentEdges(sourceId) {
   if (documentMode && routingMode() === "smart") {
-    // A blocker can invalidate unrelated routes as well as incident ones.
-    for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+    const node = nodeModelsAtLiveCoordinates().find(item => item.id === sourceId);
+    const next = node ? [
+      node.x - 24, node.y - 24,
+      node.x + node.width + 24, node.y + node.height + 24,
+    ] : null;
+    const previous = lastRouteObstacles.get(sourceId);
+    if (next) lastRouteObstacles.set(sourceId, next);
+    const influence = previous && next ? [
+      Math.min(previous[0], next[0]), Math.min(previous[1], next[1]),
+      Math.max(previous[2], next[2]), Math.max(previous[3], next[3]),
+    ] : null;
+    // Synchronous drag updates only routes the moved node can plausibly touch;
+    // the authoritative document rebuild reroutes the whole graph on release.
+    // A missing/uncertain route envelope is always recomputed, never assumed clear.
+    for (const [edgeId, edge] of edges) {
+      const rect = edge.routeBounds;
+      const affected = edge.from === sourceId || edge.to === sourceId ||
+        !rect || !influence || (
+          rect[0] < influence[2] && rect[2] > influence[0] &&
+          rect[1] < influence[3] && rect[3] > influence[1]
+        );
+      if (affected) updateEdgeGeometry(edgeId);
+    }
   } else {
     for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
   }
