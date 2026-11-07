@@ -107,7 +107,9 @@ const center = elem => {
       throw new Error("connection handle missing accessible explanation");
     const [hx, hy] = center(handle);
     const dropId = '__ACTION__' === 'create' ? 'b' : 'blocker';
-    const target = doc.querySelector('[data-source-kind="node"][data-source-id="' + dropId + '"] rect');
+    const target = doc.querySelector(
+      '[data-source-kind="node"][data-source-id="' + dropId + '"] rect'
+    );
     if (!target) throw new Error("drop target missing");
     const [tx, ty] = center(target);
     fire(win, handle, "pointerdown", 44, hx, hy);
