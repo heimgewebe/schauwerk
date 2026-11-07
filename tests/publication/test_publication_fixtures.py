@@ -9012,7 +9012,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for path, expected in pinch_save_acceptance["source_bindings"].items():
         if path in (single_workspace_host_retry_superseded_files
                     | single_workspace_ci_save_font_superseded_files
-                    | single_workspace_legacy_tools_superseded_files):
+                    | single_workspace_legacy_tools_superseded_files
+                    | set(_smart_edge_source_proof()["source_bindings"])):
             continue
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
     assert all(pinch_save_acceptance["checks"].values())
