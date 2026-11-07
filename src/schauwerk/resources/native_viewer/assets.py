@@ -430,6 +430,11 @@ button:focus-visible {
   stroke-width: 4px !important;
   filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
 }
+.native-diagram [data-label-conflict="true"] > rect {
+  fill: #ffedd5;
+  stroke: #c2410c;
+  stroke-width: 1px;
+}
 
 .text-dialog {
   width: min(560px, calc(100vw - 28px));
@@ -1084,6 +1089,7 @@ let pointerAutoFitBefore = null;
 let pointerChangedView = false;
 let pointerMovedNode = false;
 let pointerFitPending = false;
+let bulkEdgeUpdate = false;
 const DRAG_THRESHOLD_PX = 4;
 const EDGE_HIT_TARGET_SCREEN_PX = 24;
 const BOUNDS_EPSILON = 0.01;
@@ -1381,16 +1387,23 @@ function applyNodeTransform(sourceId) {
   if (offset.x === 0 && offset.y === 0) {
     if (base) node.setAttribute("transform", base);
     else node.removeAttribute("transform");
-    updateIncidentEdges(sourceId);
+    if (!bulkEdgeUpdate) updateIncidentEdges(sourceId);
     return;
   }
   const translated = `translate(${offset.x} ${offset.y})`;
   node.setAttribute("transform", base ? `${translated} ${base}` : translated);
-  updateIncidentEdges(sourceId);
+  if (!bulkEdgeUpdate) updateIncidentEdges(sourceId);
 }
 
 function applyAllNodeTransforms() {
-  for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
+  bulkEdgeUpdate = true;
+  try {
+    for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
+  } finally {
+    bulkEdgeUpdate = false;
+  }
+  for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  relocateLiveEdgeLabels();
 }
 
 function nodeBoundsInSvg(node) {
@@ -1472,9 +1485,95 @@ function addIncidentEdge(sourceId, edgeId) {
   incidentEdges.get(sourceId).add(edgeId);
 }
 
+function placeLiveLabel(edgeState, x, y) {
+  const transform = "translate(" +
+    (x - edgeState.baseLabelX) + " " + (y - edgeState.baseLabelY) + ")";
+  for (const element of edgeState.labelElements) element.setAttribute("transform", transform);
+  edgeState.clipRect?.setAttribute("transform", transform);
+}
 function resetEdgeLabel(edgeState) {
+  edgeState.naturalLabelX = edgeState.baseLabelX;
+  edgeState.naturalLabelY = edgeState.baseLabelY;
   for (const element of edgeState.labelElements) element.removeAttribute("transform");
   edgeState.clipRect?.removeAttribute("transform");
+}
+function nodeModelsAtLiveCoordinates() {
+  return sourceModel.nodes.map(node => {
+    const delta = nodeOffset(overrides, String(node.id));
+    return {
+      id: String(node.id), type: String(node.type),
+      x: Math.round(Number(node.x) + delta.x),
+      y: Math.round(Number(node.y) + delta.y),
+      width: Number(node.width), height: Number(node.height),
+    };
+  });
+}
+function placeLiveEdgeConflict(edgeState, conflict) {
+  if (conflict) {
+    edgeState.element.dataset.routingConflict = "true";
+    edgeState.path.setAttribute("stroke", "#c2410c");
+    edgeState.path.setAttribute("stroke-dasharray", "6 4");
+  } else {
+    edgeState.element.removeAttribute("data-routing-conflict");
+    edgeState.path.setAttribute("stroke", edgeState.originalStroke);
+    if (edgeState.originalDash) {
+      edgeState.path.setAttribute("stroke-dasharray", edgeState.originalDash);
+    } else edgeState.path.removeAttribute("stroke-dasharray");
+  }
+}
+function relocateLiveEdgeLabels() {
+  if (!documentMode) return;
+  const padding = 8;
+  const blockers = nodeModelsAtLiveCoordinates()
+    .filter(node => node.type !== "group")
+    .map(node => [node.x, node.y, node.x + node.width, node.y + node.height]);
+  const reserved = [];
+  for (const edgeState of edges.values()) {
+    const box = edgeState.labelRect;
+    const halfW = Number(box?.getAttribute("width") || 0) / 2;
+    const halfH = Number(box?.getAttribute("height") || 0) / 2;
+    if (!halfW || !halfH) continue;
+    const x0 = edgeState.naturalLabelX ?? edgeState.baseLabelX;
+    const y0 = edgeState.naturalLabelY ?? edgeState.baseLabelY;
+    const occupied = [...blockers, ...reserved];
+    const intersects = (x, y) => occupied.some(b =>
+      x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
+      y - halfH < b[3] + padding && y + halfH > b[1] - padding
+    );
+    let x = x0, y = y0;
+    if (intersects(x, y)) {
+      const candidates = [];
+      for (const [left, top, right, bottom] of occupied) {
+        candidates.push([x0, top - padding - halfH], [x0, bottom + padding + halfH],
+                        [left - padding - halfW, y0], [right + padding + halfW, y0]);
+      }
+      for (const step of [16,32,48,64,96,128,192,256,384,512]) {
+        candidates.push([x0,y0-step], [x0,y0+step], [x0-step,y0], [x0+step,y0]);
+      }
+      if (occupied.length) {
+        candidates.push(
+          [x0, Math.min(...occupied.map(b => b[1])) - padding - halfH],
+          [x0, Math.max(...occupied.map(b => b[3])) + padding + halfH],
+          [Math.min(...occupied.map(b => b[0])) - padding - halfW, y0],
+          [Math.max(...occupied.map(b => b[2])) + padding + halfW, y0]
+        );
+      }
+      candidates.sort((a, b) => {
+        const da = (a[0]-x0)**2 + (a[1]-y0)**2;
+        const db = (b[0]-x0)**2 + (b[1]-y0)**2;
+        return da - db || Number(a[0] !== x0) - Number(b[0] !== x0);
+      });
+      for (const candidate of candidates) {
+        if (!intersects(candidate[0], candidate[1])) {
+          x = candidate[0]; y = candidate[1]; break;
+        }
+      }
+    }
+    if (intersects(x, y)) edgeState.element.dataset.labelConflict = "true";
+    else edgeState.element.removeAttribute("data-label-conflict");
+    placeLiveLabel(edgeState, x, y);
+    reserved.push([x - halfW, y - halfH, x + halfW, y + halfH]);
+  }
 }
 
 function updateEdgeGeometry(edgeId) {
@@ -1482,6 +1581,35 @@ function updateEdgeGeometry(edgeId) {
   if (!edgeState) return;
   const fromOffset = nodeOffset(overrides, edgeState.from);
   const toOffset = nodeOffset(overrides, edgeState.to);
+  if (documentMode && routingMode() === "smart" && edgeState.from !== edgeState.to) {
+    const allNodes = nodeModelsAtLiveCoordinates();
+    const source = allNodes.find(node => node.id === edgeState.from);
+    const target = allNodes.find(node => node.id === edgeState.to);
+    if (!source || !target) return;
+    const result = smartEdgeGeometry(source, target, allNodes, {
+      lane: edgeState.lane, fromSide: edgeState.fromSide, toSide: edgeState.toSide,
+    });
+    if (result) {
+      edgeState.path.setAttribute("d", result.path);
+      edgeState.hitPath.setAttribute("d", result.path);
+      edgeState.naturalLabelX = result.labelX;
+      edgeState.naturalLabelY = result.labelY;
+      placeLiveEdgeConflict(edgeState, false);
+    } else {
+      const box = svg.viewBox.baseVal;
+      const fallback = liveEdgeGeometry(source, target, {
+        route: "standard", lane: edgeState.lane,
+        fromSide: edgeState.fromSide, toSide: edgeState.toSide,
+        canvasWidth: box.width || 1, canvasHeight: box.height || 1,
+      });
+      edgeState.path.setAttribute("d", fallback.path);
+      edgeState.hitPath.setAttribute("d", fallback.path);
+      edgeState.naturalLabelX = fallback.labelX;
+      edgeState.naturalLabelY = fallback.labelY;
+      placeLiveEdgeConflict(edgeState, true);
+    }
+    return;
+  }
   if (
     fromOffset.x === 0 && fromOffset.y === 0 &&
     toOffset.x === 0 && toOffset.y === 0
@@ -1507,13 +1635,19 @@ function updateEdgeGeometry(edgeId) {
   });
   edgeState.path.setAttribute("d", geometry.path);
   edgeState.hitPath.setAttribute("d", geometry.path);
-  const translated = `translate(${geometry.labelX - edgeState.baseLabelX} ${geometry.labelY - edgeState.baseLabelY})`;
-  for (const element of edgeState.labelElements) element.setAttribute("transform", translated);
-  edgeState.clipRect?.setAttribute("transform", translated);
+  edgeState.naturalLabelX = geometry.labelX;
+  edgeState.naturalLabelY = geometry.labelY;
+  placeLiveLabel(edgeState, geometry.labelX, geometry.labelY);
 }
 
 function updateIncidentEdges(sourceId) {
-  for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
+  if (documentMode && routingMode() === "smart") {
+    // A blocker can invalidate unrelated routes as well as incident ones.
+    for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  } else {
+    for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
+  }
+  relocateLiveEdgeLabels();
 }
 
 function constrainBoundsOffset(sourceId, bounds, box) {
@@ -1976,6 +2110,10 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     basePath: path.getAttribute("d") || "",
     baseLabelX,
     baseLabelY,
+    naturalLabelX: baseLabelX,
+    naturalLabelY: baseLabelY,
+    originalStroke: edgeGroup.dataset.canonicalStroke || path.getAttribute("stroke") || "#64748b",
+    originalDash: path.getAttribute("stroke-dasharray") || "",
     labelElements,
     labelRect,
     clipRect: clipRect instanceof SVGRectElement ? clipRect : null,
