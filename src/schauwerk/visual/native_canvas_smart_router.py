@@ -340,24 +340,31 @@ def route_edge(
         for p in ((x0-0.01,y0-0.01),(x0-0.01,y1+0.01),
                   (x1+0.01,y0-0.01),(x1+0.01,y1+0.01)):
             add_vertex(p)
-    graph=_build_graph(vertices,all_boxes)
-    best=None
-    for si,ti,ss,ts,start,ex,ent,end in candidates:
-        route=_dijkstra(graph,add_vertex(ex),add_vertex(ent))
-        if route is None:
-            continue
-        poly=_dedupe((start,ex,*[vertices[i] for i in route],ent,end))
-        if not all(_clear(a,b,blocking) for a,b in zip(poly,poly[1:])):
-            continue
-        # Exclude only the stub of its own endpoint from total checks.
-        if not all(_clear(a,b,all_boxes) for a,b in zip(poly[1:-2],poly[2:-1])):
-            continue
-        length=sum(_distance(a,b) for a,b in zip(poly,poly[1:]))
-        turn_count=sum(abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-3
-                       for a,b,c in zip(poly,poly[1:],poly[2:]))
-        score=length+turn_count*3.0
-        if best is None or (score,si,ti)<best[0]:
-            best=((score,si,ti),ss,ts,poly)
+    def best_route(graph: Sequence[Sequence[tuple[int, float]]]):
+        best=None
+        for si,ti,ss,ts,start,ex,ent,end in candidates:
+            route=_dijkstra(graph,add_vertex(ex),add_vertex(ent))
+            if route is None:
+                continue
+            poly=_dedupe((start,ex,*[vertices[i] for i in route],ent,end))
+            if not all(_clear(a,b,blocking) for a,b in zip(poly,poly[1:])):
+                continue
+            # Exclude only the stub of its own endpoint from total checks.
+            if not all(_clear(a,b,all_boxes) for a,b in zip(poly[1:-2],poly[2:-1])):
+                continue
+            length=sum(_distance(a,b) for a,b in zip(poly,poly[1:]))
+            turn_count=sum(abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-3
+                           for a,b,c in zip(poly,poly[1:],poly[2:]))
+            score=length+turn_count*3.0
+            if best is None or (score,si,ti)<best[0]:
+                best=((score,si,ti),ss,ts,poly)
+        return best
+    # Build the small local visibility graph first, but certify the resulting
+    # route against *all* obstacles. An unsuccessful limited attempt retries
+    # the complete graph to avoid false conflicts in crowded diagrams.
+    best=best_route(_build_graph(vertices,unique))
+    if best is None and len(unique)!=len(all_boxes):
+        best=best_route(_build_graph(vertices,all_boxes))
     if best is None:
         return None
     _,ss,ts,poly=best
