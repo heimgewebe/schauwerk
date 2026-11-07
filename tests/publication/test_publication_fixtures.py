@@ -29,7 +29,9 @@ def _smart_edge_source_proof() -> dict:
         / "schaubild-smart-edge-routing-20261107/technical-proof-endpoint-guard.json"
     )
     proof = json.loads(path.read_text(encoding="utf-8"))
-    assert proof["schema_version"] == "schauwerk-smart-edge-opposite-endpoint-guard-technical-proof.v1"
+    assert proof["schema_version"] == (
+        "schauwerk-smart-edge-opposite-endpoint-guard-technical-proof.v1"
+    )
     assert proof["scope"] == "technical-candidate-only"
     assert proof["status"] == "technical_candidate_only"
     assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
