@@ -334,7 +334,8 @@ def route_edge(
             vertices.append(p)
         return vertex_index[key]
     for c in candidates:
-        add_vertex(c[5]);add_vertex(c[6])
+        add_vertex(c[5])
+        add_vertex(c[6])
     for x0,y0,x1,y1 in unique:
         for p in ((x0-0.01,y0-0.01),(x0-0.01,y1+0.01),
                   (x1+0.01,y0-0.01),(x1+0.01,y1+0.01)):
