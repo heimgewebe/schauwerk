@@ -563,8 +563,6 @@ try {
   if (
     !(hitPath instanceof SVGPathElement) ||
     hitPath.getAttribute("pointer-events") !== "stroke" ||
-    hitPath.getAttribute("vector-effect") !== "non-scaling-stroke" ||
-    getComputedStyle(hitPath).strokeWidth !== "24px" ||
     edge.getAttribute("tabindex") !== "0" ||
     edge.getAttribute("role") !== "button" ||
     !edge.getAttribute("aria-label")
@@ -575,6 +573,51 @@ try {
   if (hitPath.getAttribute("d") !== basePath) {
     throw new Error("Edge hit target does not initially match the visual curve");
   }
+  const screenScale = () => new DOMMatrixReadOnly(
+    getComputedStyle(canvas).transform,
+  ).a;
+  const assertHitWidth = () => {
+    const physicalWidth = parseFloat(getComputedStyle(hitPath).strokeWidth) * screenScale();
+    if (Math.abs(physicalWidth - 24) > 0.3) {
+      throw new Error("Edge hit target failed to preserve 24 screen px at CSS zoom");
+    }
+  };
+  const acceptsRealOffsetHit = () => {
+    const matrix = edgePath.getScreenCTM();
+    if (!matrix) return false;
+    const length = edgePath.getTotalLength();
+    for (const t of [0.16, 0.25, 0.34, 0.66, 0.75, 0.84]) {
+      const point = edgePath.getPointAtLength(length * t);
+      const prev = edgePath.getPointAtLength(length * (t - 0.015));
+      const next = edgePath.getPointAtLength(length * (t + 0.015));
+      const start = new DOMPoint(prev.x, prev.y).matrixTransform(matrix);
+      const end = new DOMPoint(next.x, next.y).matrixTransform(matrix);
+      const center = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+      const lengthPx = Math.hypot(end.x - start.x, end.y - start.y);
+      if (lengthPx < 0.2) continue;
+      for (const direction of [-1, 1]) {
+        const x = center.x - direction * 8 * (end.y - start.y) / lengthPx;
+        const y = center.y + direction * 8 * (end.x - start.x) / lengthPx;
+        if (x < 3 || y < 3 || x >= innerWidth - 3 || y >= innerHeight - 3) continue;
+        if (document.elementFromPoint(x, y) === hitPath) return true;
+      }
+    }
+    return false;
+  };
+  assertHitWidth();
+  if (!acceptsRealOffsetHit()) {
+    throw new Error("Real hit-testing at 8 CSS px missed the native edge");
+  }
+  const zoomOut = document.querySelector("#zoomOut");
+  if (!(zoomOut instanceof HTMLButtonElement)) throw new Error("Zoom-out control missing");
+  const initialScale = screenScale();
+  for (let i = 0; i < 8; i++) zoomOut.click();
+  if (!(screenScale() < initialScale)) throw new Error("Zoom-out did not change CSS zoom");
+  assertHitWidth();
+  if (!acceptsRealOffsetHit()) {
+    throw new Error("Real hit-testing missed the edge after zooming out");
+  }
+  fitViewButton.click();
   const baseMarker = edgePath.getAttribute("marker-end") || "";
   const rect = node.getBoundingClientRect();
   const x = (rect.left + rect.right) / 2;
