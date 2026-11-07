@@ -605,18 +605,24 @@ try {
     return false;
   };
   assertHitWidth();
-  if (!acceptsRealOffsetHit()) {
-    throw new Error("Real hit-testing at 8 CSS px missed the native edge");
-  }
+  // A CSS-transformed SVG can be layout-ready before Chrome has rebuilt its
+  // compositor hit-test tree. Wait for actual pointer hit-testing, not a timer.
+  await waitUntil(
+    acceptsRealOffsetHit,
+    "Real hit-testing at 8 CSS px missed the native edge",
+    80,
+  );
   const zoomOut = document.querySelector("#zoomOut");
   if (!(zoomOut instanceof HTMLButtonElement)) throw new Error("Zoom-out control missing");
   const initialScale = screenScale();
   for (let i = 0; i < 8; i++) zoomOut.click();
   if (!(screenScale() < initialScale)) throw new Error("Zoom-out did not change CSS zoom");
   assertHitWidth();
-  if (!acceptsRealOffsetHit()) {
-    throw new Error("Real hit-testing missed the edge after zooming out");
-  }
+  await waitUntil(
+    acceptsRealOffsetHit,
+    "Real hit-testing missed the edge after zooming out",
+    80,
+  );
   fitViewButton.click();
   const baseMarker = edgePath.getAttribute("marker-end") || "";
   const rect = node.getBoundingClientRect();
