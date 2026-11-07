@@ -129,3 +129,10 @@ def test_route_is_deterministic_under_permuted_obstacle_order():
     second=route_edge(a,b,[*blocks[::-1],b,a])
     assert first is not None and second is not None
     assert first.path==second.path
+
+
+def test_fixed_ports_cannot_cross_the_other_endpoint_before_the_port():
+    a = node("a", 0, 0)
+    b = node("b", 10, 0)
+    assert route_edge(a, b, [a, b], from_side="right", to_side="right") is None
+    assert route_edge(a, b, [a, b], from_side="left", to_side="left") is None
