@@ -38,7 +38,7 @@ def _skip_or_fail_browser(message: str) -> None:
 
 
 
-def _write_document_probe_host(output: Path) -> None:
+def _write_document_probe_host(output: Path, *, full_viewport: bool = False) -> None:
     (output / "host.html").write_text(
         r"""<!doctype html>
 <html>
@@ -77,7 +77,11 @@ frame.src = "index.html";
 </script>
 </body>
 </html>
-""",
+""".replace(
+            '<iframe id="viewer"></iframe>',
+            ('<iframe id="viewer" style="display:block;width:100vw;height:100vh;border:0"></iframe>'
+             if full_viewport else '<iframe id="viewer"></iframe>'),
+        ),
         encoding="utf-8",
     )
 
@@ -596,7 +600,10 @@ try {
   const acceptsRealOffsetHit = () => {
     const rect = svg.getBoundingClientRect();
     const box = svg.viewBox.baseVal;
-    if (!rect.width || !rect.height || !box.width || !box.height) return false;
+    if (!rect.width || !rect.height || !box.width || !box.height) {
+      if (!hitDiagnostics.length) hitDiagnostics.push({reason: "unmeasurable-svg", svgRect: [rect.x, rect.y, rect.width, rect.height], viewBox: [box.x, box.y, box.width, box.height]});
+      return false;
+    }
     // The SVG is translated and scaled by an HTML parent, not by its viewBox.
     // Compute screen points from its actual DOM rect; getScreenCTM may omit an
     // ancestor CSS transform in some browser revisions.
@@ -930,7 +937,7 @@ try {
 </script>
 """
     index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
-    _write_document_probe_host(output)
+    _write_document_probe_host(output, full_viewport=True)
 
     class QuietCanvasHandler(SimpleHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002
@@ -947,6 +954,7 @@ try {
                 [
                     chrome,
                     "--headless=new",
+                    "--window-size=1280,900",
                     f"--user-data-dir={tmp_path / 'canvas-chrome-profile'}",
                     "--no-first-run",
                     "--disable-gpu",
