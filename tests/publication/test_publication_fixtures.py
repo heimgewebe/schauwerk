@@ -26,11 +26,11 @@ def _smart_edge_source_proof() -> dict:
     """Current candidate supersedes changed bytes, never historical proofs."""
     path = (
         ROOT / "docs/operators/evidence"
-        / "schaubild-smart-edge-routing-20261107/technical-proof-endpoint-guard.json"
+        / "schaubild-smart-edge-routing-20261107/technical-proof-hosted-viewer.json"
     )
     proof = json.loads(path.read_text(encoding="utf-8"))
     assert proof["schema_version"] == (
-        "schauwerk-smart-edge-opposite-endpoint-guard-technical-proof.v1"
+        "schauwerk-smart-edge-hosted-viewer-technical-proof.v1"
     )
     assert proof["scope"] == "technical-candidate-only"
     assert proof["status"] == "technical_candidate_only"
@@ -14047,6 +14047,8 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
         "tests/visual/test_native_canvas_smart_integration.py",
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_canvas_smart_browser.py",
+        "tests/visual/test_native_history_contract.py",
+        "src/schauwerk/visual/standalone_editor.py",
     }
     assert set(proof["source_bindings"]) == expected_paths
     assert set(proof["base_source_bindings"]) == expected_paths
