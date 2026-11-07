@@ -592,6 +592,7 @@ try {
   if (!(unobstructedHitPath instanceof SVGPathElement)) {
     throw new Error("Unlabelled parallel edge hit target is missing");
   }
+  const hitDiagnostics = [];
   const acceptsRealOffsetHit = () => {
     const rect = svg.getBoundingClientRect();
     const box = svg.viewBox.baseVal;
@@ -623,6 +624,16 @@ try {
         // Their 24px hit zones can overlap; Chrome returns the topmost peer.
         // Check a genuine SVG edge hit target, not a synthetic dispatch.
         const hit = document.elementFromPoint(x, y);
+        if (hitDiagnostics.length < 12) {
+          hitDiagnostics.push({
+            x: Math.round(x), y: Math.round(y),
+            tag: hit?.tagName || null,
+            clazz: hit?.getAttribute?.("class") || null,
+            edge: hit?.closest?.('[data-source-kind="edge"]')?.getAttribute("data-source-id"),
+            pathTarget: hit === unobstructedHitPath,
+            scale: screenScale(),
+          });
+        }
         if (
           hit instanceof SVGPathElement &&
           hit === unobstructedHitPath
@@ -634,11 +645,17 @@ try {
   assertHitWidth();
   // A CSS-transformed SVG can be layout-ready before Chrome has rebuilt its
   // compositor hit-test tree. Wait for actual pointer hit-testing, not a timer.
-  await waitUntil(
-    acceptsRealOffsetHit,
-    "Real hit-testing at 8 CSS px missed the native edge",
-    80,
-  );
+  try {
+    await waitUntil(
+      acceptsRealOffsetHit,
+      "Real hit-testing at 8 CSS px missed the native edge",
+      80,
+    );
+  } catch (error) {
+    throw new Error(
+      String(error?.message || error) + " | " + JSON.stringify(hitDiagnostics),
+    );
+  }
   const zoomOut = document.querySelector("#zoomOut");
   if (!(zoomOut instanceof HTMLButtonElement)) throw new Error("Zoom-out control missing");
   const initialScale = screenScale();
