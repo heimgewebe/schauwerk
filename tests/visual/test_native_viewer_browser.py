@@ -38,7 +38,7 @@ def _skip_or_fail_browser(message: str) -> None:
 
 
 
-def _write_document_probe_host(output: Path) -> None:
+def _write_document_probe_host(output: Path, *, full_viewport: bool = False) -> None:
     (output / "host.html").write_text(
         r"""<!doctype html>
 <html>
@@ -77,7 +77,11 @@ frame.src = "index.html";
 </script>
 </body>
 </html>
-""",
+""".replace(
+            '<iframe id="viewer"></iframe>',
+            ('<iframe id="viewer" style="display:block;width:100vw;height:100vh;border:0"></iframe>'
+             if full_viewport else '<iframe id="viewer"></iframe>'),
+        ),
         encoding="utf-8",
     )
 
@@ -559,7 +563,124 @@ try {
     throw new Error("canvas browser probe DOM contract missing");
   }
 
+  const hitPath = edge.querySelector(":scope > path.native-edge-hit");
+  if (
+    !(hitPath instanceof SVGPathElement) ||
+    hitPath.getAttribute("pointer-events") !== "stroke" ||
+    edge.getAttribute("tabindex") !== "0" ||
+    edge.getAttribute("role") !== "button" ||
+    !edge.getAttribute("aria-label")
+  ) {
+    throw new Error("Accessible edge hit target was not initialized");
+  }
   const basePath = edgePath.getAttribute("d") || "";
+  if (hitPath.getAttribute("d") !== basePath) {
+    throw new Error("Edge hit target does not initially match the visual curve");
+  }
+  const screenScale = () => new DOMMatrixReadOnly(
+    getComputedStyle(canvas).transform,
+  ).a;
+  const assertHitWidth = () => {
+    const physicalWidth = parseFloat(getComputedStyle(hitPath).strokeWidth) * screenScale();
+    if (Math.abs(physicalWidth - 24) > 0.3) {
+      throw new Error("Edge hit target failed to preserve 24 screen px at CSS zoom");
+    }
+  };
+  // The first edge has an intentionally 260px-wide label that covers its
+  // own 8px offset hit points. Probe the later, unlabeled parallel edge:
+  // its transparent path is painted above that label and tests the actual
+  // 24px hit area without conflating it with the label rectangle.
+  const unobstructedHitPath = svg.querySelector(
+    '[data-source-kind="edge"][data-source-id="node_1"] > path.native-edge-hit',
+  );
+  if (!(unobstructedHitPath instanceof SVGPathElement)) {
+    throw new Error("Unlabelled parallel edge hit target is missing");
+  }
+  const hitDiagnostics = [];
+  const acceptsRealOffsetHit = () => {
+    const rect = svg.getBoundingClientRect();
+    const box = svg.viewBox.baseVal;
+    if (!rect.width || !rect.height || !box.width || !box.height) {
+      if (!hitDiagnostics.length) {
+        hitDiagnostics.push({
+          reason: "unmeasurable-svg",
+          svgRect: [rect.x, rect.y, rect.width, rect.height],
+          viewBox: [box.x, box.y, box.width, box.height],
+        });
+      }
+      return false;
+    }
+    // The SVG is translated and scaled by an HTML parent, not by its viewBox.
+    // Compute screen points from its actual DOM rect; getScreenCTM may omit an
+    // ancestor CSS transform in some browser revisions.
+    const sx = rect.width / box.width;
+    const sy = rect.height / box.height;
+    const toScreen = (point) => ({
+      x: rect.left + (point.x - box.x) * sx,
+      y: rect.top + (point.y - box.y) * sy,
+    });
+    const length = unobstructedHitPath.getTotalLength();
+    for (const t of [0.16, 0.25, 0.34, 0.66, 0.75, 0.84]) {
+      const point = unobstructedHitPath.getPointAtLength(length * t);
+      const prev = unobstructedHitPath.getPointAtLength(length * (t - 0.015));
+      const next = unobstructedHitPath.getPointAtLength(length * (t + 0.015));
+      const start = toScreen(prev);
+      const end = toScreen(next);
+      const center = toScreen(point);
+      const lengthPx = Math.hypot(end.x - start.x, end.y - start.y);
+      if (lengthPx < 0.2) continue;
+      for (const direction of [-1, 1]) {
+        const x = center.x - direction * 8 * (end.y - start.y) / lengthPx;
+        const y = center.y + direction * 8 * (end.x - start.x) / lengthPx;
+        if (x < 3 || y < 3 || x >= innerWidth - 3 || y >= innerHeight - 3) continue;
+        // Two intentionally parallel edges share a corridor in this fixture.
+        // Their 24px hit zones can overlap; Chrome returns the topmost peer.
+        // Check a genuine SVG edge hit target, not a synthetic dispatch.
+        const hit = document.elementFromPoint(x, y);
+        if (hitDiagnostics.length < 12) {
+          hitDiagnostics.push({
+            x: Math.round(x), y: Math.round(y),
+            tag: hit?.tagName || null,
+            clazz: hit?.getAttribute?.("class") || null,
+            edge: hit?.closest?.('[data-source-kind="edge"]')?.getAttribute("data-source-id"),
+            pathTarget: hit === unobstructedHitPath,
+            scale: screenScale(),
+          });
+        }
+        if (
+          hit instanceof SVGPathElement &&
+          hit === unobstructedHitPath
+        ) return true;
+      }
+    }
+    return false;
+  };
+  assertHitWidth();
+  // A CSS-transformed SVG can be layout-ready before Chrome has rebuilt its
+  // compositor hit-test tree. Wait for actual pointer hit-testing, not a timer.
+  try {
+    await waitUntil(
+      acceptsRealOffsetHit,
+      "Real hit-testing at 8 CSS px missed the native edge",
+      80,
+    );
+  } catch (error) {
+    throw new Error(
+      String(error?.message || error) + " | " + JSON.stringify(hitDiagnostics),
+    );
+  }
+  const zoomOut = document.querySelector("#zoomOut");
+  if (!(zoomOut instanceof HTMLButtonElement)) throw new Error("Zoom-out control missing");
+  const initialScale = screenScale();
+  for (let i = 0; i < 8; i++) zoomOut.click();
+  if (!(screenScale() < initialScale)) throw new Error("Zoom-out did not change CSS zoom");
+  assertHitWidth();
+  await waitUntil(
+    acceptsRealOffsetHit,
+    "Real hit-testing missed the edge after zooming out",
+    80,
+  );
+  fitViewButton.click();
   const baseMarker = edgePath.getAttribute("marker-end") || "";
   const rect = node.getBoundingClientRect();
   const x = (rect.left + rect.right) / 2;
@@ -569,6 +690,9 @@ try {
 
   if ((edgePath.getAttribute("d") || "") === basePath) {
     throw new Error("canvas incident edge path did not update during drag");
+  }
+  if (hitPath.getAttribute("d") !== edgePath.getAttribute("d")) {
+    throw new Error("Edge hit target did not follow the live path after drag");
   }
   if ((edgePath.getAttribute("marker-end") || "") !== baseMarker) {
     throw new Error("canvas edge marker binding changed during drag");
@@ -616,7 +740,7 @@ try {
   const edgeRectForSelection = edgePath.getBoundingClientRect();
   const edgeSelectX = (edgeRectForSelection.left + edgeRectForSelection.right) / 2;
   const edgeSelectY = (edgeRectForSelection.top + edgeRectForSelection.bottom) / 2;
-  firePointer(edgePath, "pointerdown", 32, edgeSelectX, edgeSelectY);
+  firePointer(hitPath, "pointerdown", 32, edgeSelectX, edgeSelectY);
   firePointer(viewport, "pointerup", 32, edgeSelectX, edgeSelectY);
   if (
     !initialAddEdge.disabled ||
@@ -626,6 +750,16 @@ try {
     initialDeleteSelection.disabled
   ) {
     throw new Error("edge selection did not expose exactly the edge-valid actions");
+  }
+  if (edge.getAttribute("aria-selected") !== "true") {
+    throw new Error("Edge hit-target selection did not expose aria-selected");
+  }
+  edge.focus();
+  edge.dispatchEvent(new KeyboardEvent("keydown", {
+    key: "Enter", bubbles: true, cancelable: true,
+  }));
+  if (edge.getAttribute("aria-selected") !== "true") {
+    throw new Error("Keyboard edge selection did not work");
   }
 
   firePointer(node, "pointerdown", 33, x, y);
@@ -809,7 +943,7 @@ try {
 </script>
 """
     index_path.write_text(index.replace(app_tag, browser_probe), encoding="utf-8")
-    _write_document_probe_host(output)
+    _write_document_probe_host(output, full_viewport=True)
 
     class QuietCanvasHandler(SimpleHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002
@@ -826,6 +960,7 @@ try {
                 [
                     chrome,
                     "--headless=new",
+                    "--window-size=1280,900",
                     f"--user-data-dir={tmp_path / 'canvas-chrome-profile'}",
                     "--no-first-run",
                     "--disable-gpu",

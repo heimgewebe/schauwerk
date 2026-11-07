@@ -370,11 +370,21 @@ button:focus-visible {
   filter: drop-shadow(0 0 5px rgba(99, 91, 255, 0.42));
 }
 .native-diagram [data-source-kind="edge"] { cursor: pointer; }
+.native-diagram [data-source-kind="edge"] > path.native-edge-hit {
+  fill: none;
+  stroke: transparent !important;
+  pointer-events: stroke;
+  filter: none !important;
+}
+.native-diagram [data-source-kind="edge"]:focus-visible > path:not(.native-edge-hit) {
+  stroke-width: 4px !important;
+  filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
+}
 .viewer-stage.is-observing .native-diagram [data-source-kind="node"],
 .viewer-stage.is-observing .native-diagram [data-source-kind="edge"] { cursor: grab; }
 .viewer-stage.is-observing.is-panning .native-diagram [data-source-kind="node"],
 .viewer-stage.is-observing.is-panning .native-diagram [data-source-kind="edge"] { cursor: grabbing; }
-.native-diagram [data-source-kind="edge"].is-selected > path {
+.native-diagram [data-source-kind="edge"].is-selected > path:not(.native-edge-hit) {
   stroke-width: 4px !important;
   filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
 }
@@ -1028,6 +1038,7 @@ let pointerChangedView = false;
 let pointerMovedNode = false;
 let pointerFitPending = false;
 const DRAG_THRESHOLD_PX = 4;
+const EDGE_HIT_TARGET_SCREEN_PX = 24;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
 const FIT_OVERLAY_CLEARANCE = 8;
@@ -1304,6 +1315,13 @@ function rebuildDocument(document) {
 
 function applyView() {
   canvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+  // Canvas zoom is a CSS transform on the wrapping DIV, not SVG viewBox
+  // scaling. An SVG non-scaling stroke does not compensate this zoom.
+  // Keep the pointer target 24 actual CSS pixels wide at every zoom level.
+  const hitWidth = EDGE_HIT_TARGET_SCREEN_PX / view.scale;
+  for (const edgeState of edges.values()) {
+    edgeState.hitPath.setAttribute("stroke-width", hitWidth.toFixed(3));
+  }
   zoomValue.value = `${Math.round(view.scale * 100)} %`;
   zoomValue.textContent = zoomValue.value;
 }
@@ -1422,6 +1440,7 @@ function updateEdgeGeometry(edgeId) {
     toOffset.x === 0 && toOffset.y === 0
   ) {
     edgeState.path.setAttribute("d", edgeState.basePath);
+    edgeState.hitPath.setAttribute("d", edgeState.basePath);
     resetEdgeLabel(edgeState);
     return;
   }
@@ -1440,6 +1459,7 @@ function updateEdgeGeometry(edgeId) {
     toSide: edgeState.toSide,
   });
   edgeState.path.setAttribute("d", geometry.path);
+  edgeState.hitPath.setAttribute("d", geometry.path);
   const translated = `translate(${geometry.labelX - edgeState.baseLabelX} ${geometry.labelY - edgeState.baseLabelY})`;
   for (const element of edgeState.labelElements) element.setAttribute("transform", translated);
   edgeState.clipRect?.setAttribute("transform", translated);
@@ -1584,6 +1604,7 @@ function updateDocumentToolbarState() {
 function selectEdge(edgeId) {
   if (selectedEdgeId && edges.has(selectedEdgeId)) {
     edges.get(selectedEdgeId).element?.classList.remove("is-selected");
+    edges.get(selectedEdgeId).element?.setAttribute("aria-selected", "false");
   }
   selectedEdgeId = edgeId && edges.has(edgeId) ? edgeId : null;
   if (selectedEdgeId) {
@@ -1594,6 +1615,7 @@ function selectEdge(edgeId) {
     }
     const edgeState = edges.get(selectedEdgeId);
     edgeState.element?.classList.add("is-selected");
+    edgeState.element?.setAttribute("aria-selected", "true");
     const label = edgeState.element?.querySelector("title")?.textContent?.trim() || selectedEdgeId;
     selectionStatus.textContent = `Verbindung: ${label || selectedEdgeId}`;
   }
@@ -1608,6 +1630,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   }
   if (selectedEdgeId && edges.has(selectedEdgeId)) {
     edges.get(selectedEdgeId).element?.classList.remove("is-selected");
+    edges.get(selectedEdgeId).element?.setAttribute("aria-selected", "false");
   }
   selectedEdgeId = null;
   selectedId = sourceId && nodes.has(sourceId) ? sourceId : null;
@@ -1848,6 +1871,28 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     (child) => child instanceof SVGRectElement || child instanceof SVGTextElement,
   );
   const clipRect = edgeGroup.querySelector("clipPath > rect");
+  // Viewer-only hit target: SVG/PDF output stays byte-identical.
+  // Keep the enlarged target on the actual curve during live node drags.
+  const hitPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  hitPath.classList.add("native-edge-hit");
+  hitPath.setAttribute("d", path.getAttribute("d") || "");
+  hitPath.setAttribute("fill", "none");
+  hitPath.setAttribute("stroke", "transparent");
+  hitPath.setAttribute("stroke-width", String(EDGE_HIT_TARGET_SCREEN_PX / view.scale));
+  hitPath.setAttribute("pointer-events", "stroke");
+  hitPath.setAttribute("aria-hidden", "true");
+  edgeGroup.insertBefore(hitPath, labelRect);
+  edgeGroup.setAttribute("tabindex", "0");
+  edgeGroup.setAttribute("role", "button");
+  edgeGroup.setAttribute("aria-label", `Verbindung: ${String(model.label || edgeId)}`);
+  edgeGroup.setAttribute("aria-selected", "false");
+  edgeGroup.addEventListener("keydown", (event) => {
+    if (observationMode) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectEdge(edgeId);
+    }
+  });
   edges.set(edgeId, {
     element: edgeGroup,
     from: String(model.from),
@@ -1860,6 +1905,7 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     fromSide: model.from_side || null,
     toSide: model.to_side || null,
     path,
+    hitPath,
     basePath: path.getAttribute("d") || "",
     baseLabelX,
     baseLabelY,
