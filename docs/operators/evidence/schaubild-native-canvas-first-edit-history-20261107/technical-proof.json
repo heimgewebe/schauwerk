@@ -1,0 +1,43 @@
+{
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "production_deployment",
+    "commonthing_live_first_edit",
+    "native_representation_undo_redo"
+  ],
+  "evidence_digest": "d2f3d851f5026ae4dac776422532fe1a5ba566ed071b01b548f9149fcdaf9739",
+  "predecessor_source_binding": {
+    "path": "src/schauwerk/resources/standalone_editor/assets.py",
+    "sha256": "7f8d537ab62d8ab0029dc08bbd76cf454fd1224477c3b9cf39f10ab452b21b27"
+  },
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-vector-pdf-print-20261106/technical-proof.json",
+    "sha256": "f339628bd12375845f9731d6948a6d334899ff6855f7205a18439fbbb4d5a629"
+  },
+  "schema_version": "schauwerk-native-canvas-first-edit-history-technical-proof.v1",
+  "scope": "native-json-canvas-first-edit-inert-until-parent-history-startup-sync",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "7c16e72ff5dee2053920d16867694dc595294c8aaffc49147b05a38f266fd30e",
+    "tests/visual/test_native_history_contract.py": "9dc105aa3f1a36786dc15130a932f49b41b14cc43ac2db09606f04f827734df9"
+  },
+  "status": "technical_candidate_only",
+  "validation": {
+    "github_ci_at_proof_creation": "historical-vector-proof-source-digest-mismatch-after-legitimate-source-change",
+    "local_chromium_browser_history_suite_passed": true,
+    "local_chromium_knowledge_map_browser_viewports_passed": [
+      [
+        1280,
+        900
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "local_combined_product_ui_history_and_representation_pytest_passed": 25,
+    "local_webkitgtk_before_change_first_node_missing_undo_preimage": true,
+    "local_webkitgtk_fixed_source_first_edit_without_arbitrary_sleep_passed": true,
+    "local_webkitgtk_fixed_source_undo_redo_branch_observation_ctrl_z_passed": true
+  }
+}
