@@ -16,7 +16,7 @@ from schauwerk.visual.native_document import json_canvas_to_editing_document
 from schauwerk.visual.native_viewer import build_native_viewer
 
 
-@pytest.mark.parametrize("action", ["create", "reattach"])
+@pytest.mark.parametrize("action", ["create", "reattach", "arrow", "kind", "cancel"])
 def test_smart_canvas_connection_handles_commit_through_document_state(
     tmp_path: Path, action: str,
 ) -> None:
@@ -99,6 +99,24 @@ const center = elem => {
     let [sx, sy] = center(element);
     fire(win, element, "pointerdown", 41, sx, sy);
     fire(win, viewport, "pointerup", 41, sx, sy);
+    if (['arrow', 'kind'].includes('__ACTION__')) {
+      const control = doc.querySelector(
+        '__ACTION__' === 'arrow' ? '#edgeToEnd' : '#edgeKind'
+      );
+      if (!control) throw new Error("edge inspector control absent");
+      control.value = '__ACTION__' === 'arrow' ? 'none' : 'association';
+      control.dispatchEvent(new win.Event('change', { bubbles: true }));
+      await wait(() => events.length === 1, 'inspector document mutation');
+      const changed = events[0].document.edges.find(edge => edge.id === 'e');
+      if (!changed) throw new Error("inspector lost edge identity");
+      if ('__ACTION__' === 'arrow' && changed.to_end !== 'none')
+        throw new Error("inspector did not persist arrow direction");
+      if ('__ACTION__' === 'kind' &&
+          changed.source?.schauwerk?.kind !== 'association')
+        throw new Error("inspector did not persist relationship type");
+      document.documentElement.dataset.connectionRegression = "pass";
+      return;
+    }
     const handleKind = '__ACTION__' === 'create' ? 'create' : 'to';
     const handleSelector = '[data-connection-handle="' + handleKind + '"]';
     await wait(() => doc.querySelector(handleSelector), "selected SVG connector handle");
@@ -131,6 +149,14 @@ const center = elem => {
         targetRect: target.getBoundingClientRect().toJSON(),
         viewportRect: viewport.getBoundingClientRect().toJSON(),
       }));
+    }
+    if ('__ACTION__' === 'cancel') {
+      fire(win, viewport, "pointercancel", 44, tx, ty);
+      await new Promise(resolve => setTimeout(resolve, 70));
+      if (events.length || doc.querySelector('.native-connection-preview'))
+        throw new Error("cancel committed or retained the connection preview");
+      document.documentElement.dataset.connectionRegression = "pass";
+      return;
     }
     fire(win, viewport, "pointerup", 44, tx, ty);
     await wait(() => events.length === 1, "host document rebuild");
