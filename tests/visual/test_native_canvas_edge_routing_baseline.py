@@ -90,9 +90,11 @@ def test_native_viewer_edge_hit_targets_follow_real_path() -> None:
     styles = ASSETS["styles.css"]
     assert 'edgeState.hitPath.setAttribute("d", geometry.path)' in app
     assert 'edgeState.hitPath.setAttribute("d", edgeState.basePath)' in app
-    assert 'hitPath.setAttribute("vector-effect", "non-scaling-stroke")' in app
+    assert 'const EDGE_HIT_TARGET_SCREEN_PX = 24;' in app
+    assert 'const hitWidth = EDGE_HIT_TARGET_SCREEN_PX / view.scale;' in app
     assert 'edgeGroup.insertBefore(hitPath, labelRect)' in app
     assert 'edgeGroup.setAttribute("tabindex", "0")' in app
     assert 'edgeGroup.setAttribute("role", "button")' in app
     assert 'path.native-edge-hit' in styles
-    assert 'stroke-width: 24px !important;' in styles
+    assert 'pointer-events: stroke;' in styles
+    assert 'vector-effect: non-scaling-stroke;' not in styles
