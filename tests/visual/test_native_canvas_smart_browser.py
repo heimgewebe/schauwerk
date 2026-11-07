@@ -108,7 +108,7 @@ const center = elem => {
     const [hx, hy] = center(handle);
     const dropId = '__ACTION__' === 'create' ? 'b' : 'blocker';
     const target = doc.querySelector(
-      '[data-source-kind="node"][data-source-id="' + dropId + '"] rect'
+      '[data-source-kind="node"][data-source-id="' + dropId + '"] > rect'
     );
     if (!target) throw new Error("drop target missing");
     const [tx, ty] = center(target);
