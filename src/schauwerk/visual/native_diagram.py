@@ -12199,7 +12199,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         isinstance(routing_options, Mapping)
         and routing_options.get("edgeRouting") == "smart"
     )
-    routing_mode = "smart" if smart_routing else "simple"
+    routing_attribute = ' data-edge-routing="smart"' if smart_routing else ""
 
     pair_counts: dict[tuple[str, str], int] = {}
     pair_slots: dict[tuple[str, str], int] = {}
@@ -12311,7 +12311,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'width="{view_width}" height="{view_height}" '
             f'data-renderer="schauwerk-native-diagram-v1" '
             f'data-intent="freeform" data-document-mode="json-canvas" '
-            f'data-edge-routing="{routing_mode}" '
+            f'{routing_attribute} '
             f'data-input-digest="{_canvas_xml(document["source_digest"])}"'
             f'{document_title_truncated_attribute}>'
         ),
@@ -12514,6 +12514,9 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         conflict_attr = ' data-routing-conflict="true"' if routing_conflict else ""
         dash_attr = ' stroke-dasharray="6 4"' if routing_conflict else ""
         line_stroke = "#c2410c" if routing_conflict else stroke
+        canonical_stroke_attr = (
+            f' data-canonical-stroke="{stroke}"' if smart_routing else ""
+        )
         if routing_conflict:
             edge_title = "Kein hindernisfreier Weg: " + edge_title
         marker_start = (
@@ -12532,7 +12535,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
                     f'data-route="{route}" data-lane="{lane:.1f}"'
-                    f'{conflict_attr}{edge_truncated_attribute}>'
+                    f'{conflict_attr}{canonical_stroke_attr}{edge_truncated_attribute}>'
                 ),
                 f"<title>{_canvas_xml(edge_title)}</title>",
                 (
