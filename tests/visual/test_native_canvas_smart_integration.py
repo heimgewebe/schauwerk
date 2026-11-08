@@ -242,3 +242,58 @@ def test_browser_router_rejects_endpoint_stub_penetration(tmp_path: Path) -> Non
     assert json.loads(result.stdout) == [None, None]
     assert route_edge(a, b, [a, b], from_side="right", to_side="right") is None
     assert route_edge(a, b, [a, b], from_side="left", to_side="left") is None
+
+
+def test_conflict_overlay_keeps_canonical_relation_dash_for_recovery(
+    tmp_path: Path,
+) -> None:
+    source = canvas()
+    source["nodes"].append({
+        "id": "wall", "type": "text", "x": -200, "y": -200,
+        "width": 900, "height": 500, "text": "Unpassierbar",
+    })
+    for kind, expected in (
+        ("flow", ""), ("association", "3 5"), ("feedback", "10 5"),
+    ):
+        source["edges"][0]["schauwerk"] = {"kind": kind}
+        group = edge_group(render(source))
+        assert group.get("data-route") == "canvas-smart-conflict"
+        assert group.get("data-canonical-dash") == expected
+        path = group.find(SVG + "path")
+        assert path is not None
+        assert path.get("stroke-dasharray") == "6 4"
+
+    # Exercise the real viewer recovery function with the canonical dash
+    # values recorded on the SVG. This is not a rewritten JS implementation.
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for native viewer conflict recovery")
+    app = ASSETS["app.js"]
+    start = app.index("function placeLiveEdgeConflict(")
+    end = app.index("function relocateLiveEdgeLabels(", start)
+    script = tmp_path / "recover.mjs"
+    script.write_text(app[start:end] + r"""
+for (const dash of ["", "3 5", "10 5"]) {
+  const attrs = {"stroke": "#c2410c", "stroke-dasharray": "6 4"};
+  const edgeState = {
+    element: {
+      dataset: {routingConflict: "true"},
+      removeAttribute() { delete this.dataset.routingConflict; },
+    },
+    path: {
+      setAttribute(key, value) { attrs[key] = value; },
+      removeAttribute(key) { delete attrs[key]; },
+    },
+    originalStroke: "#456789",
+    originalDash: dash,
+  };
+  placeLiveEdgeConflict(edgeState, false);
+  if (attrs.stroke !== "#456789" ||
+      (attrs["stroke-dasharray"] || "") !== dash ||
+      edgeState.element.dataset.routingConflict) {
+    throw new Error("Original relationship style not restored: " + dash);
+  }
+}
+""", encoding="utf-8")
+    subprocess.run([node, str(script)], capture_output=True,
+                   text=True, timeout=10, check=True)
