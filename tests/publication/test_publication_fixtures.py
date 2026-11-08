@@ -26,11 +26,11 @@ def _smart_edge_source_proof() -> dict:
     """Current candidate supersedes changed bytes, never historical proofs."""
     path = (
         ROOT / "docs/operators/evidence"
-        / "schaubild-smart-edge-routing-20261107/technical-proof-overlay-dom-compat.json"
+        / "schaubild-smart-edge-routing-20261107/technical-proof-bounded-drag-20261108.json"
     )
     proof = json.loads(path.read_text(encoding="utf-8"))
     assert proof["schema_version"] == (
-        "schauwerk-smart-edge-overlay-dom-compat-technical-proof.v1"
+        "schauwerk-smart-edge-bounded-dense-drag-technical-proof.v1"
     )
     assert proof["scope"] == "technical-candidate-only"
     assert proof["status"] == "technical_candidate_only"
