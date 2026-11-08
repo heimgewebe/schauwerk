@@ -1107,6 +1107,7 @@ const STORAGE_KEY = `schauwerk.native-viewer.layout.v1.${inputDigest}`;
 const nodes = new Map();
 const baseTransforms = new Map();
 const edges = new Map();
+const maxLaneByPair = new Map();
 const incidentEdges = new Map();
 const lastRouteObstacles = new Map();
 let handleLayer = null;
@@ -1663,8 +1664,10 @@ function updateEdgeGeometry(edgeId) {
     const source = allNodes.find(node => node.id === edgeState.from);
     const target = allNodes.find(node => node.id === edgeState.to);
     if (!source || !target) return;
+    const pairKey = JSON.stringify([edgeState.from, edgeState.to].sort());
     const result = smartEdgeGeometry(source, target, allNodes, {
       lane: edgeState.lane, fromSide: edgeState.fromSide, toSide: edgeState.toSide,
+      maxLane: maxLaneByPair.get(pairKey) || 0,
     });
     if (result) {
       edgeState.path.setAttribute("d", result.path);
@@ -2546,6 +2549,12 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
   });
   addIncidentEdge(String(model.from), edgeId);
   addIncidentEdge(String(model.to), edgeId);
+}
+for (const edge of edges.values()) {
+  const key = JSON.stringify([edge.from, edge.to].sort());
+  maxLaneByPair.set(key, Math.max(
+    maxLaneByPair.get(key) || 0, Math.abs(edge.lane)
+  ));
 }
 applyAllNodeTransforms();
 
