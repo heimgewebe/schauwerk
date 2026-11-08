@@ -13895,9 +13895,13 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     ] == 25
     assert "historical_visual_acceptance_inherited" in history["does_not_establish"]
     assert "physical_ipad_safari_acceptance" in history["does_not_establish"]
+    # The immutable history receipt predates smart routing. Both modified
+    # files retain their old digest in the candidate proof's base bindings;
+    # the same test below verifies each *current* file against its successor.
+    current_proof = _smart_edge_source_proof()
     for name, digest in history["source_bindings"].items():
-        if name == editor_path:
-            assert digest == _smart_edge_source_proof()["base_source_bindings"][name]
+        if name in current_proof["source_bindings"]:
+            assert digest == current_proof["base_source_bindings"][name]
         else:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
 
