@@ -297,3 +297,119 @@ for (const dash of ["", "3 5", "10 5"]) {
 """, encoding="utf-8")
     subprocess.run([node, str(script)], capture_output=True,
                    text=True, timeout=10, check=True)
+
+
+def test_dense_drag_preview_has_bounded_work_and_lossless_cancel(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for dense live drag benchmark")
+    app = ASSETS["app.js"]
+    start = app.index("function rollbackSmartDragPreview(")
+    end = app.index("function constrainBoundsOffset(", start)
+    # Execute the exact deployed functions, not a hand-copied port.
+    program = r"""
+const MAX_SYNC_SMART_DRAG_NODES=32;
+const MAX_SYNC_SMART_DRAG_EDGES=24;
+const MAX_SYNC_SMART_DRAG_INCIDENT=8;
+const documentMode=true;
+let bulkEdgeUpdate=false, certifiedRoutes=0, previewRoutes=0;
+const liveNodes=Array.from({length:128},(_,i)=>({
+  id:"node"+i,x:i===0?9:i*10,y:0,width:90,height:70,type:"text"
+}));
+const nodeModelsAtLiveCoordinates=()=>liveNodes;
+const routingMode=()=> "smart";
+const lastRouteObstacles=new Map([["node0",[-24,-24,114,94]]]);
+const svg={viewBox:{baseVal:{width:2500,height:1200}}};
+const edges=new Map(), incidentEdges=new Map();
+const handleLayer=null;
+let relabelCalls=0;
+const relocateLiveEdgeLabels=()=>{relabelCalls++};
+const refreshConnectionHandles=()=>{};
+const updateEdgeGeometry=()=>{certifiedRoutes++;};
+const liveEdgeGeometry=(source,target)=>{
+  previewRoutes++;
+  return {
+    path:"M "+source.x+" 0 L "+target.x+" 0",labelX:5,labelY:8
+  };
+};
+let gesture={
+  kind:"drag",sourceId:"node0",rollbackOffset:{x:0,y:0},moved:true
+};
+const setNodeOffset=()=>{liveNodes[0].x=0;};
+const applyNodeTransform=()=>{
+  if(!bulkEdgeUpdate)throw Error("Unexpected costly rollback");
+};
+function pathNode(){
+  const attrs=new Map([
+    ["d","M 0 0 L 12 10"],["stroke","#112233"],
+    ["stroke-dasharray","3 5"]
+  ]);
+  return {
+    getAttribute(k){return attrs.has(k)?attrs.get(k):null;},
+    setAttribute(k,v){attrs.set(k,String(v));},
+    removeAttribute(k){attrs.delete(k);}
+  };
+}
+function elementNode(){
+  return {
+    dataset:{routingConflict:"true"},
+    removeAttribute(k){
+      if(k==="data-routing-conflict")delete this.dataset.routingConflict;
+      if(k==="data-routing-pending")delete this.dataset.routingPending;
+    }
+  };
+}
+for(let i=0;i<256;i++){
+  const id="edge"+i;
+  edges.set(id,{
+    from:"node0",to:"node"+(1+i%127),
+    routeBounds:[-10,-10,170,170],
+    fromSide:null,toSide:null,lane:0,
+    path:pathNode(),hitPath:pathNode(),element:elementNode(),
+    originalStroke:"#112233",naturalLabelX:1,naturalLabelY:2
+  });
+}
+incidentEdges.set("node0",new Set(edges.keys()));
+""" + app[start:end] + r"""
+const start=performance.now();
+updateIncidentEdges("node0");
+updateIncidentEdges("node0");
+const elapsed=performance.now()-start;
+if(certifiedRoutes!==0)throw Error("Dense drag ran costly visibility searches");
+if(previewRoutes!==512)throw Error("Missing cheap incident previews");
+if(gesture.previewOriginals?.size!==256)
+  throw Error("Incorrect drag rollback preimages");
+for(const edge of edges.values()){
+  if(edge.element.dataset.routingPending!=="true")
+    throw Error("Uncertified edge not visibly marked as pending");
+  if(!edge.path.getAttribute("d").startsWith("M 9"))
+    throw Error("Preview did not follow dragged node");
+}
+rollbackDragNode(gesture);
+for(const edge of edges.values()){
+  if(edge.path.getAttribute("d")!=="M 0 0 L 12 10")
+    throw Error("Cancel lost original edge");
+  if(edge.element.dataset.routingPending!==undefined)
+    throw Error("Cancel retained pending marker");
+  if(edge.element.dataset.routingConflict!=="true")
+    throw Error("Cancel discarded original routing state");
+  if(edge.naturalLabelX!==1 || edge.naturalLabelY!==2)
+    throw Error("Cancel lost label location");
+}
+if(elapsed>1200)throw Error("Dense drag preview blocked input for "+elapsed+"ms");
+console.log(JSON.stringify({
+  nodes:liveNodes.length,edges:edges.size,updates:2,
+  certifiedRoutes,previewRoutes,elapsedMs:Math.round(elapsed),rollback:true
+}));
+"""
+    path = tmp_path / "dense-smart-drag.mjs"
+    path.write_text(program, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(path)], capture_output=True, text=True,
+        timeout=18, check=True,
+    )
+    evidence = json.loads(result.stdout)
+    assert evidence["edges"] == 256
+    assert evidence["nodes"] == 128
+    assert evidence["certifiedRoutes"] == 0
+    assert evidence["rollback"] is True
