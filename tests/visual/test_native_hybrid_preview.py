@@ -112,12 +112,40 @@ async function probe(doc, win, hosted, routing) {
   const canvas = doc.querySelector("#nativeCanvas");
   const svg = doc.querySelector("#nativeDiagram");
   const button = doc.querySelector("#hybridPreview");
+  const modeMenu = doc.querySelector(".view-mode-controls");
+  const modeSummary = modeMenu?.querySelector("summary");
+  const visible = (element) => {
+    if (!(element instanceof win.HTMLElement)) return false;
+    const rect = element.getBoundingClientRect();
+    const style = win.getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 &&
+      style.display !== "none" && style.visibility !== "hidden" &&
+      rect.top >= 0 && rect.bottom <= win.innerHeight &&
+      rect.left >= 0 && rect.right <= win.innerWidth;
+  };
+  const activateVisible = async (element, name) => {
+    check(name + " visible", visible(element));
+    if (!visible(element)) throw new Error(name + " is inaccessible");
+    const [x, y] = centerOf(element.getBoundingClientRect());
+    const hit = doc.elementFromPoint(x, y);
+    check(name + " hit-test", hit === element || element.contains(hit),
+      hit?.tagName + "." + hit?.className);
+    if (hit !== element && !element.contains(hit)) throw new Error(name + " is covered");
+    hit.click();
+    await settle();
+  };
+  const chooseMode = async () => {
+    if (!modeMenu?.open) await activateVisible(modeSummary, "view menu summary");
+    check("view menu open", modeMenu?.open === true);
+    await activateVisible(button, "view mode toggle");
+  };
   const model = JSON.parse(doc.querySelector("#nativeModel").textContent);
   await wait(() => canvas.style.transform.includes("scale("), "viewer startup");
   await settle();
 
   // --- Native stays the default; the preview is an explicit, labelled opt-in.
-  check("button present and visible", button && !button.hidden && !button.disabled);
+  check("view mode menu accessible initially", modeMenu && !modeMenu.hidden && visible(modeSummary));
+  check("button enabled for preview", button && !button.hidden && !button.disabled);
   check("button labelled as preview", /Vorschau/.test(button.textContent) && /schreibgesch/.test(button.getAttribute("aria-label") + button.title));
   check("button off by default", button.getAttribute("aria-pressed") === "false");
   check("no layer by default", !doc.querySelector(".hybrid-layer"));
@@ -130,8 +158,7 @@ async function probe(doc, win, hosted, routing) {
   const nodeTransformsBefore = [...svg.querySelectorAll('[data-source-kind="node"]')].map(n => n.getAttribute("transform"));
 
   // --- Opt in.
-  button.click();
-  await settle();
+  await chooseMode();
   const layer = doc.querySelector(".hybrid-layer");
   check("layer created inside shared canvas", layer && layer.parentElement === canvas);
   check("button reverts to native", /Native/.test(button.textContent) && button.getAttribute("aria-pressed") === "true");
@@ -140,6 +167,8 @@ async function probe(doc, win, hosted, routing) {
   check("footer states native authority", /Native bleibt ma/.test(doc.querySelector("#authorityHint").textContent));
   check("viewport is in view-only mode", viewport.classList.contains("is-observing"));
   check("edit menu closed", doc.querySelector(".edit-controls").hidden);
+  check("view menu survives observation mode", visible(modeSummary) && !modeMenu.hidden);
+  check("view menu reflects HTML mode", modeSummary.textContent === "HTML");
   check("native svg text hidden", win.getComputedStyle(svg.querySelector("[data-node-label]")).visibility === "hidden");
 
   // --- DOM labels come from the validated model, as text only.
@@ -253,8 +282,7 @@ async function probe(doc, win, hosted, routing) {
 
   // --- Hosted: a mutation reached the parent? (counted by the host page.)
   // --- Back to native: exact byte-level restoration.
-  button.click();
-  await settle();
+  await chooseMode();
   check("layer removed", !doc.querySelector(".hybrid-layer"));
   check("active class removed", !canvas.classList.contains("hybrid-preview-active"));
   check("button native again", button.getAttribute("aria-pressed") === "false" && /^HTML-Vorschau$/.test(button.textContent));
@@ -263,7 +291,7 @@ async function probe(doc, win, hosted, routing) {
   check("svg text visible again", win.getComputedStyle(svg.querySelector("[data-node-label]")).visibility === "visible");
   check("no selection left", win.getSelection().toString() === "");
   // Opt in twice keeps working and leaves exactly one layer.
-  button.click(); await settle(); button.click(); await settle();
+  await chooseMode(); await chooseMode();
   check("repeatable opt in", !doc.querySelector(".hybrid-layer") && svgState() === svgBefore);
   return failures;
 }
@@ -382,7 +410,7 @@ def test_hybrid_preview_ships_as_bundle_file_without_changing_native_default(tmp
     index = (output / "index.html").read_text(encoding="utf-8")
     assert "hybrid-layer" not in index.split("<script", 1)[0]
     assert 'id="hybridPreview"' in index
-    assert index.index('class="edit-menu"') < index.index('id="hybridPreview"')
+    assert index.index('class="view-mode-menu"') < index.index('id="hybridPreview"')
     # Opt-in button starts hidden and unpressed until the viewer proves document support.
     button = re.search(r'<button id="hybridPreview"[^>]*>', INDEX_HTML)
     assert button and " hidden" in button.group(0) and 'aria-pressed="false"' in button.group(0)
@@ -411,21 +439,23 @@ def test_hybrid_preview_module_has_no_markup_sink_network_or_write_path() -> Non
 
 
 @pytest.mark.parametrize("routing", ["smart", "simple"])
-def test_hybrid_preview_standalone_viewer_in_chrome(tmp_path: Path, routing: str) -> None:
+@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760)])
+def test_hybrid_preview_standalone_viewer_in_chrome(tmp_path: Path, routing: str, width: int, height: int) -> None:
     output = _build(tmp_path, routing)
     _install_probe(output, _probe(STANDALONE_PROBE, routing))
-    failures = _run_chrome(tmp_path, output, "index.html")
+    failures = _run_chrome(tmp_path, output, "index.html", width, height)
     assert failures == [], "\n".join(failures)
 
 
 @pytest.mark.parametrize("routing", ["smart", "simple"])
+@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760)])
 def test_hybrid_preview_hosted_in_editor_frame_keeps_document_authority(
-    tmp_path: Path, routing: str,
+    tmp_path: Path, routing: str, width: int, height: int,
 ) -> None:
     output = _build(tmp_path, routing)
     _install_probe(output, None)
     (output / "host.html").write_text(_probe(HOST_PAGE, routing), encoding="utf-8")
-    failures = _run_chrome(tmp_path, output, "host.html")
+    failures = _run_chrome(tmp_path, output, "host.html", width, height)
     assert failures == [], "\n".join(failures)
 
 

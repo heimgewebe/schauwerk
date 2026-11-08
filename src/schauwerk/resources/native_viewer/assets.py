@@ -34,12 +34,17 @@ INDEX_HTML = r"""<!doctype html>
           <button id="fitView" type="button">Einpassen</button>
           <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
+          <details class="view-mode-controls document-only" hidden>
+            <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
+            <div class="view-mode-menu" role="group" aria-label="Darstellung">
+              <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
+            </div>
+          </details>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
         <details class="edit-controls document-only" hidden>
           <summary>Bearbeiten</summary>
           <div class="edit-menu" role="group" aria-label="Bearbeiten">
-          <button id="hybridPreview" class="document-only" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
             <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
             <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
             <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
@@ -305,11 +310,12 @@ button:focus-visible {
   color: var(--accent);
   background: var(--accent-soft);
 }
-.edit-controls {
+.edit-controls, .view-mode-controls {
   position: relative;
   min-width: 0;
 }
-.edit-controls > summary {
+.edit-controls > summary,
+.view-mode-controls > summary {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -327,12 +333,21 @@ button:focus-visible {
   cursor: pointer;
   user-select: none;
 }
-.edit-controls > summary::-webkit-details-marker { display: none; }
-.edit-controls[open] > summary {
+.edit-controls > summary::-webkit-details-marker,
+.view-mode-controls > summary::-webkit-details-marker { display: none; }
+.view-controls .view-mode-controls > summary {
+  min-width: 42px;
+  padding-inline: 5px;
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+.edit-controls[open] > summary,
+.view-mode-controls[open] > summary {
   border-color: var(--line-strong);
   background: var(--surface-soft);
 }
-.edit-menu {
+.edit-menu, .view-mode-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -356,11 +371,11 @@ button:focus-visible {
   box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
   backdrop-filter: blur(14px) saturate(140%);
 }
-.edit-menu button {
+.edit-menu button, .view-mode-menu button {
   border-color: transparent;
   background: transparent;
 }
-.edit-menu button:hover {
+.edit-menu button:hover, .view-mode-menu button:hover {
   border-color: var(--line);
   background: #fff;
 }
@@ -562,7 +577,7 @@ button:focus-visible {
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
-  .edit-menu {
+  .edit-menu, .view-mode-menu {
     max-width: calc(
       100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
       - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
@@ -630,9 +645,9 @@ button:focus-visible {
   button { color: #e9eaf2; background: #242733; }
   button:hover { border-color: #4d5262; background: #2b2f3c; }
   .view-controls button:hover,
-  .edit-menu button:hover { background: #292d39; }
-  .edit-controls > summary,
-  .edit-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
+  .edit-menu button:hover, .view-mode-menu button:hover { background: #292d39; }
+  .edit-controls > summary, .view-mode-controls > summary,
+  .edit-menu, .view-mode-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }
@@ -1061,6 +1076,7 @@ const edgeFromEnd = document.querySelector("#edgeFromEnd");
 const edgeToEnd = document.querySelector("#edgeToEnd");
 const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
+const viewModeControls = document.querySelector(".view-mode-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -2647,6 +2663,11 @@ function setHybridPreview(enabled) {
     if (!observationBeforeHybrid) setObservationMode(false);
   }
   const on = hybridPreview.active;
+  if (viewModeControls instanceof HTMLDetailsElement) {
+    viewModeControls.open = false;
+    const summary = viewModeControls.querySelector("summary");
+    if (summary) summary.textContent = on ? "HTML" : "Ansicht";
+  }
   if (hybridButton instanceof HTMLButtonElement) {
     hybridButton.setAttribute("aria-pressed", String(on));
     hybridButton.setAttribute("aria-label", on
@@ -2670,6 +2691,7 @@ function setHybridPreview(enabled) {
   }
   setStatus(on ? "HTML-Vorschau aktiv · schreibgeschützt" : "Zurück zu Native");
 }
+if (viewModeControls instanceof HTMLDetailsElement) viewModeControls.hidden = !hybridPreview;
 if (hybridButton instanceof HTMLButtonElement) {
   hybridButton.hidden = !hybridPreview;
   hybridButton.addEventListener("click", () => setHybridPreview(!hybridPreview?.active));
