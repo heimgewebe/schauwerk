@@ -154,3 +154,7 @@ Verifikation, reale visuelle Abnahme und Bounded Runtime/OCI-Packaging zu prüfe
 Dagre/ELK bleiben evaluiert, aber in diesem Referenzfall kein automatischer Ersatz.
 Graphviz ist auf dem Operatorhost nicht installiert; sein CLI wurde dort deshalb
 noch nicht als echtes Renderer-Benchmark-Ergebnis behauptet.
+
+## Ergänzung: HTML/SVG-Hybrid und Offline-HTML (2026-11-08)
+
+[Der HTML/SVG-Hybridplan](schaubild-html-svg-hybrid-2026-11-08.md) untersucht HTML-Knoten und -Labels über SVG-Kanten sowie einen unabhängigen, zunächst schreibgeschützten Offline-HTML-Export. Er konkretisiert R02, R06, R07 und R08 ohne den Native-Default, den Smart-Edge-Router, die kanonische Dokumentautorität oder die Release-Gates zu ersetzen. Eine Produktoption entsteht erst nach positivem, revisionsgebundenem A/B-Nachweis.
