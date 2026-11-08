@@ -1,0 +1,31 @@
+{
+  "schema_version": "schauwerk-html-svg-hybrid-safearea-followup-technical-proof.v1",
+  "repository": "heimgewebe/schauwerk",
+  "pr": 235,
+  "branch": "feat/schaubild-html-svg-hybrid-h1-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof-ui-regression-followup.json",
+    "sha256": "a19cd5fbf2832378a8695fde382bf81f45cf6e865ece9be83eacb6283f1e6095"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1121d751ad4303af48e2d52954bf734103810b2860f4f0de513766056939730b",
+    "tests/visual/test_native_hybrid_preview.py": "d421ed88ab1935234a2aff6e681159babc38e79f83d7f197c40248c01a384dca",
+    "tests/visual/test_native_viewer.py": "046610ba4304c73e328c29672be843e66e5159b853c98bc901f81eef9b674516",
+    "tests/visual/test_native_viewer_product_ui.py": "b53e32270d208729b0223fae91e9caebb866762beddaa7bd0125b988208e676d"
+  },
+  "cause": "At width 320px the existing safe-area browser test's .edit-menu selector selected the new HTML view dropdown because the dropdown incorrectly shared the semantic edit-menu class.",
+  "repair": "Preserve distinct .edit-menu and .view-mode-menu identities and share CSS styles with explicit combined selectors; assert both in existing product UI tests.",
+  "validation": {
+    "native_320px_safearea": "1 passed (same failing Chrome parameter)",
+    "hybrid_browser": "15 passed",
+    "product_ui": "1 passed",
+    "ruff": "passed"
+  },
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "physical_safari_ipad",
+    "production_visual_acceptance",
+    "OCI_image_release",
+    "commonthing_deployment"
+  ]
+}

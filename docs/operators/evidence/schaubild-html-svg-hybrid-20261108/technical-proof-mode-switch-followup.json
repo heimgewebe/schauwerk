@@ -1,0 +1,44 @@
+{
+  "schema_version": "schauwerk-html-svg-hybrid-followup-technical-proof.v1",
+  "repository": "heimgewebe/schauwerk",
+  "pr": 235,
+  "branch": "feat/schaubild-html-svg-hybrid-h1-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof.json",
+    "sha256": "e6662d10798dfd02031caea2b45df411e0217cc7941b7c4c5d2b77a12b2b3940"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1121d751ad4303af48e2d52954bf734103810b2860f4f0de513766056939730b",
+    "tests/visual/test_native_hybrid_preview.py": "ef8861f6e7b26eecc98c619f9c6f880f48f9fbddcf4404a12580fcaedccf661f"
+  },
+  "confirmed_cause": "The hybrid toggle was nested in .edit-controls; enabling the hybrid called setObservationMode(true), hiding its parent. Standalone viewers never exposed .edit-controls.",
+  "repair": "A compact independent view-mode menu remains available during observation and in standalone JSON-Canvas viewers.",
+  "validation": {
+    "git_diff_check": "passed",
+    "ruff": "passed",
+    "chrome_and_contract_tests": "15 passed in isolated worktree",
+    "tested_viewports": [
+      [
+        1120,
+        850
+      ],
+      [
+        844,
+        390
+      ],
+      [
+        500,
+        760
+      ]
+    ],
+    "interactive_evidence": "Chrome hit-tested actually visible menu summary and toggle for both directions, in hosted and standalone views, simple and smart edge routing"
+  },
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "cross_browser_visual_acceptance",
+    "complete_release_ci_on_final_commit",
+    "commonthing_runtime_deployed",
+    "production_e2e"
+  ]
+}

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from .hybrid_preview import HYBRID_PREVIEW_CSS, HYBRID_PREVIEW_JS
 from .smart_router import SMART_ROUTER_JS
 
 INDEX_HTML = r"""<!doctype html>
@@ -34,6 +35,12 @@ INDEX_HTML = r"""<!doctype html>
           <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
+          <details class="view-mode-controls document-only" hidden>
+            <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
+            <div class="view-mode-menu" role="group" aria-label="Darstellung">
+              <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
+            </div>
+          </details>
         </div>
         <details class="edit-controls document-only" hidden>
           <summary>Bearbeiten</summary>
@@ -303,11 +310,13 @@ button:focus-visible {
   color: var(--accent);
   background: var(--accent-soft);
 }
-.edit-controls {
+.edit-controls, .view-mode-controls {
   position: relative;
   min-width: 0;
 }
-.edit-controls > summary {
+.view-controls:has(.view-mode-controls[open]) { position: relative; z-index: 4; }
+.edit-controls > summary,
+.view-mode-controls > summary {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -325,13 +334,23 @@ button:focus-visible {
   cursor: pointer;
   user-select: none;
 }
-.edit-controls > summary::-webkit-details-marker { display: none; }
-.edit-controls[open] > summary {
+.edit-controls > summary::-webkit-details-marker,
+.view-mode-controls > summary::-webkit-details-marker { display: none; }
+.view-controls .view-mode-controls > summary {
+  min-width: 42px;
+  padding-inline: 5px;
+  border-color: transparent;
+  box-shadow: none;
+  background: transparent;
+}
+.edit-controls[open] > summary,
+.view-mode-controls[open] > summary {
   border-color: var(--line-strong);
   background: var(--surface-soft);
 }
-.edit-menu {
-  position: absolute;
+.edit-menu { position: absolute; }
+.view-mode-menu { position: absolute; }
+.edit-menu, .view-mode-menu {
   top: calc(100% + 6px);
   right: 0;
   width: max-content;
@@ -354,11 +373,11 @@ button:focus-visible {
   box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
   backdrop-filter: blur(14px) saturate(140%);
 }
-.edit-menu button {
+.edit-menu button, .view-mode-menu button {
   border-color: transparent;
   background: transparent;
 }
-.edit-menu button:hover {
+.edit-menu button:hover, .view-mode-menu button:hover {
   border-color: var(--line);
   background: #fff;
 }
@@ -560,7 +579,7 @@ button:focus-visible {
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
-  .edit-menu {
+  .edit-menu, .view-mode-menu {
     max-width: calc(
       100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
       - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
@@ -628,9 +647,10 @@ button:focus-visible {
   button { color: #e9eaf2; background: #242733; }
   button:hover { border-color: #4d5262; background: #2b2f3c; }
   .view-controls button:hover,
-  .edit-menu button:hover { background: #292d39; }
-  .edit-controls > summary,
-  .edit-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
+  .edit-menu button:hover, .view-mode-menu button:hover { background: #292d39; }
+  .edit-controls > summary, .view-mode-controls > summary,
+  .edit-menu, .view-mode-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
+  .hybrid-node[data-canvas-type="group"] .hybrid-node-text { color: #f1f2f7; }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }
@@ -1023,6 +1043,7 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 """
 
 APP_JS = r"""import { smartEdgeGeometry } from "./smart-router.js";
+import { createHybridPreview, hybridPreviewSupported } from "./hybrid-preview.js";
 import {
   MAX_SCALE,
   MIN_SCALE,
@@ -1050,6 +1071,7 @@ const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
 const observationButton = document.querySelector("#observationMode");
 const smartRoutingButton = document.querySelector("#smartRouting");
+const hybridButton = document.querySelector("#hybridPreview");
 const edgePorts = document.querySelector("#edgePorts");
 const edgeFromPort = document.querySelector("#edgeFromPort");
 const edgeToPort = document.querySelector("#edgeToPort");
@@ -1057,6 +1079,7 @@ const edgeFromEnd = document.querySelector("#edgeFromEnd");
 const edgeToEnd = document.querySelector("#edgeToEnd");
 const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
+const viewModeControls = document.querySelector(".view-mode-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -2619,7 +2642,70 @@ function setObservationMode(enabled) {
     );
   }
 }
-observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+// Opt-in, read-only HTML/SVG preview. Native SVG stays the default; the preview
+// reuses view-only mode as its mutation lock and restores the previous mode.
+const hybridPreview = documentMode && hybridPreviewSupported(sourceModel)
+  ? createHybridPreview({
+    canvas, svg, viewport, nodes, edges,
+    getModel: () => sourceModel,
+    boundsInSvg: nodeBoundsInSvg,
+  })
+  : null;
+let observationBeforeHybrid = false;
+function setHybridPreview(enabled) {
+  if (!hybridPreview || hybridPreview.active === Boolean(enabled)) return;
+  if (enabled) {
+    observationBeforeHybrid = observationMode;
+    if (!observationMode) setObservationMode(true);
+    if (!hybridPreview.enable()) {
+      if (!observationBeforeHybrid) setObservationMode(false);
+      return;
+    }
+  } else {
+    hybridPreview.disable();
+    if (!observationBeforeHybrid) setObservationMode(false);
+  }
+  const on = hybridPreview.active;
+  if (viewModeControls instanceof HTMLDetailsElement) {
+    viewModeControls.open = false;
+    const summary = viewModeControls.querySelector("summary");
+    if (summary) summary.textContent = on ? "HTML" : "Ansicht";
+  }
+  if (hybridButton instanceof HTMLButtonElement) {
+    hybridButton.setAttribute("aria-pressed", String(on));
+    hybridButton.setAttribute("aria-label", on
+      ? "Zurück zu Native (HTML-Vorschau beenden)"
+      : "HTML-Vorschau einschalten (schreibgeschützt)");
+    hybridButton.textContent = on ? "Zurück zu Native" : "HTML-Vorschau";
+  }
+  if (observationButton instanceof HTMLButtonElement) {
+    observationButton.disabled = on;
+    if (on) observationButton.title = "In der HTML-Vorschau gesperrt · zuerst zu Native zurückkehren";
+  }
+  if (interactionHint) {
+    interactionHint.textContent = on
+      ? "Vorschau · Scrollen · Zoomen · Doppelklick wählt Text"
+      : observationMode ? "Beobachten · Scrollen · Wischen · Zoomen"
+        : documentEditorHosted ? "Verschieben · Zoomen · Text · Elemente & Verbindungen"
+          : "Verschieben · Zoomen · Auswählen";
+  }
+  if (authorityHint) {
+    authorityHint.textContent = on ? "Vorschau · schreibgeschützt · Native bleibt maßgeblich" : "Änderungen bleiben lokal";
+  }
+  setStatus(on ? "HTML-Vorschau aktiv · schreibgeschützt" : "Zurück zu Native");
+}
+if (viewModeControls instanceof HTMLDetailsElement) viewModeControls.hidden = !hybridPreview;
+if (hybridButton instanceof HTMLButtonElement) {
+  hybridButton.hidden = !hybridPreview;
+  hybridButton.addEventListener("click", () => setHybridPreview(!hybridPreview?.active));
+}
+observationButton?.addEventListener("click", () => {
+  if (hybridPreview?.active) {
+    setStatus("In der HTML-Vorschau gesperrt · zuerst zu Native zurückkehren");
+    return;
+  }
+  setObservationMode(!observationMode);
+});
 smartRoutingButton?.addEventListener("click", () => {
   if (!documentEditorHosted || observationMode) return;
   const next = routingMode() === "smart" ? "simple" : "smart";
@@ -3167,6 +3253,7 @@ requestAnimationFrame(() => {
 ASSETS = {
     "app.js": APP_JS,
     "interaction.js": INTERACTION_JS,
+    "hybrid-preview.js": HYBRID_PREVIEW_JS,
     "smart-router.js": SMART_ROUTER_JS,
-    "styles.css": STYLES_CSS,
+    "styles.css": STYLES_CSS + HYBRID_PREVIEW_CSS,
 }
