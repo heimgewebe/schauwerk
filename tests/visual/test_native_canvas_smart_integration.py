@@ -787,6 +787,7 @@ const svg={
     if(name==="viewBox"){
       const [x,y,width,height]=value.split(" ").map(Number);
       this.viewBox.baseVal={x,y,width,height};
+      return; // SVGAnimatedRect stays an object, not an attribute string.
     }
     this[name]=value;
   }
