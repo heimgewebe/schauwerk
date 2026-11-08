@@ -34,13 +34,13 @@ INDEX_HTML = r"""<!doctype html>
           <button id="fitView" type="button">Einpassen</button>
           <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
+          <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
           <details class="view-mode-controls document-only" hidden>
             <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
             <div class="view-mode-menu" role="group" aria-label="Darstellung">
               <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
             </div>
           </details>
-          <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
         <details class="edit-controls document-only" hidden>
           <summary>Bearbeiten</summary>
@@ -314,6 +314,7 @@ button:focus-visible {
   position: relative;
   min-width: 0;
 }
+.view-controls:has(.view-mode-controls[open]) { position: relative; z-index: 4; }
 .edit-controls > summary,
 .view-mode-controls > summary {
   min-height: 42px;
@@ -649,6 +650,7 @@ button:focus-visible {
   .edit-menu button:hover, .view-mode-menu button:hover { background: #292d39; }
   .edit-controls > summary, .view-mode-controls > summary,
   .edit-menu, .view-mode-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
+  .hybrid-node[data-canvas-type="group"] .hybrid-node-text { color: #f1f2f7; }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }

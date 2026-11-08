@@ -171,6 +171,10 @@ async function probe(doc, win, hosted, routing) {
   check("view menu survives observation mode", visible(modeSummary) && !modeMenu.hidden);
   check("view menu reflects HTML mode", modeSummary.textContent === "HTML");
   check("native svg text hidden", win.getComputedStyle(svg.querySelector("[data-node-label]")).visibility === "hidden");
+  if (win.matchMedia("(prefers-color-scheme: dark)").matches) {
+    const groupText = layer.querySelector('.hybrid-node[data-source-id="g"] .hybrid-node-text');
+    check("dark group text readable", win.getComputedStyle(groupText).color === "rgb(241, 242, 247)");
+  }
 
   // --- DOM labels come from the validated model, as text only.
   for (const item of model.nodes) {
@@ -366,7 +370,7 @@ def _serve(directory: Path):
     return server, thread
 
 
-def _run_chrome(tmp_path: Path, output: Path, page: str, width: int = 1120, height: int = 850) -> list[str]:
+def _run_chrome(tmp_path: Path, output: Path, page: str, width: int = 1120, height: int = 850, dark: bool = False) -> list[str]:
     server, thread = _serve(output)
     try:
         result = subprocess.run(
@@ -374,6 +378,7 @@ def _run_chrome(tmp_path: Path, output: Path, page: str, width: int = 1120, heig
                 _chrome(), "--headless=new", f"--user-data-dir={tmp_path / 'chrome'}",
                 "--no-first-run", "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
                 "--run-all-compositor-stages-before-draw", f"--window-size={width},{height}",
+                *(["--force-dark-mode"] if dark else []),
                 "--virtual-time-budget=20000", "--dump-dom",
                 f"http://127.0.0.1:{server.server_address[1]}/{page}",
             ],
@@ -441,7 +446,7 @@ def test_hybrid_preview_module_has_no_markup_sink_network_or_write_path() -> Non
 
 
 @pytest.mark.parametrize("routing", ["smart", "simple"])
-@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760)])
+@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760), (320, 700)])
 def test_hybrid_preview_standalone_viewer_in_chrome(tmp_path: Path, routing: str, width: int, height: int) -> None:
     output = _build(tmp_path, routing)
     _install_probe(output, _probe(STANDALONE_PROBE, routing))
@@ -450,7 +455,7 @@ def test_hybrid_preview_standalone_viewer_in_chrome(tmp_path: Path, routing: str
 
 
 @pytest.mark.parametrize("routing", ["smart", "simple"])
-@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760)])
+@pytest.mark.parametrize("width,height", [(1120, 850), (844, 390), (500, 760), (320, 700)])
 def test_hybrid_preview_hosted_in_editor_frame_keeps_document_authority(
     tmp_path: Path, routing: str, width: int, height: int,
 ) -> None:
@@ -458,6 +463,13 @@ def test_hybrid_preview_hosted_in_editor_frame_keeps_document_authority(
     _install_probe(output, None)
     (output / "host.html").write_text(_probe(HOST_PAGE, routing), encoding="utf-8")
     failures = _run_chrome(tmp_path, output, "host.html", width, height)
+    assert failures == [], "\n".join(failures)
+
+
+def test_hybrid_preview_dark_group_text_is_legible_in_chrome(tmp_path: Path) -> None:
+    output = _build(tmp_path, "smart")
+    _install_probe(output, _probe(STANDALONE_PROBE, "smart"))
+    failures = _run_chrome(tmp_path, output, "index.html", 844, 390, dark=True)
     assert failures == [], "\n".join(failures)
 
 

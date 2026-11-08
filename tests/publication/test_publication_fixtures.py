@@ -117,7 +117,25 @@ def _hybrid_preview_followup_proof() -> dict:
         final["predecessor"]["sha256"]
     )
     assert set(final["source_bindings"]) == set(latest["source_bindings"])
-    return final
+    accepted_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-final-ui-followup.json"
+    )
+    accepted = json.loads(accepted_path.read_text(encoding="utf-8"))
+    assert accepted["schema_version"] == (
+        "schauwerk-html-svg-hybrid-final-ui-followup-technical-proof.v1"
+    )
+    assert accepted["status"] == "technical_candidate_only"
+    assert accepted["predecessor"]["path"] == str(final_path.relative_to(ROOT))
+    assert hashlib.sha256(final_path.read_bytes()).hexdigest() == (
+        accepted["predecessor"]["sha256"]
+    )
+    assert set(accepted["source_bindings"]) == set(final["source_bindings"])
+    visual = accepted["validation"]["screenshot"]
+    assert hashlib.sha256((ROOT / visual["path"]).read_bytes()).hexdigest() == (
+        visual["sha256"]
+    )
+    return accepted
 
 
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
