@@ -46,13 +46,15 @@ function clear(a, b, obstacles) {
   }
   return true;
 }
-function sideAnchor(node, side, lane) {
+function sideAnchor(node, side, lane, maxLane = null) {
   const [x, y, right, bottom] = rect(node);
   let cx = (x + right) / 2, cy = (y + bottom) / 2;
-  if (side === "left" || side === "right")
-    cy += Math.max(-(bottom - y) * 0.24, Math.min((bottom - y) * 0.24, lane));
-  else
-    cx += Math.max(-(right - x) * 0.24, Math.min((right - x) * 0.24, lane));
+  const span = side === "left" || side === "right" ? bottom-y : right-x;
+  const limit = span * (maxLane === null ? 0.24 : 0.38);
+  const offset = Math.max(-limit, Math.min(limit,
+    lane * Math.min(1, limit / Math.max(1, maxLane ?? 0))));
+  if (side === "left" || side === "right") cy += offset;
+  else cx += offset;
   if (side === "left") return [x, cy];
   if (side === "right") return [right, cy];
   if (side === "top") return [cx, y];
@@ -173,8 +175,11 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (fromSide !== null && !PORTS.includes(fromSide)) return null;
   if (toSide !== null && !PORTS.includes(toSide)) return null;
   const lane = Number(options.lane ?? 0);
+  const maxLane = options.maxLane ?? null;
   const clearance = 12, maxBlockers = 24;
-  if (!Number.isFinite(lane)) return null;
+  if (!Number.isFinite(lane) ||
+      (maxLane !== null && (!Number.isFinite(maxLane) || maxLane < 0)))
+    return null;
   const blocking = nodes.filter(n =>
     n.id !== source.id && n.id !== target.id && n.type !== "group"
   ).map(n => rect(n, clearance));
@@ -185,11 +190,11 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   const targetSides = toSide === null ? PORTS : [toSide];
   const stub = Math.max(22, clearance + 10), candidates = [];
   sourceSides.forEach((ss, si) => {
-    const start = sideAnchor(source, ss, lane);
+    const start = sideAnchor(source, ss, lane, maxLane);
     const ex = add(start, NORMALS[ss], stub);
     if (!clear(start, ex, [...blocking, targetBox])) return;
     targetSides.forEach((ts, ti) => {
-      const end = sideAnchor(target, ts, lane);
+      const end = sideAnchor(target, ts, lane, maxLane);
       const ent = add(end, NORMALS[ts], stub);
       if (clear(ent, end, [...blocking, sourceBox]))
         candidates.push([si, ti, ss, ts, start, ex, ent, end]);
