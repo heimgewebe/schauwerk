@@ -1744,6 +1744,7 @@ function finishPendingStandaloneSmartRoutes() {
       setTimeout(rerouteNext, 0);
     } else {
       relocateLiveEdgeLabels();
+      expandSmartCanvasToFitRoutes();
       setStatus("Intelligente Kantenführung aktualisiert");
     }
   };
@@ -1865,6 +1866,53 @@ function updateIncidentEdges(sourceId) {
   }
   relocateLiveEdgeLabels();
   if (handleLayer) refreshConnectionHandles();
+}
+
+function expandSmartCanvasToFitRoutes() {
+  if (!documentMode || routingMode() !== "smart") return false;
+  const old = svg.viewBox.baseVal;
+  if (!(old.width > 0) || !(old.height > 0)) return false;
+  let minX = old.x, minY = old.y;
+  let maxX = old.x + old.width, maxY = old.y + old.height;
+  const include = (left, top, right, bottom) => {
+    if (![left, top, right, bottom].every(Number.isFinite)) return;
+    minX = Math.min(minX, left - 24);
+    minY = Math.min(minY, top - 24);
+    maxX = Math.max(maxX, right + 24);
+    maxY = Math.max(maxY, bottom + 24);
+  };
+  for (const edge of edges.values()) {
+    if (edge.routeBounds) {
+      include(...edge.routeBounds);
+    } else {
+      try {
+        const box = edge.path.getBBox();
+        include(box.x, box.y, box.x + box.width, box.y + box.height);
+      } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
+    }
+    if (edge.labelRect) {
+      try {
+        const bounds = nodeBoundsInSvg(edge.labelRect);
+        if (bounds) include(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+      } catch (_) { /* Unmeasurable labels retain their original box. */ }
+    }
+  }
+  // Constraint is applied before expansion, not weakened by new route bounds.
+  const nextX = Math.floor(minX), nextY = Math.floor(minY);
+  const newWidth = Math.ceil(maxX) - nextX;
+  const newHeight = Math.ceil(maxY) - nextY;
+  if (!(newWidth > 0 && newHeight > 0) ||
+      newWidth > 10000000 || newHeight > 10000000) return false;
+  if (nextX === old.x && nextY === old.y &&
+      newWidth === old.width && newHeight === old.height) return false;
+  const dx = nextX - old.x, dy = nextY - old.y;
+  svg.setAttribute("viewBox", [nextX, nextY, newWidth, newHeight].join(" "));
+  // Preserve one SVG unit per intrinsic pixel and maintain user's pan/zoom.
+  svg.setAttribute("width", String(newWidth));
+  svg.setAttribute("height", String(newHeight));
+  view = {...view, x: view.x + dx * view.scale, y: view.y + dy * view.scale};
+  applyView();
+  return true;
 }
 
 function constrainBoundsOffset(sourceId, bounds, box) {
@@ -2800,6 +2848,10 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
     }
+    // Directly moved, nonincident routes can exceed the static render viewBox.
+    // Pending dense previews wait for their final certification on release.
+    if (documentMode && routingMode() === "smart" &&
+        !gesture.previewOriginals) expandSmartCanvasToFitRoutes();
     setStatus(gesture?.previewOriginals
       ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"
       : "Position geändert · Verbindungen angepasst");
