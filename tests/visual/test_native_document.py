@@ -3756,3 +3756,68 @@ def test_native_document_renderer_sanitizes_xml_forbidden_text_and_markup() -> N
     assert list(root.iter(f"{SVG_NS}script")) == []
     assert "<script>" not in svg
     assert "\ufffd" in svg
+
+
+def test_canvas_node_label_prefers_whole_word_to_midword_split() -> None:
+    # The live 180px-wide node previously displayed "Hindernisfl" / "äche",
+    # although a slightly smaller unbroken label fits the node.
+    label = "Hindernisfläche"
+    layout = native_diagram._canvas_text_layout(
+        label, 152, 230, max_lines=10, max_bytes=4096
+    )
+    assert layout.truncated is False
+    assert layout.size == 13
+    assert [line for line, _baseline in layout.lines] == [label]
+    assert native_diagram._estimated_canvas_wrap_width(
+        label, size=layout.size
+    ) <= 152
+
+
+def test_canvas_unavoidably_long_word_preserves_bounded_splitting() -> None:
+    label = "W" * 44
+    layout = native_diagram._canvas_text_layout(
+        label, 152, 230, max_lines=10, max_bytes=4096
+    )
+    assert layout.size == 16
+    assert len(layout.lines) > 1
+    assert all(
+        native_diagram._estimated_canvas_wrap_width(line, size=layout.size) <= 152
+        for line, _baseline in layout.lines
+    )
+
+
+def test_canvas_multiline_edge_label_readability_and_clip_budget() -> None:
+    label = "Weg um das Hindernis – eindeutig lesbar"
+    source = {
+        "nodes": [
+            {"id": "a", "type": "text", "x": 20, "y": 170,
+             "width": 175, "height": 100, "text": "Start"},
+            {"id": "block", "type": "text", "x": 290, "y": 110,
+             "width": 180, "height": 230, "text": "Hindernisfläche"},
+            {"id": "b", "type": "text", "x": 590, "y": 430,
+             "width": 175, "height": 100, "text": "Ziel"},
+        ],
+        "edges": [
+            {"id": "long-edge", "fromNode": "a", "toNode": "b",
+             "label": label},
+        ],
+        "schauwerk": {"edgeRouting": "smart"},
+    }
+    document = json_canvas_to_editing_document(source)
+    assert editing_document_to_json_canvas(document) == source
+    root = ET.fromstring(render_native_editing_document(document))
+    edge = next(
+        child for child in root.iter(f"{SVG_NS}g")
+        if child.attrib.get("data-source-id") == "long-edge"
+    )
+    text_lines = [child.text or "" for child in edge if child.tag == f"{SVG_NS}text"]
+    assert text_lines == ["Weg um das Hindernis –", "eindeutig lesbar"]
+    assert "data-text-truncated" not in edge.attrib
+    rect = next(child for child in edge if child.tag == f"{SVG_NS}rect")
+    assert float(rect.attrib["width"]) <= 260
+    assert float(rect.attrib["height"]) == 46
+    assert all(
+        native_diagram._estimated_canvas_single_line_width(line, size=14)
+        <= float(rect.attrib["width"]) - 20
+        for line in text_lines
+    )
