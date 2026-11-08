@@ -506,3 +506,68 @@ console.log(JSON.stringify({
     assert proof["completed"] == 33
     assert proof["unverifiedAfterRelease"] == 0
     assert proof["asyncGesturePause"] is True
+
+
+def test_nonincident_smart_detours_expand_export_viewbox_without_zoom_jump(
+    tmp_path: Path,
+) -> None:
+    """A nonincident reroute beyond the old SVG cannot be clipped in exports."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for exact native viewer SVG bounds check")
+    app = ASSETS["app.js"]
+    start = app.index("function expandSmartCanvasToFitRoutes(")
+    end = app.index("function constrainBoundsOffset(", start)
+    program = r"""
+const documentMode = true;
+const routingMode = () => "smart";
+const edges = new Map([["notIncident", {
+  routeBounds: [50, -92.01, 480, 140],
+  labelRect: null,
+}]]);
+const old = {x:-88, y:-88, width:676, height:256};
+const attributes = new Map();
+const svg = {
+  viewBox: {baseVal: {...old}},
+  setAttribute(key, value) {
+    attributes.set(key, value);
+    if (key === "viewBox") {
+      const [x, y, width, height] = value.split(" ").map(Number);
+      this.viewBox.baseVal = {x, y, width, height};
+    }
+  },
+};
+let view = {x:100, y:80, scale:2}, applyCount = 0;
+const applyView = () => {applyCount++};
+const nodeBoundsInSvg = () => {throw Error("no labels")};
+""" + app[start:end] + r"""
+const beforeX = view.x + (150 - old.x) * view.scale;
+const beforeY = view.y + (0 - old.y) * view.scale;
+if (!expandSmartCanvasToFitRoutes()) throw Error("Old edge still clipped");
+const expanded = svg.viewBox.baseVal;
+if (expanded.y > -116) throw Error("Rerouted edge not fully in export viewBox");
+if (expanded.x > old.x || expanded.x + expanded.width < old.x + old.width)
+  throw Error("SVG bounds lost old diagram");
+const afterX = view.x + (150 - expanded.x) * view.scale;
+const afterY = view.y + (0 - expanded.y) * view.scale;
+if (Math.abs(afterX - beforeX) > 1e-6 ||
+    Math.abs(afterY - beforeY) > 1e-6 || view.scale !== 2)
+  throw Error("Expanding the SVG moved or zoomed the original diagram");
+if (attributes.get("height") !== String(expanded.height))
+  throw Error("Export SVG intrinsic height does not match viewBox");
+if (expandSmartCanvasToFitRoutes() || applyCount !== 1)
+  throw Error("Unchanged route bounds caused repeated viewport shifts");
+console.log(JSON.stringify({
+  expanded,view,applyCount,screenStable: true,fullyVisible: true
+}));
+"""
+    script = tmp_path / "smart-viewbox.mjs"
+    script.write_text(program, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(script)], capture_output=True, text=True,
+        timeout=12, check=True,
+    )
+    evidence = json.loads(result.stdout)
+    assert evidence["fullyVisible"] is True
+    assert evidence["screenStable"] is True
+    assert evidence["applyCount"] == 1
