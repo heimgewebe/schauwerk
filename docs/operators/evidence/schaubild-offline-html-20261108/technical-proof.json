@@ -1,0 +1,63 @@
+{
+  "base_revision": "9fd2363c262bb122597f273ebc21ce341455cd4a",
+  "base_source_bindings": {
+    "Dockerfile": "6f98c4c2858f03c683eae87e5c5f2c862600a8e6761eaa69e28c80983aa84f43",
+    "src/schauwerk/resources/native_offline_html/__init__.py": null,
+    "src/schauwerk/resources/native_offline_html/assets.py": null,
+    "src/schauwerk/resources/standalone_editor/assets.py": "62953e99443076938aef31fa9ef66cecad46b37f81dfc42bb6516664800cc14a",
+    "src/schauwerk/visual/native_offline_html.py": null,
+    "src/schauwerk/visual/standalone_editor.py": "88cc300a41e62a042bd9172442d094515ef4ef0b166b8a1e3f457b01be324256",
+    "tests/visual/test_native_offline_html.py": null
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "runtime_deployed",
+    "production_release_or_rollback_proven",
+    "physical_ipad_safari_acceptance",
+    "html_import_roundtrip",
+    "editable_html_document",
+    "all_representation_intents_supported",
+    "semantically_lossless_export_of_unapproved_external_svg"
+  ],
+  "evidence_digest": "71b1e295f7c33afad4b0c740e220ec543c3442d9269a59a88765b0b4ded4df8c",
+  "features": {
+    "csp_hash_bound_inline_assets": true,
+    "json_canvas_only": true,
+    "native_existing_exports_unchanged": true,
+    "native_smart_edge_svg_reused": true,
+    "no_external_network_runtime": true,
+    "offline_pan_zoom_search_focus": true,
+    "passive_allowlist_svg_validation": true,
+    "single_file_offline_html_export": true,
+    "source_document_authoritative": true,
+    "viewer_read_only": true
+  },
+  "predecessor_technical_proof": {
+    "evidence_digest": "518986cd0a629d4e1451821ab1e110ce00417b26d5f350a469be3c37db1bda63",
+    "path": "docs/operators/evidence/schaubild-smart-edge-routing-20261107/technical-proof-simple-label-viewbox-20261108.json",
+    "sha256": "b32d70f7783e896a3035fe2b4b8046f9142af845885e122505fdad9d844b9133"
+  },
+  "schema_version": "schauwerk-native-offline-html-export-technical-proof.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "Dockerfile": "c6679bde9e59fa1b69a33cde662197f873f2aea4ad03e32a0a6324e02186867b",
+    "src/schauwerk/resources/native_offline_html/__init__.py": "2bfa7e3f31ac330cd9f3a1303fead659f31a5ba6ecf8a6c9e2248d14eb22a3df",
+    "src/schauwerk/resources/native_offline_html/assets.py": "814ccc691f03c59127ac3aba3c14eb78ccd65228cc79a152a69d2b96343b5add",
+    "src/schauwerk/resources/standalone_editor/assets.py": "8c4cabcb1258a1364ae72b844ecd21b2f8d128e7b69b328537072692452207d8",
+    "src/schauwerk/visual/native_offline_html.py": "3357976e6ce9feedb82079eb4cf6ea68b2d914b00421f01f88c9f277134ff9b6",
+    "src/schauwerk/visual/standalone_editor.py": "09d1327d7aaef76f5b9875ea0c2dbc4a71cfee11179b26c8ea0f49318ac9d046",
+    "tests/visual/test_native_offline_html.py": "b69ec0f01dc39821a6fbd24676c5a425ba16a0d4b96757b9e8735acbc751c0d2"
+  },
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "consumer_runtime": "not_integrated",
+    "full_ci": "pending_exact_head",
+    "local_53_offline_export_tests": "passed_local_working_tree",
+    "local_existing_publication_source_bindings": "pending_proof_ci",
+    "physical_ipad_safari": "pending",
+    "visual_acceptance": "pending"
+  },
+  "visual_acceptance": "pending",
+  "working_tree_state": "uncommitted_candidate_bound_by_file_digest"
+}

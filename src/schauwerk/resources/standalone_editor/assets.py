@@ -127,6 +127,7 @@ INDEX_HTML = r"""<!doctype html>
             <button class="button compact output-button" data-export="svg" type="button">SVG</button>
             <button class="button compact output-button" data-export="pdf" type="button" title="PDF als hochaufgelöstes Bild herunterladen">PDF (Bild)</button>
             <button class="button compact output-button" data-export="pdf-vector" type="button" title="Vektorgrafik im Druckdialog als PDF speichern">PDF (Vektor)</button>
+            <button class="button compact output-button" id="offlineHtmlButton" data-export="html-offline" type="button" hidden title="Einzelne HTML-Datei zum Ansehen ohne Netzwerk: Verschieben, Zoomen, Suchen (nur für JSON-Canvas-Dokumente)">HTML (offline)</button>
           </div>
         </details>
 
@@ -1799,6 +1800,10 @@ const PUBLIC_BASE_PATH = "__SCHAUWERK_PUBLIC_BASE_PATH__";
 const NATIVE_API_PATH = `${PUBLIC_BASE_PATH}/api/native-viewer`;
 const D2_CAPABILITIES_PATH = PUBLIC_BASE_PATH + "/api/renderer-capabilities";
 const D2_PREVIEW_API_PATH = PUBLIC_BASE_PATH + "/api/d2-preview";
+const OFFLINE_HTML_API_PATH = PUBLIC_BASE_PATH + "/api/native-offline-html";
+const OFFLINE_HTML_SCHEMA = "schauwerk-native-offline-html.v1";
+const OFFLINE_HTML_MAX_REQUEST_BYTES = 14 * 1024 * 1024;
+const OFFLINE_HTML_MAX_BYTES = 12 * 1024 * 1024;
 const NATIVE_IMPORT_SCHEMA = "schauwerk-native-import-request.v1";
 const DRAFT_KEY = "schauwerk.standalone-editor.draft.v1";
 const NATIVE_DRAFT_KEY = "schauwerk.native-schaubild.draft.v1";
@@ -1836,6 +1841,7 @@ const elements = {
   nativeRedoButton: document.querySelector("#nativeRedoButton"),
   nativeRetryButton: document.querySelector("#nativeRetryButton"),
   d2PreviewButton: document.querySelector("#d2PreviewButton"),
+  offlineHtmlButton: document.querySelector("#offlineHtmlButton"),
   d2PreviewDialog: document.querySelector("#d2PreviewDialog"),
   d2PreviewImage: document.querySelector("#d2PreviewImage"),
   d2PreviewDownload: document.querySelector("#d2PreviewDownload"),
@@ -1940,6 +1946,10 @@ function syncNativeHistoryControls() {
     !nativeFrameReady || !editorReady || nativeCanvasRenderStale || !nativeCanvas;
   elements.nativeUndoButton.disabled = blocked || nativeUndoStack.length === 0;
   elements.nativeRedoButton.disabled = blocked || nativeRedoStack.length === 0;
+  // Offered only for a native JSON Canvas document; every other source type
+  // has no validated offline export and therefore no button.
+  elements.offlineHtmlButton.hidden = !nativeCanvas;
+  elements.offlineHtmlButton.disabled = !nativeCanvas || !editorReady || nativeCanvasRenderStale;
   const toolsMenu = document.querySelector(".workspace-tools-menu");
   if (toolsMenu instanceof HTMLDetailsElement) {
     toolsMenu.hidden = native && !(currentRepresentation || currentLegacyXml || historyAvailable);
@@ -3444,6 +3454,64 @@ async function renderedImageToPngBlob(imageBlob) {
   });
 }
 
+/** Build one offline HTML file from the current Canvas model and its live SVG. */
+async function exportOfflineHtml() {
+  if (activeEngine !== "native" || !currentNativeCanvas) {
+    setStatus("HTML (offline) ist nur für JSON-Canvas-Dokumente verfügbar");
+    return;
+  }
+  if (nativeCanvasRenderStale) {
+    setStatus("Aktuelle Darstellung ist nach Renderfehler nicht synchron · HTML (offline) nicht möglich · .canvas bleibt verfügbar");
+    return;
+  }
+  const requestedVersion = exportRequestVersion;
+  const liveSvg = serializeNativeFrameSvg({ stripInputDigest: true });
+  if (liveSvg === null) {
+    setStatus("Aktuelle SVG-Ausgabe konnte nicht gelesen werden");
+    return;
+  }
+  const body = JSON.stringify({
+    schema_version: "schauwerk-native-offline-html-request.v1",
+    title: currentTitle,
+    canvas: currentNativeCanvas,
+    svg: liveSvg,
+  });
+  if (new Blob([body]).size > OFFLINE_HTML_MAX_REQUEST_BYTES) {
+    setStatus("HTML (offline) abgelehnt: Dokument überschreitet die Exportgrenze");
+    return;
+  }
+  setStatus("HTML (offline) wird vorbereitet …");
+  try {
+    const response = await fetch(OFFLINE_HTML_API_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    if (!response.ok) {
+      const rejected = await response.json().catch(() => ({}));
+      throw new Error(rejected?.error || "HTML (offline) konnte nicht erzeugt werden");
+    }
+    if (response.headers.get("X-Schauwerk-Offline-Html-Schema") !== OFFLINE_HTML_SCHEMA) {
+      throw new Error("Ausgabeformat ist unerwartet");
+    }
+    const bytes = await response.arrayBuffer();
+    if (!bytes.byteLength || bytes.byteLength > OFFLINE_HTML_MAX_BYTES) {
+      throw new Error("Ausgabe überschreitet die Exportgrenze");
+    }
+    if (requestedVersion !== exportRequestVersion) return;
+    prepareDownload(
+      new Blob([bytes], { type: "text/html;charset=utf-8" }),
+      safeFilename(currentTitle) + ".html",
+      "HTML (offline)",
+    );
+    setStatus("HTML (offline) aus aktuellem Canvas-Dokument bereit");
+  } catch (error) {
+    if (requestedVersion === exportRequestVersion) {
+      setStatus("HTML (offline) abgelehnt: " + (error?.message || "unbekannter Fehler"));
+    }
+  }
+}
+
 async function exportNative(format) {
   const rasterExport = format === "pdf" || format === "png";
   const requestedVersion = rasterExport ? exportRequestVersion : 0;
@@ -3479,6 +3547,10 @@ async function exportNative(format) {
       "Quelle",
     );
     setStatus("Kanonische Quelle bereit");
+    return;
+  }
+  if (format === "html-offline") {
+    await exportOfflineHtml();
     return;
   }
   if (format !== "svg" && !rasterExport) {
@@ -3641,6 +3713,10 @@ function exportDiagram(format) {
     return;
   }
   exportRequestVersion += 1;
+  if (format === "html-offline" && activeEngine !== "native") {
+    setStatus("HTML (offline) ist nur für JSON-Canvas-Dokumente verfügbar");
+    return;
+  }
   if (activeEngine === "native") {
     void exportNative(format);
     return;

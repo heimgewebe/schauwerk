@@ -1,0 +1,35 @@
+{
+  "schema_version": "schauwerk-html-svg-and-offline-integration-technical-proof.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_branch": "feat/schaubild-offline-html-export-20261108",
+  "source_pr": 236,
+  "preimages": {
+    "hybrid_main_commit": "ab15326ef36dc2e6cad3d0acdd2f60c14c626c88",
+    "offline_pr_head": "589bd32fd73a26ed657b669cd4364b5ddd96db22"
+  },
+  "predecessors": {
+    "hybrid": {
+      "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof-final-ui-followup.json",
+      "sha256": "43ca4dc75aae0f3405dd926cb7854d417d1f01ca4e5837dd8bcc7bbe4087104b"
+    },
+    "offline": {
+      "path": "docs/operators/evidence/schaubild-offline-html-20261108/technical-proof-text-parity-followup.json",
+      "sha256": "add97ce9dd44d3ee2b37c518f172086fc1188dfb05b157998a3e20ef7e75525d"
+    }
+  },
+  "source_bindings": {
+    "Dockerfile": "3a90acc4a41da51448c0647d776ddd42d10a9550974187a5868f8152eb7ca2e0",
+    "src/schauwerk/visual/standalone_editor.py": "8ba83fed471c9d79c8bd5120e7d8aeb0957ceda346718c9bc2b0afe8222633e8"
+  },
+  "combined_behavior": "Single Schaubild OCI image bundles read-only opt-in HTML/SVG preview and read-only offline HTML export; Native default and one validated source preserved.",
+  "technical_validation": "pending exact merged head CI and publication tests",
+  "visual_acceptance": "not inherited; prior screenshots remain SHA-bound only to source and the offline export still requires browser/download acceptance",
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "regression_free_combination",
+    "OCI_release",
+    "commonthing_lock_promotion",
+    "production_E2E",
+    "physical_iPad_Safari_acceptance"
+  ]
+}
