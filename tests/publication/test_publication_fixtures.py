@@ -58,7 +58,10 @@ def _schaubild_label_readability_proof() -> dict:
     prior = proof["historical_predecessor"]
     prior_path = ROOT / prior["path"]
     assert hashlib.sha256(prior_path.read_bytes()).hexdigest() == prior["sha256"]
-    assert json.loads(prior_path.read_text(encoding="utf-8"))["evidence_digest"] == prior["evidence_digest"]
+    assert (
+        json.loads(prior_path.read_text(encoding="utf-8"))["evidence_digest"]
+        == prior["evidence_digest"]
+    )
     return proof
 
 
