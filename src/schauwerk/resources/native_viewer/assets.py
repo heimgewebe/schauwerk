@@ -1442,6 +1442,8 @@ function applyNodeTransform(sourceId) {
 }
 
 function applyAllNodeTransforms() {
+  // Reset or a new source render supersedes every prior deferred task.
+  ++pendingSmartRouteGeneration;
   bulkEdgeUpdate = true;
   try {
     for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
@@ -1730,7 +1732,11 @@ function finishPendingStandaloneSmartRoutes() {
   if (!pending.length) return;
   let index = 0;
   const rerouteNext = () => {
-    if (generation !== pendingSmartRouteGeneration || gesture?.kind === "drag") return;
+    if (generation !== pendingSmartRouteGeneration) return;
+    if (gesture?.kind === "drag") {
+      setTimeout(rerouteNext, 16);
+      return;
+    }
     // At most one visibility-graph search per task. The browser remains
     // responsive between chunks; failed paths retain explicit conflict state.
     updateEdgeGeometry(pending[index++]);
@@ -2705,8 +2711,8 @@ viewport.addEventListener("pointerdown", (event) => {
       rebuildDocument(document);
       return;
     }
-    // A new gesture supersedes the previous background route completion.
-    ++pendingSmartRouteGeneration;
+    // Deferred standalone routing pauses during a new gesture; a click
+    // without movement must not abandon routes still waiting for certification.
     selectNode(sourceId);
     const startOffset = nodeOffset(overrides, sourceId);
     gesture = {
