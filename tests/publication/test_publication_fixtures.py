@@ -49,6 +49,31 @@ def _hybrid_preview_proof() -> dict:
     return proof
 
 
+
+def _hybrid_preview_followup_proof() -> dict:
+    """New source revisions must retain and extend, not rewrite, original proof."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-mode-switch-followup.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-html-svg-hybrid-followup-technical-proof.v1"
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/"
+        "technical-proof.json"
+    )
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_hybrid_preview.py",
+    }
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -14083,11 +14108,13 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
     hybrid = _hybrid_preview_proof()
+    followup = _hybrid_preview_followup_proof()
     for path, expected in proof["source_bindings"].items():
         if path in hybrid["source_bindings"]:
             # Superseded bytes: the hybrid candidate must start from exactly this binding.
             assert hybrid["base_source_bindings"][path] == expected, path
             expected = hybrid["source_bindings"][path]
+        expected = followup["source_bindings"].get(path, expected)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
@@ -14107,6 +14134,7 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
 def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None:
     """The opt-in preview binds its exact bytes and claims no live or visual acceptance."""
     proof = _hybrid_preview_proof()
+    followup = _hybrid_preview_followup_proof()
     smart = _smart_edge_source_proof()
     assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
     predecessor = proof["predecessor_technical_proof"]
@@ -14115,7 +14143,8 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
     assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
     assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
     for name, current in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
+        effective = followup["source_bindings"].get(name, current)
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
     assert {
