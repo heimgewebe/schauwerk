@@ -38,6 +38,17 @@ def _smart_edge_source_proof() -> dict:
     return proof
 
 
+def _hybrid_preview_proof() -> dict:
+    """HTML/SVG hybrid candidate supersedes bytes it changed on top of the smart-edge proof."""
+    path = ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof.json"
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-html-svg-hybrid-preview-technical-proof.v1"
+    assert proof["scope"] == "technical-candidate-only"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -13995,6 +14006,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **knowledge_map["source_bindings"],
         **history["source_bindings"],
         **_smart_edge_source_proof()["source_bindings"],
+        **_hybrid_preview_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14070,7 +14082,12 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    hybrid = _hybrid_preview_proof()
     for path, expected in proof["source_bindings"].items():
+        if path in hybrid["source_bindings"]:
+            # Superseded bytes: the hybrid candidate must start from exactly this binding.
+            assert hybrid["base_source_bindings"][path] == expected, path
+            expected = hybrid["source_bindings"][path]
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
@@ -14085,3 +14102,38 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert "schaubild-native-canvas-first-edit-history" in history["path"]
     oci = proof["historical_proofs_unchanged"][2]
     assert "schaubild-d2-oci" in oci["path"]
+
+
+def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None:
+    """The opt-in preview binds its exact bytes and claims no live or visual acceptance."""
+    proof = _hybrid_preview_proof()
+    smart = _smart_edge_source_proof()
+    assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
+    assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
+    for name, current in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
+        # Existing files continue exactly from the smart-edge candidate; new files start empty.
+        assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
+    assert {
+        name for name, base in proof["base_source_bindings"].items() if base is None
+    } == {
+        "src/schauwerk/resources/native_viewer/hybrid_preview.py",
+        "tests/visual/test_native_hybrid_preview.py",
+    }
+    assert proof["features"]["default_stays_native_svg"] is True
+    assert proof["features"]["existing_smart_edge_router_output_reused_no_new_routing"] is True
+    assert proof["visual_acceptance"] == "pending"
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    for claim in (
+        "runtime_deployed",
+        "browser_e2e_complete",
+        "html_text_wrapping_identical_to_native_svg",
+        "clipboard_transport_verified",
+        "html_vector_or_pdf_export",
+    ):
+        assert claim in proof["does_not_establish"]

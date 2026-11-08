@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from .hybrid_preview import HYBRID_PREVIEW_CSS, HYBRID_PREVIEW_JS
 from .smart_router import SMART_ROUTER_JS
 
 INDEX_HTML = r"""<!doctype html>
@@ -32,6 +33,7 @@ INDEX_HTML = r"""<!doctype html>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
           <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
+          <button id="hybridPreview" class="document-only" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
@@ -1023,6 +1025,7 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 """
 
 APP_JS = r"""import { smartEdgeGeometry } from "./smart-router.js";
+import { createHybridPreview, hybridPreviewSupported } from "./hybrid-preview.js";
 import {
   MAX_SCALE,
   MIN_SCALE,
@@ -1050,6 +1053,7 @@ const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
 const observationButton = document.querySelector("#observationMode");
 const smartRoutingButton = document.querySelector("#smartRouting");
+const hybridButton = document.querySelector("#hybridPreview");
 const edgePorts = document.querySelector("#edgePorts");
 const edgeFromPort = document.querySelector("#edgeFromPort");
 const edgeToPort = document.querySelector("#edgeToPort");
@@ -2619,7 +2623,64 @@ function setObservationMode(enabled) {
     );
   }
 }
-observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+// Opt-in, read-only HTML/SVG preview. Native SVG stays the default; the preview
+// reuses view-only mode as its mutation lock and restores the previous mode.
+const hybridPreview = documentMode && hybridPreviewSupported(sourceModel)
+  ? createHybridPreview({
+    canvas, svg, viewport, nodes, edges,
+    getModel: () => sourceModel,
+    boundsInSvg: nodeBoundsInSvg,
+  })
+  : null;
+let observationBeforeHybrid = false;
+function setHybridPreview(enabled) {
+  if (!hybridPreview || hybridPreview.active === Boolean(enabled)) return;
+  if (enabled) {
+    observationBeforeHybrid = observationMode;
+    if (!observationMode) setObservationMode(true);
+    if (!hybridPreview.enable()) {
+      if (!observationBeforeHybrid) setObservationMode(false);
+      return;
+    }
+  } else {
+    hybridPreview.disable();
+    if (!observationBeforeHybrid) setObservationMode(false);
+  }
+  const on = hybridPreview.active;
+  if (hybridButton instanceof HTMLButtonElement) {
+    hybridButton.setAttribute("aria-pressed", String(on));
+    hybridButton.setAttribute("aria-label", on
+      ? "Zurück zu Native (HTML-Vorschau beenden)"
+      : "HTML-Vorschau einschalten (schreibgeschützt)");
+    hybridButton.textContent = on ? "Zurück zu Native" : "HTML-Vorschau";
+  }
+  if (observationButton instanceof HTMLButtonElement) {
+    observationButton.disabled = on;
+    if (on) observationButton.title = "In der HTML-Vorschau gesperrt · zuerst zu Native zurückkehren";
+  }
+  if (interactionHint) {
+    interactionHint.textContent = on
+      ? "Vorschau · Scrollen · Zoomen · Doppelklick wählt Text"
+      : observationMode ? "Beobachten · Scrollen · Wischen · Zoomen"
+        : documentEditorHosted ? "Verschieben · Zoomen · Text · Elemente & Verbindungen"
+          : "Verschieben · Zoomen · Auswählen";
+  }
+  if (authorityHint) {
+    authorityHint.textContent = on ? "Vorschau · schreibgeschützt · Native bleibt maßgeblich" : "Änderungen bleiben lokal";
+  }
+  setStatus(on ? "HTML-Vorschau aktiv · schreibgeschützt" : "Zurück zu Native");
+}
+if (hybridButton instanceof HTMLButtonElement) {
+  hybridButton.hidden = !hybridPreview;
+  hybridButton.addEventListener("click", () => setHybridPreview(!hybridPreview?.active));
+}
+observationButton?.addEventListener("click", () => {
+  if (hybridPreview?.active) {
+    setStatus("In der HTML-Vorschau gesperrt · zuerst zu Native zurückkehren");
+    return;
+  }
+  setObservationMode(!observationMode);
+});
 smartRoutingButton?.addEventListener("click", () => {
   if (!documentEditorHosted || observationMode) return;
   const next = routingMode() === "smart" ? "simple" : "smart";
@@ -3167,6 +3228,7 @@ requestAnimationFrame(() => {
 ASSETS = {
     "app.js": APP_JS,
     "interaction.js": INTERACTION_JS,
+    "hybrid-preview.js": HYBRID_PREVIEW_JS,
     "smart-router.js": SMART_ROUTER_JS,
-    "styles.css": STYLES_CSS,
+    "styles.css": STYLES_CSS + HYBRID_PREVIEW_CSS,
 }
