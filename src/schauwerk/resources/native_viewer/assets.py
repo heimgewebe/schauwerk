@@ -2351,7 +2351,8 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     naturalLabelX: baseLabelX,
     naturalLabelY: baseLabelY,
     originalStroke: edgeGroup.dataset.canonicalStroke || path.getAttribute("stroke") || "#64748b",
-    originalDash: path.getAttribute("stroke-dasharray") || "",
+    originalDash: edgeGroup.dataset.canonicalDash ??
+      (path.getAttribute("stroke-dasharray") || ""),
     labelElements,
     labelRect,
     clipRect: clipRect instanceof SVGRectElement ? clipRect : null,
