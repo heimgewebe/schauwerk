@@ -83,7 +83,27 @@ def _hybrid_preview_followup_proof() -> dict:
     assert successor["predecessor"]["path"] == str(path.relative_to(ROOT))
     assert hashlib.sha256(path.read_bytes()).hexdigest() == successor["predecessor"]["sha256"]
     assert set(successor["source_bindings"]) == set(proof["source_bindings"])
-    return successor
+    latest_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-narrow-safearea-followup.json"
+    )
+    latest = json.loads(latest_path.read_text(encoding="utf-8"))
+    assert latest["schema_version"] == (
+        "schauwerk-html-svg-hybrid-safearea-followup-technical-proof.v1"
+    )
+    assert latest["status"] == "technical_candidate_only"
+    assert latest["predecessor"]["path"] == str(successor_path.relative_to(ROOT))
+    assert hashlib.sha256(successor_path.read_bytes()).hexdigest() == (
+        latest["predecessor"]["sha256"]
+    )
+    assert set(successor["source_bindings"]) <= set(latest["source_bindings"])
+    assert set(latest["source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_hybrid_preview.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+    }
+    return latest
 
 
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"

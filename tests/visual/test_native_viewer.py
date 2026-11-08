@@ -397,7 +397,7 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
     assert "position: absolute;" in viewer_stage
     assert "inset: 0;" in viewer_stage
     assert ".viewer-foot {" in styles
-    assert ".edit-menu {" in styles
+    assert ".edit-menu, .view-mode-menu {" in styles
     assert "const VIEWPORT_FIT_PADDING = 48;" in app
     assert "const FIT_OVERLAY_CLEARANCE = 8;" in app
     assert "const EMBEDDED_VIEWPORT_FIT_PADDING = Object.freeze({" in app

@@ -36,7 +36,7 @@ INDEX_HTML = r"""<!doctype html>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <details class="view-mode-controls document-only" hidden>
             <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
-            <div class="view-mode-menu edit-menu" role="group" aria-label="Darstellung">
+            <div class="view-mode-menu" role="group" aria-label="Darstellung">
               <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
             </div>
           </details>
@@ -347,7 +347,7 @@ button:focus-visible {
   border-color: var(--line-strong);
   background: var(--surface-soft);
 }
-.edit-menu {
+.edit-menu, .view-mode-menu {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
@@ -371,11 +371,11 @@ button:focus-visible {
   box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
   backdrop-filter: blur(14px) saturate(140%);
 }
-.edit-menu button {
+.edit-menu button, .view-mode-menu button {
   border-color: transparent;
   background: transparent;
 }
-.edit-menu button:hover {
+.edit-menu button:hover, .view-mode-menu button:hover {
   border-color: var(--line);
   background: #fff;
 }
@@ -577,7 +577,7 @@ button:focus-visible {
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
   .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
-  .edit-menu {
+  .edit-menu, .view-mode-menu {
     max-width: calc(
       100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
       - max(6px, env(safe-area-inset-right), var(--host-safe-right, 0px))
@@ -645,9 +645,9 @@ button:focus-visible {
   button { color: #e9eaf2; background: #242733; }
   button:hover { border-color: #4d5262; background: #2b2f3c; }
   .view-controls button:hover,
-  .edit-menu button:hover { background: #292d39; }
+  .edit-menu button:hover, .view-mode-menu button:hover { background: #292d39; }
   .edit-controls > summary, .view-mode-controls > summary,
-  .edit-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
+  .edit-menu, .view-mode-menu { color: var(--ink); background: rgba(18, 20, 29, 0.94); }
   .text-dialog { color: var(--ink); background: #181b24; }
   .text-dialog textarea { color: var(--ink); background: #10131b; }
 }

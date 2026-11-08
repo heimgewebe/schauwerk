@@ -145,7 +145,7 @@ async function probe(doc, win, hosted, routing) {
 
   // --- Native stays the default; the preview is an explicit, labelled opt-in.
   check("view mode menu accessible initially", modeMenu && !modeMenu.hidden && visible(modeSummary));
-  check("view mode menu reuses compact edit-menu styles", modeMenu.querySelector(".view-mode-menu.edit-menu") !== null);
+  check("view mode menu uses shared compact styles", modeMenu.querySelector(".view-mode-menu") !== null);
   check("button enabled for preview", button && !button.hidden && !button.disabled);
   check("button labelled as preview", /Vorschau/.test(button.textContent) && /schreibgesch/.test(button.getAttribute("aria-label") + button.title));
   check("button off by default", button.getAttribute("aria-pressed") === "false");
@@ -412,7 +412,7 @@ def test_hybrid_preview_ships_as_bundle_file_without_changing_native_default(tmp
     index = (output / "index.html").read_text(encoding="utf-8")
     assert "hybrid-layer" not in index.split("<script", 1)[0]
     assert 'id="hybridPreview"' in index
-    assert index.index('class="view-mode-menu edit-menu"') < index.index('id="hybridPreview"')
+    assert index.index('class="view-mode-menu"') < index.index('id="hybridPreview"')
     # Opt-in button starts hidden and unpressed until the viewer proves document support.
     button = re.search(r'<button id="hybridPreview"[^>]*>', INDEX_HTML)
     assert button and " hidden" in button.group(0) and 'aria-pressed="false"' in button.group(0)
