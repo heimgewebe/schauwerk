@@ -760,3 +760,62 @@ def test_reciprocal_canvas_edges_use_distinct_smart_lanes() -> None:
     ]
     assert simple[0].get("data-route") != "canvas-smart"
     assert simple[1].get("data-route") != "canvas-smart"
+
+
+def test_relocated_simple_edge_label_stays_within_svg_canvas(
+    tmp_path: Path,
+) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for simple-mode label bounds regression")
+    app = ASSETS["app.js"]
+    assert "if (documentMode && !gesture.previewOriginals)" in app
+    begin = app.index("function expandSmartCanvasToFitRoutes(")
+    source = app[begin:app.index("function constrainBoundsOffset(", begin)]
+    program = r"""
+const documentMode=true, routingMode=()=> "simple";
+let pathReads=0;
+const edges=new Map([["labeled", {
+  routeBounds:null,
+  path:{getBBox(){pathReads++;throw Error("simple path not needed")}},
+  labelRect:{id:"box"}
+}]]);
+const original={x:-88,y:-88,width:650,height:200};
+const svg={
+  viewBox:{baseVal:{...original}},
+  setAttribute(name,value){
+    if(name==="viewBox"){
+      const [x,y,width,height]=value.split(" ").map(Number);
+      this.viewBox.baseVal={x,y,width,height};
+    }
+    this[name]=value;
+  }
+};
+const nodeBoundsInSvg=()=>({
+  minX:145,minY:-116,maxX:310,maxY:-88
+});
+let view={x:14,y:23,scale:1.5},applies=0;
+const applyView=()=>{applies++};
+""" + source + r"""
+const before=view.y+(0-original.y)*view.scale;
+if(!expandSmartCanvasToFitRoutes())
+  throw Error("Simple-mode relocated label still clipped");
+const box=svg.viewBox.baseVal;
+if(box.y>-140 || box.y+box.height<original.y+original.height)
+  throw Error("Relocated label outside expanded SVG");
+if(Math.abs(view.y+(0-box.y)*view.scale-before)>1e-6)
+  throw Error("Simple-label expansion shifted viewport");
+if(pathReads!==0)throw Error("Simple mode scanned expensive path geometry");
+if(expandSmartCanvasToFitRoutes() || applies!==1)
+  throw Error("Repeated view changes without any label movement");
+console.log(JSON.stringify({visible:true,unchangedPan:true,pathReads}));
+"""
+    script = tmp_path / "simple-label-bounds.mjs"
+    script.write_text(program, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(script)], capture_output=True, text=True,
+        check=True, timeout=14,
+    )
+    assert json.loads(result.stdout) == {
+        "visible": True, "unchangedPan": True, "pathReads": 0,
+    }
