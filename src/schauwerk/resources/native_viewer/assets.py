@@ -1130,6 +1130,11 @@ let pointerMovedNode = false;
 let pointerFitPending = false;
 let bulkEdgeUpdate = false;
 const DRAG_THRESHOLD_PX = 4;
+// Preserve responsive pointer input in dense documents. Certified routes are
+// recomputed by the authoritative native renderer after every completed drag.
+const MAX_SYNC_SMART_DRAG_NODES = 32;
+const MAX_SYNC_SMART_DRAG_EDGES = 24;
+const MAX_SYNC_SMART_DRAG_INCIDENT = 8;
 const EDGE_HIT_TARGET_SCREEN_PX = 24;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
@@ -1558,6 +1563,7 @@ function nodeModelsAtLiveCoordinates() {
   });
 }
 function placeLiveEdgeConflict(edgeState, conflict) {
+  edgeState.element.removeAttribute("data-routing-pending");
   if (conflict) {
     edgeState.element.dataset.routingConflict = "true";
     edgeState.path.setAttribute("stroke", "#c2410c");
@@ -1697,9 +1703,52 @@ function updateEdgeGeometry(edgeId) {
   placeLiveLabel(edgeState, geometry.labelX, geometry.labelY);
 }
 
+function rollbackSmartDragPreview(drag) {
+  if (!drag?.previewOriginals) return false;
+  // Restoring cached exact paths is bounded and avoids another visibility
+  // search during pointercancel, observation-mode switches and pinch takeover.
+  for (const [edgeId, original] of drag.previewOriginals) {
+    const edge = edges.get(edgeId);
+    if (!edge) continue;
+    edge.path.setAttribute("d", original.path);
+    edge.hitPath.setAttribute("d", original.hitPath);
+    for (const [key, value] of [
+      ["stroke", original.stroke], ["stroke-dasharray", original.dash],
+    ]) {
+      if (value === null) edge.path.removeAttribute(key);
+      else edge.path.setAttribute(key, value);
+    }
+    edge.naturalLabelX = original.labelX;
+    edge.naturalLabelY = original.labelY;
+    edge.routeBounds = original.routeBounds;
+    if (original.conflict) edge.element.dataset.routingConflict = "true";
+    else edge.element.removeAttribute("data-routing-conflict");
+    edge.element.removeAttribute("data-routing-pending");
+  }
+  const restored = nodeModelsAtLiveCoordinates()
+    .find(node => node.id === drag.sourceId);
+  if (restored) lastRouteObstacles.set(drag.sourceId, [
+    restored.x - 24, restored.y - 24,
+    restored.x + restored.width + 24, restored.y + restored.height + 24,
+  ]);
+  relocateLiveEdgeLabels();
+  return true;
+}
+function rollbackDragNode(drag) {
+  setNodeOffset(drag.sourceId, drag.rollbackOffset.x, drag.rollbackOffset.y);
+  if (!drag.previewOriginals) {
+    applyNodeTransform(drag.sourceId);
+    return;
+  }
+  bulkEdgeUpdate = true;
+  try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
+  rollbackSmartDragPreview(drag);
+}
 function updateIncidentEdges(sourceId) {
   if (documentMode && routingMode() === "smart") {
-    const node = nodeModelsAtLiveCoordinates().find(item => item.id === sourceId);
+    const liveNodes = nodeModelsAtLiveCoordinates();
+    const nodeById = new Map(liveNodes.map(node => [node.id, node]));
+    const node = nodeById.get(sourceId);
     const next = node ? [
       node.x - 24, node.y - 24,
       node.x + node.width + 24, node.y + node.height + 24,
@@ -1710,9 +1759,14 @@ function updateIncidentEdges(sourceId) {
       Math.min(previous[0], next[0]), Math.min(previous[1], next[1]),
       Math.max(previous[2], next[2]), Math.max(previous[3], next[3]),
     ] : null;
-    // Synchronous drag updates only routes the moved node can plausibly touch;
-    // the authoritative document rebuild reroutes the whole graph on release.
-    // A missing/uncertain route envelope is always recomputed, never assumed clear.
+    const pendingDrag = gesture?.kind === "drag" && (
+      liveNodes.length > MAX_SYNC_SMART_DRAG_NODES ||
+      edges.size > MAX_SYNC_SMART_DRAG_EDGES ||
+      (incidentEdges.get(sourceId)?.size || 0) > MAX_SYNC_SMART_DRAG_INCIDENT
+    );
+    // Dense drags never synchronously run 256 expensive visibility searches.
+    // They show an explicitly unverified, cheap geometry preview instead.
+    // Release publishes the actual document for the certified server render.
     for (const [edgeId, edge] of edges) {
       const rect = edge.routeBounds;
       const affected = edge.from === sourceId || edge.to === sourceId ||
@@ -1720,7 +1774,44 @@ function updateIncidentEdges(sourceId) {
           rect[0] < influence[2] && rect[2] > influence[0] &&
           rect[1] < influence[3] && rect[3] > influence[1]
         );
-      if (affected) updateEdgeGeometry(edgeId);
+      if (!affected) continue;
+      if (!pendingDrag) {
+        updateEdgeGeometry(edgeId);
+        continue;
+      }
+      if (!gesture.previewOriginals) gesture.previewOriginals = new Map();
+      if (!gesture.previewOriginals.has(edgeId)) gesture.previewOriginals.set(edgeId, {
+        path: edge.path.getAttribute("d") || "",
+        hitPath: edge.hitPath.getAttribute("d") || "",
+        stroke: edge.path.getAttribute("stroke"),
+        dash: edge.path.getAttribute("stroke-dasharray"),
+        labelX: edge.naturalLabelX,
+        labelY: edge.naturalLabelY,
+        routeBounds: edge.routeBounds?.slice() || null,
+        conflict: edge.element.dataset.routingConflict === "true",
+      });
+      if (edge.from === sourceId || edge.to === sourceId) {
+        const source = nodeById.get(edge.from);
+        const target = nodeById.get(edge.to);
+        if (source && target) {
+          const box = svg.viewBox.baseVal;
+          const preview = liveEdgeGeometry(source, target, {
+            route: "standard", lane: edge.lane,
+            fromSide: edge.fromSide, toSide: edge.toSide,
+            selfLoop: edge.from === edge.to,
+            canvasWidth: box.width || 1, canvasHeight: box.height || 1,
+          });
+          edge.path.setAttribute("d", preview.path);
+          edge.hitPath.setAttribute("d", preview.path);
+          edge.naturalLabelX = preview.labelX;
+          edge.naturalLabelY = preview.labelY;
+        }
+      }
+      edge.routeBounds = null;
+      edge.element.dataset.routingPending = "true";
+      edge.element.removeAttribute("data-routing-conflict");
+      edge.path.setAttribute("stroke", edge.originalStroke);
+      edge.path.setAttribute("stroke-dasharray", "4 6");
     }
   } else {
     for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
@@ -2213,12 +2304,7 @@ function startPinchIfPossible() {
   if (gesture?.kind === "connection") clearConnectionPreview();
   if (gesture?.kind === "drag") {
     if (gesture.moved) {
-      setNodeOffset(
-        gesture.sourceId,
-        gesture.rollbackOffset.x,
-        gesture.rollbackOffset.y,
-      );
-      applyNodeTransform(gesture.sourceId);
+      rollbackDragNode(gesture);
       pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     }
@@ -2368,12 +2454,7 @@ function setObservationMode(enabled) {
   observationMode = Boolean(enabled);
   clearConnectionPreview();
   if (gesture?.kind === "drag") {
-    setNodeOffset(
-      gesture.sourceId,
-      gesture.rollbackOffset.x,
-      gesture.rollbackOffset.y,
-    );
-    applyNodeTransform(gesture.sourceId);
+    rollbackDragNode(gesture);
     nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
   }
   for (const pointerId of activePointers.keys()) {
@@ -2670,7 +2751,9 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
     }
-    setStatus("Position geändert · Verbindungen angepasst");
+    setStatus(gesture?.previewOriginals
+      ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"
+      : "Position geändert · Verbindungen angepasst");
   }
 });
 
@@ -2684,18 +2767,15 @@ function finishPointer(event) {
   } else if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
     if (event.type === "pointercancel" && endedGesture.moved) {
-      setNodeOffset(
-        endedGesture.sourceId,
-        endedGesture.rollbackOffset.x,
-        endedGesture.rollbackOffset.y,
-      );
-      applyNodeTransform(endedGesture.sourceId);
+      rollbackDragNode(endedGesture);
       pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     } else if (endedGesture.moved) {
       if (documentEditorHosted) {
         publishDocumentState();
-        setStatus("Dokumentposition geändert · Kanten live geroutet");
+        setStatus(endedGesture.previewOriginals
+          ? "Dokumentposition geändert · Kanten werden intelligent geroutet"
+          : "Dokumentposition geändert · Kanten live geroutet");
       } else if (documentMode) {
         setStatus("Position geändert · Dokument unverändert");
       } else if (persistOverrides()) {
