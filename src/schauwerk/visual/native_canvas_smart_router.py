@@ -79,14 +79,23 @@ def _clear(a: Point, b: Point, obstacles: Sequence[Rect]) -> bool:
     return True
 
 
-def _side_anchor(node: Mapping[str, Any], side: str, lane: float) -> Point:
+def _side_anchor(
+    node: Mapping[str, Any], side: str, lane: float,
+    max_lane: float | None = None,
+) -> Point:
     x, y, right, bottom = _rect(node, 0.0)
     cx = (x + right) * 0.5
     cy = (y + bottom) * 0.5
+    span = bottom-y if side in ("left", "right") else right-x
+    limit = span * (0.38 if max_lane is not None else 0.24)
+    # Share the actual span among parallel siblings instead of clamping
+    # outer lanes onto identical ports, which hides multiple relationships.
+    offset = lane * min(1.0, limit / max(1.0, max_lane or 0.0))
+    offset = max(-limit, min(limit, offset))
     if side in ("left", "right"):
-        cy += max(-(bottom-y)*0.24, min((bottom-y)*0.24, lane))
+        cy += offset
     else:
-        cx += max(-(right-x)*0.24, min((right-x)*0.24, lane))
+        cx += offset
     if side == "left":
         return (x, cy)
     if side == "right":
@@ -254,7 +263,7 @@ def route_edge(
     nodes: Sequence[Mapping[str, Any]], *,
     from_side: str | None = None, to_side: str | None = None,
     lane: float = 0.0, clearance: float = 12.0,
-    max_blockers: int = 24,
+    max_blockers: int = 24, max_lane: float | None = None,
 ) -> SmartEdgeRoute | None:
     """Plan a short obstacle-free path, selecting 4-sided ports when unspecified.
 
@@ -270,6 +279,8 @@ def route_edge(
         raise ValueError("invalid to_side")
     if not (0<=clearance<=100 and 2<=max_blockers<=128 and math.isfinite(lane)):
         raise ValueError("invalid smart edge router configuration")
+    if max_lane is not None and (not math.isfinite(max_lane) or max_lane < 0):
+        raise ValueError("invalid parallel edge lane range")
     src_id,tgt_id=source["id"],target["id"]
     blocking=[_rect(n,clearance) for n in nodes
               if n["id"] not in {src_id,tgt_id} and n.get("type") != "group"]
@@ -283,12 +294,12 @@ def route_edge(
     stub=max(22.0,clearance+10.0)
     candidates=[]
     for si,ss in enumerate(source_sides):
-        start=_side_anchor(source,ss,lane)
+        start=_side_anchor(source,ss,lane,max_lane)
         start_exit=_add(start,NORMALS[ss],stub)
         if not _clear(start,start_exit,(*blocking,target_box)):
             continue
         for ti,ts in enumerate(target_sides):
-            end=_side_anchor(target,ts,lane)
+            end=_side_anchor(target,ts,lane,max_lane)
             end_exit=_add(end,NORMALS[ts],stub)
             if not _clear(end_exit,end,(*blocking,source_box)):
                 continue
