@@ -1890,13 +1890,11 @@ def test_native_document_canvas_edge_truncation_balances_resolved_fsi() -> None:
     texts = [child.text or "" for child in edge if child.tag == f"{SVG_NS}text"]
 
     assert edge.attrib.get("data-text-truncated") == "true"
-    assert len(texts) == 1
-    rendered = texts[0]
-    assert rendered.startswith("⁧")
-    assert rendered.endswith("⁩")
-    assert "⁨" not in rendered
-    assert "אבג" not in rendered
-    assert "…" in rendered
+    assert 1 <= len(texts) <= 2
+    assert all(line.startswith("⁧") and line.endswith("⁩") for line in texts)
+    assert all("⁨" not in line for line in texts)
+    assert "אבג" not in "".join(texts)
+    assert "…" in texts[-1]
 
 
 def test_native_document_canvas_edge_line_breaks_are_marked_when_truncated() -> None:
@@ -1943,9 +1941,9 @@ def test_native_document_canvas_edge_line_breaks_are_marked_when_truncated() -> 
     texts = [child.text or "" for child in edge if child.tag == f"{SVG_NS}text"]
 
     assert edge.attrib.get("data-text-truncated") == "true"
-    assert len(texts) == 1
-    assert texts[0].endswith("…")
-    assert texts[0] != label
+    assert len(texts) == 2
+    assert texts[-1].endswith("…")
+    assert "".join(texts) != label
 
 
 def test_canvas_xml_forbidden_controls_measure_replacement_glyph() -> None:
@@ -3294,12 +3292,12 @@ def test_native_document_numeric_run_uses_conservative_bold_fallback_width() -> 
 
     assert "data-text-truncated" not in node.attrib
     assert "".join(item.text or "" for item in texts) == label
-    assert len(texts) >= 2
+    assert len(texts) == 1
+    assert int(texts[0].attrib["font-size"]) < 16
     assert texts[0].attrib["font-weight"] == "700"
-    assert all(
-        len(item.text or "") * int(item.attrib["font-size"]) * 0.70 <= 279
-        for item in texts
-    )
+    assert native_diagram._estimated_canvas_wrap_width(
+        texts[0].text or "", size=int(texts[0].attrib["font-size"])
+    ) <= 279
 
 
 def test_native_document_roman_numeral_run_uses_calibrated_fallback_width() -> None:

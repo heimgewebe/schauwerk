@@ -38,6 +38,30 @@ def _smart_edge_source_proof() -> dict:
     return proof
 
 
+def _schaubild_label_readability_proof() -> dict:
+    """Bind only changed successor bytes; never rewrite old technical receipts."""
+    proof_path = (
+        ROOT / "docs/operators/evidence"
+        / "schaubild-native-label-readability-20261108/technical-proof.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-native-canvas-label-readability-proof.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "pending_productive_readback"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_document.py",
+    }
+    prior = proof["historical_predecessor"]
+    prior_path = ROOT / prior["path"]
+    assert hashlib.sha256(prior_path.read_bytes()).hexdigest() == prior["sha256"]
+    assert json.loads(prior_path.read_text(encoding="utf-8"))["evidence_digest"] == prior["evidence_digest"]
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -4669,8 +4693,14 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         edge_label_width, "evidence_digest"
     )
     assert set(edge_label_width["source_bindings"]) == edge_label_width_superseded_files
+    label_successor = _schaubild_label_readability_proof()
     for name, expected in edge_label_width["source_bindings"].items():
-        if name not in process_feedback_routing_superseded_files:
+        if name in label_successor["source_bindings"]:
+            assert (
+                hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+                == label_successor["source_bindings"][name]
+            )
+        elif name not in process_feedback_routing_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert edge_label_width["checks"] == {
         "historical_parent_acceptance_left_immutable": True,
@@ -14070,8 +14100,12 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    label_successor = _schaubild_label_readability_proof()
     for path, expected in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
+        # The prior evidence is immutable; successor source bytes have a new
+        # exact digest and their own explicitly pending production acceptance.
+        current_expected = label_successor["source_bindings"].get(path, expected)
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == current_expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
         assert hashlib.sha256(path.read_bytes()).hexdigest() == predecessor["sha256"]

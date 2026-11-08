@@ -1,0 +1,38 @@
+{
+  "base_revision": "9fd2363c262bb122597f273ebc21ce341455cd4a",
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "production_rollout_of_this_successor",
+    "physical_ipad_safari_acceptance",
+    "full_quality_gates_completed"
+  ],
+  "evidence_digest": "1ac98c0a79458786c00e5ad3541b6c93dca5e6c98cd24a89dc09a8cbf345c35c",
+  "historical_predecessor": {
+    "evidence_digest": "518986cd0a629d4e1451821ab1e110ce00417b26d5f350a469be3c37db1bda63",
+    "path": "docs/operators/evidence/schaubild-smart-edge-routing-20261107/technical-proof-simple-label-viewbox-20261108.json",
+    "sha256": "b32d70f7783e896a3035fe2b4b8046f9142af845885e122505fdad9d844b9133"
+  },
+  "operation": "successor_repair",
+  "schema_version": "schauwerk-native-canvas-label-readability-proof.v1",
+  "scope": "native-canvas-labels-only",
+  "source_bindings": {
+    "src/schauwerk/visual/native_diagram.py": "2a545ab249800b8727f9a40da63b7b768164a638811eab263c0d27de800749d9",
+    "tests/visual/test_native_document.py": "358741772982b1a491048f55b13ce273f8ab06e779bbe5fe8bd68925c5028bb3"
+  },
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validated_observations": {
+    "dense_canvas_128_nodes_180_edges": "passed: 180 canvas-smart, zero conflicts",
+    "live_problem": "Chrome source 9fd2363: broken Hindernisfläche node text and clipped 41-character edge label",
+    "targeted_code_roundtrip": "passed",
+    "targeted_xml_grapheme_and_sanitizing": "passed",
+    "visual_preview": "manually inspected in Chrome from local candidate SVG",
+    "visual_preview_svg_sha256": "6e251d32e5c3d29f550d480d38f4d18d947ced274f15b59b7e859a92cf7ab8ec"
+  },
+  "validation": {
+    "consumer_runtime": "not_integrated",
+    "physical_ipad_safari": "not_tested",
+    "repository_ci": "pending_recheck"
+  },
+  "visual_acceptance": "pending_productive_readback"
+}
