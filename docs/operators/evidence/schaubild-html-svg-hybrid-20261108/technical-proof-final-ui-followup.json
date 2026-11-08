@@ -1,0 +1,69 @@
+{
+  "schema_version": "schauwerk-html-svg-hybrid-final-ui-followup-technical-proof.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "pr": 235,
+  "branch": "feat/schaubild-html-svg-hybrid-h1-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof-preserve-baseline-followup.json",
+    "sha256": "e6804192a3a5325726649e1e52599fb0e4a49676ba3bf1df28ffcb14c0b5ee53"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "77fdf52ae4fd6063d121cfcaeaa38d571d0e0252a0911e59c082cec62d2c0a03",
+    "tests/visual/test_native_hybrid_preview.py": "c01ba7f0868afe2522e6808e2963f8dc85b9859ddd923c6372256a456bfe7050",
+    "tests/visual/test_native_viewer.py": "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d",
+    "tests/visual/test_native_viewer_product_ui.py": "c2276f272b278de41e276ca40dd75608546e391cf7afeb8bbf62cad5398d48db"
+  },
+  "confirmed_fixes": [
+    "A persistent compact view menu retains the visible Native return path in hosted and standalone modes.",
+    "At 320px with asymmetric safe insets, place the view menu after reset in the toolbar; raise the backdrop-filter stacking context only while the view menu is open.",
+    "In dark mode, the HTML group heading uses a readable light text color against the existing dark group fill; native SVG remains unchanged."
+  ],
+  "validation": {
+    "local_hybrid_chrome_and_contract_tests": "20 passed on this source",
+    "native_320px_asymmetric_safearea_chrome": "passed on this source",
+    "native_product_ui_contract": "passed on prior CSS-only revision; unchanged native source",
+    "ruff": "passed",
+    "ci": "pending exact new commit",
+    "screenshot": {
+      "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/visual-native-html-hybrid-20261108.jpg",
+      "sha256": "54289bbdd0b8572261893e96f0e3a0e4077c42ca6038a32660ea2d6d3c77901e",
+      "kind": "test-only screenshot evidence, not reusable Fundus asset",
+      "views": [
+        "1120x850 light Native/HTML",
+        "844x390 light Native/HTML",
+        "320x700 light Native/HTML",
+        "844x390 dark Native/HTML"
+      ]
+    },
+    "visual_review": {
+      "method": "manual visual inspection of rendered Chrome screenshot montage, independent of technical pass",
+      "status": "accepted for optional read-only HTML preview in this captured desktop Chrome corpus",
+      "positive_finding": "Dark group labels visibly more readable than native dark group labels; HTML selection/copy remains accessible.",
+      "bounds": "No claim of all-diagram, all-zoom, physical iPad Safari, or whole-product visual acceptance"
+    }
+  },
+  "performance_observation": {
+    "fixture": "104 JSON Canvas nodes, 208 edges, smart routing",
+    "same_geometry_engine": true,
+    "native_build_seconds_single_run": 1.254,
+    "native_dom_elements": 3309,
+    "hybrid_dom_elements": 3728,
+    "incremental_dom_elements": 419,
+    "timing_non_claim": "Chrome --virtual-time-budget renders do not establish actual user p50/p95 switch or pan latency; these numbers are a synthetic preliminary sample, not an acceptance budget"
+  },
+  "limitations": [
+    "HTML box dimensions are projected from live SVG, not a separately measured editable HTML reflow contract.",
+    "HTML source authoring/editing is not enabled; Native remains the only authoritative edit/history path.",
+    "No physical iPad/Safari or production runtime readback has been conducted.",
+    "Geometrically unsatisfiable labels remain subject to Native router conflict signaling; z-index alone is not accepted as collision resolution."
+  ],
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "native_html_full_editing",
+    "complete_h2_html_reflow",
+    "real_ios_ipad_safari_acceptance",
+    "release_build_exact_commit",
+    "commonthing_live_deployment",
+    "whole_product_visual_acceptance"
+  ]
+}

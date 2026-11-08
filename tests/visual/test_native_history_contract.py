@@ -342,6 +342,8 @@ def test_hosted_native_viewer_serves_every_browser_import() -> None:
     from schauwerk.resources.native_viewer.assets import ASSETS
     from schauwerk.visual.standalone_editor import _NATIVE_BUNDLE_FILES
 
-    for name in ("app.js", "interaction.js", "smart-router.js", "styles.css"):
+    for name in (
+        "app.js", "hybrid-preview.js", "interaction.js", "smart-router.js", "styles.css",
+    ):
         assert name in ASSETS
         assert _NATIVE_BUNDLE_FILES[name] == name

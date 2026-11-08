@@ -50,6 +50,7 @@ COPY src/schauwerk/visual/__init__.py \
 COPY src/schauwerk/resources/__init__.py /app/src/schauwerk/resources/__init__.py
 COPY src/schauwerk/resources/native_viewer/__init__.py \
      src/schauwerk/resources/native_viewer/assets.py \
+     src/schauwerk/resources/native_viewer/hybrid_preview.py \
      src/schauwerk/resources/native_viewer/smart_router.py \
      /app/src/schauwerk/resources/native_viewer/
 COPY src/schauwerk/resources/native_offline_html/__init__.py \

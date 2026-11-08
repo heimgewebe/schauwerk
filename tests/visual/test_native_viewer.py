@@ -330,6 +330,7 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         "app.js",
         "diagram.svg",
         "index.html",
+        "hybrid-preview.js",
         "interaction.js",
         "representation.json",
         "smart-router.js",
