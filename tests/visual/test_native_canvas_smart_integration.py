@@ -413,3 +413,96 @@ console.log(JSON.stringify({
     assert evidence["nodes"] == 128
     assert evidence["certifiedRoutes"] == 0
     assert evidence["rollback"] is True
+
+
+def test_standalone_smart_deferred_routes_finish_after_drag(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for standalone routing completion")
+    app = ASSETS["app.js"]
+    begin = app.index("function applyAllNodeTransforms(")
+    startup = app[begin:app.index("function nodeBoundsInSvg(", begin)]
+    begin = app.index("function finishPendingStandaloneSmartRoutes(")
+    completion = app[begin:app.index("function rollbackSmartDragPreview(", begin)]
+    harness = r"""
+const documentMode=true, overrides={};
+let bulkEdgeUpdate=false, pendingSmartRouteGeneration=0, gesture=null;
+let routed=0, status="", relabel=0;
+const nodes=new Map(Array.from({length:33},(_,i)=>[
+  "node"+i,{id:"node"+i,x:i*30,y:i*14,width:100,height:70}
+]));
+const edges=new Map();
+function attrs(){
+  const m=new Map([["d","M 0 0 L 30 30"]]);
+  return {
+    getAttribute:k=>m.get(k)||null,
+    setAttribute:(k,v)=>m.set(k,String(v)),
+    removeAttribute:k=>m.delete(k)
+  };
+}
+for(let i=0;i<33;i++){
+  edges.set("e"+i,{
+    path:attrs(),hitPath:attrs(),basePath:"M 0 0 L 30 30",
+    baseLabelX:1,baseLabelY:2,naturalLabelX:3,naturalLabelY:4,
+    route:"canvas-smart",
+    element:{
+      dataset:{},
+      removeAttribute(k){
+        if(k==="data-routing-pending")delete this.dataset.routingPending;
+      }
+    }
+  });
+}
+const lastRouteObstacles=new Map();
+const nodeOffset=()=>({x:0,y:0});
+const applyNodeTransform=()=>{};
+const nodeModelsAtLiveCoordinates=()=>[...nodes.values()];
+const resetEdgeLabel=()=>{};
+const placeLiveEdgeConflict=e=>{
+  e.element.removeAttribute("data-routing-pending");
+};
+const relocateLiveEdgeLabels=()=>{relabel++;};
+const routingMode=()=> "smart";
+const setStatus=s=>{status=s;};
+const updateEdgeGeometry=id=>{
+  routed++;
+  const edge=edges.get(id);
+  edge.element.removeAttribute("data-routing-pending");
+  edge.path.setAttribute("d","M 5 5 L 10 10");
+};
+""" + startup + completion + r"""
+applyAllNodeTransforms();
+if(routed!==0)throw Error("Initial canonical routes were recomputed");
+for(const edge of edges.values()){
+  if(edge.path.getAttribute("d")!=="M 0 0 L 30 30")
+    throw Error("Original certified SVG was lost");
+  edge.element.dataset.routingPending="true";
+}
+gesture={kind:"drag"};
+finishPendingStandaloneSmartRoutes();
+await new Promise(resolve=>setTimeout(resolve,35));
+if(routed!==0)throw Error("Deferred work blocked active drag");
+gesture=null;
+const deadline=Date.now()+2000;
+while(routed<33&&Date.now()<deadline)
+  await new Promise(resolve=>setTimeout(resolve,10));
+if(routed!==33)throw Error("Unverified routes were not completed: "+routed);
+if([...edges.values()].some(e=>e.element.dataset.routingPending==="true"))
+  throw Error("Preview paths survived the final certified pass");
+if(!status.includes("aktualisiert"))throw Error("Final route status absent");
+console.log(JSON.stringify({
+  nodes:nodes.size,edges:edges.size,certifiedAtStartup:0,
+  completed:routed,unverifiedAfterRelease:0,asyncGesturePause:true
+}));
+"""
+    path = tmp_path / "standalone-deferred.mjs"
+    path.write_text(harness, encoding="utf-8")
+    result = subprocess.run(
+        [node, str(path)], capture_output=True, text=True,
+        timeout=15, check=True,
+    )
+    proof = json.loads(result.stdout)
+    assert proof["certifiedAtStartup"] == 0
+    assert proof["completed"] == 33
+    assert proof["unverifiedAfterRelease"] == 0
+    assert proof["asyncGesturePause"] is True
