@@ -1702,6 +1702,9 @@ function updateEdgeGeometry(edgeId) {
     edgeState.path.setAttribute("d", edgeState.basePath);
     edgeState.hitPath.setAttribute("d", edgeState.basePath);
     resetEdgeLabel(edgeState);
+    if (edgeState.element.dataset.routingPending === "true") {
+      placeLiveEdgeConflict(edgeState, false);
+    }
     return;
   }
   const sourceBounds = liveBounds(edgeState.from);
@@ -1723,6 +1726,9 @@ function updateEdgeGeometry(edgeId) {
   edgeState.naturalLabelX = geometry.labelX;
   edgeState.naturalLabelY = geometry.labelY;
   placeLiveLabel(edgeState, geometry.labelX, geometry.labelY);
+  if (edgeState.element.dataset.routingPending === "true") {
+    placeLiveEdgeConflict(edgeState, false);
+  }
 }
 
 function finishPendingStandaloneSmartRoutes() {
@@ -2873,7 +2879,13 @@ function finishPointer(event) {
       setStatus("Verschieben abgebrochen");
     } else if (endedGesture.moved) {
       if (documentEditorHosted) {
-        publishDocumentState();
+        if (endedGesture.previewOriginals) {
+          // native-document-change only saves the draft. An uncertified dense
+          // preview requires the hosted renderer to rebuild the saved source.
+          rebuildDocument(documentSnapshot());
+        } else {
+          publishDocumentState();
+        }
         setStatus(endedGesture.previewOriginals
           ? "Dokumentposition geändert · Kanten werden intelligent geroutet"
           : "Dokumentposition geändert · Kanten live geroutet");
