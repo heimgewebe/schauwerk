@@ -382,6 +382,7 @@ def test_hybrid_preview_ships_as_bundle_file_without_changing_native_default(tmp
     index = (output / "index.html").read_text(encoding="utf-8")
     assert "hybrid-layer" not in index.split("<script", 1)[0]
     assert 'id="hybridPreview"' in index
+    assert index.index('class="edit-menu"') < index.index('id="hybridPreview"')
     # Opt-in button starts hidden and unpressed until the viewer proves document support.
     button = re.search(r'<button id="hybridPreview"[^>]*>', INDEX_HTML)
     assert button and " hidden" in button.group(0) and 'aria-pressed="false"' in button.group(0)

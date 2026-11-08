@@ -33,13 +33,13 @@ INDEX_HTML = r"""<!doctype html>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
           <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
-          <button id="hybridPreview" class="document-only" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
         <details class="edit-controls document-only" hidden>
           <summary>Bearbeiten</summary>
           <div class="edit-menu" role="group" aria-label="Bearbeiten">
+          <button id="hybridPreview" class="document-only" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
             <button id="addNode" class="document-only" type="button" aria-label="Element hinzufügen" title="Element hinzufügen" hidden>+ Element</button>
             <button id="addEdge" class="document-only" type="button" aria-label="Verbindung hinzufügen" title="Zuerst ein Element auswählen" hidden>+ Verbindung</button>
             <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>

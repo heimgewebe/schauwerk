@@ -21,7 +21,7 @@
     "html_vector_or_pdf_export",
     "representation_input_hybrid_support"
   ],
-  "evidence_digest": "5d18afd0b370a107b72a98c40a4c73a76756067fe63e19173fb33e4219d598aa",
+  "evidence_digest": "92117f5d6a46eafe752ddf6ef9e434f67a8894f2734cea5e0f938f9b7ee2be1b",
   "features": {
     "back_to_native_restores_previous_mode": true,
     "default_stays_native_svg": true,
@@ -48,12 +48,12 @@
   "scope": "technical-candidate-only",
   "source_bindings": {
     "Dockerfile": "a11b5eecbad2dc5d3f6b77acc557750df7aa0ec6fe6a78112fcee6dff0270349",
-    "src/schauwerk/resources/native_viewer/assets.py": "c8f2c1ac45084730412586959bc703fdde287966a22af417b506b3649560984c",
+    "src/schauwerk/resources/native_viewer/assets.py": "fa62e5aec5f8c4d5cf87f8ff4fcad7887f8b77a8c756925136dc10643ad7b3bb",
     "src/schauwerk/resources/native_viewer/hybrid_preview.py": "ee0c4ed0b9a6be43d8d9c9c5ecf9cfdf4aa1ddca3053d1ac1809f45d070d26d3",
     "src/schauwerk/visual/native_viewer.py": "1c64a8bd465aa295791e7e84e4cb259a6bc4b41a1ce4402fed7d7b285a0301f8",
     "src/schauwerk/visual/standalone_editor.py": "cd2a652fca112c5be938f36d9edb2c6d29251b5b92d0e95f21214ace8b18a26d",
     "tests/visual/test_native_history_contract.py": "179edf89a443a2b97833ac33d8790a8787ca9e6e0c2f69e7405f07fcd87a7027",
-    "tests/visual/test_native_hybrid_preview.py": "0c373a12d29faa84438775df95eb1b3f5b57f2aea702a098e6aa3d04889e2152",
+    "tests/visual/test_native_hybrid_preview.py": "8ff8d61bb897ec6a49be14110a04c7c78db10622fc30b23b5313dca5a8546e52",
     "tests/visual/test_native_viewer.py": "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d"
   },
   "source_repository": "heimgewebe/schauwerk",
