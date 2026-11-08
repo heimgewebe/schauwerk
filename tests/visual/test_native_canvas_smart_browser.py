@@ -214,3 +214,56 @@ frame.src = "index.html";
     assert result.returncode == 0, result.stderr[-1000:]
     assert 'data-connection-regression="pass"' in result.stdout, result.stdout[:2000]
     assert 'data-connection-regression="fail"' not in result.stdout
+
+
+def test_export_clone_excludes_editor_only_connection_handles_in_chrome(
+    tmp_path: Path,
+) -> None:
+    chrome = shutil.which("google-chrome") or shutil.which("google-chrome-stable")
+    if not chrome:
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            pytest.fail("Chrome required for native Canvas export overlay test")
+        pytest.skip("Chrome unavailable")
+    from schauwerk.resources.standalone_editor.assets import ASSETS as EDITOR_ASSETS
+
+    app = EDITOR_ASSETS["app.js"]
+    start = app.index("function serializeNativeFrameSvg(")
+    end = app.index("/** Rasterize once", start)
+    function_source = app[start:end]
+    fixture = r"""<!doctype html><html><body>
+<svg id="nativeDiagram" xmlns="http://www.w3.org/2000/svg"
+  data-input-digest="test">
+  <g data-source-kind="edge"><path id="actual-route" d="M0 0 L100 100"
+    stroke="#345678"/></g>
+  <path class="native-edge-hit" d="M0 0 L100 100" stroke="transparent"/>
+  <g data-connection-handles="true"><circle class="native-connection-handle"
+    cx="30" cy="40" r="9"/></g>
+</svg><script>
+const elements = {frame: {contentDocument: document}};
+""" + function_source + r"""
+try {
+  const xml = serializeNativeFrameSvg({stripInputDigest: true});
+  if (!xml || !xml.includes('id="actual-route"') ||
+      xml.includes("data-connection-handles") ||
+      xml.includes("native-connection-handle") ||
+      xml.includes("native-edge-hit") ||
+      xml.includes('data-input-digest="test"')) {
+    throw new Error("Exported SVG contains editing-only overlays: " + xml);
+  }
+  document.documentElement.dataset.overlayExportRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.overlayExportRegression = "fail";
+  document.documentElement.dataset.overlayExportError = String(error);
+}
+</script></body></html>"""
+    page = tmp_path / "export.html"
+    page.write_text(fixture, encoding="utf-8")
+    result = subprocess.run([
+        chrome, "--headless=new",
+        f"--user-data-dir={tmp_path / 'chrome-overlay'}",
+        "--no-first-run", "--disable-gpu", "--disable-dev-shm-usage",
+        "--no-sandbox", "--virtual-time-budget=2000", "--dump-dom",
+        page.as_uri(),
+    ], capture_output=True, text=True, timeout=24, check=False)
+    assert result.returncode == 0, result.stderr[-1000:]
+    assert 'data-overlay-export-regression="pass"' in result.stdout, result.stdout[:2000]
