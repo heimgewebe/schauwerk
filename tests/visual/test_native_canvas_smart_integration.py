@@ -678,3 +678,51 @@ console.log(JSON.stringify({hostedRender:1,normalSave:1,loopRecovered:true}));
     )
     result = json.loads(outcome.stdout)
     assert result == {"hostedRender": 1, "normalSave": 1, "loopRecovered": True}
+
+
+def test_six_parallel_canvas_edges_have_distinct_certified_paths(
+    tmp_path: Path,
+) -> None:
+    source = canvas(obstacle=False)
+    a, b = source["nodes"]
+    source["edges"] = [
+        {"id": "p" + str(i), "fromNode": "start", "toNode": "end"}
+        for i in range(6)
+    ]
+    svg = render(source)
+    groups = [
+        group for group in svg.iter(SVG + "g")
+        if group.get("data-source-kind") == "edge"
+    ]
+    paths = [group.find(SVG + "path").get("d") for group in groups]
+    assert len(paths) == len(set(paths)) == 6
+    assert all(g.get("data-route") == "canvas-smart" for g in groups)
+    lanes = [(i - 2.5) * 18.0 for i in range(6)]
+    if a["id"] > b["id"]:
+        lanes = [-lane for lane in lanes]
+    expected = [
+        route_edge(a, b, [a, b], lane=lane, max_lane=45.0)
+        for lane in lanes
+    ]
+    assert all(route is not None and route.collision_free for route in expected)
+    assert paths == [route.path for route in expected]
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for browser/renderer parallel route parity")
+    module = tmp_path / "parallel-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    script = tmp_path / "parallel-check.mjs"
+    script.write_text(
+        'import {smartEdgeGeometry} from "./parallel-router.mjs";\n'
+        f"const nodes = {json.dumps([a,b])};\n"
+        f"const lanes = {json.dumps(lanes)};\n"
+        'console.log(JSON.stringify(lanes.map(lane => '
+        'smartEdgeGeometry(nodes[0], nodes[1], nodes, '
+        '{lane, maxLane: 45})?.path ?? null)));\n',
+        encoding="utf-8",
+    )
+    run = subprocess.run(
+        [node, str(script)], capture_output=True, text=True,
+        timeout=14, check=True,
+    )
+    assert json.loads(run.stdout) == paths
