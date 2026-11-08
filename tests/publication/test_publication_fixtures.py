@@ -13976,7 +13976,14 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed"
     ] is True
     for name, sha in knowledge_map["source_bindings"].items():
-        if name != retry_test:
+        if name == retry_test:
+            continue
+        # The historic knowledge-map digest is an immutable predecessor for
+        # any source changed in the later smart-edge candidate. The candidate
+        # binds current bytes independently in its dedicated exact-source test.
+        if name in current_proof["source_bindings"]:
+            assert sha == current_proof["base_source_bindings"][name]
+        else:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
     latest_bindings = {
