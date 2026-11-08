@@ -6,7 +6,7 @@
     "physical_ipad_safari_acceptance",
     "full_quality_gates_completed"
   ],
-  "evidence_digest": "1ac98c0a79458786c00e5ad3541b6c93dca5e6c98cd24a89dc09a8cbf345c35c",
+  "evidence_digest": "05e76ac1ced230fd84cd7eff55027d419e52462c4c13ab66013fbb680c2f7bb4",
   "historical_predecessor": {
     "evidence_digest": "518986cd0a629d4e1451821ab1e110ce00417b26d5f350a469be3c37db1bda63",
     "path": "docs/operators/evidence/schaubild-smart-edge-routing-20261107/technical-proof-simple-label-viewbox-20261108.json",
@@ -16,8 +16,8 @@
   "schema_version": "schauwerk-native-canvas-label-readability-proof.v1",
   "scope": "native-canvas-labels-only",
   "source_bindings": {
-    "src/schauwerk/visual/native_diagram.py": "2a545ab249800b8727f9a40da63b7b768164a638811eab263c0d27de800749d9",
-    "tests/visual/test_native_document.py": "358741772982b1a491048f55b13ce273f8ab06e779bbe5fe8bd68925c5028bb3"
+    "src/schauwerk/visual/native_diagram.py": "0e0d15a2050f0ce0f3654ec5ac104ed8287f66d1271e2041fe49c7f90757c99e",
+    "tests/visual/test_native_document.py": "4c8534a50f4d6208ce29e1c4ddc4c9b160d20472b863a571feb32642b2afff0e"
   },
   "source_repository": "heimgewebe/schauwerk",
   "status": "technical_candidate_only",

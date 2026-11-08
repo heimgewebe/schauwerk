@@ -3819,3 +3819,113 @@ def test_canvas_multiline_edge_label_readability_and_clip_budget() -> None:
         <= float(rect.attrib["width"]) - 20
         for line in text_lines
     )
+
+
+def test_canvas_edge_zero_advance_run_is_bounded_before_wrap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    label = "\u200b" * 800_000 + "end"
+    source = {
+        "nodes": [
+            {"id": "a", "type": "text", "x": 10, "y": 10,
+             "width": 175, "height": 100, "text": "Start"},
+            {"id": "b", "type": "text", "x": 480, "y": 230,
+             "width": 175, "height": 100, "text": "Ziel"},
+        ],
+        "edges": [{"id": "long-edge", "fromNode": "a", "toNode": "b",
+                   "label": label}],
+        "schauwerk": {"edgeRouting": "smart"},
+    }
+    document = json_canvas_to_editing_document(source)
+    original_wrap = native_diagram._canvas_adaptive_lines
+    observed_probe_lengths = []
+
+    def bounded_wrap(value: str, *, size: int, max_width: float, max_lines: int):
+        if size == 14 and max_lines == 2:
+            observed_probe_lengths.append(len(value))
+            assert len(value) <= (
+                native_diagram._MAX_CANVAS_TEXT_PROBE_CODEPOINTS
+                + MAX_GRAPHEME_CLUSTER_CODEPOINTS + 1
+            )
+        return original_wrap(value, size=size, max_width=max_width,
+                             max_lines=max_lines)
+
+    monkeypatch.setattr(native_diagram, "_canvas_adaptive_lines", bounded_wrap)
+    root = ET.fromstring(render_native_editing_document(document))
+    edge = next(
+        element for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "long-edge"
+    )
+    assert observed_probe_lengths
+    assert edge.attrib.get("data-text-truncated") == "true"
+    # ElementTree expands zero-advance glyphs into numeric XML references;
+    # bound visible text independently of the serializer's expansion factor.
+    assert sum(
+        len(child.text or "") for child in edge.iter(f"{SVG_NS}text")
+    ) < 50_000
+
+
+def test_canvas_parallel_edge_labels_do_not_obscure_group_heading() -> None:
+    label = "Gemeinsame Themenfläche"
+    source = {
+        "nodes": [
+            {"id": "a", "type": "text", "x": 70, "y": 220,
+             "width": 175, "height": 110, "text": "Start"},
+            {"id": "g", "type": "group", "x": 315, "y": 100,
+             "width": 355, "height": 380, "label": label},
+            {"id": "b", "type": "text", "x": 745, "y": 250,
+             "width": 180, "height": 110, "text": "Ziel"},
+        ],
+        "edges": [
+            *[
+                {"id": f"parallel-{n}", "fromNode": "a", "toNode": "b",
+                 "label": f"Wechselwirkung Nummer {n} – eindeutig sichtbar"}
+                for n in range(1, 7)
+            ],
+            *[
+                {"id": f"reverse-{n}", "fromNode": "b", "toNode": "a",
+                 "label": f"Rückwirkung Nummer {n} – eindeutig sichtbar"}
+                for n in range(1, 3)
+            ],
+            {"id": "loop", "fromNode": "a", "toNode": "a",
+             "label": "Selbstbezug – eindeutig sichtbar"},
+        ],
+        "schauwerk": {"edgeRouting": "smart"},
+    }
+    document = json_canvas_to_editing_document(source)
+    assert editing_document_to_json_canvas(document) == source
+    root = ET.fromstring(render_native_editing_document(document))
+    group = next(
+        element for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-id") == "g"
+    )
+    headers = [element for element in group
+               if element.tag == f"{SVG_NS}text"
+               and element.attrib.get("data-node-label") == "true"]
+    assert headers and label in "".join(header.text or "" for header in headers)
+    title_boxes = []
+    for header in headers:
+        size = int(header.attrib["font-size"])
+        x = float(header.attrib["x"])
+        y = float(header.attrib["y"])
+        width = native_diagram._estimated_canvas_single_line_width(
+            header.text or "", size=size
+        )
+        title_boxes.append((x, y - size, x + width, y + 4))
+    edges = [
+        element for element in root.iter(f"{SVG_NS}g")
+        if element.attrib.get("data-source-kind") == "edge"
+    ]
+    assert len(edges) == 9
+    for edge in edges:
+        for rect in (child for child in edge if child.tag == f"{SVG_NS}rect"):
+            if float(rect.attrib.get("width", 0)) <= 0:
+                continue
+            x = float(rect.attrib["x"])
+            y = float(rect.attrib["y"])
+            w = float(rect.attrib["width"])
+            h = float(rect.attrib["height"])
+            assert all(
+                not (x < rx2 and x + w > rx1 and y < ry2 and y + h > ry1)
+                for rx1, ry1, rx2, ry2 in title_boxes
+            ), edge.attrib.get("data-source-id")

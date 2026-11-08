@@ -12097,6 +12097,39 @@ def _canvas_relocate_occluded_edge_labels(
         for node in nodes
         if str(node["type"]) != "group"
     ]
+    # A group is a permeable background for relationships. Its *visible
+    # heading*, however, is not: edge labels must not paint over that text.
+    # Reserve only actual heading-line geometry, not the whole group body.
+    for group in nodes:
+        if str(group["type"]) != "group":
+            continue
+        caption = str(group.get("label", ""))
+        if not _canvas_has_layout_content(caption):
+            continue
+        group_x = float(group["x"]) + 14.0
+        group_y = float(group["y"])
+        content_width = max(1, int(group["width"]) - 28)
+        header_layout = _canvas_text_layout(
+            caption,
+            content_width,
+            int(group["height"]),
+            max_lines=8,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
+        for line, baseline in header_layout.lines:
+            line_width = min(
+                float(content_width),
+                _estimated_canvas_single_line_width(
+                    line, size=header_layout.size
+                ),
+            )
+            if line_width <= 0:
+                continue
+            top = group_y + baseline - header_layout.size
+            boxes.append((
+                group_x, top, group_x + line_width,
+                top + header_layout.size + 4,
+            ))
     reserved: list[tuple[float, float, float, float]] = []
     result: list[tuple[Any, ...]] = []
 
@@ -12515,12 +12548,36 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             if edge_line_budget <= 0:
                 edge_label_truncated = True
             elif label_height > 28 and edge_line_budget >= 2:
-                wrapped, edge_label_truncated = _canvas_adaptive_lines(
+                # The line count alone does not bound work on zero-advance
+                # graphemes. Apply the existing XML/grapheme probe budget
+                # *before* wrapping and bidi projection.
+                edge_width = max(1.0, float(label_width - 20))
+                edge_probe, probe_truncated = _canvas_bounded_text_probe_prefix(
                     label,
+                    geometry_cluster_limit=_canvas_text_probe_cluster_limit(
+                        max_width=edge_width,
+                        max_lines=2,
+                        max_bytes=edge_text_byte_budget,
+                        min_size=14,
+                    ),
+                    work_cluster_limit=min(
+                        max(1, edge_text_byte_budget + 1),
+                        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+                    ),
+                    max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+                )
+                wrapped, wrapped_truncated = _canvas_adaptive_lines(
+                    edge_probe,
                     size=14,
-                    max_width=max(1.0, float(label_width - 20)),
+                    max_width=edge_width,
                     max_lines=2,
                 )
+                edge_label_truncated = probe_truncated or wrapped_truncated
+                # An oversized single grapheme can leave the admitted prefix
+                # empty. Keep the prior visible truncation marker rather than
+                # silently dropping an otherwise present relationship label.
+                if probe_truncated and not wrapped:
+                    wrapped = [("…", False)]
                 remaining_edge_bytes = edge_text_byte_budget
                 for wrapped_line, _paragraph_gap in wrapped:
                     fitted, shortened = _canvas_fit_single_line(
