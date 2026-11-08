@@ -698,8 +698,6 @@ def test_six_parallel_canvas_edges_have_distinct_certified_paths(
     assert len(paths) == len(set(paths)) == 6
     assert all(g.get("data-route") == "canvas-smart" for g in groups)
     lanes = [(i - 2.5) * 18.0 for i in range(6)]
-    if a["id"] > b["id"]:
-        lanes = [-lane for lane in lanes]
     expected = [
         route_edge(a, b, [a, b], lane=lane, max_lane=45.0)
         for lane in lanes
@@ -726,3 +724,39 @@ def test_six_parallel_canvas_edges_have_distinct_certified_paths(
         timeout=14, check=True,
     )
     assert json.loads(run.stdout) == paths
+
+
+def test_reciprocal_canvas_edges_use_distinct_smart_lanes() -> None:
+    source = canvas(obstacle=False)
+    source["edges"] = [
+        {"id": "forward", "fromNode": "start", "toNode": "end"},
+        {"id": "return", "fromNode": "end", "toNode": "start"},
+    ]
+    smart_groups = [
+        g for g in render(source).iter(SVG + "g")
+        if g.get("data-source-kind") == "edge"
+    ]
+    assert len(smart_groups) == 2
+    forward, backward = smart_groups
+    assert forward.get("data-lane") == "-9.0"
+    assert backward.get("data-lane") == "9.0"
+    smart_paths = [g.find(SVG + "path").get("d") for g in smart_groups]
+    assert len(set(smart_paths)) == 2
+    assert all(g.get("data-route") == "canvas-smart" for g in smart_groups)
+    first, second = source["nodes"]
+    expected_forward = route_edge(
+        first, second, [first, second], lane=-9.0, max_lane=9.0,
+    )
+    expected_backward = route_edge(
+        second, first, [first, second], lane=9.0, max_lane=9.0,
+    )
+    assert expected_forward is not None and expected_backward is not None
+    assert smart_paths == [expected_forward.path, expected_backward.path]
+    # Explicitly opting out must retain the historical simple renderer logic.
+    source["schauwerk"]["edgeRouting"] = "simple"
+    simple = [
+        g for g in render(source).iter(SVG + "g")
+        if g.get("data-source-kind") == "edge"
+    ]
+    assert simple[0].get("data-route") != "canvas-smart"
+    assert simple[1].get("data-route") != "canvas-smart"
