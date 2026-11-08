@@ -24,6 +24,7 @@ from .grapheme import (
     is_extended_pictographic,
     iter_grapheme_clusters,
 )
+from .native_canvas_smart_router import route_edge as _canvas_smart_route_edge
 from .native_document import NATIVE_DOCUMENT_SCHEMA, NativeDocumentError
 from .representation import RepresentationError, validate_representation_input
 
@@ -12188,6 +12189,17 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         raise NativeDocumentError("native editing document edges are invalid")
 
     node_by_id = {str(node["id"]): node for node in nodes}
+    source_canvas = document.get("source")
+    routing_options = (
+        source_canvas.get("schauwerk", {})
+        if isinstance(source_canvas, Mapping)
+        else {}
+    )
+    smart_routing = (
+        isinstance(routing_options, Mapping)
+        and routing_options.get("edgeRouting") == "smart"
+    )
+    routing_attribute = 'data-edge-routing="smart" ' if smart_routing else ""
 
     pair_counts: dict[tuple[str, str], int] = {}
     pair_slots: dict[tuple[str, str], int] = {}
@@ -12208,11 +12220,29 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             lane = slot * 18.0
         else:
             lane = (slot - (pair_counts[key] - 1) / 2) * 18.0
-            if source_id > target_id:
+            # Legacy cubic lanes reverse sign with edge direction. For
+            # smart routing the two endpoints also reverse, so doing both
+            # collapses reciprocal edges onto the same visible route.
+            if source_id > target_id and not smart_routing:
                 lane = -lane
         path, label_x, label_y, route, edge_bounds = _canvas_edge_geometry(
             source, target, edge, lane=lane
         )
+        if smart_routing and source_id != target_id:
+            candidate = _canvas_smart_route_edge(
+                source, target, nodes,
+                from_side=edge.get("from_side"),
+                to_side=edge.get("to_side"),
+                lane=lane,
+                max_lane=(pair_counts[key] - 1) * 9.0,
+            )
+            if candidate is None:
+                # Never advertise an unsafe legacy fallback as clear.
+                route = "canvas-smart-conflict"
+            else:
+                path = candidate.path
+                label_x, label_y = candidate.label_x, candidate.label_y
+                route, edge_bounds = "canvas-smart", candidate.bounds
         label = str(edge.get("label", ""))
         label_width = _canvas_edge_label_box_width(label)
         label_height = 28
@@ -12285,6 +12315,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             f'width="{view_width}" height="{view_height}" '
             f'data-renderer="schauwerk-native-diagram-v1" '
             f'data-intent="freeform" data-document-mode="json-canvas" '
+            f'{routing_attribute}'
             f'data-input-digest="{_canvas_xml(document["source_digest"])}"'
             f'{document_title_truncated_attribute}>'
         ),
@@ -12483,6 +12514,38 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             label,
             max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
         )
+        routing_conflict = route == "canvas-smart-conflict"
+        conflict_attr = ' data-routing-conflict="true"' if routing_conflict else ""
+        raw_relation = edge.get("source", {}).get("schauwerk", {})
+        relation_kind = (
+            raw_relation.get("kind", "flow")
+            if isinstance(raw_relation, Mapping)
+            else "flow"
+        )
+        relation_attr = (
+            f' data-relation-kind="{relation_kind}"'
+            if relation_kind != "flow"
+            else ""
+        )
+        canonical_dash = (
+            "3 5" if relation_kind == "association"
+            else "10 5" if relation_kind == "feedback"
+            else ""
+        )
+        dash_attr = (
+            ' stroke-dasharray="6 4"'
+            if routing_conflict
+            else f' stroke-dasharray="{canonical_dash}"' if canonical_dash else ""
+        )
+        line_stroke = "#c2410c" if routing_conflict else stroke
+        canonical_stroke_attr = (
+            f' data-canonical-stroke="{stroke}"' if smart_routing else ""
+        )
+        canonical_dash_attr = (
+            f' data-canonical-dash="{canonical_dash}"' if smart_routing else ""
+        )
+        if routing_conflict:
+            edge_title = "Kein hindernisfreier Weg: " + edge_title
         marker_start = (
             f' marker-start="url(#canvas-arrow-{index})"'
             if edge.get("from_end") == "arrow"
@@ -12499,12 +12562,13 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
                     f'data-route="{route}" data-lane="{lane:.1f}"'
-                    f'{edge_truncated_attribute}>'
+                    f'{conflict_attr}{relation_attr}{canonical_stroke_attr}{canonical_dash_attr}{edge_truncated_attribute}>'
                 ),
                 f"<title>{_canvas_xml(edge_title)}</title>",
                 (
-                    f'<path d="{path}" fill="none" stroke="{stroke}" stroke-width="2" '
-                    f'stroke-linecap="round" stroke-linejoin="round"{marker_start}{marker_end}/>'
+                    f'<path d="{path}" fill="none" stroke="{line_stroke}" stroke-width="2" '
+                    f'{dash_attr} stroke-linecap="round" stroke-linejoin="round"'
+                    f'{marker_start}{marker_end}/>'
                 ),
             ]
         )

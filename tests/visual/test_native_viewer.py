@@ -332,6 +332,7 @@ def test_native_viewer_build_is_deterministic_and_keeps_semantic_truth_read_only
         "index.html",
         "interaction.js",
         "representation.json",
+        "smart-router.js",
         "styles.css",
     }
     for name, record in manifest_files.items():

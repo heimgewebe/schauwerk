@@ -20,6 +20,24 @@ from schauwerk.publication.store import (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+
+
+def _smart_edge_source_proof() -> dict:
+    """Current candidate supersedes changed bytes, never historical proofs."""
+    path = (
+        ROOT / "docs/operators/evidence"
+        / "schaubild-smart-edge-routing-20261107/technical-proof-simple-label-viewbox-20261108.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-smart-edge-simple-label-viewbox-technical-proof.v1"
+    )
+    assert proof["scope"] == "technical-candidate-only"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -1203,6 +1221,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | product_ui_superseded_files
             | final_ui_fix_superseded_files
             | json_canvas_text_fit_superseded_files
+            | set(_smart_edge_source_proof()["source_bindings"])
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert editor_successor["checks"]["browser_smoke_passed_count"] == 7
@@ -1940,6 +1959,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             | single_workspace_exports_superseded_files
             | process_feedback_routing_superseded_files
             | full_editor_technical_superseded_files
+            | set(_smart_edge_source_proof()["source_bindings"])
         ):
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert hashlib.sha256(
@@ -8994,7 +9014,8 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
     for path, expected in pinch_save_acceptance["source_bindings"].items():
         if path in (single_workspace_host_retry_superseded_files
                     | single_workspace_ci_save_font_superseded_files
-                    | single_workspace_legacy_tools_superseded_files):
+                    | single_workspace_legacy_tools_superseded_files
+                    | set(_smart_edge_source_proof()["source_bindings"])):
             continue
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected
     assert all(pinch_save_acceptance["checks"].values())
@@ -12871,10 +12892,22 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
             "src/schauwerk/visual/native_diagram.py"
         ]
     )
+    # Previous accepted label revision keeps its immutable source hash;
+    # only the new independently bound smart-edge technical candidate owns
+    # current native_diagram.py bytes.
+    smart_proof = _smart_edge_source_proof()
+    native_diagram_path = "src/schauwerk/visual/native_diagram.py"
+    assert smart_proof["base_source_bindings"][native_diagram_path] == (
+        clearance["source_bindings"][native_diagram_path]
+    )
     assert clearance["source_bindings"] == {
-        name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        name: (
+            smart_proof["base_source_bindings"][name]
+            if name == native_diagram_path
+            else hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+        )
         for name in (
-            "src/schauwerk/visual/native_diagram.py",
+            native_diagram_path,
             "tests/visual/test_native_canvas_label_clearance.py",
         )
     }
@@ -13862,8 +13895,15 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     ] == 25
     assert "historical_visual_acceptance_inherited" in history["does_not_establish"]
     assert "physical_ipad_safari_acceptance" in history["does_not_establish"]
+    # The immutable history receipt predates smart routing. Both modified
+    # files retain their old digest in the candidate proof's base bindings;
+    # the same test below verifies each *current* file against its successor.
+    current_proof = _smart_edge_source_proof()
     for name, digest in history["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        if name in current_proof["source_bindings"]:
+            assert digest == current_proof["base_source_bindings"][name]
+        else:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
 
     # This revision changes the SVG parser; preserve the historical D2 proof
     # and explicitly bind only the two new source/test artifacts.
@@ -13936,7 +13976,14 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed"
     ] is True
     for name, sha in knowledge_map["source_bindings"].items():
-        if name != retry_test:
+        if name == retry_test:
+            continue
+        # The historic knowledge-map digest is an immutable predecessor for
+        # any source changed in the later smart-edge candidate. The candidate
+        # binds current bytes independently in its dedicated exact-source test.
+        if name in current_proof["source_bindings"]:
+            assert sha == current_proof["base_source_bindings"][name]
+        else:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
     latest_bindings = {
@@ -13947,6 +13994,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
 
         **knowledge_map["source_bindings"],
         **history["source_bindings"],
+        **_smart_edge_source_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -13977,7 +14025,10 @@ def test_schaubild_d2_oci_supersession_binds_exact_changed_sources() -> None:
         "scripts/ci/smoke-native-schaubild-runtime.sh",
     }
     for name, expected in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+        if name == "Dockerfile":
+            assert expected == _smart_edge_source_proof()["base_source_bindings"][name]
+        else:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
     assert proof["external_d2"]["version"] == "v0.9.0"
     assert (
         proof["external_d2"]["archive_sha256"]
@@ -13986,3 +14037,51 @@ def test_schaubild_d2_oci_supersession_binds_exact_changed_sources() -> None:
     assert proof["external_d2"]["read_only"] is True
     assert proof["validation"]["github_pr_exact_head_build_smoke_passed"] is True
     assert "production_browser_acceptance" in proof["does_not_establish"]
+
+
+
+def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
+    """Every new runtime, renderer and viewer byte is bound to one candidate revision."""
+    proof = _smart_edge_source_proof()
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "84bd753a10f00895793ab1544da1a2ce5a0c161b"
+    expected_paths = {
+        "Dockerfile",
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "src/schauwerk/visual/native_document.py",
+        "src/schauwerk/visual/native_viewer.py",
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/native_viewer/smart_router.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_canvas_smart_router.py",
+        "tests/visual/test_native_canvas_smart_integration.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_canvas_smart_browser.py",
+        "tests/visual/test_native_history_contract.py",
+        "src/schauwerk/visual/standalone_editor.py",
+    }
+    assert set(proof["source_bindings"]) == expected_paths
+    assert set(proof["base_source_bindings"]) == expected_paths
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
+    assert proof["visual_acceptance"] == "pending"
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    for path, expected in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
+    for predecessor in proof["historical_proofs_unchanged"]:
+        path = ROOT / predecessor["path"]
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == predecessor["sha256"]
+        actual = json.loads(path.read_text(encoding="utf-8"))
+        assert actual["evidence_digest"] == predecessor["evidence_digest"]
+        assert actual["schema_version"] == predecessor["schema_version"]
+        assert actual["evidence_digest"] == digest_mapping(actual, "evidence_digest")
+    clearance = proof["historical_proofs_unchanged"][0]
+    assert "schaubild-canvas-edge-label-clearance" in clearance["path"]
+    history = proof["historical_proofs_unchanged"][1]
+    assert "schaubild-native-canvas-first-edit-history" in history["path"]
+    oci = proof["historical_proofs_unchanged"][2]
+    assert "schaubild-d2-oci" in oci["path"]

@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from .smart_router import SMART_ROUTER_JS
+
 INDEX_HTML = r"""<!doctype html>
 <html lang="de">
 <head>
@@ -29,6 +31,7 @@ INDEX_HTML = r"""<!doctype html>
           <output id="zoomValue" aria-label="Zoomstufe">100 %</output>
           <button id="zoomIn" class="icon-control" type="button" aria-label="Vergrößern" title="Vergrößern">+</button>
           <button id="fitView" type="button">Einpassen</button>
+          <button id="smartRouting" class="document-only" type="button" aria-pressed="false" aria-label="Intelligente Kantenführung einschalten" hidden>Intelligente Kantenführung: Aus</button>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
         </div>
@@ -40,6 +43,40 @@ INDEX_HTML = r"""<!doctype html>
             <button id="editText" class="document-only" type="button" aria-label="Text bearbeiten" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Text</button>
             <button id="reattachSource" class="document-only" type="button" aria-label="Anfang ändern" title="Zuerst eine Verbindung auswählen" hidden>Anfang</button>
             <button id="reattachTarget" class="document-only" type="button" aria-label="Ende ändern" title="Zuerst eine Verbindung auswählen" hidden>Ende</button>
+            <div id="edgePorts" class="edge-port-controls document-only" hidden>
+              <label for="edgeFromPort">Anfangsseite</label>
+              <select id="edgeFromPort" aria-label="Anschlussseite am Anfang">
+                <option value="">Auto</option>
+                <option value="left">Links</option>
+                <option value="right">Rechts</option>
+                <option value="top">Oben</option>
+                <option value="bottom">Unten</option>
+              </select>
+              <label for="edgeToPort">Zielseite</label>
+              <select id="edgeToPort" aria-label="Anschlussseite am Ziel">
+                <option value="">Auto</option>
+                <option value="left">Links</option>
+                <option value="right">Rechts</option>
+                <option value="top">Oben</option>
+                <option value="bottom">Unten</option>
+              </select>
+              <label for="edgeFromEnd">Startpfeil</label>
+              <select id="edgeFromEnd" aria-label="Pfeilrichtung am Anfang">
+                <option value="none">Keiner</option>
+                <option value="arrow">Pfeil</option>
+              </select>
+              <label for="edgeToEnd">Zielpfeil</label>
+              <select id="edgeToEnd" aria-label="Pfeilrichtung am Ziel">
+                <option value="none">Keiner</option>
+                <option value="arrow">Pfeil</option>
+              </select>
+              <label for="edgeKind">Beziehung</label>
+              <select id="edgeKind" aria-label="Beziehungstyp">
+                <option value="flow">Verbindung</option>
+                <option value="association">Assoziation</option>
+                <option value="feedback">Rückkopplung</option>
+              </select>
+            </div>
             <button id="deleteSelection" class="document-only destructive-control" type="button" aria-label="Auswahl löschen" title="Zuerst ein Element oder eine Verbindung auswählen" hidden>Löschen</button>
           </div>
         </details>
@@ -325,6 +362,27 @@ button:focus-visible {
   border-color: var(--line);
   background: #fff;
 }
+.edge-port-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px;
+}
+.edge-port-controls label { font-size: 0.74rem; font-weight: 650; }
+.edge-port-controls select {
+  min-height: 38px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+}
+.view-controls #smartRouting[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
 .document-editor-hosted .viewer-title { display: none; }
 .document-editor-hosted .viewer-heading {
   max-width: min(32vw, 320px);
@@ -387,6 +445,28 @@ button:focus-visible {
 .native-diagram [data-source-kind="edge"].is-selected > path:not(.native-edge-hit) {
   stroke-width: 4px !important;
   filter: drop-shadow(0 0 4px rgba(99, 91, 255, 0.46));
+}
+.native-diagram [data-label-conflict="true"] > rect {
+  fill: #ffedd5;
+  stroke: #c2410c;
+  stroke-width: 1px;
+}
+.native-diagram [data-connection-handles] .native-connection-handle {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 2px;
+  cursor: crosshair;
+  pointer-events: all;
+}
+.native-diagram [data-connection-handles] .native-connection-create {
+  fill: var(--accent-soft);
+}
+.native-diagram [data-connection-handles] .native-connection-preview {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  stroke-dasharray: 6 5;
+  pointer-events: none;
 }
 
 .text-dialog {
@@ -942,7 +1022,8 @@ export function liveEdgeGeometry(sourceBounds, targetBounds, options = {}) {
 }
 """
 
-APP_JS = r"""import {
+APP_JS = r"""import { smartEdgeGeometry } from "./smart-router.js";
+import {
   MAX_SCALE,
   MIN_SCALE,
   clampScale,
@@ -968,6 +1049,13 @@ const zoomOut = document.querySelector("#zoomOut");
 const fitButton = document.querySelector("#fitView");
 const resetLayout = document.querySelector("#resetLayout");
 const observationButton = document.querySelector("#observationMode");
+const smartRoutingButton = document.querySelector("#smartRouting");
+const edgePorts = document.querySelector("#edgePorts");
+const edgeFromPort = document.querySelector("#edgeFromPort");
+const edgeToPort = document.querySelector("#edgeToPort");
+const edgeFromEnd = document.querySelector("#edgeFromEnd");
+const edgeToEnd = document.querySelector("#edgeToEnd");
+const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
@@ -1019,7 +1107,11 @@ const STORAGE_KEY = `schauwerk.native-viewer.layout.v1.${inputDigest}`;
 const nodes = new Map();
 const baseTransforms = new Map();
 const edges = new Map();
+const maxLaneByPair = new Map();
 const incidentEdges = new Map();
+const lastRouteObstacles = new Map();
+let handleLayer = null;
+let connectionPreview = null;
 let view = { x: 0, y: 0, scale: 1 };
 let fitScaleFloor = MIN_SCALE;
 let autoFitActive = true;
@@ -1037,7 +1129,14 @@ let pointerAutoFitBefore = null;
 let pointerChangedView = false;
 let pointerMovedNode = false;
 let pointerFitPending = false;
+let bulkEdgeUpdate = false;
+let pendingSmartRouteGeneration = 0;
 const DRAG_THRESHOLD_PX = 4;
+// Preserve responsive pointer input in dense documents. Certified routes are
+// recomputed by the authoritative native renderer after every completed drag.
+const MAX_SYNC_SMART_DRAG_NODES = 32;
+const MAX_SYNC_SMART_DRAG_EDGES = 24;
+const MAX_SYNC_SMART_DRAG_INCIDENT = 8;
 const EDGE_HIT_TARGET_SCREEN_PX = 24;
 const BOUNDS_EPSILON = 0.01;
 const VIEWPORT_FIT_PADDING = 48;
@@ -1324,6 +1423,7 @@ function applyView() {
   }
   zoomValue.value = `${Math.round(view.scale * 100)} %`;
   zoomValue.textContent = zoomValue.value;
+  if (handleLayer && gesture?.kind !== "connection") refreshConnectionHandles();
 }
 
 function applyNodeTransform(sourceId) {
@@ -1334,16 +1434,53 @@ function applyNodeTransform(sourceId) {
   if (offset.x === 0 && offset.y === 0) {
     if (base) node.setAttribute("transform", base);
     else node.removeAttribute("transform");
-    updateIncidentEdges(sourceId);
+    if (!bulkEdgeUpdate) updateIncidentEdges(sourceId);
     return;
   }
   const translated = `translate(${offset.x} ${offset.y})`;
   node.setAttribute("transform", base ? `${translated} ${base}` : translated);
-  updateIncidentEdges(sourceId);
+  if (!bulkEdgeUpdate) updateIncidentEdges(sourceId);
 }
 
 function applyAllNodeTransforms() {
-  for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
+  // Reset or a new source render supersedes every prior deferred task.
+  ++pendingSmartRouteGeneration;
+  bulkEdgeUpdate = true;
+  try {
+    for (const sourceId of nodes.keys()) applyNodeTransform(sourceId);
+  } finally {
+    bulkEdgeUpdate = false;
+  }
+  const unchangedSmartCanvas = documentMode && routingMode() === "smart" &&
+    [...nodes.keys()].every(sourceId => {
+      const offset = nodeOffset(overrides, sourceId);
+      return offset.x === 0 && offset.y === 0;
+    });
+  if (unchangedSmartCanvas) {
+    // On initial load (and Reset), use the *already certified* source SVG.
+    // Recomputing every route here would freeze dense viewers at startup.
+    for (const edge of edges.values()) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      edge.naturalLabelX = edge.baseLabelX;
+      edge.naturalLabelY = edge.baseLabelY;
+      edge.routeBounds = null;
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, edge.route === "canvas-smart-conflict");
+    }
+  } else {
+    for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  }
+  lastRouteObstacles.clear();
+  if (documentMode && routingMode() === "smart") {
+    for (const node of nodeModelsAtLiveCoordinates()) {
+      lastRouteObstacles.set(node.id, [
+        node.x - 24, node.y - 24,
+        node.x + node.width + 24, node.y + node.height + 24,
+      ]);
+    }
+  }
+  relocateLiveEdgeLabels();
 }
 
 function nodeBoundsInSvg(node) {
@@ -1425,9 +1562,96 @@ function addIncidentEdge(sourceId, edgeId) {
   incidentEdges.get(sourceId).add(edgeId);
 }
 
+function placeLiveLabel(edgeState, x, y) {
+  const transform = "translate(" +
+    (x - edgeState.baseLabelX) + " " + (y - edgeState.baseLabelY) + ")";
+  for (const element of edgeState.labelElements) element.setAttribute("transform", transform);
+  edgeState.clipRect?.setAttribute("transform", transform);
+}
 function resetEdgeLabel(edgeState) {
+  edgeState.naturalLabelX = edgeState.baseLabelX;
+  edgeState.naturalLabelY = edgeState.baseLabelY;
   for (const element of edgeState.labelElements) element.removeAttribute("transform");
   edgeState.clipRect?.removeAttribute("transform");
+}
+function nodeModelsAtLiveCoordinates() {
+  return sourceModel.nodes.map(node => {
+    const delta = nodeOffset(overrides, String(node.id));
+    return {
+      id: String(node.id), type: String(node.type),
+      x: Math.round(Number(node.x) + delta.x),
+      y: Math.round(Number(node.y) + delta.y),
+      width: Number(node.width), height: Number(node.height),
+    };
+  });
+}
+function placeLiveEdgeConflict(edgeState, conflict) {
+  edgeState.element.removeAttribute("data-routing-pending");
+  if (conflict) {
+    edgeState.element.dataset.routingConflict = "true";
+    edgeState.path.setAttribute("stroke", "#c2410c");
+    edgeState.path.setAttribute("stroke-dasharray", "6 4");
+  } else {
+    edgeState.element.removeAttribute("data-routing-conflict");
+    edgeState.path.setAttribute("stroke", edgeState.originalStroke);
+    if (edgeState.originalDash) {
+      edgeState.path.setAttribute("stroke-dasharray", edgeState.originalDash);
+    } else edgeState.path.removeAttribute("stroke-dasharray");
+  }
+}
+function relocateLiveEdgeLabels() {
+  if (!documentMode) return;
+  const padding = 8;
+  const blockers = nodeModelsAtLiveCoordinates()
+    .filter(node => node.type !== "group")
+    .map(node => [node.x, node.y, node.x + node.width, node.y + node.height]);
+  const reserved = [];
+  for (const edgeState of edges.values()) {
+    const box = edgeState.labelRect;
+    const halfW = Number(box?.getAttribute("width") || 0) / 2;
+    const halfH = Number(box?.getAttribute("height") || 0) / 2;
+    if (!halfW || !halfH) continue;
+    const x0 = edgeState.naturalLabelX ?? edgeState.baseLabelX;
+    const y0 = edgeState.naturalLabelY ?? edgeState.baseLabelY;
+    const occupied = [...blockers, ...reserved];
+    const intersects = (x, y) => occupied.some(b =>
+      x - halfW < b[2] + padding && x + halfW > b[0] - padding &&
+      y - halfH < b[3] + padding && y + halfH > b[1] - padding
+    );
+    let x = x0, y = y0;
+    if (intersects(x, y)) {
+      const candidates = [];
+      for (const [left, top, right, bottom] of occupied) {
+        candidates.push([x0, top - padding - halfH], [x0, bottom + padding + halfH],
+                        [left - padding - halfW, y0], [right + padding + halfW, y0]);
+      }
+      for (const step of [16,32,48,64,96,128,192,256,384,512]) {
+        candidates.push([x0,y0-step], [x0,y0+step], [x0-step,y0], [x0+step,y0]);
+      }
+      if (occupied.length) {
+        candidates.push(
+          [x0, Math.min(...occupied.map(b => b[1])) - padding - halfH],
+          [x0, Math.max(...occupied.map(b => b[3])) + padding + halfH],
+          [Math.min(...occupied.map(b => b[0])) - padding - halfW, y0],
+          [Math.max(...occupied.map(b => b[2])) + padding + halfW, y0]
+        );
+      }
+      candidates.sort((a, b) => {
+        const da = (a[0]-x0)**2 + (a[1]-y0)**2;
+        const db = (b[0]-x0)**2 + (b[1]-y0)**2;
+        return da - db || Number(a[0] !== x0) - Number(b[0] !== x0);
+      });
+      for (const candidate of candidates) {
+        if (!intersects(candidate[0], candidate[1])) {
+          x = candidate[0]; y = candidate[1]; break;
+        }
+      }
+    }
+    if (intersects(x, y)) edgeState.element.dataset.labelConflict = "true";
+    else edgeState.element.removeAttribute("data-label-conflict");
+    placeLiveLabel(edgeState, x, y);
+    reserved.push([x - halfW, y - halfH, x + halfW, y + halfH]);
+  }
 }
 
 function updateEdgeGeometry(edgeId) {
@@ -1435,6 +1659,45 @@ function updateEdgeGeometry(edgeId) {
   if (!edgeState) return;
   const fromOffset = nodeOffset(overrides, edgeState.from);
   const toOffset = nodeOffset(overrides, edgeState.to);
+  if (documentMode && routingMode() === "smart" && edgeState.from !== edgeState.to) {
+    const allNodes = nodeModelsAtLiveCoordinates();
+    const source = allNodes.find(node => node.id === edgeState.from);
+    const target = allNodes.find(node => node.id === edgeState.to);
+    if (!source || !target) return;
+    const pairKey = JSON.stringify([edgeState.from, edgeState.to].sort());
+    const result = smartEdgeGeometry(source, target, allNodes, {
+      lane: edgeState.lane, fromSide: edgeState.fromSide, toSide: edgeState.toSide,
+      maxLane: maxLaneByPair.get(pairKey) || 0,
+    });
+    if (result) {
+      edgeState.path.setAttribute("d", result.path);
+      edgeState.hitPath.setAttribute("d", result.path);
+      edgeState.naturalLabelX = result.labelX;
+      edgeState.naturalLabelY = result.labelY;
+      const routePoints = result.points;
+      edgeState.routeBounds = [
+        Math.min(...routePoints.map(point => point[0])) - 24,
+        Math.min(...routePoints.map(point => point[1])) - 24,
+        Math.max(...routePoints.map(point => point[0])) + 24,
+        Math.max(...routePoints.map(point => point[1])) + 24,
+      ];
+      placeLiveEdgeConflict(edgeState, false);
+    } else {
+      const box = svg.viewBox.baseVal;
+      const fallback = liveEdgeGeometry(source, target, {
+        route: "standard", lane: edgeState.lane,
+        fromSide: edgeState.fromSide, toSide: edgeState.toSide,
+        canvasWidth: box.width || 1, canvasHeight: box.height || 1,
+      });
+      edgeState.path.setAttribute("d", fallback.path);
+      edgeState.hitPath.setAttribute("d", fallback.path);
+      edgeState.naturalLabelX = fallback.labelX;
+      edgeState.naturalLabelY = fallback.labelY;
+      edgeState.routeBounds = null;
+      placeLiveEdgeConflict(edgeState, true);
+    }
+    return;
+  }
   if (
     fromOffset.x === 0 && fromOffset.y === 0 &&
     toOffset.x === 0 && toOffset.y === 0
@@ -1442,6 +1705,9 @@ function updateEdgeGeometry(edgeId) {
     edgeState.path.setAttribute("d", edgeState.basePath);
     edgeState.hitPath.setAttribute("d", edgeState.basePath);
     resetEdgeLabel(edgeState);
+    if (edgeState.element.dataset.routingPending === "true") {
+      placeLiveEdgeConflict(edgeState, false);
+    }
     return;
   }
   const sourceBounds = liveBounds(edgeState.from);
@@ -1460,13 +1726,206 @@ function updateEdgeGeometry(edgeId) {
   });
   edgeState.path.setAttribute("d", geometry.path);
   edgeState.hitPath.setAttribute("d", geometry.path);
-  const translated = `translate(${geometry.labelX - edgeState.baseLabelX} ${geometry.labelY - edgeState.baseLabelY})`;
-  for (const element of edgeState.labelElements) element.setAttribute("transform", translated);
-  edgeState.clipRect?.setAttribute("transform", translated);
+  edgeState.naturalLabelX = geometry.labelX;
+  edgeState.naturalLabelY = geometry.labelY;
+  placeLiveLabel(edgeState, geometry.labelX, geometry.labelY);
+  if (edgeState.element.dataset.routingPending === "true") {
+    placeLiveEdgeConflict(edgeState, false);
+  }
 }
 
+function finishPendingStandaloneSmartRoutes() {
+  const generation = ++pendingSmartRouteGeneration;
+  const pending = [...edges].filter(([_id, edge]) =>
+    edge.element.dataset.routingPending === "true").map(([id]) => id);
+  if (!pending.length) return;
+  let index = 0;
+  const rerouteNext = () => {
+    if (generation !== pendingSmartRouteGeneration) return;
+    if (gesture?.kind === "drag") {
+      setTimeout(rerouteNext, 16);
+      return;
+    }
+    // At most one visibility-graph search per task. The browser remains
+    // responsive between chunks; failed paths retain explicit conflict state.
+    updateEdgeGeometry(pending[index++]);
+    if (index < pending.length) {
+      setTimeout(rerouteNext, 0);
+    } else {
+      relocateLiveEdgeLabels();
+      expandSmartCanvasToFitRoutes();
+      setStatus("Intelligente Kantenführung aktualisiert");
+    }
+  };
+  setStatus("Intelligente Kantenführung wird geprüft");
+  setTimeout(rerouteNext, 0);
+}
+function rollbackSmartDragPreview(drag) {
+  if (!drag?.previewOriginals) return false;
+  // Restoring cached exact paths is bounded and avoids another visibility
+  // search during pointercancel, observation-mode switches and pinch takeover.
+  for (const [edgeId, original] of drag.previewOriginals) {
+    const edge = edges.get(edgeId);
+    if (!edge) continue;
+    edge.path.setAttribute("d", original.path);
+    edge.hitPath.setAttribute("d", original.hitPath);
+    for (const [key, value] of [
+      ["stroke", original.stroke], ["stroke-dasharray", original.dash],
+    ]) {
+      if (value === null) edge.path.removeAttribute(key);
+      else edge.path.setAttribute(key, value);
+    }
+    edge.naturalLabelX = original.labelX;
+    edge.naturalLabelY = original.labelY;
+    edge.routeBounds = original.routeBounds;
+    if (original.conflict) edge.element.dataset.routingConflict = "true";
+    else edge.element.removeAttribute("data-routing-conflict");
+    edge.element.removeAttribute("data-routing-pending");
+  }
+  const restored = nodeModelsAtLiveCoordinates()
+    .find(node => node.id === drag.sourceId);
+  if (restored) lastRouteObstacles.set(drag.sourceId, [
+    restored.x - 24, restored.y - 24,
+    restored.x + restored.width + 24, restored.y + restored.height + 24,
+  ]);
+  relocateLiveEdgeLabels();
+  return true;
+}
+function rollbackDragNode(drag) {
+  setNodeOffset(drag.sourceId, drag.rollbackOffset.x, drag.rollbackOffset.y);
+  if (!drag.previewOriginals) {
+    applyNodeTransform(drag.sourceId);
+    return;
+  }
+  bulkEdgeUpdate = true;
+  try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
+  rollbackSmartDragPreview(drag);
+}
 function updateIncidentEdges(sourceId) {
-  for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
+  if (documentMode && routingMode() === "smart") {
+    const liveNodes = nodeModelsAtLiveCoordinates();
+    const nodeById = new Map(liveNodes.map(node => [node.id, node]));
+    const node = nodeById.get(sourceId);
+    const next = node ? [
+      node.x - 24, node.y - 24,
+      node.x + node.width + 24, node.y + node.height + 24,
+    ] : null;
+    const previous = lastRouteObstacles.get(sourceId);
+    if (next) lastRouteObstacles.set(sourceId, next);
+    const influence = previous && next ? [
+      Math.min(previous[0], next[0]), Math.min(previous[1], next[1]),
+      Math.max(previous[2], next[2]), Math.max(previous[3], next[3]),
+    ] : null;
+    const pendingDrag = gesture?.kind === "drag" && (
+      liveNodes.length > MAX_SYNC_SMART_DRAG_NODES ||
+      edges.size > MAX_SYNC_SMART_DRAG_EDGES ||
+      (incidentEdges.get(sourceId)?.size || 0) > MAX_SYNC_SMART_DRAG_INCIDENT
+    );
+    // Dense drags never synchronously run 256 expensive visibility searches.
+    // They show an explicitly unverified, cheap geometry preview instead.
+    // Release publishes the actual document for the certified server render.
+    for (const [edgeId, edge] of edges) {
+      const rect = edge.routeBounds;
+      const affected = edge.from === sourceId || edge.to === sourceId ||
+        !rect || !influence || (
+          rect[0] < influence[2] && rect[2] > influence[0] &&
+          rect[1] < influence[3] && rect[3] > influence[1]
+        );
+      if (!affected) continue;
+      if (!pendingDrag) {
+        updateEdgeGeometry(edgeId);
+        continue;
+      }
+      if (!gesture.previewOriginals) gesture.previewOriginals = new Map();
+      if (!gesture.previewOriginals.has(edgeId)) gesture.previewOriginals.set(edgeId, {
+        path: edge.path.getAttribute("d") || "",
+        hitPath: edge.hitPath.getAttribute("d") || "",
+        stroke: edge.path.getAttribute("stroke"),
+        dash: edge.path.getAttribute("stroke-dasharray"),
+        labelX: edge.naturalLabelX,
+        labelY: edge.naturalLabelY,
+        routeBounds: edge.routeBounds?.slice() || null,
+        conflict: edge.element.dataset.routingConflict === "true",
+      });
+      if (edge.from === sourceId || edge.to === sourceId) {
+        const source = nodeById.get(edge.from);
+        const target = nodeById.get(edge.to);
+        if (source && target) {
+          const box = svg.viewBox.baseVal;
+          const preview = liveEdgeGeometry(source, target, {
+            route: "standard", lane: edge.lane,
+            fromSide: edge.fromSide, toSide: edge.toSide,
+            selfLoop: edge.from === edge.to,
+            canvasWidth: box.width || 1, canvasHeight: box.height || 1,
+          });
+          edge.path.setAttribute("d", preview.path);
+          edge.hitPath.setAttribute("d", preview.path);
+          edge.naturalLabelX = preview.labelX;
+          edge.naturalLabelY = preview.labelY;
+        }
+      }
+      edge.routeBounds = null;
+      edge.element.dataset.routingPending = "true";
+      edge.element.removeAttribute("data-routing-conflict");
+      edge.path.setAttribute("stroke", edge.originalStroke);
+      edge.path.setAttribute("stroke-dasharray", "4 6");
+    }
+  } else {
+    for (const edgeId of incidentEdges.get(sourceId) || []) updateEdgeGeometry(edgeId);
+  }
+  relocateLiveEdgeLabels();
+  if (handleLayer) refreshConnectionHandles();
+}
+
+function expandSmartCanvasToFitRoutes() {
+  // Smart routing may extend the path; even simple mode can relocate an
+  // unrelated edge label outside the original document's viewBox.
+  if (!documentMode) return false;
+  const old = svg.viewBox.baseVal;
+  if (!(old.width > 0) || !(old.height > 0)) return false;
+  let minX = old.x, minY = old.y;
+  let maxX = old.x + old.width, maxY = old.y + old.height;
+  const include = (left, top, right, bottom) => {
+    if (![left, top, right, bottom].every(Number.isFinite)) return;
+    minX = Math.min(minX, left - 24);
+    minY = Math.min(minY, top - 24);
+    maxX = Math.max(maxX, right + 24);
+    maxY = Math.max(maxY, bottom + 24);
+  };
+  for (const edge of edges.values()) {
+    if (routingMode() === "smart") {
+      if (edge.routeBounds) {
+        include(...edge.routeBounds);
+      } else {
+        try {
+          const box = edge.path.getBBox();
+          include(box.x, box.y, box.x + box.width, box.y + box.height);
+        } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
+      }
+    }
+    if (edge.labelRect) {
+      try {
+        const bounds = nodeBoundsInSvg(edge.labelRect);
+        if (bounds) include(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+      } catch (_) { /* Unmeasurable labels retain their original box. */ }
+    }
+  }
+  // Constraint is applied before expansion, not weakened by new route bounds.
+  const nextX = Math.floor(minX), nextY = Math.floor(minY);
+  const newWidth = Math.ceil(maxX) - nextX;
+  const newHeight = Math.ceil(maxY) - nextY;
+  if (!(newWidth > 0 && newHeight > 0) ||
+      newWidth > 10000000 || newHeight > 10000000) return false;
+  if (nextX === old.x && nextY === old.y &&
+      newWidth === old.width && newHeight === old.height) return false;
+  const dx = nextX - old.x, dy = nextY - old.y;
+  svg.setAttribute("viewBox", [nextX, nextY, newWidth, newHeight].join(" "));
+  // Preserve one SVG unit per intrinsic pixel and maintain user's pan/zoom.
+  svg.setAttribute("width", String(newWidth));
+  svg.setAttribute("height", String(newHeight));
+  view = {...view, x: view.x + dx * view.scale, y: view.y + dy * view.scale};
+  applyView();
+  return true;
 }
 
 function constrainBoundsOffset(sourceId, bounds, box) {
@@ -1550,10 +2009,33 @@ function setDocumentControlState(
   control.title = enabled ? enabledTitle : disabledTitle;
 }
 
+function routingMode() {
+  return sourceModel?.source?.schauwerk?.edgeRouting === "smart" ? "smart" : "simple";
+}
+function updateRoutingControl() {
+  if (!(smartRoutingButton instanceof HTMLButtonElement)) return;
+  smartRoutingButton.hidden = !documentEditorHosted;
+  const active = routingMode() === "smart";
+  smartRoutingButton.disabled = observationMode;
+  smartRoutingButton.setAttribute("aria-pressed", String(active));
+  smartRoutingButton.setAttribute("aria-label",
+    active ? "Intelligente Kantenführung ausschalten" : "Intelligente Kantenführung einschalten");
+  smartRoutingButton.textContent = "Intelligente Kantenführung: " + (active ? "Ein" : "Aus");
+}
 function updateDocumentToolbarState() {
   if (!documentEditorHosted) return;
+  updateRoutingControl();
   const hasNode = Boolean(selectedId && nodes.has(selectedId));
   const hasEdge = Boolean(selectedEdgeId && edges.has(selectedEdgeId));
+  if (edgePorts instanceof HTMLElement) edgePorts.hidden = !hasEdge || observationMode;
+  if (hasEdge) {
+    const edgeModel = sourceModel.edges.find(item => String(item.id) === selectedEdgeId);
+    if (edgeFromPort instanceof HTMLSelectElement) edgeFromPort.value = edgeModel?.from_side || "";
+    if (edgeToPort instanceof HTMLSelectElement) edgeToPort.value = edgeModel?.to_side || "";
+    if (edgeFromEnd instanceof HTMLSelectElement) edgeFromEnd.value = edgeModel?.from_end || "none";
+    if (edgeToEnd instanceof HTMLSelectElement) edgeToEnd.value = edgeModel?.to_end || "arrow";
+    if (edgeKind instanceof HTMLSelectElement) edgeKind.value = edgeModel?.source?.schauwerk?.kind || "flow";
+  }
   setDocumentControlState(
     addNodeButton,
     true,
@@ -1599,6 +2081,7 @@ function updateDocumentToolbarState() {
       if (button instanceof HTMLButtonElement) button.disabled = true;
     }
   }
+  refreshConnectionHandles();
 }
 
 function selectEdge(edgeId) {
@@ -1654,6 +2137,160 @@ function edgeFromTarget(target) {
   return candidate instanceof SVGGElement && svg.contains(candidate) ? candidate : null;
 }
 
+function createHandleElement(name, x, y, label) {
+  const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  circle.setAttribute("cx", String(x));
+  circle.setAttribute("cy", String(y));
+  circle.setAttribute("r", String(Math.max(5, 11 / view.scale)));
+  circle.classList.add("native-connection-handle");
+  circle.setAttribute("data-connection-handle", name);
+  circle.setAttribute("pointer-events", "all");
+  circle.setAttribute("role", "button");
+  circle.setAttribute("aria-label", label);
+  circle.setAttribute("aria-hidden", "true"); // Keyboard alternatives are in Bearbeiten.
+  circle.setAttribute("tabindex", "-1");
+  return circle;
+}
+function refreshConnectionHandles() {
+  if (!documentEditorHosted) return;
+  if (!handleLayer) {
+    handleLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    handleLayer.setAttribute("data-connection-handles", "true");
+    svg.appendChild(handleLayer);
+  }
+  if (gesture?.kind === "connection") return;
+  handleLayer.replaceChildren();
+  if (observationMode) return;
+  if (selectedEdgeId && edges.has(selectedEdgeId)) {
+    const edgeState = edges.get(selectedEdgeId);
+    const line = edgeState.path;
+    try {
+      const total = line.getTotalLength();
+      for (const [endpoint, at] of [["from", 0], ["to", total]]) {
+        const point = line.getPointAtLength(at);
+        const circle = createHandleElement(
+          endpoint, point.x, point.y,
+          endpoint === "from" ? "Verbindungsanfang ziehen" : "Verbindungsziel ziehen"
+        );
+        circle.dataset.edgeId = selectedEdgeId;
+        handleLayer.appendChild(circle);
+      }
+    } catch (_) { /* Malformed paths remain selectable through the toolbar. */ }
+  } else if (selectedId && nodes.has(selectedId)) {
+    const current = nodeModelsAtLiveCoordinates().find(node => node.id === selectedId);
+    if (!current) return;
+    const circle = createHandleElement(
+      "create", current.x + current.width, current.y + current.height / 2,
+      "Neue Verbindung von diesem Element ziehen"
+    );
+    circle.classList.add("native-connection-create");
+    circle.dataset.sourceId = selectedId;
+    handleLayer.appendChild(circle);
+  }
+}
+function diagramPointAt(clientX, clientY) {
+  const matrix = svg.getScreenCTM();
+  if (!matrix) return null;
+  try {
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    return point.matrixTransform(matrix.inverse());
+  } catch (_) { return null; }
+}
+function nodeAtClientPoint(clientX, clientY) {
+  for (const item of document.elementsFromPoint(clientX, clientY)) {
+    const node = nodeFromTarget(item);
+    if (node) return node.dataset.sourceId || null;
+  }
+  return null;
+}
+function clearConnectionPreview() {
+  connectionPreview?.remove();
+  connectionPreview = null;
+}
+function beginConnectionGesture(handle, event) {
+  if (!documentEditorHosted || observationMode) return false;
+  const endpoint = handle.dataset.connectionHandle;
+  const edgeId = handle.dataset.edgeId || null;
+  const sourceId = handle.dataset.sourceId || null;
+  if (!(
+    (endpoint === "create" && sourceId && nodes.has(sourceId)) ||
+    ((endpoint === "from" || endpoint === "to") && edgeId && edges.has(edgeId))
+  )) return false;
+  const x = Number(handle.getAttribute("cx"));
+  const y = Number(handle.getAttribute("cy"));
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  if (edgeId) selectEdge(edgeId);
+  gesture = {
+    kind: "connection", pointerId: event.pointerId,
+    endpoint, edgeId, sourceId, x, y,
+    startX: event.clientX, startY: event.clientY, moved: false,
+  };
+  setStatus(endpoint === "create"
+    ? "Neue Verbindung zum Zielknoten ziehen"
+    : "Verbindungsende auf einen anderen Knoten ziehen");
+  return true;
+}
+function moveConnectionGesture(event) {
+  if (!gesture || gesture.kind !== "connection" || observationMode) return;
+  const dx = event.clientX - gesture.startX;
+  const dy = event.clientY - gesture.startY;
+  if (!gesture.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+  gesture.moved = true;
+  const point = diagramPointAt(event.clientX, event.clientY);
+  if (!point || !handleLayer) return;
+  if (!connectionPreview) {
+    connectionPreview = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    connectionPreview.classList.add("native-connection-preview");
+    handleLayer.insertBefore(connectionPreview, handleLayer.firstChild);
+  }
+  const midX = (gesture.x + point.x) / 2;
+  const midY = (gesture.y + point.y) / 2 - 22 / view.scale;
+  connectionPreview.setAttribute("d",
+    "M " + gesture.x + " " + gesture.y + " Q " + midX + " " + midY +
+    " " + point.x + " " + point.y);
+  const hovered = nodeAtClientPoint(event.clientX, event.clientY);
+  connectionPreview.setAttribute("stroke", hovered ? "#15803d" : "#635bff");
+}
+function finishConnectionGesture(ended, event) {
+  clearConnectionPreview();
+  const destination = (
+    event.type === "pointerup" && ended.moved
+    ? nodeAtClientPoint(event.clientX, event.clientY) : null
+  );
+  gesture = null;
+  if (!destination || observationMode || !documentEditorHosted) {
+    refreshConnectionHandles();
+    if (ended.moved) setStatus("Verbindung nicht geändert");
+    return;
+  }
+  const snapshot = documentSnapshot();
+  if (!snapshot) { refreshConnectionHandles(); return; }
+  if (ended.endpoint === "create") {
+    if (!documentMutationWithinProductLimits(snapshot, { addEdges: 1 })) {
+      refreshConnectionHandles();
+      return;
+    }
+    const id = uniqueId("edge_", [...snapshot.nodes, ...snapshot.edges]);
+    snapshot.edges.push({
+      id, from: ended.sourceId, to: destination, label: "",
+      from_side: null, to_side: null, from_end: "none", to_end: "arrow",
+      source: {},
+    });
+  } else {
+    const edge = snapshot.edges.find(item => String(item.id) === ended.edgeId);
+    if (!edge || edge[ended.endpoint] === destination) {
+      refreshConnectionHandles();
+      return;
+    }
+    edge[ended.endpoint] = destination;
+    edge.source = cloneJson(edge.source || {});
+    edge.source[ended.endpoint === "from" ? "fromNode" : "toNode"] = destination;
+  }
+  pointerMovedNode = true;
+  rebuildDocument(snapshot);
+}
 function localPoint(event) {
   const rect = viewport.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
@@ -1772,14 +2409,10 @@ function startPinchIfPossible() {
   const dy = second.y - first.y;
   const distance = Math.hypot(dx, dy);
   if (distance < 1) return false;
+  if (gesture?.kind === "connection") clearConnectionPreview();
   if (gesture?.kind === "drag") {
     if (gesture.moved) {
-      setNodeOffset(
-        gesture.sourceId,
-        gesture.rollbackOffset.x,
-        gesture.rollbackOffset.y,
-      );
-      applyNodeTransform(gesture.sourceId);
+      rollbackDragNode(gesture);
       pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     }
@@ -1909,6 +2542,11 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
     basePath: path.getAttribute("d") || "",
     baseLabelX,
     baseLabelY,
+    naturalLabelX: baseLabelX,
+    naturalLabelY: baseLabelY,
+    originalStroke: edgeGroup.dataset.canonicalStroke || path.getAttribute("stroke") || "#64748b",
+    originalDash: edgeGroup.dataset.canonicalDash ??
+      (path.getAttribute("stroke-dasharray") || ""),
     labelElements,
     labelRect,
     clipRect: clipRect instanceof SVGRectElement ? clipRect : null,
@@ -1916,19 +2554,21 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
   addIncidentEdge(String(model.from), edgeId);
   addIncidentEdge(String(model.to), edgeId);
 }
+for (const edge of edges.values()) {
+  const key = JSON.stringify([edge.from, edge.to].sort());
+  maxLaneByPair.set(key, Math.max(
+    maxLaneByPair.get(key) || 0, Math.abs(edge.lane)
+  ));
+}
 applyAllNodeTransforms();
 
 // View-only mode is session-local: it never edits source, layout overrides or drafts.
 // Cancel any in-progress edit before allowing an event on the diagram to pan instead.
 function setObservationMode(enabled) {
   observationMode = Boolean(enabled);
+  clearConnectionPreview();
   if (gesture?.kind === "drag") {
-    setNodeOffset(
-      gesture.sourceId,
-      gesture.rollbackOffset.x,
-      gesture.rollbackOffset.y,
-    );
-    applyNodeTransform(gesture.sourceId);
+    rollbackDragNode(gesture);
     nodes.get(gesture.sourceId)?.classList.remove("is-dragging");
   }
   for (const pointerId of activePointers.keys()) {
@@ -1980,6 +2620,51 @@ function setObservationMode(enabled) {
   }
 }
 observationButton?.addEventListener("click", () => setObservationMode(!observationMode));
+smartRoutingButton?.addEventListener("click", () => {
+  if (!documentEditorHosted || observationMode) return;
+  const next = routingMode() === "smart" ? "simple" : "smart";
+  const snapshot = documentSnapshot();
+  if (!snapshot) return;
+  snapshot.source.schauwerk = { ...(snapshot.source.schauwerk || {}), edgeRouting: next };
+  rebuildDocument(snapshot);
+});
+function changeSelectedEdgePort(property, value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  if (!["", "left", "right", "top", "bottom"].includes(value)) return;
+  edge[property] = value || null;
+  rebuildDocument(snapshot);
+}
+edgeFromPort?.addEventListener("change", () => changeSelectedEdgePort("from_side", edgeFromPort.value));
+edgeToPort?.addEventListener("change", () => changeSelectedEdgePort("to_side", edgeToPort.value));
+function changeSelectedEdgeEnd(property, value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId ||
+      !["none", "arrow"].includes(value)) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  edge[property] = value;
+  rebuildDocument(snapshot);
+}
+function changeSelectedEdgeKind(value) {
+  if (!documentEditorHosted || observationMode || !selectedEdgeId ||
+      !["flow", "association", "feedback"].includes(value)) return;
+  const snapshot = documentSnapshot();
+  const edge = snapshot?.edges?.find(item => String(item.id) === selectedEdgeId);
+  if (!edge) return;
+  edge.source = cloneJson(edge.source || {});
+  const extension = { ...(edge.source.schauwerk || {}) };
+  if (value === "flow") delete extension.kind;
+  else extension.kind = value;
+  if (Object.keys(extension).length) edge.source.schauwerk = extension;
+  else delete edge.source.schauwerk;
+  rebuildDocument(snapshot);
+}
+edgeFromEnd?.addEventListener("change", () => changeSelectedEdgeEnd("from_end", edgeFromEnd.value));
+edgeToEnd?.addEventListener("change", () => changeSelectedEdgeEnd("to_end", edgeToEnd.value));
+edgeKind?.addEventListener("change", () => changeSelectedEdgeKind(edgeKind.value));
 window.addEventListener("keydown", (event) => {
   if (!documentEditorHosted || observationMode || (!event.ctrlKey && !event.metaKey) ||
       event.altKey || event.isComposing || textDialog?.open) return;
@@ -2008,8 +2693,10 @@ viewport.addEventListener("pointerdown", (event) => {
   }
   autoFitActive = false;
   const point = localPoint(event);
-  const node = nodeFromTarget(event.target);
-  const edge = node ? null : edgeFromTarget(event.target);
+  const handle = event.target instanceof Element
+    ? event.target.closest("[data-connection-handle]") : null;
+  const node = handle ? null : nodeFromTarget(event.target);
+  const edge = node || handle ? null : edgeFromTarget(event.target);
   activePointers.set(event.pointerId, {
     ...point,
     clientX: event.clientX,
@@ -2040,6 +2727,9 @@ viewport.addEventListener("pointerdown", (event) => {
     return;
   }
 
+  if (handle instanceof SVGCircleElement && svg.contains(handle)) {
+    if (beginConnectionGesture(handle, event)) return;
+  }
   if (node) {
     const sourceId = node.dataset.sourceId;
     if (documentEditorHosted && edgeReattach && sourceId) {
@@ -2088,6 +2778,8 @@ viewport.addEventListener("pointerdown", (event) => {
       rebuildDocument(document);
       return;
     }
+    // Deferred standalone routing pauses during a new gesture; a click
+    // without movement must not abandon routes still waiting for certification.
     selectNode(sourceId);
     const startOffset = nodeOffset(overrides, sourceId);
     gesture = {
@@ -2140,6 +2832,10 @@ viewport.addEventListener("pointermove", (event) => {
     return;
   }
   if (!gesture || gesture.pointerId !== event.pointerId) return;
+  if (gesture.kind === "connection") {
+    moveConnectionGesture(event);
+    return;
+  }
   if (gesture.kind === "pan") {
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
@@ -2171,7 +2867,14 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
     }
-    setStatus("Position geändert · Verbindungen angepasst");
+    // Directly moved, nonincident routes can exceed the static render viewBox.
+    // Pending dense previews wait for their final certification on release.
+    if (documentMode && !gesture.previewOriginals) {
+      expandSmartCanvasToFitRoutes();
+    }
+    setStatus(gesture?.previewOriginals
+      ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"
+      : "Position geändert · Verbindungen angepasst");
   }
 });
 
@@ -2180,23 +2883,32 @@ function finishPointer(event) {
   activePointers.delete(event.pointerId);
   try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* already released */ }
 
-  if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
+  if (endedGesture?.kind === "connection" && endedGesture.pointerId === event.pointerId) {
+    finishConnectionGesture(endedGesture, event);
+  } else if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
     if (event.type === "pointercancel" && endedGesture.moved) {
-      setNodeOffset(
-        endedGesture.sourceId,
-        endedGesture.rollbackOffset.x,
-        endedGesture.rollbackOffset.y,
-      );
-      applyNodeTransform(endedGesture.sourceId);
+      rollbackDragNode(endedGesture);
       pointerMovedNode = false;
       setStatus("Verschieben abgebrochen");
     } else if (endedGesture.moved) {
       if (documentEditorHosted) {
-        publishDocumentState();
-        setStatus("Dokumentposition geändert · Kanten live geroutet");
+        if (endedGesture.previewOriginals) {
+          // native-document-change only saves the draft. An uncertified dense
+          // preview requires the hosted renderer to rebuild the saved source.
+          rebuildDocument(documentSnapshot());
+        } else {
+          publishDocumentState();
+        }
+        setStatus(endedGesture.previewOriginals
+          ? "Dokumentposition geändert · Kanten werden intelligent geroutet"
+          : "Dokumentposition geändert · Kanten live geroutet");
       } else if (documentMode) {
-        setStatus("Position geändert · Dokument unverändert");
+        if (endedGesture.previewOriginals) {
+          finishPendingStandaloneSmartRoutes();
+        } else {
+          setStatus("Position geändert · Dokument unverändert");
+        }
       } else if (persistOverrides()) {
         setStatus("Position lokal gespeichert");
       }
@@ -2416,7 +3128,17 @@ resetLayout.addEventListener("click", () => {
 });
 window.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach);
+  const pendingEdgeOperation = Boolean(edgeCreateSource || edgeReattach ||
+    gesture?.kind === "connection");
+  if (gesture?.kind === "connection") {
+    clearConnectionPreview();
+    gesture = null;
+    for (const pointerId of activePointers.keys()) {
+      try { viewport.releasePointerCapture(pointerId); } catch (_) { /* released */ }
+    }
+    activePointers.clear();
+    releasePointerAutoFitIfIdle();
+  }
   edgeCreateSource = null;
   edgeReattach = null;
   selectNode(null);
@@ -2445,5 +3167,6 @@ requestAnimationFrame(() => {
 ASSETS = {
     "app.js": APP_JS,
     "interaction.js": INTERACTION_JS,
+    "smart-router.js": SMART_ROUTER_JS,
     "styles.css": STYLES_CSS,
 }

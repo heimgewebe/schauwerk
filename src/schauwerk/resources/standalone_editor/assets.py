@@ -3365,6 +3365,10 @@ function serializeNativeFrameSvg({ stripInputDigest = false } = {}) {
       return null;
     }
     const clone = svg.cloneNode(true);
+    // Editor-only pointer hit targets and connection handles are not content.
+    for (const overlay of clone.querySelectorAll?.(
+      '[data-connection-handles], path.native-edge-hit'
+    ) || []) overlay.remove();
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     if (stripInputDigest) clone.removeAttribute("data-input-digest");
     return '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -3900,7 +3904,7 @@ elements.nativeUndoButton.addEventListener("click", () => { void moveNativeHisto
 elements.nativeRedoButton.addEventListener("click", () => { void moveNativeHistory("redo"); });
 elements.blankButton.addEventListener("click", () => {
   currentTitle = "Schaubild";
-  const canvas = { nodes: [], edges: [] };
+  const canvas = { nodes: [], edges: [], schauwerk: { edgeRouting: "smart" } };
   launch({
     nativeImport: {
       schema_version: NATIVE_IMPORT_SCHEMA,

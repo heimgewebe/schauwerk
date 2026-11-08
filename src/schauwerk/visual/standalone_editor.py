@@ -903,6 +903,7 @@ _NATIVE_BUNDLE_FILES: Final = {
     "diagram.svg": "diagram.svg",
     "index.html": "index.html",
     "interaction.js": "interaction.js",
+    "smart-router.js": "smart-router.js",
     "manifest.json": "manifest.json",
     "representation.json": "representation.json",
     "document.json": "document.json",

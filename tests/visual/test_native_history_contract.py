@@ -335,3 +335,13 @@ try {
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_hosted_native_viewer_serves_every_browser_import() -> None:
+    """The hosted API must not 404 modules emitted by the viewer bundler."""
+    from schauwerk.resources.native_viewer.assets import ASSETS
+    from schauwerk.visual.standalone_editor import _NATIVE_BUNDLE_FILES
+
+    for name in ("app.js", "interaction.js", "smart-router.js", "styles.css"):
+        assert name in ASSETS
+        assert _NATIVE_BUNDLE_FILES[name] == name

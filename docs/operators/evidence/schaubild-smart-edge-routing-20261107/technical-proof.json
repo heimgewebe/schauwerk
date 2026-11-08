@@ -1,0 +1,75 @@
+{
+  "base_revision": "84bd753a10f00895793ab1544da1a2ce5a0c161b",
+  "base_source_bindings": {
+    "Dockerfile": "c4f60a4f6fc782b5011b8b10bf6bc0728b044ed673ac56383338dfec79f26f49",
+    "src/schauwerk/resources/native_viewer/assets.py": "f011569e95315d74c072c0eebdab036f6cbe2b35772909f0092ff9005cf9eb8a",
+    "src/schauwerk/resources/native_viewer/smart_router.py": null,
+    "src/schauwerk/resources/standalone_editor/assets.py": "7c16e72ff5dee2053920d16867694dc595294c8aaffc49147b05a38f266fd30e",
+    "src/schauwerk/visual/native_canvas_smart_router.py": null,
+    "src/schauwerk/visual/native_diagram.py": "4a3abc3d520cbdff842c3ee0c043db38be5768d35a38eed394aec221ba2c58a3",
+    "src/schauwerk/visual/native_document.py": "d3f26c9fc5a6e4ad0ff391215b6ce462b5726ccb7781aea618deb61322874743",
+    "src/schauwerk/visual/native_viewer.py": "c84fb8575f6f2a179bc61047bc31bc4955031ab7331bef446984389dc9202692",
+    "tests/visual/test_native_canvas_smart_integration.py": null,
+    "tests/visual/test_native_canvas_smart_router.py": null
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "runtime_deployed",
+    "browser_e2e_complete",
+    "production_release_or_rollback_proven"
+  ],
+  "evidence_digest": "931614ec1ea2c2e13366934cad686db409c8bc62e8ef9b8f1568ae2f46f319ea",
+  "features": {
+    "dynamic_obstacle_rerouting": true,
+    "legacy_default_unchanged": true,
+    "manual_ports_supported": true,
+    "new_blank_canvas_smart_default": true,
+    "no_silent_collision_free_fallback": true,
+    "smart_route_opt_in": true,
+    "viewer_module_bundled": true
+  },
+  "historical_proofs_unchanged": [
+    {
+      "evidence_digest": "f5e83e4e11cb9cb6749169e84ca1ce60fe7aef83cd92581a1f0525c3d70dfbc9",
+      "path": "docs/operators/evidence/schaubild-canvas-edge-label-clearance-20261107/technical-proof.json",
+      "schema_version": "schauwerk-canvas-edge-label-clearance-technical-proof.v1",
+      "sha256": "65a38411cb641abb8907a6616391257969221eb6c0eb091fa491092353bf9878"
+    },
+    {
+      "evidence_digest": "2453a7498b6abf76330f28ab14006f02ebf85d940abd744658505abcbd74e89d",
+      "path": "docs/operators/evidence/schaubild-native-canvas-first-edit-history-20261107/technical-proof.json",
+      "schema_version": "schauwerk-native-canvas-first-edit-history-technical-proof.v1",
+      "sha256": "c8cb0079318c05973c2364750dc44f35403b09fdbbcd1ebbc75295aece199d42"
+    },
+    {
+      "evidence_digest": "72cd776d0619490b3e43e86f6b4d5cdd939cca40157920ceb78ae9867449faeb",
+      "path": "docs/operators/evidence/schaubild-d2-oci-20261105/technical-proof.json",
+      "schema_version": "schauwerk-d2-oci-source-supersession.v1",
+      "sha256": "fb1e81300e70e6051926adaaa229cebdaf792ef7ec180b7a24079f7fcadb9199"
+    }
+  ],
+  "schema_version": "schauwerk-smart-edge-routing-technical-proof.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "Dockerfile": "6f98c4c2858f03c683eae87e5c5f2c862600a8e6761eaa69e28c80983aa84f43",
+    "src/schauwerk/resources/native_viewer/assets.py": "9fefdabda530ddd477abb6fd97576846f2b39ca34090904f38eb3c64ba8f631c",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "79dcefc3671beb07217fc95260fa6f4c23501dd6467a1a85ba77f3319717d617",
+    "src/schauwerk/resources/standalone_editor/assets.py": "745aba8620235822b1970af5b560d4b3b11320a1933152a2d2b310935f972839",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "b2308eb8e3fee0cfc86cce4ccff10768ffff7baef8279a9064d059dc20a3e03c",
+    "src/schauwerk/visual/native_diagram.py": "58cbe2db67f71799d13ea781c31e9c1ecc2568c27865b368d9ae21f2a00e4840",
+    "src/schauwerk/visual/native_document.py": "fe41cd1e9ca5891a43d654139604b361e23e1d86fbeb276b7ee132784d80eeba",
+    "src/schauwerk/visual/native_viewer.py": "10a091b58bac9753f4d35c42f5cefe928481a7451f66435e8b828de8dcfd5fb2",
+    "tests/visual/test_native_canvas_smart_integration.py": "94f2456bc85bd1ba37dfd0d25c0c6320803051c14aff6d58600d7a7ab5ef7867",
+    "tests/visual/test_native_canvas_smart_router.py": "3396efbd360599af6e31d6670a9fdfce406c3404fdf23b45ab3767a3d9d351c0"
+  },
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "consumer_runtime": "not_integrated",
+    "cross_browser_visual_acceptance": "pending",
+    "full_ci": "pending_exact_head",
+    "source_hashes_exact": true
+  },
+  "visual_acceptance": "pending"
+}
