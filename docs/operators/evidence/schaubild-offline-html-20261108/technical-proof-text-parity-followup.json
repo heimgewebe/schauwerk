@@ -1,0 +1,31 @@
+{
+  "schema_version": "schauwerk-native-offline-html-followup-technical-proof.v1",
+  "repository": "heimgewebe/schauwerk",
+  "pr": 236,
+  "branch": "feat/schaubild-offline-html-export-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-offline-html-20261108/technical-proof.json",
+    "sha256": "331f45126494f7c0956a52022d561482b81f232b66af4f7720b1fb90c00dd624"
+  },
+  "source_bindings": {
+    "src/schauwerk/visual/native_offline_html.py": "b0534f1827df0723c41cb9dead2ce6b28f96f12c87c3ce78ae572351793fd924",
+    "tests/visual/test_native_offline_html.py": "ecc9d235bda53d534c7dfc9b9bef1cdba1653fa0c1381e38e39abe02f791eae0"
+  },
+  "confirmed_cause": "Previous validation compared Canvas and SVG IDs, types and markers, but not source-bound node text, edge labels or accessible SVG titles.",
+  "red_proof": "Three targeted cases accepted stale node text, edge label and SVG text before repair.",
+  "repair": "Re-render authoritative Canvas only to compare per-source rendered and accessible text; retain live SVG geometry without requiring byte identity.",
+  "validation": {
+    "chrome_and_contract_tests": "56 passed in isolated worktree",
+    "file_url_offline_browser": "passed; included in suite",
+    "csp_active_content_tests": "passed; included in suite",
+    "time_budget_test": "passed; included in suite"
+  },
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "cross_browser_visual_acceptance",
+    "complete_release_ci_on_final_commit",
+    "commonthing_runtime_deployed",
+    "production_e2e"
+  ]
+}

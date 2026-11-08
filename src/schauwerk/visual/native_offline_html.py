@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from schauwerk.resources.native_offline_html.assets import VIEWER_CSS, VIEWER_JS
+from schauwerk.visual.native_diagram import render_native_editing_document
 from schauwerk.visual.native_document import (
     MAX_NATIVE_EDGES,
     MAX_NATIVE_GROUPS,
@@ -486,6 +487,35 @@ def _assert_svg_matches_canvas(canvas: Mapping[str, Any], sanitized: SanitizedSv
             raise OfflineHtmlError("SVG lost an edge start marker of the Canvas document")
 
 
+def _source_svg_texts(svg_markup: str) -> dict[tuple[str, str], tuple[str, ...]]:
+    """Extract rendered text per authoritative node/edge ID, ignoring live layout."""
+    root = ET.fromstring(svg_markup)
+    texts: dict[tuple[str, str], tuple[str, ...]] = {}
+    for element in root.iter():
+        if _local_name(element.tag) != "g":
+            continue
+        kind = element.attrib.get("data-source-kind")
+        source_id = element.attrib.get("data-source-id")
+        if kind not in {"node", "edge"} or source_id is None:
+            continue
+        texts[(kind, source_id)] = tuple(
+            "".join(child.itertext())
+            for child in element.iter()
+            if _local_name(child.tag) in {"text", "title", "desc"}
+        )
+    return texts
+
+
+def _assert_svg_texts_match_canvas(
+    document: Mapping[str, Any], sanitized: SanitizedSvg
+) -> None:
+    """Live SVG geometry may differ, but its text must match the current source."""
+    expected = _source_svg_texts(render_native_editing_document(document))
+    actual = _source_svg_texts(sanitized.markup)
+    if actual != expected:
+        raise OfflineHtmlError("SVG text and labels do not match the Canvas document")
+
+
 def _render_items(canvas: Mapping[str, Any]) -> str:
     rows: list[str] = []
     for node in canvas.get("nodes", []):
@@ -520,6 +550,7 @@ def build_offline_html(
     _assert_canvas_limits(validated)
     sanitized = sanitize_native_svg(svg)
     _assert_svg_matches_canvas(validated, sanitized)
+    _assert_svg_texts_match_canvas(document, sanitized)
 
     source_sha256 = str(document["source_digest"])
     svg_sha256 = _sha256_hex(sanitized.markup.encode("utf-8"))

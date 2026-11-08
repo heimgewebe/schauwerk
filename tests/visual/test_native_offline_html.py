@@ -225,6 +225,21 @@ def test_offline_html_rejects_svg_that_lost_or_gained_a_node_or_start_marker() -
         build_offline_html(canvas, svg.replace(" marker-start=", " data-lost=", 1), title="T")
 
 
+@pytest.mark.parametrize("field", ["node", "edge", "svg-text"])
+def test_offline_html_rejects_stale_canvas_or_svg_text_even_with_matching_ids(field: str) -> None:
+    canvas = _canvas()
+    svg = _svg(canvas)
+    if field == "node":
+        canvas["nodes"][1]["text"] = "Aktuell bearbeiteter Knotentext"
+    elif field == "edge":
+        canvas["edges"][0]["label"] = "Aktuelle Kantenbeschriftung"
+    else:
+        assert "führt zu" in svg
+        svg = svg.replace("führt zu", "veralteter Text", 1)
+    with pytest.raises(OfflineHtmlError, match="text"):
+        build_offline_html(canvas, svg, title="T")
+
+
 def test_offline_html_rejects_invalid_canvas_oversize_and_depth() -> None:
     canvas = _canvas()
     svg = _svg(canvas)
