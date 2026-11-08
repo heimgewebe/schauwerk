@@ -71,7 +71,19 @@ def _hybrid_preview_followup_proof() -> dict:
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_native_hybrid_preview.py",
     }
-    return proof
+    successor_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-ui-regression-followup.json"
+    )
+    successor = json.loads(successor_path.read_text(encoding="utf-8"))
+    assert successor["schema_version"] == (
+        "schauwerk-html-svg-hybrid-ui-regression-followup-technical-proof.v1"
+    )
+    assert successor["status"] == "technical_candidate_only"
+    assert successor["predecessor"]["path"] == str(path.relative_to(ROOT))
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == successor["predecessor"]["sha256"]
+    assert set(successor["source_bindings"]) == set(proof["source_bindings"])
+    return successor
 
 
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"

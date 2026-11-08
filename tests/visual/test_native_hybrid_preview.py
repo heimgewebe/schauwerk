@@ -145,6 +145,7 @@ async function probe(doc, win, hosted, routing) {
 
   // --- Native stays the default; the preview is an explicit, labelled opt-in.
   check("view mode menu accessible initially", modeMenu && !modeMenu.hidden && visible(modeSummary));
+  check("view mode menu reuses compact edit-menu styles", modeMenu.querySelector(".view-mode-menu.edit-menu") !== null);
   check("button enabled for preview", button && !button.hidden && !button.disabled);
   check("button labelled as preview", /Vorschau/.test(button.textContent) && /schreibgesch/.test(button.getAttribute("aria-label") + button.title));
   check("button off by default", button.getAttribute("aria-pressed") === "false");
@@ -252,7 +253,8 @@ async function probe(doc, win, hosted, routing) {
 
   // --- Live geometry: a moved SVG label moves the chip and is never covered by a node.
   const labelRect = svg.querySelector('[data-source-kind="edge"][data-source-id="e"] > rect');
-  const bNode = svg.querySelector('[data-source-kind="node"][data-source-id="b"] > rect');
+  // Prefer an unobscured foreign node over the top toolbar on short landscape screens.
+  const bNode = svg.querySelector('[data-source-kind="node"][data-source-id="blocker"] > rect');
   const bx = Number(bNode.getAttribute("x")), by = Number(bNode.getAttribute("y"));
   const lx = Number(labelRect.getAttribute("x")), ly = Number(labelRect.getAttribute("y"));
   const savedTransform = labelRect.getAttribute("transform");
@@ -410,7 +412,7 @@ def test_hybrid_preview_ships_as_bundle_file_without_changing_native_default(tmp
     index = (output / "index.html").read_text(encoding="utf-8")
     assert "hybrid-layer" not in index.split("<script", 1)[0]
     assert 'id="hybridPreview"' in index
-    assert index.index('class="view-mode-menu"') < index.index('id="hybridPreview"')
+    assert index.index('class="view-mode-menu edit-menu"') < index.index('id="hybridPreview"')
     # Opt-in button starts hidden and unpressed until the viewer proves document support.
     button = re.search(r'<button id="hybridPreview"[^>]*>', INDEX_HTML)
     assert button and " hidden" in button.group(0) and 'aria-pressed="false"' in button.group(0)
