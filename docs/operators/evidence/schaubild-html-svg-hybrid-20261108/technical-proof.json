@@ -1,6 +1,7 @@
 {
   "base_revision": "9fd2363c262bb122597f273ebc21ce341455cd4a",
   "base_source_bindings": {
+    "Dockerfile": "6f98c4c2858f03c683eae87e5c5f2c862600a8e6761eaa69e28c80983aa84f43",
     "src/schauwerk/resources/native_viewer/assets.py": "5118023a59608794e0b3ad11563578f1396850b8e0dec48f368938f48f298a47",
     "src/schauwerk/resources/native_viewer/hybrid_preview.py": null,
     "src/schauwerk/visual/native_viewer.py": "10a091b58bac9753f4d35c42f5cefe928481a7451f66435e8b828de8dcfd5fb2",
@@ -20,7 +21,7 @@
     "html_vector_or_pdf_export",
     "representation_input_hybrid_support"
   ],
-  "evidence_digest": "cb434c2bf598799558d983b81ecf3d159705397b398acc15b49d5b6b00a6b6c6",
+  "evidence_digest": "5d18afd0b370a107b72a98c40a4c73a76756067fe63e19173fb33e4219d598aa",
   "features": {
     "back_to_native_restores_previous_mode": true,
     "default_stays_native_svg": true,
@@ -46,6 +47,7 @@
   "schema_version": "schauwerk-html-svg-hybrid-preview-technical-proof.v1",
   "scope": "technical-candidate-only",
   "source_bindings": {
+    "Dockerfile": "a11b5eecbad2dc5d3f6b77acc557750df7aa0ec6fe6a78112fcee6dff0270349",
     "src/schauwerk/resources/native_viewer/assets.py": "c8f2c1ac45084730412586959bc703fdde287966a22af417b506b3649560984c",
     "src/schauwerk/resources/native_viewer/hybrid_preview.py": "ee0c4ed0b9a6be43d8d9c9c5ecf9cfdf4aa1ddca3053d1ac1809f45d070d26d3",
     "src/schauwerk/visual/native_viewer.py": "1c64a8bd465aa295791e7e84e4cb259a6bc4b41a1ce4402fed7d7b285a0301f8",
@@ -70,5 +72,5 @@
     "visual_screenshot_native_vs_hybrid_inspected": true
   },
   "visual_acceptance": "pending",
-  "working_tree_state": "uncommitted_candidate_bound_by_file_digest"
+  "working_tree_state": "committed_candidate_bound_by_file_digest"
 }
