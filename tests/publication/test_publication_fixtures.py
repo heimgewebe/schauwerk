@@ -38,6 +38,18 @@ def _smart_edge_source_proof() -> dict:
     return proof
 
 
+
+def _offline_html_proof() -> dict:
+    """Offline HTML candidate binds exact changed sources, not old acceptance."""
+    path = ROOT / "docs/operators/evidence/schaubild-offline-html-20261108/technical-proof.json"
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-native-offline-html-export-technical-proof.v1"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    return proof
+
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -13995,6 +14007,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **knowledge_map["source_bindings"],
         **history["source_bindings"],
         **_smart_edge_source_proof()["source_bindings"],
+        **_offline_html_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14070,7 +14083,11 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    offline = _offline_html_proof()
     for path, expected in proof["source_bindings"].items():
+        if path in offline["source_bindings"]:
+            assert offline["base_source_bindings"][path] == expected, path
+            expected = offline["source_bindings"][path]
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
@@ -14085,3 +14102,33 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert "schaubild-native-canvas-first-edit-history" in history["path"]
     oci = proof["historical_proofs_unchanged"][2]
     assert "schaubild-d2-oci" in oci["path"]
+
+
+def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
+    """Offline HTML supersedes exact sources, without changing historical proofs."""
+    proof = _offline_html_proof()
+    smart = _smart_edge_source_proof()
+    assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
+    expected_paths = {
+        "Dockerfile",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/native_offline_html.py",
+        "src/schauwerk/resources/native_offline_html/assets.py",
+        "src/schauwerk/resources/native_offline_html/__init__.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    assert set(proof["source_bindings"]) == expected_paths
+    assert set(proof["base_source_bindings"]) == expected_paths
+    for path, actual in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == actual, path
+        assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
+    assert proof["visual_acceptance"] == "pending"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "runtime_deployed" in proof["does_not_establish"]
