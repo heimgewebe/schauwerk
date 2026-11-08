@@ -462,6 +462,8 @@ const placeLiveEdgeConflict=e=>{
   e.element.removeAttribute("data-routing-pending");
 };
 const relocateLiveEdgeLabels=()=>{relabel++;};
+let expanded=0;
+const expandSmartCanvasToFitRoutes=()=>{expanded++;return true;};
 const routingMode=()=> "smart";
 const setStatus=s=>{status=s;};
 const updateEdgeGeometry=id=>{
@@ -492,7 +494,8 @@ if([...edges.values()].some(e=>e.element.dataset.routingPending==="true"))
 if(!status.includes("aktualisiert"))throw Error("Final route status absent");
 console.log(JSON.stringify({
   nodes:nodes.size,edges:edges.size,certifiedAtStartup:0,
-  completed:routed,unverifiedAfterRelease:0,asyncGesturePause:true
+  completed:routed,unverifiedAfterRelease:0,asyncGesturePause:true,
+  boundsExpanded:expanded===1
 }));
 """
     path = tmp_path / "standalone-deferred.mjs"
@@ -506,6 +509,7 @@ console.log(JSON.stringify({
     assert proof["completed"] == 33
     assert proof["unverifiedAfterRelease"] == 0
     assert proof["asyncGesturePause"] is True
+    assert proof["boundsExpanded"] is True
 
 
 def test_nonincident_smart_detours_expand_export_viewbox_without_zoom_jump(
@@ -571,3 +575,106 @@ console.log(JSON.stringify({
     assert evidence["fullyVisible"] is True
     assert evidence["screenStable"] is True
     assert evidence["applyCount"] == 1
+
+
+def test_hosted_dense_drag_requests_render_and_self_loop_resets_preview(
+    tmp_path: Path,
+) -> None:
+    """A saved deferred edit must render again; loops may never retain 4 6."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for dense hosted render event test")
+    app = ASSETS["app.js"]
+    start = app.index("function finishPointer(event) {")
+    finish = app[start:app.index('viewport.addEventListener("pointerup"', start)]
+    start = app.index("function placeLiveEdgeConflict(")
+    conflict = app[start:app.index("function relocateLiveEdgeLabels(", start)]
+    start = app.index("function updateEdgeGeometry(edgeId) {")
+    geometry = app[start:app.index("function finishPendingStandaloneSmartRoutes(", start)]
+    code = r"""
+const activePointers = new Map([[7, {}]]);
+const viewport = {
+  releasePointerCapture() {},
+  classList:{remove(){}}
+};
+const nodes = new Map([["loop", {classList:{remove(){}}}]]);
+const documentEditorHosted = true, documentMode = true;
+let gesture = {
+  kind:"drag",sourceId:"loop",pointerId:7,moved:true,
+  previewOriginals:new Map([["loop", {}]])
+};
+let pointerMovedNode=false;
+const events = [];
+const documentSnapshot = () => ({
+  nodes:[{id:"loop",x:50,y:60}],edges:[{id:"e"}]
+});
+const rebuildDocument = doc => {events.push(["render",doc])};
+const publishDocumentState = () => {events.push(["save"])};
+const setStatus = () => {};
+const releasePointerAutoFitIfIdle = () => {};
+const rollbackDragNode = () => {};
+""" + finish + r"""
+finishPointer({type:"pointerup",pointerId:7});
+if(events.length!==1 || events[0][0]!=="render" ||
+   events[0][1].nodes[0].x!==50 || gesture!==null)
+  throw Error("Hosted dense drag did not request native render");
+gesture = {kind:"drag",sourceId:"loop",pointerId:7,moved:true};
+activePointers.set(7,{});
+finishPointer({type:"pointerup",pointerId:7});
+if(events.length!==2 || events[1][0]!=="save")
+  throw Error("Ordinary small drag regressed into a second full render");
+""" + r"""
+const documentModeDummy = true;
+const routingMode=()=> "smart";
+const svg={
+  viewBox:{baseVal:{width:1000,height:600}},
+  width:{baseVal:{value:1000}},
+  height:{baseVal:{value:600}}
+};
+const overrides = {};
+const nodeOffset = () => ({x:1,y:1});
+const liveBounds = () => ({x:40,y:60,width:100,height:80});
+const liveEdgeGeometry = () => ({
+  path:"M 100 110 C 140 100 150 130 100 150",labelX:115,labelY:105
+});
+const placeLiveLabel=()=>{};
+const path = {
+  attrs:new Map([
+    ["d","M 90 90 L 120 120"],
+    ["stroke","#c2410c"],["stroke-dasharray","4 6"]
+  ]),
+  getAttribute(k){return this.attrs.get(k)||null;},
+  setAttribute(k,v){this.attrs.set(k,String(v));},
+  removeAttribute(k){this.attrs.delete(k);}
+};
+const hitPath={setAttribute(){}};
+const edgeState={
+  from:"loop",to:"loop",
+  element:{
+    dataset:{routingPending:"true"},
+    removeAttribute(key){
+      if(key==="data-routing-pending")delete this.dataset.routingPending;
+      if(key==="data-routing-conflict")delete this.dataset.routingConflict;
+    }
+  },
+  path,hitPath,lane:0,fromSide:null,toSide:null,
+  route:"canvas-self-loop",kind:"flow",
+  originalStroke:"#64748b",originalDash:""
+};
+const edges = new Map([["self",edgeState]]);
+""" + conflict + geometry + r"""
+updateEdgeGeometry("self");
+if(edgeState.element.dataset.routingPending!==undefined ||
+   path.getAttribute("stroke")!=="#64748b" ||
+   path.getAttribute("stroke-dasharray")!==null)
+  throw Error("Finalized self loop retained pending preview styling");
+console.log(JSON.stringify({hostedRender:1,normalSave:1,loopRecovered:true}));
+"""
+    script = tmp_path / "hosted-dense-and-loop.mjs"
+    script.write_text(code, encoding="utf-8")
+    outcome = subprocess.run(
+        [node, str(script)], capture_output=True, text=True,
+        timeout=16, check=True,
+    )
+    result = json.loads(outcome.stdout)
+    assert result == {"hostedRender": 1, "normalSave": 1, "loopRecovered": True}
