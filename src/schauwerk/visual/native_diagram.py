@@ -12231,6 +12231,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 from_side=edge.get("from_side"),
                 to_side=edge.get("to_side"),
                 lane=lane,
+                max_lane=(pair_counts[key] - 1) * 9.0,
             )
             if candidate is None:
                 # Never advertise an unsafe legacy fallback as clear.
