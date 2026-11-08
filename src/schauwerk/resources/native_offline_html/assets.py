@@ -26,6 +26,7 @@ button,input{font:inherit;color:inherit}
 #ofh-stage.ofh-panning{cursor:grabbing}
 #ofh-diagram{display:block;width:100%;height:100%}
 .ofh-side{flex:0 0 21rem;display:flex;flex-direction:column;gap:.5rem;min-height:0;padding:.6rem;border-left:1px solid var(--ofh-line);background:#fff;overflow:auto}
+.ofh-side .ofh-badge{white-space:normal;overflow-wrap:anywhere}
 .ofh-search{display:flex;gap:.35rem}
 .ofh-search input{flex:1 1 auto;min-width:0;min-height:2.4rem;padding:.2rem .6rem;border:1px solid var(--ofh-line);border-radius:.5rem}
 #ofh-status{margin:0;font-size:.85rem;color:var(--ofh-muted)}

@@ -1,0 +1,60 @@
+{
+  "schema_version": "schauwerk-html-offline-mobile-help-followup-technical-proof.v1",
+  "repository": "heimgewebe/schauwerk",
+  "pr": 236,
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-offline-integration-20261108/technical-proof.json",
+    "sha256": "737d9c5854b7f4cec552193e54fe580e68ca0634a9a003c322fbd30e7099080c"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_offline_html/assets.py": "a2f17d65b2e844c73e5257672c080780970f9becb99bd5762c388e61ae774d61",
+    "tests/visual/test_native_offline_html.py": "bb35791bc9d6194727f79316818a1f0fbaffc36e2fb5e3b155be038160da8ef5"
+  },
+  "cause": "The #ofh-help element inherits global .ofh-badge white-space:nowrap, exceeding the responsive offline panel width.",
+  "red_proof": {
+    "chrome_file_url_844x390": "clientWidth=335,scrollWidth=509; test failed",
+    "chrome_file_url_320x700": "clientWidth=320,scrollWidth=509; test failed"
+  },
+  "repair": "Apply white-space:normal and overflow-wrap:anywhere only to .ofh-side .ofh-badge, preserving the compact header badge.",
+  "validation": {
+    "chrome_mobile_cases": "2 passed",
+    "full_offline_suite": "58 passed",
+    "ruff": "passed",
+    "diff_check": "passed"
+  },
+  "status": "technical_candidate_only",
+  "visual_acceptance": "requires independent final revision browser screenshot and physical iPad still outstanding",
+  "does_not_establish": [
+    "full_current_head_CI",
+    "accepted_image",
+    "commonthing_rollout",
+    "physical_ipad_safari_acceptance"
+  ],
+  "visual_readback": {
+    "status": "accepted_for_mobile_help_overflow_in_captured_chrome_corpus_only",
+    "path": "docs/operators/evidence/schaubild-html-offline-integration-20261108/offline-html-mobile-a-b-20261108.jpg",
+    "sha256": "99d787774dd5508a43e7b2388423e62e12709a028f15e1efd512e1dd6302224d",
+    "viewports": [
+      "844x390 file:// Chrome",
+      "320x700 file:// Chrome"
+    ],
+    "metrics": [
+      {
+        "width": 844,
+        "client": 335,
+        "scroll": 335
+      },
+      {
+        "width": 320,
+        "client": 320,
+        "scroll": 320
+      }
+    ],
+    "interpretation": "Long help text wraps within side panel, read-only header badge remains compact; no horizontal clipping observed in two real rendered screenshots.",
+    "non_claims": [
+      "physical_ipad_safari",
+      "production_download",
+      "full_product_visual_acceptance"
+    ]
+  }
+}

@@ -198,6 +198,39 @@ def _hybrid_offline_integration_proof() -> dict:
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     return proof
 
+def _offline_html_mobile_help_proof() -> dict:
+    """Bind the genuine mobile source correction without changing predecessor proofs."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-html-offline-integration-20261108"
+        / "technical-proof-mobile-help-followup.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-html-offline-mobile-help-followup-technical-proof.v1"
+    )
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-html-offline-integration-20261108/"
+        "technical-proof.json"
+    )
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/resources/native_offline_html/assets.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    for name, expected in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+    visual = proof["visual_readback"]
+    assert visual["status"] == "accepted_for_mobile_help_overflow_in_captured_chrome_corpus_only"
+    assert hashlib.sha256((ROOT / visual["path"]).read_bytes()).hexdigest() == (
+        visual["sha256"]
+    )
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -14160,6 +14193,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_offline_html_proof()["source_bindings"],
         **_offline_html_followup_proof()["source_bindings"],
         **_hybrid_offline_integration_proof()["source_bindings"],
+        **_offline_html_mobile_help_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14312,6 +14346,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
     proof = _offline_html_proof()
     followup = _offline_html_followup_proof()
     combined = _hybrid_offline_integration_proof()
+    mobile = _offline_html_mobile_help_proof()
     smart = _smart_edge_source_proof()
     assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
     assert proof["source_repository"] == "heimgewebe/schauwerk"
@@ -14333,6 +14368,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
     for path, actual in proof["source_bindings"].items():
         effective = followup["source_bindings"].get(path, actual)
         effective = combined["source_bindings"].get(path, effective)
+        effective = mobile["source_bindings"].get(path, effective)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"

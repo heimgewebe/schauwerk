@@ -583,6 +583,42 @@ def _problems(cdp: _Cdp, document_url: str) -> list[str]:
     return problems
 
 
+@pytest.mark.parametrize("width,height", [(844, 390), (320, 700)])
+def test_offline_html_file_url_side_panel_help_wraps_without_horizontal_overflow(
+    tmp_path: Path, width: int, height: int,
+) -> None:
+    """Mobile file:// viewer must not hide help text behind horizontal scrolling."""
+    cdp = _open(tmp_path, "responsive.html", _build())
+    try:
+        cdp.send("Emulation.setDeviceMetricsOverride", {
+            "width": width, "height": height, "deviceScaleFactor": 1, "mobile": False,
+        })
+        cdp.wait_for("document.documentElement.classList.contains('ofh-ready')", "offline ready")
+        cdp.pump(0.2)
+        geometry = cdp.evaluate("""(() => {
+          const side = document.querySelector('.ofh-side');
+          const help = document.querySelector('#ofh-help');
+          const headerBadge = document.querySelector('.ofh-bar .ofh-badge');
+          return {
+            viewport: window.innerWidth,
+            clientWidth: side.clientWidth,
+            scrollWidth: side.scrollWidth,
+            helpWhiteSpace: getComputedStyle(help).whiteSpace,
+            helpOverflowWrap: getComputedStyle(help).overflowWrap,
+            headerWhiteSpace: getComputedStyle(headerBadge).whiteSpace
+          };
+        })()""")
+        assert geometry["viewport"] == width
+        assert geometry["clientWidth"] > 0
+        assert geometry["scrollWidth"] <= geometry["clientWidth"] + 1, geometry
+        assert geometry["helpWhiteSpace"] == "normal"
+        assert geometry["helpOverflowWrap"] == "anywhere"
+        assert geometry["headerWhiteSpace"] == "nowrap"
+        assert cdp.violations() == []
+    finally:
+        cdp.close()
+
+
 def test_offline_html_file_url_chrome_is_usable_read_only_and_makes_no_requests(tmp_path: Path) -> None:
     html = _build()
     cdp = _open(tmp_path, "viewer.html", html)
