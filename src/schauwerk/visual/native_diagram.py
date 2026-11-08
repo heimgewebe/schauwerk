@@ -12220,7 +12220,10 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             lane = slot * 18.0
         else:
             lane = (slot - (pair_counts[key] - 1) / 2) * 18.0
-            if source_id > target_id:
+            # Legacy cubic lanes reverse sign with edge direction. For
+            # smart routing the two endpoints also reverse, so doing both
+            # collapses reciprocal edges onto the same visible route.
+            if source_id > target_id and not smart_routing:
                 lane = -lane
         path, label_x, label_y, route, edge_bounds = _canvas_edge_geometry(
             source, target, edge, lane=lane
