@@ -63,7 +63,7 @@ def test_native_viewer_uses_compact_accessible_overlay_controls(tmp_path: Path) 
     assert "position: absolute;" in viewer_stage
     assert "inset: 0;" in viewer_stage
     assert "position: absolute;" in viewer_foot
-    assert ".edit-menu, .view-mode-menu {" in css
+    assert ".edit-menu {" in css
     assert ".embedded-native-viewer .viewer-bar {" not in css
     assert "padding-right: max(58px, calc(env(safe-area-inset-right) + 50px));" not in css
     assert "@media (max-width: 620px)" in css

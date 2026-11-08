@@ -103,7 +103,21 @@ def _hybrid_preview_followup_proof() -> dict:
         "tests/visual/test_native_viewer.py",
         "tests/visual/test_native_viewer_product_ui.py",
     }
-    return latest
+    final_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-preserve-baseline-followup.json"
+    )
+    final = json.loads(final_path.read_text(encoding="utf-8"))
+    assert final["schema_version"] == (
+        "schauwerk-html-svg-hybrid-preserve-baseline-followup-technical-proof.v1"
+    )
+    assert final["status"] == "technical_candidate_only"
+    assert final["predecessor"]["path"] == str(latest_path.relative_to(ROOT))
+    assert hashlib.sha256(latest_path.read_bytes()).hexdigest() == (
+        final["predecessor"]["sha256"]
+    )
+    assert set(final["source_bindings"]) == set(latest["source_bindings"])
+    return final
 
 
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"

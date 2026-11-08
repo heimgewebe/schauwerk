@@ -347,8 +347,9 @@ button:focus-visible {
   border-color: var(--line-strong);
   background: var(--surface-soft);
 }
+.edit-menu { position: absolute; }
+.view-mode-menu { position: absolute; }
 .edit-menu, .view-mode-menu {
-  position: absolute;
   top: calc(100% + 6px);
   right: 0;
   width: max-content;

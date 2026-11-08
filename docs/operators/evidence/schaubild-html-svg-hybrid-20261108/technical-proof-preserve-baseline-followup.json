@@ -1,0 +1,31 @@
+{
+  "schema_version": "schauwerk-html-svg-hybrid-preserve-baseline-followup-technical-proof.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "pr": 235,
+  "branch": "feat/schaubild-html-svg-hybrid-h1-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof-narrow-safearea-followup.json",
+    "sha256": "d23a9ae62b7a304e39b802a51a9d39ea5a87169d077e4a7a69cb2a0aa2e4b4b5"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "dd78d9b595d0e03a04b22a74c4edf13f86ffc276988908a0b3724e3d72f7956c",
+    "tests/visual/test_native_hybrid_preview.py": "d421ed88ab1935234a2aff6e681159babc38e79f83d7f197c40248c01a384dca",
+    "tests/visual/test_native_viewer.py": "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d",
+    "tests/visual/test_native_viewer_product_ui.py": "c2276f272b278de41e276ca40dd75608546e391cf7afeb8bbf62cad5398d48db"
+  },
+  "root_cause": "Changing source-bound historical UI test files to accept new selectors invalidated the older infrastructure hardening proof chain. The prior 320px fix exposed this.",
+  "repair": "Restore the two original source-bound UI tests exactly. Keep the .edit-menu CSS rule with a meaningful absolute positioning declaration; the new .view-mode-menu also receives its own positioning while other properties remain shared.",
+  "validation": {
+    "ruff": "passed",
+    "native_320px_safearea": "recheck required",
+    "hybrid_chrome": "recheck required",
+    "full_ci": "not_yet_verified"
+  },
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "full_ci_pass",
+    "production_visual_acceptance",
+    "commonthing_rollout"
+  ]
+}
