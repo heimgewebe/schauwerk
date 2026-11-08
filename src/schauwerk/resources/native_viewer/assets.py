@@ -1878,7 +1878,9 @@ function updateIncidentEdges(sourceId) {
 }
 
 function expandSmartCanvasToFitRoutes() {
-  if (!documentMode || routingMode() !== "smart") return false;
+  // Smart routing may extend the path; even simple mode can relocate an
+  // unrelated edge label outside the original document's viewBox.
+  if (!documentMode) return false;
   const old = svg.viewBox.baseVal;
   if (!(old.width > 0) || !(old.height > 0)) return false;
   let minX = old.x, minY = old.y;
@@ -1891,13 +1893,15 @@ function expandSmartCanvasToFitRoutes() {
     maxY = Math.max(maxY, bottom + 24);
   };
   for (const edge of edges.values()) {
-    if (edge.routeBounds) {
-      include(...edge.routeBounds);
-    } else {
-      try {
-        const box = edge.path.getBBox();
-        include(box.x, box.y, box.x + box.width, box.y + box.height);
-      } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
+    if (routingMode() === "smart") {
+      if (edge.routeBounds) {
+        include(...edge.routeBounds);
+      } else {
+        try {
+          const box = edge.path.getBBox();
+          include(box.x, box.y, box.x + box.width, box.y + box.height);
+        } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
+      }
     }
     if (edge.labelRect) {
       try {
@@ -2865,8 +2869,9 @@ viewport.addEventListener("pointermove", (event) => {
     }
     // Directly moved, nonincident routes can exceed the static render viewBox.
     // Pending dense previews wait for their final certification on release.
-    if (documentMode && routingMode() === "smart" &&
-        !gesture.previewOriginals) expandSmartCanvasToFitRoutes();
+    if (documentMode && !gesture.previewOriginals) {
+      expandSmartCanvasToFitRoutes();
+    }
     setStatus(gesture?.previewOriginals
       ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"
       : "Position geändert · Verbindungen angepasst");
