@@ -1129,6 +1129,7 @@ let pointerChangedView = false;
 let pointerMovedNode = false;
 let pointerFitPending = false;
 let bulkEdgeUpdate = false;
+let pendingSmartRouteGeneration = 0;
 const DRAG_THRESHOLD_PX = 4;
 // Preserve responsive pointer input in dense documents. Certified routes are
 // recomputed by the authoritative native renderer after every completed drag.
@@ -1447,7 +1448,26 @@ function applyAllNodeTransforms() {
   } finally {
     bulkEdgeUpdate = false;
   }
-  for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  const unchangedSmartCanvas = documentMode && routingMode() === "smart" &&
+    [...nodes.keys()].every(sourceId => {
+      const offset = nodeOffset(overrides, sourceId);
+      return offset.x === 0 && offset.y === 0;
+    });
+  if (unchangedSmartCanvas) {
+    // On initial load (and Reset), use the *already certified* source SVG.
+    // Recomputing every route here would freeze dense viewers at startup.
+    for (const edge of edges.values()) {
+      edge.path.setAttribute("d", edge.basePath);
+      edge.hitPath.setAttribute("d", edge.basePath);
+      edge.naturalLabelX = edge.baseLabelX;
+      edge.naturalLabelY = edge.baseLabelY;
+      edge.routeBounds = null;
+      resetEdgeLabel(edge);
+      placeLiveEdgeConflict(edge, edge.route === "canvas-smart-conflict");
+    }
+  } else {
+    for (const edgeId of edges.keys()) updateEdgeGeometry(edgeId);
+  }
   lastRouteObstacles.clear();
   if (documentMode && routingMode() === "smart") {
     for (const node of nodeModelsAtLiveCoordinates()) {
@@ -1703,6 +1723,27 @@ function updateEdgeGeometry(edgeId) {
   placeLiveLabel(edgeState, geometry.labelX, geometry.labelY);
 }
 
+function finishPendingStandaloneSmartRoutes() {
+  const generation = ++pendingSmartRouteGeneration;
+  const pending = [...edges].filter(([_id, edge]) =>
+    edge.element.dataset.routingPending === "true").map(([id]) => id);
+  if (!pending.length) return;
+  let index = 0;
+  const rerouteNext = () => {
+    if (generation !== pendingSmartRouteGeneration || gesture?.kind === "drag") return;
+    // At most one visibility-graph search per task. The browser remains
+    // responsive between chunks; failed paths retain explicit conflict state.
+    updateEdgeGeometry(pending[index++]);
+    if (index < pending.length) {
+      setTimeout(rerouteNext, 0);
+    } else {
+      relocateLiveEdgeLabels();
+      setStatus("Intelligente Kantenführung aktualisiert");
+    }
+  };
+  setStatus("Intelligente Kantenführung wird geprüft");
+  setTimeout(rerouteNext, 0);
+}
 function rollbackSmartDragPreview(drag) {
   if (!drag?.previewOriginals) return false;
   // Restoring cached exact paths is bounded and avoids another visibility
@@ -2664,6 +2705,8 @@ viewport.addEventListener("pointerdown", (event) => {
       rebuildDocument(document);
       return;
     }
+    // A new gesture supersedes the previous background route completion.
+    ++pendingSmartRouteGeneration;
     selectNode(sourceId);
     const startOffset = nodeOffset(overrides, sourceId);
     gesture = {
@@ -2777,7 +2820,11 @@ function finishPointer(event) {
           ? "Dokumentposition geändert · Kanten werden intelligent geroutet"
           : "Dokumentposition geändert · Kanten live geroutet");
       } else if (documentMode) {
-        setStatus("Position geändert · Dokument unverändert");
+        if (endedGesture.previewOriginals) {
+          finishPendingStandaloneSmartRoutes();
+        } else {
+          setStatus("Position geändert · Dokument unverändert");
+        }
       } else if (persistOverrides()) {
         setStatus("Position lokal gespeichert");
       }
