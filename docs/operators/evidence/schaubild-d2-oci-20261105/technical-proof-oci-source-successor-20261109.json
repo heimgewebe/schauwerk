@@ -1,0 +1,50 @@
+{
+  "schema_version": "schauwerk-oci-d2-verified-source-successor.v1",
+  "repository": "heimgewebe/schauwerk",
+  "base_revision": "0477186bbc3cf33a274f2895cf180f1ad7251c88",
+  "source_bindings": {
+    "Dockerfile": "af968b336a6b4120650b7d855056fc2249585b96f59ecd146430d5b6f840a174"
+  },
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-offline-integration-20261108/technical-proof.json",
+    "sha256": "737d9c5854b7f4cec552193e54fe580e68ca0634a9a003c322fbd30e7099080c",
+    "dockerfile_sha256": "3a90acc4a41da51448c0647d776ddd42d10a9550974187a5868f8152eb7ca2e0"
+  },
+  "vendor": {
+    "version": "v0.9.0",
+    "upstream_archive_sha256": "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9",
+    "upstream_source": "https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz",
+    "origin": "Previous accepted OCI build verified the upstream archive and smoke-tested D2 v0.9.0"
+  },
+  "immutable_supplier": {
+    "image_ref": "ghcr.io/heimgewebe/schauwerk-schaubild@sha256:a0f29a13e86244654afdeafb7b900357b8af29bd802b6fae374ca1f7f0b94597",
+    "source_commit": "dc53e56e02753f700d12234f19044dad7efe228a",
+    "workflow_dispatch_run_id": 42517511702,
+    "workflow_result": "completed_success",
+    "verified_oci_labels": {
+      "org.opencontainers.image.revision": "dc53e56e02753f700d12234f19044dad7efe228a",
+      "org.opencontainers.image.source": "https://github.com/heimgewebe/schauwerk"
+    },
+    "carried_files": [
+      "/opt/schauwerk/d2/bin/d2",
+      "/opt/schauwerk/d2/LICENSE.txt",
+      "/opt/schauwerk/d2/THIRD_PARTY_NOTICES.txt"
+    ]
+  },
+  "failure_evidence": {
+    "first_failed_run": 42569882110,
+    "second_failed_run": 42570200435,
+    "observed_bad_asset_sha256": "bef140a1a96994029153dca8c00b1750b9a5a764fb9db2dc68d7bb40e8a29e8a",
+    "upstream_release_api_still_declares_sha256": "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9",
+    "independent_remote_fetch": "HTTP 504 in separate Heim-PC curl -fL",
+    "certainty": "Checksum mismatch and HTTP 504 are observed, but original BuildKit response body was not retained."
+  },
+  "repair": "COPY only the exact D2 subtree from an immutable accepted OCI supplier instead of a build-time GitHub release download; preserve version, license and notices checks. Existing app sources remain unchanged.",
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "new_source_oci_build_success",
+    "new_source_release_accepted",
+    "commonthing_runtime_deployed",
+    "physical_ipad_safari_acceptance"
+  ]
+}

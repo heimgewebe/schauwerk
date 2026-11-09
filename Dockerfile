@@ -1,16 +1,4 @@
 # syntax=docker/dockerfile:1.6
-FROM python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d AS d2-assets
-
-# The immutable vendor archive is verified at build time; no unpinned fetch.
-ADD --checksum=sha256:5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz /tmp/d2-v0.9.0.tar.gz
-RUN mkdir -p /opt/schauwerk/d2 \
-    && tar -xzf /tmp/d2-v0.9.0.tar.gz -C /opt/schauwerk/d2 --strip-components=1 \
-      d2-v0.9.0/bin/d2 \
-      d2-v0.9.0/LICENSE.txt \
-      d2-v0.9.0/THIRD_PARTY_NOTICES.txt \
-    && chmod -R a+rX /opt/schauwerk/d2 \
-    && /opt/schauwerk/d2/bin/d2 --version | grep -qx 'v0.9.0'
-
 FROM python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d
 
 ARG VCS_REF=unknown
@@ -63,8 +51,15 @@ COPY src/schauwerk/resources/standalone_editor/__init__.py \
 
 RUN chmod -R a=rX /app/src
 
-# The runtime image ships only D2 executable and license notices.
-COPY --from=d2-assets /opt/schauwerk/d2/ /opt/schauwerk/d2/
+# Reuse precisely the D2 v0.9.0 executable/notices from an accepted,
+# source-verified Schauwerk release; GitHub's archive CDN returned 504 HTML
+# instead of the expected sha256:5669dd... bytes in multiple OCI rebuilds.
+# The exact OCI digest pins all bytes; no mutable vendor tag or download.
+COPY --from=ghcr.io/heimgewebe/schauwerk-schaubild@sha256:a0f29a13e86244654afdeafb7b900357b8af29bd802b6fae374ca1f7f0b94597 \
+     /opt/schauwerk/d2/ /opt/schauwerk/d2/
+RUN /opt/schauwerk/d2/bin/d2 --version | grep -qx 'v0.9.0' \
+    && test -s /opt/schauwerk/d2/LICENSE.txt \
+    && test -s /opt/schauwerk/d2/THIRD_PARTY_NOTICES.txt
 
 USER 10001:10001
 EXPOSE 8765
