@@ -178,6 +178,47 @@ def test_javascript_router_tracks_python_geometry_on_fixture(tmp_path: Path) -> 
     assert actual["path"] == expected.path
 
 
+def test_reciprocal_smart_rails_match_browser_router(tmp_path: Path) -> None:
+    """Both geometric kernels keep opposing edge strokes independently selectable."""
+    node_runtime = shutil.which("node")
+    if not node_runtime:
+        pytest.skip("Node.js unavailable for Python/JavaScript geometry parity")
+    a = {"id": "a", "type": "text", "x": 40, "y": 80,
+         "width": 220, "height": 120, "text": "Quelle"}
+    b = {"id": "b", "type": "text", "x": 590, "y": 80,
+         "width": 220, "height": 120, "text": "Ziel"}
+    blocker = {"id": "middle", "type": "text", "x": 310, "y": 50,
+               "width": 200, "height": 200, "text": "Hindernis"}
+    nodes = [a, b, blocker]
+    module = tmp_path / "smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    check = tmp_path / "check.mjs"
+    check.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes = {json.dumps(nodes)};\n"
+        'console.log(JSON.stringify([\n'
+        '  smartEdgeGeometry(nodes[0], nodes[1], nodes, {lane:-9,maxLane:9}),\n'
+        '  smartEdgeGeometry(nodes[1], nodes[0], nodes, {lane:9,maxLane:9}),\n'
+        ']));\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [node_runtime, str(check)], capture_output=True,
+        text=True, timeout=12, check=True,
+    )
+    js = json.loads(result.stdout)
+    py = [route_edge(a, b, nodes, lane=-9, max_lane=9),
+          route_edge(b, a, nodes, lane=9, max_lane=9)]
+    assert all(r is not None and r.collision_free for r in py)
+    assert all(r is not None and r["collisionFree"] for r in js)
+    for python_route, browser_route in zip(py, js):
+        assert browser_route["path"] == python_route.path
+        assert browser_route["labelY"] == pytest.approx(python_route.label_y)
+        assert browser_route["fromSide"] == python_route.from_side
+        assert browser_route["toSide"] == python_route.to_side
+    assert abs(py[0].label_y - py[1].label_y) >= 22.0
+
+
 def test_relation_direction_and_type_survive_canvas_and_svg_roundtrip() -> None:
     source = canvas()
     edge = source["edges"][0]

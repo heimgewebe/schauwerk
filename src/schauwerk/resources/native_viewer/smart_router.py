@@ -180,9 +180,26 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (!Number.isFinite(lane) ||
       (maxLane !== null && (!Number.isFinite(maxLane) || maxLane < 0)))
     return null;
+  // Mirror the Python transverse rail reservation. A shared obstacle
+  // corridor must not hide earlier reciprocal/parallel edge hit paths.
+  // Along-route clearance remains fixed to preserve the endpoint stubs.
+  const railStep = maxLane !== null && maxLane > 0
+    ? Math.min(4 / 3, 96 / Math.max(18, 2 * maxLane)) : 0;
+  const railBefore = Math.min(96, Math.max(0, (maxLane ?? 0) - lane) * railStep);
+  const railAfter = Math.min(96, Math.max(0, (maxLane ?? 0) + lane) * railStep);
+  const horizontal = Math.abs(
+    source.x + source.width / 2 - target.x - target.width / 2
+  ) >= Math.abs(
+    source.y + source.height / 2 - target.y - target.height / 2
+  );
   const blocking = nodes.filter(n =>
     n.id !== source.id && n.id !== target.id && n.type !== "group"
-  ).map(n => rect(n, clearance));
+  ).map(n => {
+    const [x0, y0, x1, y1] = rect(n, clearance);
+    return horizontal
+      ? [x0, y0 - railBefore, x1, y1 + railAfter]
+      : [x0 - railBefore, y0, x1 + railAfter, y1];
+  });
   const sourceBox = rect(source, clearance * 0.6);
   const targetBox = rect(target, clearance * 0.6);
   const allBoxes = [...blocking, sourceBox, targetBox];
