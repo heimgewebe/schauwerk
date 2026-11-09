@@ -2,7 +2,29 @@
 FROM python:3.13.7-slim-bookworm@sha256:adafcc17694d715c905b4c7bebd96907a1fd5cf183395f0ebc4d3428bd22d92d AS d2-assets
 
 # The immutable vendor archive is verified at build time; no unpinned fetch.
-ADD --checksum=sha256:5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9 https://github.com/d2lang/d2/releases/download/v0.9.0/d2-v0.9.0-linux-amd64.tar.gz /tmp/d2-v0.9.0.tar.gz
+# The GitHub browser-download CDN can return 504 even when its authenticated
+# release asset API serves the same immutable, digest-pinned archive.
+# Keep the SHA-256 check mandatory; the API endpoint is transport, not authority.
+RUN python3 - <<'PY'
+import hashlib
+from urllib.request import Request, urlopen
+
+url = "https://api.github.com/repos/d2lang/d2/releases/assets/549448945"
+expected_sha256 = "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9"
+request = Request(url, headers={
+    "Accept": "application/octet-stream",
+    "User-Agent": "schauwerk-oci-build",
+    "X-GitHub-Api-Version": "2022-11-28",
+})
+checksum = hashlib.sha256()
+with urlopen(request, timeout=60) as response, open("/tmp/d2-v0.9.0.tar.gz", "wb") as archive:
+    while chunk := response.read(1024 * 1024):
+        checksum.update(chunk)
+        archive.write(chunk)
+observed_sha256 = checksum.hexdigest()
+if observed_sha256 != expected_sha256:
+    raise SystemExit(f"D2 asset digest mismatch: {observed_sha256}")
+PY
 RUN mkdir -p /opt/schauwerk/d2 \
     && tar -xzf /tmp/d2-v0.9.0.tar.gz -C /opt/schauwerk/d2 --strip-components=1 \
       d2-v0.9.0/bin/d2 \
