@@ -12017,8 +12017,25 @@ def _canvas_text_layout(
     candidate: tuple[tuple[str, int], ...] = ()
     candidate_truncated = legacy_truncated or grapheme_truncated
     candidate_size = min_size
+    # A conservative fallback glyph width can make an ordinary complete word
+    # appear too wide at 16px even when the actual browser font would fit it.
+    # Prefer a slightly smaller *whole* word over a large mid-word fracture.
+    # Truly overlong tokens retain the original 16px split behavior.
+    widest_word_units = max(
+        (_estimated_canvas_wrap_width(word, size=1) for word in value.split()),
+        default=0.0,
+    )
+    intact_word_size = 16
+    if widest_word_units > 0 and widest_word_units * min_size <= max_width:
+        while (
+            intact_word_size > min_size
+            and widest_word_units * intact_word_size > max_width
+        ):
+            intact_word_size -= 1
     candidate_sizes = (
-        (min_size,) if grapheme_truncated else range(16, min_size - 1, -1)
+        (min_size,)
+        if grapheme_truncated
+        else range(intact_word_size, min_size - 1, -1)
     )
     for size in candidate_sizes:
         wrapped, wrapped_truncated = _canvas_adaptive_lines(
@@ -12080,6 +12097,39 @@ def _canvas_relocate_occluded_edge_labels(
         for node in nodes
         if str(node["type"]) != "group"
     ]
+    # A group is a permeable background for relationships. Its *visible
+    # heading*, however, is not: edge labels must not paint over that text.
+    # Reserve only actual heading-line geometry, not the whole group body.
+    for group in nodes:
+        if str(group["type"]) != "group":
+            continue
+        caption = str(group.get("label", ""))
+        if not _canvas_has_layout_content(caption):
+            continue
+        group_x = float(group["x"]) + 14.0
+        group_y = float(group["y"])
+        content_width = max(1, int(group["width"]) - 28)
+        header_layout = _canvas_text_layout(
+            caption,
+            content_width,
+            int(group["height"]),
+            max_lines=8,
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
+        for line, baseline in header_layout.lines:
+            line_width = min(
+                float(content_width),
+                _estimated_canvas_single_line_width(
+                    line, size=header_layout.size
+                ),
+            )
+            if line_width <= 0:
+                continue
+            top = group_y + baseline - header_layout.size
+            boxes.append((
+                group_x, top, group_x + line_width,
+                top + header_layout.size + 4,
+            ))
     reserved: list[tuple[float, float, float, float]] = []
     result: list[tuple[Any, ...]] = []
 
@@ -12245,7 +12295,15 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 route, edge_bounds = "canvas-smart", candidate.bounds
         label = str(edge.get("label", ""))
         label_width = _canvas_edge_label_box_width(label)
-        label_height = 28
+        # Reserve the full two-line envelope *before* collision relocation.
+        # Short labels keep their unchanged compact single-line presentation.
+        _, needs_multiline = _canvas_fit_single_line(
+            label,
+            size=14,
+            max_width=max(1.0, float(label_width - 20)),
+            max_bytes=_CANVAS_MAX_ELEMENT_TITLE_BYTES,
+        )
+        label_height = 46 if needs_multiline else 28
         edge_layouts.append(
             (
                 index,
@@ -12484,24 +12542,85 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
             0,
             remaining_canvas_text_lines - reserve_for_later,
         )
-        rendered_edge_label = ""
+        rendered_edge_lines: list[str] = []
         edge_label_truncated = False
         if has_visible_label:
             if edge_line_budget <= 0:
                 edge_label_truncated = True
+            elif label_height > 28 and edge_line_budget >= 2:
+                # The line count alone does not bound work on zero-advance
+                # graphemes. Apply the existing XML/grapheme probe budget
+                # *before* wrapping and bidi projection.
+                edge_width = max(1.0, float(label_width - 20))
+                edge_probe, probe_truncated = _canvas_bounded_text_probe_prefix(
+                    label,
+                    geometry_cluster_limit=_canvas_text_probe_cluster_limit(
+                        max_width=edge_width,
+                        max_lines=2,
+                        max_bytes=edge_text_byte_budget,
+                        min_size=14,
+                    ),
+                    work_cluster_limit=min(
+                        max(1, edge_text_byte_budget + 1),
+                        _MAX_CANVAS_TEXT_PROBE_CLUSTERS,
+                    ),
+                    max_codepoints=_MAX_CANVAS_TEXT_PROBE_CODEPOINTS,
+                )
+                wrapped, wrapped_truncated = _canvas_adaptive_lines(
+                    edge_probe,
+                    size=14,
+                    max_width=edge_width,
+                    max_lines=2,
+                )
+                edge_label_truncated = probe_truncated or wrapped_truncated
+                # An oversized single grapheme can leave the admitted prefix
+                # empty. Keep the prior visible truncation marker rather than
+                # silently dropping an otherwise present relationship label.
+                if probe_truncated and not wrapped:
+                    wrapped = [("…", False)]
+                remaining_edge_bytes = edge_text_byte_budget
+                for wrapped_line, _paragraph_gap in wrapped:
+                    fitted, shortened = _canvas_fit_single_line(
+                        wrapped_line,
+                        size=14,
+                        max_width=max(1.0, float(label_width - 20)),
+                        max_bytes=remaining_edge_bytes,
+                    )
+                    if fitted:
+                        rendered_edge_lines.append(fitted)
+                        remaining_edge_bytes -= _canvas_escaped_text_bytes(fitted)
+                    if shortened:
+                        edge_label_truncated = True
+                        break
+                if edge_label_truncated and rendered_edge_lines:
+                    last_line = rendered_edge_lines[-1]
+                    if not last_line.endswith("…"):
+                        marked, _ = _canvas_fit_single_line(
+                            last_line + "…",
+                            size=14,
+                            max_width=max(1.0, float(label_width - 20)),
+                            max_bytes=remaining_edge_bytes
+                            + _canvas_escaped_text_bytes(last_line),
+                        )
+                        if marked:
+                            rendered_edge_lines[-1] = marked
             else:
-                rendered_edge_label, edge_label_truncated = _canvas_fit_single_line(
+                fitted, edge_label_truncated = _canvas_fit_single_line(
                     label,
                     size=14,
                     max_width=max(1.0, float(label_width - 20)),
                     max_bytes=edge_text_byte_budget,
                 )
-        if rendered_edge_label:
-            remaining_canvas_text_lines = max(0, remaining_canvas_text_lines - 1)
+                if fitted:
+                    rendered_edge_lines.append(fitted)
+        if rendered_edge_lines:
+            remaining_canvas_text_lines = max(
+                0, remaining_canvas_text_lines - len(rendered_edge_lines)
+            )
             remaining_canvas_text_bytes = max(
                 0,
                 remaining_canvas_text_bytes
-                - _canvas_escaped_text_bytes(rendered_edge_label),
+                - sum(_canvas_escaped_text_bytes(line) for line in rendered_edge_lines),
             )
         if has_visible_label:
             remaining_labeled_canvas_items = max(
@@ -12587,14 +12706,20 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                         f'y="{label_y - label_height / 2:.1f}" width="{label_width}" '
                         f'height="{label_height}" rx="9" fill="#f8fafc" fill-opacity="0.94"/>'
                     ),
-                    (
-                        f'<text x="{label_x:.1f}" y="{label_y + 5:.1f}" '
-                        f'text-anchor="middle" font-family="Inter, sans-serif" '
-                        f'font-size="14" font-weight="600" fill="{stroke}" '
-                        f'clip-path="url(#{clip_id})">{_canvas_xml(rendered_edge_label)}</text>'
-                    ),
                 ]
             )
+            for line_index, rendered in enumerate(rendered_edge_lines):
+                baseline_offset = (
+                    (-3 if line_index == 0 else 14)
+                    if len(rendered_edge_lines) > 1
+                    else 5
+                )
+                lines.append(
+                    f'<text x="{label_x:.1f}" y="{label_y + baseline_offset:.1f}" '
+                    f'text-anchor="middle" font-family="Inter, sans-serif" '
+                    f'font-size="14" font-weight="600" fill="{stroke}" '
+                    f'clip-path="url(#{clip_id})">{_canvas_xml(rendered)}</text>'
+                )
         else:
             lines.append(
                 f'<rect x="{label_x:.1f}" y="{label_y:.1f}" width="0" height="0" fill="none"/>'
