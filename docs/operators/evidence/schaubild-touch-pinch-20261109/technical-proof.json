@@ -55,5 +55,16 @@
     "physical_ipad_safari_acceptance",
     "historical_visual_acceptance_inherited"
   ],
-  "evidence_digest": "d52da2366eb4a4697df188a74e6d835b7b01b4552519454e4bde03726411a016"
+  "ci_readiness_successor": {
+    "path": "tests/visual/test_native_offline_html.py",
+    "predecessor_sha256": "bb35791bc9d6194727f79316818a1f0fbaffc36e2fb5e3b155be038160da8ef5",
+    "source_sha256": "d9e36817fd6cfb90ec39987a391cd1d06c3ec07c32981926eddfb879408e507a",
+    "confirmed_cause": "Immediately after CDP Page.navigate, document.documentElement can be null before document readiness. Evaluate page selectors only after document.readyState reaches complete.",
+    "validation": {
+      "python_compile": "passed",
+      "github_required_ci": "pending_exact_head"
+    },
+    "historical_visual_acceptance_inherited": false
+  },
+  "evidence_digest": "79354b517cd457e658b96eb907df8bcf78ef8eced30bd493bfec707efb0d2d42"
 }

@@ -74,6 +74,16 @@ def _edge_first_pinch_source_successor_proof() -> dict:
     )
     for name, expected in proof["source_bindings"].items():
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+    readiness = proof["ci_readiness_successor"]
+    assert readiness["path"] == "tests/visual/test_native_offline_html.py"
+    assert readiness["predecessor_sha256"] == (
+        _offline_html_mobile_help_proof()["source_bindings"][readiness["path"]]
+    )
+    assert hashlib.sha256((ROOT / readiness["path"]).read_bytes()).hexdigest() == (
+        readiness["source_sha256"]
+    )
+    assert readiness["validation"]["python_compile"] == "passed"
+    assert readiness["historical_visual_acceptance_inherited"] is False
     checks = proof["validation"]
     assert checks["chromium_red_original"]["pinch_changed_transform"] is False
     assert checks["chromium_green_changed"]["pinch_changed_transform"] is True
@@ -14312,6 +14322,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         else:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
+    pinch_successor = _edge_first_pinch_source_successor_proof()
     latest_bindings = {
         **successor["source_bindings"],
         **oci["source_bindings"],
@@ -14328,7 +14339,10 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_hybrid_offline_integration_proof()["source_bindings"],
         **_offline_html_mobile_help_proof()["source_bindings"],
         **_d2_oci_reuse_proof()["source_bindings"],
-        **_edge_first_pinch_source_successor_proof()["source_bindings"],
+        **pinch_successor["source_bindings"],
+        pinch_successor["ci_readiness_successor"]["path"]: (
+            pinch_successor["ci_readiness_successor"]["source_sha256"]
+        ),
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14492,6 +14506,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
     combined = _hybrid_offline_integration_proof()
     mobile = _offline_html_mobile_help_proof()
     smart = _smart_edge_source_proof()
+    readiness = _edge_first_pinch_source_successor_proof()["ci_readiness_successor"]
     assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
     assert proof["source_repository"] == "heimgewebe/schauwerk"
     predecessor = proof["predecessor_technical_proof"]
@@ -14514,6 +14529,8 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
         effective = combined["source_bindings"].get(path, effective)
         effective = mobile["source_bindings"].get(path, effective)
         effective = _d2_oci_reuse_proof()["source_bindings"].get(path, effective)
+        if path == readiness["path"]:
+            effective = readiness["source_sha256"]
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"
