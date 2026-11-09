@@ -222,7 +222,10 @@ def _hybrid_offline_integration_proof() -> dict:
             predecessor["sha256"]
         )
     for name, expected in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+        if name == "Dockerfile":
+            assert expected == _d2_oci_reuse_proof()["predecessor"]["dockerfile_sha256"]
+        else:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     return proof
 
 def _offline_html_mobile_help_proof() -> dict:
@@ -256,6 +259,55 @@ def _offline_html_mobile_help_proof() -> dict:
         visual["sha256"]
     )
     return proof
+
+
+def _d2_oci_reuse_proof() -> dict:
+    """Pin this Dockerfile to D2 binaries of a previously accepted OCI release."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-d2-oci-20261105"
+        / "technical-proof-oci-source-successor-20261109.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-oci-d2-verified-source-successor.v1"
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-html-offline-integration-20261108/"
+        "technical-proof.json"
+    )
+    predecessor_path = ROOT / predecessor["path"]
+    assert hashlib.sha256(predecessor_path.read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    prior = json.loads(predecessor_path.read_text(encoding="utf-8"))
+    assert predecessor["dockerfile_sha256"] == prior["source_bindings"]["Dockerfile"]
+    assert set(proof["source_bindings"]) == {"Dockerfile"}
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert hashlib.sha256(dockerfile.encode()).hexdigest() == (
+        proof["source_bindings"]["Dockerfile"]
+    )
+    supplier = proof["immutable_supplier"]
+    assert supplier["source_commit"] == "dc53e56e02753f700d12234f19044dad7efe228a"
+    assert supplier["workflow_dispatch_run_id"] == 42517511702
+    assert supplier["workflow_result"] == "completed_success"
+    assert supplier["verified_oci_labels"] == {
+        "org.opencontainers.image.revision": supplier["source_commit"],
+        "org.opencontainers.image.source": "https://github.com/heimgewebe/schauwerk",
+    }
+    assert supplier["image_ref"] == (
+        "ghcr.io/heimgewebe/schauwerk-schaubild@sha256:"
+        "a0f29a13e86244654afdeafb7b900357b8af29bd802b6fae374ca1f7f0b94597"
+    )
+    assert ("COPY --from=" + supplier["image_ref"]) in dockerfile
+    assert "ADD --checksum" not in dockerfile
+    assert "d2 --version | grep -qx 'v0.9.0'" in dockerfile
+    for path in supplier["carried_files"]:
+        assert path in dockerfile
+    assert proof["vendor"]["upstream_archive_sha256"] == (
+        "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9"
+    )
+    return proof
+
 
 
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
@@ -14227,6 +14279,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_offline_html_followup_proof()["source_bindings"],
         **_hybrid_offline_integration_proof()["source_bindings"],
         **_offline_html_mobile_help_proof()["source_bindings"],
+        **_d2_oci_reuse_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14322,6 +14375,7 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
             )
         expected = combined["source_bindings"].get(path, expected)
         expected = label_successor["source_bindings"].get(path, expected)
+        expected = _d2_oci_reuse_proof()["source_bindings"].get(path, expected)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
@@ -14353,6 +14407,7 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
     for name, current in proof["source_bindings"].items():
         effective = followup["source_bindings"].get(name, current)
         effective = combined["source_bindings"].get(name, effective)
+        effective = _d2_oci_reuse_proof()["source_bindings"].get(name, effective)
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
@@ -14405,6 +14460,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
         effective = followup["source_bindings"].get(path, actual)
         effective = combined["source_bindings"].get(path, effective)
         effective = mobile["source_bindings"].get(path, effective)
+        effective = _d2_oci_reuse_proof()["source_bindings"].get(path, effective)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"
