@@ -1,0 +1,51 @@
+{
+  "schema_version": "schauwerk-schaubild-edge-first-pinch-source-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "base_revision": "1e4546c09159db9a05a1347e8106944da9a79603",
+  "source_branch": "fix/schaubild-touch-pinch-on-edge-20261109",
+  "source_pr": 240,
+  "status": "technical_candidate_only",
+  "change": "Edge pointerdown keeps first touch captured until normal pointerup so a second finger on the SVG edge path starts pinch; single-tap selection and auto-fit remain unchanged.",
+  "historical_predecessor": {
+    "path": "docs/operators/evidence/schaubild-single-workspace-pinch-save-20261009/acceptance-receipt.json",
+    "sha256": "2fef3039c11b4fc349b2bf3f14faff5c8158a694583b5cba2b09f34be8acf354",
+    "evidence_digest": "4cb9e5b431942949949f4b711953cce2b663895e4eb93eacae66f6efbac8a3f4"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "77fdf52ae4fd6063d121cfcaeaa38d571d0e0252a0911e59c082cec62d2c0a03",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "22fc6bc1399bd0665de79f003e1dc2f1d8395ba1461157bc9c317f4de14f24d7"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "064c75a027e7489a10fa7c48a1c150f5c71438339121e8233f30722079e40710",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "7fcc256c9971a3d4bcee11bff2045dc56276cbf9f8d7d1b701bab104beda952b"
+  },
+  "validation": {
+    "chromium_red_original": {
+      "task_id": "ff2823ff49cd4e0d9c79c9cf",
+      "pinch_changed_transform": false,
+      "zoom_before": "37 %",
+      "zoom_after": "37 %"
+    },
+    "chromium_green_changed": {
+      "task_id": "e9a38291452645b7b73c8661",
+      "pinch_changed_transform": true,
+      "zoom_before": "37 %",
+      "zoom_after": "63 %"
+    },
+    "chromium_green_edge_tap_autofit": {
+      "task_id": "1ccd31b1d44c4ad699c2ac45",
+      "single_tap_selected_edge": true,
+      "resize_restored_auto_fit": true
+    },
+    "github_required_ci": "pending_exact_head"
+  },
+  "visual_acceptance": "not_inherited",
+  "does_not_establish": [
+    "production_oci_image_published",
+    "commonthing_consumer_lock_updated",
+    "production_browser_e2e_at_new_source",
+    "physical_ipad_safari_acceptance",
+    "historical_visual_acceptance_inherited"
+  ],
+  "evidence_digest": "723d14e33a5ee776414a5ff9f0e396ee5ade846b23ca58ce4649dca8b656d6ae"
+}
