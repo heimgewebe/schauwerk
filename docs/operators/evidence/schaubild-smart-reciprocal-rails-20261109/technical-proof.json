@@ -1,0 +1,64 @@
+{
+  "base_revision": "ef84bddaa2d79784968a1a4e1b9db5377460243c",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/smart_router.py": "2b2f33d35233abeb25f8337975ed14d6ea0ee403bc060af21761d26122e46ac3",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "4d6fb095a671ef27e410c64ef798e20a3995b8b45cb99b80b1598377a4a577ba",
+    "tests/visual/test_native_canvas_smart_browser.py": "ae3a77c2016244ddbc49279673ba3f47880ef6028d001d5a00b795b09a8e7324",
+    "tests/visual/test_native_canvas_smart_integration.py": "e4dbd4476f0d0df32e32a5bafd97afc4664bfbdf52020c3c704c988846dd54a2",
+    "tests/visual/test_native_canvas_smart_router.py": "dea7035eff09925b9828ddaa8c158f705325eaae896ccb6db6a23344e6e11e1c"
+  },
+  "change": "Separate reciprocal and parallel smart Canvas obstacle detours along bounded transverse rails so later transparent SVG hit paths cannot mask earlier relations; preserve endpoint stubs and browser/Python parity.",
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "full_local_visual_suite_pass",
+    "new_source_oci_image_published",
+    "commonthing_release_lock_updated",
+    "root_hold_authorized",
+    "production_browser_e2e_at_successor_source",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "6a7c4a5a14548be0c0d2d2c2d98ee32d62d58b3bae98d2c223d3a58f660d40f7",
+  "historical_predecessor": {
+    "evidence_digest": "79354b517cd457e658b96eb907df8bcf78ef8eced30bd493bfec707efb0d2d42",
+    "path": "docs/operators/evidence/schaubild-touch-pinch-20261109/technical-proof.json",
+    "sha256": "b39fcdae27e73c18eed2e8be957d545e62dd89ac93a9dd82682dec36cd45174d"
+  },
+  "schema_version": "schauwerk-schaubild-reciprocal-edge-rails-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/smart_router.py": "9c082059af8d603146adf296a141b7484cc0d7767e63d72f8d1ecd33674b8e1b",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "f57b06a5e1602ef3b031bddfcd0121014ac82cb8450fbc3a8879288ab45845d9",
+    "tests/visual/test_native_canvas_smart_browser.py": "fd3b87109c5cd5ffe7bfc72ca90204751f460726046b0c5b304b366d7ce34657",
+    "tests/visual/test_native_canvas_smart_integration.py": "d31c8d0da15c59c2f7a7b7b30f57004a063ead566c1668416b1a6a7e2deb59ea",
+    "tests/visual/test_native_canvas_smart_router.py": "dcb4e97c6910128964022307e2ec216aa2c602cb9198d9706864e4e4adf3c2e8"
+  },
+  "source_branch": "fix/schaubild-smart-reciprocal-rails-20261109",
+  "source_pr": 241,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "consumer_runtime": "not_integrated",
+    "github_required_ci": "pending_exact_head",
+    "isolated_green": {
+      "chrome_reciprocal_hit_paths_selectable": true,
+      "four_parallel_rails": true,
+      "native_canvas_regressions": true,
+      "python_js_geometry_parity": true,
+      "ruff": true,
+      "vertical_and_bottom_detour_rails": true
+    },
+    "isolated_red": {
+      "old_forward_label_y": 37.99,
+      "old_reverse_label_y": 37.99,
+      "regression_failed_as_expected": true
+    },
+    "local_full_visual_suite": "not_passed_unrelated_representation_staging",
+    "local_full_visual_suite_unrelated_failure_count": 51,
+    "old_production_chrome": {
+      "first_edge_hittable_points": 0,
+      "reciprocal_edge_hittable_points": 49,
+      "sampled_points": 51,
+      "source_revision": "ef84bddaa2d79784968a1a4e1b9db5377460243c"
+    }
+  },
+  "visual_acceptance": "not_inherited"
+}

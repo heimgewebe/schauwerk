@@ -95,6 +95,54 @@ def _edge_first_pinch_source_successor_proof() -> dict:
     return proof
 
 
+
+def _reciprocal_rails_source_successor_proof() -> dict:
+    """Source successor for reachable reciprocal hit paths; no inherited acceptance."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-smart-reciprocal-rails-20261109"
+        / "technical-proof.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-reciprocal-edge-rails-source-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "ef84bddaa2d79784968a1a4e1b9db5377460243c"
+    assert proof["source_pr"] == 241
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    expected_paths = {
+        "src/schauwerk/resources/native_viewer/smart_router.py",
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "tests/visual/test_native_canvas_smart_browser.py",
+        "tests/visual/test_native_canvas_smart_integration.py",
+        "tests/visual/test_native_canvas_smart_router.py",
+    }
+    assert set(proof["base_source_bindings"]) == expected_paths
+    assert set(proof["source_bindings"]) == expected_paths
+    assert all(
+        proof["base_source_bindings"][path] != proof["source_bindings"][path]
+        for path in expected_paths
+    )
+    prior = proof["historical_predecessor"]
+    assert prior["path"] == (
+        "docs/operators/evidence/schaubild-touch-pinch-20261109/technical-proof.json"
+    )
+    original = (ROOT / prior["path"]).read_bytes()
+    assert hashlib.sha256(original).hexdigest() == prior["sha256"]
+    predecessor = json.loads(original)
+    assert predecessor["evidence_digest"] == prior["evidence_digest"]
+    assert predecessor["evidence_digest"] == digest_mapping(
+        predecessor, "evidence_digest"
+    )
+    for path, digest in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest, path
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
 def _schaubild_label_readability_proof() -> dict:
     """Bind only changed successor bytes; never rewrite old technical receipts."""
     proof_path = (
@@ -14454,6 +14502,7 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
         expected = label_successor["source_bindings"].get(path, expected)
         expected = _d2_oci_reuse_proof()["source_bindings"].get(path, expected)
         expected = _edge_first_pinch_source_successor_proof()["source_bindings"].get(path, expected)
+        expected = _reciprocal_rails_source_successor_proof()["source_bindings"].get(path, expected)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
