@@ -309,6 +309,20 @@ def _offline_html_mobile_help_proof() -> dict:
         "tests/visual/test_native_offline_html.py",
     }
     for name, expected in proof["source_bindings"].items():
+        if name == "tests/visual/test_native_offline_html.py":
+            # Retain historical mobile acceptance; only the newly proven
+            # CDP readiness test source is superseded on this PR.
+            successor = json.loads(
+                (ROOT / "docs/operators/evidence/schaubild-touch-pinch-20261109"
+                 / "technical-proof.json").read_text(encoding="utf-8")
+            )
+            assert successor["evidence_digest"] == digest_mapping(
+                successor, "evidence_digest"
+            )
+            readiness = successor["ci_readiness_successor"]
+            assert readiness["path"] == name
+            assert readiness["predecessor_sha256"] == expected
+            expected = readiness["source_sha256"]
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     visual = proof["visual_readback"]
     assert visual["status"] == "accepted_for_mobile_help_overflow_in_captured_chrome_corpus_only"
