@@ -164,6 +164,20 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
             pointer(background, "pointerup", 72)
             expect_resized(True, "edge selection")
 
+            # A first finger landing on a rendered edge must stay registered
+            # until pointerup: otherwise the second finger cannot begin pinch.
+            setup()
+            pointer(edge, "pointerdown", 90, dx=-70, pointer_type="touch")
+            pointer(edge, "pointerdown", 91, dx=70, pointer_type="touch")
+            edge_pinch_before = transform()
+            pointer(edge, "pointermove", 91, dx=105, pointer_type="touch")
+            assert transform() != edge_pinch_before, (
+                "Touch pinch starting on an edge path was ignored"
+            )
+            pointer(edge, "pointerup", 91, dx=105, pointer_type="touch")
+            pointer(edge, "pointerup", 90, dx=-70, pointer_type="touch")
+            expect_resized(False, "edge-first two-finger pinch")
+
             setup()
             pointer(background, "pointerdown", 73)
             pointer(background, "pointerup", 73)
