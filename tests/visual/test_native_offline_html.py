@@ -514,7 +514,12 @@ class _Cdp:
         end = time.monotonic() + seconds
         value = None
         while time.monotonic() < end:
-            value = self.evaluate(expression)
+            # Page.navigate can leave a transient execution context without
+            # documentElement. Do not evaluate page selectors until DOM ready;
+            # genuine JavaScript exceptions after load still fail immediately.
+            value = self.evaluate(
+                f"document.readyState === 'complete' && ({expression})"
+            )
             if value:
                 return value
             self.pump(0.1)
