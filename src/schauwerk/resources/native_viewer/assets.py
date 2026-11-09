@@ -2884,10 +2884,14 @@ viewport.addEventListener("pointerdown", (event) => {
 
   if (edge) {
     selectEdge(edge.dataset.sourceId || null);
-    activePointers.delete(event.pointerId);
-    try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
     gesture = null;
-    releasePointerAutoFitIfIdle();
+    if (event.pointerType !== "touch") {
+      // Mouse double-click must reach the edge, not a captured viewport.
+      activePointers.delete(event.pointerId);
+      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
+      releasePointerAutoFitIfIdle();
+    }
+    // Touch keeps its first pointer until pointerup so the second can pinch.
     return;
   }
   selectNode(null);

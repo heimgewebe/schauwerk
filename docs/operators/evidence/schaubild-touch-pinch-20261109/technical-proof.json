@@ -1,0 +1,70 @@
+{
+  "schema_version": "schauwerk-schaubild-edge-first-pinch-source-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "base_revision": "1e4546c09159db9a05a1347e8106944da9a79603",
+  "source_branch": "fix/schaubild-touch-pinch-on-edge-20261109",
+  "source_pr": 240,
+  "status": "technical_candidate_only",
+  "change": "Edge pointerdown keeps first touch captured until normal pointerup so a second finger on the SVG edge path starts pinch; single-tap selection and auto-fit remain unchanged.",
+  "historical_predecessor": {
+    "path": "docs/operators/evidence/schaubild-single-workspace-pinch-save-20261009/acceptance-receipt.json",
+    "sha256": "2fef3039c11b4fc349b2bf3f14faff5c8158a694583b5cba2b09f34be8acf354",
+    "evidence_digest": "4cb9e5b431942949949f4b711953cce2b663895e4eb93eacae66f6efbac8a3f4"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "77fdf52ae4fd6063d121cfcaeaa38d571d0e0252a0911e59c082cec62d2c0a03",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "22fc6bc1399bd0665de79f003e1dc2f1d8395ba1461157bc9c317f4de14f24d7"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "4fd08a7b2a2d36b15c61d865c5cf18ac006620688f7206fa1f7f2a687d720b63",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "4e25a1ad964da1547f807ba5c705091cdd660470afa7b2e1c715491303c64e83"
+  },
+  "validation": {
+    "chromium_red_original": {
+      "task_id": "ff2823ff49cd4e0d9c79c9cf",
+      "pinch_changed_transform": false,
+      "zoom_before": "37 %",
+      "zoom_after": "37 %"
+    },
+    "chromium_green_changed": {
+      "task_id": "ca762f5db5d94a7b8d805c32",
+      "pinch_changed_transform": true,
+      "zoom_before": "37 %",
+      "zoom_after": "63 %"
+    },
+    "chromium_green_edge_tap_autofit": {
+      "task_id": "ca762f5db5d94a7b8d805c32",
+      "single_tap_selected_edge": true,
+      "resize_restored_auto_fit": true
+    },
+    "github_required_ci": "pending_exact_head",
+    "chromium_real_mouse_double_click_red": {
+      "task_id": "a6069ce02e7d4d01bd054517",
+      "edge_dblclick_events": 0
+    },
+    "chromium_real_mouse_double_click_green": {
+      "task_id": "ca762f5db5d94a7b8d805c32",
+      "edge_dblclick_events": 1
+    }
+  },
+  "visual_acceptance": "not_inherited",
+  "does_not_establish": [
+    "production_oci_image_published",
+    "commonthing_consumer_lock_updated",
+    "production_browser_e2e_at_new_source",
+    "physical_ipad_safari_acceptance",
+    "historical_visual_acceptance_inherited"
+  ],
+  "ci_readiness_successor": {
+    "path": "tests/visual/test_native_offline_html.py",
+    "predecessor_sha256": "bb35791bc9d6194727f79316818a1f0fbaffc36e2fb5e3b155be038160da8ef5",
+    "source_sha256": "d9e36817fd6cfb90ec39987a391cd1d06c3ec07c32981926eddfb879408e507a",
+    "confirmed_cause": "Immediately after CDP Page.navigate, document.documentElement can be null before document readiness. Evaluate page selectors only after document.readyState reaches complete.",
+    "validation": {
+      "python_compile": "passed",
+      "github_required_ci": "pending_exact_head"
+    },
+    "historical_visual_acceptance_inherited": false
+  },
+  "evidence_digest": "79354b517cd457e658b96eb907df8bcf78ef8eced30bd493bfec707efb0d2d42"
+}
