@@ -14456,7 +14456,9 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
         effective = followup["source_bindings"].get(name, current)
         effective = combined["source_bindings"].get(name, effective)
         effective = _d2_oci_reuse_proof()["source_bindings"].get(name, effective)
-        effective = _edge_first_pinch_source_successor_proof()["source_bindings"].get(name, effective)
+        effective = _edge_first_pinch_source_successor_proof()["source_bindings"].get(
+            name, effective
+        )
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
