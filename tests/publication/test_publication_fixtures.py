@@ -79,6 +79,8 @@ def _edge_first_pinch_source_successor_proof() -> dict:
     assert checks["chromium_green_changed"]["pinch_changed_transform"] is True
     assert checks["chromium_green_edge_tap_autofit"]["single_tap_selected_edge"] is True
     assert checks["chromium_green_edge_tap_autofit"]["resize_restored_auto_fit"] is True
+    assert checks["chromium_real_mouse_double_click_red"]["edge_dblclick_events"] == 0
+    assert checks["chromium_real_mouse_double_click_green"]["edge_dblclick_events"] == 1
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
 

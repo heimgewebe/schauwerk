@@ -147,7 +147,12 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
                 time.sleep(0.1)
             else:
                 pytest.fail("Native viewer did not initialize in Chrome")
-            eval_js("Element.prototype.setPointerCapture=function(){};Element.prototype.releasePointerCapture=function(){}")
+            eval_js(
+                "window.__nativeSetPointerCapture=Element.prototype.setPointerCapture;"
+                "window.__nativeReleasePointerCapture=Element.prototype.releasePointerCapture;"
+                "Element.prototype.setPointerCapture=function(){};"
+                "Element.prototype.releasePointerCapture=function(){}"
+            )
 
             setup()
             pointer(node, "pointerdown", 71)
@@ -163,6 +168,50 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
             pointer(edge, "pointerdown", 72)
             pointer(background, "pointerup", 72)
             expect_resized(True, "edge selection")
+
+            # Real Chromium mouse events must reach the edge dblclick listener.
+            # Synthetic PointerEvents below deliberately disable capture; this
+            # check restores native capture to cover the browser behavior.
+            eval_js(
+                "Element.prototype.setPointerCapture=window.__nativeSetPointerCapture;"
+                "Element.prototype.releasePointerCapture=window.__nativeReleasePointerCapture"
+            )
+            setup()
+            edge_midpoint = eval_js("""
+                (() => {
+                  const edge = document.querySelector('[data-source-kind="edge"]');
+                  const path = edge.querySelector('path');
+                  const mid = path.getPointAtLength(path.getTotalLength() / 2)
+                    .matrixTransform(path.getScreenCTM());
+                  const hit = document.elementFromPoint(mid.x, mid.y);
+                  if (!hit || hit.closest('[data-source-kind="edge"]') !== edge)
+                    throw new Error('Mouse regression target is not an edge');
+                  window.__edgeDoubleClickCount = 0;
+                  edge.addEventListener('dblclick', () => {
+                    window.__edgeDoubleClickCount += 1;
+                  });
+                  return {x: mid.x, y: mid.y};
+                })()
+            """)
+            cdp("Input.dispatchMouseEvent", {
+                "type": "mouseMoved", **edge_midpoint,
+            })
+            for clicks in (1, 2):
+                cdp("Input.dispatchMouseEvent", {
+                    "type": "mousePressed", **edge_midpoint,
+                    "button": "left", "clickCount": clicks,
+                })
+                cdp("Input.dispatchMouseEvent", {
+                    "type": "mouseReleased", **edge_midpoint,
+                    "button": "left", "clickCount": clicks,
+                })
+            assert eval_js("window.__edgeDoubleClickCount") == 1, (
+                "Mouse double-click was redirected from the edge by pointer capture"
+            )
+            eval_js(
+                "Element.prototype.setPointerCapture=function(){};"
+                "Element.prototype.releasePointerCapture=function(){}"
+            )
 
             # A first finger landing on a rendered edge must stay registered
             # until pointerup: otherwise the second finger cannot begin pinch.

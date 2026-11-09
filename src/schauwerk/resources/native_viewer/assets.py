@@ -2884,9 +2884,14 @@ viewport.addEventListener("pointerdown", (event) => {
 
   if (edge) {
     selectEdge(edge.dataset.sourceId || null);
-    // Preserve the first edge touch until pointerup: another finger touching
-    // the same SVG path must be able to start pinch on the active pointer pair.
     gesture = null;
+    if (event.pointerType !== "touch") {
+      // Mouse double-click must reach the edge, not a captured viewport.
+      activePointers.delete(event.pointerId);
+      try { viewport.releasePointerCapture(event.pointerId); } catch (_) { /* selection only */ }
+      releasePointerAutoFitIfIdle();
+    }
+    // Touch keeps its first pointer until pointerup so the second can pinch.
     return;
   }
   selectNode(null);
