@@ -65,6 +65,199 @@ def _schaubild_label_readability_proof() -> dict:
     return proof
 
 
+def _hybrid_preview_proof() -> dict:
+    """HTML/SVG hybrid candidate supersedes bytes it changed on top of the smart-edge proof."""
+    path = ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof.json"
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-html-svg-hybrid-preview-technical-proof.v1"
+    assert proof["scope"] == "technical-candidate-only"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    return proof
+
+
+
+def _hybrid_preview_followup_proof() -> dict:
+    """New source revisions must retain and extend, not rewrite, original proof."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-mode-switch-followup.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-html-svg-hybrid-followup-technical-proof.v1"
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/"
+        "technical-proof.json"
+    )
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_hybrid_preview.py",
+    }
+    successor_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-ui-regression-followup.json"
+    )
+    successor = json.loads(successor_path.read_text(encoding="utf-8"))
+    assert successor["schema_version"] == (
+        "schauwerk-html-svg-hybrid-ui-regression-followup-technical-proof.v1"
+    )
+    assert successor["status"] == "technical_candidate_only"
+    assert successor["predecessor"]["path"] == str(path.relative_to(ROOT))
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == successor["predecessor"]["sha256"]
+    assert set(successor["source_bindings"]) == set(proof["source_bindings"])
+    latest_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-narrow-safearea-followup.json"
+    )
+    latest = json.loads(latest_path.read_text(encoding="utf-8"))
+    assert latest["schema_version"] == (
+        "schauwerk-html-svg-hybrid-safearea-followup-technical-proof.v1"
+    )
+    assert latest["status"] == "technical_candidate_only"
+    assert latest["predecessor"]["path"] == str(successor_path.relative_to(ROOT))
+    assert hashlib.sha256(successor_path.read_bytes()).hexdigest() == (
+        latest["predecessor"]["sha256"]
+    )
+    assert set(successor["source_bindings"]) <= set(latest["source_bindings"])
+    assert set(latest["source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_hybrid_preview.py",
+        "tests/visual/test_native_viewer.py",
+        "tests/visual/test_native_viewer_product_ui.py",
+    }
+    final_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-preserve-baseline-followup.json"
+    )
+    final = json.loads(final_path.read_text(encoding="utf-8"))
+    assert final["schema_version"] == (
+        "schauwerk-html-svg-hybrid-preserve-baseline-followup-technical-proof.v1"
+    )
+    assert final["status"] == "technical_candidate_only"
+    assert final["predecessor"]["path"] == str(latest_path.relative_to(ROOT))
+    assert hashlib.sha256(latest_path.read_bytes()).hexdigest() == (
+        final["predecessor"]["sha256"]
+    )
+    assert set(final["source_bindings"]) == set(latest["source_bindings"])
+    accepted_path = (
+        ROOT / "docs/operators/evidence/schaubild-html-svg-hybrid-20261108"
+        / "technical-proof-final-ui-followup.json"
+    )
+    accepted = json.loads(accepted_path.read_text(encoding="utf-8"))
+    assert accepted["schema_version"] == (
+        "schauwerk-html-svg-hybrid-final-ui-followup-technical-proof.v1"
+    )
+    assert accepted["status"] == "technical_candidate_only"
+    assert accepted["predecessor"]["path"] == str(final_path.relative_to(ROOT))
+    assert hashlib.sha256(final_path.read_bytes()).hexdigest() == (
+        accepted["predecessor"]["sha256"]
+    )
+    assert set(accepted["source_bindings"]) == set(final["source_bindings"])
+    visual = accepted["validation"]["screenshot"]
+    assert hashlib.sha256((ROOT / visual["path"]).read_bytes()).hexdigest() == (
+        visual["sha256"]
+    )
+    return accepted
+
+
+
+def _offline_html_proof() -> dict:
+    """Offline HTML candidate binds exact changed sources, not old acceptance."""
+    path = ROOT / "docs/operators/evidence/schaubild-offline-html-20261108/technical-proof.json"
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-native-offline-html-export-technical-proof.v1"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    return proof
+
+
+
+
+def _offline_html_followup_proof() -> dict:
+    """Follow-up revisions remain bound to the unchanged original source proof."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-offline-html-20261108"
+        / "technical-proof-text-parity-followup.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-native-offline-html-followup-technical-proof.v1"
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-offline-html-20261108/"
+        "technical-proof.json"
+    )
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/visual/native_offline_html.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    return proof
+
+
+def _hybrid_offline_integration_proof() -> dict:
+    """Only two source files need a new digest after combining both branches."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-html-offline-integration-20261108"
+        / "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-html-svg-and-offline-integration-technical-proof.v1"
+    )
+    assert proof["status"] == "technical_candidate_only"
+    assert set(proof["predecessors"]) == {"hybrid", "offline"}
+    assert set(proof["source_bindings"]) == {
+        "Dockerfile", "src/schauwerk/visual/standalone_editor.py",
+    }
+    for predecessor in proof["predecessors"].values():
+        assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+            predecessor["sha256"]
+        )
+    for name, expected in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+    return proof
+
+def _offline_html_mobile_help_proof() -> dict:
+    """Bind the genuine mobile source correction without changing predecessor proofs."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-html-offline-integration-20261108"
+        / "technical-proof-mobile-help-followup.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-html-offline-mobile-help-followup-technical-proof.v1"
+    )
+    assert proof["status"] == "technical_candidate_only"
+    predecessor = proof["predecessor"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-html-offline-integration-20261108/"
+        "technical-proof.json"
+    )
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/resources/native_offline_html/assets.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    for name, expected in proof["source_bindings"].items():
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+    visual = proof["visual_readback"]
+    assert visual["status"] == "accepted_for_mobile_help_overflow_in_captured_chrome_corpus_only"
+    assert hashlib.sha256((ROOT / visual["path"]).read_bytes()).hexdigest() == (
+        visual["sha256"]
+    )
+    return proof
+
+
 EVIDENCE = ROOT / "docs/operators/evidence/sw013-schaufenster-20260711"
 HARDENING_EVIDENCE = ROOT / "docs/operators/evidence/infrastructure-hardening-20260904"
 CODEQL_TRIAGE_EVIDENCE = ROOT / "docs/operators/evidence/codeql-residual-triage-20260904"
@@ -14028,6 +14221,12 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **knowledge_map["source_bindings"],
         **history["source_bindings"],
         **_smart_edge_source_proof()["source_bindings"],
+        **_hybrid_preview_proof()["source_bindings"],
+        **_hybrid_preview_followup_proof()["source_bindings"],
+        **_offline_html_proof()["source_bindings"],
+        **_offline_html_followup_proof()["source_bindings"],
+        **_hybrid_offline_integration_proof()["source_bindings"],
+        **_offline_html_mobile_help_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14103,12 +14302,27 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert proof["visual_acceptance"] == "pending"
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    # The latest label source bytes supersede only the paths changed by this PR.
     label_successor = _schaubild_label_readability_proof()
+    hybrid = _hybrid_preview_proof()
+    hybrid_followup = _hybrid_preview_followup_proof()
+    offline = _offline_html_proof()
+    offline_followup = _offline_html_followup_proof()
+    combined = _hybrid_offline_integration_proof()
     for path, expected in proof["source_bindings"].items():
-        # The prior evidence is immutable; successor source bytes have a new
-        # exact digest and their own explicitly pending production acceptance.
-        current_expected = label_successor["source_bindings"].get(path, expected)
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == current_expected, path
+        if path in hybrid["source_bindings"]:
+            assert hybrid["base_source_bindings"][path] == expected, path
+            expected = hybrid_followup["source_bindings"].get(
+                path, hybrid["source_bindings"][path]
+            )
+        if path in offline["source_bindings"]:
+            assert offline["base_source_bindings"][path] == proof["source_bindings"][path]
+            expected = offline_followup["source_bindings"].get(
+                path, offline["source_bindings"][path]
+            )
+        expected = combined["source_bindings"].get(path, expected)
+        expected = label_successor["source_bindings"].get(path, expected)
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
         assert hashlib.sha256(path.read_bytes()).hexdigest() == predecessor["sha256"]
@@ -14122,3 +14336,78 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
     assert "schaubild-native-canvas-first-edit-history" in history["path"]
     oci = proof["historical_proofs_unchanged"][2]
     assert "schaubild-d2-oci" in oci["path"]
+
+
+def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None:
+    """The opt-in preview binds its exact bytes and claims no live or visual acceptance."""
+    proof = _hybrid_preview_proof()
+    followup = _hybrid_preview_followup_proof()
+    combined = _hybrid_offline_integration_proof()
+    smart = _smart_edge_source_proof()
+    assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
+    assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
+    for name, current in proof["source_bindings"].items():
+        effective = followup["source_bindings"].get(name, current)
+        effective = combined["source_bindings"].get(name, effective)
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
+        # Existing files continue exactly from the smart-edge candidate; new files start empty.
+        assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
+    assert {
+        name for name, base in proof["base_source_bindings"].items() if base is None
+    } == {
+        "src/schauwerk/resources/native_viewer/hybrid_preview.py",
+        "tests/visual/test_native_hybrid_preview.py",
+    }
+    assert proof["features"]["default_stays_native_svg"] is True
+    assert proof["features"]["existing_smart_edge_router_output_reused_no_new_routing"] is True
+    assert proof["visual_acceptance"] == "pending"
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    for claim in (
+        "runtime_deployed",
+        "browser_e2e_complete",
+        "html_text_wrapping_identical_to_native_svg",
+        "clipboard_transport_verified",
+        "html_vector_or_pdf_export",
+    ):
+        assert claim in proof["does_not_establish"]
+
+
+def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
+    """Offline HTML supersedes exact sources, without changing historical proofs."""
+    proof = _offline_html_proof()
+    followup = _offline_html_followup_proof()
+    combined = _hybrid_offline_integration_proof()
+    mobile = _offline_html_mobile_help_proof()
+    smart = _smart_edge_source_proof()
+    assert proof["base_revision"] == "9fd2363c262bb122597f273ebc21ce341455cd4a"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    predecessor = proof["predecessor_technical_proof"]
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    assert json.loads(prior_bytes)["evidence_digest"] == predecessor["evidence_digest"]
+    expected_paths = {
+        "Dockerfile",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "src/schauwerk/visual/standalone_editor.py",
+        "src/schauwerk/visual/native_offline_html.py",
+        "src/schauwerk/resources/native_offline_html/assets.py",
+        "src/schauwerk/resources/native_offline_html/__init__.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    assert set(proof["source_bindings"]) == expected_paths
+    assert set(proof["base_source_bindings"]) == expected_paths
+    for path, actual in proof["source_bindings"].items():
+        effective = followup["source_bindings"].get(path, actual)
+        effective = combined["source_bindings"].get(path, effective)
+        effective = mobile["source_bindings"].get(path, effective)
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
+        assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
+    assert proof["visual_acceptance"] == "pending"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "runtime_deployed" in proof["does_not_establish"]

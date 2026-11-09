@@ -1,0 +1,48 @@
+{
+  "schema_version": "schauwerk-html-svg-hybrid-ui-regression-followup-technical-proof.v1",
+  "repository": "heimgewebe/schauwerk",
+  "pr": 235,
+  "branch": "feat/schaubild-html-svg-hybrid-h1-20261108",
+  "predecessor": {
+    "path": "docs/operators/evidence/schaubild-html-svg-hybrid-20261108/technical-proof-mode-switch-followup.json",
+    "sha256": "5b23f7b2c5b95f38207c86cfcfd00fefa94719de6f26c0cc5069b1637243ed08"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "1a420bc7b2b3f62c67d163cfa029e1b9e59cfd3966bdd72616129f9b61babb5d",
+    "tests/visual/test_native_hybrid_preview.py": "aa764fe1ad6e921c3aaca1e00bf602dc605a09db3742b68c6d5274a480cfa3a1"
+  },
+  "observed_ci_failures": [
+    "Native viewer baseline CSS contracts required .edit-menu { selector; combined CSS selector broke string contract.",
+    "At 844x390, artificial label collision was positioned underneath the top view-control toolbar."
+  ],
+  "repair": [
+    "Share the existing .edit-menu class with .view-mode-menu; no duplicate styles.",
+    "Retain foreign-node overlap test, use blocker node outside the persistent toolbar for a meaningful visible hit-test."
+  ],
+  "validation": {
+    "hybrid_chrome_tests": "15 passed",
+    "native_viewer_product_ui": "1 passed",
+    "ruff": "passed",
+    "tested_viewports": [
+      [
+        1120,
+        850
+      ],
+      [
+        844,
+        390
+      ],
+      [
+        500,
+        760
+      ]
+    ]
+  },
+  "status": "technical_candidate_only",
+  "does_not_establish": [
+    "physical_ipad_acceptance",
+    "production_visual_acceptance",
+    "commonthing_deployment",
+    "source_commit_release"
+  ]
+}

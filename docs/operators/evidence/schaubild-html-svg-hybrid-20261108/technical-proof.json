@@ -1,0 +1,76 @@
+{
+  "base_revision": "9fd2363c262bb122597f273ebc21ce341455cd4a",
+  "base_source_bindings": {
+    "Dockerfile": "6f98c4c2858f03c683eae87e5c5f2c862600a8e6761eaa69e28c80983aa84f43",
+    "src/schauwerk/resources/native_viewer/assets.py": "5118023a59608794e0b3ad11563578f1396850b8e0dec48f368938f48f298a47",
+    "src/schauwerk/resources/native_viewer/hybrid_preview.py": null,
+    "src/schauwerk/visual/native_viewer.py": "10a091b58bac9753f4d35c42f5cefe928481a7451f66435e8b828de8dcfd5fb2",
+    "src/schauwerk/visual/standalone_editor.py": "88cc300a41e62a042bd9172442d094515ef4ef0b166b8a1e3f457b01be324256",
+    "tests/visual/test_native_history_contract.py": "70190eb65a997dfec755999a7b6584d4fce8aea08d96a6ac1023244a23e12ff2",
+    "tests/visual/test_native_hybrid_preview.py": null,
+    "tests/visual/test_native_viewer.py": "2a5402f738bfc9e241abf2e5fe10c0ab044053cc3c835c5f35900e77d49a185a"
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "runtime_deployed",
+    "browser_e2e_complete",
+    "production_release_or_rollback_proven",
+    "html_text_wrapping_identical_to_native_svg",
+    "clipboard_transport_verified",
+    "html_vector_or_pdf_export",
+    "representation_input_hybrid_support"
+  ],
+  "evidence_digest": "92117f5d6a46eafe752ddf6ef9e434f67a8894f2734cea5e0f938f9b7ee2be1b",
+  "features": {
+    "back_to_native_restores_previous_mode": true,
+    "default_stays_native_svg": true,
+    "edge_label_chips_above_all_node_layers": true,
+    "existing_smart_edge_router_output_reused_no_new_routing": true,
+    "html_dom_node_text_and_edge_label_chips": true,
+    "json_canvas_documents_only": true,
+    "mutation_locked_via_view_only_mode_and_toggle_disabled": true,
+    "native_svg_export_bytes_unchanged": true,
+    "opt_in_button_labelled_preview": true,
+    "representation_inputs_not_offered": true,
+    "same_css_transform_as_svg_canvas": true,
+    "selection_by_double_click_for_node_and_label_text": true,
+    "svg_curves_arrows_unchanged_and_below": true,
+    "text_via_textcontent_only_no_markup_sink": true,
+    "viewer_module_bundled_and_hosted_file_list_admitted": true
+  },
+  "predecessor_technical_proof": {
+    "evidence_digest": "518986cd0a629d4e1451821ab1e110ce00417b26d5f350a469be3c37db1bda63",
+    "path": "docs/operators/evidence/schaubild-smart-edge-routing-20261107/technical-proof-simple-label-viewbox-20261108.json",
+    "sha256": "b32d70f7783e896a3035fe2b4b8046f9142af845885e122505fdad9d844b9133"
+  },
+  "schema_version": "schauwerk-html-svg-hybrid-preview-technical-proof.v1",
+  "scope": "technical-candidate-only",
+  "source_bindings": {
+    "Dockerfile": "a11b5eecbad2dc5d3f6b77acc557750df7aa0ec6fe6a78112fcee6dff0270349",
+    "src/schauwerk/resources/native_viewer/assets.py": "fa62e5aec5f8c4d5cf87f8ff4fcad7887f8b77a8c756925136dc10643ad7b3bb",
+    "src/schauwerk/resources/native_viewer/hybrid_preview.py": "ee0c4ed0b9a6be43d8d9c9c5ecf9cfdf4aa1ddca3053d1ac1809f45d070d26d3",
+    "src/schauwerk/visual/native_viewer.py": "1c64a8bd465aa295791e7e84e4cb259a6bc4b41a1ce4402fed7d7b285a0301f8",
+    "src/schauwerk/visual/standalone_editor.py": "cd2a652fca112c5be938f36d9edb2c6d29251b5b92d0e95f21214ace8b18a26d",
+    "tests/visual/test_native_history_contract.py": "179edf89a443a2b97833ac33d8790a8787ca9e6e0c2f69e7405f07fcd87a7027",
+    "tests/visual/test_native_hybrid_preview.py": "8ff8d61bb897ec6a49be14110a04c7c78db10622fc30b23b5313dca5a8546e52",
+    "tests/visual/test_native_viewer.py": "eba5d42c3fee4793f788e4aa099b9d2365e5761ba1711873900fb7a05a187a3d"
+  },
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "baseline_unrelated_environment_failures": 56,
+    "commonthing_live_editor": "not_deployed",
+    "consumer_runtime": "not_integrated",
+    "cross_browser_visual_acceptance": "pending",
+    "full_ci": "pending_exact_head",
+    "real_chrome_hosted_iframe_smart_and_simple": "passed_local_working_tree",
+    "real_chrome_representation_input_button_hidden": "passed_local_working_tree",
+    "real_chrome_standalone_smart_and_simple": "passed_local_working_tree",
+    "tests_mutation_checked_innerhtml_offset_zorder_lock": true,
+    "viewer_document_run_under_production_csp": true,
+    "visual_screenshot_native_vs_hybrid_inspected": true
+  },
+  "visual_acceptance": "pending",
+  "working_tree_state": "committed_candidate_bound_by_file_digest"
+}
