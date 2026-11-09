@@ -307,8 +307,29 @@ def route_edge(
             return (x0, y0 - rail_before, x1, y1 + rail_after)
         return (x0 - rail_before, y0, x1 + rail_after, y1)
 
-    blocking=[rail_blocker(n) for n in nodes
-              if n["id"] not in {src_id,tgt_id} and n.get("type") != "group"]
+    # Rail padding is virtual separation, not a physical obstruction.
+    # A manually selected port keeps its original physically clear stub.
+    stub=max(22.0,clearance+10.0)
+    fixed_stubs=[]
+    if from_side is not None:
+        start=_side_anchor(source,from_side,lane,max_lane)
+        fixed_stubs.append((start,_add(start,NORMALS[from_side],stub)))
+    if to_side is not None:
+        end=_side_anchor(target,to_side,lane,max_lane)
+        fixed_stubs.append((_add(end,NORMALS[to_side],stub),end))
+    blocking=[]
+    for node in nodes:
+        if node["id"] in {src_id,tgt_id} or node.get("type") == "group":
+            continue
+        physical=_rect(node,clearance)
+        reserved=rail_blocker(node)
+        blocking.append(
+            physical
+            if any(
+                _clear(a,b,(physical,)) and not _clear(a,b,(reserved,))
+                for a,b in fixed_stubs
+            ) else reserved
+        )
     # Source and target rectangles prevent a computed detour from re-entering
     # either endpoint.  The first/last 22px stubs are handled independently.
     source_box=_rect(source,clearance*0.6)
@@ -316,7 +337,6 @@ def route_edge(
     all_boxes=tuple(blocking)+(source_box,target_box)
     source_sides=PORTS if from_side is None else (from_side,)
     target_sides=PORTS if to_side is None else (to_side,)
-    stub=max(22.0,clearance+10.0)
     candidates=[]
     for si,ss in enumerate(source_sides):
         start=_side_anchor(source,ss,lane,max_lane)

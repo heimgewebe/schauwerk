@@ -861,3 +861,42 @@ console.log(JSON.stringify({visible:true,unchangedPan:true,pathReads}));
     assert json.loads(result.stdout) == {
         "visible": True, "unchangedPan": True, "pathReads": 0,
     }
+
+
+def test_manual_fixed_port_stub_keeps_python_browser_geometry_parity(
+    tmp_path: Path,
+) -> None:
+    """Codex-P2: a virtual rail may not erase a clear manually chosen port."""
+    node_runtime = shutil.which("node")
+    if not node_runtime:
+        pytest.skip("Node unavailable for browser router parity")
+    a = {"id": "a", "type": "text", "x": 0, "y": 0,
+         "width": 100, "height": 80}
+    b = {"id": "b", "type": "text", "x": 400, "y": 0,
+         "width": 100, "height": 80}
+    near = {"id": "near", "type": "text", "x": 110, "y": 65,
+            "width": 100, "height": 80}
+    nodes = [a, b, near]
+    js_module = tmp_path / "smart-router.mjs"
+    js_module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    runner = tmp_path / "verify.mjs"
+    runner.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes = {json.dumps(nodes)};\n"
+        'console.log(JSON.stringify(smartEdgeGeometry(nodes[0], nodes[1],'
+        ' nodes, {lane:-9,maxLane:9,fromSide:"right",toSide:"left"})));\n',
+        encoding="utf-8",
+    )
+    outcome = subprocess.run(
+        [node_runtime, str(runner)], capture_output=True, text=True,
+        timeout=12, check=True,
+    )
+    browser = json.loads(outcome.stdout)
+    python = route_edge(
+        a, b, nodes, lane=-9, max_lane=9,
+        from_side="right", to_side="left",
+    )
+    assert python is not None and python.collision_free
+    assert browser is not None and browser["collisionFree"]
+    assert browser["path"] == python.path
+    assert (browser["fromSide"], browser["toSide"]) == ("right", "left")

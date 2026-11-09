@@ -17,7 +17,7 @@
     "production_browser_e2e_at_successor_source",
     "physical_ipad_safari_acceptance"
   ],
-  "evidence_digest": "6a7c4a5a14548be0c0d2d2c2d98ee32d62d58b3bae98d2c223d3a58f660d40f7",
+  "evidence_digest": "ef47e08ed7a16eb879274b5ce7f55801580b65cbc26a90ab266dc5f9e6b672e1",
   "historical_predecessor": {
     "evidence_digest": "79354b517cd457e658b96eb907df8bcf78ef8eced30bd493bfec707efb0d2d42",
     "path": "docs/operators/evidence/schaubild-touch-pinch-20261109/technical-proof.json",
@@ -25,17 +25,29 @@
   },
   "schema_version": "schauwerk-schaubild-reciprocal-edge-rails-source-successor.v1",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/smart_router.py": "9c082059af8d603146adf296a141b7484cc0d7767e63d72f8d1ecd33674b8e1b",
-    "src/schauwerk/visual/native_canvas_smart_router.py": "f57b06a5e1602ef3b031bddfcd0121014ac82cb8450fbc3a8879288ab45845d9",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "165b17ad2509990727b0f9ce945035500cbcad87a5fbc893749a7328fecb5ac3",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "681d395342ae605c95100e995ee24c182bf49137cfac3a01da3a62b684dd74e0",
     "tests/visual/test_native_canvas_smart_browser.py": "fd3b87109c5cd5ffe7bfc72ca90204751f460726046b0c5b304b366d7ce34657",
-    "tests/visual/test_native_canvas_smart_integration.py": "d31c8d0da15c59c2f7a7b7b30f57004a063ead566c1668416b1a6a7e2deb59ea",
-    "tests/visual/test_native_canvas_smart_router.py": "dcb4e97c6910128964022307e2ec216aa2c602cb9198d9706864e4e4adf3c2e8"
+    "tests/visual/test_native_canvas_smart_integration.py": "19b7ec7dc159a008217c3665b1ec5b39a456faeba13e941a4901433157846aee",
+    "tests/visual/test_native_canvas_smart_router.py": "ca1c9fdc4175fbe8ae26485ccc6dde09bc6d960762630296393f1db283692e6d"
   },
   "source_branch": "fix/schaubild-smart-reciprocal-rails-20261109",
   "source_pr": 241,
   "source_repository": "heimgewebe/schauwerk",
   "status": "technical_candidate_only",
   "validation": {
+    "codex_review_p2_fixed_port": {
+      "baseline_ef84bdda_fixed_right_left": "clear_route",
+      "material_finding_remaining": false,
+      "post_fix_browser_javascript_parity": "passed",
+      "post_fix_existing_chrome_reciprocal_selection": "passed",
+      "post_fix_python_fixed_stubs": "passed",
+      "post_fix_real_obstacle_still_blocked": "passed",
+      "pre_fix_b5506f_fixed_right_left": "routing_conflict_without_physical_obstruction",
+      "review_comment_id": 4517016653,
+      "review_commit": "b5506f430a83fa2e1650306e3fe4b64e08d81d4c",
+      "status": "reproduced_and_fixed_candidate"
+    },
     "consumer_runtime": "not_integrated",
     "github_required_ci": "pending_exact_head",
     "isolated_green": {

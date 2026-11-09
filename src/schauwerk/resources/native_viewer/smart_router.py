@@ -192,20 +192,36 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   ) >= Math.abs(
     source.y + source.height / 2 - target.y - target.height / 2
   );
+  // Preserve physically clear explicitly chosen endpoint stubs even when
+  // a virtual rail would otherwise cover them; keep actual blockers binding.
+  const stub = Math.max(22, clearance + 10);
+  const fixedStubs = [];
+  if (fromSide !== null) {
+    const start = sideAnchor(source, fromSide, lane, maxLane);
+    fixedStubs.push([start, add(start, NORMALS[fromSide], stub)]);
+  }
+  if (toSide !== null) {
+    const end = sideAnchor(target, toSide, lane, maxLane);
+    fixedStubs.push([add(end, NORMALS[toSide], stub), end]);
+  }
   const blocking = nodes.filter(n =>
     n.id !== source.id && n.id !== target.id && n.type !== "group"
   ).map(n => {
-    const [x0, y0, x1, y1] = rect(n, clearance);
-    return horizontal
+    const physical = rect(n, clearance);
+    const [x0, y0, x1, y1] = physical;
+    const reserved = horizontal
       ? [x0, y0 - railBefore, x1, y1 + railAfter]
       : [x0 - railBefore, y0, x1 + railAfter, y1];
+    return fixedStubs.some(([a, b]) =>
+      clear(a, b, [physical]) && !clear(a, b, [reserved]))
+      ? physical : reserved;
   });
   const sourceBox = rect(source, clearance * 0.6);
   const targetBox = rect(target, clearance * 0.6);
   const allBoxes = [...blocking, sourceBox, targetBox];
   const sourceSides = fromSide === null ? PORTS : [fromSide];
   const targetSides = toSide === null ? PORTS : [toSide];
-  const stub = Math.max(22, clearance + 10), candidates = [];
+  const candidates = [];
   sourceSides.forEach((ss, si) => {
     const start = sideAnchor(source, ss, lane, maxLane);
     const ex = add(start, NORMALS[ss], stub);

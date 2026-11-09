@@ -195,3 +195,27 @@ def test_four_parallel_obstacle_detours_keep_distinct_rails():
         high - low >= 22.0
         for low, high in zip(sorted(y_positions), sorted(y_positions)[1:])
     )
+
+
+def test_fixed_port_stub_uses_physical_clearance_not_transverse_rail():
+    """A cosmetic sibling rail must not block a valid manually chosen port."""
+    a = node("a", 0, 0)
+    b = node("b", 400, 0)
+    near = node("near", 110, 65)
+    # P2 Codex fixture: old source has a valid y=31 fixed-right-to-left
+    # connection; the new 24px virtual rail shadow made it return None.
+    route = route_edge(
+        a, b, [a, b, near], lane=-9.0, max_lane=9.0,
+        from_side="right", to_side="left",
+    )
+    assert route is not None and route.collision_free
+    assert (route.from_side, route.to_side) == ("right", "left")
+    assert route.points[0] == (100.0, 31.0)
+    assert route.points[-1] == (400.0, 31.0)
+
+    # Actual node clearance remains binding even with an explicit port.
+    intruder = node("intruder", 110, 20)
+    assert route_edge(
+        a, b, [a, b, intruder], lane=-9.0, max_lane=9.0,
+        from_side="right", to_side="left",
+    ) is None
