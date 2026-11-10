@@ -1,0 +1,31 @@
+{
+  "base_revision": "db4f7ccf59ee87ce81359d8607958d7e2afe4509",
+  "base_source_bindings": {
+    "src/schauwerk/resources/standalone_editor/representation_editor.py": "ea46793c6ae82f4f5a7eac73221916c3356e677ef4dee3f1f7eaed2f5b5e586c",
+    "tests/visual/test_representation_editor_model.py": "ba1dbf1ccec11751586b59fbc38ab75a3e710454b690a739eafc0622fdd3c99e"
+  },
+  "change": "Restore keyboard focus after adding and deleting groups, nodes, and edges in the canonical Schaubild structure editor.",
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "production_deployment",
+    "commonthing_live_function",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "7bb12f67380558e7c641f9ba0da8d0d9dbb8ea26a809194359f3b4eb05de9314",
+  "schema_version": "schauwerk-schaubild-representation-keyboard-focus-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/representation_editor.py": "5ab43a8e8ad03dbcf28c0169619ad40eedf3d2beddd64f7a03a15661b9e15ce4",
+    "tests/visual/test_representation_editor_model.py": "b378f510de719b215302e557ea6748eeaadcaccafaadf5eeae37fa7b308cc9f6"
+  },
+  "source_branch": "fix/representation-form-keyboard-focus-20261110",
+  "source_pr": 242,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "chrome_browser_editor_focus": true,
+    "focused_pytest_passed": 21,
+    "github_validate": "initial_historical_hash_conflict",
+    "live_deployment": "not_performed",
+    "node_model_and_backend_roundtrip": true
+  }
+}

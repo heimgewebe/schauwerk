@@ -14373,6 +14373,32 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     assert history["validation"][
         "local_chromium_rebuild_retry_after_native_startup_ack_two_viewports_passed"
     ] is True
+    # The keyboard focus repair supersedes the two active form files only.
+    # Historical knowledge-map evidence remains immutable and is not deployed.
+    focus_proof_path = (
+        ROOT / "docs/operators/evidence"
+        / "schaubild-representation-keyboard-focus-20261110/technical-proof.json"
+    )
+    focus_proof = json.loads(focus_proof_path.read_text(encoding="utf-8"))
+    assert focus_proof["schema_version"] == (
+        "schauwerk-schaubild-representation-keyboard-focus-source-successor.v1"
+    )
+    assert focus_proof["source_repository"] == "heimgewebe/schauwerk"
+    assert focus_proof["base_revision"] == "db4f7ccf59ee87ce81359d8607958d7e2afe4509"
+    assert focus_proof["source_pr"] == 242
+    assert focus_proof["status"] == "technical_candidate_only"
+    assert focus_proof["evidence_digest"] == digest_mapping(focus_proof, "evidence_digest")
+    focus_paths = {
+        "src/schauwerk/resources/standalone_editor/representation_editor.py",
+        "tests/visual/test_representation_editor_model.py",
+    }
+    assert set(focus_proof["base_source_bindings"]) == focus_paths
+    assert set(focus_proof["source_bindings"]) == focus_paths
+    for name, digest in focus_proof["source_bindings"].items():
+        assert focus_proof["base_source_bindings"][name] == knowledge_map["source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    assert focus_proof["validation"]["focused_pytest_passed"] == 21
+    assert "production_deployment" in focus_proof["does_not_establish"]
     for name, sha in knowledge_map["source_bindings"].items():
         if name == retry_test:
             continue
@@ -14381,6 +14407,8 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         # binds current bytes independently in its dedicated exact-source test.
         if name in current_proof["source_bindings"]:
             assert sha == current_proof["base_source_bindings"][name]
+        elif name in focus_proof["source_bindings"]:
+            assert sha == focus_proof["base_source_bindings"][name]
         else:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == sha
 
@@ -14405,6 +14433,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         pinch_successor["ci_readiness_successor"]["path"]: (
             pinch_successor["ci_readiness_successor"]["source_sha256"]
         ),
+        **focus_proof["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
