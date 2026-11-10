@@ -16,7 +16,7 @@
     "consumer_image_digests",
     "safety_of_arbitrary_user_inputs"
   ],
-  "evidence_digest": "10012baf38976f43c853037677bd2ffae16babc8ef6cd862e31d31bedc977b38",
+  "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
   "generated_at": "2026-11-10T18:35:58.024716Z",
   "historical_predecessor": {
     "evidence_digest": "39e43b0ededecba332d256404ba38bc0f30f80ce50eebb904727b0c238523d25",
@@ -26,10 +26,10 @@
   "schema_version": "schauwerk-schaubild-crossing-aware-source-successor.v1",
   "source_bindings": {
     "src/schauwerk/resources/native_viewer/assets.py": "a6a6b07c989323be626c5d15be4109c9fe9c2c4c018b391e1f633d2faebf2f66",
-    "src/schauwerk/resources/native_viewer/smart_router.py": "91a0b80d6588fb3f760af27645c7828789d82996fcbabf7a0460103a55c38dc3",
-    "src/schauwerk/visual/native_canvas_smart_router.py": "a1d4a80a8137b3b7b13c86de5bdf3b963e7f6461288bb9b8b7c32bcac84bed7d",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "1bc80de13456d29bdc76cda8b48a1079e4e49ff8c3d3a3ecc1ccf95766eba34a",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "5d9876a10843d7c1a9e0b96c3fb8c1e86e7501b0edc6f360619f718ad8c97a49",
     "src/schauwerk/visual/native_diagram.py": "c104411dc7b57e6f92d39520609cc77c0948cd9d890fdab702ae27d1fc11570f",
-    "tests/visual/test_native_canvas_smart_integration.py": "e9e39a29ce5ae8d66900fd7074a84bf44b29a17778e8f4b54b470baff36c8549",
+    "tests/visual/test_native_canvas_smart_integration.py": "d0bb0f704aacca1d9363de034106195013f6eab21a2cc827a101e736e02136f9",
     "tests/visual/test_native_offline_html.py": "6103566cfc00b797ed32b31b9e154f1ed05c098b5bd491dd6fb4034c8707f248"
   },
   "source_pr": 243,
@@ -38,6 +38,7 @@
   "validation": {
     "ci_validate": "pending_exact_head",
     "consumer_runtime": "not_integrated",
+    "crossing_penalty_units": 100,
     "historical_reference_sources_unchanged": true,
     "local_browser_svg_ab": {
       "candidate": "unreleased",
@@ -49,16 +50,22 @@
     "measured_20_nodes_40_edges": {
       "baseline_crossings": 161,
       "baseline_path_length": 21812.7,
-      "candidate_crossings": 76,
-      "candidate_path_length": 22486.1
+      "candidate_crossings": 70,
+      "candidate_path_length": 22690.2
     },
     "measured_dense_48_nodes_256_edges": {
-      "limited_prior4_seconds": 7.11,
+      "limited_prior4_seconds": 8.269,
       "no_conflicts": true,
-      "unweighted_seconds": 4.47
+      "unweighted_seconds": 5.195
     },
     "offline_html_drag_readiness_local_chromium": "passed",
+    "port_candidate_crossing_review_finding": "reproduced_and_fixed_with_python_javascript_parity",
     "python_javascript_geometry_parity": "passed",
+    "review_counterexample": {
+      "automatic_port_crossing_after": 0,
+      "automatic_port_crossing_before": 1,
+      "manual_ports_remain_respected": true
+    },
     "smart_obstacle_collision_regressions": "passed"
   },
   "visual_acceptance": "not_inherited"

@@ -262,7 +262,7 @@ def _weight_crossings(
         for j, length in neighbors:
             key = (min(i,j),max(i,j))
             if key not in weights:
-                weights[key] = 130.0*sum(
+                weights[key] = 100.0*sum(
                     _strict_segment_cross(vertices[i],vertices[j],a,b)
                     for a,b in segments
                 )
@@ -467,7 +467,15 @@ def route_edge(
             length=sum(_distance(a,b) for a,b in zip(poly,poly[1:]))
             turn_count=sum(abs((b[0]-a[0])*(c[1]-b[1])-(b[1]-a[1])*(c[0]-b[0]))>1e-3
                            for a,b,c in zip(poly,poly[1:],poly[2:]))
-            score=length+turn_count*3.0
+            # Dijkstra already penalizes crossings within each candidate.
+            # Port selection must score the same objective, including stubs,
+            # or an automatic port pair can reinstate avoidable crossings.
+            crossing_count=sum(
+                _strict_segment_cross(a,b,c,d)
+                for a,b in zip(poly,poly[1:])
+                for c,d in crossing_segments
+            )
+            score=length+turn_count*3.0+crossing_count*100.0
             if best is None or (score,si,ti)<best[0]:
                 best=((score,si,ti),ss,ts,poly)
         return best

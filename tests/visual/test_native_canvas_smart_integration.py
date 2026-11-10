@@ -1086,3 +1086,59 @@ def test_dense_documents_bound_prior_edge_context_in_renderer_and_viewer(
     assert 'data-route-points="' in dense_svg
     # Native editor and standalone browser must apply the same context bound.
     assert "edges.size > 64 ? -4 : -12" in ASSETS["app.js"]
+
+def test_automatic_ports_rank_crossing_weighted_candidates_with_js_parity(
+    tmp_path: Path,
+) -> None:
+    """A shorter crossing candidate must not beat a cheap clear port pair."""
+    coords = ((506,409),(249,151),(671,5),(109,435))
+    nodes = [
+        {"id": f"n{i}", "type": "text", "text": f"N{i}", "x": x, "y": y,
+         "width": 70, "height": 50}
+        for i,(x,y) in enumerate(coords)
+    ]
+    first = route_edge(nodes[0],nodes[1],nodes)
+    assert first is not None and first.collision_free
+    previous = [{"from": "n0", "to": "n1", "points": first.points}]
+    auto = route_edge(nodes[2],nodes[3],nodes,prior_routes=previous)
+    forced = route_edge(
+        nodes[2],nodes[3],nodes,prior_routes=previous,
+        from_side="bottom",to_side="right",
+    )
+    assert auto is not None and forced is not None
+    assert (auto.from_side,auto.to_side)==("left","top")
+    assert _strict_crossings(first,auto)==0
+    assert _strict_crossings(first,forced)==1
+    assert (forced.from_side,forced.to_side)==("bottom","right")
+    assert _poly_length(auto) < _poly_length(forced)+100
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js unavailable for crossing-weighted ports")
+    module = tmp_path/"smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    runner = tmp_path/"crossing-ports.mjs"
+    runner.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes={json.dumps(nodes)};\n"
+        'const first=smartEdgeGeometry(nodes[0],nodes[1],nodes);\n'
+        'const priorRoutes=[{from:"n0",to:"n1",points:first.points}];\n'
+        'console.log(JSON.stringify({\n'
+        ' auto:smartEdgeGeometry(nodes[2],nodes[3],nodes,{priorRoutes}),\n'
+        ' forced:smartEdgeGeometry(nodes[2],nodes[3],nodes,\n'
+        '  {priorRoutes,fromSide:"bottom",toSide:"right"})\n'
+        '}));\n',
+        encoding="utf-8",
+    )
+    output=subprocess.run(
+        [node,str(runner)],check=True,capture_output=True,text=True,timeout=15,
+    )
+    pair=json.loads(output.stdout)
+    for kind,route in (("auto",auto),("forced",forced)):
+        candidate=pair[kind]
+        assert candidate is not None and candidate["collisionFree"]
+        assert candidate["path"]==route.path
+        assert candidate["points"]==[list(p) for p in route.points]
+        assert (candidate["fromSide"],candidate["toSide"])==(
+            route.from_side,route.to_side
+        )
