@@ -215,6 +215,62 @@ def _label_position(points: tuple[Point,...]) -> Point:
     return points[-1]
 
 
+def _strict_segment_cross(a: Point, b: Point, c: Point, d: Point) -> bool:
+    """Count only actual interior crossings, never touching ports/collinear rails."""
+    # Strict crossings can include horizontal or vertical segments, so
+    # bounding boxes reject only disjoint intervals, not equal endpoints.
+    if (max(min(a[0],b[0]),min(c[0],d[0])) >
+            min(max(a[0],b[0]),max(c[0],d[0]))
+            or max(min(a[1],b[1]),min(c[1],d[1])) >
+            min(max(a[1],b[1]),max(c[1],d[1]))):
+        return False
+    def orient(p: Point, q: Point, r: Point) -> float:
+        return (q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0])
+    return (orient(a,b,c)*orient(a,b,d)<-1e-5 and
+            orient(c,d,a)*orient(c,d,b)<-1e-5)
+
+
+def _prior_crossing_segments(
+    prior_routes: Sequence[Mapping[str, Any]],
+    source_id: str, target_id: str,
+) -> tuple[tuple[Point, Point], ...]:
+    segments: list[tuple[Point, Point]] = []
+    for route in prior_routes[-12:]:
+        if {str(route["from"]), str(route["to"])} & {source_id, target_id}:
+            continue
+        points = route["points"]
+        for a, b in zip(points, points[1:]):
+            segments.append((a,b))
+            if len(segments)>=48:
+                return tuple(segments)
+    return tuple(segments)
+
+
+def _weight_crossings(
+    graph: Sequence[Sequence[tuple[int, float]]],
+    vertices: Sequence[Point],
+    segments: Sequence[tuple[Point, Point]],
+) -> Sequence[Sequence[tuple[int, float]]]:
+    if not segments:
+        return graph
+    # A visibility-graph edge is present in both adjacency lists; score
+    # its undirected geometry only once per fresh route search.
+    weights: dict[tuple[int,int],float] = {}
+    result = []
+    for i, neighbors in enumerate(graph):
+        row = []
+        for j, length in neighbors:
+            key = (min(i,j),max(i,j))
+            if key not in weights:
+                weights[key] = 130.0*sum(
+                    _strict_segment_cross(vertices[i],vertices[j],a,b)
+                    for a,b in segments
+                )
+            row.append((j,length+weights[key]))
+        result.append(row)
+    return result
+
+
 def _build_graph(
     vertices: Sequence[Point], obstacles: Sequence[Rect]
 ) -> list[list[tuple[int, float]]]:
@@ -264,6 +320,7 @@ def route_edge(
     from_side: str | None = None, to_side: str | None = None,
     lane: float = 0.0, clearance: float = 12.0,
     max_blockers: int = 24, max_lane: float | None = None,
+    prior_routes: Sequence[Mapping[str, Any]] = (),
     _reserve_visual_rails: bool = True,
 ) -> SmartEdgeRoute | None:
     """Plan a short obstacle-free path, selecting 4-sided ports when unspecified.
@@ -323,7 +380,8 @@ def route_edge(
         return route_edge(
             source,target,nodes,from_side=from_side,to_side=to_side,
             lane=lane,clearance=clearance,max_blockers=max_blockers,
-            max_lane=max_lane,_reserve_visual_rails=False,
+            max_lane=max_lane,prior_routes=prior_routes,
+            _reserve_visual_rails=False,
         )
 
     # Source and target rectangles prevent a computed detour from re-entering
@@ -378,6 +436,7 @@ def route_edge(
         )
         unique=movable[:max(0,max_blockers-2)]+[source_box,target_box]
     unique.sort()
+    crossing_segments=_prior_crossing_segments(prior_routes,str(src_id),str(tgt_id))
     vertices=[]
     vertex_index={}
     def add_vertex(p:Point)->int:
@@ -415,9 +474,9 @@ def route_edge(
     # Build the small local visibility graph first, but certify the resulting
     # route against *all* obstacles. An unsuccessful limited attempt retries
     # the complete graph to avoid false conflicts in crowded diagrams.
-    best=best_route(_build_graph(vertices,unique))
+    best=best_route(_weight_crossings(_build_graph(vertices,unique),vertices,crossing_segments))
     if best is None and len(unique)!=len(all_boxes):
-        best=best_route(_build_graph(vertices,all_boxes))
+        best=best_route(_weight_crossings(_build_graph(vertices,all_boxes),vertices,crossing_segments))
     if best is None:
         return retry_physical()
     _,ss,ts,poly=best
