@@ -267,3 +267,122 @@ try {
     ], capture_output=True, text=True, timeout=24, check=False)
     assert result.returncode == 0, result.stderr[-1000:]
     assert 'data-overlay-export-regression="pass"' in result.stdout, result.stdout[:2000]
+
+
+def test_reciprocal_edge_hit_paths_remain_selectable_in_chrome(
+    tmp_path: Path,
+) -> None:
+    """Real DOM hit-testing must reach both obstacle-routed reciprocal edges."""
+    chrome = shutil.which("google-chrome") or shutil.which("google-chrome-stable")
+    if not chrome:
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            pytest.fail("Chrome required for reciprocal Canvas edge hit acceptance")
+        pytest.skip("Chrome unavailable")
+    source = {
+        "nodes": [
+            {"id": "a", "type": "text", "x": 40, "y": 80,
+             "width": 220, "height": 120, "text": "Quelle"},
+            {"id": "b", "type": "text", "x": 590, "y": 80,
+             "width": 220, "height": 120, "text": "Ziel"},
+            {"id": "middle", "type": "text", "x": 310, "y": 50,
+             "width": 200, "height": 200, "text": "Hindernis"},
+        ],
+        "edges": [
+            {"id": "out", "fromNode": "a", "toNode": "b", "label": "Hinweg"},
+            {"id": "back", "fromNode": "b", "toNode": "a", "label": "Rückweg"},
+        ],
+        "schauwerk": {"edgeRouting": "smart"},
+    }
+    output = tmp_path / "viewer"
+    build_native_viewer(json_canvas_to_editing_document(source), output)
+    index = output / "index.html"
+    module_marker = '<script type="module" src="app.js"></script>'
+    html = index.read_text(encoding="utf-8")
+    assert html.count(module_marker) == 1
+    index.write_text(html.replace(
+        module_marker,
+        '<script>Element.prototype.setPointerCapture = function() {};'
+        'Element.prototype.releasePointerCapture = function() {};</script>'
+        + module_marker,
+    ), encoding="utf-8")
+    host = r"""<!doctype html><html><body style="margin:0">
+<iframe id="viewer" style="display:block;width:100vw;height:100vh;border:0"></iframe>
+<script>
+const frame = document.getElementById("viewer");
+const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+(async () => {
+  try {
+    let d;
+    for (let i = 0; i < 150; i++) {
+      d = frame.contentDocument;
+      if (d?.readyState === "complete" &&
+          d.querySelectorAll("path.native-edge-hit").length === 2) break;
+      await pause(25);
+    }
+    if (!d?.querySelector("path.native-edge-hit"))
+      throw new Error("native viewer did not become ready");
+    for (const edgeId of ["out", "back"]) {
+      const edge = d.querySelector('[data-source-kind="edge"][data-source-id="' + edgeId + '"]');
+      const path = edge?.querySelector("path.native-edge-hit");
+      if (!path) throw new Error("edge has no hit path: " + edgeId);
+      const total = path.getTotalLength();
+      const hittable = [];
+      for (let i = 1; i < 50; i++) {
+        const point = path.getPointAtLength(total * i / 50).matrixTransform(
+          path.getScreenCTM()
+        );
+        const actual = d.elementFromPoint(point.x, point.y);
+        if (actual === path) hittable.push(point);
+      }
+      if (hittable.length < 2) {
+        throw new Error("reciprocal edge covered by sibling hit path: " +
+          edgeId + " reachable=" + hittable.length);
+      }
+      const hit = hittable[Math.floor(hittable.length / 2)];
+      for (const type of ["pointerdown", "pointerup"]) {
+        const target = type === "pointerdown" ? path
+          : d.getElementById("nativeViewport");
+        target.dispatchEvent(new frame.contentWindow.PointerEvent(type, {
+          bubbles: true, pointerId: edgeId === "out" ? 41 : 43,
+          pointerType: "mouse", clientX: hit.x, clientY: hit.y,
+          button: 0, buttons: type === "pointerdown" ? 1 : 0, isPrimary: true
+        }));
+      }
+      await pause(60);
+      if (edge.getAttribute("aria-selected") !== "true")
+        throw new Error("hit path did not select relationship: " + edgeId);
+    }
+    document.documentElement.dataset.reciprocalHit = "pass";
+  } catch (error) {
+    document.documentElement.dataset.reciprocalHit = "fail";
+    document.documentElement.dataset.reciprocalHitError =
+      String(error?.stack || error);
+  }
+})();
+frame.src = "index.html";
+</script></body></html>"""
+    (output / "host.html").write_text(host, encoding="utf-8")
+    class Handler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            pass
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(Handler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        result = subprocess.run(
+            [chrome, "--headless=new", f"--user-data-dir={tmp_path / 'chrome'}",
+             "--no-first-run", "--disable-gpu", "--disable-dev-shm-usage",
+             "--no-sandbox", "--window-size=1120,850",
+             "--virtual-time-budget=12000", "--dump-dom",
+             f"http://127.0.0.1:{server.server_address[1]}/host.html"],
+            capture_output=True, text=True, timeout=35, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert result.returncode == 0, result.stderr[-1000:]
+    assert 'data-reciprocal-hit="pass"' in result.stdout, result.stdout[:2500]
+    assert 'data-reciprocal-hit="fail"' not in result.stdout

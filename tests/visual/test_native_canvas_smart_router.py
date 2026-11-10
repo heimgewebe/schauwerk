@@ -136,3 +136,112 @@ def test_fixed_ports_cannot_cross_the_other_endpoint_before_the_port():
     b = node("b", 10, 0)
     assert route_edge(a, b, [a, b], from_side="right", to_side="right") is None
     assert route_edge(a, b, [a, b], from_side="left", to_side="left") is None
+
+
+def test_reciprocal_smart_rails_remain_separate_and_selectable():
+    """Opposite edge hit corridors must not coincide over an obstacle.
+
+    Production Chrome RED: with only per-port lane offsets the entire
+    forward hit path was intercepted by the reverse edge (0/51 hits).
+    """
+    a = node("a", 40, 80, 220, 120)
+    b = node("b", 590, 80, 220, 120)
+    blocker = node("middle", 310, 50, 200, 200)
+    nodes = [a, b, blocker]
+    outbound = route_edge(a, b, nodes, lane=-9.0, max_lane=9.0)
+    inbound = route_edge(b, a, nodes, lane=9.0, max_lane=9.0)
+    assert outbound is not None and inbound is not None
+    assert outbound.collision_free and inbound.collision_free
+    assert (outbound.from_side, outbound.to_side) == ("right", "left")
+    assert (inbound.from_side, inbound.to_side) == ("left", "right")
+    # A 24-unit rail gap is wider than the browser's transparent edge
+    # hit-stroke corridor; do not just shift the endpoint anchors.
+    assert abs(outbound.label_y - inbound.label_y) >= 22.0
+
+
+def test_reciprocal_rails_stay_separate_below_and_beside_blockers():
+    """Rail reservations work on either transverse axis and detour side."""
+    a, b = node("a", 40, 80, 220, 120), node("b", 590, 80, 220, 120)
+    obstacle = node("middle", 310, 50, 200, 200)
+    roof = node("roof", 300, -200, 220, 240)
+    bottom_nodes = [a, b, obstacle, roof]
+    forward = route_edge(a, b, bottom_nodes, lane=-9, max_lane=9)
+    reverse = route_edge(b, a, bottom_nodes, lane=9, max_lane=9)
+    assert forward is not None and reverse is not None
+    assert forward.label_y > 250 and reverse.label_y > 250
+    assert reverse.label_y - forward.label_y >= 22.0
+
+    upper = node("upper", 80, 40, 120, 220)
+    lower = node("lower", 80, 590, 120, 220)
+    middle = node("middle", 50, 310, 200, 200)
+    vertical_nodes = [upper, lower, middle]
+    down = route_edge(upper, lower, vertical_nodes, lane=-9, max_lane=9)
+    up = route_edge(lower, upper, vertical_nodes, lane=9, max_lane=9)
+    assert down is not None and up is not None
+    assert up.label_x - down.label_x >= 22.0
+
+
+def test_four_parallel_obstacle_detours_keep_distinct_rails():
+    a, b = node("a", 40, 80, 220, 120), node("b", 590, 80, 220, 120)
+    blocker = node("middle", 310, 50, 200, 200)
+    nodes = [a, b, blocker]
+    y_positions = []
+    for index, lane in enumerate((-27.0, -9.0, 9.0, 27.0)):
+        source, target = (a, b) if index % 2 == 0 else (b, a)
+        route = route_edge(source, target, nodes, lane=lane, max_lane=27.0)
+        assert route is not None and route.collision_free
+        y_positions.append(route.label_y)
+    assert all(
+        high - low >= 22.0
+        for low, high in zip(sorted(y_positions), sorted(y_positions)[1:])
+    )
+
+
+def test_fixed_port_stub_uses_physical_clearance_not_transverse_rail():
+    """A cosmetic sibling rail must not block a valid manually chosen port."""
+    a = node("a", 0, 0)
+    b = node("b", 400, 0)
+    near = node("near", 110, 65)
+    # P2 Codex fixture: old source has a valid y=31 fixed-right-to-left
+    # connection; the new 24px virtual rail shadow made it return None.
+    route = route_edge(
+        a, b, [a, b, near], lane=-9.0, max_lane=9.0,
+        from_side="right", to_side="left",
+    )
+    assert route is not None and route.collision_free
+    assert (route.from_side, route.to_side) == ("right", "left")
+    assert route.points[0] == (100.0, 31.0)
+    assert route.points[-1] == (400.0, 31.0)
+
+    # Actual node clearance remains binding even with an explicit port.
+    intruder = node("intruder", 110, 20)
+    assert route_edge(
+        a, b, [a, b, intruder], lane=-9.0, max_lane=9.0,
+        from_side="right", to_side="left",
+    ) is None
+
+
+def test_virtual_rail_failure_retries_physically_clear_narrow_passage():
+    """A reserved hit-rail may not close the only physically traversable exit.
+
+    Codex P2 fixture: both manually chosen stubs remain clear, but the
+    virtual blockers intersect and seal an otherwise unobstructed corridor.
+    """
+    a = node("a", 0, 0)
+    b = node("b", 600, 0)
+    blockers = [
+        node("west", -200, -300, 50, 600),
+        node("roof", -200, -300, 600, 50),
+        node("floor", -200, 200, 600, 50),
+        node("east-top", 300, -300, 50, 315),
+        node("east-bottom", 300, 60, 50, 190),
+    ]
+    route = route_edge(
+        a, b, [a, b, *blockers],
+        from_side="right", to_side="left",
+        lane=-9.0, max_lane=9.0,
+    )
+    assert route is not None and route.collision_free
+    assert (route.from_side, route.to_side) == ("right", "left")
+    assert route.points[0] == (100.0, 31.0)
+    assert route.points[-1] == (600.0, 31.0)

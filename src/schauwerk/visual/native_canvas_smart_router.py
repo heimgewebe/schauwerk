@@ -264,6 +264,7 @@ def route_edge(
     from_side: str | None = None, to_side: str | None = None,
     lane: float = 0.0, clearance: float = 12.0,
     max_blockers: int = 24, max_lane: float | None = None,
+    _reserve_visual_rails: bool = True,
 ) -> SmartEdgeRoute | None:
     """Plan a short obstacle-free path, selecting 4-sided ports when unspecified.
 
@@ -282,8 +283,49 @@ def route_edge(
     if max_lane is not None and (not math.isfinite(max_lane) or max_lane < 0):
         raise ValueError("invalid parallel edge lane range")
     src_id,tgt_id=source["id"],target["id"]
-    blocking=[_rect(n,clearance) for n in nodes
-              if n["id"] not in {src_id,tgt_id} and n.get("type") != "group"]
+    # Reciprocal/parallel edges share the same unordered-endpoint lane ranks.
+    # Merely offsetting their ports lets the shortest-path search converge on
+    # the same obstacle corners: the later hit path then hides the earlier one.
+    # Reserve separate detour rails *transverse* to the endpoint line so the
+    # 22px endpoint stubs and their preferred sides remain available.
+    rail_step = (
+        min(4.0 / 3.0, 96.0 / max(18.0, 2.0 * max_lane))
+        if max_lane is not None and max_lane > 0.0 else 0.0
+    )
+    rail_before = min(96.0, max(0.0, (max_lane or 0.0) - lane) * rail_step)
+    rail_after = min(96.0, max(0.0, (max_lane or 0.0) + lane) * rail_step)
+    horizontal = abs(
+        float(source["x"]) + float(source["width"]) / 2
+        - float(target["x"]) - float(target["width"]) / 2
+    ) >= abs(
+        float(source["y"]) + float(source["height"]) / 2
+        - float(target["y"]) - float(target["height"]) / 2
+    )
+
+    def rail_blocker(node: Mapping[str, Any]) -> Rect:
+        x0, y0, x1, y1 = _rect(node, clearance)
+        if horizontal:
+            return (x0, y0 - rail_before, x1, y1 + rail_after)
+        return (x0 - rail_before, y0, x1 + rail_after, y1)
+
+    blocking=[
+        (rail_blocker(n) if _reserve_visual_rails else _rect(n,clearance))
+        for n in nodes
+        if n["id"] not in {src_id,tgt_id} and n.get("type") != "group"
+    ]
+
+    def retry_physical() -> SmartEdgeRoute | None:
+        # Preserve a physical path rather than declaring a false conflict when
+        # cosmetic rail reservations close all exits. This is one bounded
+        # retry; actual nodes still go through full collision certification.
+        if not _reserve_visual_rails or not (rail_before or rail_after):
+            return None
+        return route_edge(
+            source,target,nodes,from_side=from_side,to_side=to_side,
+            lane=lane,clearance=clearance,max_blockers=max_blockers,
+            max_lane=max_lane,_reserve_visual_rails=False,
+        )
+
     # Source and target rectangles prevent a computed detour from re-entering
     # either endpoint.  The first/last 22px stubs are handled independently.
     source_box=_rect(source,clearance*0.6)
@@ -305,7 +347,7 @@ def route_edge(
                 continue
             candidates.append((si,ti,ss,ts,start,start_exit,end_exit,end))
     if not candidates:
-        return None
+        return retry_physical()
     # Candidate blockers: near the bounding corridor; a candidate route is
     # always rechecked against *all* blockers so truncation never fakes success.
     starts=[c[5] for c in candidates]
@@ -377,7 +419,7 @@ def route_edge(
     if best is None and len(unique)!=len(all_boxes):
         best=best_route(_build_graph(vertices,all_boxes))
     if best is None:
-        return None
+        return retry_physical()
     _,ss,ts,poly=best
     path=_path_with_safe_fillets(poly,all_boxes)
     label=_label_position(poly)
