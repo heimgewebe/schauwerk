@@ -849,11 +849,18 @@ def test_editor_exports_the_current_edited_canvas_as_working_offline_html(tmp_pa
               fire(viewport, 'pointermove', x + 40, y + 160);
               fire(viewport, 'pointermove', x + 60, y + 220);
               fire(viewport, 'pointerup', x + 60, y + 220);
-              await new Promise(r => setTimeout(r, 400));
               return true;
             })()"""
         )
-        cdp.wait_for("document.querySelector('#editorFrame').contentDocument.querySelector('[data-source-id=\"a\"]') !== null", "frame after edit")
+        # Wait for the user-visible drag and the parent history commit rather
+        # than guessing an asynchronous iframe message deadline.
+        cdp.wait_for(
+            "document.querySelector('#nativeUndoButton').disabled === false"
+            " && document.querySelector('#editorFrame').contentDocument"
+            ".querySelector('[data-source-kind=\"node\"][data-source-id=\"a\"]')"
+            ".getAttribute('transform')?.includes('translate(')",
+            "native document drag persisted before offline export", 30,
+        )
 
         # Export from the Export menu; the download is a blob prepared by prepareDownload.
         cdp.evaluate("document.querySelector('.workspace-export-menu').open = true; document.querySelector('#offlineHtmlButton').click(); true")

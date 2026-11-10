@@ -12287,7 +12287,11 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 to_side=edge.get("to_side"),
                 lane=lane,
                 max_lane=(pair_counts[key] - 1) * 9.0,
-                prior_routes=prior_smart_routes,
+                # Preserve the full 12-route context for normal diagrams.
+                # Dense diagrams use the measured 4-route bound to avoid a
+                # large synchronous/render cost at the product edge limit.
+                prior_routes=(prior_smart_routes[-12:] if len(edges) <= 64
+                              else prior_smart_routes[-4:]),
             )
             if candidate is None:
                 # Never advertise an unsafe legacy fallback as clear.

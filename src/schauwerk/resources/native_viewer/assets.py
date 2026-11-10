@@ -1685,7 +1685,8 @@ function previouslyRoutedEdges(edgeId) {
     if (edge.route !== "canvas-smart" || !Array.isArray(edge.routePoints)) continue;
     prior.push({ from: edge.from, to: edge.to, points: edge.routePoints });
   }
-  return prior.slice(-12);
+  // Match the server's bounded routing context for dense documents.
+  return prior.slice(edges.size > 64 ? -4 : -12);
 }
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);

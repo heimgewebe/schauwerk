@@ -1041,3 +1041,48 @@ def test_strict_crossing_preserves_axis_aligned_cases() -> None:
     assert _strict_segment_cross((-5,0),(5,0),(0,-5),(0,5))
     assert not _strict_segment_cross((0,0),(0,5),(0,5),(5,5))
     assert not _strict_segment_cross((0,0),(0,5),(1,-5),(1,5))
+
+def test_dense_documents_bound_prior_edge_context_in_renderer_and_viewer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from schauwerk.visual import native_diagram
+    nodes = [
+        {"id": f"n{i}", "type": "text", "x": (i % 4) * 195,
+         "y": (i // 4) * 155, "width": 100, "height": 70, "text": f"N{i}"}
+        for i in range(8)
+    ]
+    edges = [
+        {"id": f"e{i}", "fromNode": nodes[(i * 3) % 8]["id"],
+         "toNode": nodes[(i * 3 + 1 + i // 8) % 8]["id"],
+         "label": f"R{i}"}
+        for i in range(70)
+    ]
+    for i, edge in enumerate(edges):
+        if edge["fromNode"] == edge["toNode"]:
+            edge["toNode"] = nodes[(i * 3 + 2) % 8]["id"]
+    observed: list[int] = []
+    actual = native_diagram._canvas_smart_route_edge
+
+    def capture(*args, **kwargs):
+        observed.append(len(kwargs["prior_routes"]))
+        return actual(*args, **kwargs)
+
+    monkeypatch.setattr(native_diagram, "_canvas_smart_route_edge", capture)
+    def render_many(number: int) -> tuple[list[int], str]:
+        observed.clear()
+        document = json_canvas_to_editing_document({
+            "nodes": nodes, "edges": edges[:number],
+            "schauwerk": {"edgeRouting": "smart"},
+        })
+        svg = render_native_editing_document(document)
+        return observed.copy(), svg
+
+    normal, normal_svg = render_many(64)
+    dense, dense_svg = render_many(70)
+    assert len(normal) == 64 and max(normal) == 12
+    assert len(dense) == 70 and max(dense) == 4
+    assert dense[0] == 0 and dense[10] == 4
+    assert 'data-route-points="' in normal_svg
+    assert 'data-route-points="' in dense_svg
+    # Native editor and standalone browser must apply the same context bound.
+    assert "edges.size > 64 ? -4 : -12" in ASSETS["app.js"]
