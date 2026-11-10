@@ -863,8 +863,21 @@ console.log(JSON.stringify({visible:true,unchangedPan:true,pathReads}));
     }
 
 
+@pytest.mark.parametrize(
+    ("target_x", "blocker_specs"),
+    [
+        (400, [(110, 65, 100, 80)]),
+        (600, [
+            (-200, -300, 50, 600), (-200, -300, 600, 50),
+            (-200, 200, 600, 50), (300, -300, 50, 315),
+            (300, 60, 50, 190),
+        ]),
+    ],
+    ids=["fixed-stub-rail-shadow", "narrow-physical-passage"],
+)
 def test_manual_fixed_port_stub_keeps_python_browser_geometry_parity(
-    tmp_path: Path,
+    tmp_path: Path, target_x: int,
+    blocker_specs: list[tuple[int, int, int, int]],
 ) -> None:
     """Codex-P2: a virtual rail may not erase a clear manually chosen port."""
     node_runtime = shutil.which("node")
@@ -872,11 +885,14 @@ def test_manual_fixed_port_stub_keeps_python_browser_geometry_parity(
         pytest.skip("Node unavailable for browser router parity")
     a = {"id": "a", "type": "text", "x": 0, "y": 0,
          "width": 100, "height": 80}
-    b = {"id": "b", "type": "text", "x": 400, "y": 0,
+    b = {"id": "b", "type": "text", "x": target_x, "y": 0,
          "width": 100, "height": 80}
-    near = {"id": "near", "type": "text", "x": 110, "y": 65,
-            "width": 100, "height": 80}
-    nodes = [a, b, near]
+    blocks = [
+        {"id": f"block-{i}", "type": "text", "x": x, "y": y,
+         "width": w, "height": h}
+        for i, (x, y, w, h) in enumerate(blocker_specs)
+    ]
+    nodes = [a, b, *blocks]
     js_module = tmp_path / "smart-router.mjs"
     js_module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
     runner = tmp_path / "verify.mjs"

@@ -219,3 +219,29 @@ def test_fixed_port_stub_uses_physical_clearance_not_transverse_rail():
         a, b, [a, b, intruder], lane=-9.0, max_lane=9.0,
         from_side="right", to_side="left",
     ) is None
+
+
+def test_virtual_rail_failure_retries_physically_clear_narrow_passage():
+    """A reserved hit-rail may not close the only physically traversable exit.
+
+    Codex P2 fixture: both manually chosen stubs remain clear, but the
+    virtual blockers intersect and seal an otherwise unobstructed corridor.
+    """
+    a = node("a", 0, 0)
+    b = node("b", 600, 0)
+    blockers = [
+        node("west", -200, -300, 50, 600),
+        node("roof", -200, -300, 600, 50),
+        node("floor", -200, 200, 600, 50),
+        node("east-top", 300, -300, 50, 315),
+        node("east-bottom", 300, 60, 50, 190),
+    ]
+    route = route_edge(
+        a, b, [a, b, *blockers],
+        from_side="right", to_side="left",
+        lane=-9.0, max_lane=9.0,
+    )
+    assert route is not None and route.collision_free
+    assert (route.from_side, route.to_side) == ("right", "left")
+    assert route.points[0] == (100.0, 31.0)
+    assert route.points[-1] == (600.0, 31.0)
