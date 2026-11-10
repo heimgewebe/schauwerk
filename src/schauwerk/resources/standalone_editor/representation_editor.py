@@ -198,6 +198,7 @@ function button(parent, caption, callback) {
   control.type = "button";
   control.addEventListener("click", callback);
   parent.append(control);
+  return control;
 }
 
 export function remapRepresentationLayoutOverrides(overrides, nodeIdMapping) {
@@ -237,7 +238,7 @@ export function mountRepresentationEditor(container, representation) {
           if (current === action.id) originalNodeIds.delete(original);
         }
       }
-      render();
+      render(action.type);
     } catch (error) { feedbackText(error instanceof Error ? error.message : "Bearbeitung fehlgeschlagen."); }
   }
   function rename(type, id, value, field) {
@@ -255,7 +256,8 @@ export function mountRepresentationEditor(container, representation) {
       feedbackText(error instanceof Error ? error.message : "ID ungültig.");
     }
   }
-  function render() {
+  function render(focusAction = "") {
+    let focusTarget = null;
     const previousScroll = container.scrollTop;
     container.replaceChildren(feedback);
     feedbackText("");
@@ -291,19 +293,23 @@ export function mountRepresentationEditor(container, representation) {
       formats.append(line);
     }
     const groups = section(container, "Gruppen");
-    button(groups, "+ Gruppe", () => mutate({type:"add-group"}));
+    const groupAdd = button(groups, "+ Gruppe", () => mutate({type:"add-group"}));
+    if (focusAction === "remove-group") focusTarget = groupAdd;
     for (const group of draft.groups) {
       const row = section(groups, "Gruppe", group.id);
       idInput(row, group.id, (value,field) => rename("rename-group",group.id,value,field));
-      input(row, "Bezeichnung", group.label, value => { group.label = value; }, {required:true,maxLength:100});
+      const groupLabel = input(row, "Bezeichnung", group.label, value => { group.label = value; }, {required:true,maxLength:100});
+      if (focusAction === "add-group" && group === draft.groups[draft.groups.length - 1]) focusTarget = groupLabel;
       button(row, "Gruppe löschen", () => mutate({type:"remove-group",id:group.id}));
     }
     const nodes = section(container, "Elemente");
-    button(nodes, "+ Element", () => mutate({type:"add-node"}));
+    const nodeAdd = button(nodes, "+ Element", () => mutate({type:"add-node"}));
+    if (focusAction === "remove-node") focusTarget = nodeAdd;
     for (const node of draft.nodes) {
       const row = section(nodes, "Element", node.id);
       idInput(row, node.id, (value,field) => rename("rename-node",node.id,value,field));
-      input(row, "Titel", node.label, value => { node.label = value; }, {required:true,maxLength:120});
+      const nodeLabel = input(row, "Titel", node.label, value => { node.label = value; }, {required:true,maxLength:120});
+      if (focusAction === "add-node" && node === draft.nodes[draft.nodes.length - 1]) focusTarget = nodeLabel;
       select(row, "Typ", node.kind, NODE_KINDS.map(value => ({value})), value => { node.kind = value; });
       input(row, "Beschreibung", node.summary, value => { node.summary = value; }, {multiline:true,maxLength:500});
       select(row, "Gruppe", node.group ?? "", [{value:"",label:"Keine Gruppe"}].concat(
@@ -312,11 +318,13 @@ export function mountRepresentationEditor(container, representation) {
       button(row, "Element löschen", () => mutate({type:"remove-node",id:node.id}));
     }
     const edges = section(container, "Verbindungen");
-    button(edges, "+ Verbindung", () => mutate({type:"add-edge"}));
+    const edgeAdd = button(edges, "+ Verbindung", () => mutate({type:"add-edge"}));
+    if (focusAction === "remove-edge") focusTarget = edgeAdd;
     for (const edge of draft.edges) {
       const row = section(edges, "Verbindung", edge.id);
       idInput(row, edge.id, (value,field) => rename("rename-edge",edge.id,value,field));
-      input(row, "Beschriftung", edge.label, value => { edge.label = value; }, {required:true,maxLength:120});
+      const edgeLabel = input(row, "Beschriftung", edge.label, value => { edge.label = value; }, {required:true,maxLength:120});
+      if (focusAction === "add-edge" && edge === draft.edges[draft.edges.length - 1]) focusTarget = edgeLabel;
       select(row, "Typ", edge.kind, EDGE_KINDS.map(value => ({value})), value => { edge.kind = value; });
       const endpoints = draft.nodes.map(node => ({value:node.id,label:node.label + " (" + node.id + ")"}));
       select(row, "Anfang", edge.from, endpoints, value => { edge.from = value; });
@@ -324,6 +332,8 @@ export function mountRepresentationEditor(container, representation) {
       button(row, "Verbindung löschen", () => mutate({type:"remove-edge",id:edge.id}));
     }
     container.scrollTop = previousScroll;
+    // Replacing the form removes its focused button; keep keyboard editing reachable.
+    focusTarget?.focus?.();
   }
   render();
   return {

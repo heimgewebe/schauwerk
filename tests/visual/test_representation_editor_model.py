@@ -186,6 +186,49 @@ assert.deepEqual({...remap({node_1:{x:27,y:41}},delForm.getNodeIdMapping())},{})
 """)
 
 
+def test_structural_form_actions_restore_keyboard_focus(tmp_path: Path) -> None:
+    """Deleting or adding an item must not strand keyboard users on a removed button."""
+    run_js(tmp_path, """
+class Element {
+  constructor(tag) { this.tagName=tag; this.children=[]; this.handlers={}; this.scrollTop=0; this.textContent=''; }
+  append(...items) { this.children.push(...items); }
+  replaceChildren(...items) { this.children=[...items]; }
+  addEventListener(name,fn) { this.handlers[name]=fn; }
+  setAttribute(key,value) { this[key]=value; }
+  focus() { document.activeElement=this; }
+  click() { this.focus(); this.handlers.click?.(); }
+}
+globalThis.document={activeElement:null,createElement(tag){return new Element(tag)}};
+const container=new Element('main');
+const form=mount(container,sample);
+function descendants(root) { return [root,...root.children.flatMap(descendants)]; }
+function row(name) { return descendants(container).find(el=>el.tagName==='fieldset' &&
+  el.children[0]?.textContent===name); }
+function field(name,caption) {
+  const label=descendants(row(name)).find(el=>el.tagName==='label' &&
+    el.children[0]?.textContent===caption);
+  return label.children[1];
+}
+function button(parent,caption) {
+  return descendants(parent).find(el=>el.tagName==='button' && el.textContent===caption);
+}
+const groups=()=>row('Gruppen'), nodes=()=>row('Elemente'), edges=()=>row('Verbindungen');
+button(groups(),'+ Gruppe').click();
+assert.equal(document.activeElement,field('Gruppe · group_1','Bezeichnung'));
+button(row('Gruppe · group_1'),'Gruppe löschen').click();
+assert.equal(document.activeElement,button(groups(),'+ Gruppe'));
+button(nodes(),'+ Element').click();
+assert.equal(document.activeElement,field('Element · node_1','Titel'));
+button(row('Element · node_1'),'Element löschen').click();
+assert.equal(document.activeElement,button(nodes(),'+ Element'));
+button(edges(),'+ Verbindung').click();
+assert.equal(document.activeElement,field('Verbindung · edge_1','Beschriftung'));
+button(row('Verbindung · edge_1'),'Verbindung löschen').click();
+assert.equal(document.activeElement,button(edges(),'+ Verbindung'));
+assert.deepEqual(form.getValue(),sample);
+""")
+
+
 def test_mutated_js_model_is_accepted_by_real_backend(tmp_path: Path) -> None:
     """Round-trip field edits and cascades through the backend contract."""
     import json
@@ -415,9 +458,18 @@ try {
     change(field(row("Gruppe · g"),"ID","input"),"team");
     change(field(row("Element · a"),"ID","input"),"alpha");
     press(row("Gruppen"),"+ Gruppe");
+    if (document.activeElement !== field(row("Gruppe · group_1"),"Bezeichnung","input")) {
+      throw new Error("New group label lost keyboard focus");
+    }
     press(row("Elemente"),"+ Element");
+    if (document.activeElement !== field(row("Element · node_1"),"Titel","input")) {
+      throw new Error("New node title lost keyboard focus");
+    }
     change(field(row("Element · node_1"),"Typ","select"),"risk");
     press(row("Verbindungen"),"+ Verbindung");
+    if (document.activeElement !== field(row("Verbindung · edge_1"),"Beschriftung","input")) {
+      throw new Error("New edge label lost keyboard focus");
+    }
     const newEdge=row("Verbindung · edge_1");
     change(field(newEdge,"Typ","select"),"feedback");
     change(field(newEdge,"Anfang","select"),"alpha");
