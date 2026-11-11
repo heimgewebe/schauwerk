@@ -33,7 +33,8 @@ JSON_CANVAS_FORMAT: Final = "json-canvas-1.0"
 MAX_NATIVE_GROUPS: Final = 32
 MAX_NATIVE_NODES: Final = 128
 MAX_NATIVE_EDGES: Final = 256
-MAX_NATIVE_ROUTING_PAIRS: Final = 32_768
+# The finite pair budget must admit the published 256-edge product limit.
+MAX_NATIVE_ROUTING_PAIRS: Final = 65_536
 _ALLOWED_NODE_TYPES: Final = frozenset({"text", "file", "link", "group"})
 _ALLOWED_SIDES: Final = frozenset({"top", "right", "bottom", "left"})
 _ALLOWED_ENDS: Final = frozenset({"none", "arrow"})

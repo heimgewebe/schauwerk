@@ -2588,7 +2588,11 @@ def test_native_product_admission_rejects_oversized_embedded_canvas_before_norma
     assert normalization_called is False
 
 
-def test_native_product_admission_rejects_excessive_routing_pair_work() -> None:
+def test_native_product_admission_rejects_excessive_routing_pair_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A deliberately lower configured pair budget must still fail closed.
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_ROUTING_PAIRS", 32_768)
     value = _golden_representation("decision-flow-v1.json")
     value["groups"] = []
     value["nodes"] = [
@@ -2627,7 +2631,11 @@ def test_native_product_admission_accepts_process_and_structured_knowledge_map()
     assert _native_product_input(knowledge_map) == admitted
 
 
-def test_native_product_admission_bounded_knowledge_map_keeps_routing_limits() -> None:
+def test_native_product_admission_bounded_knowledge_map_keeps_routing_limits(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Retain a negative test for an independently restrictive pair budget.
+    monkeypatch.setattr(standalone_editor, "MAX_NATIVE_ROUTING_PAIRS", 32_768)
     model = _golden_representation("system-landscape-v1.json")
     model["groups"] = []
     model["nodes"] = [
