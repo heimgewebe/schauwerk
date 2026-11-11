@@ -1,0 +1,46 @@
+{
+  "base_revision": "72790f4a837ef8e1536ff0072e8160d9957a6f08",
+  "base_source_bindings": {
+    "src/schauwerk/visual/native_document.py": "5ca83c4d0d873c8b6690a445200217f9726ac5aeddfd477211ab7ec6b1e997fa",
+    "tests/visual/test_native_canvas_editor.py": "e3842997f3ef254d545072b242c0a06e1d51aaac8cce937714a9a9c6e8641a4a",
+    "tests/visual/test_standalone_editor.py": "5655c6002d177a3f65ab4f5283de56790bfe0183fe6a8e488e3378bcdb5826da"
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "production_deployment",
+    "future_github_ci_success",
+    "physical_ipad_safari_acceptance",
+    "production_browser_256_acceptance",
+    "safety_of_unbounded_user_inputs"
+  ],
+  "evidence_digest": "ffea35f7f064bc6b6d3974d117469c2be79e734019714c534b577a5a99aac3d0",
+  "historical_predecessor": {
+    "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
+    "path": "docs/operators/evidence/schaubild-crossing-aware-20261110/technical-proof.json",
+    "sha256": "f913be34e4aaa1c797172cfbab9d985eb2b703a8774656805fe5603732b5767a"
+  },
+  "schema_version": "schauwerk-schaubild-native-edge-budget-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/visual/native_document.py": "adcf0f07bcaf1224470b332bff0d28ee97143c7beec44ffe11f15deacafbb45b",
+    "tests/visual/test_native_canvas_editor.py": "3ac6909c772e98ea4ab41fea2891f639b5e785dc30c383831a9191c6717b07f8",
+    "tests/visual/test_standalone_editor.py": "7abbef4607a2e00a9066699c9be603fa97168b38fefc81fed7cc913d96ab3a89"
+  },
+  "source_change_commit": "f7ac6132331e4511fd3f05792141eb76c00db291",
+  "source_pr": 244,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "consumer_runtime": "not_integrated",
+    "full_ci": "pending_exact_head",
+    "historical_lower_pair_budget_negative": "passed",
+    "native_editor_history_regression": "passed",
+    "native_json_canvas_256_ingress": "passed",
+    "native_json_canvas_257_negative": "passed",
+    "native_max_edges": 256,
+    "native_max_routing_pairs": 65536,
+    "offline_html_canvas_256_limit": "passed",
+    "production_browser_256": "pending_new_oci",
+    "source_browser_48_256_routes": "passed"
+  },
+  "visual_acceptance": "not_inherited"
+}
