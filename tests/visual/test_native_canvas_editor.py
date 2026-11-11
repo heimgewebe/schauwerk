@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 import schauwerk.visual.standalone_editor as standalone_editor
+from schauwerk.visual import native_offline_html
 from schauwerk.visual.native_document import (
     NATIVE_DOCUMENT_SCHEMA,
     editing_document_to_json_canvas,
@@ -101,6 +102,42 @@ def test_native_product_input_accepts_canvas_without_losing_geometry_or_extensio
         ("target", 260, 160, 280, 150),
     ]
     assert editing_document_to_json_canvas(document) == source
+
+
+def test_native_json_canvas_admits_all_256_edges_without_weakening_product_limits() -> None:
+    # The real product previously rejected 48/256 because 256**2 > 32_768.
+    # Keep the pair bound finite, exactly matching the advertised edge cap.
+    edge_count = standalone_editor.MAX_NATIVE_EDGES
+    assert edge_count == 256
+    assert edge_count * edge_count == standalone_editor.MAX_NATIVE_ROUTING_PAIRS
+    canvas = _canvas()
+    canvas["nodes"] = canvas["nodes"][1:]
+    canvas["edges"] = [
+        {
+            "id": f"edge-{index}",
+            "fromNode": "source",
+            "toNode": "target",
+            "label": f"Beziehung {index}",
+            "toEnd": "arrow",
+        }
+        for index in range(edge_count)
+    ]
+    canvas["schauwerk"] = {"edgeRouting": "smart"}
+
+    document = _native_product_input(_request(canvas))
+    assert len(document["edges"]) == edge_count
+    assert editing_document_to_json_canvas(document) == canvas
+    native_offline_html._assert_canvas_limits(canvas)
+
+    over_limit = {**canvas, "edges": [*canvas["edges"], {
+        "id": "edge-over-limit",
+        "fromNode": "source",
+        "toNode": "target",
+    }]}
+    with pytest.raises(StandaloneEditorError, match="product complexity limits"):
+        _native_product_input(_request(over_limit))
+    with pytest.raises(native_offline_html.OfflineHtmlError, match="complexity limits"):
+        native_offline_html._assert_canvas_limits(over_limit)
 
 
 def test_native_product_input_rebinds_digest_to_current_document_state() -> None:
