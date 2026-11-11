@@ -1,0 +1,72 @@
+{
+  "base_revision": "5d5b9631a63f3cc67626ed984621c15f3b2cf41a",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "4fd08a7b2a2d36b15c61d865c5cf18ac006620688f7206fa1f7f2a687d720b63",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "4c4fd677ce845f281b28b42a49fddf249b26edd7dc36943ed30e16470dd36955",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "5e18a5272e91038c8470b70b7eb2828682ae6aaabb08f662a5c284b06fdfa340",
+    "src/schauwerk/visual/native_diagram.py": "0e0d15a2050f0ce0f3654ec5ac104ed8287f66d1271e2041fe49c7f90757c99e",
+    "tests/visual/test_native_canvas_smart_integration.py": "2b47ab2115cc4c4401f8c1e815ae82a88474cda7aeec1004174080e2b2089f3a",
+    "tests/visual/test_native_offline_html.py": "d9e36817fd6cfb90ec39987a391cd1d06c3ec07c32981926eddfb879408e507a"
+  },
+  "does_not_establish": [
+    "production_deployment",
+    "historical_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "full_technical_ci_green",
+    "consumer_image_digests",
+    "safety_of_arbitrary_user_inputs"
+  ],
+  "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
+  "generated_at": "2026-11-10T18:35:58.024716Z",
+  "historical_predecessor": {
+    "evidence_digest": "39e43b0ededecba332d256404ba38bc0f30f80ce50eebb904727b0c238523d25",
+    "path": "docs/operators/evidence/schaubild-smart-reciprocal-rails-20261109/technical-proof.json",
+    "sha256": "320f897adf965aa9c206a6173cc28d80705ac85d1e36f8881a838dce205c84c2"
+  },
+  "schema_version": "schauwerk-schaubild-crossing-aware-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a6a6b07c989323be626c5d15be4109c9fe9c2c4c018b391e1f633d2faebf2f66",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "1bc80de13456d29bdc76cda8b48a1079e4e49ff8c3d3a3ecc1ccf95766eba34a",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "5d9876a10843d7c1a9e0b96c3fb8c1e86e7501b0edc6f360619f718ad8c97a49",
+    "src/schauwerk/visual/native_diagram.py": "c104411dc7b57e6f92d39520609cc77c0948cd9d890fdab702ae27d1fc11570f",
+    "tests/visual/test_native_canvas_smart_integration.py": "d0bb0f704aacca1d9363de034106195013f6eab21a2cc827a101e736e02136f9",
+    "tests/visual/test_native_offline_html.py": "6103566cfc00b797ed32b31b9e154f1ed05c098b5bd491dd6fb4034c8707f248"
+  },
+  "source_pr": 243,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "ci_validate": "pending_exact_head",
+    "consumer_runtime": "not_integrated",
+    "crossing_penalty_units": 100,
+    "historical_reference_sources_unchanged": true,
+    "local_browser_svg_ab": {
+      "candidate": "unreleased",
+      "physical_ipad": false,
+      "reduced_crossing": true,
+      "status": "readback"
+    },
+    "manual_ports_and_touch_path_regressions": "passed",
+    "measured_20_nodes_40_edges": {
+      "baseline_crossings": 161,
+      "baseline_path_length": 21812.7,
+      "candidate_crossings": 70,
+      "candidate_path_length": 22690.2
+    },
+    "measured_dense_48_nodes_256_edges": {
+      "limited_prior4_seconds": 8.269,
+      "no_conflicts": true,
+      "unweighted_seconds": 5.195
+    },
+    "offline_html_drag_readiness_local_chromium": "passed",
+    "port_candidate_crossing_review_finding": "reproduced_and_fixed_with_python_javascript_parity",
+    "python_javascript_geometry_parity": "passed",
+    "review_counterexample": {
+      "automatic_port_crossing_after": 0,
+      "automatic_port_crossing_before": 1,
+      "manual_ports_remain_respected": true
+    },
+    "smart_obstacle_collision_regressions": "passed"
+  },
+  "visual_acceptance": "not_inherited"
+}

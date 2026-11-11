@@ -12258,6 +12258,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         pair_counts[key] = pair_counts.get(key, 0) + 1
 
     edge_layouts = []
+    prior_smart_routes = []
     for index, edge in enumerate(edges):
         source_id = str(edge["from"])
         target_id = str(edge["to"])
@@ -12278,6 +12279,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         path, label_x, label_y, route, edge_bounds = _canvas_edge_geometry(
             source, target, edge, lane=lane
         )
+        route_points = ()
         if smart_routing and source_id != target_id:
             candidate = _canvas_smart_route_edge(
                 source, target, nodes,
@@ -12285,6 +12287,11 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 to_side=edge.get("to_side"),
                 lane=lane,
                 max_lane=(pair_counts[key] - 1) * 9.0,
+                # Preserve the full 12-route context for normal diagrams.
+                # Dense diagrams use the measured 4-route bound to avoid a
+                # large synchronous/render cost at the product edge limit.
+                prior_routes=(prior_smart_routes[-12:] if len(edges) <= 64
+                              else prior_smart_routes[-4:]),
             )
             if candidate is None:
                 # Never advertise an unsafe legacy fallback as clear.
@@ -12293,6 +12300,10 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 path = candidate.path
                 label_x, label_y = candidate.label_x, candidate.label_y
                 route, edge_bounds = "canvas-smart", candidate.bounds
+                route_points = candidate.points
+                prior_smart_routes.append({
+                    "from": source_id, "to": target_id, "points": route_points,
+                })
         label = str(edge.get("label", ""))
         label_width = _canvas_edge_label_box_width(label)
         # Reserve the full two-line envelope *before* collision relocation.
@@ -12317,6 +12328,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                 label,
                 label_width,
                 label_height,
+                route_points,
             )
         )
 
@@ -12528,6 +12540,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         label,
         label_width,
         label_height,
+        route_points,
     ) in edge_layouts:
         _, stroke = _canvas_color(edge.get("source", {}).get("color"))
         has_visible_label = _canvas_has_layout_content(label)
@@ -12665,6 +12678,11 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
         )
         if routing_conflict:
             edge_title = "Kein hindernisfreier Weg: " + edge_title
+        route_points_attr = (
+            ' data-route-points="' +
+            ";".join(f"{x!r},{y!r}" for x,y in route_points) + '"'
+            if route == "canvas-smart" and route_points else ""
+        )
         marker_start = (
             f' marker-start="url(#canvas-arrow-{index})"'
             if edge.get("from_end") == "arrow"
@@ -12681,7 +12699,7 @@ def render_native_editing_document(document: Mapping[str, Any]) -> str:
                     f'<g id="native-edge-{_canvas_xml(edge["id"])}" data-source-kind="edge" '
                     f'data-source-id="{_canvas_xml(edge["id"])}" data-kind="flow" '
                     f'data-route="{route}" data-lane="{lane:.1f}"'
-                    f'{conflict_attr}{relation_attr}{canonical_stroke_attr}{canonical_dash_attr}{edge_truncated_attribute}>'
+                    f'{conflict_attr}{relation_attr}{canonical_stroke_attr}{canonical_dash_attr}{edge_truncated_attribute}{route_points_attr}>'
                 ),
                 f"<title>{_canvas_xml(edge_title)}</title>",
                 (

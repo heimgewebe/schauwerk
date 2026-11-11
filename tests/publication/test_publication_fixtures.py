@@ -22,6 +22,77 @@ from schauwerk.publication.store import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _crossing_source_successor_proof() -> dict:
+    """Current exact six-source successor; historical acceptance stays immutable."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-crossing-aware-20261110"
+        / "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-crossing-aware-source-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "5d5b9631a63f3cc67626ed984621c15f3b2cf41a"
+    assert proof["source_pr"] == 243
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    previous = proof["historical_predecessor"]
+    assert previous["path"] == (
+        "docs/operators/evidence/schaubild-smart-reciprocal-rails-20261109/"
+        "technical-proof.json"
+    )
+    predecessor_bytes = (ROOT / previous["path"]).read_bytes()
+    assert hashlib.sha256(predecessor_bytes).hexdigest() == previous["sha256"]
+    predecessor = json.loads(predecessor_bytes)
+    assert predecessor["evidence_digest"] == previous["evidence_digest"]
+    assert predecessor["evidence_digest"] == digest_mapping(
+        predecessor, "evidence_digest"
+    )
+    expected = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/native_viewer/smart_router.py",
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "src/schauwerk/visual/native_diagram.py",
+        "tests/visual/test_native_canvas_smart_integration.py",
+        "tests/visual/test_native_offline_html.py",
+    }
+    assert set(proof["source_bindings"]) == expected
+    assert set(proof["base_source_bindings"]) == expected
+    for name in expected:
+        assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            proof["source_bindings"][name]
+        ), name
+        if name in predecessor["source_bindings"]:
+            assert proof["base_source_bindings"][name] == (
+                predecessor["source_bindings"][name]
+            )
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _crossing_current_digest(path: str, previous_sha256: str) -> str:
+    """Only accept a changed current source when its predecessor matches."""
+    proof = _crossing_source_successor_proof()
+    if path not in proof["source_bindings"]:
+        return previous_sha256
+    assert proof["base_source_bindings"][path] == previous_sha256, path
+    return proof["source_bindings"][path]
+
+
+def test_crossing_aware_source_successor_binds_exact_current_bytes() -> None:
+    proof = _crossing_source_successor_proof()
+    assert proof["validation"]["python_javascript_geometry_parity"] == "passed"
+    measurements = proof["validation"]["measured_20_nodes_40_edges"]
+    assert measurements["candidate_crossings"] < measurements["baseline_crossings"]
+    assert measurements["candidate_path_length"] < (
+        measurements["baseline_path_length"] * 1.05
+    )
+
+
 def _smart_edge_source_proof() -> dict:
     """Current candidate supersedes changed bytes, never historical proofs."""
     path = (
@@ -73,14 +144,16 @@ def _edge_first_pinch_source_successor_proof() -> dict:
         previous["source_bindings"][test_path]
     )
     for name, expected in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _crossing_current_digest(name, expected)
+        ), name
     readiness = proof["ci_readiness_successor"]
     assert readiness["path"] == "tests/visual/test_native_offline_html.py"
     assert readiness["predecessor_sha256"] == (
         _offline_html_mobile_help_proof()["source_bindings"][readiness["path"]]
     )
     assert hashlib.sha256((ROOT / readiness["path"]).read_bytes()).hexdigest() == (
-        readiness["source_sha256"]
+        _crossing_current_digest(readiness["path"], readiness["source_sha256"])
     )
     assert readiness["validation"]["python_compile"] == "passed"
     assert readiness["historical_visual_acceptance_inherited"] is False
@@ -137,7 +210,9 @@ def _reciprocal_rails_source_successor_proof() -> dict:
         predecessor, "evidence_digest"
     )
     for path, digest in proof["source_bindings"].items():
-        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == digest, path
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == (
+            _crossing_current_digest(path, digest)
+        ), path
     assert proof["validation"]["consumer_runtime"] == "not_integrated"
     assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
@@ -371,7 +446,9 @@ def _offline_html_mobile_help_proof() -> dict:
             assert readiness["path"] == name
             assert readiness["predecessor_sha256"] == expected
             expected = readiness["source_sha256"]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _crossing_current_digest(name, expected)
+        ), name
     visual = proof["visual_readback"]
     assert visual["status"] == "accepted_for_mobile_help_overflow_in_captured_chrome_corpus_only"
     assert hashlib.sha256((ROOT / visual["path"]).read_bytes()).hexdigest() == (
@@ -5065,7 +5142,7 @@ def test_infrastructure_hardening_acceptance_and_successor_bind_security_revisio
         if name in label_successor["source_bindings"]:
             assert (
                 hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
-                == label_successor["source_bindings"][name]
+                == _crossing_current_digest(name, label_successor["source_bindings"][name])
             )
         elif name not in process_feedback_routing_superseded_files:
             assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
@@ -14434,6 +14511,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
             pinch_successor["ci_readiness_successor"]["source_sha256"]
         ),
         **focus_proof["source_bindings"],
+        **_crossing_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
@@ -14532,6 +14610,7 @@ def test_schaubild_smart_edge_source_successor_is_technically_bound() -> None:
         expected = _d2_oci_reuse_proof()["source_bindings"].get(path, expected)
         expected = _edge_first_pinch_source_successor_proof()["source_bindings"].get(path, expected)
         expected = _reciprocal_rails_source_successor_proof()["source_bindings"].get(path, expected)
+        expected = _crossing_current_digest(path, expected)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
     for predecessor in proof["historical_proofs_unchanged"]:
         path = ROOT / predecessor["path"]
@@ -14567,6 +14646,7 @@ def test_schaubild_html_svg_hybrid_preview_source_is_technically_bound() -> None
         effective = _edge_first_pinch_source_successor_proof()["source_bindings"].get(
             name, effective
         )
+        effective = _crossing_current_digest(name, effective)
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == effective, name
         # Existing files continue exactly from the smart-edge candidate; new files start empty.
         assert proof["base_source_bindings"][name] == smart["source_bindings"].get(name), name
@@ -14623,6 +14703,7 @@ def test_schaubild_offline_html_source_successor_is_technically_bound() -> None:
         effective = _d2_oci_reuse_proof()["source_bindings"].get(path, effective)
         if path == readiness["path"]:
             effective = readiness["source_sha256"]
+        effective = _crossing_current_digest(path, effective)
         assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == effective, path
         assert proof["base_source_bindings"][path] == smart["source_bindings"].get(path)
     assert proof["visual_acceptance"] == "pending"

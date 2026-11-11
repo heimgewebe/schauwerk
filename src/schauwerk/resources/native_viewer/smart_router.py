@@ -168,10 +168,34 @@ const lexRect = (a, b) => {
   return 0;
 };
 const equalRect = (a, b) => a.every((x, i) => x === b[i]);
+function strictSegmentCross(a, b, c, d) {
+  // Equal bounding coordinates remain valid for orthogonal crossings.
+  if (Math.max(Math.min(a[0],b[0]),Math.min(c[0],d[0])) >
+        Math.min(Math.max(a[0],b[0]),Math.max(c[0],d[0])) ||
+      Math.max(Math.min(a[1],b[1]),Math.min(c[1],d[1])) >
+        Math.min(Math.max(a[1],b[1]),Math.max(c[1],d[1]))) return false;
+  const orient = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1])
+    - (q[1] - p[1]) * (r[0] - p[0]);
+  return orient(a,b,c) * orient(a,b,d) < -1e-5 &&
+    orient(c,d,a) * orient(c,d,b) < -1e-5;
+}
+function crossingSegments(priorRoutes, sourceId, targetId) {
+  const segments = [];
+  for (const route of (Array.isArray(priorRoutes) ? priorRoutes.slice(-12) : [])) {
+    if ([route.from, route.to].some(id => id === sourceId || id === targetId)) continue;
+    const points = route.points;
+    for (let i=1;i<points.length;i++) {
+      segments.push([points[i-1], points[i]]);
+      if (segments.length >= 48) return segments;
+    }
+  }
+  return segments;
+}
 
 export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (source.id === target.id) return null;
   const fromSide = options.fromSide ?? null, toSide = options.toSide ?? null;
+  const priorSegments = crossingSegments(options.priorRoutes, source.id, target.id);
   if (fromSide !== null && !PORTS.includes(fromSide)) return null;
   if (toSide !== null && !PORTS.includes(toSide)) return null;
   const lane = Number(options.lane ?? 0);
@@ -266,7 +290,10 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
     for (let i = 0; i < vertices.length; i++) {
       for (let j = i + 1; j < vertices.length; j++) {
         if (clear(vertices[i], vertices[j], obstacles)) {
-          const length = distance(vertices[i], vertices[j]);
+          let length = distance(vertices[i], vertices[j]);
+          for (const [a,b] of priorSegments) {
+            if (strictSegmentCross(vertices[i], vertices[j], a, b)) length += 100;
+          }
           graph[i].push([j, length]);
           graph[j].push([i, length]);
         }
@@ -296,7 +323,15 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
         const cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
         if (Math.abs(cross) > 1e-3) turns++;
       }
-      const score = length + turns * 3;
+      // Keep automatic port preference consistent with penalized Dijkstra.
+      // The full polyline includes the endpoints' certified exit stubs.
+      let crossingCount = 0;
+      for (let i = 1; i < poly.length; i++) {
+        for (const [a,b] of priorSegments) {
+          if (strictSegmentCross(poly[i-1],poly[i],a,b)) crossingCount++;
+        }
+      }
+      const score = length + turns * 3 + crossingCount * 100;
       if (!best || score < best.score ||
           (score === best.score && (si < best.si || (si === best.si && ti < best.ti))))
         best = { score, si, ti, ss, ts, poly };

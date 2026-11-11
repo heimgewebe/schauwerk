@@ -916,3 +916,229 @@ def test_manual_fixed_port_stub_keeps_python_browser_geometry_parity(
     assert browser is not None and browser["collisionFree"]
     assert browser["path"] == python.path
     assert (browser["fromSide"], browser["toSide"]) == ("right", "left")
+
+
+def _crossing_demo_nodes() -> list[dict]:
+    # Recorded A/B case 3: one obstacle has two short viable corridors.
+    coords = (("a", 68, -22, 105, 70), ("b", 379, 63, 105, 70),
+              ("c", -44, 192, 105, 70), ("d", 374, 279, 105, 70),
+              ("obstacle", 205, 115, 65, 55))
+    return [
+        {"id": name, "type": "text", "text": name,
+         "x": x, "y": y, "width": width, "height": height}
+        for name, x, y, width, height in coords
+    ]
+
+
+def _strict_crossings(first, second) -> int:
+    def orient(a, b, c):
+        return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])
+    def crosses(a, b, c, d):
+        return (orient(a,b,c)*orient(a,b,d)<-1e-7
+                and orient(c,d,a)*orient(c,d,b)<-1e-7)
+    return sum(
+        crosses(a,b,c,d)
+        for a,b in zip(first.points,first.points[1:])
+        for c,d in zip(second.points,second.points[1:])
+    )
+
+
+def _poly_length(route) -> float:
+    import math
+    return sum(math.dist(a,b) for a,b in zip(route.points,route.points[1:]))
+
+
+def test_crossing_penalty_avoids_real_crossing_without_long_detour() -> None:
+    nodes = _crossing_demo_nodes()
+    first = route_edge(nodes[0], nodes[3], nodes)
+    baseline = route_edge(nodes[1], nodes[2], nodes)
+    assert first is not None and baseline is not None
+    prior = [{"from": "a", "to": "d", "points": first.points}]
+    improved = route_edge(nodes[1], nodes[2], nodes, prior_routes=prior)
+    assert improved is not None and improved.collision_free
+    assert _strict_crossings(first, baseline) == 1
+    assert _strict_crossings(first, improved) == 0
+    assert _poly_length(improved) <= _poly_length(baseline) * 1.10
+    assert improved.from_side == "left" and improved.to_side == "right"
+    forced = route_edge(
+        nodes[1],nodes[2],nodes,from_side="left",to_side="right",
+        prior_routes=prior,
+    )
+    assert forced is not None and forced.collision_free
+    assert (forced.from_side,forced.to_side) == ("left","right")
+    assert _strict_crossings(first,forced) == 0
+
+    source = {
+        "nodes": nodes,
+        "edges": [
+            {"id": "first", "fromNode": "a", "toNode": "d",
+             "label": "Erste Kante"},
+            {"id": "second", "fromNode": "b", "toNode": "c",
+             "label": "Zweite Kante mit längerem Text"},
+        ],
+        "schauwerk": {"edgeRouting": "smart"},
+    }
+    rendered = render(source)
+    groups = [g for g in rendered.iter(SVG + "g")
+              if g.get("data-source-kind") == "edge"]
+    assert len(groups) == 2
+    second_path = groups[1].find(SVG + "path")
+    assert second_path is not None
+    assert second_path.get("d") == improved.path
+    for group, route in zip(groups, (first,improved)):
+        seeded = group.get("data-route-points")
+        assert seeded is not None
+        from_svg = [
+            tuple(map(float, part.split(",")))
+            for part in seeded.split(";")
+        ]
+        assert from_svg == list(route.points)
+
+
+def test_crossing_aware_javascript_parity_and_manual_ports(tmp_path: Path) -> None:
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js unavailable for crossing-aware JavaScript parity")
+    nodes = _crossing_demo_nodes()
+    source = tmp_path / "smart-router.mjs"
+    source.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    probe = tmp_path / "crossing-parity.mjs"
+    probe.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes = {json.dumps(nodes)};\n"
+        'const first = smartEdgeGeometry(nodes[0],nodes[3],nodes);\n'
+        'const priorRoutes = [{from:"a",to:"d",points:first.points}];\n'
+        'const second = smartEdgeGeometry(nodes[1],nodes[2],nodes,{priorRoutes});\n'
+        'const forced = smartEdgeGeometry(nodes[1],nodes[2],nodes,\n'
+        '  {priorRoutes,fromSide:"left",toSide:"right"});\n'
+        'console.log(JSON.stringify({first,second,forced}));\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run([node,str(probe)],capture_output=True,text=True,
+                            check=True,timeout=15)
+    javascript = json.loads(result.stdout)
+    first = route_edge(nodes[0],nodes[3],nodes)
+    assert first is not None
+    prior = [{"from": "a", "to": "d", "points": first.points}]
+    for key,expected in (
+        ("first", first),
+        ("second", route_edge(nodes[1],nodes[2],nodes,prior_routes=prior)),
+        ("forced", route_edge(nodes[1],nodes[2],nodes,
+                              prior_routes=prior,from_side="left",to_side="right")),
+    ):
+        assert expected is not None
+        actual = javascript[key]
+        assert actual is not None and actual["collisionFree"]
+        assert actual["path"] == expected.path
+        assert actual["points"] == [list(p) for p in expected.points]
+        assert actual["fromSide"] == expected.from_side
+        assert actual["toSide"] == expected.to_side
+
+
+def test_strict_crossing_preserves_axis_aligned_cases() -> None:
+    from schauwerk.visual.native_canvas_smart_router import _strict_segment_cross
+    assert _strict_segment_cross((0,-5),(0,5),(-5,0),(5,0))
+    assert _strict_segment_cross((-5,0),(5,0),(0,-5),(0,5))
+    assert not _strict_segment_cross((0,0),(0,5),(0,5),(5,5))
+    assert not _strict_segment_cross((0,0),(0,5),(1,-5),(1,5))
+
+def test_dense_documents_bound_prior_edge_context_in_renderer_and_viewer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from schauwerk.visual import native_diagram
+    nodes = [
+        {"id": f"n{i}", "type": "text", "x": (i % 4) * 195,
+         "y": (i // 4) * 155, "width": 100, "height": 70, "text": f"N{i}"}
+        for i in range(8)
+    ]
+    edges = [
+        {"id": f"e{i}", "fromNode": nodes[(i * 3) % 8]["id"],
+         "toNode": nodes[(i * 3 + 1 + i // 8) % 8]["id"],
+         "label": f"R{i}"}
+        for i in range(70)
+    ]
+    for i, edge in enumerate(edges):
+        if edge["fromNode"] == edge["toNode"]:
+            edge["toNode"] = nodes[(i * 3 + 2) % 8]["id"]
+    observed: list[int] = []
+    actual = native_diagram._canvas_smart_route_edge
+
+    def capture(*args, **kwargs):
+        observed.append(len(kwargs["prior_routes"]))
+        return actual(*args, **kwargs)
+
+    monkeypatch.setattr(native_diagram, "_canvas_smart_route_edge", capture)
+    def render_many(number: int) -> tuple[list[int], str]:
+        observed.clear()
+        document = json_canvas_to_editing_document({
+            "nodes": nodes, "edges": edges[:number],
+            "schauwerk": {"edgeRouting": "smart"},
+        })
+        svg = render_native_editing_document(document)
+        return observed.copy(), svg
+
+    normal, normal_svg = render_many(64)
+    dense, dense_svg = render_many(70)
+    assert len(normal) == 64 and max(normal) == 12
+    assert len(dense) == 70 and max(dense) == 4
+    assert dense[0] == 0 and dense[10] == 4
+    assert 'data-route-points="' in normal_svg
+    assert 'data-route-points="' in dense_svg
+    # Native editor and standalone browser must apply the same context bound.
+    assert "edges.size > 64 ? -4 : -12" in ASSETS["app.js"]
+
+def test_automatic_ports_rank_crossing_weighted_candidates_with_js_parity(
+    tmp_path: Path,
+) -> None:
+    """A shorter crossing candidate must not beat a cheap clear port pair."""
+    coords = ((506,409),(249,151),(671,5),(109,435))
+    nodes = [
+        {"id": f"n{i}", "type": "text", "text": f"N{i}", "x": x, "y": y,
+         "width": 70, "height": 50}
+        for i,(x,y) in enumerate(coords)
+    ]
+    first = route_edge(nodes[0],nodes[1],nodes)
+    assert first is not None and first.collision_free
+    previous = [{"from": "n0", "to": "n1", "points": first.points}]
+    auto = route_edge(nodes[2],nodes[3],nodes,prior_routes=previous)
+    forced = route_edge(
+        nodes[2],nodes[3],nodes,prior_routes=previous,
+        from_side="bottom",to_side="right",
+    )
+    assert auto is not None and forced is not None
+    assert (auto.from_side,auto.to_side)==("left","top")
+    assert _strict_crossings(first,auto)==0
+    assert _strict_crossings(first,forced)==1
+    assert (forced.from_side,forced.to_side)==("bottom","right")
+    assert _poly_length(auto) < _poly_length(forced)+100
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node.js unavailable for crossing-weighted ports")
+    module = tmp_path/"smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    runner = tmp_path/"crossing-ports.mjs"
+    runner.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes={json.dumps(nodes)};\n"
+        'const first=smartEdgeGeometry(nodes[0],nodes[1],nodes);\n'
+        'const priorRoutes=[{from:"n0",to:"n1",points:first.points}];\n'
+        'console.log(JSON.stringify({\n'
+        ' auto:smartEdgeGeometry(nodes[2],nodes[3],nodes,{priorRoutes}),\n'
+        ' forced:smartEdgeGeometry(nodes[2],nodes[3],nodes,\n'
+        '  {priorRoutes,fromSide:"bottom",toSide:"right"})\n'
+        '}));\n',
+        encoding="utf-8",
+    )
+    output=subprocess.run(
+        [node,str(runner)],check=True,capture_output=True,text=True,timeout=15,
+    )
+    pair=json.loads(output.stdout)
+    for kind,route in (("auto",auto),("forced",forced)):
+        candidate=pair[kind]
+        assert candidate is not None and candidate["collisionFree"]
+        assert candidate["path"]==route.path
+        assert candidate["points"]==[list(p) for p in route.points]
+        assert (candidate["fromSide"],candidate["toSide"])==(
+            route.from_side,route.to_side
+        )

@@ -1488,6 +1488,7 @@ function applyAllNodeTransforms() {
       edge.naturalLabelX = edge.baseLabelX;
       edge.naturalLabelY = edge.baseLabelY;
       edge.routeBounds = null;
+      edge.routePoints = edge.baseRoutePoints;
       resetEdgeLabel(edge);
       placeLiveEdgeConflict(edge, edge.route === "canvas-smart-conflict");
     }
@@ -1677,6 +1678,16 @@ function relocateLiveEdgeLabels() {
   }
 }
 
+function previouslyRoutedEdges(edgeId) {
+  const prior = [];
+  for (const [id, edge] of edges) {
+    if (id === edgeId) break;
+    if (edge.route !== "canvas-smart" || !Array.isArray(edge.routePoints)) continue;
+    prior.push({ from: edge.from, to: edge.to, points: edge.routePoints });
+  }
+  // Match the server's bounded routing context for dense documents.
+  return prior.slice(edges.size > 64 ? -4 : -12);
+}
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
@@ -1691,6 +1702,7 @@ function updateEdgeGeometry(edgeId) {
     const result = smartEdgeGeometry(source, target, allNodes, {
       lane: edgeState.lane, fromSide: edgeState.fromSide, toSide: edgeState.toSide,
       maxLane: maxLaneByPair.get(pairKey) || 0,
+      priorRoutes: previouslyRoutedEdges(edgeId),
     });
     if (result) {
       edgeState.path.setAttribute("d", result.path);
@@ -1698,6 +1710,7 @@ function updateEdgeGeometry(edgeId) {
       edgeState.naturalLabelX = result.labelX;
       edgeState.naturalLabelY = result.labelY;
       const routePoints = result.points;
+      edgeState.routePoints = routePoints;
       edgeState.routeBounds = [
         Math.min(...routePoints.map(point => point[0])) - 24,
         Math.min(...routePoints.map(point => point[1])) - 24,
@@ -1706,6 +1719,7 @@ function updateEdgeGeometry(edgeId) {
       ];
       placeLiveEdgeConflict(edgeState, false);
     } else {
+      edgeState.routePoints = null;
       const box = svg.viewBox.baseVal;
       const fallback = liveEdgeGeometry(source, target, {
         route: "standard", lane: edgeState.lane,
@@ -2549,7 +2563,19 @@ for (const edgeGroup of svg.querySelectorAll('[data-source-kind="edge"]')) {
       selectEdge(edgeId);
     }
   });
+  // Seed the exact certified source routes; do not synchronously replan
+  // every edge on initial load merely to obtain crossing context.
+  const serializedRoutePoints = edgeGroup.dataset.routePoints || "";
+  const parsedRoutePoints = serializedRoutePoints &&
+    serializedRoutePoints.length < 8192
+    ? serializedRoutePoints.split(";").map(pair => pair.split(",").map(Number))
+    : [];
+  const baseRoutePoints = parsedRoutePoints.length >= 2 &&
+    parsedRoutePoints.every(point =>
+      point.length === 2 && point.every(Number.isFinite))
+    ? parsedRoutePoints : null;
   edges.set(edgeId, {
+    baseRoutePoints, routePoints: baseRoutePoints,
     element: edgeGroup,
     from: String(model.from),
     to: String(model.to),
