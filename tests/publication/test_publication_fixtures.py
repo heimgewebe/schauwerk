@@ -22,6 +22,64 @@ from schauwerk.publication.store import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _router_bbox_performance_successor_proof() -> dict:
+    """Bind the current faster router to exact bytes, not old visual acceptance."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-smart-router-bounds-20261112"
+        / "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-smart-router-bbox-perf-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 245
+    assert proof["base_revision"] == "b5689773108fbadc5ad43c9487840d7d1ddd60cc"
+    assert proof["source_change_commit"] == "a3f19b09c1def0a79871041361d39084b80e9059"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    references = proof["historical_predecessors"]
+    assert set(references) == {"source", "tests"}
+    expected = {
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "tests/visual/test_native_canvas_smart_router.py",
+    }
+    assert set(proof["base_source_bindings"]) == expected
+    assert set(proof["source_bindings"]) == expected
+    for kind, name in (
+        ("source", "src/schauwerk/visual/native_canvas_smart_router.py"),
+        ("tests", "tests/visual/test_native_canvas_smart_router.py"),
+    ):
+        reference = references[kind]
+        raw = (ROOT / reference["path"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == reference["sha256"]
+        predecessor = json.loads(raw)
+        assert predecessor["evidence_digest"] == reference["evidence_digest"]
+        assert predecessor["evidence_digest"] == digest_mapping(
+            predecessor, "evidence_digest"
+        )
+        assert proof["base_source_bindings"][name] == predecessor["source_bindings"][name]
+        assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            proof["source_bindings"][name]
+        ), name
+    assert proof["validation"]["source_48_nodes_256_edges_svg_byte_identical"] is True
+    assert proof["validation"]["source_48_nodes_256_edges_route_count"] == 256
+    assert proof["validation"]["consumer_runtime"] == "not_integrated"
+    assert "historical_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def test_schaubild_router_bbox_performance_successor_binds_exact_source() -> None:
+    proof = _router_bbox_performance_successor_proof()
+    assert proof["validation"]["bbox_crossing_and_clearance_oracles"] == "passed"
+    assert proof["validation"]["source_48_nodes_256_edges_candidate_sec"] < (
+        proof["validation"]["source_48_nodes_256_edges_baseline_sec"]
+    )
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+
+
 def _crossing_source_successor_proof() -> dict:
     """Current exact six-source successor; historical acceptance stays immutable."""
     path = (
@@ -62,9 +120,12 @@ def _crossing_source_successor_proof() -> dict:
     assert set(proof["base_source_bindings"]) == expected
     for name in expected:
         assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            proof["source_bindings"][name]
-        ), name
+        current = proof["source_bindings"][name]
+        if name == "src/schauwerk/visual/native_canvas_smart_router.py":
+            successor = _router_bbox_performance_successor_proof()
+            assert successor["base_source_bindings"][name] == current
+            current = successor["source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
         if name in predecessor["source_bindings"]:
             assert proof["base_source_bindings"][name] == (
                 predecessor["source_bindings"][name]
@@ -128,7 +189,11 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     budget = _edge_budget_source_successor_proof()
     if path in budget["source_bindings"]:
         assert budget["base_source_bindings"][path] == previous_sha256, path
-        return budget["source_bindings"][path]
+        previous_sha256 = budget["source_bindings"][path]
+    perf = _router_bbox_performance_successor_proof()
+    if path in perf["source_bindings"]:
+        assert perf["base_source_bindings"][path] == previous_sha256, path
+        return perf["source_bindings"][path]
     return previous_sha256
 
 

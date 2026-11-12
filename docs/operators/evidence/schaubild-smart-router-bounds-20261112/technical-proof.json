@@ -1,0 +1,51 @@
+{
+  "base_revision": "b5689773108fbadc5ad43c9487840d7d1ddd60cc",
+  "base_source_bindings": {
+    "src/schauwerk/visual/native_canvas_smart_router.py": "5d9876a10843d7c1a9e0b96c3fb8c1e86e7501b0edc6f360619f718ad8c97a49",
+    "tests/visual/test_native_canvas_smart_router.py": "04db98e6001c461aaeb77c1888b8f4d68850a5eb3df24a601129c8f3ca1a5a24"
+  },
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "new_source_oci_published",
+    "commonthing_release_lock_updated",
+    "root_hold_authorized",
+    "production_browser_e2e_at_new_source",
+    "physical_ipad_safari_acceptance",
+    "user_readability_at_dense_256_edges"
+  ],
+  "evidence_digest": "c00912c81045e4ccb7ca4c03dff8bfee82417e0d0517f7b519b2233bac2bfa7a",
+  "historical_predecessors": {
+    "source": {
+      "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
+      "path": "docs/operators/evidence/schaubild-crossing-aware-20261110/technical-proof.json",
+      "sha256": "f913be34e4aaa1c797172cfbab9d985eb2b703a8774656805fe5603732b5767a"
+    },
+    "tests": {
+      "evidence_digest": "39e43b0ededecba332d256404ba38bc0f30f80ce50eebb904727b0c238523d25",
+      "path": "docs/operators/evidence/schaubild-smart-reciprocal-rails-20261109/technical-proof.json",
+      "sha256": "320f897adf965aa9c206a6173cc28d80705ac85d1e36f8881a838dce205c84c2"
+    }
+  },
+  "schema_version": "schauwerk-schaubild-smart-router-bbox-perf-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/visual/native_canvas_smart_router.py": "d73c383b0926743169fd46722c77b00ddecd0bd6c5a96f940e3cd5ae4069460f",
+    "tests/visual/test_native_canvas_smart_router.py": "3337ed70d1c1d00f77f8d6e34889631d3dc599a7e0608a54e84f0acddb05e19e"
+  },
+  "source_change_commit": "a3f19b09c1def0a79871041361d39084b80e9059",
+  "source_pr": 245,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "bbox_crossing_and_clearance_oracles": "passed",
+    "consumer_runtime": "not_integrated",
+    "full_ci": "pending_exact_head",
+    "native_router_and_canvas_regressions": "passed",
+    "production_browser_performance": "not_verified_for_new_source",
+    "source_48_nodes_256_edges_baseline_sec": 5.3812,
+    "source_48_nodes_256_edges_candidate_sec": 3.7739,
+    "source_48_nodes_256_edges_route_count": 256,
+    "source_48_nodes_256_edges_svg_byte_identical": true,
+    "source_48_nodes_256_edges_svg_sha256": "90a6404c81b8d461ec1ba5fdc5a33b72bc456e9a7e99a4f93be50ce04f1e988e"
+  },
+  "visual_acceptance": "not_inherited"
+}
