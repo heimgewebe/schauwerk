@@ -2,7 +2,12 @@
 import pytest
 
 from schauwerk.visual.native_canvas_smart_router import (
+    _clear,
     _curve_hull_clear,
+    _intersection,
+    _segment_hits_rect,
+    _strict_segment_cross,
+    _weight_crossings,
     route_edge,
 )
 
@@ -245,3 +250,66 @@ def test_virtual_rail_failure_retries_physically_clear_narrow_passage():
     assert (route.from_side, route.to_side) == ("right", "left")
     assert route.points[0] == (100.0, 31.0)
     assert route.points[-1] == (600.0, 31.0)
+
+
+def test_fast_clear_matches_original_closed_rectangle_predicate() -> None:
+    """A faster AABB filter may not lose edge or endpoint tangencies."""
+    coordinates = (-18.0, -10.0, -2.5, 0.0, 10.0, 20.0)
+    obstacles = (
+        ((0.0, 0.0, 10.0, 10.0),),
+        ((-10.0, -10.0, 10.0, 10.0), (12.0, -2.5, 20.0, 20.0)),
+        ((0.0, 0.0, 10.0, 10.0), (10.0, 0.0, 20.0, 10.0)),
+    )
+
+    def original(a, b, boxes):
+        extent = (min(a[0], b[0]), min(a[1], b[1]),
+                  max(a[0], b[0]), max(a[1], b[1]))
+        for box in boxes:
+            if (_intersection(extent, box)
+                    or (box[0] <= a[0] <= box[2] and box[1] <= a[1] <= box[3])
+                    or (box[0] <= b[0] <= box[2] and box[1] <= b[1] <= box[3])):
+                if _segment_hits_rect(a, b, box):
+                    return False
+        return True
+
+    for boxes in obstacles:
+        for ax in coordinates:
+            for ay in coordinates:
+                for bx in coordinates:
+                    for by in coordinates:
+                        a, b = (ax, ay), (bx, by)
+                        assert _clear(a, b, boxes) is original(a, b, boxes)
+
+
+def test_crossing_bbox_rejection_preserves_all_undirected_graph_weights() -> None:
+    """AABB short-circuiting is only a speed optimization, never a penalty change."""
+    points = (
+        (0.0, 0.0), (20.0, 0.0), (0.0, 20.0), (20.0, 20.0),
+        (10.0, -10.0), (10.0, 30.0), (-10.0, 10.0), (30.0, 10.0),
+        (10.0, 10.0), (30.0, 30.0),
+    )
+    graph = [
+        [(j, float(abs(i - j) + 0.25)) for j in range(len(points)) if i != j]
+        for i in range(len(points))
+    ]
+    segments = (
+        ((10.0, -10.0), (10.0, 30.0)),
+        ((-10.0, 10.0), (30.0, 10.0)),
+        ((0.0, 0.0), (20.0, 20.0)),
+        ((20.0, 0.0), (0.0, 20.0)),
+        ((30.0, 30.0), (40.0, 40.0)),
+        ((0.0, 20.0), (20.0, 20.0)),
+        ((20.0, 20.0), (20.0, 30.0)),
+    )
+    expected = [
+        [
+            (j, distance + 100.0 * sum(
+                _strict_segment_cross(points[i], points[j], a, b)
+                for a, b in segments
+            ))
+            for j, distance in row
+        ]
+        for i, row in enumerate(graph)
+    ]
+    assert _weight_crossings(graph, points, segments) == expected
+    assert _weight_crossings(graph, points, ()) is graph

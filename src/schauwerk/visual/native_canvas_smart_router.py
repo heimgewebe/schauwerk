@@ -68,13 +68,19 @@ def _segment_hits_rect(a: Point, b: Point, r: Rect) -> bool:
 
 
 def _clear(a: Point, b: Point, obstacles: Sequence[Rect]) -> bool:
-    box = (min(a[0], b[0]), min(a[1], b[1]),
-           max(a[0], b[0]), max(a[1], b[1]))
-    for r in obstacles:
-        if (_intersection(box, r) or
-                (r[0] <= a[0] <= r[2] and r[1] <= a[1] <= r[3]) or
-                (r[0] <= b[0] <= r[2] and r[1] <= b[1] <= r[3])):
-            if _segment_hits_rect(a, b, r):
+    # Compute the segment extent once: graph construction calls this hundreds
+    # of thousands of times for dense canvases. Preserve endpoint-inclusive
+    # checks so tangencies still fail closed.
+    ax, ay = a
+    bx, by = b
+    left, top = min(ax, bx), min(ay, by)
+    right, bottom = max(ax, bx), max(ay, by)
+    for rect in obstacles:
+        x0, y0, x1, y1 = rect
+        if ((left < x1 and right > x0 and top < y1 and bottom > y0)
+                or (x0 <= ax <= x1 and y0 <= ay <= y1)
+                or (x0 <= bx <= x1 and y0 <= by <= y1)):
+            if _segment_hits_rect(a, b, rect):
                 return False
     return True
 
@@ -253,20 +259,32 @@ def _weight_crossings(
 ) -> Sequence[Sequence[tuple[int, float]]]:
     if not segments:
         return graph
-    # A visibility-graph edge is present in both adjacency lists; score
-    # its undirected geometry only once per fresh route search.
-    weights: dict[tuple[int,int],float] = {}
+    # Each old segment is tested against many visibility edges. Cache its
+    # bounding box once and reject disjoint rectangles before the identical
+    # strict-crossing predicate; equality at a boundary still reaches it.
+    segment_bounds = tuple(
+        (a, b, min(a[0], b[0]), max(a[0], b[0]),
+         min(a[1], b[1]), max(a[1], b[1]))
+        for a, b in segments
+    )
+    # Undirected graph edges occur in both adjacency lists; score once.
+    weights: dict[tuple[int, int], float] = {}
     result = []
     for i, neighbors in enumerate(graph):
         row = []
         for j, length in neighbors:
-            key = (min(i,j),max(i,j))
+            key = (min(i, j), max(i, j))
             if key not in weights:
-                weights[key] = 100.0*sum(
-                    _strict_segment_cross(vertices[i],vertices[j],a,b)
-                    for a,b in segments
-                )
-            row.append((j,length+weights[key]))
+                a, b = vertices[i], vertices[j]
+                left, right = min(a[0], b[0]), max(a[0], b[0])
+                top, bottom = min(a[1], b[1]), max(a[1], b[1])
+                crossings = 0
+                for c, d, x0, x1, y0, y1 in segment_bounds:
+                    if left > x1 or right < x0 or top > y1 or bottom < y0:
+                        continue
+                    crossings += _strict_segment_cross(a, b, c, d)
+                weights[key] = 100.0 * crossings
+            row.append((j, length + weights[key]))
         result.append(row)
     return result
 
