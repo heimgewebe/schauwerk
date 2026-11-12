@@ -1,0 +1,78 @@
+{
+  "base_revision": "77009393de351ae1baf7eafcdbcbb16321d48008",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "all_physical_printers_A3_settings",
+    "source_OCI_published",
+    "commonthing_release_lock_updated",
+    "root_HOLD_updated_for_new_source",
+    "production_browser_e2e_after_release"
+  ],
+  "production_status": "not_published_or_integrated",
+  "provenance": {
+    "fundus_asset_required": false,
+    "reason": "print-only UI geometry, no new reusable image or Fundus asset",
+    "source_mode": "source-code-successor"
+  },
+  "reference_fixture": {
+    "canvas_sha256": "9a923df41fb2fbfaf786885ca393be4d9a2060711f597b3bd1e3a6746989a0fe",
+    "description": "fresh production Chrome JSON Canvas 48 nodes 256 edges",
+    "source_svg_sha256": "550472262efe8ea373b0e28e8cdced4d36ae2e90e6d29e3f99ad98d1c934d1ea",
+    "viewBox": [
+      -546,
+      -916,
+      2909,
+      2813
+    ]
+  },
+  "schema_version": "schauwerk-schaubild-a3-readable-print-successor.v1",
+  "scope": "native SVG vector-PDF print only, no diagram model, renderer paths or export bytes change",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "5911436bdc4907e924990e2ab39418111ee9b87884b9bfa5ee82997311ec5d4e",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "051b3e4cbd053364ab488c668d69d06f8c458799f9ec8587849be9df7ed3aa3e"
+  },
+  "source_repository": "heimgewebe/schauwerk",
+  "tests": {
+    "browser_print": {
+      "a3_detail_pages": 6,
+      "a3_page_size_pt": [
+        1191.12,
+        841.92
+      ],
+      "detail_pdf_sha256": "66768c4452c565e7b2414a9ef618a0ce2f0544c42b130d89a0f212b7f81565f4",
+      "engine": "Chrome 156 CDP",
+      "overview_pages": 1,
+      "overview_pdf_sha256": "ffa5fdedff8b91592038007ef761e09a916fc33f0297f578da0c2143306c0561",
+      "page_4_preview_sha256": "3006398b4d07d77495c5be9ba38acdf3d55b8d5bc67693dc96e3d154d86e3ce0",
+      "pdf_image_objects": 0,
+      "visual_preview_sha256": "bf64dc8342eb91f137199b13575e5295c32b2096c3176a8613172b6bac396674"
+    },
+    "independent_pdf_readback": "Poppler pdfinfo, pdftotext and pdftoppm",
+    "local_pytest": "4 passed, vector PDF native browser + negative A3 plan and source contract",
+    "regression_guards": [
+      "original native SVG remains unchanged",
+      "model and local draft unchanged",
+      "raster PDF path unchanged",
+      "Safari manual print fallback preserved",
+      "invalid/small/oversized viewBoxes use prior single-page behavior",
+      "PDF pages contain only vector objects"
+    ],
+    "same_final_print_preview_render": true,
+    "text_integrity": {
+      "median_detail_text_height_pt": 11.09,
+      "median_overview_text_height_pt": 4.25,
+      "missing_edges": 0,
+      "missing_nodes": 0,
+      "required_edges": 256,
+      "required_nodes": 48
+    }
+  },
+  "visual_acceptance": {
+    "basis": "all six A3 vector pages reviewed in Poppler contact sheet; representative page 4 enlarged; final-source page 4 byteidentical to inspected sample",
+    "historical_acceptance_inherited": false,
+    "information_density_limit": "crossings still dense by model; no routing geometry change claimed",
+    "paper_print": "not_physical_printer_tested",
+    "physical_ipad_safari": "not_tested",
+    "status": "accepted_local_chrome_a3_print_layout"
+  }
+}

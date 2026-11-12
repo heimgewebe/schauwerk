@@ -1059,6 +1059,23 @@ body.schaubild-vector-print > .print-button {
   font: 14px/1.4 system-ui, sans-serif;
   cursor: pointer;
 }
+body.schaubild-vector-print .print-tile-pages { display: none; }
+body.schaubild-vector-print-tiled > svg { display: none; }
+body.schaubild-vector-print-tiled .print-tile-pages { display: block; }
+body.schaubild-vector-print-tiled .print-tile-page {
+  width: min(100%, 1050px);
+  aspect-ratio: 420 / 297;
+  margin: 0 auto 14px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+}
+body.schaubild-vector-print-tiled .print-tile-page > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* The readable mode is a derived viewBox of the same SVG, not a changed model. */
+@page { size: A3 landscape; margin: 8mm; }
 @media print {
   body.schaubild-vector-print {
     padding: 0 !important;
@@ -1066,7 +1083,28 @@ body.schaubild-vector-print > .print-button {
   }
   body.schaubild-vector-print > .print-instruction,
   body.schaubild-vector-print > .print-button { display: none !important; }
-  body.schaubild-vector-print > svg { break-inside: avoid; }
+  body.schaubild-vector-print > svg {
+    break-inside: avoid;
+    max-height: 270mm;
+  }
+  body.schaubild-vector-print-tiled .print-tile-page {
+    margin: 0;
+    border: 0;
+    aspect-ratio: auto;
+    width: 100%;
+    height: 276mm;
+    overflow: hidden;
+    break-inside: avoid;
+    break-after: page;
+  }
+  body.schaubild-vector-print-tiled .print-tile-page:last-child {
+    break-after: auto;
+  }
+  body.schaubild-vector-print-tiled .print-tile-page > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
 }
 
 """
@@ -3613,6 +3651,50 @@ async function exportNative(format) {
   }
 }
 
+/** Plan readable A3 tiles from the immutable SVG viewBox. Never crop model data. */
+function planReadableA3Tiles(svg) {
+  const bounds = (svg.getAttribute("viewBox") || "").trim()
+    .split(/[\s,]+/).map(Number);
+  if (bounds.length !== 4 || !bounds.every(Number.isFinite)
+      || bounds[2] <= 0 || bounds[3] <= 0) return null;
+  // With A3 landscape and 8mm margins these limits keep 14px labels near 9pt.
+  const columns = Math.ceil(bounds[2] / 1850);
+  const rows = Math.ceil(bounds[3] / 1200);
+  if (columns * rows <= 1 || columns * rows > 16) return null;
+  return { bounds, columns, rows };
+}
+
+/** Only the print copy is tiled; the source SVG and document stay unchanged. */
+function buildReadableA3Tiles(printDocument, vector, plan) {
+  const host = printDocument.createElement("div");
+  host.className = "print-tile-pages";
+  const [left, top, width, height] = plan.bounds;
+  const stepX = width / plan.columns;
+  const stepY = height / plan.rows;
+  // Overlap preserves context and labels at the seam of adjacent pages.
+  const overlapX = Math.min(320, stepX * 0.22);
+  const overlapY = Math.min(120, stepY * 0.14);
+  for (let row = 0; row < plan.rows; row += 1) {
+    for (let column = 0; column < plan.columns; column += 1) {
+      const tile = printDocument.createElement("section");
+      tile.className = "print-tile-page";
+      const svg = printDocument.importNode(vector, true);
+      const minX = left + column * stepX - (column ? overlapX / 2 : 0);
+      const maxX = left + (column + 1) * stepX
+        + (column < plan.columns - 1 ? overlapX / 2 : 0);
+      const minY = top + row * stepY - (row ? overlapY / 2 : 0);
+      const maxY = top + (row + 1) * stepY
+        + (row < plan.rows - 1 ? overlapY / 2 : 0);
+      svg.setAttribute("viewBox", [minX, minY, maxX - minX, maxY - minY].join(" "));
+      svg.setAttribute("width", "100%");
+      svg.setAttribute("height", "100%");
+      tile.appendChild(svg);
+      host.appendChild(tile);
+    }
+  }
+  return host;
+}
+
 /** Print the live native SVG as vectors; no JPEG embedding or server dependency. */
 function printNativeVectorPdf() {
   if (activeEngine !== "native") {
@@ -3677,6 +3759,7 @@ function printNativeVectorPdf() {
   // Safari may reject print() after the asynchronous stylesheet load. A
   // direct tap in the opened tab must still work without reopening the editor.
   manualPrint.addEventListener("click", () => {
+    printDocument.body.classList.remove("schaubild-vector-print-tiled");
     try {
       printWindow.focus();
       printWindow.print();
@@ -3689,11 +3772,35 @@ function printNativeVectorPdf() {
   svg.setAttribute("width", "100%");
   svg.removeAttribute("height");
   printDocument.body.appendChild(svg);
+  const readablePlan = planReadableA3Tiles(svg);
+  if (readablePlan) {
+    const pageCount = readablePlan.rows * readablePlan.columns;
+    instruction.textContent = "Bei dichter Grafik: A3-Lesefassung auf " + pageCount
+      + " Seiten oder Gesamtübersicht drucken. Das Original bleibt unverändert.";
+    manualPrint.textContent = "Gesamtübersicht drucken / Als PDF speichern";
+    const readablePrint = printDocument.createElement("button");
+    readablePrint.className = "print-button";
+    readablePrint.type = "button";
+    readablePrint.textContent = "A3-Lesefassung (" + pageCount + " Seiten)";
+    readablePrint.addEventListener("click", () => {
+      if (!printDocument.body.querySelector(".print-tile-pages")) {
+        printDocument.body.appendChild(buildReadableA3Tiles(printDocument, svg, readablePlan));
+      }
+      printDocument.body.classList.add("schaubild-vector-print-tiled");
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch (_) {
+        // The opened tab remains usable from Safari's Print menu.
+      }
+    });
+    printDocument.body.insertBefore(readablePrint, svg);
+  }
   const stylesheet = printDocument.createElement("link");
   stylesheet.rel = "stylesheet";
   stylesheet.href = new URL("styles.css", window.location.href).href;
   const print = () => {
-    if (printWindow.closed) return;
+    if (printWindow.closed || readablePlan) return;
     try {
       printWindow.focus();
       printWindow.print();
