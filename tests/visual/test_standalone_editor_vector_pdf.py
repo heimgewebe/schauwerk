@@ -41,7 +41,8 @@ def test_vector_pdf_print_is_separate_from_raster_download(tmp_path: Path) -> No
     assert 'for (const element of [vector, ...vector.querySelectorAll("*")])' in js
     assert 'printWindow.print()' in js
     assert 'window.open("", "_blank")' in js
-    assert '@page { size: A3 landscape; margin: 8mm; }' in css
+    assert '@page schauwerk-a3 { size: A3 landscape; margin: 8mm; }' in css
+    assert 'page: schauwerk-a3;' in css
     assert 'max-height: 270mm;' in css
     assert 'body.schaubild-vector-print-tiled .print-tile-page' in css
     assert 'function planReadableA3Tiles(svg)' in js

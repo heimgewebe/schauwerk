@@ -1075,9 +1075,10 @@ body.schaubild-vector-print-tiled .print-tile-page > svg {
   height: 100%;
 }
 /* The readable mode is a derived viewBox of the same SVG, not a changed model. */
-@page { size: A3 landscape; margin: 8mm; }
+@page schauwerk-a3 { size: A3 landscape; margin: 8mm; }
 @media print {
   body.schaubild-vector-print {
+    page: schauwerk-a3;
     padding: 0 !important;
     background: #fff !important;
   }

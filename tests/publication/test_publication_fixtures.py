@@ -180,6 +180,48 @@ def _edge_budget_source_successor_proof() -> dict:
     return proof
 
 
+def _a3_readable_print_source_successor_proof() -> dict:
+    """Bind only the new print UI and regression bytes; old proofs stay immutable."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-a3-readable-print-20261112"
+        / "technical-proof.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-a3-readable-print-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 246
+    assert proof["base_revision"] == "77009393de351ae1baf7eafcdbcbb16321d48008"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["production_status"] == "not_published_or_integrated"
+    assert proof["visual_acceptance"]["historical_acceptance_inherited"] is False
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    editor = "src/schauwerk/resources/standalone_editor/assets.py"
+    browser_test = "tests/visual/test_standalone_editor_vector_pdf.py"
+    assert proof["base_source_bindings"] == {
+        editor: "8c4cabcb1258a1364ae72b844ecd21b2f8d128e7b69b328537072692452207d8",
+        browser_test: "acaa8846fc1085667540d54dd99fc46af47c2cd19fcd2909ad400103396e8fd6",
+    }
+    assert set(proof["source_bindings"]) == {editor, browser_test}
+    for name, digest in proof["source_bindings"].items():
+        assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    pub_test = "tests/publication/test_publication_fixtures.py"
+    assert proof["publication_test_binding"] == {
+        "path": pub_test,
+        "sha256": hashlib.sha256((ROOT / pub_test).read_bytes()).hexdigest(),
+    }
+    assert proof["tests"]["browser_print"]["a3_detail_pages"] == 6
+    assert proof["tests"]["text_integrity"]["missing_edges"] == 0
+    return proof
+
+
+def test_schaubild_a3_print_source_successor_is_digest_bound() -> None:
+    proof = _a3_readable_print_source_successor_proof()
+    assert proof["tests"]["browser_print"]["pdf_image_objects"] == 0
+    assert proof["tests"]["browser_print"]["overview_pages"] == 1
+    assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+
+
 def _current_source_digest(path: str, previous_sha256: str) -> str:
     """Follow only digest-verified successors; earlier proof bytes are immutable."""
     crossing = _crossing_source_successor_proof()
@@ -194,6 +236,10 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     if path in perf["source_bindings"]:
         assert perf["base_source_bindings"][path] == previous_sha256, path
         return perf["source_bindings"][path]
+    a3 = _a3_readable_print_source_successor_proof()
+    if path in a3["source_bindings"]:
+        assert a3["base_source_bindings"][path] == previous_sha256, path
+        return a3["source_bindings"][path]
     return previous_sha256
 
 
@@ -14463,7 +14509,9 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
     # must be superseded by the new, independently bound history proof below.
     for name, digest in vector["source_bindings"].items():
         if name != editor_path:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+                _current_source_digest(name, digest)
+            )
 
     history_path = (
         ROOT / "docs/operators/evidence"
@@ -14646,6 +14694,8 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **focus_proof["source_bindings"],
         **_crossing_source_successor_proof()["source_bindings"],
         **_edge_budget_source_successor_proof()["source_bindings"],
+        # New A3 print UI and PDF-test bytes supersede only these two paths.
+        **_a3_readable_print_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
