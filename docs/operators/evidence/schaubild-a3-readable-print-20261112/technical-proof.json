@@ -1,0 +1,91 @@
+{
+  "base_revision": "77009393de351ae1baf7eafcdbcbb16321d48008",
+  "base_source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "8c4cabcb1258a1364ae72b844ecd21b2f8d128e7b69b328537072692452207d8",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "acaa8846fc1085667540d54dd99fc46af47c2cd19fcd2909ad400103396e8fd6"
+  },
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "all_physical_printers_A3_settings",
+    "source_OCI_published",
+    "commonthing_release_lock_updated",
+    "root_HOLD_updated_for_new_source",
+    "production_browser_e2e_after_release"
+  ],
+  "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
+  "production_status": "not_published_or_integrated",
+  "provenance": {
+    "fundus_asset_required": false,
+    "reason": "print-only UI geometry, no new reusable image or Fundus asset",
+    "source_mode": "source-code-successor"
+  },
+  "publication_test_binding": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "sha256": "5a11e792aaddd06e2e5dd7868489bbd883af0e74901ec47603f1c0f274a0d0af"
+  },
+  "reference_fixture": {
+    "canvas_sha256": "9a923df41fb2fbfaf786885ca393be4d9a2060711f597b3bd1e3a6746989a0fe",
+    "description": "fresh production Chrome JSON Canvas 48 nodes 256 edges",
+    "source_svg_sha256": "550472262efe8ea373b0e28e8cdced4d36ae2e90e6d29e3f99ad98d1c934d1ea",
+    "viewBox": [
+      -546,
+      -916,
+      2909,
+      2813
+    ]
+  },
+  "schema_version": "schauwerk-schaubild-a3-readable-print-successor.v1",
+  "scope": "native SVG vector-PDF print only, no diagram model, renderer paths or export bytes change",
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "dc4925c629948bf29bb8bf4356925495f4274cf8d71183a0b2a7a6ba8433fd64",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "57e76b1f2fafb38128d57d82885f23bea2a91cf1a7a9f3c35890b70e3e2d2ffb"
+  },
+  "source_pr": 246,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "tests": {
+    "browser_print": {
+      "a3_detail_pages": 6,
+      "a3_page_size_pt": [
+        1191.12,
+        841.92
+      ],
+      "detail_pdf_sha256": "a6ff4a9bb52093574f528747b8c4962adfb85890b2d41fc9fd4238226377ce62",
+      "engine": "Chrome 156 CDP",
+      "overview_pages": 1,
+      "overview_pdf_sha256": "3be35a964b07584dd041fd8eb264e6ec4d27e7acd6af402d96b0a988fa310fb9",
+      "page_4_preview_sha256": "3006398b4d07d77495c5be9ba38acdf3d55b8d5bc67693dc96e3d154d86e3ce0",
+      "pdf_image_objects": 0,
+      "print_css_scope": "named_page_schauwerk_a3_only",
+      "scope_visual_diff": "representative page 4 PDF raster remained byteidentical to prior acceptance",
+      "visual_preview_sha256": "bf64dc8342eb91f137199b13575e5295c32b2096c3176a8613172b6bac396674"
+    },
+    "independent_pdf_readback": "Poppler pdfinfo, pdftotext and pdftoppm",
+    "local_pytest": "4 passed, vector PDF native browser + negative A3 plan and source contract",
+    "regression_guards": [
+      "original native SVG remains unchanged",
+      "model and local draft unchanged",
+      "raster PDF path unchanged",
+      "Safari manual print fallback preserved",
+      "invalid/small/oversized viewBoxes use prior single-page behavior",
+      "PDF pages contain only vector objects"
+    ],
+    "same_final_print_preview_render": true,
+    "text_integrity": {
+      "median_detail_text_height_pt": 11.09,
+      "median_overview_text_height_pt": 4.25,
+      "missing_edges": 0,
+      "missing_nodes": 0,
+      "required_edges": 256,
+      "required_nodes": 48
+    }
+  },
+  "visual_acceptance": {
+    "basis": "all six A3 vector pages reviewed in Poppler contact sheet; representative page 4 enlarged; final-source page 4 byteidentical to inspected sample",
+    "historical_acceptance_inherited": false,
+    "information_density_limit": "crossings still dense by model; no routing geometry change claimed",
+    "paper_print": "not_physical_printer_tested",
+    "physical_ipad_safari": "not_tested",
+    "status": "accepted_local_chrome_a3_print_layout"
+  }
+}

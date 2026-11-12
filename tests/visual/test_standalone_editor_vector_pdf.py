@@ -41,8 +41,44 @@ def test_vector_pdf_print_is_separate_from_raster_download(tmp_path: Path) -> No
     assert 'for (const element of [vector, ...vector.querySelectorAll("*")])' in js
     assert 'printWindow.print()' in js
     assert 'window.open("", "_blank")' in js
+    assert '@page schauwerk-a3 { size: A3 landscape; margin: 8mm; }' in css
+    assert 'page: schauwerk-a3;' in css
+    assert 'max-height: 270mm;' in css
+    assert 'body.schaubild-vector-print-tiled .print-tile-page' in css
+    assert 'function planReadableA3Tiles(svg)' in js
+    assert 'function buildReadableA3Tiles(printDocument, vector, plan)' in js
+    assert 'A3-Lesefassung (' in js
+    assert 'printDocument.body.classList.add("schaubild-vector-print-tiled")' in js
     assert 'renderedImageToPdfBlob(' in js  # existing image-PDF unaffected
     assert 'jpegToPdfBlob(bytes, canvas.width, canvas.height)' in js
+
+
+def test_a3_readable_tile_plan_has_finite_limits(tmp_path: Path) -> None:
+    if not shutil.which("node"):
+        pytest.skip("Node.js is unavailable")
+    output = tmp_path / "editor"
+    build_standalone_editor(output)
+    source = (output / "app.js").read_text(encoding="utf-8")
+    begin = source.index("function planReadableA3Tiles(svg) {")
+    end = source.index("/** Only the print copy", begin)
+    logic = source[begin:end]
+    script = logic + """
+const viewboxes = [
+  "-546 -916 2909 2813", "0 0 900 700", "0 0 1000000 1000000",
+  "0 0 -3 100", "0 0 NaN 100", "", "0 0 1850 1200"
+];
+const plans = viewboxes.map((value) => planReadableA3Tiles({
+  getAttribute() { return value; }
+}));
+if (!plans[0] || plans[0].columns !== 2 || plans[0].rows !== 3
+    || plans.slice(1).some((plan) => plan !== null)) {
+  throw Error("A3 plan must reject invalid, small or excessive viewBoxes");
+}
+"""
+    result = subprocess.run(
+        ["node", "-e", script], capture_output=True, text=True, timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("width,height", [(1280, 800), (390, 844)])
@@ -126,6 +162,49 @@ const wait = async (pred, label) => {
     button.click();
     await wait(() => document.body.textContent.includes("Druckfenster blockiert"),
       "blocked popup feedback");
+
+    // A very dense SVG must offer readable A3 details without silently
+    // changing the original source, and it must wait for an explicit choice.
+    const sourceSvg = frame.contentDocument.querySelector("#nativeDiagram");
+    const originalViewBox = sourceSvg.getAttribute("viewBox");
+    sourceSvg.setAttribute("viewBox", "-546 -916 2909 2813");
+    const denseDoc = document.implementation.createHTMLDocument("A3-Details");
+    const denseWindow = {document: denseDoc, closed: false, opener: window,
+      printed: 0, focus() {}, print() {this.printed += 1;}};
+    window.open = () => denseWindow;
+    try {
+      button.click();
+      await wait(() => denseDoc.body.querySelector(".print-button")
+        && denseDoc.body.querySelectorAll("svg").length === 1,
+        "dense vector print window");
+      const detailButton = [...denseDoc.body.querySelectorAll("button")]
+        .find((item) => item.textContent === "A3-Lesefassung (6 Seiten)");
+      if (!detailButton || denseWindow.printed !== 0) {
+        throw new Error("dense print did not offer an explicit A3 detail choice");
+      }
+      detailButton.click();
+      await wait(() => denseDoc.body.querySelectorAll(".print-tile-page svg").length === 6
+        && denseWindow.printed === 1, "six A3 vector pages");
+      const sheets = [...denseDoc.body.querySelectorAll(".print-tile-page svg")];
+      if (new Set(sheets.map((sheet) => sheet.getAttribute("viewBox"))).size !== 6
+          || sheets.some((sheet) => !sheet.querySelector("text")
+            || sheet.querySelector("image, script, foreignObject"))) {
+        throw new Error("A3 print pages are missing passive vector content");
+      }
+      if (sourceSvg.getAttribute("viewBox") !== "-546 -916 2909 2813"
+          || frame.getAttribute("src") !== previousFrame
+          || localStorage.getItem("schauwerk.native-schaubild.draft.v1") !== previousDraft
+          || document.querySelector("#nativeUndoButton").disabled !== previousUndo) {
+        throw new Error("readable A3 print changed editor state");
+      }
+      denseDoc.body.querySelector("button.print-button").click();
+      await wait(() => denseWindow.printed === 2
+        && !denseDoc.body.classList.contains("schaubild-vector-print-tiled"),
+        "overview print remains available");
+    } finally {
+      if (originalViewBox === null) sourceSvg.removeAttribute("viewBox");
+      else sourceSvg.setAttribute("viewBox", originalViewBox);
+    }
     document.documentElement.dataset.vectorPdfPrintRegression = "pass";
   } finally {
     window.open = originalOpen;
