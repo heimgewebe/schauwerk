@@ -17,7 +17,7 @@
     "production_browser_e2e",
     "global_visual_acceptance"
   ],
-  "evidence_digest": "378c32ca2174abbbb54513d246ee9c2f4363f5dcd0a89b40a70df8b1b407132a",
+  "evidence_digest": "e6a59c7a81c77b12053c70f7e5b167a3546e82184fed399d961111db2cc2aeb3",
   "historical_predecessors": {
     "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json": {
       "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
@@ -39,11 +39,11 @@
   "schema_version": "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1",
   "scope": "native freeform viewport extent and safe, softer smart-edge geometry only",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "9272b438b0d7b50cde8a9c7dc469e2345e879f4da0427d53c191254102bafb73",
+    "src/schauwerk/resources/native_viewer/assets.py": "57ea9afcc661658a35e8b9a3add3058e4008d3977e97e08a376bfe81b570c943",
     "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
     "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
-    "tests/visual/test_native_canvas_smart_integration.py": "0dc33bd3c9bec78399ffd0e79bd383791fc3db45b227a8774c5e8e83a8b7b31a",
-    "tests/visual/test_native_viewer_browser.py": "ba8fffe3f8e9585d2e72df5b8c667ac3cb4907d528fc7f81ed83369017fae356"
+    "tests/visual/test_native_canvas_smart_integration.py": "ea9f5f3b270de5701b0f7341a3ecf94d4332143bdb554d97ca768dd91e5f31b8",
+    "tests/visual/test_native_viewer_browser.py": "775949d230fbe9b7304257a5e6b6fe5fb998f2a87b785b46631c549ba8ea4171"
   },
   "source_mode": "source-code-successor",
   "source_repository": "heimgewebe/schauwerk",
@@ -53,9 +53,15 @@
     "native_canvas_smart_integration": "28 passed",
     "native_canvas_smart_router": "18 passed",
     "native_viewer": "26 passed",
+    "real_chrome_16000_coordinate_save_roundtrip": "passed",
     "real_chrome_document_drag": "passed",
     "real_chrome_freeform_drag": "passed",
     "real_chrome_max_coordinate_negative": "passed",
+    "review_findings": {
+      "codex_comment_4562688433": "reproduced_and_fixed",
+      "fix_scope": "all live/document/routing nodeOffset readers share documentOffsetBudget",
+      "real_browser_persisted_16000_coordinate": "passed"
+    },
     "source_python_js_parity": "passed"
   },
   "visual_acceptance": "not_inherited"

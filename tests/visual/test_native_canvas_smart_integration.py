@@ -675,6 +675,7 @@ const svg={
   height:{baseVal:{value:600}}
 };
 const overrides = {};
+const documentOffsetBudget = 20000000;
 const nodeOffset = () => ({x:1,y:1});
 const liveBounds = () => ({x:40,y:60,width:100,height:80});
 const liveEdgeGeometry = () => ({

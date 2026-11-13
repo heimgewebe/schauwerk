@@ -2086,6 +2086,13 @@ try {
   const [tx,ty,scale]=parse();
   const originalScreenX=tx+(0-old.x)*scale;
   const originalScreenY=ty+(0-old.y)*scale;
+  const changes=[];
+  window.addEventListener("message",event=>{
+    if(event.origin===window.location.origin &&
+       event.data?.event==="native-document-change"){
+      changes.push(event.data);
+    }
+  });
   const rect=node.getBoundingClientRect();
   const x=(rect.left+rect.right)/2,y=(rect.top+rect.bottom)/2;
   fire(node,"pointerdown",x,y);
@@ -2099,8 +2106,23 @@ try {
      Math.abs(originalScreenY-(newY+(0-next.y)*newScale))>0.01 ||
      Math.abs(newScale-scale)>1e-6)
     throw Error("Growing canvas unexpectedly moved the viewport");
+  // A second long motion must survive the document-offset budget on
+  // canonical save and reload, not merely expand the live SVG transform.
+  const beyondLegacy=scale*16000;
+  fire(viewport,"pointermove",x+beyondLegacy,y+340);
+  const far=svg.viewBox.baseVal;
+  if(far.x+far.width<12000)throw Error("Large live drag did not grow");
+  fire(viewport,"pointerup",x+beyondLegacy,y+340);
+  await waitUntil(()=>changes.some(m=>
+    (m.canvas?.nodes||[]).some(n=>n.id==="free"&&n.x>10000)),
+    "Native document save silently clamped offset beyond legacy 10k");
+  const last=changes.filter(m=>
+    (m.canvas?.nodes||[]).some(n=>n.id==="free"&&n.x>10000)).at(-1);
+  const canvasX=last.canvas.nodes.find(n=>n.id==="free")?.x;
+  const documentX=last.document?.nodes.find(n=>n.id==="free")?.x;
+  if(!(canvasX>10000) || canvasX!==documentX)
+    throw Error("Native Canvas and document coordinates diverged on save");
   document.documentElement.dataset.freeformCanvasBrowserRegression="pass";
-  fire(viewport,"pointerup",x+650,y+340);
 } catch(error){
   document.documentElement.dataset.freeformCanvasBrowserRegression="fail";
   document.documentElement.dataset.freeformCanvasBrowserRegressionError=

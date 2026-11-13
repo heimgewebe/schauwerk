@@ -1357,7 +1357,7 @@ function documentSnapshot() {
   if (!documentMode) return null;
   const snapshot = cloneJson(sourceModel);
   for (const node of snapshot.nodes) {
-    const offset = nodeOffset(overrides, String(node.id));
+    const offset = nodeOffset(overrides, String(node.id), documentOffsetBudget);
     node.x = Math.round(Number(node.x) + offset.x);
     node.y = Math.round(Number(node.y) + offset.y);
   }
@@ -1603,7 +1603,7 @@ function resetEdgeLabel(edgeState) {
 }
 function nodeModelsAtLiveCoordinates() {
   return sourceModel.nodes.map(node => {
-    const delta = nodeOffset(overrides, String(node.id));
+    const delta = nodeOffset(overrides, String(node.id), documentOffsetBudget);
     return {
       id: String(node.id), type: String(node.type),
       x: Math.round(Number(node.x) + delta.x),
@@ -1694,8 +1694,8 @@ function previouslyRoutedEdges(edgeId) {
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
-  const fromOffset = nodeOffset(overrides, edgeState.from);
-  const toOffset = nodeOffset(overrides, edgeState.to);
+  const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
+  const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
   if (documentMode && routingMode() === "smart" && edgeState.from !== edgeState.to) {
     const allNodes = nodeModelsAtLiveCoordinates();
     const source = allNodes.find(node => node.id === edgeState.from);
@@ -2993,7 +2993,7 @@ viewport.addEventListener("pointermove", (event) => {
     if (constrainNodeToCanvas(gesture.sourceId)) {
       gesture.startX = event.clientX;
       gesture.startY = event.clientY;
-      gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
+      gesture.startOffset = nodeOffset(overrides, gesture.sourceId, documentOffsetBudget);
     }
     // Directly moved, nonincident routes can exceed the static render viewBox.
     // Pending dense previews wait for their final certification on release.
