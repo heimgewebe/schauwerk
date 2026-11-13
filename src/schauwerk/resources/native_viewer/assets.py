@@ -1980,8 +1980,13 @@ function expandSmartCanvasToFitRoutes({ previewEdges = null } = {}) {
   const nextX = Math.floor(minX), nextY = Math.floor(minY);
   const newWidth = Math.ceil(maxX) - nextX;
   const newHeight = Math.ceil(maxY) - nextY;
+  // Native JSON Canvas accepts node origins from -10m to +10m and up to
+  // 1m node dimensions. Its SVG content span can therefore exceed 20m,
+  // even though all input coordinates remain valid. Keep a finite bound
+  // with enough room for end cards, routed edges and outer labels.
+  const maxDocumentSpan = 2 * editingLimits.max_abs_coordinate + 2_000_000;
   if (!(newWidth > 0 && newHeight > 0) ||
-      newWidth > 10000000 || newHeight > 10000000) return false;
+      newWidth > maxDocumentSpan || newHeight > maxDocumentSpan) return false;
   if (nextX === old.x && nextY === old.y &&
       newWidth === old.width && newHeight === old.height) return false;
   const dx = nextX - old.x, dy = nextY - old.y;

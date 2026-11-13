@@ -18,7 +18,7 @@
     "production_browser_e2e",
     "global_visual_acceptance"
   ],
-  "evidence_digest": "273227bbcff69a676f170de94342423aeb874c567ccd0aea3887dde4210f9330",
+  "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
   "historical_predecessors": {
     "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json": {
       "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
@@ -40,10 +40,10 @@
   "schema_version": "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1",
   "scope": "native freeform viewport extent and safe, softer smart-edge geometry only",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "9459f481feddc8a0b51803b08d932dd36c1fa46fc0b55b833fd8e89ded72dd1b",
+    "src/schauwerk/resources/native_viewer/assets.py": "3de81c559b004295165cfc9e4678c72e8cfcab958ffd9f124526cce40a63b28c",
     "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
     "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
-    "tests/visual/test_native_canvas_smart_integration.py": "46ae5b4da59e6fa14553a7013147a789b7c10bad90a51c0e144dc6ff2a6a542d",
+    "tests/visual/test_native_canvas_smart_integration.py": "3026b9f20c13c881cb85f0db885b97bf3c78ced9aa0f2cb355fc6d2d8d64e2c9",
     "tests/visual/test_native_viewer_browser.py": "fc1207c396e469c6d26fb813ef5083954e466158936a54f1fa01b1fe0399de29",
     "tests/visual/test_standalone_editor_single_workspace.py": "a1548242f0b9809c7f5bbc7361dc53c13d6f9f5c16201c4fccbe9afa6f8ee261"
   },
@@ -55,6 +55,7 @@
     "deferred_dense_smart_preview_bounds": "passed",
     "full_ci": "pending_exact_head",
     "mobile_chrome_safearea_390_drag_cancel_and_pan": "2 passed",
+    "native_21m_coordinate_span": "passed_python_native_renderer_and_js_extent",
     "native_canvas_smart_integration": "28 passed",
     "native_canvas_smart_router": "18 passed",
     "native_viewer": "26 passed",
@@ -68,6 +69,7 @@
       "codex_comment_4562688433": "reproduced_and_fixed",
       "codex_comment_4562767915": "reproduced_and_fixed_with_js_and_chrome_e2e",
       "codex_comment_4562871762": "reproduced_and_fixed_with_js_and_chrome_e2e",
+      "codex_comment_4564251122": "reproduced_and_fixed_valid_full_range_21m",
       "fix_scope": "all live/document/routing nodeOffset readers share documentOffsetBudget",
       "mobile_auto_fit_regression": "old transform-string check replaced by visible world-to-screen invariant; canceled drag now restores prior viewBox before next fit",
       "real_browser_persisted_16000_coordinate": "passed"

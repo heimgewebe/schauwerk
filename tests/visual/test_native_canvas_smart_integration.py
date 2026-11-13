@@ -566,6 +566,7 @@ def test_nonincident_smart_detours_expand_export_viewbox_without_zoom_jump(
     end = app.index("function constrainBoundsOffset(", start)
     program = r"""
 const documentMode = true;
+const editingLimits = {max_abs_coordinate:10000000};
 const routingMode = () => "smart";
 const nodes = new Map();
 const edges = new Map([["notIncident", {
@@ -818,6 +819,7 @@ def test_relocated_simple_edge_label_stays_within_svg_canvas(
     source = app[begin:app.index("function constrainBoundsOffset(", begin)]
     program = r"""
 const documentMode=true, routingMode=()=> "simple";
+const editingLimits={max_abs_coordinate:10000000};
 const nodes=new Map();
 let pathReads=0;
 const edges=new Map([["labeled", {
@@ -1161,6 +1163,7 @@ def test_freeform_moved_nodes_grow_svg_in_all_directions_without_pan_jump(
     script = tmp_path / "freeform-viewbox.mjs"
     script.write_text(r"""
 const documentMode=true, routingMode=()=> "simple";
+const editingLimits={max_abs_coordinate:10000000};
 const edges=new Map();
 const nodes=new Map([
   ["left",{minX:-530,minY:-240,maxX:-410,maxY:-160}],
@@ -1258,6 +1261,7 @@ def test_dynamic_canvas_expands_simple_cubic_and_selective_dense_preview(
     script = tmp_path / "freeform-curve-and-dense-preview.mjs"
     script.write_text(r"""
 const documentMode=true;
+const editingLimits={max_abs_coordinate:10000000};
 let mode="simple";
 const routingMode=()=>mode;
 let simpleReads=0, previewReads=0, unchangedReads=0, applied=0;
@@ -1321,3 +1325,71 @@ console.log(JSON.stringify({simple:true,dense:true,selective:true,stable:true}))
     assert json.loads(result.stdout) == {
         "simple":True,"dense":True,"selective":True,"stable":True,
     }
+
+
+def test_freeform_extent_admits_full_valid_node_coordinate_span(tmp_path: Path) -> None:
+    """Source coordinates at both valid extremes can still expand the viewBox."""
+    extreme = {
+        "nodes": [
+            {"id": "negative", "type": "text", "x": -10_000_000,
+             "y": -10_000_000, "width": 200, "height": 100, "text": "Links"},
+            {"id": "positive", "type": "text", "x": 10_000_000,
+             "y": 10_000_000, "width": 1_000_000,
+             "height": 1_000_000, "text": "Rechts"},
+        ],
+        "edges": [],
+    }
+    server_svg = ET.fromstring(render_native_editing_document(
+        json_canvas_to_editing_document(extreme),
+    ))
+    view_x, view_y, view_w, view_h = map(
+        float, server_svg.attrib["viewBox"].split(),
+    )
+    assert view_x <= -10_000_000 and view_y <= -10_000_000
+    assert view_x + view_w >= 11_000_000
+    assert view_y + view_h >= 11_000_000
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for wide-coordinate SVG regression")
+    app = ASSETS["app.js"]
+    start = app.index("function expandSmartCanvasToFitRoutes(")
+    source = app[start:app.index("function constrainBoundsOffset(", start)]
+    script = tmp_path / "wide-freeform-canvas.mjs"
+    script.write_text(r"""
+const documentMode=true, editingLimits={max_abs_coordinate:10000000};
+const routingMode=()=> "simple", edges=new Map();
+const nodes=new Map([
+  ["negative",{minX:-10000000,minY:-10000000,maxX:-9999800,maxY:-9999900}],
+  ["positive",{minX:10000000,minY:10000000,maxX:11000000,maxY:11000000}],
+]);
+const nodeBoundsInSvg=node=>node;
+const old={x:-88,y:-88,width:650,height:420};
+const svg={
+ viewBox:{baseVal:{...old}},
+ setAttribute(name,value){
+  if(name==="viewBox"){
+    const [x,y,width,height]=value.split(" ").map(Number);
+    this.viewBox.baseVal={x,y,width,height};
+  } else this[name]=value;
+ }
+};
+let view={x:31,y:22,scale:0.05},applyCount=0;
+const applyView=()=>{applyCount++};
+""" + source + r"""
+const before=[view.x-old.x*view.scale,view.y-old.y*view.scale];
+if(!expandSmartCanvasToFitRoutes())throw Error("Valid 21m span was refused");
+const box=svg.viewBox.baseVal;
+if(box.x>-10000024 || box.y>-10000024 ||
+   box.x+box.width<11000024 || box.y+box.height<11000024)
+ throw Error("Valid extreme nodes remain clipped");
+if(box.width>22000000 || box.height>22000000)
+ throw Error("Extent exceeded model-derived bound");
+const after=[view.x-box.x*view.scale,view.y-box.y*view.scale];
+if(after.some((v,i)=>Math.abs(v-before[i])>1e-6) || applyCount!==1)
+ throw Error("Expansion moved original world origin");
+console.log(JSON.stringify({fullValidRange:true,stable:true}));
+""",encoding="utf-8")
+    p = subprocess.run(
+        [node, str(script)], capture_output=True, text=True, timeout=12, check=True,
+    )
+    assert json.loads(p.stdout) == {"fullValidRange": True, "stable": True}
