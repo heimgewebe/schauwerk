@@ -1,0 +1,61 @@
+{
+  "base_revision": "2ab4a73e850b0ba4c51d7cd2ea638fc37d3678d6",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3de81c559b004295165cfc9e4678c72e8cfcab958ffd9f124526cce40a63b28c",
+    "tests/visual/test_native_viewer_browser.py": "fc1207c396e469c6d26fb813ef5083954e466158936a54f1fa01b1fe0399de29"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "physical_a3_print_acceptance",
+    "new_svg_or_pdf_export_visual_acceptance",
+    "production_rollout",
+    "published_oci_digest",
+    "consumer_release_lock_update",
+    "current_production_browser_e2e",
+    "global_visual_acceptance"
+  ],
+  "evidence_digest": "e93802fe62e4dbf815f584d6a137b22d3f9af0776205021096565e0483c23eaa",
+  "predecessor_technical_proof": {
+    "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
+    "path": "docs/operators/evidence/schaubild-free-canvas-smooth-smart-20261113/technical-proof.json",
+    "sha256": "3c3430f4ca1ebd5205fbc9d1050018114e13ec2b03ce431ec234066e1df36222"
+  },
+  "schema_version": "schauwerk-schaubild-find-focus-successor.v1",
+  "scope": "native document view-only search, next-result navigation and relation focus",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "82e9c7d9c34e246f9876aca8656ef555282b83c12c98272c6b92c10d11c7bfa4",
+    "tests/visual/test_native_viewer_browser.py": "cb430c52ce8b6e98cc897b7ba481b1ae343df0bad5a668f62c389956e80ffa6c"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "actual_chrome_navigation_320px": "passed_real_cdp_css_width",
+    "actual_chrome_navigation_390px": "passed_real_cdp_css_width",
+    "actual_chrome_navigation_810px": "passed_real_cdp_css_width",
+    "actual_chrome_viewer_full_suite": "20 passed",
+    "compact_landscape_toolbar": "merged_navigation_into_existing_view_menu; hybrid 844x390 hosted regression passed",
+    "full_ci": "pending_exact_head",
+    "hybrid_hosted_844x390_smart_and_simple": "2 passed",
+    "hybrid_html_relation_focus_opacity": "passed_real_chrome_cdp_320_390_810",
+    "hybrid_preview_full_chrome_suite": "20 passed",
+    "ios_search_input_font_size_16px": "passed_css_readback_320_390_810",
+    "mobile_320_safe_area_insets_64_80": "passed_real_cdp_css_width",
+    "mobile_navigation_popover_no_horizontal_overflow": "passed_320_390_810",
+    "mobile_search_feedback_computed_visible": "passed_real_cdp_css_width",
+    "native_history_regression": "4 passed",
+    "native_viewer_tests": "26 passed",
+    "offline_html_regression": "58 passed",
+    "relation_focus_is_opt_in_and_clears": "passed_actual_chrome",
+    "review_findings": {
+      "codex_4566360046": "fixed; popover width bounded by safe-area toolbar",
+      "codex_4566360054": "fixed; mobile rule hides only zoom output, not live search-status",
+      "codex_4566418175": "fixed; HTML label opacity follows SVG focus, verified with real CDP computed styles"
+    },
+    "search_never_changes_document_or_undo_history": "passed_actual_chrome",
+    "smart_router_integrations": "48 passed",
+    "vector_pdf_regression": "4 passed"
+  },
+  "visual_acceptance": "not_inherited"
+}

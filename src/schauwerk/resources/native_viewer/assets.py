@@ -36,9 +36,18 @@ INDEX_HTML = r"""<!doctype html>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
           <details class="view-mode-controls document-only" hidden>
-            <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
-            <div class="view-mode-menu" role="group" aria-label="Darstellung">
+            <summary aria-label="Darstellung und Elemente finden" title="Ansicht, Suche und Beziehungsfokus">Ansicht</summary>
+            <div class="view-mode-menu" role="group" aria-label="Ansicht und Orientierung">
               <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
+              <div class="navigation-menu" role="group" aria-label="Suchen und Orientierung">
+                <label for="nodeSearch">Element suchen</label>
+                <div class="navigation-search">
+                  <input id="nodeSearch" type="search" autocomplete="off" maxlength="160" placeholder="Name oder Inhalt" aria-label="Knoten suchen">
+                  <button id="nodeSearchNext" type="button">Weiter</button>
+                </div>
+                <output id="nodeSearchStatus" aria-live="polite">Suchbegriff eingeben</output>
+                <button id="focusRelations" type="button" aria-pressed="false" title="Nur das ausgewählte Element, seine Nachbarn und direkte Verbindungen hervorheben">Beziehungsfokus: Aus</button>
+              </div>
             </div>
           </details>
         </div>
@@ -381,6 +390,61 @@ button:focus-visible {
   border-color: var(--line);
   background: #fff;
 }
+/* Search shares the existing view-mode dropdown so it adds no second
+   toolbar control in short landscape editor viewports. */
+.view-mode-menu:has(.navigation-menu) {
+  display: grid;
+  width: min(
+    340px,
+    calc(
+      100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+    )
+  );
+  justify-items: stretch;
+}
+.navigation-search input:focus-visible {
+  outline: 3px solid rgba(99, 91, 255, 0.45);
+  outline-offset: 2px;
+}
+.navigation-menu {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 6px;
+  color: var(--ink);
+}
+.navigation-menu label { font-size: 0.75rem; font-weight: 700; }
+.navigation-search { display: flex; gap: 6px; }
+.navigation-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 5px 9px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* Prevent implicit iOS Safari zoom when searching. */
+}
+.navigation-menu output { color: var(--muted); font-size: 0.75rem; text-align: left; }
+.navigation-menu #focusRelations[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.native-diagram.is-relation-focused [data-source-kind="node"].is-muted,
+.native-diagram.is-relation-focused [data-source-kind="edge"].is-muted {
+  opacity: 0.17;
+}
+/* HTML labels are in a separate preview layer. Match the native focus. */
+.hybrid-layer.is-relation-focused .hybrid-node.is-muted,
+.hybrid-layer.is-relation-focused .hybrid-edge-label.is-muted {
+  opacity: 0.17;
+}
 .edge-port-controls {
   display: flex;
   align-items: center;
@@ -597,7 +661,9 @@ button:focus-visible {
 @media (max-width: 430px) {
   .document-editor-hosted .viewer-heading { max-width: min(34vw, 128px); }
   .document-editor-hosted .status { max-width: 100%; }
-  .document-editor-hosted .controls output { display: none; }
+  /* Hide only the redundant zoom percentage on narrow embedded editors;
+   find result counts are live feedback and must remain visible. */
+  .document-editor-hosted .controls #zoomValue { display: none; }
   .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
 }
@@ -1081,6 +1147,12 @@ const edgeToEnd = document.querySelector("#edgeToEnd");
 const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
 const viewModeControls = document.querySelector(".view-mode-controls");
+const navigationControls = viewModeControls;
+const navigationMenu = document.querySelector(".navigation-menu");
+const nodeSearch = document.querySelector("#nodeSearch");
+const nodeSearchNext = document.querySelector("#nodeSearchNext");
+const nodeSearchStatus = document.querySelector("#nodeSearchStatus");
+const focusRelationsButton = document.querySelector("#focusRelations");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -1144,6 +1216,7 @@ let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
 let selectedEdgeId = null;
+let relationFocusEnabled = false; // Session-only view state, never saved.
 let edgeCreateSource = null;
 let edgeReattach = null;
 let textEditTarget = null;
@@ -2157,6 +2230,117 @@ function updateDocumentToolbarState() {
   refreshConnectionHandles();
 }
 
+function updateRelationFocus() {
+  if (!documentMode) return;
+  const chosenNode = selectedId && nodes.has(selectedId) ? selectedId : null;
+  const chosenEdge = selectedEdgeId && edges.has(selectedEdgeId) ? selectedEdgeId : null;
+  const active = relationFocusEnabled && Boolean(chosenNode || chosenEdge);
+  const highlightedNodes = new Set();
+  const highlightedEdges = new Set();
+  if (chosenNode) highlightedNodes.add(chosenNode);
+  if (chosenEdge) {
+    const edge = edges.get(chosenEdge);
+    highlightedEdges.add(chosenEdge);
+    highlightedNodes.add(edge.from);
+    highlightedNodes.add(edge.to);
+  }
+  if (chosenNode) {
+    for (const [edgeId, edge] of edges) {
+      if (edge.from === chosenNode || edge.to === chosenNode) {
+        highlightedEdges.add(edgeId);
+        highlightedNodes.add(edge.from);
+        highlightedNodes.add(edge.to);
+      }
+    }
+  }
+  svg.classList.toggle("is-relation-focused", active);
+  for (const [id, node] of nodes) {
+    node.classList.toggle("is-muted", active && !highlightedNodes.has(id));
+  }
+  for (const [id, edge] of edges) {
+    edge.element?.classList.toggle("is-muted", active && !highlightedEdges.has(id));
+  }
+  // The optional HTML/SVG preview renders labels in a separate DOM layer.
+  // View-only focus must apply to that layer without changing its source.
+  const hybridLayer = canvas.querySelector(".hybrid-layer");
+  if (hybridLayer instanceof HTMLElement) {
+    hybridLayer.classList.toggle("is-relation-focused", active);
+    for (const item of hybridLayer.querySelectorAll(".hybrid-node[data-source-id]")) {
+      item.classList.toggle("is-muted", active && !highlightedNodes.has(item.dataset.sourceId));
+    }
+    for (const item of hybridLayer.querySelectorAll(".hybrid-edge-label[data-source-id]")) {
+      item.classList.toggle("is-muted", active && !highlightedEdges.has(item.dataset.sourceId));
+    }
+  }
+  if (focusRelationsButton instanceof HTMLButtonElement) {
+    focusRelationsButton.setAttribute("aria-pressed", String(relationFocusEnabled));
+    focusRelationsButton.textContent = "Beziehungsfokus: " + (relationFocusEnabled ? "Ein" : "Aus");
+  }
+}
+function navigateToNode(sourceId) {
+  const node = nodes.get(sourceId);
+  let bounds;
+  try { bounds = node && nodeBoundsInSvg(node); }
+  catch (_) { return false; }
+  if (!bounds) return false;
+  syncEmbeddedHostOverlays();
+  const padding = embeddedNativeViewer
+    ? embeddedViewportFitPadding() : standaloneViewportFitPadding();
+  const usableWidth = Math.max(1, viewport.clientWidth - padding.left - padding.right);
+  const usableHeight = Math.max(1, viewport.clientHeight - padding.top - padding.bottom);
+  const width = Math.max(1, bounds.maxX - bounds.minX);
+  const height = Math.max(1, bounds.maxY - bounds.minY);
+  const scale = Math.max(Number.MIN_VALUE, Math.min(
+    MAX_SCALE, Math.max(view.scale, 0.9),
+    usableWidth / (width + 24), usableHeight / (height + 24),
+  ));
+  const centerX = (bounds.minX + bounds.maxX) / 2 - svg.viewBox.baseVal.x;
+  const centerY = (bounds.minY + bounds.maxY) / 2 - svg.viewBox.baseVal.y;
+  view = {
+    x: padding.left + usableWidth / 2 - centerX * scale,
+    y: padding.top + usableHeight / 2 - centerY * scale,
+    scale,
+  };
+  fitScaleFloor = Math.min(fitScaleFloor, scale);
+  autoFitActive = false;
+  applyView();
+  return true;
+}
+function matchingSearchNodes() {
+  const query = nodeSearch instanceof HTMLInputElement
+    ? nodeSearch.value.trim().toLocaleLowerCase("de") : "";
+  if (!query) return [];
+  return [...nodes.keys()].filter(sourceId => {
+    const node = nodes.get(sourceId);
+    const label = node?.querySelector("title")?.textContent || "";
+    const model = sourceModel.nodes.find(item => String(item.id) === sourceId);
+    return [sourceId, label, model?.label, model?.text, model?.source?.text]
+      .some(value => String(value || "").toLocaleLowerCase("de").includes(query));
+  });
+}
+function updateSearchStatus() {
+  if (!(nodeSearchStatus instanceof HTMLOutputElement)) return;
+  if (!(nodeSearch instanceof HTMLInputElement) || !nodeSearch.value.trim()) {
+    nodeSearchStatus.textContent = "Suchbegriff eingeben";
+    return;
+  }
+  const count = matchingSearchNodes().length;
+  nodeSearchStatus.textContent = count ? count + " Treffer · Weiter für nächsten" : "Kein Treffer";
+}
+function findNextNode() {
+  const matches = matchingSearchNodes();
+  if (!matches.length) {
+    updateSearchStatus();
+    return;
+  }
+  const nextId = matches[(matches.indexOf(selectedId) + 1) % matches.length];
+  if (!navigateToNode(nextId)) {
+    nodeSearchStatus.textContent = "Element momentan nicht erreichbar";
+    return;
+  }
+  selectNode(nextId);
+  nodeSearchStatus.textContent = (matches.indexOf(nextId) + 1) + " von " + matches.length + " Treffern";
+}
 function selectEdge(edgeId) {
   if (selectedEdgeId && edges.has(selectedEdgeId)) {
     edges.get(selectedEdgeId).element?.classList.remove("is-selected");
@@ -2175,6 +2359,7 @@ function selectEdge(edgeId) {
     const label = edgeState.element?.querySelector("title")?.textContent?.trim() || selectedEdgeId;
     selectionStatus.textContent = `Verbindung: ${label || selectedEdgeId}`;
   }
+  updateRelationFocus();
   updateDocumentToolbarState();
 }
 
@@ -2192,6 +2377,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   selectedId = sourceId && nodes.has(sourceId) ? sourceId : null;
   if (!selectedId) {
     selectionStatus.textContent = "Keine Auswahl";
+    updateRelationFocus();
     updateDocumentToolbarState();
     return;
   }
@@ -2200,6 +2386,7 @@ function selectNode(sourceId, { focus = false } = {}) {
   node.setAttribute("aria-selected", "true");
   const label = node.querySelector("title")?.textContent?.trim() || selectedId;
   selectionStatus.textContent = `Element: ${label}`;
+  updateRelationFocus();
   updateDocumentToolbarState();
   if (focus) node.focus({ preventScroll: true });
 }
@@ -2728,6 +2915,7 @@ function setHybridPreview(enabled) {
     if (!observationBeforeHybrid) setObservationMode(false);
   }
   const on = hybridPreview.active;
+  updateRelationFocus();
   if (viewModeControls instanceof HTMLDetailsElement) {
     viewModeControls.open = false;
     const summary = viewModeControls.querySelector("summary");
@@ -2756,7 +2944,38 @@ function setHybridPreview(enabled) {
   }
   setStatus(on ? "HTML-Vorschau aktiv · schreibgeschützt" : "Zurück zu Native");
 }
-if (viewModeControls instanceof HTMLDetailsElement) viewModeControls.hidden = !hybridPreview;
+if (viewModeControls instanceof HTMLDetailsElement) {
+  viewModeControls.hidden = !(hybridPreview || documentMode);
+}
+if (navigationMenu instanceof HTMLElement) navigationMenu.hidden = !documentMode;
+if (documentMode) {
+  nodeSearch?.addEventListener("input", updateSearchStatus);
+  nodeSearchNext?.addEventListener("click", findNextNode);
+  nodeSearch?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      findNextNode();
+    } else if (event.key === "Escape") {
+      event.stopPropagation();
+      if (nodeSearch.value) {
+        nodeSearch.value = "";
+        updateSearchStatus();
+      } else if (navigationControls instanceof HTMLDetailsElement) {
+        navigationControls.open = false;
+      }
+    }
+  });
+  viewport.addEventListener("pointerdown", () => {
+    if (navigationControls instanceof HTMLDetailsElement) navigationControls.open = false;
+  }, { capture: true });
+  focusRelationsButton?.addEventListener("click", () => {
+    relationFocusEnabled = !relationFocusEnabled;
+    updateRelationFocus();
+    setStatus(relationFocusEnabled
+      ? "Beziehungsfokus aktiv · Element oder Verbindung wählen"
+      : "Alle Beziehungen wieder sichtbar");
+  });
+}
 if (hybridButton instanceof HTMLButtonElement) {
   hybridButton.hidden = !hybridPreview;
   hybridButton.addEventListener("click", () => setHybridPreview(!hybridPreview?.active));

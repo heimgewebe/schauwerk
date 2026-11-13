@@ -69,6 +69,8 @@ window.setInterval(() => {
     "coordinateBrowserRegressionError",
     "freeformCanvasBrowserRegression",
     "freeformCanvasBrowserRegressionError",
+    "findFocusBrowserRegression",
+    "findFocusBrowserRegressionError",
   ]) {
     if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
   }
@@ -2201,3 +2203,320 @@ try {
         completed.stdout[-4000:]
     )
     assert 'data-freeform-canvas-browser-regression="fail"' not in completed.stdout
+
+
+@pytest.mark.parametrize(
+    ("viewport_width", "viewport_height", "safe_left", "safe_right"),
+    [
+        (320, 700, 64, 80),
+        (320, 700, 0, 0),
+        (390, 844, 0, 0),
+        (810, 1080, 0, 0),
+    ],
+)
+def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
+    tmp_path: Path, viewport_width: int, viewport_height: int,
+    safe_left: int, safe_right: int,
+) -> None:
+    """Real browser: locate off-screen node and focus its neighbors without edits."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for native navigation E2E")
+        raise AssertionError("unreachable")
+    source = {
+        "nodes": [
+            {"id": "alpha", "type": "text", "x": 0, "y": 0,
+             "width": 180, "height": 90, "text": "Hausgemeinschaft"},
+            {"id": "beta", "type": "text", "x": 530, "y": 40,
+             "width": 180, "height": 90, "text": "Gemeinschaftsprojekt"},
+            {"id": "gamma", "type": "text", "x": 1900, "y": 40,
+             "width": 180, "height": 90, "text": "Hausgarten"},
+            {"id": "omega", "type": "text", "x": -580, "y": 460,
+             "width": 180, "height": 90, "text": "Haushalt"},
+        ],
+        "edges": [
+            {"id": "e1", "fromNode": "alpha", "toNode": "beta",
+             "label": "Eins", "toEnd": "arrow"},
+            {"id": "e2", "fromNode": "beta", "toNode": "gamma",
+             "label": "Zwei", "toEnd": "arrow"},
+            {"id": "e3", "fromNode": "alpha", "toNode": "omega",
+             "label": "Drei", "toEnd": "arrow"},
+        ],
+    }
+    doc = json_canvas_to_editing_document(source)
+    output = tmp_path / "navigation-viewer"
+    build_native_viewer(doc, output)
+    stylesheet = output / "styles.css"
+    styles = stylesheet.read_text(encoding="utf-8")
+    assert "env(safe-area-inset-left)" in styles
+    assert "env(safe-area-inset-right)" in styles
+    stylesheet.write_text(
+        styles.replace("env(safe-area-inset-left)", f"{safe_left}px")
+        .replace("env(safe-area-inset-right)", f"{safe_right}px"),
+        encoding="utf-8",
+    )
+    index_path = output / "index.html"
+    html = index_path.read_text(encoding="utf-8")
+    tag = '<script type="module" src="app.js"></script>'
+    assert html.count(tag) == 1
+    probe = r"""
+<script type="module" src="app.js"></script>
+<script type="module">
+const expectedWidth = __VIEWPORT_WIDTH__;
+const safeLeft = __SAFE_LEFT__, safeRight = __SAFE_RIGHT__;
+const waitUntil = async (fn, msg) => {
+  for (let i=0; i<240; i++) {
+    if(fn())return;
+    await new Promise(done=>setTimeout(done,20));
+  }
+  throw Error(msg);
+};
+const node = id => document.querySelector(
+  '[data-source-kind="node"][data-source-id="' + id + '"]');
+const edge = id => document.querySelector(
+  '[data-source-kind="edge"][data-source-id="' + id + '"]');
+const selected = id => node(id)?.classList.contains("is-selected");
+const muted = id => node(id)?.classList.contains("is-muted");
+try {
+  await waitUntil(() => document.querySelector("#nativeCanvas")?.style.transform.includes("scale("),
+    "Native viewer did not initialize");
+  const nav = document.querySelector(".view-mode-controls");
+  const input = document.querySelector("#nodeSearch");
+  const next = document.querySelector("#nodeSearchNext");
+  const focus = document.querySelector("#focusRelations");
+  const output = document.querySelector("#nodeSearchStatus");
+  if(nav?.hidden || !(input instanceof HTMLInputElement) ||
+      !(next instanceof HTMLButtonElement) || !(focus instanceof HTMLButtonElement))
+    throw Error("Navigation controls missing or inaccessible");
+  if(document.querySelector(".is-muted"))
+    throw Error("Default rendering unexpectedly dimmed nodes");
+  const canvas = document.querySelector("#nativeCanvas");
+  const before = canvas.style.transform;
+  nav.open=true;
+  if(Math.abs(window.innerWidth - expectedWidth) > 1)
+    throw Error("Wrong CSS viewport width: " + innerWidth + " expected " + expectedWidth);
+  const menu = nav.querySelector(".navigation-menu").getBoundingClientRect();
+  const minLeft = Math.max(6, safeLeft), maxRight = innerWidth - Math.max(6, safeRight);
+  if(menu.left < minLeft - 1 || menu.right > maxRight + 1 ||
+     menu.width < 100 || menu.height < 100)
+    throw Error("Search popover escaped safe-area toolbar: " +
+      JSON.stringify({left:menu.left,right:menu.right,width:innerWidth,
+         safeLeft,safeRight}));
+  if(output.getClientRects().length===0 || getComputedStyle(output).display==="none")
+    throw Error("Search result feedback is hidden on the mobile document editor");
+  if(parseFloat(getComputedStyle(input).fontSize)<16)
+    throw Error("iOS Safari search input could trigger implicit zoom");
+  input.value = "Hausgarten";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  if(!output.textContent.includes("1 Treffer"))throw Error("Search did not count exact match");
+  input.dispatchEvent(new KeyboardEvent("keydown",{
+    key:"Enter",bubbles:true,cancelable:true
+  }));
+  if(!selected("gamma"))throw Error("Enter did not select distant matched node");
+  if(before === canvas.style.transform)throw Error("Search did not navigate to distant result");
+  const vp=document.querySelector("#nativeViewport").getBoundingClientRect();
+  const box=node("gamma").getBoundingClientRect();
+  const center={x:(box.left+box.right)/2,y:(box.top+box.bottom)/2};
+  if(center.x<vp.left+20 || center.x>vp.right-20 ||
+     center.y<vp.top+20 || center.y>vp.bottom-20)
+    throw Error("Matched node not visible after navigation");
+  focus.click();
+  if(focus.getAttribute("aria-pressed")!=="true" ||
+      !document.querySelector("#nativeDiagram")?.classList.contains("is-relation-focused"))
+    throw Error("Relation focus not enabled");
+  if(muted("gamma") || muted("beta") || !muted("alpha") || !muted("omega"))
+    throw Error("Selected node neighborhood is incorrect");
+  if(edge("e2")?.classList.contains("is-muted") ||
+     !edge("e1")?.classList.contains("is-muted") ||
+     !edge("e3")?.classList.contains("is-muted"))
+    throw Error("Incident edge highlighting is incorrect");
+  edge("e1").dispatchEvent(new KeyboardEvent("keydown",{
+    key:"Enter",bubbles:true,cancelable:true
+  }));
+  if(muted("alpha") || muted("beta") || !muted("gamma") || !muted("omega"))
+    throw Error("Selected edge endpoints were not focused");
+  input.value="Haus";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  if(!output.textContent.includes("3 Treffer"))throw Error("Search matches not re-evaluated");
+  next.click();
+  const first = document.querySelector('[data-source-kind="node"].is-selected')?.dataset.sourceId;
+  next.click();
+  const second = document.querySelector('[data-source-kind="node"].is-selected')?.dataset.sourceId;
+  if(!first || !second || first===second) throw Error("Next did not cycle matches");
+  input.value="nicht vorhanden";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  if(!output.textContent.includes("Kein Treffer"))throw Error("No-match not announced");
+  const still = document.querySelector('[data-source-kind="node"].is-selected')?.dataset.sourceId;
+  next.click();
+  if(still !== document.querySelector('[data-source-kind="node"].is-selected')?.dataset.sourceId)
+    throw Error("No-match changed selection");
+  focus.click();
+  if(document.querySelector("#nativeDiagram")?.classList.contains("is-relation-focused") ||
+     document.querySelector(".is-muted"))
+    throw Error("Focus off did not restore canonical diagram visibility");
+  const hybrid = document.querySelector("#hybridPreview");
+  if (!(hybrid instanceof HTMLButtonElement) || hybrid.hidden)
+    throw Error("HTML/SVG preview unavailable for native canvas test document");
+  hybrid.click();
+  const layer = document.querySelector(".hybrid-layer");
+  if (!(layer instanceof HTMLElement))
+    throw Error("HTML/SVG preview layer not initialized");
+  input.value="Hausgarten";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  next.click();
+  if (!selected("gamma")) throw Error("Finding in HTML preview did not select node");
+  focus.click();
+  const htmlNode = id => layer.querySelector('.hybrid-node[data-source-id="' + id + '"]');
+  const htmlEdge = id => layer.querySelector('.hybrid-edge-label[data-source-id="' + id + '"]');
+  if(!layer.classList.contains("is-relation-focused") ||
+     !htmlNode("gamma") || !htmlNode("alpha") ||
+     !htmlEdge("e2") || !htmlEdge("e1"))
+    throw Error("HTML relation focus controls missing");
+  const opacity = element => Number.parseFloat(getComputedStyle(element).opacity);
+  if(opacity(htmlNode("alpha"))>0.3 || opacity(htmlNode("gamma"))<0.9 ||
+     opacity(htmlNode("beta"))<0.9 || opacity(htmlEdge("e1"))>0.3 ||
+     opacity(htmlEdge("e2"))<0.9)
+    throw Error("Hybrid labels failed to mirror SVG relation dimming");
+  focus.click();
+  if(layer.classList.contains("is-relation-focused") ||
+     opacity(htmlNode("alpha"))<0.9 || opacity(htmlEdge("e1"))<0.9)
+    throw Error("HTML preview text did not restore after focus off");
+  hybrid.click();
+  if(document.querySelector(".hybrid-layer"))
+    throw Error("Hybrid overlay remained active after return to Native");
+  input.dispatchEvent(new KeyboardEvent("keydown",{
+    key:"Escape",bubbles:true,cancelable:true
+  }));
+  if(input.value !== "") throw Error("Escape did not clear search input");
+  input.dispatchEvent(new KeyboardEvent("keydown",{
+    key:"Escape",bubbles:true,cancelable:true
+  }));
+  if(nav.open) throw Error("Escape did not close navigation menu");
+  const edits=(window.parent.__navigationMessages||[]).filter(
+    event=>["native-document-change","native-document-rebuild"].includes(event?.event)
+      && event.startup !== true);
+  if(edits.length)throw Error("View-only actions mutated the native document");
+  document.documentElement.dataset.findFocusBrowserRegression="pass";
+} catch(error) {
+  document.documentElement.dataset.findFocusBrowserRegression="fail";
+  document.documentElement.dataset.findFocusBrowserRegressionError=String(error?.message||error);
+}
+</script>
+"""
+    probe = (
+        probe.replace("__VIEWPORT_WIDTH__", str(viewport_width))
+        .replace("__SAFE_LEFT__", str(safe_left))
+        .replace("__SAFE_RIGHT__", str(safe_right))
+    )
+    index_path.write_text(html.replace(tag, probe), encoding="utf-8")
+    _write_document_probe_host(output, full_viewport=True)
+    host = output / "host.html"
+    hosted = host.read_text(encoding="utf-8")
+    assert hosted.count('window.addEventListener("message", (event) => {') == 1
+    host.write_text(hosted.replace(
+        'window.addEventListener("message", (event) => {',
+        'window.__navigationMessages=[];'
+        'window.addEventListener("message", (event) => {'
+        'window.__navigationMessages.push(event.data);',
+        1,
+    ), encoding="utf-8")
+
+    class QuietNavigationHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(
+        QuietNavigationHandler, directory=str(output),
+    ))
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    from websockets.sync.client import connect
+
+    profile = tmp_path / "navigation-profile"
+    debugger_file = profile / "DevToolsActivePort"
+    proc = subprocess.Popen(
+        [
+            chrome, "--headless=new", "--no-first-run", "--disable-gpu",
+            "--disable-dev-shm-usage", "--no-sandbox",
+            "--remote-allow-origins=http://localhost",
+            "--remote-debugging-port=0", f"--user-data-dir={profile}",
+            "about:blank",
+        ],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    try:
+        tab = None
+        for _ in range(100):
+            try:
+                debug_port = int(
+                    debugger_file.read_text(encoding="utf-8").splitlines()[0]
+                )
+                with urlopen(
+                    f"http://127.0.0.1:{debug_port}/json/list", timeout=1,
+                ) as response:
+                    tab = next(
+                        (row for row in json.load(response) if row.get("type") == "page"),
+                        None,
+                    )
+                if tab:
+                    break
+            except (OSError, TimeoutError, ValueError, IndexError):
+                pass
+            time.sleep(0.12)
+        assert tab is not None, "navigation CDP browser did not become ready"
+        with connect(tab["webSocketDebuggerUrl"], origin="http://localhost") as ws:
+            request_id = 0
+
+            def cdp(method: str, params: dict | None = None) -> dict:
+                nonlocal request_id
+                request_id += 1
+                current = request_id
+                ws.send(json.dumps({
+                    "id": current, "method": method, "params": params or {},
+                }))
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    packet = json.loads(ws.recv(timeout=max(
+                        0.1, deadline - time.monotonic(),
+                    )))
+                    if packet.get("id") == current:
+                        assert "error" not in packet, packet.get("error")
+                        return packet.get("result", {})
+                raise AssertionError("navigation CDP timeout: " + method)
+
+            cdp("Page.enable")
+            cdp("Runtime.enable")
+            cdp("Emulation.setDeviceMetricsOverride", {
+                "width": viewport_width, "height": viewport_height,
+                "deviceScaleFactor": 1, "mobile": False,
+            })
+            cdp("Page.navigate", {
+                "url": f"http://127.0.0.1:{server.server_address[1]}/host.html",
+            })
+            for _ in range(140):
+                state = cdp("Runtime.evaluate", {
+                    "expression": (
+                        "({width:window.innerWidth,"
+                        "state:document.documentElement.dataset.findFocusBrowserRegression||'',"
+                        "error:document.documentElement.dataset.findFocusBrowserRegressionError||''})"
+                    ),
+                    "returnByValue": True,
+                }).get("result", {}).get("value", {})
+                if state.get("state") == "fail":
+                    pytest.fail(str(state.get("error")))
+                if state.get("state") == "pass":
+                    assert state.get("width") == viewport_width, state
+                    break
+                time.sleep(0.1)
+            else:
+                pytest.fail("navigation E2E did not finish at actual CSS viewport")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=6)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=5)
