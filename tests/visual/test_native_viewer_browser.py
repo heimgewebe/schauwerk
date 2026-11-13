@@ -2280,7 +2280,7 @@ const muted = id => node(id)?.classList.contains("is-muted");
 try {
   await waitUntil(() => document.querySelector("#nativeCanvas")?.style.transform.includes("scale("),
     "Native viewer did not initialize");
-  const nav = document.querySelector(".navigation-controls");
+  const nav = document.querySelector(".view-mode-controls");
   const input = document.querySelector("#nodeSearch");
   const next = document.querySelector("#nodeSearchNext");
   const focus = document.querySelector("#focusRelations");
@@ -2354,6 +2354,36 @@ try {
   if(document.querySelector("#nativeDiagram")?.classList.contains("is-relation-focused") ||
      document.querySelector(".is-muted"))
     throw Error("Focus off did not restore canonical diagram visibility");
+  const hybrid = document.querySelector("#hybridPreview");
+  if (!(hybrid instanceof HTMLButtonElement) || hybrid.hidden)
+    throw Error("HTML/SVG preview unavailable for native canvas test document");
+  hybrid.click();
+  const layer = document.querySelector(".hybrid-layer");
+  if (!(layer instanceof HTMLElement))
+    throw Error("HTML/SVG preview layer not initialized");
+  input.value="Hausgarten";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  next.click();
+  if (!selected("gamma")) throw Error("Finding in HTML preview did not select node");
+  focus.click();
+  const htmlNode = id => layer.querySelector('.hybrid-node[data-source-id="' + id + '"]');
+  const htmlEdge = id => layer.querySelector('.hybrid-edge-label[data-source-id="' + id + '"]');
+  if(!layer.classList.contains("is-relation-focused") ||
+     !htmlNode("gamma") || !htmlNode("alpha") ||
+     !htmlEdge("e2") || !htmlEdge("e1"))
+    throw Error("HTML relation focus controls missing");
+  const opacity = element => Number.parseFloat(getComputedStyle(element).opacity);
+  if(opacity(htmlNode("alpha"))>0.3 || opacity(htmlNode("gamma"))<0.9 ||
+     opacity(htmlNode("beta"))<0.9 || opacity(htmlEdge("e1"))>0.3 ||
+     opacity(htmlEdge("e2"))<0.9)
+    throw Error("Hybrid labels failed to mirror SVG relation dimming");
+  focus.click();
+  if(layer.classList.contains("is-relation-focused") ||
+     opacity(htmlNode("alpha"))<0.9 || opacity(htmlEdge("e1"))<0.9)
+    throw Error("HTML preview text did not restore after focus off");
+  hybrid.click();
+  if(document.querySelector(".hybrid-layer"))
+    throw Error("Hybrid overlay remained active after return to Native");
   input.dispatchEvent(new KeyboardEvent("keydown",{
     key:"Escape",bubbles:true,cancelable:true
   }));

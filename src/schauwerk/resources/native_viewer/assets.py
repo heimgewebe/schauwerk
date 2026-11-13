@@ -36,24 +36,21 @@ INDEX_HTML = r"""<!doctype html>
           <button id="observationMode" type="button" aria-pressed="false" aria-label="Beobachtungsmodus einschalten" title="Schaubild nur betrachten, ohne Elemente zu verändern">Beobachten</button>
           <button id="resetLayout" class="icon-control" type="button" aria-label="Positionen zurücksetzen" title="Positionen zurücksetzen">↺</button>
           <details class="view-mode-controls document-only" hidden>
-            <summary aria-label="Darstellungsmodus wählen" title="Native-SVG oder HTML/SVG-Vorschau">Ansicht</summary>
-            <div class="view-mode-menu" role="group" aria-label="Darstellung">
+            <summary aria-label="Darstellung und Elemente finden" title="Ansicht, Suche und Beziehungsfokus">Ansicht</summary>
+            <div class="view-mode-menu" role="group" aria-label="Ansicht und Orientierung">
               <button id="hybridPreview" type="button" aria-pressed="false" aria-label="HTML-Vorschau einschalten (schreibgeschützt)" title="Vorschau: Text als HTML darstellen. Nur lesen; Bearbeiten ist gesperrt, bis Sie zu Native zurückkehren." hidden>HTML-Vorschau</button>
+              <div class="navigation-menu" role="group" aria-label="Suchen und Orientierung">
+                <label for="nodeSearch">Element suchen</label>
+                <div class="navigation-search">
+                  <input id="nodeSearch" type="search" autocomplete="off" maxlength="160" placeholder="Name oder Inhalt" aria-label="Knoten suchen">
+                  <button id="nodeSearchNext" type="button">Weiter</button>
+                </div>
+                <output id="nodeSearchStatus" aria-live="polite">Suchbegriff eingeben</output>
+                <button id="focusRelations" type="button" aria-pressed="false" title="Nur das ausgewählte Element, seine Nachbarn und direkte Verbindungen hervorheben">Beziehungsfokus: Aus</button>
+              </div>
             </div>
           </details>
         </div>
-        <details class="navigation-controls document-only" hidden>
-          <summary aria-label="Elemente finden und Beziehungen hervorheben">Finden</summary>
-          <div class="navigation-menu" role="group" aria-label="Suchen und Orientierung">
-            <label for="nodeSearch">Element suchen</label>
-            <div class="navigation-search">
-              <input id="nodeSearch" type="search" autocomplete="off" maxlength="160" placeholder="Name oder Inhalt" aria-label="Knoten suchen">
-              <button id="nodeSearchNext" type="button">Weiter</button>
-            </div>
-            <output id="nodeSearchStatus" aria-live="polite">Suchbegriff eingeben</output>
-            <button id="focusRelations" type="button" aria-pressed="false" title="Nur das ausgewählte Element, seine Nachbarn und direkte Verbindungen hervorheben">Beziehungsfokus: Aus</button>
-          </div>
-        </details>
         <details class="edit-controls document-only" hidden>
           <summary>Bearbeiten</summary>
           <div class="edit-menu" role="group" aria-label="Bearbeiten">
@@ -322,14 +319,13 @@ button:focus-visible {
   color: var(--accent);
   background: var(--accent-soft);
 }
-.edit-controls, .view-mode-controls, .navigation-controls {
+.edit-controls, .view-mode-controls {
   position: relative;
   min-width: 0;
 }
 .view-controls:has(.view-mode-controls[open]) { position: relative; z-index: 4; }
 .edit-controls > summary,
-.view-mode-controls > summary,
-.navigation-controls > summary {
+.view-mode-controls > summary {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 11px;
@@ -348,8 +344,7 @@ button:focus-visible {
   user-select: none;
 }
 .edit-controls > summary::-webkit-details-marker,
-.view-mode-controls > summary::-webkit-details-marker,
-.navigation-controls > summary::-webkit-details-marker { display: none; }
+.view-mode-controls > summary::-webkit-details-marker { display: none; }
 .view-controls .view-mode-controls > summary {
   min-width: 42px;
   padding-inline: 5px;
@@ -358,8 +353,7 @@ button:focus-visible {
   background: transparent;
 }
 .edit-controls[open] > summary,
-.view-mode-controls[open] > summary,
-.navigation-controls[open] > summary {
+.view-mode-controls[open] > summary {
   border-color: var(--line-strong);
   background: var(--surface-soft);
 }
@@ -396,31 +390,31 @@ button:focus-visible {
   border-color: var(--line);
   background: #fff;
 }
-/* Anchor popover to the full safe-area-aware toolbar even when its flex
-   controls wrap at 320px. Never anchor to the small "Finden" summary. */
-.navigation-controls { position: static; }
-.navigation-controls > summary:focus-visible,
+/* Search shares the existing view-mode dropdown so it adds no second
+   toolbar control in short landscape editor viewports. */
+.view-mode-menu:has(.navigation-menu) {
+  display: grid;
+  width: min(
+    340px,
+    calc(
+      100vw - max(7px, env(safe-area-inset-left), var(--host-safe-left, 0px))
+      - max(7px, env(safe-area-inset-right), var(--host-safe-right, 0px))
+    )
+  );
+  justify-items: stretch;
+}
 .navigation-search input:focus-visible {
   outline: 3px solid rgba(99, 91, 255, 0.45);
   outline-offset: 2px;
 }
 .navigation-menu {
-  position: absolute;
-  z-index: 5;
-  top: calc(100% + 6px);
-  right: 0;
-  /* Sized against the safe-area-aware .viewer-bar, not the raw screen.
-     A 320px landscape notch may leave only 176px usable toolbar width. */
-  width: min(320px, 100%);
+  position: static;
+  width: 100%;
   min-width: 0;
   display: grid;
   gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  padding: 6px;
   color: var(--ink);
-  background: var(--surface);
-  box-shadow: 0 8px 26px rgba(25, 28, 42, 0.18);
 }
 .navigation-menu label { font-size: 0.75rem; font-weight: 700; }
 .navigation-search { display: flex; gap: 6px; }
@@ -446,7 +440,11 @@ button:focus-visible {
 .native-diagram.is-relation-focused [data-source-kind="edge"].is-muted {
   opacity: 0.17;
 }
-.navigation-controls[open] { z-index: 5; }
+/* HTML labels are in a separate preview layer. Match the native focus. */
+.hybrid-layer.is-relation-focused .hybrid-node.is-muted,
+.hybrid-layer.is-relation-focused .hybrid-edge-label.is-muted {
+  opacity: 0.17;
+}
 .edge-port-controls {
   display: flex;
   align-items: center;
@@ -644,9 +642,7 @@ button:focus-visible {
   }
   .controls { margin-left: auto; gap: 3px; }
   .view-controls { padding: 2px; gap: 2px; }
-  .edit-controls > summary, .navigation-controls > summary {
-    min-height: 42px; padding-inline: 8px;
-  }
+  .edit-controls > summary { min-height: 42px; padding-inline: 8px; }
   .edit-menu, .view-mode-menu {
     max-width: calc(
       100vw - max(6px, env(safe-area-inset-left), var(--host-safe-left, 0px))
@@ -1151,7 +1147,8 @@ const edgeToEnd = document.querySelector("#edgeToEnd");
 const edgeKind = document.querySelector("#edgeKind");
 const editControls = document.querySelector(".edit-controls");
 const viewModeControls = document.querySelector(".view-mode-controls");
-const navigationControls = document.querySelector(".navigation-controls");
+const navigationControls = viewModeControls;
+const navigationMenu = document.querySelector(".navigation-menu");
 const nodeSearch = document.querySelector("#nodeSearch");
 const nodeSearchNext = document.querySelector("#nodeSearchNext");
 const nodeSearchStatus = document.querySelector("#nodeSearchStatus");
@@ -2263,6 +2260,18 @@ function updateRelationFocus() {
   for (const [id, edge] of edges) {
     edge.element?.classList.toggle("is-muted", active && !highlightedEdges.has(id));
   }
+  // The optional HTML/SVG preview renders labels in a separate DOM layer.
+  // View-only focus must apply to that layer without changing its source.
+  const hybridLayer = canvas.querySelector(".hybrid-layer");
+  if (hybridLayer instanceof HTMLElement) {
+    hybridLayer.classList.toggle("is-relation-focused", active);
+    for (const item of hybridLayer.querySelectorAll(".hybrid-node[data-source-id]")) {
+      item.classList.toggle("is-muted", active && !highlightedNodes.has(item.dataset.sourceId));
+    }
+    for (const item of hybridLayer.querySelectorAll(".hybrid-edge-label[data-source-id]")) {
+      item.classList.toggle("is-muted", active && !highlightedEdges.has(item.dataset.sourceId));
+    }
+  }
   if (focusRelationsButton instanceof HTMLButtonElement) {
     focusRelationsButton.setAttribute("aria-pressed", String(relationFocusEnabled));
     focusRelationsButton.textContent = "Beziehungsfokus: " + (relationFocusEnabled ? "Ein" : "Aus");
@@ -2906,6 +2915,7 @@ function setHybridPreview(enabled) {
     if (!observationBeforeHybrid) setObservationMode(false);
   }
   const on = hybridPreview.active;
+  updateRelationFocus();
   if (viewModeControls instanceof HTMLDetailsElement) {
     viewModeControls.open = false;
     const summary = viewModeControls.querySelector("summary");
@@ -2934,8 +2944,10 @@ function setHybridPreview(enabled) {
   }
   setStatus(on ? "HTML-Vorschau aktiv · schreibgeschützt" : "Zurück zu Native");
 }
-if (viewModeControls instanceof HTMLDetailsElement) viewModeControls.hidden = !hybridPreview;
-if (navigationControls instanceof HTMLDetailsElement) navigationControls.hidden = !documentMode;
+if (viewModeControls instanceof HTMLDetailsElement) {
+  viewModeControls.hidden = !(hybridPreview || documentMode);
+}
+if (navigationMenu instanceof HTMLElement) navigationMenu.hidden = !documentMode;
 if (documentMode) {
   nodeSearch?.addEventListener("input", updateSearchStatus);
   nodeSearchNext?.addEventListener("click", findNextNode);

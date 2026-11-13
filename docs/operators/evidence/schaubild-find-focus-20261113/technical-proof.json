@@ -15,7 +15,7 @@
     "current_production_browser_e2e",
     "global_visual_acceptance"
   ],
-  "evidence_digest": "bab4026140c8d59e7135e847d2c3c6ce21569ad4953bd057dd591d5cae63b0ec",
+  "evidence_digest": "e93802fe62e4dbf815f584d6a137b22d3f9af0776205021096565e0483c23eaa",
   "predecessor_technical_proof": {
     "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
     "path": "docs/operators/evidence/schaubild-free-canvas-smooth-smart-20261113/technical-proof.json",
@@ -24,8 +24,8 @@
   "schema_version": "schauwerk-schaubild-find-focus-successor.v1",
   "scope": "native document view-only search, next-result navigation and relation focus",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "71b747695f8f9014e8b0c2a27852cad7c6fbb67d8a5ba57b86066892ea34c9d2",
-    "tests/visual/test_native_viewer_browser.py": "a90593515f192ddd491c8359bef7a5f282cc0c41c8d62f3762116afaf3e64bb8"
+    "src/schauwerk/resources/native_viewer/assets.py": "82e9c7d9c34e246f9876aca8656ef555282b83c12c98272c6b92c10d11c7bfa4",
+    "tests/visual/test_native_viewer_browser.py": "cb430c52ce8b6e98cc897b7ba481b1ae343df0bad5a668f62c389956e80ffa6c"
   },
   "source_mode": "source-code-successor",
   "source_repository": "heimgewebe/schauwerk",
@@ -35,7 +35,11 @@
     "actual_chrome_navigation_390px": "passed_real_cdp_css_width",
     "actual_chrome_navigation_810px": "passed_real_cdp_css_width",
     "actual_chrome_viewer_full_suite": "20 passed",
+    "compact_landscape_toolbar": "merged_navigation_into_existing_view_menu; hybrid 844x390 hosted regression passed",
     "full_ci": "pending_exact_head",
+    "hybrid_hosted_844x390_smart_and_simple": "2 passed",
+    "hybrid_html_relation_focus_opacity": "passed_real_chrome_cdp_320_390_810",
+    "hybrid_preview_full_chrome_suite": "20 passed",
     "ios_search_input_font_size_16px": "passed_css_readback_320_390_810",
     "mobile_320_safe_area_insets_64_80": "passed_real_cdp_css_width",
     "mobile_navigation_popover_no_horizontal_overflow": "passed_320_390_810",
@@ -46,7 +50,8 @@
     "relation_focus_is_opt_in_and_clears": "passed_actual_chrome",
     "review_findings": {
       "codex_4566360046": "fixed; popover width bounded by safe-area toolbar",
-      "codex_4566360054": "fixed; mobile rule hides only zoom output, not live search-status"
+      "codex_4566360054": "fixed; mobile rule hides only zoom output, not live search-status",
+      "codex_4566418175": "fixed; HTML label opacity follows SVG focus, verified with real CDP computed styles"
     },
     "search_never_changes_document_or_undo_history": "passed_actual_chrome",
     "smart_router_integrations": "48 passed",
