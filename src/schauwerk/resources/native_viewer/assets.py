@@ -1835,11 +1835,29 @@ function rollbackDragNode(drag) {
   setNodeOffset(drag.sourceId, drag.rollbackOffset.x, drag.rollbackOffset.y);
   if (!drag.previewOriginals) {
     applyNodeTransform(drag.sourceId);
-    return;
+  } else {
+    bulkEdgeUpdate = true;
+    try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
+    rollbackSmartDragPreview(drag);
   }
-  bulkEdgeUpdate = true;
-  try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
-  rollbackSmartDragPreview(drag);
+  // An uncommitted drag may have expanded the freeform SVG extent. When
+  // canceled or taken over by pinch, restore exactly the previous extent so
+  // Fit/Reload cannot inherit empty space from a discarded node position.
+  if (documentMode && drag.startCanvasExtent) {
+    const original = drag.startCanvasExtent;
+    const current = svg.viewBox.baseVal;
+    if (original.x !== current.x || original.y !== current.y ||
+        original.width !== current.width || original.height !== current.height) {
+      const dx = original.x - current.x, dy = original.y - current.y;
+      svg.setAttribute("viewBox", [
+        original.x, original.y, original.width, original.height,
+      ].join(" "));
+      svg.setAttribute("width", String(original.width));
+      svg.setAttribute("height", String(original.height));
+      view = { ...view, x: view.x + dx * view.scale, y: view.y + dy * view.scale };
+      applyView();
+    }
+  }
 }
 function updateIncidentEdges(sourceId) {
   if (documentMode && routingMode() === "smart") {
@@ -2914,6 +2932,10 @@ viewport.addEventListener("pointerdown", (event) => {
       startY: event.clientY,
       startOffset,
       rollbackOffset: startOffset,
+      startCanvasExtent: documentMode ? (() => {
+        const box = svg.viewBox.baseVal;
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      })() : null,
       moved: false,
     };
     node.classList.add("is-dragging");

@@ -42,6 +42,7 @@ def _freeform_smooth_successor_proof() -> dict:
         "src/schauwerk/visual/native_canvas_smart_router.py",
         "tests/visual/test_native_canvas_smart_integration.py",
         "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_single_workspace.py",
     }
     assert set(proof["source_bindings"]) == expected
     assert set(proof["base_source_bindings"]) == expected

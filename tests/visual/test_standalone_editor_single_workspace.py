@@ -1028,11 +1028,27 @@ const wait = async (predicate, label) => {
     throw new Error("native editing process status reduced the full canvas viewport");
   }
   // A status change between pointer moves may grow the native toolbar.
-  // A manual node drag must preserve its view transform across that resize.
+  // The freeform canvas may expand and rebase its SVG origin during a drag.
+  // Test actual world-to-screen coordinates, not CSS transform text alone.
   if (innerWidth === 390) {
     const nativeWin = nativeFrame.contentWindow;
     const dragViewport = nativeDoc.querySelector("#nativeViewport");
     const dragCanvas = nativeDoc.querySelector("#nativeCanvas");
+    const visualViewport = () => {
+      const matrix = new nativeWin.DOMMatrix(
+        nativeWin.getComputedStyle(dragCanvas).transform
+      );
+      const box = nativeDoc.querySelector("#nativeDiagram").viewBox.baseVal;
+      return {
+        x: matrix.m41 - box.x * matrix.a,
+        y: matrix.m42 - box.y * matrix.d,
+        scale: matrix.a,
+      };
+    };
+    const sameVisibleView = (before, after) =>
+      Math.abs(before.x - after.x) < 0.1
+      && Math.abs(before.y - after.y) < 0.1
+      && Math.abs(before.scale - after.scale) < 1e-6;
     const dragNode = nativeDoc.querySelector('[data-source-id="a"]');
     nativeWin.Element.prototype.setPointerCapture = function () {};
     nativeWin.Element.prototype.releasePointerCapture = function () {};
@@ -1042,7 +1058,7 @@ const wait = async (predicate, label) => {
     ));
     await waitFrame();
     const barBeforeDrag = nativeDoc.querySelector(".viewer-bar").getBoundingClientRect().bottom;
-    const viewBeforeDrag = dragCanvas.style.transform;
+    const viewBeforeDrag = visualViewport();
     const nodeRect = dragNode.getBoundingClientRect();
     const startX = nodeRect.left + Math.max(1, nodeRect.width / 2);
     const startY = nodeRect.top + Math.max(1, nodeRect.height / 2);
@@ -1152,14 +1168,15 @@ const wait = async (predicate, label) => {
       throw new Error("drag status did not expand overlay in 390px regression: "
         + barBeforeDrag.toFixed(2) + "/" + barDuringDrag.toFixed(2));
     }
-    if (dragCanvas.style.transform !== viewBeforeDrag) {
-      throw new Error("dragging node triggered auto-fit after status growth: "
-        + viewBeforeDrag + " => " + dragCanvas.style.transform);
+    if (!sameVisibleView(viewBeforeDrag, visualViewport())) {
+      throw new Error("dragging node visibly moved or refit the world after status growth: "
+        + JSON.stringify(viewBeforeDrag) + " => "
+        + JSON.stringify(visualViewport()));
     }
     fireDrag(dragViewport, "pointermove", startX + 37, startY + 3);
     await waitFrame();
-    if (dragCanvas.style.transform !== viewBeforeDrag) {
-      throw new Error("native drag view changed between pointer moves");
+    if (!sameVisibleView(viewBeforeDrag, visualViewport())) {
+      throw new Error("native drag visibly shifted the world between pointer moves");
     }
     fireDrag(dragViewport, "pointerup", startX + 37, startY + 3);
   }
