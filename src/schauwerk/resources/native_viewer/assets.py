@@ -665,8 +665,9 @@ function finite(value, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function boundedOffset(value) {
-  return Math.max(-MAX_LAYOUT_OFFSET, Math.min(MAX_LAYOUT_OFFSET, finite(value)));
+function boundedOffset(value, maxAbs = MAX_LAYOUT_OFFSET) {
+  const limit = Math.max(1, Math.min(20_000_000, finite(maxAbs, MAX_LAYOUT_OFFSET)));
+  return Math.max(-limit, Math.min(limit, finite(value)));
 }
 
 export function clampScale(value) {
@@ -764,21 +765,21 @@ export function sanitizeOverrides(value) {
   return output;
 }
 
-export function nodeOffset(overrides, sourceId) {
+export function nodeOffset(overrides, sourceId, maxAbs = MAX_LAYOUT_OFFSET) {
   const offset = overrides?.[sourceId];
   if (!offset || typeof offset !== "object" || Array.isArray(offset)) return { x: 0, y: 0 };
   const x = Number(offset.x);
   const y = Number(offset.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return { x: 0, y: 0 };
-  return { x: boundedOffset(x), y: boundedOffset(y) };
+  return { x: boundedOffset(x, maxAbs), y: boundedOffset(y, maxAbs) };
 }
 
-export function updateNodeOffset(overrides, sourceId, x, y) {
+export function updateNodeOffset(overrides, sourceId, x, y, maxAbs = MAX_LAYOUT_OFFSET) {
   const working = overrides && typeof overrides === "object" && !Array.isArray(overrides)
     ? overrides
     : Object.create(null);
   if (!sourceId) return working;
-  working[sourceId] = { x: boundedOffset(x), y: boundedOffset(y) };
+  working[sourceId] = { x: boundedOffset(x, maxAbs), y: boundedOffset(y, maxAbs) };
   return working;
 }
 
@@ -1117,6 +1118,8 @@ if (!Array.isArray(sourceModel?.nodes) || !Array.isArray(sourceModel?.edges)) {
   throw new Error("Native viewer embedded model is incomplete");
 }
 const documentMode = sourceModel.schema_version === "schauwerk-native-editing-document.v1";
+// Native documents use the validated 10m-coordinate range; read-only viewer layout keeps its 10k offset cap.
+const documentOffsetBudget = documentMode ? editingLimits.max_abs_coordinate * 2 : undefined;
 const embeddedNativeViewer = window.parent !== window;
 const documentEditorHosted = documentMode && embeddedNativeViewer;
 document.body.classList.toggle("embedded-native-viewer", embeddedNativeViewer);
@@ -1334,7 +1337,7 @@ function boundedDocumentOffset(sourceId, x, y) {
 
 function setNodeOffset(sourceId, x, y) {
   const bounded = boundedDocumentOffset(sourceId, x, y);
-  overrides = updateNodeOffset(overrides, sourceId, bounded.x, bounded.y);
+  overrides = updateNodeOffset(overrides, sourceId, bounded.x, bounded.y, documentOffsetBudget);
 }
 
 function boundedDocumentState(document) {
@@ -1354,7 +1357,7 @@ function documentSnapshot() {
   if (!documentMode) return null;
   const snapshot = cloneJson(sourceModel);
   for (const node of snapshot.nodes) {
-    const offset = nodeOffset(overrides, String(node.id));
+    const offset = nodeOffset(overrides, String(node.id), documentOffsetBudget);
     node.x = Math.round(Number(node.x) + offset.x);
     node.y = Math.round(Number(node.y) + offset.y);
   }
@@ -1452,7 +1455,7 @@ function applyView() {
 function applyNodeTransform(sourceId) {
   const node = nodes.get(sourceId);
   if (!node) return;
-  const offset = nodeOffset(overrides, sourceId);
+  const offset = nodeOffset(overrides, sourceId, documentOffsetBudget);
   const base = baseTransforms.get(sourceId) || "";
   if (offset.x === 0 && offset.y === 0) {
     if (base) node.setAttribute("transform", base);
@@ -1476,7 +1479,7 @@ function applyAllNodeTransforms() {
   }
   const unchangedSmartCanvas = documentMode && routingMode() === "smart" &&
     [...nodes.keys()].every(sourceId => {
-      const offset = nodeOffset(overrides, sourceId);
+      const offset = nodeOffset(overrides, sourceId, documentOffsetBudget);
       return offset.x === 0 && offset.y === 0;
     });
   if (unchangedSmartCanvas) {
@@ -1600,7 +1603,7 @@ function resetEdgeLabel(edgeState) {
 }
 function nodeModelsAtLiveCoordinates() {
   return sourceModel.nodes.map(node => {
-    const delta = nodeOffset(overrides, String(node.id));
+    const delta = nodeOffset(overrides, String(node.id), documentOffsetBudget);
     return {
       id: String(node.id), type: String(node.type),
       x: Math.round(Number(node.x) + delta.x),
@@ -1691,8 +1694,8 @@ function previouslyRoutedEdges(edgeId) {
 function updateEdgeGeometry(edgeId) {
   const edgeState = edges.get(edgeId);
   if (!edgeState) return;
-  const fromOffset = nodeOffset(overrides, edgeState.from);
-  const toOffset = nodeOffset(overrides, edgeState.to);
+  const fromOffset = nodeOffset(overrides, edgeState.from, documentOffsetBudget);
+  const toOffset = nodeOffset(overrides, edgeState.to, documentOffsetBudget);
   if (documentMode && routingMode() === "smart" && edgeState.from !== edgeState.to) {
     const allNodes = nodeModelsAtLiveCoordinates();
     const source = allNodes.find(node => node.id === edgeState.from);
@@ -1832,11 +1835,29 @@ function rollbackDragNode(drag) {
   setNodeOffset(drag.sourceId, drag.rollbackOffset.x, drag.rollbackOffset.y);
   if (!drag.previewOriginals) {
     applyNodeTransform(drag.sourceId);
-    return;
+  } else {
+    bulkEdgeUpdate = true;
+    try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
+    rollbackSmartDragPreview(drag);
   }
-  bulkEdgeUpdate = true;
-  try { applyNodeTransform(drag.sourceId); } finally { bulkEdgeUpdate = false; }
-  rollbackSmartDragPreview(drag);
+  // An uncommitted drag may have expanded the freeform SVG extent. When
+  // canceled or taken over by pinch, restore exactly the previous extent so
+  // Fit/Reload cannot inherit empty space from a discarded node position.
+  if (documentMode && drag.startCanvasExtent) {
+    const original = drag.startCanvasExtent;
+    const current = svg.viewBox.baseVal;
+    if (original.x !== current.x || original.y !== current.y ||
+        original.width !== current.width || original.height !== current.height) {
+      const dx = original.x - current.x, dy = original.y - current.y;
+      svg.setAttribute("viewBox", [
+        original.x, original.y, original.width, original.height,
+      ].join(" "));
+      svg.setAttribute("width", String(original.width));
+      svg.setAttribute("height", String(original.height));
+      view = { ...view, x: view.x + dx * view.scale, y: view.y + dy * view.scale };
+      applyView();
+    }
+  }
 }
 function updateIncidentEdges(sourceId) {
   if (documentMode && routingMode() === "smart") {
@@ -1914,9 +1935,10 @@ function updateIncidentEdges(sourceId) {
   if (handleLayer) refreshConnectionHandles();
 }
 
-function expandSmartCanvasToFitRoutes() {
-  // Smart routing may extend the path; even simple mode can relocate an
-  // unrelated edge label outside the original document's viewBox.
+function expandSmartCanvasToFitRoutes({ previewEdges = null } = {}) {
+  // Both smart detours and simple Bezier curves can exceed the node extent.
+  // During deferred dense drags only measure paths being previewed; all
+  // unchanged paths are already contained by the existing viewBox.
   if (!documentMode) return false;
   const old = svg.viewBox.baseVal;
   if (!(old.width > 0) || !(old.height > 0)) return false;
@@ -1929,16 +1951,16 @@ function expandSmartCanvasToFitRoutes() {
     maxX = Math.max(maxX, right + 24);
     maxY = Math.max(maxY, bottom + 24);
   };
-  for (const edge of edges.values()) {
-    if (routingMode() === "smart") {
-      if (edge.routeBounds) {
-        include(...edge.routeBounds);
-      } else {
-        try {
-          const box = edge.path.getBBox();
-          include(box.x, box.y, box.x + box.width, box.y + box.height);
-        } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
-      }
+  const smart = routingMode() === "smart";
+  for (const [edgeId, edge] of edges) {
+    if (previewEdges && !previewEdges.has(edgeId)) continue;
+    if (smart && edge.routeBounds) {
+      include(...edge.routeBounds);
+    } else {
+      try {
+        const box = edge.path.getBBox();
+        include(box.x, box.y, box.x + box.width, box.y + box.height);
+      } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
     }
     if (edge.labelRect) {
       try {
@@ -1947,12 +1969,24 @@ function expandSmartCanvasToFitRoutes() {
       } catch (_) { /* Unmeasurable labels retain their original box. */ }
     }
   }
-  // Constraint is applied before expansion, not weakened by new route bounds.
+  // Grow the SVG extent around moved document nodes as well as its routes and labels.
+  // The viewBox represents content, never an editing boundary.
+  for (const node of nodes.values()) {
+    try {
+      const bounds = nodeBoundsInSvg(node);
+      if (bounds) include(bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
+    } catch (_) { /* Retain last extent for temporarily unmeasurable nodes. */ }
+  }
   const nextX = Math.floor(minX), nextY = Math.floor(minY);
   const newWidth = Math.ceil(maxX) - nextX;
   const newHeight = Math.ceil(maxY) - nextY;
+  // Native JSON Canvas accepts node origins from -10m to +10m and up to
+  // 1m node dimensions. Its SVG content span can therefore exceed 20m,
+  // even though all input coordinates remain valid. Keep a finite bound
+  // with enough room for end cards, routed edges and outer labels.
+  const maxDocumentSpan = 2 * editingLimits.max_abs_coordinate + 2_000_000;
   if (!(newWidth > 0 && newHeight > 0) ||
-      newWidth > 10000000 || newHeight > 10000000) return false;
+      newWidth > maxDocumentSpan || newHeight > maxDocumentSpan) return false;
   if (nextX === old.x && nextY === old.y &&
       newWidth === old.width && newHeight === old.height) return false;
   const dx = nextX - old.x, dy = nextY - old.y;
@@ -1978,13 +2012,15 @@ function constrainBoundsOffset(sourceId, bounds, box) {
   }
   if (Math.abs(shiftX) <= BOUNDS_EPSILON && Math.abs(shiftY) <= BOUNDS_EPSILON) return false;
 
-  const current = nodeOffset(overrides, sourceId);
+  const current = nodeOffset(overrides, sourceId, documentOffsetBudget);
   setNodeOffset(sourceId, current.x + shiftX, current.y + shiftY);
   applyNodeTransform(sourceId);
   return true;
 }
 
 function constrainNodeToCanvas(sourceId) {
+  // Freeform native documents obey model coordinate limits, not SVG extent bounds.
+  if (documentMode) return false;
   const node = nodes.get(sourceId);
   if (!node) return false;
   const box = svg.viewBox.baseVal;
@@ -2010,7 +2046,7 @@ function constrainNodeToCanvas(sourceId) {
   const width = combined.maxX - combined.minX;
   const height = combined.maxY - combined.minY;
   if (width > box.width + BOUNDS_EPSILON || height > box.height + BOUNDS_EPSILON) {
-    const current = nodeOffset(overrides, sourceId);
+    const current = nodeOffset(overrides, sourceId, documentOffsetBudget);
     if (
       Math.abs(current.x) > BOUNDS_EPSILON ||
       Math.abs(current.y) > BOUNDS_EPSILON
@@ -2893,7 +2929,7 @@ viewport.addEventListener("pointerdown", (event) => {
     // Deferred standalone routing pauses during a new gesture; a click
     // without movement must not abandon routes still waiting for certification.
     selectNode(sourceId);
-    const startOffset = nodeOffset(overrides, sourceId);
+    const startOffset = nodeOffset(overrides, sourceId, documentOffsetBudget);
     gesture = {
       kind: "drag",
       pointerId: event.pointerId,
@@ -2902,6 +2938,10 @@ viewport.addEventListener("pointerdown", (event) => {
       startY: event.clientY,
       startOffset,
       rollbackOffset: startOffset,
+      startCanvasExtent: documentMode ? (() => {
+        const box = svg.viewBox.baseVal;
+        return { x: box.x, y: box.y, width: box.width, height: box.height };
+      })() : null,
       moved: false,
     };
     node.classList.add("is-dragging");
@@ -2981,12 +3021,18 @@ viewport.addEventListener("pointermove", (event) => {
     if (constrainNodeToCanvas(gesture.sourceId)) {
       gesture.startX = event.clientX;
       gesture.startY = event.clientY;
-      gesture.startOffset = nodeOffset(overrides, gesture.sourceId);
+      gesture.startOffset = nodeOffset(overrides, gesture.sourceId, documentOffsetBudget);
     }
-    // Directly moved, nonincident routes can exceed the static render viewBox.
-    // Pending dense previews wait for their final certification on release.
-    if (documentMode && !gesture.previewOriginals) {
-      expandSmartCanvasToFitRoutes();
+    // Preview routing may be deferred, but visible nodes and provisional
+    // connections must never be clipped while the user is dragging.
+    if (documentMode) {
+      const previewEdges = gesture.previewOriginals
+        ? new Set([
+            ...gesture.previewOriginals.keys(),
+            ...(incidentEdges.get(gesture.sourceId) || []),
+          ])
+        : null;
+      expandSmartCanvasToFitRoutes({ previewEdges });
     }
     setStatus(gesture?.previewOriginals
       ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"
@@ -3120,11 +3166,14 @@ if (documentEditorHosted) {
     if (!documentMutationWithinProductLimits(document, { addNodes: 1 })) return;
     const id = uniqueId("node_", [...document.nodes, ...document.edges]);
     const box = svg.viewBox.baseVal;
+    // Position newly created nodes where the user is currently looking.
+    const centerX = box.x + (viewport.clientWidth / 2 - view.x) / view.scale;
+    const centerY = box.y + (viewport.clientHeight / 2 - view.y) / view.scale;
     document.nodes.push({
       id,
       type: "text",
-      x: Math.round(box.x + box.width / 2 - 130),
-      y: Math.round(box.y + box.height / 2 - 70),
+      x: Math.round(centerX - 130),
+      y: Math.round(centerY - 70),
       width: 260,
       height: 140,
       label: "Neues Element",

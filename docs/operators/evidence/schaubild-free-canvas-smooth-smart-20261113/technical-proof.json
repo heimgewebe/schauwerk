@@ -1,0 +1,81 @@
+{
+  "base_revision": "d932aae62e5dedf85f15e2821d85567990647ac3",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a6a6b07c989323be626c5d15be4109c9fe9c2c4c018b391e1f633d2faebf2f66",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "1bc80de13456d29bdc76cda8b48a1079e4e49ff8c3d3a3ecc1ccf95766eba34a",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "d73c383b0926743169fd46722c77b00ddecd0bd6c5a96f940e3cd5ae4069460f",
+    "tests/visual/test_native_canvas_smart_integration.py": "d0bb0f704aacca1d9363de034106195013f6eab21a2cc827a101e736e02136f9",
+    "tests/visual/test_native_viewer_browser.py": "a369bea5cc324119ee94a34f3ad68ca6c022535831be179d197e83c7eda06947",
+    "tests/visual/test_standalone_editor_single_workspace.py": "e095955bbc0d153121581cd94088f2ce70a0189ea904df137e62169fe181406e"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "production_rollout",
+    "physical_ipad_safari_acceptance",
+    "signed_independent_review",
+    "published_oci_digest",
+    "consumer_release_lock_update",
+    "production_browser_e2e",
+    "global_visual_acceptance"
+  ],
+  "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
+  "historical_predecessors": {
+    "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json": {
+      "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
+      "sha256": "c055db83ed4345df352610bff25054c4502faad04a65e3fff32ffdb55f525d23"
+    },
+    "docs/operators/evidence/schaubild-crossing-aware-20261110/technical-proof.json": {
+      "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
+      "sha256": "f913be34e4aaa1c797172cfbab9d985eb2b703a8774656805fe5603732b5767a"
+    },
+    "docs/operators/evidence/schaubild-smart-router-bounds-20261112/technical-proof.json": {
+      "evidence_digest": "c00912c81045e4ccb7ca4c03dff8bfee82417e0d0517f7b519b2233bac2bfa7a",
+      "sha256": "a370278203e47faeef64eb09ccb2bd25173b9e7bf673be0e567ff359f7090a1b"
+    }
+  },
+  "historical_publication_test_binding": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "sha256": "5a11e792aaddd06e2e5dd7868489bbd883af0e74901ec47603f1c0f274a0d0af"
+  },
+  "schema_version": "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1",
+  "scope": "native freeform viewport extent and safe, softer smart-edge geometry only",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3de81c559b004295165cfc9e4678c72e8cfcab958ffd9f124526cce40a63b28c",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
+    "tests/visual/test_native_canvas_smart_integration.py": "3026b9f20c13c881cb85f0db885b97bf3c78ced9aa0f2cb355fc6d2d8d64e2c9",
+    "tests/visual/test_native_viewer_browser.py": "fc1207c396e469c6d26fb813ef5083954e466158936a54f1fa01b1fe0399de29",
+    "tests/visual/test_standalone_editor_single_workspace.py": "a1548242f0b9809c7f5bbc7361dc53c13d6f9f5c16201c4fccbe9afa6f8ee261"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "cancelled_drag_restores_preexisting_svg_extent": "passed_on_mobile_chrome",
+    "deferred_dense_smart_preview_bounds": "passed",
+    "full_ci": "pending_exact_head",
+    "mobile_chrome_safearea_390_drag_cancel_and_pan": "2 passed",
+    "native_21m_coordinate_span": "passed_python_native_renderer_and_js_extent",
+    "native_canvas_smart_integration": "28 passed",
+    "native_canvas_smart_router": "18 passed",
+    "native_viewer": "26 passed",
+    "real_chrome_16000_coordinate_save_roundtrip": "passed",
+    "real_chrome_deferred_smart_edge_and_large_coordinate": "passed",
+    "real_chrome_document_drag": "passed",
+    "real_chrome_freeform_drag": "passed",
+    "real_chrome_freeform_simple_edge_and_large_coordinate": "passed",
+    "real_chrome_max_coordinate_negative": "passed",
+    "review_findings": {
+      "codex_comment_4562688433": "reproduced_and_fixed",
+      "codex_comment_4562767915": "reproduced_and_fixed_with_js_and_chrome_e2e",
+      "codex_comment_4562871762": "reproduced_and_fixed_with_js_and_chrome_e2e",
+      "codex_comment_4564251122": "reproduced_and_fixed_valid_full_range_21m",
+      "fix_scope": "all live/document/routing nodeOffset readers share documentOffsetBudget",
+      "mobile_auto_fit_regression": "old transform-string check replaced by visible world-to-screen invariant; canceled drag now restores prior viewBox before next fit",
+      "real_browser_persisted_16000_coordinate": "passed"
+    },
+    "simple_unlabeled_bezier_path_bounds": "passed",
+    "source_python_js_parity": "passed"
+  },
+  "visual_acceptance": "not_inherited"
+}

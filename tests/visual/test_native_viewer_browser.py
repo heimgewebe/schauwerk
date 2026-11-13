@@ -67,6 +67,8 @@ window.setInterval(() => {
     "emptyCanvasBrowserRegressionError",
     "coordinateBrowserRegression",
     "coordinateBrowserRegressionError",
+    "freeformCanvasBrowserRegression",
+    "freeformCanvasBrowserRegressionError",
   ]) {
     if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
   }
@@ -2022,3 +2024,180 @@ try {
     assert completed.returncode == 0, completed.stderr
     assert 'data-observer-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-observer-regression="fail"' not in completed.stdout, completed.stdout
+
+
+@pytest.mark.parametrize("routing", ["simple", "smart_dense"])
+def test_native_canvas_browser_extends_freeform_node_beyond_old_viewbox(
+    tmp_path: Path, routing: str,
+) -> None:
+    """Chrome drag must keep nodes and curved/preview edges visible and saved."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for freeform node extension E2E")
+        raise AssertionError("unreachable")
+    source = {"nodes": [
+        {"id": "free", "type": "text", "x": 0, "y": 0,
+         "width": 180, "height": 100, "text": "Freier Knoten"},
+    ], "edges": []}
+    if routing == "smart_dense":
+        source["nodes"].append({
+            "id": "target", "type": "text", "x": 400, "y": 0,
+            "width": 180, "height": 100, "text": "Ziel",
+        })
+        source["nodes"].extend({
+            "id": f"extra_{index}", "type": "text",
+            "x": 650 + (index % 8) * 32,
+            "y": 360 + (index // 8) * 35,
+            "width": 90, "height": 60, "text": "Weitere",
+        } for index in range(32))
+        source["schauwerk"] = {"edgeRouting": "smart"}
+        source["edges"] = [{
+            "id": "connection", "fromNode": "free", "toNode": "target",
+            "label": "Dichte Vorschau", "toEnd": "arrow",
+        }]
+    else:
+        source["nodes"].append({
+            "id": "target", "type": "text", "x": -800, "y": 0,
+            "width": 100, "height": 80, "text": "Ziel",
+        })
+        source["edges"] = [{
+            "id": "connection", "fromNode": "target", "toNode": "free",
+            "fromSide": "bottom", "toSide": "bottom", "toEnd": "arrow",
+        }]
+    document = json_canvas_to_editing_document(source)
+    output = tmp_path / f"freeform-canvas-viewer-{routing}"
+    build_native_viewer(
+        document, output,
+        serve_binding="127.0.0.1-only", public_base_path="",
+    )
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    tag = '<script type="module" src="app.js"></script>'
+    assert index.count(tag) == 1
+    probe = r"""
+<script>
+Element.prototype.setPointerCapture=function(){};
+Element.prototype.releasePointerCapture=function(){};
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const denseSmart=__DENSE_SMART__;
+const waitUntil=async(predicate,label)=>{
+  for(let i=0;i<240;i++){
+    if(predicate())return;
+    await new Promise(resolve=>setTimeout(resolve,20));
+  }
+  throw Error(label);
+};
+const fire=(target,type,x,y)=>target.dispatchEvent(new PointerEvent(type,{
+  bubbles:true,cancelable:true,pointerType:"mouse",pointerId:31,
+  clientX:x,clientY:y,button:0,buttons:type==="pointerup"?0:1
+}));
+try {
+  await waitUntil(()=>
+    document.querySelector('[data-source-id="free"]') &&
+    document.querySelector("#nativeCanvas")?.style.transform.includes("scale("),
+    "Freeform canvas not interaction ready");
+  const svg=document.querySelector("#nativeDiagram");
+  const canvas=document.querySelector("#nativeCanvas");
+  const viewport=document.querySelector("#nativeViewport");
+  const node=document.querySelector('[data-source-kind="node"][data-source-id="free"]');
+  const before=svg.viewBox.baseVal;
+  const old={x:before.x,y:before.y,width:before.width,height:before.height};
+  const parse=()=>{
+    const match=canvas.style.transform.match(
+      /^translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)$/);
+    if(!match)throw Error("Unexpected canvas transform");
+    return match.slice(1).map(Number);
+  };
+  const [tx,ty,scale]=parse();
+  const originalScreenX=tx+(0-old.x)*scale;
+  const originalScreenY=ty+(0-old.y)*scale;
+  const changes=[];
+  window.addEventListener("message",event=>{
+    if(event.origin===window.location.origin &&
+       ["native-document-change","native-document-rebuild"].includes(event.data?.event)){
+      changes.push(event.data);
+    }
+  });
+  const rect=node.getBoundingClientRect();
+  const x=(rect.left+rect.right)/2,y=(rect.top+rect.bottom)/2;
+  fire(node,"pointerdown",x,y);
+  fire(viewport,"pointermove",x+650,y+340);
+  const next=svg.viewBox.baseVal;
+  const path=svg.querySelector('[data-source-kind="edge"] path');
+  if(!(path instanceof SVGPathElement))throw Error("Connection path missing");
+  const curve=path.getBBox();
+  if(next.x>curve.x+1 || next.y>curve.y+1 ||
+     next.x+next.width<curve.x+curve.width-1 ||
+     next.y+next.height<curve.y+curve.height-1)
+    throw Error("Live "+(denseSmart?"deferred smart":"simple Bezier")+" connection is clipped");
+  if(denseSmart &&
+     svg.querySelector('[data-source-kind="edge"]')?.dataset.routingPending!=="true")
+    throw Error("Dense drag did not enter deferred smart routing");
+  if(next.x+next.width<=old.x+old.width+110 ||
+     next.y+next.height<=old.y+old.height+100)
+    throw Error("Node drag still clipped by initial SVG viewBox");
+  const [newX,newY,newScale]=parse();
+  if(Math.abs(originalScreenX-(newX+(0-next.x)*newScale))>0.01 ||
+     Math.abs(originalScreenY-(newY+(0-next.y)*newScale))>0.01 ||
+     Math.abs(newScale-scale)>1e-6)
+    throw Error("Growing canvas unexpectedly moved the viewport");
+  // A second long motion must survive the document-offset budget on
+  // canonical save and reload, not merely expand the live SVG transform.
+  const beyondLegacy=scale*16000;
+  fire(viewport,"pointermove",x+beyondLegacy,y+340);
+  const far=svg.viewBox.baseVal;
+  if(far.x+far.width<12000)throw Error("Large live drag did not grow");
+  fire(viewport,"pointerup",x+beyondLegacy,y+340);
+  await waitUntil(()=>changes.some(m=>
+    (m.canvas?.nodes||[]).some(n=>n.id==="free"&&n.x>10000)),
+    "Native document save silently clamped offset beyond legacy 10k");
+  const last=changes.filter(m=>
+    (m.canvas?.nodes||[]).some(n=>n.id==="free"&&n.x>10000)).at(-1);
+  const canvasX=last.canvas.nodes.find(n=>n.id==="free")?.x;
+  const documentX=last.document?.nodes.find(n=>n.id==="free")?.x;
+  if(!(canvasX>10000) || canvasX!==documentX)
+    throw Error("Native Canvas and document coordinates diverged on save");
+  document.documentElement.dataset.freeformCanvasBrowserRegression="pass";
+} catch(error){
+  document.documentElement.dataset.freeformCanvasBrowserRegression="fail";
+  document.documentElement.dataset.freeformCanvasBrowserRegressionError=
+    String(error?.message||error);
+}
+</script>
+"""
+    probe = probe.replace("__DENSE_SMART__", "true" if routing == "smart_dense" else "false")
+    index_path.write_text(index.replace(tag, probe), encoding="utf-8")
+    _write_document_probe_host(output, full_viewport=True)
+
+    class QuietFreeformHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietFreeformHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        completed = subprocess.run(
+            [
+                chrome, "--headless=new",
+                f"--user-data-dir={tmp_path / 'freeform-chrome-profile'}",
+                "--no-first-run", "--disable-gpu",
+                "--disable-dev-shm-usage", "--no-sandbox",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=8000", "--dump-dom",
+                f"http://127.0.0.1:{server.server_address[1]}/host.html",
+            ],
+            text=True, capture_output=True, timeout=22, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-freeform-canvas-browser-regression="pass"' in completed.stdout, (
+        completed.stdout[-4000:]
+    )
+    assert 'data-freeform-canvas-browser-regression="fail"' not in completed.stdout

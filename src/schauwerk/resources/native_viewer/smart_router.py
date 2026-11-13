@@ -94,7 +94,8 @@ function filletPath(points, boxes) {
       last = vertex;
       continue;
     }
-    let radius = Math.min(16, left * 0.27, right * 0.27);
+    // Match Python's softer open-space fillets with the same collision proof.
+    let radius = Math.min(24, left * 0.35, right * 0.35);
     let selected = null;
     for (let k = 0; k < 8; k++) {
       const entry = add(vertex, di, -radius);
@@ -250,6 +251,47 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
     });
   });
   if (!candidates.length) return retryPhysical();
+  // Preserve the native cubic when the unconstrained connection is truly
+  // clear. Nearby obstacles and parallel/crossing contexts still use routing.
+  if (lane === 0 && !(maxLane ?? 0) && !priorSegments.length) {
+    const sx = Number(source.x) + Number(source.width) / 2;
+    const sy = Number(source.y) + Number(source.height) / 2;
+    const tx = Number(target.x) + Number(target.width) / 2;
+    const ty = Number(target.y) + Number(target.height) / 2;
+    const horizontal = Math.abs(tx - sx) >= Math.abs(ty - sy);
+    const preferredFrom = horizontal
+      ? (tx >= sx ? "right" : "left") : (ty >= sy ? "bottom" : "top");
+    const preferredTo = horizontal
+      ? (tx >= sx ? "left" : "right") : (ty >= sy ? "top" : "bottom");
+    if ((fromSide === null || fromSide === preferredFrom) &&
+        (toSide === null || toSide === preferredTo)) {
+      for (const [, , ss, ts, start, , , end] of candidates) {
+        if (ss !== preferredFrom || ts !== preferredTo) continue;
+        const normal = NORMALS[ss];
+        const gap = (end[0] - start[0]) * normal[0] +
+                    (end[1] - start[1]) * normal[1];
+        const bend = Math.max(42, Math.min(160, distance(start, end) * 0.35));
+        if (gap <= 2 * bend + 2 * clearance) break;
+        const c1 = add(start, normal, bend);
+        const c2 = add(end, NORMALS[ts], bend);
+        const controls = [start, c1, c2, end];
+        if (!hullClear(controls, blocking)) break;
+        const at = t => {
+          const a = 1 - t;
+          return [0, 1].map(i =>
+            a*a*a*start[i] + 3*a*a*t*c1[i] + 3*a*t*t*c2[i] + t*t*t*end[i]);
+        };
+        const points = [0, 0.25, 0.5, 0.75, 1].map(at);
+        const xs = controls.map(p => p[0]), ys = controls.map(p => p[1]);
+        return {
+          path: "M " + formatPoint(start) + " C " +
+                [c1, c2, end].map(formatPoint).join(" "),
+          labelX: points[2][0], labelY: points[2][1],
+          fromSide: ss, toSide: ts, points, collisionFree: true,
+        };
+      }
+    }
+  }
   const corridor = [...candidates.map(c => c[5]), ...candidates.map(c => c[6])];
   const xs = corridor.map(p => p[0]), ys = corridor.map(p => p[1]);
   const direct = [Math.min(...xs) - 80, Math.min(...ys) - 80,
