@@ -102,8 +102,24 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
                 eval_js("document.querySelector('#fitView').click()")
                 time.sleep(0.12)
 
+            def manual_view_anchor() -> dict:
+                # A real viewport size change must keep the same world point
+                # centered without losing manual pinch zoom. Matching raw CSS
+                # translations would instead clip a previously selected node.
+                return eval_js("""(() => {
+                  const viewport = document.querySelector('#nativeViewport');
+                  const canvas = document.querySelector('#nativeCanvas');
+                  const m = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
+                  return {
+                    scale: m.a,
+                    worldX: (viewport.clientWidth / 2 - m.m41) / m.a,
+                    worldY: (viewport.clientHeight / 2 - m.m42) / m.d
+                  };
+                })()""")
+
             def expect_resized(after_tap: bool, label: str):
                 before = transform()
+                manual_before = manual_view_anchor()
                 metrics(320)
                 after = transform()
                 if after_tap:
@@ -111,7 +127,14 @@ def test_native_viewer_restores_auto_fit_after_tap_only_pointer_sequences(tmp_pa
                         f"{label}: tap-only pointer permanently disabled auto-fit"
                     )
                 else:
-                    assert after == before, f"{label}: manual view was unexpectedly auto-fitted"
+                    manual_after = manual_view_anchor()
+                    assert manual_after["scale"] == pytest.approx(
+                        manual_before["scale"], abs=0.00001,
+                    ), (label, manual_before, manual_after)
+                    for coordinate in ("worldX", "worldY"):
+                        assert manual_after[coordinate] == pytest.approx(
+                            manual_before[coordinate], abs=0.5,
+                        ), (label, coordinate, manual_before, manual_after)
 
             def pointer(
                 target: str, event: str, pointer_id: int, dx: int = 0,

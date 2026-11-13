@@ -47,11 +47,21 @@ def _responsive_manual_center_source_successor_proof() -> dict:
     expected = {
         "src/schauwerk/resources/native_viewer/assets.py",
         "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_native_viewer_tap_autofit_browser.py",
     }
     assert set(proof["base_source_bindings"]) == expected
     assert set(proof["source_bindings"]) == expected
+    pinch = json.loads((
+        ROOT / "docs/operators/evidence/schaubild-touch-pinch-20261109"
+        / "technical-proof.json"
+    ).read_text(encoding="utf-8"))
+    assert pinch["evidence_digest"] == digest_mapping(pinch, "evidence_digest")
     for name in expected:
-        assert proof["base_source_bindings"][name] == prev["source_bindings"][name]
+        if name in prev["source_bindings"]:
+            assert proof["base_source_bindings"][name] == prev["source_bindings"][name]
+        else:
+            assert name == "tests/visual/test_native_viewer_tap_autofit_browser.py"
+            assert proof["base_source_bindings"][name] == pinch["source_bindings"][name]
         assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
             proof["source_bindings"][name]

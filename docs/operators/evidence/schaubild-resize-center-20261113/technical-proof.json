@@ -2,7 +2,8 @@
   "base_revision": "f86a8059d214a97aed6fd4eae2e0087f3bcdc7e2",
   "base_source_bindings": {
     "src/schauwerk/resources/native_viewer/assets.py": "82e9c7d9c34e246f9876aca8656ef555282b83c12c98272c6b92c10d11c7bfa4",
-    "tests/visual/test_native_viewer_browser.py": "cb430c52ce8b6e98cc897b7ba481b1ae343df0bad5a668f62c389956e80ffa6c"
+    "tests/visual/test_native_viewer_browser.py": "cb430c52ce8b6e98cc897b7ba481b1ae343df0bad5a668f62c389956e80ffa6c",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "4e25a1ad964da1547f807ba5c705091cdd660470afa7b2e1c715491303c64e83"
   },
   "consumer_runtime": "not_integrated",
   "does_not_establish": [
@@ -13,7 +14,7 @@
     "consumer_release_lock_update",
     "runtime_OCI_identical_to_candidate"
   ],
-  "evidence_digest": "fe265c263d05ed3c5a145f192f127ef8f85d10f402dc1c70b3226078e413f45b",
+  "evidence_digest": "8568b3af6985548b9b76225cad4648d75d8287c38f941b6e5977c08349f81fb8",
   "predecessor_technical_proof": {
     "evidence_digest": "e93802fe62e4dbf815f584d6a137b22d3f9af0776205021096565e0483c23eaa",
     "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof.json",
@@ -39,13 +40,16 @@
   "scope": "native viewer preserves manual visual center and scale across genuine viewport size changes, without affecting active gestures, document model, or auto-fit",
   "source_bindings": {
     "src/schauwerk/resources/native_viewer/assets.py": "d5f3bd514e6e774715cce1376e655868e2d3ba5704c0f764413bf3c1b14ddd5b",
-    "tests/visual/test_native_viewer_browser.py": "0379d0f165519f080d9c496fad1625961ee53deed9e66ffaf1b6e827343199f9"
+    "tests/visual/test_native_viewer_browser.py": "0379d0f165519f080d9c496fad1625961ee53deed9e66ffaf1b6e827343199f9",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "8f7ee7bfe17fdd02d8f5fa946c73d3bc24cf1c8385184da736f54b068fe0231c"
   },
   "source_mode": "source-code-successor",
   "source_repository": "heimgewebe/schauwerk",
   "status": "technical_candidate_only",
   "validation": {
     "chrome_810_to_390_to_810_resize_and_search": "4 passed local CDP",
+    "ci_python312_failed_earlier": "legacy test compared frozen CSS translate after true viewport resize; corrected to same world center and zoom, with actual Chrome pass",
+    "edge_first_touch_pinch_browser_390_to_320": "passed_actual_chrome",
     "full_ci": "pending_exact_head",
     "manual_zoom_world_center_readonly_browser": "passed",
     "native_viewer_and_smart_integration": "56 passed",
