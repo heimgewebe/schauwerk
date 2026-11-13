@@ -1935,9 +1935,10 @@ function updateIncidentEdges(sourceId) {
   if (handleLayer) refreshConnectionHandles();
 }
 
-function expandSmartCanvasToFitRoutes() {
-  // Smart routing may extend the path; even simple mode can relocate an
-  // unrelated edge label outside the original document's viewBox.
+function expandSmartCanvasToFitRoutes({ previewEdges = null } = {}) {
+  // Both smart detours and simple Bezier curves can exceed the node extent.
+  // During deferred dense drags only measure paths being previewed; all
+  // unchanged paths are already contained by the existing viewBox.
   if (!documentMode) return false;
   const old = svg.viewBox.baseVal;
   if (!(old.width > 0) || !(old.height > 0)) return false;
@@ -1950,16 +1951,16 @@ function expandSmartCanvasToFitRoutes() {
     maxX = Math.max(maxX, right + 24);
     maxY = Math.max(maxY, bottom + 24);
   };
-  for (const edge of edges.values()) {
-    if (routingMode() === "smart") {
-      if (edge.routeBounds) {
-        include(...edge.routeBounds);
-      } else {
-        try {
-          const box = edge.path.getBBox();
-          include(box.x, box.y, box.x + box.width, box.y + box.height);
-        } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
-      }
+  const smart = routingMode() === "smart";
+  for (const [edgeId, edge] of edges) {
+    if (previewEdges && !previewEdges.has(edgeId)) continue;
+    if (smart && edge.routeBounds) {
+      include(...edge.routeBounds);
+    } else {
+      try {
+        const box = edge.path.getBBox();
+        include(box.x, box.y, box.x + box.width, box.y + box.height);
+      } catch (_) { /* Unknown path geometry leaves the current bounds. */ }
     }
     if (edge.labelRect) {
       try {
@@ -3017,10 +3018,16 @@ viewport.addEventListener("pointermove", (event) => {
       gesture.startY = event.clientY;
       gesture.startOffset = nodeOffset(overrides, gesture.sourceId, documentOffsetBudget);
     }
-    // Directly moved, nonincident routes can exceed the static render viewBox.
-    // Pending dense previews wait for their final certification on release.
-    if (documentMode && !gesture.previewOriginals) {
-      expandSmartCanvasToFitRoutes();
+    // Preview routing may be deferred, but visible nodes and provisional
+    // connections must never be clipped while the user is dragging.
+    if (documentMode) {
+      const previewEdges = gesture.previewOriginals
+        ? new Set([
+            ...gesture.previewOriginals.keys(),
+            ...(incidentEdges.get(gesture.sourceId) || []),
+          ])
+        : null;
+      expandSmartCanvasToFitRoutes({ previewEdges });
     }
     setStatus(gesture?.previewOriginals
       ? "Schnelle Kantenvorschau · intelligente Führung folgt nach Loslassen"

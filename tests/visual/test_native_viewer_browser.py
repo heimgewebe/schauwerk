@@ -2026,10 +2026,11 @@ try {
     assert 'data-observer-regression="fail"' not in completed.stdout, completed.stdout
 
 
+@pytest.mark.parametrize("routing", ["simple", "smart_dense"])
 def test_native_canvas_browser_extends_freeform_node_beyond_old_viewbox(
-    tmp_path: Path,
+    tmp_path: Path, routing: str,
 ) -> None:
-    """Actual Chrome drag may move a native node outside its prior SVG extent."""
+    """Chrome drag must keep nodes and curved/preview edges visible and saved."""
     chrome = _chrome()
     if chrome is None:
         _skip_or_fail_browser("Chrome unavailable for freeform node extension E2E")
@@ -2038,8 +2039,33 @@ def test_native_canvas_browser_extends_freeform_node_beyond_old_viewbox(
         {"id": "free", "type": "text", "x": 0, "y": 0,
          "width": 180, "height": 100, "text": "Freier Knoten"},
     ], "edges": []}
+    if routing == "smart_dense":
+        source["nodes"].append({
+            "id": "target", "type": "text", "x": 400, "y": 0,
+            "width": 180, "height": 100, "text": "Ziel",
+        })
+        source["nodes"].extend({
+            "id": f"extra_{index}", "type": "text",
+            "x": 650 + (index % 8) * 32,
+            "y": 360 + (index // 8) * 35,
+            "width": 90, "height": 60, "text": "Weitere",
+        } for index in range(32))
+        source["schauwerk"] = {"edgeRouting": "smart"}
+        source["edges"] = [{
+            "id": "connection", "fromNode": "free", "toNode": "target",
+            "label": "Dichte Vorschau", "toEnd": "arrow",
+        }]
+    else:
+        source["nodes"].append({
+            "id": "target", "type": "text", "x": -800, "y": 0,
+            "width": 100, "height": 80, "text": "Ziel",
+        })
+        source["edges"] = [{
+            "id": "connection", "fromNode": "target", "toNode": "free",
+            "fromSide": "bottom", "toSide": "bottom", "toEnd": "arrow",
+        }]
     document = json_canvas_to_editing_document(source)
-    output = tmp_path / "freeform-canvas-viewer"
+    output = tmp_path / f"freeform-canvas-viewer-{routing}"
     build_native_viewer(
         document, output,
         serve_binding="127.0.0.1-only", public_base_path="",
@@ -2055,6 +2081,7 @@ Element.prototype.releasePointerCapture=function(){};
 </script>
 <script type="module" src="app.js"></script>
 <script type="module">
+const denseSmart=__DENSE_SMART__;
 const waitUntil=async(predicate,label)=>{
   for(let i=0;i<240;i++){
     if(predicate())return;
@@ -2089,7 +2116,7 @@ try {
   const changes=[];
   window.addEventListener("message",event=>{
     if(event.origin===window.location.origin &&
-       event.data?.event==="native-document-change"){
+       ["native-document-change","native-document-rebuild"].includes(event.data?.event)){
       changes.push(event.data);
     }
   });
@@ -2098,6 +2125,16 @@ try {
   fire(node,"pointerdown",x,y);
   fire(viewport,"pointermove",x+650,y+340);
   const next=svg.viewBox.baseVal;
+  const path=svg.querySelector('[data-source-kind="edge"] path');
+  if(!(path instanceof SVGPathElement))throw Error("Connection path missing");
+  const curve=path.getBBox();
+  if(next.x>curve.x+1 || next.y>curve.y+1 ||
+     next.x+next.width<curve.x+curve.width-1 ||
+     next.y+next.height<curve.y+curve.height-1)
+    throw Error("Live "+(denseSmart?"deferred smart":"simple Bezier")+" connection is clipped");
+  if(denseSmart &&
+     svg.querySelector('[data-source-kind="edge"]')?.dataset.routingPending!=="true")
+    throw Error("Dense drag did not enter deferred smart routing");
   if(next.x+next.width<=old.x+old.width+110 ||
      next.y+next.height<=old.y+old.height+100)
     throw Error("Node drag still clipped by initial SVG viewBox");
@@ -2130,6 +2167,7 @@ try {
 }
 </script>
 """
+    probe = probe.replace("__DENSE_SMART__", "true" if routing == "smart_dense" else "false")
     index_path.write_text(index.replace(tag, probe), encoding="utf-8")
     _write_document_probe_host(output, full_viewport=True)
 

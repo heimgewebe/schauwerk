@@ -18,7 +18,7 @@
     "production_browser_e2e",
     "global_visual_acceptance"
   ],
-  "evidence_digest": "a755cfa8c3fa44528f6da9bc91364ff4f5a2f830d1a99a49a66e768a4a9e948e",
+  "evidence_digest": "273227bbcff69a676f170de94342423aeb874c567ccd0aea3887dde4210f9330",
   "historical_predecessors": {
     "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json": {
       "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
@@ -40,11 +40,11 @@
   "schema_version": "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1",
   "scope": "native freeform viewport extent and safe, softer smart-edge geometry only",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "c4c5eb21121799e0302611ad39450371c0aed298ea862a72be5406d73567db80",
+    "src/schauwerk/resources/native_viewer/assets.py": "9459f481feddc8a0b51803b08d932dd36c1fa46fc0b55b833fd8e89ded72dd1b",
     "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
     "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
-    "tests/visual/test_native_canvas_smart_integration.py": "ea9f5f3b270de5701b0f7341a3ecf94d4332143bdb554d97ca768dd91e5f31b8",
-    "tests/visual/test_native_viewer_browser.py": "775949d230fbe9b7304257a5e6b6fe5fb998f2a87b785b46631c549ba8ea4171",
+    "tests/visual/test_native_canvas_smart_integration.py": "46ae5b4da59e6fa14553a7013147a789b7c10bad90a51c0e144dc6ff2a6a542d",
+    "tests/visual/test_native_viewer_browser.py": "fc1207c396e469c6d26fb813ef5083954e466158936a54f1fa01b1fe0399de29",
     "tests/visual/test_standalone_editor_single_workspace.py": "a1548242f0b9809c7f5bbc7361dc53c13d6f9f5c16201c4fccbe9afa6f8ee261"
   },
   "source_mode": "source-code-successor",
@@ -52,21 +52,27 @@
   "status": "technical_candidate_only",
   "validation": {
     "cancelled_drag_restores_preexisting_svg_extent": "passed_on_mobile_chrome",
+    "deferred_dense_smart_preview_bounds": "passed",
     "full_ci": "pending_exact_head",
     "mobile_chrome_safearea_390_drag_cancel_and_pan": "2 passed",
     "native_canvas_smart_integration": "28 passed",
     "native_canvas_smart_router": "18 passed",
     "native_viewer": "26 passed",
     "real_chrome_16000_coordinate_save_roundtrip": "passed",
+    "real_chrome_deferred_smart_edge_and_large_coordinate": "passed",
     "real_chrome_document_drag": "passed",
     "real_chrome_freeform_drag": "passed",
+    "real_chrome_freeform_simple_edge_and_large_coordinate": "passed",
     "real_chrome_max_coordinate_negative": "passed",
     "review_findings": {
       "codex_comment_4562688433": "reproduced_and_fixed",
+      "codex_comment_4562767915": "reproduced_and_fixed_with_js_and_chrome_e2e",
+      "codex_comment_4562871762": "reproduced_and_fixed_with_js_and_chrome_e2e",
       "fix_scope": "all live/document/routing nodeOffset readers share documentOffsetBudget",
       "mobile_auto_fit_regression": "old transform-string check replaced by visible world-to-screen invariant; canceled drag now restores prior viewBox before next fit",
       "real_browser_persisted_16000_coordinate": "passed"
     },
+    "simple_unlabeled_bezier_path_bounds": "passed",
     "source_python_js_parity": "passed"
   },
   "visual_acceptance": "not_inherited"

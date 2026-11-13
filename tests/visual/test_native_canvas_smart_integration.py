@@ -813,7 +813,7 @@ def test_relocated_simple_edge_label_stays_within_svg_canvas(
     if node is None:
         pytest.skip("Node unavailable for simple-mode label bounds regression")
     app = ASSETS["app.js"]
-    assert "if (documentMode && !gesture.previewOriginals)" in app
+    assert "expandSmartCanvasToFitRoutes({ previewEdges });" in app
     begin = app.index("function expandSmartCanvasToFitRoutes(")
     source = app[begin:app.index("function constrainBoundsOffset(", begin)]
     program = r"""
@@ -822,7 +822,7 @@ const nodes=new Map();
 let pathReads=0;
 const edges=new Map([["labeled", {
   routeBounds:null,
-  path:{getBBox(){pathReads++;throw Error("simple path not needed")}},
+  path:{getBBox(){pathReads++;return {x:40,y:-175,width:400,height:290}}},
   labelRect:{id:"box"}
 }]]);
 const original={x:-88,y:-88,width:650,height:200};
@@ -851,9 +851,9 @@ if(box.y>-140 || box.y+box.height<original.y+original.height)
   throw Error("Relocated label outside expanded SVG");
 if(Math.abs(view.y+(0-box.y)*view.scale-before)>1e-6)
   throw Error("Simple-label expansion shifted viewport");
-if(pathReads!==0)throw Error("Simple mode scanned expensive path geometry");
-if(expandSmartCanvasToFitRoutes() || applies!==1)
-  throw Error("Repeated view changes without any label movement");
+if(pathReads!==1)throw Error("Simple mode did not measure its Bezier path on expansion");
+if(expandSmartCanvasToFitRoutes() || applies!==1 || pathReads!==2)
+  throw Error("Repeated view changes or unexpected path reads");
 console.log(JSON.stringify({visible:true,unchangedPan:true,pathReads}));
 """
     script = tmp_path / "simple-label-bounds.mjs"
@@ -863,7 +863,7 @@ console.log(JSON.stringify({visible:true,unchangedPan:true,pathReads}));
         check=True, timeout=14,
     )
     assert json.loads(result.stdout) == {
-        "visible": True, "unchangedPan": True, "pathReads": 0,
+        "visible": True, "unchangedPan": True, "pathReads": 2,
     }
 
 
@@ -1243,3 +1243,81 @@ def test_smart_open_space_reuses_soft_cubic_and_agrees_with_browser(
     assert js["path"] == route.path
     assert js["labelX"] == pytest.approx(route.label_x)
     assert js["labelY"] == pytest.approx(route.label_y)
+
+
+def test_dynamic_canvas_expands_simple_cubic_and_selective_dense_preview(
+    tmp_path: Path,
+) -> None:
+    """No-label simple curves stay visible; dense smart previews expand cheaply."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for native live SVG extent regression")
+    app = ASSETS["app.js"]
+    begin = app.index("function expandSmartCanvasToFitRoutes(")
+    extent = app[begin:app.index("function constrainBoundsOffset(", begin)]
+    script = tmp_path / "freeform-curve-and-dense-preview.mjs"
+    script.write_text(r"""
+const documentMode=true;
+let mode="simple";
+const routingMode=()=>mode;
+let simpleReads=0, previewReads=0, unchangedReads=0, applied=0;
+const edges = new Map();
+const nodes = new Map([
+  ["dragged",{minX:-900,minY:180,maxX:-790,maxY:280}]
+]);
+const nodeBoundsInSvg = node=>node;
+const original={x:-88,y:-88,width:650,height:430};
+const svg={
+  viewBox:{baseVal:{...original}},
+  setAttribute(key,value){
+    if(key==="viewBox"){
+      const [x,y,width,height]=value.split(" ").map(Number);
+      this.viewBox.baseVal={x,y,width,height};
+    }else this[key]=value;
+  }
+};
+let view={x:22,y:19,scale:0.8};
+const applyView=()=>{applied++};
+""" + extent + r"""
+const screen =()=>[view.x-svg.viewBox.baseVal.x*view.scale,
+                     view.y-svg.viewBox.baseVal.y*view.scale];
+const startScreen=screen();
+edges.set("simple",{
+  path:{getBBox(){simpleReads++;return {x:-910,y:115,width:860,height:287.1}}},
+  labelRect:null,routeBounds:null
+});
+if(!expandSmartCanvasToFitRoutes())throw Error("Simple edge not expanded");
+const simpleBox=svg.viewBox.baseVal;
+if(simpleBox.y+simpleBox.height<426 || simpleReads!==1)
+  throw Error("Simple unlabeled cubic clipped");
+if(screen().some((n,i)=>Math.abs(n-startScreen[i])>1e-6))
+  throw Error("Simple extension moved viewport");
+// Reset for a separate dense preview with its old content extent.
+svg.viewBox.baseVal={...original};
+view={x:22,y:19,scale:0.8}; applied=0;edges.clear(); mode="smart";
+nodes.set("dragged",{minX:790,minY:260,maxX:930,maxY:390});
+edges.set("preview",{
+  path:{getBBox(){previewReads++;return {x:300,y:50,width:800,height:580}}},
+  labelRect:null,routeBounds:null
+});
+edges.set("untouched",{
+  path:{getBBox(){unchangedReads++;throw Error("unaffected path scanned")}},
+  labelRect:null,routeBounds:null
+});
+if(!expandSmartCanvasToFitRoutes({previewEdges:new Set(["preview"])}))
+  throw Error("Pending smart path still clipped");
+const denseBox=svg.viewBox.baseVal;
+if(denseBox.x+denseBox.width<1124 || denseBox.y+denseBox.height<654)
+  throw Error("Deferred smart preview not visible");
+if(previewReads!==1 || unchangedReads!==0)
+  throw Error("Deferred routing performed unnecessary full path scan");
+if(screen().some((n,i)=>Math.abs(n-startScreen[i])>1e-6) || applied!==1)
+  throw Error("Deferred drag shifted viewport");
+console.log(JSON.stringify({simple:true,dense:true,selective:true,stable:true}));
+""",encoding="utf-8")
+    result = subprocess.run(
+        [node, str(script)],capture_output=True,text=True,timeout=12,check=True,
+    )
+    assert json.loads(result.stdout) == {
+        "simple":True,"dense":True,"selective":True,"stable":True,
+    }
