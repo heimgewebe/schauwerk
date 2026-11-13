@@ -22,6 +22,59 @@ from schauwerk.publication.store import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _find_focus_source_successor_proof() -> dict:
+    """Exact later viewer-only revision without transferring visual acceptance."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-find-focus-20261113"
+        / "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-find-focus-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "2ab4a73e850b0ba4c51d7cd2ea638fc37d3678d6"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    predecessors = proof["predecessor_technical_proof"]
+    previous_path = ROOT / predecessors["path"]
+    previous_bytes = previous_path.read_bytes()
+    assert hashlib.sha256(previous_bytes).hexdigest() == predecessors["sha256"]
+    previous = json.loads(previous_bytes)
+    assert previous["evidence_digest"] == predecessors["evidence_digest"]
+    assert previous["evidence_digest"] == digest_mapping(previous, "evidence_digest")
+    expected = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }
+    assert set(proof["base_source_bindings"]) == expected
+    assert set(proof["source_bindings"]) == expected
+    for name in expected:
+        assert proof["base_source_bindings"][name] == previous["source_bindings"][name]
+        assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            proof["source_bindings"][name]
+        ), name
+    return proof
+
+
+def test_schaubild_find_focus_source_successor_is_digest_bound() -> None:
+    proof = _find_focus_source_successor_proof()
+    for width in (320, 390, 810):
+        assert proof["validation"][f"actual_chrome_navigation_{width}px"] == (
+            "passed_real_cdp_css_width"
+        )
+    assert proof["validation"]["mobile_navigation_popover_no_horizontal_overflow"] == (
+        "passed_320_390_810"
+    )
+    assert proof["validation"]["search_never_changes_document_or_undo_history"] == (
+        "passed_actual_chrome"
+    )
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+
+
 def _freeform_smooth_successor_proof() -> dict:
     """Current source revisions are bound without changing historic acceptance."""
     proof_path = (
@@ -49,9 +102,10 @@ def _freeform_smooth_successor_proof() -> dict:
     for name in expected:
         assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
         assert len(proof["base_source_bindings"][name]) == 64
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            proof["source_bindings"][name]
-        ), name
+        latest = _find_focus_source_successor_proof()["source_bindings"].get(
+            name, proof["source_bindings"][name]
+        )
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == latest, name
     predecessors = proof["historical_predecessors"]
     assert len(predecessors) == 3
     for name, binding in predecessors.items():
@@ -181,6 +235,7 @@ def _crossing_source_successor_proof() -> dict:
             assert successor["base_source_bindings"][name] == current
             current = successor["source_bindings"][name]
         current = _freeform_smooth_successor_proof()["source_bindings"].get(name, current)
+        current = _find_focus_source_successor_proof()["source_bindings"].get(name, current)
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
         if name in predecessor["source_bindings"]:
             assert proof["base_source_bindings"][name] == (
@@ -298,8 +353,10 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
         previous_sha256 = a3["source_bindings"][path]
     current = _freeform_smooth_successor_proof()
     if path in current["source_bindings"]:
-        return current["source_bindings"][path]
-    return previous_sha256
+        previous_sha256 = current["source_bindings"][path]
+    return _find_focus_source_successor_proof()["source_bindings"].get(
+        path, previous_sha256
+    )
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:
@@ -14757,6 +14814,8 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_a3_readable_print_source_successor_proof()["source_bindings"],
         # Current source-only candidate; old evidence remains immutable.
         **_freeform_smooth_successor_proof()["source_bindings"],
+        # Later view-only UX revision; neither earlier acceptance nor release is inherited.
+        **_find_focus_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()

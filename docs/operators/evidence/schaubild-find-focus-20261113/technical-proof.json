@@ -1,0 +1,50 @@
+{
+  "base_revision": "2ab4a73e850b0ba4c51d7cd2ea638fc37d3678d6",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3de81c559b004295165cfc9e4678c72e8cfcab958ffd9f124526cce40a63b28c",
+    "tests/visual/test_native_viewer_browser.py": "fc1207c396e469c6d26fb813ef5083954e466158936a54f1fa01b1fe0399de29"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "physical_ipad_safari_acceptance",
+    "physical_a3_print_acceptance",
+    "new_svg_or_pdf_export_visual_acceptance",
+    "production_rollout",
+    "published_oci_digest",
+    "consumer_release_lock_update",
+    "current_production_browser_e2e",
+    "global_visual_acceptance"
+  ],
+  "evidence_digest": "9f90381da7fec2f9e17f803db81a9afcae74d50c253313f04d1bbf06a3ad430a",
+  "predecessor_technical_proof": {
+    "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
+    "path": "docs/operators/evidence/schaubild-free-canvas-smooth-smart-20261113/technical-proof.json",
+    "sha256": "3c3430f4ca1ebd5205fbc9d1050018114e13ec2b03ce431ec234066e1df36222"
+  },
+  "schema_version": "schauwerk-schaubild-find-focus-successor.v1",
+  "scope": "native document view-only search, next-result navigation and relation focus",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "29f72889830947fe4cfbd49c33230e32b217bbb3e813403113a1ddcd8daac7a0",
+    "tests/visual/test_native_viewer_browser.py": "6f97b197f26159bf71033eb0748934385232c1463e97a898dbcc3abb23ce2cac"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "actual_chrome_navigation_320px": "passed_real_cdp_css_width",
+    "actual_chrome_navigation_390px": "passed_real_cdp_css_width",
+    "actual_chrome_navigation_810px": "passed_real_cdp_css_width",
+    "actual_chrome_viewer_full_suite": "19 passed",
+    "full_ci": "pending_exact_head",
+    "ios_search_input_font_size_16px": "passed_css_readback_320_390_810",
+    "mobile_navigation_popover_no_horizontal_overflow": "passed_320_390_810",
+    "native_history_regression": "4 passed",
+    "native_viewer_tests": "26 passed",
+    "offline_html_regression": "58 passed",
+    "relation_focus_is_opt_in_and_clears": "passed_actual_chrome",
+    "search_never_changes_document_or_undo_history": "passed_actual_chrome",
+    "smart_router_integrations": "48 passed",
+    "vector_pdf_regression": "4 passed"
+  },
+  "visual_acceptance": "not_inherited"
+}
