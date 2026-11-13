@@ -1,0 +1,62 @@
+{
+  "base_revision": "d932aae62e5dedf85f15e2821d85567990647ac3",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a6a6b07c989323be626c5d15be4109c9fe9c2c4c018b391e1f633d2faebf2f66",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "1bc80de13456d29bdc76cda8b48a1079e4e49ff8c3d3a3ecc1ccf95766eba34a",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "d73c383b0926743169fd46722c77b00ddecd0bd6c5a96f940e3cd5ae4069460f",
+    "tests/visual/test_native_canvas_smart_integration.py": "d0bb0f704aacca1d9363de034106195013f6eab21a2cc827a101e736e02136f9",
+    "tests/visual/test_native_viewer_browser.py": "a369bea5cc324119ee94a34f3ad68ca6c022535831be179d197e83c7eda06947"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "production_rollout",
+    "physical_ipad_safari_acceptance",
+    "signed_independent_review",
+    "published_oci_digest",
+    "consumer_release_lock_update",
+    "production_browser_e2e",
+    "global_visual_acceptance"
+  ],
+  "evidence_digest": "378c32ca2174abbbb54513d246ee9c2f4363f5dcd0a89b40a70df8b1b407132a",
+  "historical_predecessors": {
+    "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json": {
+      "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53",
+      "sha256": "c055db83ed4345df352610bff25054c4502faad04a65e3fff32ffdb55f525d23"
+    },
+    "docs/operators/evidence/schaubild-crossing-aware-20261110/technical-proof.json": {
+      "evidence_digest": "e67dab685290b9be28d91aee7c666effcc99b4b37f204b77e0bf2b8bb11ff8e6",
+      "sha256": "f913be34e4aaa1c797172cfbab9d985eb2b703a8774656805fe5603732b5767a"
+    },
+    "docs/operators/evidence/schaubild-smart-router-bounds-20261112/technical-proof.json": {
+      "evidence_digest": "c00912c81045e4ccb7ca4c03dff8bfee82417e0d0517f7b519b2233bac2bfa7a",
+      "sha256": "a370278203e47faeef64eb09ccb2bd25173b9e7bf673be0e567ff359f7090a1b"
+    }
+  },
+  "historical_publication_test_binding": {
+    "path": "tests/publication/test_publication_fixtures.py",
+    "sha256": "5a11e792aaddd06e2e5dd7868489bbd883af0e74901ec47603f1c0f274a0d0af"
+  },
+  "schema_version": "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1",
+  "scope": "native freeform viewport extent and safe, softer smart-edge geometry only",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "9272b438b0d7b50cde8a9c7dc469e2345e879f4da0427d53c191254102bafb73",
+    "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
+    "tests/visual/test_native_canvas_smart_integration.py": "0dc33bd3c9bec78399ffd0e79bd383791fc3db45b227a8774c5e8e83a8b7b31a",
+    "tests/visual/test_native_viewer_browser.py": "ba8fffe3f8e9585d2e72df5b8c667ac3cb4907d528fc7f81ed83369017fae356"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "full_ci": "pending_exact_head",
+    "native_canvas_smart_integration": "28 passed",
+    "native_canvas_smart_router": "18 passed",
+    "native_viewer": "26 passed",
+    "real_chrome_document_drag": "passed",
+    "real_chrome_freeform_drag": "passed",
+    "real_chrome_max_coordinate_negative": "passed",
+    "source_python_js_parity": "passed"
+  },
+  "visual_acceptance": "not_inherited"
+}

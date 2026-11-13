@@ -467,6 +467,7 @@ def test_standalone_smart_deferred_routes_finish_after_drag(tmp_path: Path) -> N
     completion = app[begin:app.index("function rollbackSmartDragPreview(", begin)]
     harness = r"""
 const documentMode=true, overrides={};
+const documentOffsetBudget=20000000;
 let bulkEdgeUpdate=false, pendingSmartRouteGeneration=0, gesture=null;
 let routed=0, status="", relabel=0;
 const nodes=new Map(Array.from({length:33},(_,i)=>[
@@ -566,6 +567,7 @@ def test_nonincident_smart_detours_expand_export_viewbox_without_zoom_jump(
     program = r"""
 const documentMode = true;
 const routingMode = () => "smart";
+const nodes = new Map();
 const edges = new Map([["notIncident", {
   routeBounds: [50, -92.01, 480, 140],
   labelRect: null,
@@ -815,6 +817,7 @@ def test_relocated_simple_edge_label_stays_within_svg_canvas(
     source = app[begin:app.index("function constrainBoundsOffset(", begin)]
     program = r"""
 const documentMode=true, routingMode=()=> "simple";
+const nodes=new Map();
 let pathReads=0;
 const edges=new Map([["labeled", {
   routeBounds:null,
@@ -1142,3 +1145,100 @@ def test_automatic_ports_rank_crossing_weighted_candidates_with_js_parity(
         assert (candidate["fromSide"],candidate["toSide"])==(
             route.from_side,route.to_side
         )
+
+
+def test_freeform_moved_nodes_grow_svg_in_all_directions_without_pan_jump(
+    tmp_path: Path,
+) -> None:
+    """A document extent follows real nodes without clipping or viewport drift."""
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for dynamic canvas extent regression")
+    app = ASSETS["app.js"]
+    start = app.index("function expandSmartCanvasToFitRoutes(")
+    source = app[start:app.index("function constrainBoundsOffset(", start)]
+    script = tmp_path / "freeform-viewbox.mjs"
+    script.write_text(r"""
+const documentMode=true, routingMode=()=> "simple";
+const edges=new Map();
+const nodes=new Map([
+  ["left",{minX:-530,minY:-240,maxX:-410,maxY:-160}],
+  ["right",{minX:690,minY:230,maxX:840,maxY:330}]
+]);
+const nodeBoundsInSvg=node=>node;
+const original={x:-88,y:-88,width:650,height:200};
+const svg={
+  viewBox:{baseVal:{...original}},
+  setAttribute(name,value){
+    if(name==="viewBox"){
+      const [x,y,width,height]=value.split(" ").map(Number);
+      this.viewBox.baseVal={x,y,width,height};
+    } else this[name]=value;
+  }
+};
+let view={x:14,y:23,scale:1.5},applies=0;
+const applyView=()=>{applies++};
+""" + source + r"""
+const before=[view.x+(0-original.x)*view.scale,
+              view.y+(0-original.y)*view.scale];
+if(!expandSmartCanvasToFitRoutes())throw Error("Freeform bounds did not grow");
+const box=svg.viewBox.baseVal;
+if(box.x>-554 || box.y>-264 ||
+   box.x+box.width<864 || box.y+box.height<354)
+  throw Error("Moved nodes still clipped: "+JSON.stringify(box));
+const after=[view.x+(0-box.x)*view.scale,
+             view.y+(0-box.y)*view.scale];
+if(after.some((v,i)=>Math.abs(v-before[i])>1e-6))
+  throw Error("Canvas expansion moved the world under the user");
+if(expandSmartCanvasToFitRoutes() || applies!==1)
+  throw Error("Unchanged nodes repeatedly shifted the viewport");
+console.log(JSON.stringify({freeform:true,screenStable:true,box}));
+""", encoding="utf-8")
+    result = subprocess.run(
+        [node, str(script)], capture_output=True,
+        text=True, timeout=12, check=True,
+    )
+    value = json.loads(result.stdout)
+    assert value["freeform"] and value["screenStable"]
+
+
+def test_smart_open_space_reuses_soft_cubic_and_agrees_with_browser(
+    tmp_path: Path,
+) -> None:
+    """No obstacle: simple and smart share the same cubic control geometry."""
+    import re
+
+    nodes = canvas(obstacle=False)["nodes"]
+    route = route_edge(nodes[0], nodes[1], nodes, max_lane=0.0)
+    assert route is not None and route.collision_free
+    assert route.path.count(" C ") == 1
+    assert " L " not in route.path
+    source = canvas(obstacle=False)
+    assert path_data(render(source)) == route.path
+    simple = path_data(render(canvas(routing="simple", obstacle=False)))
+    def coords(text: str) -> list[float]:
+        return [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", text)]
+
+    assert coords(route.path) == pytest.approx(coords(simple), abs=0.11)
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("Node unavailable for JS/Python smart-cubic parity")
+    module = tmp_path / "smart-router.mjs"
+    module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+    runner = tmp_path / "open-space.mjs"
+    runner.write_text(
+        'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+        f"const nodes={json.dumps(nodes)};\n"
+        'console.log(JSON.stringify(smartEdgeGeometry(nodes[0],nodes[1],nodes,'
+        '{maxLane:0})));\n',
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [node, str(runner)], capture_output=True,
+        text=True, timeout=12, check=True,
+    )
+    js = json.loads(result.stdout)
+    assert js["collisionFree"]
+    assert js["path"] == route.path
+    assert js["labelX"] == pytest.approx(route.label_x)
+    assert js["labelY"] == pytest.approx(route.label_y)

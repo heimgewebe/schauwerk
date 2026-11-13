@@ -183,7 +183,9 @@ def _path_with_safe_fillets(
             commands.append("L "+_round_point(vertex))
             last=vertex
             continue
-        radius = min(16.0,left*0.27,right*0.27)
+        # Give open detours noticeably softer arcs; keep the complete Bezier
+        # collision proof and shrink near crowded obstacles.
+        radius = min(24.0,left*0.35,right*0.35)
         selected = None
         for _ in range(8):
             entry=_add(vertex,di,-radius)
@@ -455,6 +457,62 @@ def route_edge(
         unique=movable[:max(0,max_blockers-2)]+[source_box,target_box]
     unique.sort()
     crossing_segments=_prior_crossing_segments(prior_routes,str(src_id),str(tgt_id))
+    # Prefer the original, uninterrupted cubic whenever an automatic single
+    # connection can take it safely. This keeps smart routing aesthetically
+    # identical to simple routing in open space; detours remain collision-safe.
+    if lane == 0.0 and not (max_lane or 0.0) and not crossing_segments:
+        sx = float(source["x"]) + float(source["width"]) / 2
+        sy = float(source["y"]) + float(source["height"]) / 2
+        tx = float(target["x"]) + float(target["width"]) / 2
+        ty = float(target["y"]) + float(target["height"]) / 2
+        horizontal = abs(tx - sx) >= abs(ty - sy)
+        if horizontal:
+            preferred_from = "right" if tx >= sx else "left"
+            preferred_to = "left" if tx >= sx else "right"
+        else:
+            preferred_from = "bottom" if ty >= sy else "top"
+            preferred_to = "top" if ty >= sy else "bottom"
+        if from_side in (None, preferred_from) and to_side in (None, preferred_to):
+            for _, _, ss, ts, start, _, _, end in candidates:
+                if (ss, ts) != (preferred_from, preferred_to):
+                    continue
+                normal = NORMALS[ss]
+                gap = (end[0] - start[0]) * normal[0] + (
+                    end[1] - start[1]
+                ) * normal[1]
+                bend = max(42.0, min(160.0, _distance(start, end) * 0.35))
+                # Monotone travel on the primary axis cannot re-enter its
+                # endpoint nodes. The full cubic is checked against all
+                # foreign padded obstacles, not just sampled path points.
+                if gap <= 2 * bend + 2 * clearance:
+                    break
+                c1 = _add(start, normal, bend)
+                c2 = _add(end, NORMALS[ts], bend)
+                controls = (start, c1, c2, end)
+                if not _curve_hull_clear(controls, blocking):
+                    break
+
+                def at(t: float) -> Point:
+                    u = 1.0 - t
+                    return (
+                        u**3 * start[0] + 3*u*u*t*c1[0] +
+                        3*u*t*t*c2[0] + t**3*end[0],
+                        u**3 * start[1] + 3*u*u*t*c1[1] +
+                        3*u*t*t*c2[1] + t**3*end[1],
+                    )
+                points = tuple(at(t) for t in (0.0, 0.25, 0.5, 0.75, 1.0))
+                label = points[2]
+                return SmartEdgeRoute(
+                    path="M " + _round_point(start) + " C " +
+                         " ".join(_round_point(p) for p in (c1, c2, end)),
+                    label_x=label[0], label_y=label[1],
+                    bounds=(min(p[0] for p in controls),
+                            min(p[1] for p in controls),
+                            max(p[0] for p in controls),
+                            max(p[1] for p in controls)),
+                    points=points, from_side=ss, to_side=ts,
+                    collision_free=True,
+                )
     vertices=[]
     vertex_index={}
     def add_vertex(p:Point)->int:

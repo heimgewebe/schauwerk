@@ -22,6 +22,57 @@ from schauwerk.publication.store import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _freeform_smooth_successor_proof() -> dict:
+    """Current source revisions are bound without changing historic acceptance."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-free-canvas-smooth-smart-20261113"
+        / "technical-proof.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-free-canvas-smooth-smart-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "d932aae62e5dedf85f15e2821d85567990647ac3"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    expected = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/native_viewer/smart_router.py",
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "tests/visual/test_native_canvas_smart_integration.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }
+    assert set(proof["source_bindings"]) == expected
+    assert set(proof["base_source_bindings"]) == expected
+    for name in expected:
+        assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
+        assert len(proof["base_source_bindings"][name]) == 64
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            proof["source_bindings"][name]
+        ), name
+    predecessors = proof["historical_predecessors"]
+    assert len(predecessors) == 3
+    for name, binding in predecessors.items():
+        assert name.startswith("docs/operators/evidence/schaubild-")
+        previous_bytes = (ROOT / name).read_bytes()
+        assert hashlib.sha256(previous_bytes).hexdigest() == binding["sha256"]
+        previous = json.loads(previous_bytes)
+        assert previous["evidence_digest"] == binding["evidence_digest"]
+        assert previous["evidence_digest"] == digest_mapping(previous, "evidence_digest")
+    print_binding = proof["historical_publication_test_binding"]
+    assert print_binding["path"] == "tests/publication/test_publication_fixtures.py"
+    assert len(print_binding["sha256"]) == 64
+    assert "production_rollout" in proof["does_not_establish"]
+    return proof
+
+
+def test_schaubild_free_canvas_smooth_source_successor_is_bound() -> None:
+    proof = _freeform_smooth_successor_proof()
+    assert proof["validation"]["real_chrome_freeform_drag"] == "passed"
+    assert proof["validation"]["source_python_js_parity"] == "passed"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+
 def _router_bbox_performance_successor_proof() -> dict:
     """Bind the current faster router to exact bytes, not old visual acceptance."""
     path = (
@@ -61,8 +112,11 @@ def _router_bbox_performance_successor_proof() -> dict:
         )
         assert proof["base_source_bindings"][name] == predecessor["source_bindings"][name]
         assert proof["base_source_bindings"][name] != proof["source_bindings"][name]
+        expected_sha = _freeform_smooth_successor_proof()["source_bindings"].get(
+            name, proof["source_bindings"][name]
+        )
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            proof["source_bindings"][name]
+            expected_sha
         ), name
     assert proof["validation"]["source_48_nodes_256_edges_svg_byte_identical"] is True
     assert proof["validation"]["source_48_nodes_256_edges_route_count"] == 256
@@ -125,6 +179,7 @@ def _crossing_source_successor_proof() -> dict:
             successor = _router_bbox_performance_successor_proof()
             assert successor["base_source_bindings"][name] == current
             current = successor["source_bindings"][name]
+        current = _freeform_smooth_successor_proof()["source_bindings"].get(name, current)
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
         if name in predecessor["source_bindings"]:
             assert proof["base_source_bindings"][name] == (
@@ -205,11 +260,11 @@ def _a3_readable_print_source_successor_proof() -> dict:
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
-    pub_test = "tests/publication/test_publication_fixtures.py"
-    assert proof["publication_test_binding"] == {
-        "path": pub_test,
-        "sha256": hashlib.sha256((ROOT / pub_test).read_bytes()).hexdigest(),
-    }
+    # Publication fixture itself evolved after the A3 proof; its original
+    # digest remains valid historical evidence, not the new test file's hash.
+    assert proof["publication_test_binding"] == (
+        _freeform_smooth_successor_proof()["historical_publication_test_binding"]
+    )
     assert proof["tests"]["browser_print"]["a3_detail_pages"] == 6
     assert proof["tests"]["text_integrity"]["missing_edges"] == 0
     return proof
@@ -235,11 +290,14 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     perf = _router_bbox_performance_successor_proof()
     if path in perf["source_bindings"]:
         assert perf["base_source_bindings"][path] == previous_sha256, path
-        return perf["source_bindings"][path]
+        previous_sha256 = perf["source_bindings"][path]
     a3 = _a3_readable_print_source_successor_proof()
     if path in a3["source_bindings"]:
         assert a3["base_source_bindings"][path] == previous_sha256, path
-        return a3["source_bindings"][path]
+        previous_sha256 = a3["source_bindings"][path]
+    current = _freeform_smooth_successor_proof()
+    if path in current["source_bindings"]:
+        return current["source_bindings"][path]
     return previous_sha256
 
 
@@ -14696,6 +14754,8 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_edge_budget_source_successor_proof()["source_bindings"],
         # New A3 print UI and PDF-test bytes supersede only these two paths.
         **_a3_readable_print_source_successor_proof()["source_bindings"],
+        # Current source-only candidate; old evidence remains immutable.
+        **_freeform_smooth_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()

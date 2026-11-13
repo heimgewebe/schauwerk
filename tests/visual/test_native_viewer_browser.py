@@ -67,6 +67,8 @@ window.setInterval(() => {
     "emptyCanvasBrowserRegressionError",
     "coordinateBrowserRegression",
     "coordinateBrowserRegressionError",
+    "freeformCanvasBrowserRegression",
+    "freeformCanvasBrowserRegressionError",
   ]) {
     if (child.dataset[key]) document.documentElement.dataset[key] = child.dataset[key];
   }
@@ -2022,3 +2024,120 @@ try {
     assert completed.returncode == 0, completed.stderr
     assert 'data-observer-regression="pass"' in completed.stdout, completed.stdout
     assert 'data-observer-regression="fail"' not in completed.stdout, completed.stdout
+
+
+def test_native_canvas_browser_extends_freeform_node_beyond_old_viewbox(
+    tmp_path: Path,
+) -> None:
+    """Actual Chrome drag may move a native node outside its prior SVG extent."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for freeform node extension E2E")
+        raise AssertionError("unreachable")
+    source = {"nodes": [
+        {"id": "free", "type": "text", "x": 0, "y": 0,
+         "width": 180, "height": 100, "text": "Freier Knoten"},
+    ], "edges": []}
+    document = json_canvas_to_editing_document(source)
+    output = tmp_path / "freeform-canvas-viewer"
+    build_native_viewer(
+        document, output,
+        serve_binding="127.0.0.1-only", public_base_path="",
+    )
+    index_path = output / "index.html"
+    index = index_path.read_text(encoding="utf-8")
+    tag = '<script type="module" src="app.js"></script>'
+    assert index.count(tag) == 1
+    probe = r"""
+<script>
+Element.prototype.setPointerCapture=function(){};
+Element.prototype.releasePointerCapture=function(){};
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+const waitUntil=async(predicate,label)=>{
+  for(let i=0;i<240;i++){
+    if(predicate())return;
+    await new Promise(resolve=>setTimeout(resolve,20));
+  }
+  throw Error(label);
+};
+const fire=(target,type,x,y)=>target.dispatchEvent(new PointerEvent(type,{
+  bubbles:true,cancelable:true,pointerType:"mouse",pointerId:31,
+  clientX:x,clientY:y,button:0,buttons:type==="pointerup"?0:1
+}));
+try {
+  await waitUntil(()=>
+    document.querySelector('[data-source-id="free"]') &&
+    document.querySelector("#nativeCanvas")?.style.transform.includes("scale("),
+    "Freeform canvas not interaction ready");
+  const svg=document.querySelector("#nativeDiagram");
+  const canvas=document.querySelector("#nativeCanvas");
+  const viewport=document.querySelector("#nativeViewport");
+  const node=document.querySelector('[data-source-kind="node"][data-source-id="free"]');
+  const before=svg.viewBox.baseVal;
+  const old={x:before.x,y:before.y,width:before.width,height:before.height};
+  const parse=()=>{
+    const match=canvas.style.transform.match(
+      /^translate\(([-\d.]+)px, ([-\d.]+)px\) scale\(([\d.]+)\)$/);
+    if(!match)throw Error("Unexpected canvas transform");
+    return match.slice(1).map(Number);
+  };
+  const [tx,ty,scale]=parse();
+  const originalScreenX=tx+(0-old.x)*scale;
+  const originalScreenY=ty+(0-old.y)*scale;
+  const rect=node.getBoundingClientRect();
+  const x=(rect.left+rect.right)/2,y=(rect.top+rect.bottom)/2;
+  fire(node,"pointerdown",x,y);
+  fire(viewport,"pointermove",x+650,y+340);
+  const next=svg.viewBox.baseVal;
+  if(next.x+next.width<=old.x+old.width+110 ||
+     next.y+next.height<=old.y+old.height+100)
+    throw Error("Node drag still clipped by initial SVG viewBox");
+  const [newX,newY,newScale]=parse();
+  if(Math.abs(originalScreenX-(newX+(0-next.x)*newScale))>0.01 ||
+     Math.abs(originalScreenY-(newY+(0-next.y)*newScale))>0.01 ||
+     Math.abs(newScale-scale)>1e-6)
+    throw Error("Growing canvas unexpectedly moved the viewport");
+  document.documentElement.dataset.freeformCanvasBrowserRegression="pass";
+  fire(viewport,"pointerup",x+650,y+340);
+} catch(error){
+  document.documentElement.dataset.freeformCanvasBrowserRegression="fail";
+  document.documentElement.dataset.freeformCanvasBrowserRegressionError=
+    String(error?.message||error);
+}
+</script>
+"""
+    index_path.write_text(index.replace(tag, probe), encoding="utf-8")
+    _write_document_probe_host(output, full_viewport=True)
+
+    class QuietFreeformHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+
+    handler = partial(QuietFreeformHandler, directory=str(output))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        completed = subprocess.run(
+            [
+                chrome, "--headless=new",
+                f"--user-data-dir={tmp_path / 'freeform-chrome-profile'}",
+                "--no-first-run", "--disable-gpu",
+                "--disable-dev-shm-usage", "--no-sandbox",
+                "--run-all-compositor-stages-before-draw",
+                "--virtual-time-budget=8000", "--dump-dom",
+                f"http://127.0.0.1:{server.server_address[1]}/host.html",
+            ],
+            text=True, capture_output=True, timeout=22, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert completed.returncode == 0, completed.stderr
+    assert 'data-freeform-canvas-browser-regression="pass"' in completed.stdout, (
+        completed.stdout[-4000:]
+    )
+    assert 'data-freeform-canvas-browser-regression="fail"' not in completed.stdout
