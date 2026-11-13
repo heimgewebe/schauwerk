@@ -15,7 +15,7 @@
     "current_production_browser_e2e",
     "global_visual_acceptance"
   ],
-  "evidence_digest": "9f90381da7fec2f9e17f803db81a9afcae74d50c253313f04d1bbf06a3ad430a",
+  "evidence_digest": "bab4026140c8d59e7135e847d2c3c6ce21569ad4953bd057dd591d5cae63b0ec",
   "predecessor_technical_proof": {
     "evidence_digest": "45f521e049ae941144b6f70d75669fe484b0768750b488a3e158d061dfb1f1e4",
     "path": "docs/operators/evidence/schaubild-free-canvas-smooth-smart-20261113/technical-proof.json",
@@ -24,8 +24,8 @@
   "schema_version": "schauwerk-schaubild-find-focus-successor.v1",
   "scope": "native document view-only search, next-result navigation and relation focus",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "29f72889830947fe4cfbd49c33230e32b217bbb3e813403113a1ddcd8daac7a0",
-    "tests/visual/test_native_viewer_browser.py": "6f97b197f26159bf71033eb0748934385232c1463e97a898dbcc3abb23ce2cac"
+    "src/schauwerk/resources/native_viewer/assets.py": "71b747695f8f9014e8b0c2a27852cad7c6fbb67d8a5ba57b86066892ea34c9d2",
+    "tests/visual/test_native_viewer_browser.py": "a90593515f192ddd491c8359bef7a5f282cc0c41c8d62f3762116afaf3e64bb8"
   },
   "source_mode": "source-code-successor",
   "source_repository": "heimgewebe/schauwerk",
@@ -34,14 +34,20 @@
     "actual_chrome_navigation_320px": "passed_real_cdp_css_width",
     "actual_chrome_navigation_390px": "passed_real_cdp_css_width",
     "actual_chrome_navigation_810px": "passed_real_cdp_css_width",
-    "actual_chrome_viewer_full_suite": "19 passed",
+    "actual_chrome_viewer_full_suite": "20 passed",
     "full_ci": "pending_exact_head",
     "ios_search_input_font_size_16px": "passed_css_readback_320_390_810",
+    "mobile_320_safe_area_insets_64_80": "passed_real_cdp_css_width",
     "mobile_navigation_popover_no_horizontal_overflow": "passed_320_390_810",
+    "mobile_search_feedback_computed_visible": "passed_real_cdp_css_width",
     "native_history_regression": "4 passed",
     "native_viewer_tests": "26 passed",
     "offline_html_regression": "58 passed",
     "relation_focus_is_opt_in_and_clears": "passed_actual_chrome",
+    "review_findings": {
+      "codex_4566360046": "fixed; popover width bounded by safe-area toolbar",
+      "codex_4566360054": "fixed; mobile rule hides only zoom output, not live search-status"
+    },
     "search_never_changes_document_or_undo_history": "passed_actual_chrome",
     "smart_router_integrations": "48 passed",
     "vector_pdf_regression": "4 passed"

@@ -409,7 +409,10 @@ button:focus-visible {
   z-index: 5;
   top: calc(100% + 6px);
   right: 0;
-  width: min(320px, calc(100vw - 16px));
+  /* Sized against the safe-area-aware .viewer-bar, not the raw screen.
+     A 320px landscape notch may leave only 176px usable toolbar width. */
+  width: min(320px, 100%);
+  min-width: 0;
   display: grid;
   gap: 8px;
   padding: 12px;
@@ -662,7 +665,9 @@ button:focus-visible {
 @media (max-width: 430px) {
   .document-editor-hosted .viewer-heading { max-width: min(34vw, 128px); }
   .document-editor-hosted .status { max-width: 100%; }
-  .document-editor-hosted .controls output { display: none; }
+  /* Hide only the redundant zoom percentage on narrow embedded editors;
+   find result counts are live feedback and must remain visible. */
+  .document-editor-hosted .controls #zoomValue { display: none; }
   .viewer-foot span:nth-child(2),
   .viewer-foot span:last-child { display: none; }
 }

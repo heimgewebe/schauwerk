@@ -2205,11 +2205,18 @@ try {
     assert 'data-freeform-canvas-browser-regression="fail"' not in completed.stdout
 
 
-@pytest.mark.parametrize("viewport_width, viewport_height", [
-    (320, 700), (390, 844), (810, 1080),
-])
+@pytest.mark.parametrize(
+    ("viewport_width", "viewport_height", "safe_left", "safe_right"),
+    [
+        (320, 700, 64, 80),
+        (320, 700, 0, 0),
+        (390, 844, 0, 0),
+        (810, 1080, 0, 0),
+    ],
+)
 def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
     tmp_path: Path, viewport_width: int, viewport_height: int,
+    safe_left: int, safe_right: int,
 ) -> None:
     """Real browser: locate off-screen node and focus its neighbors without edits."""
     chrome = _chrome()
@@ -2239,6 +2246,15 @@ def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
     doc = json_canvas_to_editing_document(source)
     output = tmp_path / "navigation-viewer"
     build_native_viewer(doc, output)
+    stylesheet = output / "styles.css"
+    styles = stylesheet.read_text(encoding="utf-8")
+    assert "env(safe-area-inset-left)" in styles
+    assert "env(safe-area-inset-right)" in styles
+    stylesheet.write_text(
+        styles.replace("env(safe-area-inset-left)", f"{safe_left}px")
+        .replace("env(safe-area-inset-right)", f"{safe_right}px"),
+        encoding="utf-8",
+    )
     index_path = output / "index.html"
     html = index_path.read_text(encoding="utf-8")
     tag = '<script type="module" src="app.js"></script>'
@@ -2247,6 +2263,7 @@ def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
 <script type="module" src="app.js"></script>
 <script type="module">
 const expectedWidth = __VIEWPORT_WIDTH__;
+const safeLeft = __SAFE_LEFT__, safeRight = __SAFE_RIGHT__;
 const waitUntil = async (fn, msg) => {
   for (let i=0; i<240; i++) {
     if(fn())return;
@@ -2279,10 +2296,14 @@ try {
   if(Math.abs(window.innerWidth - expectedWidth) > 1)
     throw Error("Wrong CSS viewport width: " + innerWidth + " expected " + expectedWidth);
   const menu = nav.querySelector(".navigation-menu").getBoundingClientRect();
-  if(menu.left < 4 || menu.right > window.innerWidth - 4 ||
-     menu.width < 200 || menu.height < 100)
-    throw Error("Search popover clipped at mobile width: " +
-      JSON.stringify({left:menu.left,right:menu.right,width:innerWidth}));
+  const minLeft = Math.max(6, safeLeft), maxRight = innerWidth - Math.max(6, safeRight);
+  if(menu.left < minLeft - 1 || menu.right > maxRight + 1 ||
+     menu.width < 100 || menu.height < 100)
+    throw Error("Search popover escaped safe-area toolbar: " +
+      JSON.stringify({left:menu.left,right:menu.right,width:innerWidth,
+         safeLeft,safeRight}));
+  if(output.getClientRects().length===0 || getComputedStyle(output).display==="none")
+    throw Error("Search result feedback is hidden on the mobile document editor");
   if(parseFloat(getComputedStyle(input).fontSize)<16)
     throw Error("iOS Safari search input could trigger implicit zoom");
   input.value = "Hausgarten";
@@ -2352,7 +2373,11 @@ try {
 }
 </script>
 """
-    probe = probe.replace("__VIEWPORT_WIDTH__", str(viewport_width))
+    probe = (
+        probe.replace("__VIEWPORT_WIDTH__", str(viewport_width))
+        .replace("__SAFE_LEFT__", str(safe_left))
+        .replace("__SAFE_RIGHT__", str(safe_right))
+    )
     index_path.write_text(html.replace(tag, probe), encoding="utf-8")
     _write_document_probe_host(output, full_viewport=True)
     host = output / "host.html"
