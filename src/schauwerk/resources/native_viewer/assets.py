@@ -2313,6 +2313,23 @@ function navigateToNode(sourceId) {
   applyView();
   return true;
 }
+// The view/search dropdown floats above the SVG and is not viewport padding.
+// When it covers a selected match, dismiss only the dropdown; never move the
+// user's world point or change zoom, selection, source or local draft.
+function revealSelectedNodeBehindSearchMenu() {
+  if (!(navigationControls instanceof HTMLDetailsElement) ||
+      !navigationControls.open || !selectedId) return;
+  const node = nodes.get(selectedId);
+  const menu = navigationControls.querySelector(".view-mode-menu");
+  if (!(node instanceof Element) || !(menu instanceof HTMLElement)) return;
+  const target = node.getBoundingClientRect();
+  const overlay = menu.getBoundingClientRect();
+  if (Math.min(target.right, overlay.right) - Math.max(target.left, overlay.left) > 1 &&
+      Math.min(target.bottom, overlay.bottom) - Math.max(target.top, overlay.top) > 1) {
+    navigationControls.open = false;
+  }
+}
+
 function matchingSearchNodes() {
   const query = nodeSearch instanceof HTMLInputElement
     ? nodeSearch.value.trim().toLocaleLowerCase("de") : "";
@@ -2346,6 +2363,7 @@ function findNextNode() {
     return;
   }
   selectNode(nextId);
+  revealSelectedNodeBehindSearchMenu();
   nodeSearchStatus.textContent = (matches.indexOf(nextId) + 1) + " von " + matches.length + " Treffern";
 }
 function selectEdge(edgeId) {
@@ -2625,6 +2643,7 @@ function fitAfterLayoutChange() {
     };
     applyView();
   }
+  revealSelectedNodeBehindSearchMenu();
 }
 
 function zoomBy(factor, anchor = null) {
@@ -3001,6 +3020,7 @@ if (documentMode) {
     setStatus(relationFocusEnabled
       ? "Beziehungsfokus aktiv · Element oder Verbindung wählen"
       : "Alle Beziehungen wieder sichtbar");
+    revealSelectedNodeBehindSearchMenu();
   });
 }
 if (hybridButton instanceof HTMLButtonElement) {

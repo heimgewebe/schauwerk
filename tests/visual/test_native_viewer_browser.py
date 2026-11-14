@@ -2327,6 +2327,46 @@ try {
   if(center.x<vp.left+20 || center.x>vp.right-20 ||
      center.y<vp.top+20 || center.y>vp.bottom-20)
     throw Error("Matched node not visible after navigation");
+  // The search menu is a floating overlay, not part of viewport bounds.
+  // Force a real overlap so a geometry-only visibility test cannot pass.
+  const menuOverlay = nav.querySelector(".view-mode-menu");
+  const previousOverlayStyle = menuOverlay.getAttribute("style");
+  const selectedScale = () =>
+    Number(canvas.style.transform.split("scale(")[1]?.split(")")[0]);
+  const beforeOcclusionScale = selectedScale();
+  if (!Number.isFinite(beforeOcclusionScale) || beforeOcclusionScale <= 0)
+    throw Error("Matched node zoom state unavailable");
+  const positionMenuOverSelection = () => {
+    const target = node("gamma").getBoundingClientRect();
+    nav.open = true;
+    // Translate from the popup's actual browser box rather than assuming
+    // fixed-position coordinates in a transformed/embedded header.
+    menuOverlay.style.transform = "";
+    const origin = menuOverlay.getBoundingClientRect();
+    menuOverlay.style.transform =
+      `translate(${target.left - origin.left - 5}px, ${target.top - origin.top - 5}px)`;
+    const popup = menuOverlay.getBoundingClientRect();
+    const coveredX = Math.max(0, Math.min(target.right, popup.right) -
+      Math.max(target.left, popup.left));
+    const coveredY = Math.max(0, Math.min(target.bottom, popup.bottom) -
+      Math.max(target.top, popup.top));
+    if (coveredX * coveredY < target.width * target.height * 0.5)
+      throw Error("Occlusion fixture does not cover selection: " +
+        JSON.stringify({target:[target.left,target.top,target.width,target.height],
+          popup:[popup.left,popup.top,popup.width,popup.height],open:nav.open}));
+  };
+  positionMenuOverSelection();
+  next.click();
+  if (nav.open) throw Error("Finding left the selected node under search popover");
+  if (!selected("gamma") || Math.abs(selectedScale() - beforeOcclusionScale) > 0.00001)
+    throw Error("Popover dismissal changed selection or manually chosen zoom");
+  positionMenuOverSelection();
+  window.dispatchEvent(new Event("resize"));
+  if (nav.open) throw Error("Responsive resize left selected node under search popover");
+  if (!selected("gamma") || Math.abs(selectedScale() - beforeOcclusionScale) > 0.00001)
+    throw Error("Responsive popover dismissal lost selected node or zoom");
+  if (previousOverlayStyle === null) menuOverlay.removeAttribute("style");
+  else menuOverlay.setAttribute("style", previousOverlayStyle);
   focus.click();
   if(focus.getAttribute("aria-pressed")!=="true" ||
       !document.querySelector("#nativeDiagram")?.classList.contains("is-relation-focused"))
