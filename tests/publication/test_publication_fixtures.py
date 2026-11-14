@@ -21,6 +21,68 @@ from schauwerk.publication.store import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
+def _mobile_search_overlay_source_successor_proof() -> dict:
+    """Verify PR250 bytes without transferring acceptance from predecessor revisions."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-resize-center-20261113"
+        / "technical-proof-mobile-search-overlay-20261114.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-mobile-search-overlay-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 250
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["base_revision"] == "aa11993d5889234be60a2b8ad35ed651327f6cb7"
+    assert proof["source_change_commit"] == "d17b487bc399daee92b44e0c23a4f233a258b308"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    predecessor = proof["predecessor_technical_proof"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-resize-center-20261113/technical-proof.json"
+    )
+    previous_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(previous_bytes).hexdigest() == predecessor["sha256"]
+    previous = json.loads(previous_bytes)
+    assert previous["evidence_digest"] == predecessor["evidence_digest"]
+    assert previous["evidence_digest"] == digest_mapping(previous, "evidence_digest")
+    changed = {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }
+    assert set(proof["base_source_bindings"]) == changed
+    assert set(proof["source_bindings"]) == changed
+    for name in changed:
+        assert proof["base_source_bindings"][name] == previous["source_bindings"][name]
+        assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            proof["source_bindings"][name]
+        ), name
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _source_after_mobile_overlay(name: str, previous_sha256: str) -> str:
+    """Follow the exact two-source edge to the new revision, leaving old proofs intact."""
+    if name not in {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }:
+        return previous_sha256
+    proof = _mobile_search_overlay_source_successor_proof()
+    assert proof["base_source_bindings"][name] == previous_sha256, name
+    return proof["source_bindings"][name]
+
+
+def test_mobile_search_overlay_successor_is_exact_and_not_inherited() -> None:
+    proof = _mobile_search_overlay_source_successor_proof()
+    assert proof["validation"]["local_chrome_search_focus_safearea"].startswith("4 passed")
+    assert proof["validation"]["native_viewer_hybrid_router_unit_tests"] == "65 passed"
+    assert proof["validation"]["github_ci"] == "pending_exact_head"
+    assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+
+
 
 def _responsive_manual_center_source_successor_proof() -> dict:
     """Exact viewport-rotation fix; prior Find/Focus acceptance is immutable."""
@@ -64,7 +126,7 @@ def _responsive_manual_center_source_successor_proof() -> dict:
             assert proof["base_source_bindings"][name] == pinch["source_bindings"][name]
         assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            proof["source_bindings"][name]
+            _source_after_mobile_overlay(name, proof["source_bindings"][name])
         ), name
     case = proof["production_counterexample"]
     assert case["public_build"] == "dc25db502da0b9736271892cca5b43233faef29c"
@@ -118,7 +180,9 @@ def _find_focus_source_successor_proof() -> dict:
         latest = _responsive_manual_center_source_successor_proof()[
             "source_bindings"
         ].get(name, proof["source_bindings"][name])
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == latest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _source_after_mobile_overlay(name, latest)
+        ), name
     return proof
 
 
@@ -171,7 +235,9 @@ def _freeform_smooth_successor_proof() -> dict:
         latest = _responsive_manual_center_source_successor_proof()[
             "source_bindings"
         ].get(name, latest)
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == latest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _source_after_mobile_overlay(name, latest)
+        ), name
     predecessors = proof["historical_predecessors"]
     assert len(predecessors) == 3
     for name, binding in predecessors.items():
@@ -305,7 +371,9 @@ def _crossing_source_successor_proof() -> dict:
         current = _responsive_manual_center_source_successor_proof()[
             "source_bindings"
         ].get(name, current)
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == current, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _source_after_mobile_overlay(name, current)
+        ), name
         if name in predecessor["source_bindings"]:
             assert proof["base_source_bindings"][name] == (
                 predecessor["source_bindings"][name]
@@ -426,9 +494,10 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     previous_sha256 = _find_focus_source_successor_proof()["source_bindings"].get(
         path, previous_sha256
     )
-    return _responsive_manual_center_source_successor_proof()[
+    latest = _responsive_manual_center_source_successor_proof()[
         "source_bindings"
     ].get(path, previous_sha256)
+    return _source_after_mobile_overlay(path, latest)
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:
