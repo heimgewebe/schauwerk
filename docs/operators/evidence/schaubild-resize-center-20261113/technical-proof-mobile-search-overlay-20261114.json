@@ -1,0 +1,46 @@
+{
+  "schema_version": "schauwerk-schaubild-mobile-search-overlay-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 250,
+  "source_mode": "source-code-successor",
+  "scope": "Native JSON Canvas view-only search menu visibility after finding, relation focus, and responsive resize; source document/layout/zoom unchanged",
+  "base_revision": "aa11993d5889234be60a2b8ad35ed651327f6cb7",
+  "source_change_commit": "d17b487bc399daee92b44e0c23a4f233a258b308",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-resize-center-20261113/technical-proof.json",
+    "sha256": "a347c9c8311341c4116eb3ece1d8580133563638f728835ec2016be6d804747b",
+    "evidence_digest": "8568b3af6985548b9b76225cad4648d75d8287c38f941b6e5977c08349f81fb8"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d5f3bd514e6e774715cce1376e655868e2d3ba5704c0f764413bf3c1b14ddd5b",
+    "tests/visual/test_native_viewer_browser.py": "0379d0f165519f080d9c496fad1625961ee53deed9e66ffaf1b6e827343199f9"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7f0eff8cbb3d9488e6544d1c9ae9973b9555742f8b3525b573981fc144f63c39",
+    "tests/visual/test_native_viewer_browser.py": "daaebc4d7ddb6b5b0c284dbba12439131673c74f3dec142d5352d260ee8efe6d"
+  },
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "validation": {
+    "local_chrome_search_focus_safearea": "4 passed: 320px x2, 390px, 810px; actual overlap at find/resize with selected node and preserved zoom",
+    "native_viewer_hybrid_router_unit_tests": "65 passed",
+    "local_chrome_dense_48_nodes_256_edges": "passed: 390x844 CSS, 100 percent forced popup overlap, selected node and scale retained",
+    "ruff_and_git_diff_check": "passed",
+    "source_OCI_publication": "not_published",
+    "current_production_browser_e2e": "not_tested_on_this_revision",
+    "physical_ipad_safari": "not_tested",
+    "physical_A3_paper": "not_tested",
+    "github_ci": "pending_exact_head"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "source_OCI_published",
+    "commonthing_release_lock_updated",
+    "root_HOLD_updated",
+    "physical_ipad_safari_acceptance",
+    "physical_A3_paper_acceptance",
+    "production_browser_e2e_after_release"
+  ],
+  "evidence_digest": "341390fa0d2218556a06d75aac147eb8191c715d33df933dd33e03122575e4e3"
+}
