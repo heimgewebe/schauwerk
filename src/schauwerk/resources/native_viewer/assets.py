@@ -1211,6 +1211,13 @@ const lastRouteObstacles = new Map();
 let handleLayer = null;
 let connectionPreview = null;
 let view = { x: 0, y: 0, scale: 1 };
+// A manually navigated view follows the same world point when its viewport
+// changes size (for example, after rotating an iPad). Toolbar-only layout
+// changes must not cause a pan or undo the user's manual zoom.
+let previousViewportSize = {
+  width: viewport.clientWidth,
+  height: viewport.clientHeight,
+};
 let fitScaleFloor = MIN_SCALE;
 let autoFitActive = true;
 let overrides = documentMode ? Object.create(null) : readOverrides();
@@ -2596,8 +2603,28 @@ function releasePointerAutoFitIfIdle() {
 
 function fitAfterLayoutChange() {
   syncEmbeddedHostOverlays();
-  if (autoFitActive) fit({ announce: false });
-  else if (activePointers.size && pointerAutoFitBefore) pointerFitPending = true;
+  const width = viewport.clientWidth;
+  const height = viewport.clientHeight;
+  const previous = previousViewportSize;
+  previousViewportSize = { width, height };
+  if (autoFitActive) {
+    fit({ announce: false });
+  } else if (activePointers.size && pointerAutoFitBefore) {
+    pointerFitPending = true;
+  } else if (!activePointers.size && !gesture &&
+             previous.width > 0 && previous.height > 0 &&
+             width > 0 && height > 0 &&
+             (width !== previous.width || height !== previous.height)) {
+    // The selected node found by "Finden" used to fall outside the right
+    // edge when a 810px view became 390px wide. Re-center the SAME world
+    // point, without changing zoom, selection, or the native document.
+    view = {
+      ...view,
+      x: view.x + (width - previous.width) / 2,
+      y: view.y + (height - previous.height) / 2,
+    };
+    applyView();
+  }
 }
 
 function zoomBy(factor, anchor = null) {

@@ -1,0 +1,64 @@
+{
+  "base_revision": "f86a8059d214a97aed6fd4eae2e0087f3bcdc7e2",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "82e9c7d9c34e246f9876aca8656ef555282b83c12c98272c6b92c10d11c7bfa4",
+    "tests/visual/test_native_viewer_browser.py": "cb430c52ce8b6e98cc897b7ba481b1ae343df0bad5a668f62c389956e80ffa6c",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "4e25a1ad964da1547f807ba5c705091cdd660470afa7b2e1c715491303c64e83"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "production_rollout",
+    "physical_ipad_safari_acceptance",
+    "physical_A3_print_acceptance",
+    "full_browser_suite_until_finished",
+    "consumer_release_lock_update",
+    "runtime_OCI_identical_to_candidate"
+  ],
+  "evidence_digest": "8568b3af6985548b9b76225cad4648d75d8287c38f941b6e5977c08349f81fb8",
+  "predecessor_technical_proof": {
+    "evidence_digest": "e93802fe62e4dbf815f584d6a137b22d3f9af0776205021096565e0483c23eaa",
+    "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof.json",
+    "sha256": "95f461b819121097a7fca7d893feda8d24a5460e7373613d392fc2496c1049ee"
+  },
+  "production_counterexample": {
+    "grabowski_browser_job": "grabowski-job-db5e7971fdda",
+    "public_build": "dc25db502da0b9736271892cca5b43233faef29c",
+    "public_oci_digest": "sha256:515b604b65633a554001652b926ea39b582d644a1d442a270a5acb04c1942cf7",
+    "selected_node_rect_x": [
+      323.9990234375,
+      485.9990234375
+    ],
+    "selected_node_visible_fraction": 0.40741343557098764,
+    "terminal_receipt_sha256": "7d5a70d20d096dd35189371d2b8540f13f422aded699d340edc471af2e9c3a0f",
+    "user_path": "Search distant native JSON Canvas node at 810px, shrink browser viewport to 390px, wait 900ms",
+    "viewport_rect_x": [
+      0,
+      390
+    ]
+  },
+  "schema_version": "schauwerk-schaubild-responsive-manual-center-successor.v1",
+  "scope": "native viewer preserves manual visual center and scale across genuine viewport size changes, without affecting active gestures, document model, or auto-fit",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d5f3bd514e6e774715cce1376e655868e2d3ba5704c0f764413bf3c1b14ddd5b",
+    "tests/visual/test_native_viewer_browser.py": "0379d0f165519f080d9c496fad1625961ee53deed9e66ffaf1b6e827343199f9",
+    "tests/visual/test_native_viewer_tap_autofit_browser.py": "8f7ee7bfe17fdd02d8f5fa946c73d3bc24cf1c8385184da736f54b068fe0231c"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "chrome_810_to_390_to_810_resize_and_search": "4 passed local CDP",
+    "ci_python312_failed_earlier": "legacy test compared frozen CSS translate after true viewport resize; corrected to same world center and zoom, with actual Chrome pass",
+    "edge_first_touch_pinch_browser_390_to_320": "passed_actual_chrome",
+    "full_ci": "pending_exact_head",
+    "manual_zoom_world_center_readonly_browser": "passed",
+    "native_viewer_and_smart_integration": "56 passed",
+    "native_viewer_full_chrome_suite": "20 passed real CDP",
+    "publication_regressions": "16 passed exact local source",
+    "real_a3_paper": "not_tested",
+    "real_ipad_safari": "not_tested",
+    "source_final_browser_receipt_sha256": "a592bce8a87740aadd89e98e882dbc02ad927ce1df39ad62f0698d39a9a7b9ae",
+    "source_publication_receipt_sha256": "unknown_not_claimed"
+  },
+  "visual_acceptance": "not_inherited"
+}

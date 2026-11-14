@@ -203,14 +203,21 @@ try {
     throw new Error("fitted viewer did not refit after viewport resize");
   }
   zoomInButton.click();
-  const manualViewTransform = canvas.style.transform;
+  const manualWidth = viewport.clientWidth;
+  const manualMatrix = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
+  const manualWorldCenterX =
+    (manualWidth / 2 - manualMatrix.m41) / manualMatrix.a;
   Object.defineProperty(viewport, "clientWidth", {
     configurable: true,
     value: Math.max(120, Math.floor(initialClientWidth * 0.44)),
   });
   window.dispatchEvent(new Event("resize"));
-  if (canvas.style.transform !== manualViewTransform) {
-    throw new Error("manual zoom was overwritten by viewport resize");
+  const resizedManualMatrix = new DOMMatrixReadOnly(getComputedStyle(canvas).transform);
+  const resizedWorldCenterX =
+    (viewport.clientWidth / 2 - resizedManualMatrix.m41) / resizedManualMatrix.a;
+  if (Math.abs(resizedManualMatrix.a - manualMatrix.a) > 0.00001 ||
+      Math.abs(resizedWorldCenterX - manualWorldCenterX) > 0.1) {
+    throw new Error("manual zoom or world-center was lost after viewport resize");
   }
   delete viewport.clientWidth;
   fitViewButton.click();
@@ -2510,6 +2517,75 @@ try {
                 time.sleep(0.1)
             else:
                 pytest.fail("navigation E2E did not finish at actual CSS viewport")
+            if viewport_width == 810:
+                # Real responsive orientation/width change after a manual
+                # search. Earlier, only 40.7% of the selected node remained
+                # visible at 390px on production after the resize settled.
+                script = (
+                    "(()=>{const d=document.querySelector('#viewer').contentDocument;"
+                    "const n=d.querySelector('#nodeSearch');"
+                    "n.value='Hausgarten';n.dispatchEvent(new Event('input',{bubbles:true}));"
+                    "d.querySelector('#nodeSearchNext').click();"
+                    "const selected=d.querySelector('[data-source-kind=node].is-selected');"
+                    "return selected?.dataset.sourceId;})()"
+                )
+                found = cdp("Runtime.evaluate", {
+                    "expression": script, "returnByValue": True,
+                }).get("result", {}).get("value")
+                assert found == "gamma", found
+                measure = (
+                    "(()=>{const d=document.querySelector('#viewer').contentDocument;"
+                    "const n=d.querySelector('[data-source-id=gamma][data-source-kind=node]');"
+                    "const v=d.querySelector('#nativeViewport').getBoundingClientRect();"
+                    "const b=n.getBoundingClientRect();"
+                    "const canvas=d.querySelector('#nativeCanvas');"
+                    "const match=canvas.style.transform.match(/scale\\(([^)]+)\\)/);"
+                    "return{width:d.defaultView.innerWidth,"
+                    "fraction:Math.max(0,Math.min(b.right,v.right)-Math.max(b.left,v.left))/"
+                    "Math.max(1,b.width),scale:match?Number(match[1]):null,"
+                    "selected:n.classList.contains('is-selected'),"
+                    "node:[b.left,b.right],viewport:[v.left,v.right]};})()"
+                )
+                def read_selected_visibility() -> dict:
+                    data = cdp("Runtime.evaluate", {
+                        "expression": measure, "returnByValue": True,
+                    })
+                    assert "exceptionDetails" not in data, data
+                    return data.get("result", {}).get("value", {})
+
+                start = read_selected_visibility()
+                assert start["width"] == 810 and start["fraction"] >= 0.99, start
+                assert start["selected"] and start["scale"] > 0, start
+                cdp("Emulation.setDeviceMetricsOverride", {
+                    "width": 390, "height": 844,
+                    "deviceScaleFactor": 1, "mobile": False,
+                })
+                for _ in range(24):
+                    narrow = read_selected_visibility()
+                    if narrow.get("width") == 390 and narrow["fraction"] >= 0.99:
+                        break
+                    time.sleep(0.1)
+                else:
+                    pytest.fail("Manual search target clipped after portrait resize: "
+                                + json.dumps(narrow, sort_keys=True))
+                assert narrow["selected"] and narrow["scale"] == pytest.approx(
+                    start["scale"], rel=1e-6,
+                ), (start, narrow)
+                cdp("Emulation.setDeviceMetricsOverride", {
+                    "width": 810, "height": 1080,
+                    "deviceScaleFactor": 1, "mobile": False,
+                })
+                for _ in range(24):
+                    restored = read_selected_visibility()
+                    if restored.get("width") == 810 and restored["fraction"] >= 0.99:
+                        break
+                    time.sleep(0.1)
+                else:
+                    pytest.fail("Search target did not recover after landscape resize: "
+                                + json.dumps(restored, sort_keys=True))
+                assert restored["selected"] and restored["scale"] == pytest.approx(
+                    start["scale"], rel=1e-6,
+                ), (start, restored)
     finally:
         proc.terminate()
         try:
