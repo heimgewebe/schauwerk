@@ -1,0 +1,38 @@
+{
+  "schema_version": "schauwerk-schaubild-relevance-only-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 252,
+  "source_mode": "source-code-successor",
+  "base_revision": "19965e64ac059b85b919407377bb93262425ae16",
+  "source_change_commit": "68e16b570b0f5db6947a32aee4f9df9226155fa4",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "scope": "Optional native and hybrid visibility of incident node/edge neighborhood, preserved view-only document state and A3 vector print classes",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7f0eff8cbb3d9488e6544d1c9ae9973b9555742f8b3525b573981fc144f63c39",
+    "src/schauwerk/resources/standalone_editor/assets.py": "e3203ea1e652bbf84809ccecfad5f358fd87b083783c332c48cd6391a85daf72",
+    "tests/visual/test_native_viewer_browser.py": "daaebc4d7ddb6b5b0c284dbba12439131673c74f3dec142d5352d260ee8efe6d",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "c225f5c6c256dc96b967892afebaa77397fe727f273dfa43b4c969a8317ffd42"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3f36f13fa7219b5bd312b771a7a48ca6a922016221500f0e10279f23712e6e3b",
+    "src/schauwerk/resources/standalone_editor/assets.py": "eab1f43064366364e5c2d01f5d1de02f27aeb8ce53a2cfbb572a764d4f7435a8",
+    "tests/visual/test_native_viewer_browser.py": "1bea2dddc9538e5941e0344c76deff90746b9db461a704612916d3b94d370cf8",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "0a2089f424709eb388fd8e83d284f9cffb077f290a2e0b4eee22f6feb199213f"
+  },
+  "validation": {
+    "real_chrome_navigation_320_390_810": "4 passed",
+    "native_viewer_hybrid_router_print": "89 passed",
+    "chrome_search_while_filtered": "4 passed",
+    "ruff": "passed"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "physical_a3_paper_acceptance",
+    "production_rollout",
+    "immutable_oci_published"
+  ],
+  "evidence_digest": "c15163413df5c8ad20b94a37eb2996cd8a1bbb8222b081dc62911d0e4b31d009"
+}
