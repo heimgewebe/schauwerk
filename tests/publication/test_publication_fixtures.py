@@ -428,6 +428,42 @@ def _edge_budget_source_successor_proof() -> dict:
     return proof
 
 
+def _vector_pdf_focus_source_successor_proof() -> dict:
+    """Bind only PR251's changed print CSS and browser regression, not past acceptance."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-a3-readable-print-20261112"
+        / "technical-proof-focus-20261115.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-vector-pdf-focus-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 251
+    assert proof["base_revision"] == "9f1f2cc78404dc1450a8b7fe65262acf9e1b04df"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["production_status"] == "not_published_or_integrated"
+    assert proof["visual_acceptance"]["historical_acceptance_inherited"] is False
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    predecessor = proof["predecessor_technical_proof"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-a3-readable-print-20261112/"
+        "technical-proof.json"
+    )
+    previous_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(previous_bytes).hexdigest() == predecessor["sha256"]
+    previous = json.loads(previous_bytes)
+    assert previous["evidence_digest"] == predecessor["evidence_digest"]
+    assert proof["base_source_bindings"] == previous["source_bindings"]
+    assert set(proof["source_bindings"]) == set(previous["source_bindings"])
+    for name, digest in proof["source_bindings"].items():
+        assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    browser = proof["browser_proof"]
+    assert browser["raster_pdf_image_objects"] == 0
+    assert browser["print_images_distinct"] is True
+    assert browser["overview_png_sha256"] != browser["focused_png_sha256"]
+    return proof
+
+
 def _a3_readable_print_source_successor_proof() -> dict:
     """Bind only the new print UI and regression bytes; old proofs stay immutable."""
     proof_path = (
@@ -452,7 +488,11 @@ def _a3_readable_print_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == {editor, browser_test}
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        successor = _vector_pdf_focus_source_successor_proof()
+        assert successor["base_source_bindings"][name] == digest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            successor["source_bindings"][name]
+        ), name
     # Publication fixture itself evolved after the A3 proof; its original
     # digest remains valid historical evidence, not the new test file's hash.
     assert proof["publication_test_binding"] == (
@@ -468,6 +508,12 @@ def test_schaubild_a3_print_source_successor_is_digest_bound() -> None:
     assert proof["tests"]["browser_print"]["pdf_image_objects"] == 0
     assert proof["tests"]["browser_print"]["overview_pages"] == 1
     assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+
+
+def test_schaubild_vector_pdf_focus_source_successor_is_digest_bound() -> None:
+    proof = _vector_pdf_focus_source_successor_proof()
+    assert proof["visual_acceptance"]["paper_print"] == "not_tested"
+    assert proof["visual_acceptance"]["physical_ipad_safari"] == "not_tested"
 
 
 def _current_source_digest(path: str, previous_sha256: str) -> str:
@@ -497,7 +543,12 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     latest = _responsive_manual_center_source_successor_proof()[
         "source_bindings"
     ].get(path, previous_sha256)
-    return _source_after_mobile_overlay(path, latest)
+    latest = _source_after_mobile_overlay(path, latest)
+    successor = _vector_pdf_focus_source_successor_proof()
+    if path in successor["source_bindings"]:
+        assert successor["base_source_bindings"][path] == latest, path
+        return successor["source_bindings"][path]
+    return latest
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:
@@ -14959,6 +15010,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_find_focus_source_successor_proof()["source_bindings"],
         # Actual production rotation defect, patched view-only.
         **_responsive_manual_center_source_successor_proof()["source_bindings"],
+        **_vector_pdf_focus_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
