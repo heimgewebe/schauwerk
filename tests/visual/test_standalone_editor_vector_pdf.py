@@ -30,6 +30,8 @@ def test_vector_pdf_print_is_separate_from_raster_download(tmp_path: Path) -> No
     assert 'PDF (Bild)' in html and 'PDF (Vektor)' in html
     assert 'body.schaubild-vector-print' in css
     assert 'body.schaubild-vector-print > svg' in css
+    assert 'body.schaubild-vector-print svg.is-relation-focused' in css
+    assert '[data-source-kind].is-muted {\n  opacity: 0.17;' in css
     assert 'body.schaubild-vector-print > .print-instruction,' in css
     assert 'body.schaubild-vector-print > .print-button { display: none' in css
     assert 'function printNativeVectorPdf()' in js
@@ -157,6 +159,34 @@ const wait = async (pred, label) => {
         || localStorage.getItem("schauwerk.native-schaubild.draft.v1") !== previousDraft
         || document.querySelector("#nativeUndoButton").disabled !== previousUndo) {
       throw new Error("native state changed during vector PDF print");
+    }
+    // The print tab does not load the native viewer's CSS: its own stylesheet
+    // must dim relation-focus classes carried by a copied SVG.
+    const sourceSvgForFocus = frame.contentDocument.querySelector("#nativeDiagram");
+    const mutedNode = sourceSvgForFocus.querySelector('g[data-source-kind="node"]');
+    const mutedEdge = sourceSvgForFocus.querySelector('g[data-source-kind="edge"]');
+    if (!mutedNode || !mutedEdge) throw new Error("focus source fixture missing");
+    sourceSvgForFocus.classList.add("is-relation-focused");
+    mutedNode.classList.add("is-muted");
+    mutedEdge.classList.add("is-muted");
+    const focusDoc = document.implementation.createHTMLDocument("Vector-PDF-Focus");
+    const focusWindow = {document: focusDoc, closed: false, opener: window,
+      focus() {}, print() {}};
+    window.open = () => focusWindow;
+    try {
+      button.click();
+      await wait(() => focusDoc.body.querySelector("svg"), "focus vector SVG");
+      const printSvg = focusDoc.body.querySelector("svg");
+      if (!printSvg.classList.contains("is-relation-focused")
+          || !printSvg.querySelector('g.is-muted[data-source-kind="node"]')
+          || !printSvg.querySelector('g.is-muted[data-source-kind="edge"]')
+          || !focusDoc.querySelector('link[rel="stylesheet"]')) {
+        throw new Error("print lost relation-focus vector state");
+      }
+    } finally {
+      sourceSvgForFocus.classList.remove("is-relation-focused");
+      mutedNode.classList.remove("is-muted");
+      mutedEdge.classList.remove("is-muted");
     }
     window.open = () => null;
     button.click();
