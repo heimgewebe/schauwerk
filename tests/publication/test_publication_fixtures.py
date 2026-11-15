@@ -5,6 +5,7 @@ import json
 import stat
 from pathlib import Path
 
+import pytest
 import yaml
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -21,8 +22,34 @@ from schauwerk.publication.store import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
-def _focus_fit_edge_source_successor_proof() -> dict:
-    """Bind the self-loop/label geometry fix without rewriting PR253's first proof."""
+@pytest.fixture(autouse=True)
+def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
+    """Avoid repeatedly revalidating the same verified read-only proof graph.
+
+    Each test receives fresh proof loaders; all explicit current-source SHA-256
+    comparisons in the test functions remain uncached and authoritative.
+    """
+    from functools import lru_cache
+
+    for loader in (
+        "_crossing_source_successor_proof",
+        "_edge_budget_source_successor_proof",
+        "_router_bbox_performance_successor_proof",
+        "_a3_readable_print_source_successor_proof",
+        "_freeform_smooth_successor_proof",
+        "_find_focus_source_successor_proof",
+        "_responsive_manual_center_source_successor_proof",
+        "_mobile_search_overlay_source_successor_proof",
+        "_vector_pdf_focus_source_successor_proof",
+        "_relevance_filter_source_successor_proof",
+        "_focus_fit_source_successor_proof",
+        "_focus_fit_edge_source_successor_proof",
+    ):
+        monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
+
+
+def _focus_fit_edge_source_successor_proof(*, check_source_bytes: bool = True) -> dict:
+    """Validate digest-bound proof; current-byte checks remain in direct source tests."""
     path = (
         ROOT / "docs/operators/evidence/schaubild-find-focus-20261113"
         / "technical-proof-focus-fit-edge-geometry-20261115.json"
@@ -53,7 +80,8 @@ def _focus_fit_edge_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
     for name, digest in proof["source_bindings"].items():
         assert proof["base_source_bindings"][name] != digest
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        if check_source_bytes:
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
 
@@ -64,7 +92,9 @@ def _source_after_focus_fit_edges(name: str, previous_sha256: str) -> str:
         "tests/visual/test_native_viewer_browser.py",
     }:
         return previous_sha256
-    proof = _focus_fit_edge_source_successor_proof()
+    # The outer historical proof checks the live bytes of the requested path.
+    # Rehashing both current source files on every nested lookup made CI hang.
+    proof = _focus_fit_edge_source_successor_proof(check_source_bytes=False)
     assert proof["base_source_bindings"][name] == previous_sha256, name
     return proof["source_bindings"][name]
 
