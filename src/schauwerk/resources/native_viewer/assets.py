@@ -2612,21 +2612,33 @@ function relevantFitBounds() {
   if (!documentMode || !relationFocusEnabled || !relevanceOnlyEnabled ||
       !(selectedId && nodes.has(selectedId)) &&
       !(selectedEdgeId && edges.has(selectedEdgeId))) return null;
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const node of nodes.values()) {
-    if (node.classList.contains("is-muted")) continue;
+  let combined = null;
+  const include = element => {
+    if (!element) return;
     let bounds;
-    try { bounds = nodeBoundsInSvg(node); }
-    catch (_) { continue; }
+    try { bounds = nodeBoundsInSvg(element); }
+    catch (_) { return; }
     if (!bounds || ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
-        .every(Number.isFinite)) continue;
-    minX = Math.min(minX, bounds.minX);
-    minY = Math.min(minY, bounds.minY);
-    maxX = Math.max(maxX, bounds.maxX);
-    maxY = Math.max(maxY, bounds.maxY);
+        .every(Number.isFinite)) return;
+    combined = mergeSvgBounds(combined, bounds);
+  };
+  for (const node of nodes.values()) {
+    if (!node.classList.contains("is-muted")) include(node);
   }
-  if (!(maxX > minX && maxY > minY)) return null;
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  // A visible connection can extend beyond both endpoints (self-loops,
+  // smart-routed detours and labels). Fit the actual rendered SVG geometry.
+  for (const edge of edges.values()) {
+    if (edge.element?.classList.contains("is-muted")) continue;
+    include(edge.path);
+    include(edge.labelRect);
+  }
+  if (!combined || !(combined.maxX > combined.minX && combined.maxY > combined.minY))
+    return null;
+  return {
+    x: combined.minX, y: combined.minY,
+    width: combined.maxX - combined.minX,
+    height: combined.maxY - combined.minY,
+  };
 }
 
 function fit({ announce = true } = {}) {
