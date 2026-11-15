@@ -2298,6 +2298,11 @@ function updateRelationFocus() {
     onlyRelevantButton.setAttribute("aria-pressed", String(relevanceOnlyEnabled));
     onlyRelevantButton.textContent = "Nur relevante Beziehungen: " + (relevanceOnlyEnabled ? "Ein" : "Aus");
   }
+  if (fitButton instanceof HTMLButtonElement) {
+    fitButton.title = active && relevanceOnlyEnabled
+      ? "Sichtbare Beziehungen einpassen"
+      : "Gesamtes Schaubild einpassen";
+  }
 }
 function navigateToNode(sourceId) {
   const node = nodes.get(sourceId);
@@ -2601,12 +2606,36 @@ function contentSize() {
   return { width: box.width || svg.width.baseVal.value || 1, height: box.height || svg.height.baseVal.value || 1 };
 }
 
+// "Einpassen" respects the *visible* direct neighborhood, not the hidden
+// full graph. A focus-toggle itself never pans or zooms the user's view.
+function relevantFitBounds() {
+  if (!documentMode || !relationFocusEnabled || !relevanceOnlyEnabled ||
+      !(selectedId && nodes.has(selectedId)) &&
+      !(selectedEdgeId && edges.has(selectedEdgeId))) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const node of nodes.values()) {
+    if (node.classList.contains("is-muted")) continue;
+    let bounds;
+    try { bounds = nodeBoundsInSvg(node); }
+    catch (_) { continue; }
+    if (!bounds || ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
+        .every(Number.isFinite)) continue;
+    minX = Math.min(minX, bounds.minX);
+    minY = Math.min(minY, bounds.minY);
+    maxX = Math.max(maxX, bounds.maxX);
+    maxY = Math.max(maxY, bounds.maxY);
+  }
+  if (!(maxX > minX && maxY > minY)) return null;
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
 function fit({ announce = true } = {}) {
   syncEmbeddedHostOverlays();
+  const focused = relevantFitBounds();
   // Status text can wrap and grow the overlay bar (notably on CI/mobile).
   // Measure fit insets only after the final status is in layout.
   if (announce) setStatus("Ansicht angepasst");
-  const content = contentSize();
+  const content = focused || contentSize();
   const fitPadding = embeddedNativeViewer
     ? embeddedViewportFitPadding()
     : standaloneViewportFitPadding();
@@ -2617,6 +2646,16 @@ function fit({ announce = true } = {}) {
     viewport.clientHeight,
     fitPadding,
   );
+  if (focused) {
+    // fitView assumes a zero-origin rectangle; account for the SVG viewBox
+    // offset without editing the nodes, source, routes or saved layout.
+    const box = svg.viewBox.baseVal;
+    view = {
+      ...view,
+      x: view.x - (focused.x - box.x) * view.scale,
+      y: view.y - (focused.y - box.y) * view.scale,
+    };
+  }
   fitScaleFloor = Math.min(MIN_SCALE, view.scale);
   autoFitActive = true;
   applyView();

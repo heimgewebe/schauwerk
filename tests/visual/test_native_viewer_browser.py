@@ -2388,7 +2388,32 @@ try {
      display(node("gamma")) === "none" || display(node("beta")) === "none" ||
      display(edge("e2")) === "none")
     throw Error("Native relevance filter did not isolate the selected neighborhood");
+  // "Einpassen" must use the visible relation, not the giant hidden graph.
+  const fitButton = document.querySelector("#fitView");
+  if (!(fitButton instanceof HTMLButtonElement) ||
+      fitButton.title !== "Sichtbare Beziehungen einpassen")
+    throw Error("Focused fit control lacks a scoped description");
+  const canvasScale = () =>
+    Number(canvas.style.transform.split("scale(")[1]?.split(")")[0]);
+  const fitsViewport = id => {
+    const rect = node(id).getBoundingClientRect();
+    const vp = document.querySelector("#nativeViewport").getBoundingClientRect();
+    return rect.width > 1 && rect.height > 1 &&
+      rect.left >= vp.left - 2 && rect.right <= vp.right + 2 &&
+      rect.top >= vp.top - 2 && rect.bottom <= vp.bottom + 2;
+  };
+  fitButton.click();
+  const relevantScale = canvasScale();
+  if (!fitsViewport("gamma") || !fitsViewport("beta") ||
+      !Number.isFinite(relevantScale) || relevantScale <= 0)
+    throw Error("Einpassen did not show the entire selected neighborhood");
   relevant.click();
+  if (fitButton.title !== "Gesamtes Schaubild einpassen")
+    throw Error("Full-graph fit description was not restored");
+  fitButton.click();
+  if (!(canvasScale() < relevantScale * 0.9) ||
+      !fitsViewport("alpha") || !fitsViewport("omega"))
+    throw Error("Einpassen did not restore the full-graph extent");
   if(relevant.getAttribute("aria-pressed") !== "false" ||
      document.querySelector("#nativeDiagram")?.classList.contains("is-relevance-only") ||
      display(node("alpha")) === "none" || !muted("alpha"))
