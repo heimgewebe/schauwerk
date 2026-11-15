@@ -1,0 +1,54 @@
+{
+  "schema_version": "schauwerk-schaubild-vector-pdf-focus-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 251,
+  "base_revision": "9f1f2cc78404dc1450a8b7fe65262acf9e1b04df",
+  "status": "technical_candidate_only",
+  "production_status": "not_published_or_integrated",
+  "source_mode": "source-code-successor",
+  "scope": "print-only relation focus opacity, unchanged SVG vector output and existing A3 detail tiling",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-a3-readable-print-20261112/technical-proof.json",
+    "sha256": "c055db83ed4345df352610bff25054c4502faad04a65e3fff32ffdb55f525d23",
+    "evidence_digest": "1ab5a9953345493ffa52a6c3394a728703029a93a291448775799e2d2987dc53"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "dc4925c629948bf29bb8bf4356925495f4274cf8d71183a0b2a7a6ba8433fd64",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "57e76b1f2fafb38128d57d82885f23bea2a91cf1a7a9f3c35890b70e3e2d2ffb"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/standalone_editor/assets.py": "e3203ea1e652bbf84809ccecfad5f358fd87b083783c332c48cd6391a85daf72",
+    "tests/visual/test_standalone_editor_vector_pdf.py": "c225f5c6c256dc96b967892afebaa77397fe727f273dfa43b4c969a8317ffd42"
+  },
+  "cause": "Separate vector print tab loads standalone CSS, not native viewer CSS. Relation-focus class names were copied but its 0.17 opacity rule was absent.",
+  "browser_proof": {
+    "environment": "isolated local candidate Chrome/CDP, synthetic 48-node / 256-edge input, A3 landscape vector PDF",
+    "nodes": 48,
+    "edges": 256,
+    "muted_nodes": 36,
+    "muted_edges": 245,
+    "overview_pdf_sha256": "6feb4227b5add5535db95de3cf5e587b31a997ca0716b6fca36909858258572f",
+    "focused_pdf_sha256": "cad6e70fabcfbcd286c56ffacc7879622825caf7eff3def30392921d065393b0",
+    "overview_png_sha256": "ba235b742810ff8ea2878f4dba974a6db34b948745b842cc2008c20440c640d5",
+    "focused_png_sha256": "430f58a7954e6b345523085d70eed3121c73e5f66e5c40f2a245204e90f6015e",
+    "raster_pdf_image_objects": 0,
+    "print_images_distinct": true,
+    "visual_readback": "Focus retains high contrast on selected relations and dims unrelated paths in actual A3 page preview",
+    "real_browser_test": "4 passed",
+    "test_task": "grabowski-task:5701b11c6ae14cc5b45f274a",
+    "pdf_comparison_task": "grabowski-task:40061fde99244452b6a6e1c7"
+  },
+  "visual_acceptance": {
+    "status": "candidate_print_preview_inspected",
+    "historical_acceptance_inherited": false,
+    "paper_print": "not_tested",
+    "physical_ipad_safari": "not_tested"
+  },
+  "does_not_establish": [
+    "published_OCI",
+    "commonthing_productive_integration",
+    "physical_A3_paper_acceptance",
+    "physical_iPad_Safari_gesture_acceptance"
+  ],
+  "evidence_digest": "395bbcdfa6f30b545aee1ba489c7950f3a0d8bd056a431504fd87efe722d26f8"
+}

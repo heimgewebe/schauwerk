@@ -1044,6 +1044,11 @@ body.schaubild-vector-print > svg {
   height: auto;
   max-width: 100%;
 }
+/* Native relation-focus CSS is not loaded into the separate print tab. */
+body.schaubild-vector-print svg.is-relation-focused
+  [data-source-kind].is-muted {
+  opacity: 0.17;
+}
 body.schaubild-vector-print > .print-instruction {
   margin: 0 0 10px;
   color: #334155;
