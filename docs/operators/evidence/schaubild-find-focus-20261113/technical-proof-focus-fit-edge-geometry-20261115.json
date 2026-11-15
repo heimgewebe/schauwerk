@@ -1,0 +1,39 @@
+{
+  "schema_version": "schauwerk-schaubild-focus-fit-edge-geometry-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 253,
+  "source_mode": "source-code-successor",
+  "base_revision": "22c9268a466e489786a91fa3a0b8f3ac06223d0e",
+  "source_change_commit": "877c304f79bcdb20b42858555906c87c3e1a1a0e",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "scope": "Focused Einpassen includes actual visible node bounds plus unmuted edge paths and edge label rectangles; no model/router mutation",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof-focus-fit-20261115.json",
+    "sha256": "307d8e65e16371342b78215b9200e19ac88d9b32cf99c8acee8fc367275b1688",
+    "evidence_digest": "e1068d7080999e1c6ca31877fa71755ab3f1f364c78a79f1b893bd49d53653df"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "2e92ce66b1986643eacdac14c810ed49ed7b1af96f7c4e518393d981238e28d6",
+    "tests/visual/test_native_viewer_browser.py": "8bd4b75f7ad76e9bc3f71e0298c1d5f0d45fb28f69a41df7ed96cf8da0c4d281"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "02ad482e334c86c1bd9f47882b2a6b330f2e9cf40d48d3163b0a440c0bedb76a",
+    "tests/visual/test_native_viewer_browser.py": "b82afb1b879f5f487e5ac0d21eb2ff199b802a9b85c7d7f3baae44e5246a523e"
+  },
+  "validation": {
+    "real_chrome_self_loop_label_red_green": "passed",
+    "real_chrome_safearea_320_390_810": "4 passed",
+    "native_viewer_browser_hybrid_router_vector_pdf": "89 passed",
+    "ruff_and_git_diff_check": "passed"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "source_oci_published",
+    "commonthing_production_integration",
+    "physical_ipad_safari_acceptance",
+    "physical_a3_paper_acceptance"
+  ],
+  "evidence_digest": "9e9bff6bca47e8dce4fc7fdfa969d80737bdc488d46f8bc94621aac007f74040"
+}

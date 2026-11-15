@@ -21,6 +21,60 @@ from schauwerk.publication.store import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
+def _focus_fit_edge_source_successor_proof() -> dict:
+    """Bind the self-loop/label geometry fix without rewriting PR253's first proof."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-find-focus-20261113"
+        / "technical-proof-focus-fit-edge-geometry-20261115.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-focus-fit-edge-geometry-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 253
+    assert proof["base_revision"] == "22c9268a466e489786a91fa3a0b8f3ac06223d0e"
+    assert proof["source_change_commit"] == "877c304f79bcdb20b42858555906c87c3e1a1a0e"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    predecessor = proof["predecessor_technical_proof"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-find-focus-20261113/"
+        "technical-proof-focus-fit-20261115.json"
+    )
+    prior_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(prior_bytes).hexdigest() == predecessor["sha256"]
+    prior = json.loads(prior_bytes)
+    assert prior["evidence_digest"] == predecessor["evidence_digest"]
+    assert prior["evidence_digest"] == digest_mapping(prior, "evidence_digest")
+    assert proof["base_source_bindings"] == prior["source_bindings"]
+    assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
+    for name, digest in proof["source_bindings"].items():
+        assert proof["base_source_bindings"][name] != digest
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _source_after_focus_fit_edges(name: str, previous_sha256: str) -> str:
+    if name not in {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    }:
+        return previous_sha256
+    proof = _focus_fit_edge_source_successor_proof()
+    assert proof["base_source_bindings"][name] == previous_sha256, name
+    return proof["source_bindings"][name]
+
+
+def test_schaubild_focus_fit_edge_geometry_successor_is_exact() -> None:
+    proof = _focus_fit_edge_source_successor_proof()
+    assert proof["validation"]["real_chrome_self_loop_label_red_green"] == "passed"
+    assert proof["validation"]["real_chrome_safearea_320_390_810"] == "4 passed"
+
+
 def _focus_fit_source_successor_proof() -> dict:
     """The new view-only fit is SHA-bound after PR252, not inherited acceptance."""
     path = (
@@ -57,7 +111,9 @@ def _focus_fit_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == changed
     for name, digest in proof["source_bindings"].items():
         assert proof["base_source_bindings"][name] != digest, name
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _source_after_focus_fit_edges(name, digest)
+        ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
 
@@ -71,7 +127,7 @@ def _source_after_focus_fit(name: str, previous_sha256: str) -> str:
         return previous_sha256
     proof = _focus_fit_source_successor_proof()
     assert proof["base_source_bindings"][name] == previous_sha256, name
-    return proof["source_bindings"][name]
+    return _source_after_focus_fit_edges(name, proof["source_bindings"][name])
 
 
 def test_schaubild_focus_fit_source_successor_is_exact() -> None:
@@ -15137,6 +15193,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_vector_pdf_focus_source_successor_proof()["source_bindings"],
         **_relevance_filter_source_successor_proof()["source_bindings"],
         **_focus_fit_source_successor_proof()["source_bindings"],
+        **_focus_fit_edge_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
