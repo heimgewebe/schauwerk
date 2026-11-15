@@ -2298,6 +2298,11 @@ function updateRelationFocus() {
     onlyRelevantButton.setAttribute("aria-pressed", String(relevanceOnlyEnabled));
     onlyRelevantButton.textContent = "Nur relevante Beziehungen: " + (relevanceOnlyEnabled ? "Ein" : "Aus");
   }
+  if (fitButton instanceof HTMLButtonElement) {
+    fitButton.title = active && relevanceOnlyEnabled
+      ? "Sichtbare Beziehungen einpassen"
+      : "Gesamtes Schaubild einpassen";
+  }
 }
 function navigateToNode(sourceId) {
   const node = nodes.get(sourceId);
@@ -2601,12 +2606,48 @@ function contentSize() {
   return { width: box.width || svg.width.baseVal.value || 1, height: box.height || svg.height.baseVal.value || 1 };
 }
 
+// "Einpassen" respects the *visible* direct neighborhood, not the hidden
+// full graph. A focus-toggle itself never pans or zooms the user's view.
+function relevantFitBounds() {
+  if (!documentMode || !relationFocusEnabled || !relevanceOnlyEnabled ||
+      !(selectedId && nodes.has(selectedId)) &&
+      !(selectedEdgeId && edges.has(selectedEdgeId))) return null;
+  let combined = null;
+  const include = element => {
+    if (!element) return;
+    let bounds;
+    try { bounds = nodeBoundsInSvg(element); }
+    catch (_) { return; }
+    if (!bounds || ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
+        .every(Number.isFinite)) return;
+    combined = mergeSvgBounds(combined, bounds);
+  };
+  for (const node of nodes.values()) {
+    if (!node.classList.contains("is-muted")) include(node);
+  }
+  // A visible connection can extend beyond both endpoints (self-loops,
+  // smart-routed detours and labels). Fit the actual rendered SVG geometry.
+  for (const edge of edges.values()) {
+    if (edge.element?.classList.contains("is-muted")) continue;
+    include(edge.path);
+    include(edge.labelRect);
+  }
+  if (!combined || !(combined.maxX > combined.minX && combined.maxY > combined.minY))
+    return null;
+  return {
+    x: combined.minX, y: combined.minY,
+    width: combined.maxX - combined.minX,
+    height: combined.maxY - combined.minY,
+  };
+}
+
 function fit({ announce = true } = {}) {
   syncEmbeddedHostOverlays();
+  const focused = relevantFitBounds();
   // Status text can wrap and grow the overlay bar (notably on CI/mobile).
   // Measure fit insets only after the final status is in layout.
   if (announce) setStatus("Ansicht angepasst");
-  const content = contentSize();
+  const content = focused || contentSize();
   const fitPadding = embeddedNativeViewer
     ? embeddedViewportFitPadding()
     : standaloneViewportFitPadding();
@@ -2617,6 +2658,16 @@ function fit({ announce = true } = {}) {
     viewport.clientHeight,
     fitPadding,
   );
+  if (focused) {
+    // fitView assumes a zero-origin rectangle; account for the SVG viewBox
+    // offset without editing the nodes, source, routes or saved layout.
+    const box = svg.viewBox.baseVal;
+    view = {
+      ...view,
+      x: view.x - (focused.x - box.x) * view.scale,
+      y: view.y - (focused.y - box.y) * view.scale,
+    };
+  }
   fitScaleFloor = Math.min(MIN_SCALE, view.scale);
   autoFitActive = true;
   applyView();

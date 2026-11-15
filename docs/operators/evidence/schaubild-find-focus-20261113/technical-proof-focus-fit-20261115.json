@@ -1,0 +1,37 @@
+{
+  "schema_version": "schauwerk-schaubild-focus-fit-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_mode": "source-code-successor",
+  "base_revision": "715ec5572ef7e0dc91a7fbe0cd8589e6f0b6f483",
+  "source_change_commit": "40f9135f748eda9146c6e7143a50863fc74f5482",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "scope": "View-only Einpassen uses the geometrical extent of visible focused nodes and restores the full graph when relevance-only mode is off",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof-relevance-only-20261115.json",
+    "sha256": "2dfc6bc456fc626e9de54cbd681df7dc9da806263b36e53d71b280ea2f0a40e7",
+    "evidence_digest": "c15163413df5c8ad20b94a37eb2996cd8a1bbb8222b081dc62911d0e4b31d009"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "3f36f13fa7219b5bd312b771a7a48ca6a922016221500f0e10279f23712e6e3b",
+    "tests/visual/test_native_viewer_browser.py": "1bea2dddc9538e5941e0344c76deff90746b9db461a704612916d3b94d370cf8"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "2e92ce66b1986643eacdac14c810ed49ed7b1af96f7c4e518393d981238e28d6",
+    "tests/visual/test_native_viewer_browser.py": "8bd4b75f7ad76e9bc3f71e0298c1d5f0d45fb28f69a41df7ed96cf8da0c4d281"
+  },
+  "validation": {
+    "local_chrome_focus_fit_320_390_810": "4 passed",
+    "native_viewer_browser_hybrid_router_vector_pdf": "89 passed",
+    "ruff_and_git_diff_check": "passed"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "source_oci_published",
+    "commonthing_production_integration",
+    "physical_ipad_safari_acceptance",
+    "physical_a3_paper_acceptance"
+  ],
+  "evidence_digest": "e1068d7080999e1c6ca31877fa71755ab3f1f364c78a79f1b893bd49d53653df"
+}

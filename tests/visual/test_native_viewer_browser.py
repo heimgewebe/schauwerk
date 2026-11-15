@@ -2240,6 +2240,8 @@ def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
              "width": 180, "height": 90, "text": "Hausgarten"},
             {"id": "omega", "type": "text", "x": -580, "y": 460,
              "width": 180, "height": 90, "text": "Haushalt"},
+            {"id": "delta", "type": "text", "x": 3900, "y": 700,
+             "width": 180, "height": 90, "text": "Schleife"},
         ],
         "edges": [
             {"id": "e1", "fromNode": "alpha", "toNode": "beta",
@@ -2248,6 +2250,8 @@ def test_native_canvas_search_and_relation_focus_are_view_only_in_chrome(
              "label": "Zwei", "toEnd": "arrow"},
             {"id": "e3", "fromNode": "alpha", "toNode": "omega",
              "label": "Drei", "toEnd": "arrow"},
+            {"id": "e4", "fromNode": "delta", "toNode": "delta",
+             "label": "Schleifenverbindung mit langem Textfeld", "toEnd": "arrow"},
         ],
     }
     doc = json_canvas_to_editing_document(source)
@@ -2388,6 +2392,70 @@ try {
      display(node("gamma")) === "none" || display(node("beta")) === "none" ||
      display(edge("e2")) === "none")
     throw Error("Native relevance filter did not isolate the selected neighborhood");
+  // "Einpassen" must use the visible relation, not the giant hidden graph.
+  const fitButton = document.querySelector("#fitView");
+  if (!(fitButton instanceof HTMLButtonElement) ||
+      fitButton.title !== "Sichtbare Beziehungen einpassen")
+    throw Error("Focused fit control lacks a scoped description");
+  const canvasScale = () =>
+    Number(canvas.style.transform.split("scale(")[1]?.split(")")[0]);
+  const fitsViewport = id => {
+    const rect = node(id).getBoundingClientRect();
+    const vp = document.querySelector("#nativeViewport").getBoundingClientRect();
+    return rect.width > 1 && rect.height > 1 &&
+      rect.left >= vp.left - 2 && rect.right <= vp.right + 2 &&
+      rect.top >= vp.top - 2 && rect.bottom <= vp.bottom + 2;
+  };
+  fitButton.click();
+  const relevantScale = canvasScale();
+  if (!fitsViewport("gamma") || !fitsViewport("beta") ||
+      !Number.isFinite(relevantScale) || relevantScale <= 0)
+    throw Error("Einpassen did not show the entire selected neighborhood");
+  relevant.click();
+  if (fitButton.title !== "Gesamtes Schaubild einpassen")
+    throw Error("Full-graph fit description was not restored");
+  fitButton.click();
+  if (!(canvasScale() < relevantScale * 0.9) ||
+      !fitsViewport("alpha") || !fitsViewport("omega"))
+    throw Error("Einpassen did not restore the full-graph extent");
+  // A selected isolated self-loop is larger than its endpoint rectangle.
+  // Its real SVG curve and label must both remain inside the focused viewport.
+  input.value = "Schleife";
+  input.dispatchEvent(new Event("input",{bubbles:true}));
+  next.click();
+  if (!selected("delta")) throw Error("Isolated loop node not searchable");
+  relevant.click();
+  fitButton.click();
+  const loopPath = edge("e4")?.querySelector("path");
+  const loopLabel = [...(edge("e4")?.children || [])]
+    .find(child => child instanceof SVGRectElement);
+  if (!(loopPath instanceof SVGPathElement) || !(loopLabel instanceof SVGRectElement))
+    throw Error("Self-loop path or label missing");
+  const visibleGeometry = element => {
+    const rect = element.getBoundingClientRect();
+    const viewport = document.querySelector("#nativeViewport").getBoundingClientRect();
+    return rect.width > 1 && rect.height > 1 &&
+      rect.left >= viewport.left - 2 && rect.right <= viewport.right + 2 &&
+      rect.top >= viewport.top - 2 && rect.bottom <= viewport.bottom + 2;
+  };
+  if (!fitsViewport("delta") || !visibleGeometry(loopPath) || !visibleGeometry(loopLabel))
+    throw Error("Einpassen clipped the focused self-loop or its label: " +
+      JSON.stringify({
+        focus:relevant.getAttribute("aria-pressed"),selection:selected("delta"),
+        n:node("delta").getBoundingClientRect().toJSON(),
+        path:loopPath.getBoundingClientRect().toJSON(),
+        label:loopLabel.getBoundingClientRect().toJSON(),
+        viewport:document.querySelector("#nativeViewport").getBoundingClientRect().toJSON(),
+        scale:canvasScale(),
+        pSvg:loopPath.getBBox(),
+        lSvg:loopLabel.getBBox()
+      }));
+  edge("e4").dispatchEvent(new KeyboardEvent("keydown",{
+    key:"Enter",bubbles:true,cancelable:true
+  }));
+  fitButton.click();
+  if (!visibleGeometry(loopPath) || !visibleGeometry(loopLabel))
+    throw Error("Einpassen clipped the explicitly selected edge");
   relevant.click();
   if(relevant.getAttribute("aria-pressed") !== "false" ||
      document.querySelector("#nativeDiagram")?.classList.contains("is-relevance-only") ||
