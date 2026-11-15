@@ -1049,6 +1049,11 @@ body.schaubild-vector-print svg.is-relation-focused
   [data-source-kind].is-muted {
   opacity: 0.17;
 }
+/* The active strict filter must survive SVG cloning into print and A3 tiles. */
+body.schaubild-vector-print svg.is-relevance-only
+  [data-source-kind].is-muted {
+  display: none;
+}
 body.schaubild-vector-print > .print-instruction {
   margin: 0 0 10px;
   color: #334155;

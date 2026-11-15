@@ -2291,9 +2291,11 @@ try {
   const input = document.querySelector("#nodeSearch");
   const next = document.querySelector("#nodeSearchNext");
   const focus = document.querySelector("#focusRelations");
+  const relevant = document.querySelector("#onlyRelevant");
   const output = document.querySelector("#nodeSearchStatus");
   if(nav?.hidden || !(input instanceof HTMLInputElement) ||
-      !(next instanceof HTMLButtonElement) || !(focus instanceof HTMLButtonElement))
+      !(next instanceof HTMLButtonElement) || !(focus instanceof HTMLButtonElement) ||
+      !(relevant instanceof HTMLButtonElement))
     throw Error("Navigation controls missing or inaccessible");
   if(document.querySelector(".is-muted"))
     throw Error("Default rendering unexpectedly dimmed nodes");
@@ -2377,14 +2379,38 @@ try {
      !edge("e1")?.classList.contains("is-muted") ||
      !edge("e3")?.classList.contains("is-muted"))
     throw Error("Incident edge highlighting is incorrect");
+  const display = element => getComputedStyle(element).display;
+  relevant.click();
+  if(relevant.getAttribute("aria-pressed") !== "true" ||
+     !document.querySelector("#nativeDiagram")?.classList.contains("is-relevance-only") ||
+     display(node("alpha")) !== "none" || display(node("omega")) !== "none" ||
+     display(edge("e1")) !== "none" || display(edge("e3")) !== "none" ||
+     display(node("gamma")) === "none" || display(node("beta")) === "none" ||
+     display(edge("e2")) === "none")
+    throw Error("Native relevance filter did not isolate the selected neighborhood");
+  relevant.click();
+  if(relevant.getAttribute("aria-pressed") !== "false" ||
+     document.querySelector("#nativeDiagram")?.classList.contains("is-relevance-only") ||
+     display(node("alpha")) === "none" || !muted("alpha"))
+    throw Error("Turning off strict filter did not restore dimmed context");
   edge("e1").dispatchEvent(new KeyboardEvent("keydown",{
     key:"Enter",bubbles:true,cancelable:true
   }));
   if(muted("alpha") || muted("beta") || !muted("gamma") || !muted("omega"))
     throw Error("Selected edge endpoints were not focused");
+  relevant.click();
+  if(display(node("alpha")) === "none" || display(node("beta")) === "none" ||
+     display(edge("e1")) === "none" || display(node("gamma")) !== "none" ||
+     display(edge("e2")) !== "none")
+    throw Error("Strict filter did not follow selected edge endpoints");
   input.value="Haus";
   input.dispatchEvent(new Event("input",{bubbles:true}));
   if(!output.textContent.includes("3 Treffer"))throw Error("Search matches not re-evaluated");
+  next.click();
+  const reached = document.querySelector('[data-source-kind="node"].is-selected');
+  if(!reached || display(reached) === "none")
+    throw Error("Strict filter did not reveal a node found through search");
+  relevant.click();
   next.click();
   const first = document.querySelector('[data-source-kind="node"].is-selected')?.dataset.sourceId;
   next.click();
@@ -2401,6 +2427,16 @@ try {
   if(document.querySelector("#nativeDiagram")?.classList.contains("is-relation-focused") ||
      document.querySelector(".is-muted"))
     throw Error("Focus off did not restore canonical diagram visibility");
+  // Enabling the strict filter automatically enables relation focus.
+  relevant.click();
+  if(focus.getAttribute("aria-pressed") !== "true" ||
+     relevant.getAttribute("aria-pressed") !== "true")
+    throw Error("Strict filter did not enable the required relation focus");
+  focus.click();
+  if(relevant.getAttribute("aria-pressed") !== "false" ||
+     document.querySelector("#nativeDiagram")?.classList.contains("is-relevance-only") ||
+     document.querySelector(".is-muted"))
+    throw Error("Turning off focus did not also restore hidden elements");
   const hybrid = document.querySelector("#hybridPreview");
   if (!(hybrid instanceof HTMLButtonElement) || hybrid.hidden)
     throw Error("HTML/SVG preview unavailable for native canvas test document");
@@ -2424,8 +2460,16 @@ try {
      opacity(htmlNode("beta"))<0.9 || opacity(htmlEdge("e1"))>0.3 ||
      opacity(htmlEdge("e2"))<0.9)
     throw Error("Hybrid labels failed to mirror SVG relation dimming");
+  relevant.click();
+  if(!layer.classList.contains("is-relevance-only") ||
+     display(htmlNode("alpha")) !== "none" || display(htmlEdge("e1")) !== "none" ||
+     display(htmlNode("gamma")) === "none" || display(htmlEdge("e2")) === "none")
+    throw Error("HTML labels did not mirror strict relevance visibility");
   focus.click();
   if(layer.classList.contains("is-relation-focused") ||
+     layer.classList.contains("is-relevance-only") ||
+     relevant.getAttribute("aria-pressed") !== "false" ||
+     display(htmlNode("alpha")) === "none" || display(htmlEdge("e1")) === "none" ||
      opacity(htmlNode("alpha"))<0.9 || opacity(htmlEdge("e1"))<0.9)
     throw Error("HTML preview text did not restore after focus off");
   hybrid.click();
