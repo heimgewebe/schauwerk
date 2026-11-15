@@ -47,6 +47,7 @@ INDEX_HTML = r"""<!doctype html>
                 </div>
                 <output id="nodeSearchStatus" aria-live="polite">Suchbegriff eingeben</output>
                 <button id="focusRelations" type="button" aria-pressed="false" title="Nur das ausgewählte Element, seine Nachbarn und direkte Verbindungen hervorheben">Beziehungsfokus: Aus</button>
+                <button id="onlyRelevant" type="button" aria-pressed="false" title="Andere Elemente und Verbindungen ausblenden, ohne das Dokument zu ändern">Nur relevante Beziehungen: Aus</button>
               </div>
             </div>
           </details>
@@ -431,7 +432,8 @@ button:focus-visible {
   font-size: 16px; /* Prevent implicit iOS Safari zoom when searching. */
 }
 .navigation-menu output { color: var(--muted); font-size: 0.75rem; text-align: left; }
-.navigation-menu #focusRelations[aria-pressed="true"] {
+.navigation-menu #focusRelations[aria-pressed="true"],
+.navigation-menu #onlyRelevant[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
@@ -444,6 +446,11 @@ button:focus-visible {
 .hybrid-layer.is-relation-focused .hybrid-node.is-muted,
 .hybrid-layer.is-relation-focused .hybrid-edge-label.is-muted {
   opacity: 0.17;
+}
+/* The strict view is only a display filter; geometry and saved data stay intact. */
+.native-diagram.is-relevance-only [data-source-kind].is-muted,
+.hybrid-layer.is-relevance-only .is-muted {
+  display: none;
 }
 .edge-port-controls {
   display: flex;
@@ -1153,6 +1160,7 @@ const nodeSearch = document.querySelector("#nodeSearch");
 const nodeSearchNext = document.querySelector("#nodeSearchNext");
 const nodeSearchStatus = document.querySelector("#nodeSearchStatus");
 const focusRelationsButton = document.querySelector("#focusRelations");
+const onlyRelevantButton = document.querySelector("#onlyRelevant");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -1224,6 +1232,7 @@ let overrides = documentMode ? Object.create(null) : readOverrides();
 let selectedId = null;
 let selectedEdgeId = null;
 let relationFocusEnabled = false; // Session-only view state, never saved.
+let relevanceOnlyEnabled = false; // Hides non-neighbors, never edits the model.
 let edgeCreateSource = null;
 let edgeReattach = null;
 let textEditTarget = null;
@@ -2261,6 +2270,7 @@ function updateRelationFocus() {
     }
   }
   svg.classList.toggle("is-relation-focused", active);
+  svg.classList.toggle("is-relevance-only", active && relevanceOnlyEnabled);
   for (const [id, node] of nodes) {
     node.classList.toggle("is-muted", active && !highlightedNodes.has(id));
   }
@@ -2272,6 +2282,7 @@ function updateRelationFocus() {
   const hybridLayer = canvas.querySelector(".hybrid-layer");
   if (hybridLayer instanceof HTMLElement) {
     hybridLayer.classList.toggle("is-relation-focused", active);
+    hybridLayer.classList.toggle("is-relevance-only", active && relevanceOnlyEnabled);
     for (const item of hybridLayer.querySelectorAll(".hybrid-node[data-source-id]")) {
       item.classList.toggle("is-muted", active && !highlightedNodes.has(item.dataset.sourceId));
     }
@@ -2282,6 +2293,10 @@ function updateRelationFocus() {
   if (focusRelationsButton instanceof HTMLButtonElement) {
     focusRelationsButton.setAttribute("aria-pressed", String(relationFocusEnabled));
     focusRelationsButton.textContent = "Beziehungsfokus: " + (relationFocusEnabled ? "Ein" : "Aus");
+  }
+  if (onlyRelevantButton instanceof HTMLButtonElement) {
+    onlyRelevantButton.setAttribute("aria-pressed", String(relevanceOnlyEnabled));
+    onlyRelevantButton.textContent = "Nur relevante Beziehungen: " + (relevanceOnlyEnabled ? "Ein" : "Aus");
   }
 }
 function navigateToNode(sourceId) {
@@ -3016,10 +3031,20 @@ if (documentMode) {
   }, { capture: true });
   focusRelationsButton?.addEventListener("click", () => {
     relationFocusEnabled = !relationFocusEnabled;
+    if (!relationFocusEnabled) relevanceOnlyEnabled = false;
     updateRelationFocus();
     setStatus(relationFocusEnabled
       ? "Beziehungsfokus aktiv · Element oder Verbindung wählen"
       : "Alle Beziehungen wieder sichtbar");
+    revealSelectedNodeBehindSearchMenu();
+  });
+  onlyRelevantButton?.addEventListener("click", () => {
+    relevanceOnlyEnabled = !relevanceOnlyEnabled;
+    if (relevanceOnlyEnabled) relationFocusEnabled = true;
+    updateRelationFocus();
+    setStatus(relevanceOnlyEnabled
+      ? "Nur relevante Beziehungen · Element oder Verbindung wählen"
+      : "Alle Elemente sichtbar · Beziehungsfokus bleibt aktiv");
     revealSelectedNodeBehindSearchMenu();
   });
 }

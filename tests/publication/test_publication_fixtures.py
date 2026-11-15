@@ -21,6 +21,67 @@ from schauwerk.publication.store import (
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
+def _relevance_filter_source_successor_proof() -> dict:
+    """PR252 is a separate exact source revision, never inherited acceptance."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-find-focus-20261113"
+        / "technical-proof-relevance-only-20261115.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-relevance-only-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 252
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["base_revision"] == "19965e64ac059b85b919407377bb93262425ae16"
+    assert proof["source_change_commit"] == "68e16b570b0f5db6947a32aee4f9df9226155fa4"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    mobile = json.loads((
+        ROOT / "docs/operators/evidence/schaubild-resize-center-20261113"
+        / "technical-proof-mobile-search-overlay-20261114.json"
+    ).read_text(encoding="utf-8"))
+    print_focus = json.loads((
+        ROOT / "docs/operators/evidence/schaubild-a3-readable-print-20261112"
+        / "technical-proof-focus-20261115.json"
+    ).read_text(encoding="utf-8"))
+    prior = {
+        **mobile["source_bindings"],
+        **print_focus["source_bindings"],
+    }
+    assert proof["base_source_bindings"] == prior
+    assert set(proof["source_bindings"]) == set(prior)
+    for name, digest in proof["source_bindings"].items():
+        assert digest != prior[name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _source_after_relevance_filter(name: str, previous_sha256: str) -> str:
+    """One verified successor edge; prior proof bytes stay immutable."""
+    if name not in {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "src/schauwerk/resources/standalone_editor/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+        "tests/visual/test_standalone_editor_vector_pdf.py",
+    }:
+        return previous_sha256
+    proof = _relevance_filter_source_successor_proof()
+    assert proof["base_source_bindings"][name] == previous_sha256, name
+    return proof["source_bindings"][name]
+
+
+def test_schaubild_relevance_filter_source_successor_is_exact() -> None:
+    proof = _relevance_filter_source_successor_proof()
+    assert proof["validation"]["native_viewer_hybrid_router_print"] == "89 passed"
+    assert proof["validation"]["chrome_search_while_filtered"] == "4 passed"
+    assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+
+
+
 def _mobile_search_overlay_source_successor_proof() -> dict:
     """Verify PR250 bytes without transferring acceptance from predecessor revisions."""
     path = (
@@ -57,7 +118,7 @@ def _mobile_search_overlay_source_successor_proof() -> dict:
         assert proof["base_source_bindings"][name] == previous["source_bindings"][name]
         assert proof["source_bindings"][name] != proof["base_source_bindings"][name]
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            proof["source_bindings"][name]
+            _source_after_relevance_filter(name, proof["source_bindings"][name])
         ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
@@ -72,7 +133,7 @@ def _source_after_mobile_overlay(name: str, previous_sha256: str) -> str:
         return previous_sha256
     proof = _mobile_search_overlay_source_successor_proof()
     assert proof["base_source_bindings"][name] == previous_sha256, name
-    return proof["source_bindings"][name]
+    return _source_after_relevance_filter(name, proof["source_bindings"][name])
 
 
 def test_mobile_search_overlay_successor_is_exact_and_not_inherited() -> None:
@@ -456,7 +517,9 @@ def _vector_pdf_focus_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == set(previous["source_bindings"])
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _source_after_relevance_filter(name, digest)
+        ), name
     browser = proof["browser_proof"]
     assert browser["raster_pdf_image_objects"] == 0
     assert browser["print_images_distinct"] is True
@@ -491,7 +554,7 @@ def _a3_readable_print_source_successor_proof() -> dict:
         successor = _vector_pdf_focus_source_successor_proof()
         assert successor["base_source_bindings"][name] == digest, name
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            successor["source_bindings"][name]
+            _source_after_relevance_filter(name, successor["source_bindings"][name])
         ), name
     # Publication fixture itself evolved after the A3 proof; its original
     # digest remains valid historical evidence, not the new test file's hash.
@@ -547,7 +610,7 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     successor = _vector_pdf_focus_source_successor_proof()
     if path in successor["source_bindings"]:
         assert successor["base_source_bindings"][path] == latest, path
-        return successor["source_bindings"][path]
+        return _source_after_relevance_filter(path, successor["source_bindings"][path])
     return latest
 
 
@@ -15011,6 +15074,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         # Actual production rotation defect, patched view-only.
         **_responsive_manual_center_source_successor_proof()["source_bindings"],
         **_vector_pdf_focus_source_successor_proof()["source_bindings"],
+        **_relevance_filter_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
