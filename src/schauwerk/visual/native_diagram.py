@@ -766,6 +766,17 @@ def _edge_label_metrics(
                 width_cap,
                 max(width, math.ceil(widest_word) + 2 * clip_padding + 4),
             )
+    if intent == "knowledge_map":
+        # Preserve short words on narrow relation corridors.
+        words = str(edge["label"]).split()
+        if words:
+            while (
+                size > 12
+                and max(_estimated_wrap_width(word, size=size) for word in words)
+                > width - 2 * clip_padding
+            ):
+                size -= 1
+                line_height = max(14, size + 2)
     lines = tuple(
         _bounded_wrapped(
             str(edge["label"]),
@@ -3239,6 +3250,47 @@ def _render_node(
                 summary_lines,
                 size=summary_size,
                 max_width=node_width - 36,
+            )
+    if intent == "knowledge_map":
+        # Prefer complete readable text over the original fixed-line ellipsis.
+        # Keep the existing card and route geometry unchanged.
+        label_value = str(node["label"])
+        summary_value = str(node["summary"])
+        available_width = node_width - 36
+        for font_size in range(22, 15, -1):
+            full_lines = _bounded_wrapped(
+                label_value, width=max(1, len(label_value)),
+                limit=max(1, len(label_value)), size=font_size,
+                max_width=available_width,
+            )
+            if len(full_lines) <= 3:
+                label_size = font_size
+                label_line_height = max(18, font_size + 1)
+                label_lines = full_lines
+                break
+        else:
+            label_size, label_line_height = 16, 18
+            label_lines = _bounded_wrapped(
+                label_value, width=max(1, len(label_value)),
+                limit=3, size=label_size, max_width=available_width,
+            )
+        summary_y = y + 57 + len(label_lines) * label_line_height
+        for font_size in range(17, 12, -1):
+            fits = max(1, int((y + _NODE_HEIGHT - 6 - summary_y) // font_size) + 1)
+            full_lines = _bounded_wrapped(
+                summary_value, width=max(1, len(summary_value)),
+                limit=max(1, len(summary_value)), size=font_size,
+                max_width=available_width,
+            )
+            if len(full_lines) <= fits:
+                summary_size = summary_line_height = font_size
+                summary_lines = full_lines
+                break
+        else:
+            summary_size = summary_line_height = 13
+            summary_lines = _bounded_wrapped(
+                summary_value, width=max(1, len(summary_value)),
+                limit=fits, size=summary_size, max_width=available_width,
             )
     source_id_xml = _xml_escape(source_id)
     kind_xml = _xml_escape(kind)
@@ -7185,6 +7237,7 @@ def render_native_diagram(
         )
     )
 
+    group_separator_y = 50 if intent == "knowledge_map" else 44
     for region_index, (group_id, label, x, y, region_width, region_height) in enumerate(regions):
         identity = (
             ' data-renderer-region="ungrouped"'
@@ -7200,7 +7253,8 @@ def render_native_diagram(
                 f"<title>{_xml_escape(label)}</title>",
                 f'<rect x="{x}" y="{y}" width="{region_width}" height="{region_height}" '
                 'rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2"/>',
-                f'<path d="M {x + 18} {y + 44} H {x + region_width - 18}" stroke="#e2e8f0"/>',
+                f'<path d="M {x + 18} {y + group_separator_y} '
+                f'H {x + region_width - 18}" stroke="#e2e8f0"/>',
             )
         )
         group_clip_id = f"native-clip-region-{region_index}"
@@ -7210,27 +7264,39 @@ def render_native_diagram(
                 x=x + 20,
                 y=y + 10,
                 width=region_width - 40,
-                height=28,
+                height=40 if intent == "knowledge_map" else 28,
             )
         )
+        group_size = 16
         group_lines = (
-            [label]
-            if intent == "process"
-            else _bounded_wrapped(
-                label,
-                width=32,
-                limit=1,
-                size=16,
+            [label] if intent == "process" else _bounded_wrapped(
+                label, width=32, limit=1, size=16,
                 max_width=region_width - 40,
             )
         )
+        if intent == "knowledge_map":
+            for font_size in range(16, 11, -1):
+                full_lines = _bounded_wrapped(
+                    label, width=max(1, len(label)),
+                    limit=max(1, len(label)), size=font_size,
+                    max_width=region_width - 40,
+                )
+                if len(full_lines) <= 2:
+                    group_size, group_lines = font_size, full_lines
+                    break
+            else:
+                group_size = 12
+                group_lines = _bounded_wrapped(
+                    label, width=max(1, len(label)),
+                    limit=2, size=12, max_width=region_width - 40,
+                )
         lines.extend(
             _svg_text_lines(
                 group_lines,
                 x=x + 20,
-                y=y + 29,
-                line_height=15,
-                size=16,
+                y=y + (24 if intent == "knowledge_map" and len(group_lines) > 1 else 29),
+                line_height=16 if intent == "knowledge_map" else 15,
+                size=group_size,
                 weight=700,
                 color="#334155",
                 max_width=region_width - 40,
