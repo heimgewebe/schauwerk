@@ -1,0 +1,34 @@
+{
+  "base_revision": "3fdf1ba9e41259788fca8c58b02987cad4362905",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "02ad482e334c86c1bd9f47882b2a6b330f2e9cf40d48d3163b0a440c0bedb76a"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance",
+    "physical_a3_print_acceptance"
+  ],
+  "evidence_digest": "e7ca1e928f43346ccbdcb5d179121bea7c6ba9b7105166622db25c4e41793f5f",
+  "predecessor_technical_proof": {
+    "evidence_digest": "9e9bff6bca47e8dce4fc7fdfa969d80737bdc488d46f8bc94621aac007f74040",
+    "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof-focus-fit-edge-geometry-20261115.json",
+    "sha256": "1cb1be902c88863e8a058b48688110f5aee2936408f98ce4a97d8b7708fb5197"
+  },
+  "schema_version": "schauwerk-schaubild-edge-label-visibility-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7b0121d4859f92e6d1d5b235466b568781437eec4835c0dfa48305d1a96d5542"
+  },
+  "source_mode": "source-code-successor",
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "historical_source_digest_binding": "passed",
+    "real_chrome_390_html_preview_p2_red_green": "passed",
+    "real_chrome_390_view_label_toggle": "passed",
+    "targeted_viewer_and_canvas_tests": "13 passed",
+    "viewer_hybrid_pdf_publication_regressions": "139 passed"
+  },
+  "visual_acceptance": "not_inherited"
+}

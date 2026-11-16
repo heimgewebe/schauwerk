@@ -48,6 +48,7 @@ INDEX_HTML = r"""<!doctype html>
                 <output id="nodeSearchStatus" aria-live="polite">Suchbegriff eingeben</output>
                 <button id="focusRelations" type="button" aria-pressed="false" title="Nur das ausgewählte Element, seine Nachbarn und direkte Verbindungen hervorheben">Beziehungsfokus: Aus</button>
                 <button id="onlyRelevant" type="button" aria-pressed="false" title="Andere Elemente und Verbindungen ausblenden, ohne das Dokument zu ändern">Nur relevante Beziehungen: Aus</button>
+                <button id="labelsOnDemand" type="button" aria-pressed="false" title="Kantenbeschriftungen nur beim Zeigen auf eine Linie, bei Tastaturfokus oder Auswahl anzeigen; Dokument und Exporte bleiben unverändert">Beschriftungen bei Bedarf: Aus</button>
               </div>
             </div>
           </details>
@@ -433,7 +434,8 @@ button:focus-visible {
 }
 .navigation-menu output { color: var(--muted); font-size: 0.75rem; text-align: left; }
 .navigation-menu #focusRelations[aria-pressed="true"],
-.navigation-menu #onlyRelevant[aria-pressed="true"] {
+.navigation-menu #onlyRelevant[aria-pressed="true"],
+.navigation-menu #labelsOnDemand[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
@@ -446,6 +448,16 @@ button:focus-visible {
 .hybrid-layer.is-relation-focused .hybrid-node.is-muted,
 .hybrid-layer.is-relation-focused .hybrid-edge-label.is-muted {
   opacity: 0.17;
+}
+/* Optional visual de-cluttering affects only labels. Full edge geometry,
+   markers, pointer hit paths, SVG/PDF exports and source data remain intact.
+   Keyboard focus and touch selection reveal the relevant label. */
+.native-canvas.is-labels-on-demand .native-diagram
+[data-source-kind="edge"]:not(.is-selected):not(:hover):not(:focus-visible) > rect,
+.native-canvas.is-labels-on-demand .native-diagram
+[data-source-kind="edge"]:not(.is-selected):not(:hover):not(:focus-visible) > text {
+  opacity: 0;
+  pointer-events: none;
 }
 /* The strict view is only a display filter; geometry and saved data stay intact. */
 .native-diagram.is-relevance-only [data-source-kind].is-muted,
@@ -1161,6 +1173,7 @@ const nodeSearchNext = document.querySelector("#nodeSearchNext");
 const nodeSearchStatus = document.querySelector("#nodeSearchStatus");
 const focusRelationsButton = document.querySelector("#focusRelations");
 const onlyRelevantButton = document.querySelector("#onlyRelevant");
+const labelsOnDemandButton = document.querySelector("#labelsOnDemand");
 const addNodeButton = document.querySelector("#addNode");
 const addEdgeButton = document.querySelector("#addEdge");
 const editTextButton = document.querySelector("#editText");
@@ -1233,6 +1246,7 @@ let selectedId = null;
 let selectedEdgeId = null;
 let relationFocusEnabled = false; // Session-only view state, never saved.
 let relevanceOnlyEnabled = false; // Hides non-neighbors, never edits the model.
+let labelsOnDemandEnabled = false; // Session-only label visibility, never source state.
 let edgeCreateSource = null;
 let edgeReattach = null;
 let textEditTarget = null;
@@ -2271,6 +2285,8 @@ function updateRelationFocus() {
   }
   svg.classList.toggle("is-relation-focused", active);
   svg.classList.toggle("is-relevance-only", active && relevanceOnlyEnabled);
+  // The HTML/SVG preview forbids edge selection. Keep all its labels readable.
+  canvas.classList.toggle("is-labels-on-demand", labelsOnDemandEnabled && !hybridPreview?.active);
   for (const [id, node] of nodes) {
     node.classList.toggle("is-muted", active && !highlightedNodes.has(id));
   }
@@ -2297,6 +2313,10 @@ function updateRelationFocus() {
   if (onlyRelevantButton instanceof HTMLButtonElement) {
     onlyRelevantButton.setAttribute("aria-pressed", String(relevanceOnlyEnabled));
     onlyRelevantButton.textContent = "Nur relevante Beziehungen: " + (relevanceOnlyEnabled ? "Ein" : "Aus");
+  }
+  if (labelsOnDemandButton instanceof HTMLButtonElement) {
+    labelsOnDemandButton.setAttribute("aria-pressed", String(labelsOnDemandEnabled));
+    labelsOnDemandButton.textContent = "Beschriftungen bei Bedarf: " + (labelsOnDemandEnabled ? "Ein" : "Aus");
   }
   if (fitButton instanceof HTMLButtonElement) {
     fitButton.title = active && relevanceOnlyEnabled
@@ -3028,6 +3048,14 @@ function setHybridPreview(enabled) {
   }
   const on = hybridPreview.active;
   updateRelationFocus();
+  // The read-only HTML preview has no edge selection; an on-demand filter
+  // would hide its labels forever. Preserve the native preference until return.
+  if (labelsOnDemandButton instanceof HTMLButtonElement) {
+    labelsOnDemandButton.disabled = on;
+    labelsOnDemandButton.title = on
+      ? "In der HTML-Vorschau sind alle Beschriftungen sichtbar; zurück zu Native wechseln"
+      : "Kantenbeschriftungen beim Zeigen, Tastaturfokus oder Auswählen anzeigen";
+  }
   if (viewModeControls instanceof HTMLDetailsElement) {
     viewModeControls.open = false;
     const summary = viewModeControls.querySelector("summary");
@@ -3088,6 +3116,13 @@ if (documentMode) {
       ? "Beziehungsfokus aktiv · Element oder Verbindung wählen"
       : "Alle Beziehungen wieder sichtbar");
     revealSelectedNodeBehindSearchMenu();
+  });
+  labelsOnDemandButton?.addEventListener("click", () => {
+    labelsOnDemandEnabled = !labelsOnDemandEnabled;
+    updateRelationFocus();
+    setStatus(labelsOnDemandEnabled
+      ? "Beschriftungen bei Berührung, Tastaturfokus oder Auswahl sichtbar"
+      : "Alle Kantenbeschriftungen wieder sichtbar");
   });
   onlyRelevantButton?.addEventListener("click", () => {
     relevanceOnlyEnabled = !relevanceOnlyEnabled;

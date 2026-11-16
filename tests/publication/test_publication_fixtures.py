@@ -44,6 +44,7 @@ def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
         "_relevance_filter_source_successor_proof",
         "_focus_fit_source_successor_proof",
         "_focus_fit_edge_source_successor_proof",
+        "_edge_label_visibility_successor_proof",
     ):
         monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
 
@@ -81,9 +82,55 @@ def _focus_fit_edge_source_successor_proof(*, check_source_bytes: bool = True) -
     for name, digest in proof["source_bindings"].items():
         assert proof["base_source_bindings"][name] != digest
         if check_source_bytes:
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+            expected = _edge_label_visibility_successor_proof()["source_bindings"].get(name, digest)
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
+
+
+def _edge_label_visibility_successor_proof() -> dict:
+    """Bind the current viewer label-visibility revision, never mutate old proofs."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-label-visibility-20261116"
+        / "technical-proof.json"
+    )
+    proof = json.loads(path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-edge-label-visibility-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "3fdf1ba9e41259788fca8c58b02987cad4362905"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    predecessor = proof["predecessor_technical_proof"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-find-focus-20261113/"
+        "technical-proof-focus-fit-edge-geometry-20261115.json"
+    )
+    original = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(original).hexdigest() == predecessor["sha256"]
+    prior = json.loads(original)
+    assert prior["evidence_digest"] == predecessor["evidence_digest"]
+    assert prior["evidence_digest"] == digest_mapping(prior, "evidence_digest")
+    changed_path = "src/schauwerk/resources/native_viewer/assets.py"
+    assert proof["base_source_bindings"] == {
+        changed_path: prior["source_bindings"][changed_path]
+    }
+    assert set(proof["source_bindings"]) == {changed_path}
+    assert proof["source_bindings"][changed_path] != proof["base_source_bindings"][changed_path]
+    assert hashlib.sha256((ROOT / changed_path).read_bytes()).hexdigest() == (
+        proof["source_bindings"][changed_path]
+    )
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def test_schaubild_edge_label_visibility_successor_binds_exact_bytes() -> None:
+    proof = _edge_label_visibility_successor_proof()
+    assert proof["validation"]["real_chrome_390_view_label_toggle"] == "passed"
+    assert "production_deployed" in proof["does_not_establish"]
 
 
 def _source_after_focus_fit_edges(name: str, previous_sha256: str) -> str:
@@ -96,7 +143,9 @@ def _source_after_focus_fit_edges(name: str, previous_sha256: str) -> str:
     # Rehashing both current source files on every nested lookup made CI hang.
     proof = _focus_fit_edge_source_successor_proof(check_source_bytes=False)
     assert proof["base_source_bindings"][name] == previous_sha256, name
-    return proof["source_bindings"][name]
+    return _edge_label_visibility_successor_proof()["source_bindings"].get(
+        name, proof["source_bindings"][name]
+    )
 
 
 def test_schaubild_focus_fit_edge_geometry_successor_is_exact() -> None:
@@ -15224,6 +15273,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_relevance_filter_source_successor_proof()["source_bindings"],
         **_focus_fit_source_successor_proof()["source_bindings"],
         **_focus_fit_edge_source_successor_proof()["source_bindings"],
+        **_edge_label_visibility_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         current = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
