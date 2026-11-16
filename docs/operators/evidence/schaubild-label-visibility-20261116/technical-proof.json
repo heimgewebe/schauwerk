@@ -10,7 +10,7 @@
     "physical_ipad_safari_acceptance",
     "physical_a3_print_acceptance"
   ],
-  "evidence_digest": "cf5ba2e1ae62d0a94f2592113dd26aaa975fcc2da91882b5a31229872bb7587a",
+  "evidence_digest": "e7ca1e928f43346ccbdcb5d179121bea7c6ba9b7105166622db25c4e41793f5f",
   "predecessor_technical_proof": {
     "evidence_digest": "9e9bff6bca47e8dce4fc7fdfa969d80737bdc488d46f8bc94621aac007f74040",
     "path": "docs/operators/evidence/schaubild-find-focus-20261113/technical-proof-focus-fit-edge-geometry-20261115.json",
@@ -18,13 +18,14 @@
   },
   "schema_version": "schauwerk-schaubild-edge-label-visibility-successor.v1",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "91ce4decef7166877b3bb3e608918d9cd2ac2d8ebc774f15427f378f0a65e349"
+    "src/schauwerk/resources/native_viewer/assets.py": "7b0121d4859f92e6d1d5b235466b568781437eec4835c0dfa48305d1a96d5542"
   },
   "source_mode": "source-code-successor",
   "source_repository": "heimgewebe/schauwerk",
   "status": "technical_candidate_only",
   "validation": {
     "historical_source_digest_binding": "passed",
+    "real_chrome_390_html_preview_p2_red_green": "passed",
     "real_chrome_390_view_label_toggle": "passed",
     "targeted_viewer_and_canvas_tests": "13 passed",
     "viewer_hybrid_pdf_publication_regressions": "139 passed"

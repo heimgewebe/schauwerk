@@ -89,6 +89,23 @@ try {
   check(edge.classList.contains("is-selected"), "Touch-style pointer did not select edge");
   check(getComputedStyle(label).opacity==="1" &&
     getComputedStyle(plate).opacity==="1", "Selected edge label not revealed");
+  // HTML preview uses observation mode, so edge selection is unavailable.
+  // Native label filtering must not hide every HTML edge chip permanently.
+  const preview = document.querySelector("#hybridPreview");
+  check(preview instanceof HTMLButtonElement && !preview.hidden,
+    "HTML preview control unavailable");
+  preview.click();
+  const htmlLabel = document.querySelector('.hybrid-edge-label[data-source-id="e1"]');
+  check(preview.getAttribute("aria-pressed")==="true" &&
+    htmlLabel instanceof HTMLElement, "HTML preview edge label missing");
+  check(getComputedStyle(htmlLabel).opacity==="1" &&
+    getComputedStyle(htmlLabel).display!=="none" &&
+    htmlLabel.getClientRects().length>0,
+    "On-demand native label mode hid read-only HTML preview label");
+  check(toggle.disabled, "Unavailable label toggle remains actionable in HTML preview");
+  preview.click();
+  check(!toggle.disabled && host.classList.contains("is-labels-on-demand"),
+    "Native label mode did not recover after preview");
   toggle.click();
   check(toggle.getAttribute("aria-pressed")==="false" &&
     getComputedStyle(label).opacity==="1", "Switching off did not restore labels");

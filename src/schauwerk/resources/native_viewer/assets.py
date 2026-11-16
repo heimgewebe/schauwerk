@@ -455,8 +455,7 @@ button:focus-visible {
 .native-canvas.is-labels-on-demand .native-diagram
 [data-source-kind="edge"]:not(.is-selected):not(:hover):not(:focus-visible) > rect,
 .native-canvas.is-labels-on-demand .native-diagram
-[data-source-kind="edge"]:not(.is-selected):not(:hover):not(:focus-visible) > text,
-.native-canvas.is-labels-on-demand .hybrid-layer .hybrid-edge-label:not(.is-label-highlighted) {
+[data-source-kind="edge"]:not(.is-selected):not(:hover):not(:focus-visible) > text {
   opacity: 0;
   pointer-events: none;
 }
@@ -2286,7 +2285,8 @@ function updateRelationFocus() {
   }
   svg.classList.toggle("is-relation-focused", active);
   svg.classList.toggle("is-relevance-only", active && relevanceOnlyEnabled);
-  canvas.classList.toggle("is-labels-on-demand", labelsOnDemandEnabled);
+  // The HTML/SVG preview forbids edge selection. Keep all its labels readable.
+  canvas.classList.toggle("is-labels-on-demand", labelsOnDemandEnabled && !hybridPreview?.active);
   for (const [id, node] of nodes) {
     node.classList.toggle("is-muted", active && !highlightedNodes.has(id));
   }
@@ -2304,7 +2304,6 @@ function updateRelationFocus() {
     }
     for (const item of hybridLayer.querySelectorAll(".hybrid-edge-label[data-source-id]")) {
       item.classList.toggle("is-muted", active && !highlightedEdges.has(item.dataset.sourceId));
-      item.classList.toggle("is-label-highlighted", labelsOnDemandEnabled && selectedEdgeId === item.dataset.sourceId);
     }
   }
   if (focusRelationsButton instanceof HTMLButtonElement) {
@@ -3049,6 +3048,14 @@ function setHybridPreview(enabled) {
   }
   const on = hybridPreview.active;
   updateRelationFocus();
+  // The read-only HTML preview has no edge selection; an on-demand filter
+  // would hide its labels forever. Preserve the native preference until return.
+  if (labelsOnDemandButton instanceof HTMLButtonElement) {
+    labelsOnDemandButton.disabled = on;
+    labelsOnDemandButton.title = on
+      ? "In der HTML-Vorschau sind alle Beschriftungen sichtbar; zurück zu Native wechseln"
+      : "Kantenbeschriftungen beim Zeigen, Tastaturfokus oder Auswählen anzeigen";
+  }
   if (viewModeControls instanceof HTMLDetailsElement) {
     viewModeControls.open = false;
     const summary = viewModeControls.querySelector("summary");
