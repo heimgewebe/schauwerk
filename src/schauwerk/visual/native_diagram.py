@@ -3301,9 +3301,12 @@ def _render_node(
         _clip_definition(
             clip_id,
             x=x + 18,
-            y=y + 32,
+            # Chromium measures title ascenders 2 SVG units above the old clip
+            # on iPad-sized knowledge maps. Extend only the clip's top edge;
+            # preserve its bottom, card geometry and all other intent modes.
+            y=y + (28 if intent == "knowledge_map" else 32),
             width=node_width - 36,
-            height=_NODE_HEIGHT - 34,
+            height=_NODE_HEIGHT - (30 if intent == "knowledge_map" else 34),
         ),
         f"<title>{_xml_escape(str(node['label']))}</title>",
         f'<rect x="{x}" y="{y}" width="{node_width}" height="{_NODE_HEIGHT}" '
@@ -7262,9 +7265,11 @@ def render_native_diagram(
             _clip_definition(
                 group_clip_id,
                 x=x + 20,
-                y=y + 10,
+                # Two-line group ascenders extend up to 3 SVG units above the
+                # former clip on Chromium; keep the lower edge unchanged.
+                y=y + (6 if intent == "knowledge_map" else 10),
                 width=region_width - 40,
-                height=40 if intent == "knowledge_map" else 28,
+                height=44 if intent == "knowledge_map" else 28,
             )
         )
         group_size = 16

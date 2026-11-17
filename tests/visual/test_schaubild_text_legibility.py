@@ -80,3 +80,35 @@ def test_knowledge_map_long_titles_descriptions_and_group_headers_remain_complet
     # SVG structure, geometry and source data still have a stable readback.
     assert svg == render_native_diagram(model)
     assert root.attrib["data-intent"] == "knowledge_map"
+
+
+def test_knowledge_map_card_and_group_clip_keep_glyph_ascenders():
+    # Chromium measured title ascenders 2-3 SVG units outside the old top.
+    # Check the clip rectangle expands upward only, never into other cards.
+    model = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    root = ET.fromstring(render_native_diagram(model))
+
+    def clip_and_card(kind: str, item_id: str):
+        group = next(
+            item for item in root.iter()
+            if item.attrib.get("data-source-kind") == kind
+            and item.attrib.get("data-source-id") == item_id
+        )
+        clip = group.find("./" + SVG + "defs/" + SVG + "clipPath/" + SVG + "rect")
+        card = group.find(SVG + "rect")
+        assert clip is not None and card is not None
+        return clip, card
+
+    for node in model["nodes"]:
+        clip, card = clip_and_card("node", node["id"])
+        assert float(clip.attrib["y"]) - float(card.attrib["y"]) == 28
+        assert (
+            float(clip.attrib["y"]) + float(clip.attrib["height"])
+            == float(card.attrib["y"]) + float(card.attrib["height"]) - 2
+        )
+    for group in model["groups"]:
+        clip, card = clip_and_card("group", group["id"])
+        assert float(clip.attrib["y"]) - float(card.attrib["y"]) == 6
+        assert float(clip.attrib["y"]) + float(clip.attrib["height"]) == float(
+            card.attrib["y"]
+        ) + 50
