@@ -29,6 +29,57 @@ _CURRENT_AI_HANDOFF_SOURCES = {
     "tests/visual/test_standalone_editor_ai_handoff.py",
 }
 
+
+def _dynamic_label_clip_source_successor_proof() -> dict:
+    """Bind the exact live-drag revision without changing historical acceptance."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-label-visibility-20261116"
+        / "technical-proof-dynamic-clip-20261117.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-dynamic-label-clip-source-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 259
+    assert proof["base_revision"] == "791c2cf27c4c75139227fce282143a337cc3003f"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    assert set(proof["base_source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    } == set(proof["source_bindings"])
+    assert proof["base_source_bindings"] == {
+        "src/schauwerk/resources/native_viewer/assets.py":
+            "7b0121d4859f92e6d1d5b235466b568781437eec4835c0dfa48305d1a96d5542",
+        "tests/visual/test_native_viewer_browser.py":
+            "b82afb1b879f5f487e5ac0d21eb2ff199b802a9b85c7d7f3baae44e5246a523e",
+    }
+    for name, digest in proof["source_bindings"].items():
+        assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert proof["validation"]["chrome_drag_stale_clip_red_before"] == "reproduced"
+    assert proof["validation"]["chrome_drag_live_clip_and_pinch_rollback_after"] == "passed"
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    return proof
+
+
+def _current_live_viewer_sha(name: str, previous_sha256: str) -> str:
+    """Only the two explicitly superseded viewer files get newer byte identities."""
+    return _dynamic_label_clip_source_successor_proof()["source_bindings"].get(
+        name, previous_sha256
+    )
+
+
+def test_schaubild_dynamic_label_clip_revision_preserves_older_proofs() -> None:
+    proof = _dynamic_label_clip_source_successor_proof()
+    assert proof["validation"]["sinn_and_native_diagram_goldens"] == "passed"
+    assert "production_deployed" in proof["does_not_establish"]
+
+
 @pytest.fixture(autouse=True)
 def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
     """Avoid repeatedly revalidating the same verified read-only proof graph.
@@ -52,6 +103,7 @@ def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
         "_focus_fit_source_successor_proof",
         "_focus_fit_edge_source_successor_proof",
         "_edge_label_visibility_successor_proof",
+        "_dynamic_label_clip_source_successor_proof",
     ):
         monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
 
@@ -90,7 +142,9 @@ def _focus_fit_edge_source_successor_proof(*, check_source_bytes: bool = True) -
         assert proof["base_source_bindings"][name] != digest
         if check_source_bytes:
             expected = _edge_label_visibility_successor_proof()["source_bindings"].get(name, digest)
-            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
+            assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+                _current_live_viewer_sha(name, expected)
+            ), name
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
 
@@ -128,7 +182,7 @@ def _edge_label_visibility_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == {changed_path}
     assert proof["source_bindings"][changed_path] != proof["base_source_bindings"][changed_path]
     assert hashlib.sha256((ROOT / changed_path).read_bytes()).hexdigest() == (
-        proof["source_bindings"][changed_path]
+        _current_live_viewer_sha(changed_path, proof["source_bindings"][changed_path])
     )
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
     return proof
@@ -150,8 +204,11 @@ def _source_after_focus_fit_edges(name: str, previous_sha256: str) -> str:
     # Rehashing both current source files on every nested lookup made CI hang.
     proof = _focus_fit_edge_source_successor_proof(check_source_bytes=False)
     assert proof["base_source_bindings"][name] == previous_sha256, name
-    return _edge_label_visibility_successor_proof()["source_bindings"].get(
-        name, proof["source_bindings"][name]
+    return _current_live_viewer_sha(
+        name,
+        _edge_label_visibility_successor_proof()["source_bindings"].get(
+            name, proof["source_bindings"][name]
+        ),
     )
 
 
@@ -497,12 +554,12 @@ def _readable_router_source_proof() -> dict:
 
 
 def _source_after_readable_router(name: str, predecessor_sha256: str) -> str:
-    """Apply only the exact three digest-proven successors."""
+    """Follow the accepted router revisions, then only our exact viewer change."""
     proof = _readable_router_source_proof()
     if name not in proof["source_bindings"]:
-        return predecessor_sha256
+        return _current_live_viewer_sha(name, predecessor_sha256)
     assert proof["base_source_bindings"][name] == predecessor_sha256, name
-    return proof["source_bindings"][name]
+    return _current_live_viewer_sha(name, proof["source_bindings"][name])
 
 
 def test_schaubild_readable_router_successor_preserves_prior_evidence() -> None:
@@ -15323,6 +15380,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_focus_fit_edge_source_successor_proof()["source_bindings"],
         **_edge_label_visibility_successor_proof()["source_bindings"],
         **_readable_router_source_proof()["source_bindings"],
+        **_dynamic_label_clip_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         if name in _CURRENT_AI_HANDOFF_SOURCES:

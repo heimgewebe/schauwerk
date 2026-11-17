@@ -254,6 +254,13 @@ try {
   }
   const baseEdgePath = edgePath.getAttribute("d") || "";
   const baseMarkerEnd = edgePath.getAttribute("marker-end") || "";
+  const sharedLabelClip = svg.querySelector(
+    "#native-clip-edge-label-protection > path",
+  );
+  if (!(sharedLabelClip instanceof SVGPathElement)) {
+    throw new Error("knowledge-map edge label protection is missing");
+  }
+  const clipBeforeDrag = sharedLabelClip.getAttribute("d") || "";
   const allNodes = [...svg.querySelectorAll('[data-source-kind="node"]')];
   if (!allNodes.every((item) => insideSvg(item, svg))) {
     throw new Error("persisted out-of-bounds layout was not repaired on load");
@@ -278,6 +285,9 @@ try {
   }
   if (!(edgeLabelRect.getAttribute("transform") || "").includes("translate(")) {
     throw new Error("incident edge label did not move during node drag");
+  }
+  if ((sharedLabelClip.getAttribute("d") || "") === clipBeforeDrag) {
+    throw new Error("shared label cutouts did not follow dragged node and edge labels");
   }
 
   firePointer(viewport, "pointermove", 11, nodeX - 1950, nodeY);
@@ -306,6 +316,7 @@ try {
 
   const takeoverStartTransform = node.getAttribute("transform") || "";
   const takeoverStartEdgePath = edgePath.getAttribute("d") || "";
+  const takeoverStartClip = sharedLabelClip.getAttribute("d") || "";
   const takeoverRect = node.getBoundingClientRect();
   const takeoverX = (takeoverRect.left + takeoverRect.right) / 2;
   const takeoverY = (takeoverRect.top + takeoverRect.bottom) / 2;
@@ -325,6 +336,9 @@ try {
   }
   if ((edgePath.getAttribute("d") || "") !== takeoverStartEdgePath) {
     throw new Error("pinch takeover did not roll incident edge geometry back");
+  }
+  if ((sharedLabelClip.getAttribute("d") || "") !== takeoverStartClip) {
+    throw new Error("pinch takeover did not restore the label cutouts");
   }
 
   firePointer(viewport, "pointermove", 22, secondX + 80, secondY);
