@@ -5677,7 +5677,33 @@ def render_native_diagram(
             str(edge["id"]),
         ),
     )
-    feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
+    # Nearby knowledge-map returns can use the empty inter-row corridor.
+    # Long-distance feedback still keeps its own footer lane.
+    local_knowledge_feedback_ids: set[str] = set()
+    if intent == "knowledge_map" and regions:
+        for edge in feedback_edges:
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            row_distance = abs(source[1] - target[1])
+            label_height = _edge_label_metrics(edge, positions, intent).height
+            if (
+                row_distance > 0
+                # A long cross-group span can conceal intervening relations.
+                # Only neighboring group columns get a local return.
+                and 0 < abs(source[0] - target[0]) <= (
+                    _GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP + 16
+                )
+                and row_distance <= _NODE_HEIGHT + non_process_row_gap
+                and row_distance - _NODE_HEIGHT >= label_height + 12
+            ):
+                local_knowledge_feedback_ids.add(str(edge["id"]))
+    footer_feedback_edges = [
+        edge for edge in feedback_edges
+        if str(edge["id"]) not in local_knowledge_feedback_ids
+    ]
+    feedback_slots = {
+        str(edge["id"]): slot for slot, edge in enumerate(footer_feedback_edges)
+    }
     feedback_footer_ids: set[str] = set()
     feedback_path_y: dict[str, float | tuple[float, float]] = {}
     feedback_path_footer_ids: set[str] = set()
@@ -6366,7 +6392,7 @@ def render_native_diagram(
                 feedback_path_footer_ids.add(edge_id)
             elif collision:
                 feedback_footer_ids.add(edge_id)
-    feedback_count = len(feedback_edges)
+    feedback_count = len(footer_feedback_edges)
     feedback_base_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
     if feedback_count:
         # A single feedback relation keeps the established footer/corridor
@@ -6395,7 +6421,7 @@ def render_native_diagram(
                 )
         feedback_heights = [
             _edge_label_metrics(edge, positions, intent).height
-            for edge in feedback_edges
+            for edge in footer_feedback_edges
         ]
         if feedback_count > 1:
             height = max(
@@ -9443,6 +9469,69 @@ def render_native_diagram(
                 planned_edge_lines[edge_id] = fragment
                 label_layout[edge_id] = candidate_path, candidate_box
                 break
+
+    if intent == "knowledge_map" and len(paint_edges) > 1:
+        # SVG is painter-ordered: later strokes could cross earlier labels.
+        # Keep semantic edge groups intact, but clip physical strokes below
+        # the final union of all edge-label backgrounds.
+        import xml.etree.ElementTree as ET
+
+        label_clearances: list[tuple[float, float, float, float]] = []
+        for fragment in planned_edge_lines.values():
+            group = ET.fromstring("\n".join(fragment))
+            label = next(
+                child for child in group
+                if child.tag.endswith("rect") and child.get("rx") == "9"
+            )
+            x, y, box_width, box_height = (
+                float(label.get(attribute, "0"))
+                for attribute in ("x", "y", "width", "height")
+            )
+            label_clearances.append((
+                max(0.0, x - 2.0), max(0.0, y - 2.0),
+                min(float(width), x + box_width + 2.0),
+                min(float(height), y + box_height + 2.0),
+            ))
+        # Even-odd holes must not cancel in overlapping labels.
+        merged: list[tuple[float, float, float, float]] = []
+        for box in sorted(label_clearances):
+            current = box
+            index = 0
+            while index < len(merged):
+                other = merged[index]
+                if (
+                    current[0] < other[2] and current[2] > other[0]
+                    and current[1] < other[3] and current[3] > other[1]
+                ):
+                    current = (
+                        min(current[0], other[0]), min(current[1], other[1]),
+                        max(current[2], other[2]), max(current[3], other[3]),
+                    )
+                    merged.pop(index)
+                    index = 0
+                else:
+                    index += 1
+            merged.append(current)
+        holes = " ".join(
+            f"M {left:.1f} {top:.1f} H {right:.1f} V {bottom:.1f} "
+            f"H {left:.1f} Z"
+            for left, top, right, bottom in merged
+        )
+        protection_id = "native-clip-edge-label-protection"
+        lines.append(
+            f'<clipPath id="{protection_id}" clipPathUnits="userSpaceOnUse">'
+            f'<path clip-rule="evenodd" d="M 0 0 H {width} V {height} '
+            f'H 0 Z {holes}"/></clipPath>'
+        )
+        for fragment in planned_edge_lines.values():
+            for index, line in enumerate(fragment):
+                if line.startswith('<path d="') and 'fill="none"' in line:
+                    fragment[index] = line.replace(
+                        ' fill="none"',
+                        f' clip-path="url(#{protection_id})" fill="none"',
+                        1,
+                    )
+                    break
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])
