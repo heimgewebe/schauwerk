@@ -2197,7 +2197,15 @@ def _edge_geometry(
                 f"L {end_x:.1f} {corridor_y:.1f} "
                 f"L {end_x:.1f} {end_y:.1f}"
             )
-            return path, (start_x + end_x) / 2, corridor_y, route
+            # Source-biased placement keeps a short return legible next to
+            # same-column labels (Sinn: "stärkt" versus "ermöglicht").
+            # Its box remains over the actual horizontal feedback corridor.
+            label_x = (
+                (3 * start_x + end_x) / 4
+                if intent == "knowledge_map"
+                else (start_x + end_x) / 2
+            )
+            return path, label_x, corridor_y, route
 
         # Same-row or narrow-gap feedback leaves on the outer side of both
         # cards, then travels below the complete card field. For the historical
@@ -3109,7 +3117,9 @@ def _render_edge(
             max(label_x, half_label_width + 8),
             canvas_width - half_label_width - 8,
         )
-    if intent == "process" and final_label_override is not None:
+    if final_label_override is not None and (
+        intent == "process" or (intent == "knowledge_map" and kind == "feedback")
+    ):
         # The rendered route is immutable; move only a demonstrably blocked
         # outer-gutter label after checking every other physical SVG stroke.
         label_x, label_y = final_label_override
@@ -9475,6 +9485,64 @@ def render_native_diagram(
         # Keep semantic edge groups intact, but clip physical strokes below
         # the final union of all edge-label backgrounds.
         import xml.etree.ElementTree as ET
+
+        def label_box(fragment: list[str]) -> tuple[float, float, float, float]:
+            group = ET.fromstring("\n".join(fragment))
+            label = next(
+                child for child in group
+                if child.tag.endswith("rect") and child.get("rx") == "9"
+            )
+            return tuple(
+                float(label.get(attribute, "0"))
+                for attribute in ("x", "y", "width", "height")
+            )
+
+        # A shortened feedback return can share its row gap with a vertical
+        # relation label. Move only the blocked return label along its own
+        # unchanged horizontal path; prefer the end nearest its source.
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            if edge_id not in local_knowledge_feedback_ids:
+                continue
+            own_x, own_y, own_width, own_height = label_box(
+                planned_edge_lines[edge_id]
+            )
+            peers = [
+                label_box(fragment)
+                for other_id, fragment in planned_edge_lines.items()
+                if other_id != edge_id
+            ]
+            def overlaps(left: float) -> bool:
+                return any(
+                    left < x + width + 4 and left + own_width + 4 > x
+                    and own_y < y + height + 4 and own_y + own_height + 4 > y
+                    for x, y, width, height in peers
+                )
+            if not overlaps(own_x):
+                continue
+            source_port = positions[str(edge["from"])][0] + _NODE_WIDTH / 2
+            target_port = positions[str(edge["to"])][0] + _NODE_WIDTH / 2
+            low = math.ceil(min(source_port, target_port) + 8)
+            high = math.floor(max(source_port, target_port) - own_width - 8)
+            if low > high:
+                continue
+            candidates = list(range(low, high + 1, 8))
+            if candidates[-1] != high:
+                candidates.append(high)
+            if source_port > target_port:
+                candidates.reverse()
+            for left in candidates:
+                if overlaps(float(left)):
+                    continue
+                fragment = render_planned_edge(
+                    edge,
+                    label_position_override=(
+                        left + own_width / 2, own_y + own_height / 2,
+                    ),
+                )
+                if abs(label_box(fragment)[0] - left) <= 0.05:
+                    planned_edge_lines[edge_id] = fragment
+                    break
 
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():

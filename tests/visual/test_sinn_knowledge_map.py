@@ -127,3 +127,49 @@ def test_sinn_adjacent_feedback_uses_row_gap_instead_of_footer() -> None:
     assert adjacent_path.get("d", "").count(" L ") == 3
     assert distant_path.get("d", "").count(" L ") >= 5
     assert render_native_diagram(source) == render_native_diagram(copy.deepcopy(source))
+
+
+def test_sinn_edge_label_boxes_never_overlap() -> None:
+    """Adjacent return text must not mask the Wirksamkeit-to-Sinn label."""
+    root = ET.fromstring(render_native_diagram(_sinn_model()))
+    boxes: dict[str, tuple[float, float, float, float]] = {}
+    for edge_id, edge in _edges(root).items():
+        label = edge.find(SVG + "rect")
+        assert label is not None
+        x, y, width, height = (
+            float(label.attrib[attr]) for attr in ("x", "y", "width", "height")
+        )
+        boxes[edge_id] = (x, y, x + width, y + height)
+    for first_id, first in boxes.items():
+        for second_id, second in boxes.items():
+            if first_id >= second_id:
+                continue
+            overlaps = (
+                first[0] < second[2] and first[2] > second[0]
+                and first[1] < second[3] and first[3] > second[1]
+            )
+            assert not overlaps, (first_id, second_id, first, second)
+
+
+def test_sinn_relation_labels_do_not_overlap_each_other() -> None:
+    root = ET.fromstring(render_native_diagram(_sinn_model()))
+    edges = _edges(root)
+    boxes = {}
+    for edge_id, edge in edges.items():
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        x, y, width, height = (
+            float(rect.get(name, "0"))
+            for name in ("x", "y", "width", "height")
+        )
+        boxes[edge_id] = (x, y, x + width, y + height)
+    overlaps = [
+        (one, two)
+        for index, (one, a) in enumerate(boxes.items())
+        for two, b in list(boxes.items())[index + 1:]
+        if a[0] < b[2] and b[0] < a[2]
+        and a[1] < b[3] and b[1] < a[3]
+    ]
+    # A stroke cutout does not protect an earlier label from a later
+    # label background (originally e09 "stärkt" vs e13 "ermöglicht").
+    assert overlaps == []
