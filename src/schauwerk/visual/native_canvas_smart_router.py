@@ -15,6 +15,11 @@ from typing import Any
 Point = tuple[float, float]
 Rect = tuple[float, float, float, float]
 PORTS = ("right", "left", "bottom", "top")
+# Relax crossing avoidance only when the original route has a conspicuous
+# detour. Keep legacy crossing behavior for ordinary, readable routes.
+CROSSING_PENALTY = 55.0
+HOP_PENALTY = 8.0
+BEND_PENALTY = 18.0
 NORMALS: dict[str, Point] = {
     "right": (1.0, 0.0), "left": (-1.0, 0.0),
     "bottom": (0.0, 1.0), "top": (0.0, -1.0),
@@ -258,6 +263,7 @@ def _weight_crossings(
     graph: Sequence[Sequence[tuple[int, float]]],
     vertices: Sequence[Point],
     segments: Sequence[tuple[Point, Point]],
+    crossing_penalty: float = 100.0,
 ) -> Sequence[Sequence[tuple[int, float]]]:
     if not segments:
         return graph
@@ -285,21 +291,22 @@ def _weight_crossings(
                     if left > x1 or right < x0 or top > y1 or bottom < y0:
                         continue
                     crossings += _strict_segment_cross(a, b, c, d)
-                weights[key] = 100.0 * crossings
+                weights[key] = crossing_penalty * crossings
             row.append((j, length + weights[key]))
         result.append(row)
     return result
 
 
 def _build_graph(
-    vertices: Sequence[Point], obstacles: Sequence[Rect]
+    vertices: Sequence[Point], obstacles: Sequence[Rect],
+    hop_penalty: float = 0.0,
 ) -> list[list[tuple[int, float]]]:
     graph: list[list[tuple[int,float]]] = [[] for _ in vertices]
     for i,a in enumerate(vertices):
         for j in range(i+1,len(vertices)):
             b=vertices[j]
             if _clear(a,b,obstacles):
-                length=_distance(a,b)
+                length=_distance(a,b) + hop_penalty
                 graph[i].append((j,length))
                 graph[j].append((i,length))
     return graph
@@ -342,6 +349,7 @@ def route_edge(
     max_blockers: int = 24, max_lane: float | None = None,
     prior_routes: Sequence[Mapping[str, Any]] = (),
     _reserve_visual_rails: bool = True,
+    _readability_retry: bool = False,
 ) -> SmartEdgeRoute | None:
     """Plan a short obstacle-free path, selecting 4-sided ports when unspecified.
 
@@ -402,6 +410,7 @@ def route_edge(
             lane=lane,clearance=clearance,max_blockers=max_blockers,
             max_lane=max_lane,prior_routes=prior_routes,
             _reserve_visual_rails=False,
+            _readability_retry=_readability_retry,
         )
 
     # Source and target rectangles prevent a computed detour from re-entering
@@ -457,6 +466,9 @@ def route_edge(
         unique=movable[:max(0,max_blockers-2)]+[source_box,target_box]
     unique.sort()
     crossing_segments=_prior_crossing_segments(prior_routes,str(src_id),str(tgt_id))
+    crossing_penalty = CROSSING_PENALTY if _readability_retry else 100.0
+    hop_penalty = HOP_PENALTY if _readability_retry else 0.0
+    bend_penalty = BEND_PENALTY if _readability_retry else 3.0
     # Prefer the original, uninterrupted cubic whenever an automatic single
     # connection can take it safely. This keeps smart routing aesthetically
     # identical to simple routing in open space; detours remain collision-safe.
@@ -551,18 +563,48 @@ def route_edge(
                 for a,b in zip(poly,poly[1:])
                 for c,d in crossing_segments
             )
-            score=length+turn_count*3.0+crossing_count*100.0
+            score=(length + turn_count * bend_penalty
+                   + crossing_count * crossing_penalty
+                   + max(0, len(poly) - 3) * hop_penalty)
             if best is None or (score,si,ti)<best[0]:
                 best=((score,si,ti),ss,ts,poly)
         return best
     # Build the small local visibility graph first, but certify the resulting
     # route against *all* obstacles. An unsuccessful limited attempt retries
     # the complete graph to avoid false conflicts in crowded diagrams.
-    best=best_route(_weight_crossings(_build_graph(vertices,unique),vertices,crossing_segments))
+    best=best_route(_weight_crossings(
+        _build_graph(vertices,unique,hop_penalty),vertices,
+        crossing_segments,crossing_penalty))
     if best is None and len(unique)!=len(all_boxes):
-        best=best_route(_weight_crossings(_build_graph(vertices,all_boxes),vertices,crossing_segments))
+        best=best_route(_weight_crossings(
+            _build_graph(vertices,all_boxes,hop_penalty),vertices,
+            crossing_segments,crossing_penalty))
     if best is None:
         return retry_physical()
+    # First try the established crossing-aware route. An alternate weighting
+    # is worth computing only for a major, visible detour; it must save at
+    # least 110 units to justify adding crossings or changing ports.
+    if not _readability_retry and crossing_segments:
+        primary_poly = best[3]
+        primary_length = sum(
+            _distance(a,b) for a,b in zip(primary_poly,primary_poly[1:])
+        )
+        direct_floor = min(_distance(c[4],c[7]) for c in candidates)
+        if primary_length > max(direct_floor*1.28,direct_floor+120.0):
+            alternate = route_edge(
+                source,target,nodes,from_side=from_side,to_side=to_side,
+                lane=lane,clearance=clearance,max_blockers=max_blockers,
+                max_lane=max_lane,prior_routes=prior_routes,
+                _reserve_visual_rails=_reserve_visual_rails,
+                _readability_retry=True,
+            )
+            if alternate is not None and alternate.collision_free:
+                alternate_length = sum(
+                    _distance(a,b)
+                    for a,b in zip(alternate.points,alternate.points[1:])
+                )
+                if alternate_length + 110.0 < primary_length:
+                    return alternate
     _,ss,ts,poly=best
     path=_path_with_safe_fillets(poly,all_boxes)
     label=_label_position(poly)

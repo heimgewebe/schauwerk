@@ -466,6 +466,52 @@ def test_schaubild_find_focus_source_successor_is_digest_bound() -> None:
     assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
 
 
+
+def _readable_router_source_proof() -> dict:
+    """Bind new router bytes, without rewriting earlier candidate evidence."""
+    path = (
+        ROOT / "docs/operators/evidence/schaubild-readable-routing-20261117"
+        / "technical-proof.json"
+    )
+    receipt = json.loads(path.read_text(encoding="utf-8"))
+    assert receipt["schema_version"] == (
+        "schauwerk-schaubild-readable-router-source-successor.v1"
+    )
+    assert receipt["source_repository"] == "heimgewebe/schauwerk"
+    assert receipt["source_pr"] == 258
+    assert receipt["base_revision"] == "6f88d8d1888049db4eaed733b6a0b85f39348d0d"
+    assert receipt["status"] == "technical_candidate_only"
+    assert receipt["visual_acceptance"] == "not_inherited"
+    assert receipt["consumer_runtime"] == "not_integrated"
+    assert receipt["evidence_digest"] == digest_mapping(receipt, "evidence_digest")
+    assert set(receipt["source_bindings"]) == {
+        "src/schauwerk/visual/native_canvas_smart_router.py",
+        "src/schauwerk/resources/native_viewer/smart_router.py",
+        "tests/visual/test_native_canvas_smart_integration.py",
+    }
+    assert set(receipt["base_source_bindings"]) == set(receipt["source_bindings"])
+    for name, digest in receipt["source_bindings"].items():
+        assert receipt["base_source_bindings"][name] != digest
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+    return receipt
+
+
+def _source_after_readable_router(name: str, predecessor_sha256: str) -> str:
+    """Apply only the exact three digest-proven successors."""
+    proof = _readable_router_source_proof()
+    if name not in proof["source_bindings"]:
+        return predecessor_sha256
+    assert proof["base_source_bindings"][name] == predecessor_sha256, name
+    return proof["source_bindings"][name]
+
+
+def test_schaubild_readable_router_successor_preserves_prior_evidence() -> None:
+    proof = _readable_router_source_proof()
+    assert proof["validation"]["local_canvas_tests_passed"] == 62
+    assert proof["validation"]["sinn_approximate_fixture_length_after"] < 550
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+
+
 def _freeform_smooth_successor_proof() -> dict:
     """Current source revisions are bound without changing historic acceptance."""
     proof_path = (
@@ -500,7 +546,9 @@ def _freeform_smooth_successor_proof() -> dict:
             "source_bindings"
         ].get(name, latest)
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            _source_after_mobile_overlay(name, latest)
+            _source_after_readable_router(
+                name, _source_after_mobile_overlay(name, latest)
+            )
         ), name
     predecessors = proof["historical_predecessors"]
     assert len(predecessors) == 3
@@ -567,7 +615,7 @@ def _router_bbox_performance_successor_proof() -> dict:
             name, proof["source_bindings"][name]
         )
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
-            expected_sha
+            _source_after_readable_router(name, expected_sha)
         ), name
     assert proof["validation"]["source_48_nodes_256_edges_svg_byte_identical"] is True
     assert proof["validation"]["source_48_nodes_256_edges_route_count"] == 256
@@ -810,7 +858,7 @@ def _current_source_digest(path: str, previous_sha256: str) -> str:
     if path in successor["source_bindings"]:
         assert successor["base_source_bindings"][path] == latest, path
         return _source_after_relevance_filter(path, successor["source_bindings"][path])
-    return latest
+    return _source_after_readable_router(path, latest)
 
 
 def test_native_edge_budget_source_successor_binds_exact_current_bytes() -> None:
@@ -15274,6 +15322,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_focus_fit_source_successor_proof()["source_bindings"],
         **_focus_fit_edge_source_successor_proof()["source_bindings"],
         **_edge_label_visibility_successor_proof()["source_bindings"],
+        **_readable_router_source_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         if name in _CURRENT_AI_HANDOFF_SOURCES:

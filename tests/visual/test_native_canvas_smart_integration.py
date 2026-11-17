@@ -954,6 +954,64 @@ def _poly_length(route) -> float:
     return sum(math.dist(a,b) for a,b in zip(route.points,route.points[1:]))
 
 
+
+def test_sinn_connection_prefers_readable_corridor_with_js_parity(tmp_path: Path) -> None:
+    """Approximate the Deutung→Sinn layout and crossing context from Chrome.
+
+    Two earlier links crossing the middle corridor should not send this link
+    below the entire Zufall card. That visually confusing detour is avoidable.
+    """
+    coords = (
+        ("deutung", 566, 495, 200, 137),
+        ("sinn", 1171, 230, 203, 137),
+        ("freiheit", 867, 230, 203, 137),
+        ("zufall", 867, 495, 203, 137),
+        ("werte", 261, 230, 203, 137),
+        ("beziehungen", 261, 495, 203, 137),
+        ("wahrnehmung", 566, 230, 203, 137),
+    )
+    nodes = [
+        {"id": name, "type": "text", "text": name, "x": x, "y": y,
+         "width": width, "height": height}
+        for name, x, y, width, height in coords
+    ]
+    prior = [
+        {"from": f"earlier_{i}", "to": f"other_{i}",
+         "points": ((x, 360), (x, 620))}
+        for i, x in enumerate((910, 1010))
+    ]
+    direct = route_edge(nodes[0], nodes[1], nodes)
+    improved = route_edge(nodes[0], nodes[1], nodes, prior_routes=prior)
+    assert direct is not None and improved is not None and improved.collision_free
+    assert (improved.from_side, improved.to_side) == ("right", "left")
+    assert _poly_length(improved) < 550
+    assert _poly_length(improved) <= _poly_length(direct) * 1.15
+    # The old route went below Zufall at y=644; the new one uses the gap.
+    assert max(y for _, y in improved.points) < 635
+
+    node = shutil.which("node")
+    if node:
+        module = tmp_path / "smart-router.mjs"
+        module.write_text(ASSETS["smart-router.js"], encoding="utf-8")
+        probe = tmp_path / "sinn-corridor.mjs"
+        probe.write_text(
+            'import {smartEdgeGeometry} from "./smart-router.mjs";\n'
+            f"const nodes={json.dumps(nodes)};\n"
+            f"const priorRoutes={json.dumps(prior)};\n"
+            'console.log(JSON.stringify(smartEdgeGeometry(nodes[0],nodes[1],nodes,'
+            '{priorRoutes,maxLane:0})));\n',
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [node, str(probe)], capture_output=True, text=True,
+            check=True, timeout=15,
+        )
+        js = json.loads(result.stdout)
+        assert js is not None and js["collisionFree"]
+        assert js["path"] == improved.path
+        assert js["points"] == [list(p) for p in improved.points]
+
+
 def test_crossing_penalty_avoids_real_crossing_without_long_detour() -> None:
     nodes = _crossing_demo_nodes()
     first = route_edge(nodes[0], nodes[3], nodes)

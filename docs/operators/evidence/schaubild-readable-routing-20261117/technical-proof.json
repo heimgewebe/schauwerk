@@ -1,0 +1,37 @@
+{
+  "base_revision": "6f88d8d1888049db4eaed733b6a0b85f39348d0d",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/smart_router.py": "8142f076ac5c955d5ea7908e1ab8b7f4a931d0a691423435f40902f76eed6960",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "dfcd55e0c25c68c1c1f345194508db630bf4274c65870157cb2874b57ff1494c",
+    "tests/visual/test_native_canvas_smart_integration.py": "3026b9f20c13c881cb85f0db885b97bf3c78ced9aa0f2cb355fc6d2d8d64e2c9"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "physical_ipad_safari_acceptance",
+    "production_deployed",
+    "consumer_runtime_integrated"
+  ],
+  "evidence_digest": "55a51da6685c24ee79a9ab261879ff915fda0a3766f972fdd4f60185b28cacec",
+  "purpose": "Limit excessive detours in crowded Sinn map without weakening normal collision avoidance",
+  "schema_version": "schauwerk-schaubild-readable-router-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/smart_router.py": "0aa03f56e210549bbe7affe5a00cc95147e17028cce9e1e3611e105baaa86d1c",
+    "src/schauwerk/visual/native_canvas_smart_router.py": "c9157513904b77c67b71665128627596335e4804ea5aff53151da789e1b63e3e",
+    "tests/visual/test_native_canvas_smart_integration.py": "cb249f17745ef8e8af05a8b03138cc1b2dce614bde011c9f53cd9ae4b20158c8"
+  },
+  "source_mode": "source-code-successor",
+  "source_pr": 258,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "existing_crossing_and_port_regression": "passed",
+    "github_full_ci": "pending_exact_head",
+    "local_canvas_tests_passed": 62,
+    "python_javascript_parity": "passed",
+    "ruff": "passed",
+    "sinn_approximate_fixture_length_after": 503.17,
+    "sinn_approximate_fixture_length_before": 694.06
+  },
+  "visual_acceptance": "not_inherited"
+}
