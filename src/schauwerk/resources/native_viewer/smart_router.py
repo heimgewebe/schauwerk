@@ -4,6 +4,8 @@
 SMART_ROUTER_JS = r"""// Bounded Canvas router. Mirror of native_canvas_smart_router.py.
 // Source input is SVG-coordinate node rectangles; no DOM or document mutation.
 const PORTS = ["right", "left", "bottom", "top"];
+// Relax crossings only for an expensive original detour, preserving short clear paths.
+const CROSSING_PENALTY = 55, HOP_PENALTY = 8, BEND_PENALTY = 18;
 const NORMALS = { right: [1, 0], left: [-1, 0], bottom: [0, 1], top: [0, -1] };
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const add = (a, b, scale = 1) => [a[0] + scale * b[0], a[1] + scale * b[1]];
@@ -197,6 +199,10 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (source.id === target.id) return null;
   const fromSide = options.fromSide ?? null, toSide = options.toSide ?? null;
   const priorSegments = crossingSegments(options.priorRoutes, source.id, target.id);
+  const readabilityRetry = options._readabilityRetry === true;
+  const crossingPenalty = readabilityRetry ? CROSSING_PENALTY : 100;
+  const hopPenalty = readabilityRetry ? HOP_PENALTY : 0;
+  const bendPenalty = readabilityRetry ? BEND_PENALTY : 3;
   if (fromSide !== null && !PORTS.includes(fromSide)) return null;
   if (toSide !== null && !PORTS.includes(toSide)) return null;
   const lane = Number(options.lane ?? 0);
@@ -332,9 +338,9 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
     for (let i = 0; i < vertices.length; i++) {
       for (let j = i + 1; j < vertices.length; j++) {
         if (clear(vertices[i], vertices[j], obstacles)) {
-          let length = distance(vertices[i], vertices[j]);
+          let length = distance(vertices[i], vertices[j]) + hopPenalty;
           for (const [a,b] of priorSegments) {
-            if (strictSegmentCross(vertices[i], vertices[j], a, b)) length += 100;
+            if (strictSegmentCross(vertices[i], vertices[j], a, b)) length += crossingPenalty;
           }
           graph[i].push([j, length]);
           graph[j].push([i, length]);
@@ -373,7 +379,8 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
           if (strictSegmentCross(poly[i-1],poly[i],a,b)) crossingCount++;
         }
       }
-      const score = length + turns * 3 + crossingCount * 100;
+      const score = length + turns * bendPenalty + crossingCount * crossingPenalty +
+                    Math.max(0, poly.length - 3) * hopPenalty;
       if (!best || score < best.score ||
           (score === best.score && (si < best.si || (si === best.si && ti < best.ti))))
         best = { score, si, ti, ss, ts, poly };
@@ -386,6 +393,23 @@ export function smartEdgeGeometry(source, target, nodes, options = {}) {
   if (!best && unique.length !== allBoxes.length)
     best = bestRoute(buildGraph(allBoxes));
   if (!best) return retryPhysical();
+  if (!readabilityRetry && priorSegments.length) {
+    const primary = best.poly;
+    let length = 0;
+    for (let i = 1; i < primary.length; i++)
+      length += distance(primary[i - 1], primary[i]);
+    const floor = Math.min(...candidates.map(c => distance(c[4], c[7])));
+    if (length > Math.max(floor * 1.28, floor + 120)) {
+      const alt = smartEdgeGeometry(source, target, nodes,
+        {...options, _readabilityRetry: true});
+      if (alt?.collisionFree && alt.points.length > 1) {
+        let altLength = 0;
+        for (let i = 1; i < alt.points.length; i++)
+          altLength += distance(alt.points[i - 1], alt.points[i]);
+        if (altLength + 110 < length) return alt;
+      }
+    }
+  }
   const { poly, ss, ts } = best;
   const label = labelPosition(poly);
   return {
