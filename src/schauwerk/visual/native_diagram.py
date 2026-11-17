@@ -5691,7 +5691,17 @@ def render_native_diagram(
     # Long-distance feedback still keeps its own footer lane.
     local_knowledge_feedback_ids: set[str] = set()
     if intent == "knowledge_map" and regions:
+        # One physical row-gap lane cannot keep parallel/reciprocal returns
+        # and all their distinct labels apart. Keep those endpoint pairs on
+        # their established, id-stable footer slots instead.
+        pair_counts: dict[tuple[str, str], int] = defaultdict(int)
+        for peer in feedback_edges:
+            pair = tuple(sorted((str(peer["from"]), str(peer["to"]))))
+            pair_counts[pair] += 1
         for edge in feedback_edges:
+            pair = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+            if pair_counts[pair] > 1:
+                continue
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
             row_distance = abs(source[1] - target[1])

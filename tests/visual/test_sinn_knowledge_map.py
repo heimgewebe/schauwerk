@@ -173,3 +173,37 @@ def test_sinn_relation_labels_do_not_overlap_each_other() -> None:
     # A stroke cutout does not protect an earlier label from a later
     # label background (originally e09 "stärkt" vs e13 "ermöglicht").
     assert overlaps == []
+
+
+def test_sinn_parallel_adjacent_feedback_keeps_distinct_labels() -> None:
+    """Crowded local return corridor must fall back to separate footer lanes."""
+    for source_id, target_id in (
+        ("handeln", "wirksamkeit"), ("wirksamkeit", "handeln")
+    ):
+        model = _sinn_model()
+        model["edges"].append({
+            "id": "e15",
+            "from": source_id,
+            "to": target_id,
+            "label": "Eine andere lange Rückkopplung",
+            "kind": "feedback",
+        })
+        root = ET.fromstring(render_native_diagram(model))
+        labels = []
+        for edge_id in ("e13", "e15"):
+            edge = _edges(root)[edge_id]
+            rect = edge.find(SVG + "rect")
+            path = edge.find(SVG + "path")
+            assert rect is not None and path is not None
+            x, y, width, height = (
+                float(rect.get(attr, "0"))
+                for attr in ("x", "y", "width", "height")
+            )
+            labels.append((x, y, x + width, y + height))
+            assert path.get("d", "").count(" L ") >= 5, edge_id
+        left, right = labels
+        assert not (
+            left[0] < right[2] and right[0] < left[2]
+            and left[1] < right[3] and right[1] < left[3]
+        ), labels
+        assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
