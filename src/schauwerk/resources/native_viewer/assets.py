@@ -519,6 +519,10 @@ button:focus-visible {
   will-change: transform;
 }
 .native-diagram { display: block; max-width: none; max-height: none; }
+.native-diagram.is-compact-overview [data-source-kind="group"] > rect,
+.native-diagram.is-compact-overview [data-source-kind="group"] > text {
+  cursor: zoom-in;
+}
 .native-diagram [data-source-kind="node"] { cursor: grab; outline: none; }
 .native-diagram [data-source-kind="node"].is-dragging { cursor: grabbing; }
 .native-diagram [data-source-kind="node"].is-selected > rect {
@@ -1261,6 +1265,9 @@ let pointerFitPending = false;
 let bulkEdgeUpdate = false;
 let pendingSmartRouteGeneration = 0;
 const DRAG_THRESHOLD_PX = 4;
+const COMPACT_OVERVIEW_SCALE = 0.9;
+const READABLE_DETAIL_SCALE = 1.1;
+const knowledgeMapOverview = !documentMode && svg.dataset.intent === "knowledge_map";
 // Preserve responsive pointer input in dense documents. Certified routes are
 // recomputed by the authoritative native renderer after every completed drag.
 const MAX_SYNC_SMART_DRAG_NODES = 32;
@@ -1552,6 +1559,15 @@ function applyView() {
   }
   zoomValue.value = `${Math.round(view.scale * 100)} %`;
   zoomValue.textContent = zoomValue.value;
+  if (knowledgeMapOverview) {
+    svg.classList.toggle("is-compact-overview", view.scale < COMPACT_OVERVIEW_SCALE);
+    if (fitButton instanceof HTMLButtonElement) {
+      fitButton.textContent = autoFitActive ? "Einpassen" : "Übersicht";
+      fitButton.title = autoFitActive
+        ? "Gesamtes Schaubild einpassen"
+        : "Zur gesamten Schaubild-Übersicht zurückkehren";
+    }
+  }
   if (handleLayer && gesture?.kind !== "connection") refreshConnectionHandles();
 }
 
@@ -2385,7 +2401,7 @@ function updateRelationFocus() {
       : "Gesamtes Schaubild einpassen";
   }
 }
-function navigateToNode(sourceId) {
+function navigateToNode(sourceId, { minimumScale = 0.9 } = {}) {
   const node = nodes.get(sourceId);
   let bounds;
   try { bounds = node && nodeBoundsInSvg(node); }
@@ -2399,7 +2415,7 @@ function navigateToNode(sourceId) {
   const width = Math.max(1, bounds.maxX - bounds.minX);
   const height = Math.max(1, bounds.maxY - bounds.minY);
   const scale = Math.max(Number.MIN_VALUE, Math.min(
-    MAX_SCALE, Math.max(view.scale, 0.9),
+    MAX_SCALE, Math.max(view.scale, minimumScale),
     usableWidth / (width + 24), usableHeight / (height + 24),
   ));
   const centerX = (bounds.minX + bounds.maxX) / 2 - svg.viewBox.baseVal.x;
@@ -2413,6 +2429,60 @@ function navigateToNode(sourceId) {
   autoFitActive = false;
   applyView();
   return true;
+}
+
+// Only the compact representation overview gets direct detail navigation.
+// Fitting a tall column *as a whole* would leave its text tiny: fit its
+// width, then reveal the beginning of the region so more cards are reachable
+// with the existing pan and pinch gestures. No node or source is relocated.
+function navigateToGroup(sourceId) {
+  if (!knowledgeMapOverview) return false;
+  const group = [...svg.querySelectorAll('[data-source-kind="group"]')]
+    .find(candidate => candidate.dataset.sourceId === sourceId);
+  let bounds;
+  try { bounds = group && nodeBoundsInSvg(group); }
+  catch (_) { return false; }
+  if (!bounds || ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
+      .every(Number.isFinite)) return false;
+  syncEmbeddedHostOverlays();
+  const padding = embeddedNativeViewer
+    ? embeddedViewportFitPadding() : standaloneViewportFitPadding();
+  const usableWidth = Math.max(1, viewport.clientWidth - padding.left - padding.right);
+  const usableHeight = Math.max(1, viewport.clientHeight - padding.top - padding.bottom);
+  const width = Math.max(1, bounds.maxX - bounds.minX);
+  const height = Math.max(1, bounds.maxY - bounds.minY);
+  const scale = Math.max(Number.MIN_VALUE, Math.min(
+    MAX_SCALE, Math.max(view.scale, Math.min(READABLE_DETAIL_SCALE, usableWidth / (width + 24))),
+  ));
+  const centerX = (bounds.minX + bounds.maxX) / 2 - svg.viewBox.baseVal.x;
+  const centerY = (
+    bounds.minY + Math.min(height / 2, Math.max(1, usableHeight / 2 - 12) / scale)
+    - svg.viewBox.baseVal.y
+  );
+  view = {
+    x: padding.left + usableWidth / 2 - centerX * scale,
+    y: padding.top + usableHeight / 2 - centerY * scale,
+    scale,
+  };
+  fitScaleFloor = Math.min(fitScaleFloor, scale);
+  autoFitActive = false;
+  applyView();
+  return true;
+}
+
+function compactOverviewTap(pointerType) {
+  return knowledgeMapOverview &&
+    (pointerType === "touch" || pointerType === "pen" || pointerType === "mouse") &&
+    view.scale < COMPACT_OVERVIEW_SCALE;
+}
+
+function focusOverviewTarget({ nodeId = null, groupId = null } = {}) {
+  if (!knowledgeMapOverview) return false;
+  const success = nodeId
+    ? navigateToNode(nodeId, { minimumScale: READABLE_DETAIL_SCALE })
+    : groupId ? navigateToGroup(groupId) : false;
+  if (success) setStatus(nodeId ? "Element vergrößert" : "Bereich vergrößert");
+  return success;
 }
 // The view/search dropdown floats above the SVG and is not viewport padding.
 // When it covers a selected match, dismiss only the dropdown; never move the
@@ -2930,8 +3000,24 @@ for (const node of svg.querySelectorAll('[data-source-kind="node"]')) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectNode(sourceId);
+      if (knowledgeMapOverview && view.scale < COMPACT_OVERVIEW_SCALE)
+        focusOverviewTarget({ nodeId: sourceId });
     }
   });
+}
+if (knowledgeMapOverview) {
+  for (const group of svg.querySelectorAll('[data-source-kind="group"]')) {
+    if (!(group instanceof SVGGElement)) continue;
+    group.setAttribute("role", "button");
+    group.setAttribute("tabindex", "0");
+    group.setAttribute("aria-label",
+      "Bereich vergrößern: " + (group.querySelector("title")?.textContent || group.dataset.sourceId));
+    group.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      focusOverviewTarget({ groupId: group.dataset.sourceId });
+    });
+  }
 }
 
 const edgeById = new Map(
@@ -3283,6 +3369,10 @@ viewport.addEventListener("pointerdown", (event) => {
     ? event.target.closest("[data-connection-handle]") : null;
   const node = handle ? null : nodeFromTarget(event.target);
   const edge = node || handle ? null : edgeFromTarget(event.target);
+  const group = !node && !edge && !handle && event.target instanceof Element
+    ? event.target.closest('[data-source-kind="group"]') : null;
+  const tapGroupId = group instanceof SVGGElement && svg.contains(group)
+    ? group.dataset.sourceId : null;
   activePointers.set(event.pointerId, {
     ...point,
     clientX: event.clientX,
@@ -3304,6 +3394,8 @@ viewport.addEventListener("pointerdown", (event) => {
     gesture = {
       kind: "pan",
       pointerId: event.pointerId,
+      tapNodeId: node?.dataset.sourceId || null,
+      tapGroupId,
       startX: event.clientX,
       startY: event.clientY,
       startView: { ...view },
@@ -3402,6 +3494,7 @@ viewport.addEventListener("pointerdown", (event) => {
   gesture = {
     kind: "pan",
     pointerId: event.pointerId,
+    tapGroupId,
     startX: event.clientX,
     startY: event.clientY,
     startView: { ...view },
@@ -3487,6 +3580,10 @@ function finishPointer(event) {
     finishConnectionGesture(endedGesture, event);
   } else if (endedGesture?.kind === "drag" && endedGesture.pointerId === event.pointerId) {
     nodes.get(endedGesture.sourceId)?.classList.remove("is-dragging");
+    if (event.type === "pointerup" && !endedGesture.moved &&
+        activePointers.size === 0 && compactOverviewTap(event.pointerType) &&
+        focusOverviewTarget({ nodeId: endedGesture.sourceId }))
+      pointerChangedView = true;
     if (event.type === "pointercancel" && endedGesture.moved) {
       rollbackDragNode(endedGesture);
       pointerMovedNode = false;
@@ -3515,6 +3612,13 @@ function finishPointer(event) {
     }
     gesture = null;
   } else if (endedGesture?.kind === "pan" && endedGesture.pointerId === event.pointerId) {
+    if (event.type === "pointerup" && !endedGesture.moved &&
+        activePointers.size === 0 && compactOverviewTap(event.pointerType) &&
+        focusOverviewTarget({
+          nodeId: endedGesture.tapNodeId,
+          groupId: endedGesture.tapGroupId,
+        }))
+      pointerChangedView = true;
     gesture = null;
   } else if (endedGesture?.kind === "pinch" && activePointers.size < 2) {
     const remaining = activePointers.entries().next();
@@ -3687,6 +3791,9 @@ if (documentEditorHosted) {
 } else if (documentMode) {
   if (interactionHint) interactionHint.textContent = "Verschieben · Zoomen · Auswählen";
   if (authorityHint) authorityHint.textContent = "Bearbeiten in Schaubild";
+}
+if (knowledgeMapOverview && interactionHint) {
+  interactionHint.textContent = "Antippen: Detail · Ziehen: Verschieben · Übersicht: zurück";
 }
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));
