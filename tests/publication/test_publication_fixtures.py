@@ -30,6 +30,62 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 }
 
 
+def _tablet_focus_source_successor_proof() -> dict:
+    """Bind the new viewer-only tap navigation without editing prior receipts."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-label-visibility-20261116"
+        / "technical-proof-tablet-focus-20261118.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == (
+        "schauwerk-schaubild-tablet-focus-source-successor.v1"
+    )
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["base_revision"] == "bf69508f9f660efcc4c8f436277cd00b25b46018"
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+
+    predecessor = proof["predecessor_technical_proof"]
+    assert predecessor["path"] == (
+        "docs/operators/evidence/schaubild-label-visibility-20261116/"
+        "technical-proof-dynamic-clip-20261117.json"
+    )
+    predecessor_bytes = (ROOT / predecessor["path"]).read_bytes()
+    assert hashlib.sha256(predecessor_bytes).hexdigest() == predecessor["sha256"]
+    previous = json.loads(predecessor_bytes)
+    assert previous["evidence_digest"] == predecessor["evidence_digest"]
+    assert previous["evidence_digest"] == digest_mapping(previous, "evidence_digest")
+    assert proof["base_source_bindings"] == {
+        "src/schauwerk/resources/native_viewer/assets.py":
+            previous["source_bindings"]["src/schauwerk/resources/native_viewer/assets.py"],
+    }
+    assert set(proof["source_bindings"]) == {
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_touch_focus_browser.py",
+    }
+    for name, digest in proof["source_bindings"].items():
+        if name in proof["base_source_bindings"]:
+            assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert proof["validation"]["chrome_touch_focus_red_before"] == "reproduced"
+    assert proof["validation"]["chrome_touch_focus_green_after"] == "passed"
+    assert proof["validation"]["prior_native_viewer_browser_tests"] == "passed"
+    assert proof["validation"]["native_offline_html_tests"] == "passed"
+    assert proof["validation"]["production_webkit"] == "not_tested"
+    assert "physical_ipad_safari_acceptance" in proof["does_not_establish"]
+    return proof
+
+
+def test_schaubild_tablet_focus_is_a_new_revision_not_inherited_acceptance() -> None:
+    proof = _tablet_focus_source_successor_proof()
+    assert proof["validation"]["sinn_knowledge_map_tests"] == "passed"
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    assert "production_deployed" in proof["does_not_establish"]
+
+
 def _dynamic_label_clip_source_successor_proof() -> dict:
     """Bind the exact live-drag revision without changing historical acceptance."""
     proof_path = (
@@ -60,7 +116,10 @@ def _dynamic_label_clip_source_successor_proof() -> dict:
     }
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        expected = _tablet_focus_source_successor_proof()["source_bindings"].get(
+            name, digest
+        )
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     assert proof["validation"]["chrome_drag_stale_clip_red_before"] == "reproduced"
     assert proof["validation"]["chrome_drag_live_clip_and_pinch_rollback_after"] == "passed"
     assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
@@ -68,8 +127,11 @@ def _dynamic_label_clip_source_successor_proof() -> dict:
 
 
 def _current_live_viewer_sha(name: str, previous_sha256: str) -> str:
-    """Only the two explicitly superseded viewer files get newer byte identities."""
-    return _dynamic_label_clip_source_successor_proof()["source_bindings"].get(
+    """Map only immutable, explicitly chained source revisions to live bytes."""
+    previous_sha256 = _dynamic_label_clip_source_successor_proof()[
+        "source_bindings"
+    ].get(name, previous_sha256)
+    return _tablet_focus_source_successor_proof()["source_bindings"].get(
         name, previous_sha256
     )
 
@@ -104,6 +166,7 @@ def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
         "_focus_fit_edge_source_successor_proof",
         "_edge_label_visibility_successor_proof",
         "_dynamic_label_clip_source_successor_proof",
+        "_tablet_focus_source_successor_proof",
     ):
         monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
 
@@ -15381,6 +15444,7 @@ def test_schaubild_full_editing_source_supersession_is_technically_bound() -> No
         **_edge_label_visibility_successor_proof()["source_bindings"],
         **_readable_router_source_proof()["source_bindings"],
         **_dynamic_label_clip_source_successor_proof()["source_bindings"],
+        **_tablet_focus_source_successor_proof()["source_bindings"],
     }
     for name, old_digest in technical["source_bindings"].items():
         if name in _CURRENT_AI_HANDOFF_SOURCES:

@@ -1,0 +1,37 @@
+{
+  "schema_version": "schauwerk-schaubild-tablet-focus-source-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "base_revision": "bf69508f9f660efcc4c8f436277cd00b25b46018",
+  "source_mode": "source-code-successor",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "predecessor_technical_proof": {
+    "path": "docs/operators/evidence/schaubild-label-visibility-20261116/technical-proof-dynamic-clip-20261117.json",
+    "sha256": "72606260bd303fc874b830b66c6aba515e764c1e6707d4b41346a78efa7e2da6",
+    "evidence_digest": "89b4dcbd1f94270f1f8fd1e2fd24c8f35160e7b114b3ae6d89f541c478eb85eb"
+  },
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "ef2370f8225fcee66d08906598cdc370131760240b6835b53b06749148a414ac"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "f14d88a68e32bc9b92c29fb4807238b48b05edbe273686ed78898d6773946e5b",
+    "tests/visual/test_native_viewer_touch_focus_browser.py": "f3051ceeb518979e55fee9b30260551ec2b34de9424d8e44787638e5a363fb16"
+  },
+  "validation": {
+    "chrome_touch_focus_red_before": "reproduced",
+    "chrome_touch_focus_green_after": "passed",
+    "prior_native_viewer_browser_tests": "passed",
+    "native_offline_html_tests": "passed",
+    "sinn_knowledge_map_tests": "passed",
+    "ruff": "passed",
+    "full_ci": "pending_exact_head",
+    "production_webkit": "not_tested"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "8de8f82310a035da549753ecdb1701ace3b89b6c9ee02e759e599bdcd79d90df"
+}
