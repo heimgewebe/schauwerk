@@ -1,0 +1,31 @@
+{
+  "schema_version": "schauwerk-schaubild-dynamic-label-clip-source-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 259,
+  "base_revision": "791c2cf27c4c75139227fce282143a337cc3003f",
+  "source_mode": "source-code-successor",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "7b0121d4859f92e6d1d5b235466b568781437eec4835c0dfa48305d1a96d5542",
+    "tests/visual/test_native_viewer_browser.py": "b82afb1b879f5f487e5ac0d21eb2ff199b802a9b85c7d7f3baae44e5246a523e"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "ef2370f8225fcee66d08906598cdc370131760240b6835b53b06749148a414ac",
+    "tests/visual/test_native_viewer_browser.py": "5d4471e9f3429818a3480e1a077d600baf2349606925caaecbc73732bc20f368"
+  },
+  "validation": {
+    "chrome_drag_stale_clip_red_before": "reproduced",
+    "chrome_drag_live_clip_and_pinch_rollback_after": "passed",
+    "sinn_and_native_diagram_goldens": "passed",
+    "ruff": "passed",
+    "full_ci": "pending_exact_head"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "89b4dcbd1f94270f1f8fd1e2fd24c8f35160e7b114b3ae6d89f541c478eb85eb"
+}

@@ -2197,7 +2197,15 @@ def _edge_geometry(
                 f"L {end_x:.1f} {corridor_y:.1f} "
                 f"L {end_x:.1f} {end_y:.1f}"
             )
-            return path, (start_x + end_x) / 2, corridor_y, route
+            # Source-biased placement keeps a short return legible next to
+            # same-column labels (Sinn: "stärkt" versus "ermöglicht").
+            # Its box remains over the actual horizontal feedback corridor.
+            label_x = (
+                (3 * start_x + end_x) / 4
+                if intent == "knowledge_map"
+                else (start_x + end_x) / 2
+            )
+            return path, label_x, corridor_y, route
 
         # Same-row or narrow-gap feedback leaves on the outer side of both
         # cards, then travels below the complete card field. For the historical
@@ -3109,7 +3117,9 @@ def _render_edge(
             max(label_x, half_label_width + 8),
             canvas_width - half_label_width - 8,
         )
-    if intent == "process" and final_label_override is not None:
+    if final_label_override is not None and (
+        intent == "process" or (intent == "knowledge_map" and kind == "feedback")
+    ):
         # The rendered route is immutable; move only a demonstrably blocked
         # outer-gutter label after checking every other physical SVG stroke.
         label_x, label_y = final_label_override
@@ -3359,7 +3369,10 @@ def _render_node(
 
 
 def render_native_diagram(
-    value: Mapping[str, Any], *, _process_group_gap_extra: int = 0
+    value: Mapping[str, Any],
+    *,
+    _process_group_gap_extra: int = 0,
+    _knowledge_feedback_footer_ids: frozenset[str] = frozenset(),
 ) -> str:
     """Validate representation input and return one deterministic, standalone SVG."""
 
@@ -5677,7 +5690,46 @@ def render_native_diagram(
             str(edge["id"]),
         ),
     )
-    feedback_slots = {str(edge["id"]): slot for slot, edge in enumerate(feedback_edges)}
+    # Nearby knowledge-map returns can use the empty inter-row corridor.
+    # Long-distance feedback still keeps its own footer lane.
+    local_knowledge_feedback_ids: set[str] = set()
+    if intent == "knowledge_map" and regions:
+        # One physical row-gap lane cannot keep parallel/reciprocal returns
+        # and all their distinct labels apart. Keep those endpoint pairs on
+        # their established, id-stable footer slots instead.
+        pair_counts: dict[tuple[str, str], int] = defaultdict(int)
+        for peer in feedback_edges:
+            pair = tuple(sorted((str(peer["from"]), str(peer["to"]))))
+            pair_counts[pair] += 1
+        for edge in feedback_edges:
+            pair = tuple(sorted((str(edge["from"]), str(edge["to"]))))
+            if (
+                pair_counts[pair] > 1
+                or str(edge["id"]) in _knowledge_feedback_footer_ids
+            ):
+                continue
+            source = positions[str(edge["from"])]
+            target = positions[str(edge["to"])]
+            row_distance = abs(source[1] - target[1])
+            label_height = _edge_label_metrics(edge, positions, intent).height
+            if (
+                row_distance > 0
+                # A long cross-group span can conceal intervening relations.
+                # Only neighboring group columns get a local return.
+                and 0 < abs(source[0] - target[0]) <= (
+                    _GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP + 16
+                )
+                and row_distance <= _NODE_HEIGHT + non_process_row_gap
+                and row_distance - _NODE_HEIGHT >= label_height + 12
+            ):
+                local_knowledge_feedback_ids.add(str(edge["id"]))
+    footer_feedback_edges = [
+        edge for edge in feedback_edges
+        if str(edge["id"]) not in local_knowledge_feedback_ids
+    ]
+    feedback_slots = {
+        str(edge["id"]): slot for slot, edge in enumerate(footer_feedback_edges)
+    }
     feedback_footer_ids: set[str] = set()
     feedback_path_y: dict[str, float | tuple[float, float]] = {}
     feedback_path_footer_ids: set[str] = set()
@@ -6366,7 +6418,7 @@ def render_native_diagram(
                 feedback_path_footer_ids.add(edge_id)
             elif collision:
                 feedback_footer_ids.add(edge_id)
-    feedback_count = len(feedback_edges)
+    feedback_count = len(footer_feedback_edges)
     feedback_base_bottom = max(y + _NODE_HEIGHT for _, y in positions.values())
     if feedback_count:
         # A single feedback relation keeps the established footer/corridor
@@ -6395,7 +6447,7 @@ def render_native_diagram(
                 )
         feedback_heights = [
             _edge_label_metrics(edge, positions, intent).height
-            for edge in feedback_edges
+            for edge in footer_feedback_edges
         ]
         if feedback_count > 1:
             height = max(
@@ -9443,6 +9495,144 @@ def render_native_diagram(
                 planned_edge_lines[edge_id] = fragment
                 label_layout[edge_id] = candidate_path, candidate_box
                 break
+
+    if intent == "knowledge_map" and len(paint_edges) > 1:
+        # SVG is painter-ordered: later strokes could cross earlier labels.
+        # Keep semantic edge groups intact, but clip physical strokes below
+        # the final union of all edge-label backgrounds.
+        import xml.etree.ElementTree as ET
+
+        def label_box(fragment: list[str]) -> tuple[float, float, float, float]:
+            group = ET.fromstring("\n".join(fragment))
+            label = next(
+                child for child in group
+                if child.tag.endswith("rect") and child.get("rx") == "9"
+            )
+            return tuple(
+                float(label.get(attribute, "0"))
+                for attribute in ("x", "y", "width", "height")
+            )
+
+        # A shortened feedback return can share its row gap with a vertical
+        # relation label. Move only the blocked return label along its own
+        # unchanged horizontal path; prefer the end nearest its source.
+        for edge in feedback_edges:
+            edge_id = str(edge["id"])
+            if edge_id not in local_knowledge_feedback_ids:
+                continue
+            own_x, own_y, own_width, own_height = label_box(
+                planned_edge_lines[edge_id]
+            )
+            peers = [
+                label_box(fragment)
+                for other_id, fragment in planned_edge_lines.items()
+                if other_id != edge_id
+            ]
+            def overlaps(left: float) -> bool:
+                return any(
+                    left < x + width + 4 and left + own_width + 4 > x
+                    and own_y < y + height + 4 and own_y + own_height + 4 > y
+                    for x, y, width, height in peers
+                )
+            if not overlaps(own_x):
+                continue
+            source_port = positions[str(edge["from"])][0] + _NODE_WIDTH / 2
+            target_port = positions[str(edge["to"])][0] + _NODE_WIDTH / 2
+            low = math.ceil(min(source_port, target_port) + 8)
+            high = math.floor(max(source_port, target_port) - own_width - 8)
+            if low > high:
+                # No usable local span: redo the complete footer allocation.
+                # The growing set guarantees termination after <= feedback edges.
+                return render_native_diagram(
+                    value,
+                    _knowledge_feedback_footer_ids=(
+                        _knowledge_feedback_footer_ids | {edge_id}
+                    ),
+                )
+            candidates = list(range(low, high + 1, 8))
+            if candidates[-1] != high:
+                candidates.append(high)
+            if source_port > target_port:
+                candidates.reverse()
+            for left in candidates:
+                if overlaps(float(left)):
+                    continue
+                fragment = render_planned_edge(
+                    edge,
+                    label_position_override=(
+                        left + own_width / 2, own_y + own_height / 2,
+                    ),
+                )
+                if abs(label_box(fragment)[0] - left) <= 0.05:
+                    planned_edge_lines[edge_id] = fragment
+                    break
+            else:
+                # Every nearby placement collides: only the established
+                # long-return footer has a guaranteed separate label lane.
+                # Recompute its slots, canvas extent and paths together.
+                return render_native_diagram(
+                    value,
+                    _knowledge_feedback_footer_ids=(
+                        _knowledge_feedback_footer_ids | {edge_id}
+                    ),
+                )
+
+        label_clearances: list[tuple[float, float, float, float]] = []
+        for fragment in planned_edge_lines.values():
+            group = ET.fromstring("\n".join(fragment))
+            label = next(
+                child for child in group
+                if child.tag.endswith("rect") and child.get("rx") == "9"
+            )
+            x, y, box_width, box_height = (
+                float(label.get(attribute, "0"))
+                for attribute in ("x", "y", "width", "height")
+            )
+            label_clearances.append((
+                max(0.0, x - 2.0), max(0.0, y - 2.0),
+                min(float(width), x + box_width + 2.0),
+                min(float(height), y + box_height + 2.0),
+            ))
+        # Even-odd holes must not cancel in overlapping labels.
+        merged: list[tuple[float, float, float, float]] = []
+        for box in sorted(label_clearances):
+            current = box
+            index = 0
+            while index < len(merged):
+                other = merged[index]
+                if (
+                    current[0] < other[2] and current[2] > other[0]
+                    and current[1] < other[3] and current[3] > other[1]
+                ):
+                    current = (
+                        min(current[0], other[0]), min(current[1], other[1]),
+                        max(current[2], other[2]), max(current[3], other[3]),
+                    )
+                    merged.pop(index)
+                    index = 0
+                else:
+                    index += 1
+            merged.append(current)
+        holes = " ".join(
+            f"M {left:.1f} {top:.1f} H {right:.1f} V {bottom:.1f} "
+            f"H {left:.1f} Z"
+            for left, top, right, bottom in merged
+        )
+        protection_id = "native-clip-edge-label-protection"
+        lines.append(
+            f'<clipPath id="{protection_id}" clipPathUnits="userSpaceOnUse">'
+            f'<path clip-rule="evenodd" d="M 0 0 H {width} V {height} '
+            f'H 0 Z {holes}"/></clipPath>'
+        )
+        for fragment in planned_edge_lines.values():
+            for index, line in enumerate(fragment):
+                if line.startswith('<path d="') and 'fill="none"' in line:
+                    fragment[index] = line.replace(
+                        ' fill="none"',
+                        f' clip-path="url(#{protection_id})" fill="none"',
+                        1,
+                    )
+                    break
 
     for edge in paint_edges:
         lines.extend(planned_edge_lines[str(edge["id"])])

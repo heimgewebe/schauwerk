@@ -1692,6 +1692,64 @@ function addIncidentEdge(sourceId, edgeId) {
   incidentEdges.get(sourceId).add(edgeId);
 }
 
+const sharedLabelCutout = svg.querySelector(
+  "#native-clip-edge-label-protection > path",
+);
+function refreshSharedLabelCutout() {
+  if (!(sharedLabelCutout instanceof SVGPathElement)) return;
+  const frame = svg.viewBox.baseVal;
+  const left = frame.x, top = frame.y;
+  const right = left + frame.width, bottom = top + frame.height;
+  if (![left, top, right, bottom].every(Number.isFinite) ||
+      !(right > left && bottom > top)) return;
+
+  // Use the actual transformed label rectangles, not their initial source
+  // positions: moving a node changes both routes and label positions.
+  const boxes = [];
+  for (const { labelRect } of edges.values()) {
+    if (!(labelRect instanceof SVGRectElement)) continue;
+    let bounds;
+    try { bounds = nodeBoundsInSvg(labelRect); }
+    catch (_) { return; }
+    if (!bounds || ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY]
+        .every(Number.isFinite)) return;
+    const rect = [
+      Math.max(left, bounds.minX - 2), Math.max(top, bounds.minY - 2),
+      Math.min(right, bounds.maxX + 2), Math.min(bottom, bounds.maxY + 2),
+    ];
+    if (rect[2] > rect[0] && rect[3] > rect[1]) boxes.push(rect);
+  }
+
+  // The SVG clip uses even-odd holes. Overlapping label holes must be
+  // merged before painting, otherwise their intersection becomes visible.
+  boxes.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3]);
+  const merged = [];
+  for (let box of boxes) {
+    let index = 0;
+    while (index < merged.length) {
+      const peer = merged[index];
+      if (box[0] < peer[2] && box[2] > peer[0] &&
+          box[1] < peer[3] && box[3] > peer[1]) {
+        box = [
+          Math.min(box[0], peer[0]), Math.min(box[1], peer[1]),
+          Math.max(box[2], peer[2]), Math.max(box[3], peer[3]),
+        ];
+        merged.splice(index, 1);
+        index = 0;
+      } else index += 1;
+    }
+    merged.push(box);
+  }
+  const fmt = n => n.toFixed(1);
+  const holes = merged.map(([x0, y0, x1, y1]) =>
+    `M ${fmt(x0)} ${fmt(y0)} H ${fmt(x1)} V ${fmt(y1)} H ${fmt(x0)} Z`
+  ).join(" ");
+  const geometry = `M ${fmt(left)} ${fmt(top)} H ${fmt(right)} ` +
+    `V ${fmt(bottom)} H ${fmt(left)} Z ${holes}`;
+  if (sharedLabelCutout.getAttribute("d") !== geometry)
+    sharedLabelCutout.setAttribute("d", geometry);
+}
+
 function placeLiveLabel(edgeState, x, y) {
   const transform = "translate(" +
     (x - edgeState.baseLabelX) + " " + (y - edgeState.baseLabelY) + ")";
@@ -1730,7 +1788,10 @@ function placeLiveEdgeConflict(edgeState, conflict) {
   }
 }
 function relocateLiveEdgeLabels() {
-  if (!documentMode) return;
+  if (!documentMode) {
+    refreshSharedLabelCutout();
+    return;
+  }
   const padding = 8;
   const blockers = nodeModelsAtLiveCoordinates()
     .filter(node => node.type !== "group")
