@@ -1770,7 +1770,8 @@ function placeLiveLabel(edgeState, x, y) {
   const transform = "translate(" +
     (x - edgeState.baseLabelX) + " " + (y - edgeState.baseLabelY) + ")";
   for (const element of edgeState.labelElements) element.setAttribute("transform", transform);
-  edgeState.clipRect?.setAttribute("transform", transform);
+  // SVG clipPath geometry already follows the transformed label's user space.
+  // Translating the clip rectangle too crops the moved text a second time.
 }
 function resetEdgeLabel(edgeState) {
   edgeState.naturalLabelX = edgeState.baseLabelX;
