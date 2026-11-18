@@ -207,3 +207,37 @@ def test_sinn_parallel_adjacent_feedback_keeps_distinct_labels() -> None:
             and left[1] < right[3] and right[1] < left[3]
         ), labels
         assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_sinn_unplaceable_local_feedback_falls_back_to_footer() -> None:
+    """If every local label slot hits peers, use a real outer return lane."""
+    model = _sinn_model()
+    model["edges"].append({
+        "id": "e15",
+        "from": "erfahrung",
+        "to": "kohaerenz",
+        "label": "Eine andere lange Rückkopplung",
+        "kind": "feedback",
+    })
+    root = ET.fromstring(render_native_diagram(model))
+    boxes = {}
+    for edge_id, edge in _edges(root).items():
+        rect = edge.find(SVG + "rect")
+        assert rect is not None
+        x, y, width, height = (
+            float(rect.get(key, "0"))
+            for key in ("x", "y", "width", "height")
+        )
+        boxes[edge_id] = (x, y, x + width, y + height)
+    for left_id, a in boxes.items():
+        for right_id, b in boxes.items():
+            if left_id >= right_id:
+                continue
+            assert not (
+                a[0] < b[2] and b[0] < a[2]
+                and a[1] < b[3] and b[1] < a[3]
+            ), (left_id, right_id, a, b)
+    path = _edges(root)["e15"].find(SVG + "path")
+    assert path is not None
+    assert path.get("d", "").count(" L ") >= 5
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))

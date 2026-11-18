@@ -3369,7 +3369,10 @@ def _render_node(
 
 
 def render_native_diagram(
-    value: Mapping[str, Any], *, _process_group_gap_extra: int = 0
+    value: Mapping[str, Any],
+    *,
+    _process_group_gap_extra: int = 0,
+    _knowledge_feedback_footer_ids: frozenset[str] = frozenset(),
 ) -> str:
     """Validate representation input and return one deterministic, standalone SVG."""
 
@@ -5700,7 +5703,10 @@ def render_native_diagram(
             pair_counts[pair] += 1
         for edge in feedback_edges:
             pair = tuple(sorted((str(edge["from"]), str(edge["to"]))))
-            if pair_counts[pair] > 1:
+            if (
+                pair_counts[pair] > 1
+                or str(edge["id"]) in _knowledge_feedback_footer_ids
+            ):
                 continue
             source = positions[str(edge["from"])]
             target = positions[str(edge["to"])]
@@ -9535,7 +9541,14 @@ def render_native_diagram(
             low = math.ceil(min(source_port, target_port) + 8)
             high = math.floor(max(source_port, target_port) - own_width - 8)
             if low > high:
-                continue
+                # No usable local span: redo the complete footer allocation.
+                # The growing set guarantees termination after <= feedback edges.
+                return render_native_diagram(
+                    value,
+                    _knowledge_feedback_footer_ids=(
+                        _knowledge_feedback_footer_ids | {edge_id}
+                    ),
+                )
             candidates = list(range(low, high + 1, 8))
             if candidates[-1] != high:
                 candidates.append(high)
@@ -9553,6 +9566,16 @@ def render_native_diagram(
                 if abs(label_box(fragment)[0] - left) <= 0.05:
                     planned_edge_lines[edge_id] = fragment
                     break
+            else:
+                # Every nearby placement collides: only the established
+                # long-return footer has a guaranteed separate label lane.
+                # Recompute its slots, canvas extent and paths together.
+                return render_native_diagram(
+                    value,
+                    _knowledge_feedback_footer_ids=(
+                        _knowledge_feedback_footer_ids | {edge_id}
+                    ),
+                )
 
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():
