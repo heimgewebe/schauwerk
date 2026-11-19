@@ -1,0 +1,46 @@
+{
+  "schema_version": "schauwerk-schaubild-moved-label-clip-source-successor.v1",
+  "source_repository": "heimgewebe/schauwerk",
+  "source_pr": 261,
+  "base_revision": "256c1e7b47296a48f05ea96ed5d0a7246229c583",
+  "source_mode": "source-code-successor",
+  "status": "technical_candidate_only",
+  "visual_acceptance": "not_inherited",
+  "consumer_runtime": "not_integrated",
+  "predecessor_technical_proofs": [
+    {
+      "path": "docs/operators/evidence/schaubild-label-visibility-20261116/technical-proof-tablet-focus-20261118.json",
+      "sha256": "446b849ff61fd445b94eeb4bc2847c3be8a7daec2c5beb1f6e6e7f6ba5c2cd82",
+      "evidence_digest": "8de8f82310a035da549753ecdb1701ace3b89b6c9ee02e759e599bdcd79d90df"
+    },
+    {
+      "path": "docs/operators/evidence/schaubild-label-visibility-20261116/technical-proof-dynamic-clip-20261117.json",
+      "sha256": "72606260bd303fc874b830b66c6aba515e764c1e6707d4b41346a78efa7e2da6",
+      "evidence_digest": "89b4dcbd1f94270f1f8fd1e2fd24c8f35160e7b114b3ae6d89f541c478eb85eb"
+    }
+  ],
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "f14d88a68e32bc9b92c29fb4807238b48b05edbe273686ed78898d6773946e5b",
+    "tests/visual/test_native_viewer_browser.py": "5d4471e9f3429818a3480e1a077d600baf2349606925caaecbc73732bc20f368"
+  },
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "a477ceadb2c41aead2e444829af129979d9b6edb44d8c5c2f09eed92be9df1e8",
+    "tests/visual/test_native_viewer_browser.py": "8e89cce10d26f3bb8466da610840338a53701921a8510587eb78d38467e62dcf"
+  },
+  "validation": {
+    "real_chrome_820x1180_productive_label_clip_before": "reproduced",
+    "real_chrome_820x1180_temporary_dom_counterprobe": "passed",
+    "existing_chrome_drag_regression_red_before": "reproduced",
+    "existing_chrome_drag_regression_green_after": "passed",
+    "local_golden_viewer_real_touch_drag": "passed",
+    "full_ci": "pending_exact_head",
+    "physical_ipad_safari": "not_tested"
+  },
+  "does_not_establish": [
+    "previous_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance",
+    "full_ci_passed"
+  ],
+  "evidence_digest": "2223d4504a501297472051bec2d52e88f50fb38304c7e289414e7f0ae16a8843"
+}

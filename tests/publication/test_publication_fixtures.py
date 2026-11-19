@@ -30,6 +30,59 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 }
 
 
+def _moved_label_clip_source_successor_proof() -> dict:
+    """Bind a newly verified code revision without altering immutable earlier evidence."""
+    proof_path = (
+        ROOT / "docs/operators/evidence/schaubild-label-visibility-20261116"
+        / "technical-proof-moved-label-clip-20261119.json"
+    )
+    proof = json.loads(proof_path.read_text(encoding="utf-8"))
+    assert proof["schema_version"] == "schauwerk-schaubild-moved-label-clip-source-successor.v1"
+    assert proof["source_repository"] == "heimgewebe/schauwerk"
+    assert proof["source_pr"] == 261
+    assert proof["base_revision"] == "256c1e7b47296a48f05ea96ed5d0a7246229c583"
+    assert proof["source_mode"] == "source-code-successor"
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    old = {}
+    for predecessor in proof["predecessor_technical_proofs"]:
+        data = (ROOT / predecessor["path"]).read_bytes()
+        assert hashlib.sha256(data).hexdigest() == predecessor["sha256"]
+        previous = json.loads(data)
+        assert previous["evidence_digest"] == predecessor["evidence_digest"]
+        assert previous["evidence_digest"] == digest_mapping(previous, "evidence_digest")
+        old[previous["schema_version"]] = previous
+    tablet = old["schauwerk-schaubild-tablet-focus-source-successor.v1"]
+    dynamic = old["schauwerk-schaubild-dynamic-label-clip-source-successor.v1"]
+    paths = (
+        "src/schauwerk/resources/native_viewer/assets.py",
+        "tests/visual/test_native_viewer_browser.py",
+    )
+    assert set(proof["base_source_bindings"]) == set(paths)
+    assert set(proof["source_bindings"]) == set(paths)
+    assert proof["base_source_bindings"] == {
+        paths[0]: tablet["source_bindings"][paths[0]],
+        paths[1]: dynamic["source_bindings"][paths[1]],
+    }
+    for name, digest in proof["source_bindings"].items():
+        assert digest != proof["base_source_bindings"][name]
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+    assert proof["validation"]["existing_chrome_drag_regression_red_before"] == "reproduced"
+    assert proof["validation"]["existing_chrome_drag_regression_green_after"] == "passed"
+    assert proof["validation"]["real_chrome_820x1180_temporary_dom_counterprobe"] == "passed"
+    assert "previous_visual_acceptance_inherited" in proof["does_not_establish"]
+    assert "production_deployed" in proof["does_not_establish"]
+    return proof
+
+
+def test_schaubild_moved_label_clip_successor_is_revision_bound() -> None:
+    proof = _moved_label_clip_source_successor_proof()
+    assert proof["validation"]["full_ci"] == "pending_exact_head"
+    assert proof["validation"]["physical_ipad_safari"] == "not_tested"
+
+
 def _tablet_focus_source_successor_proof() -> dict:
     """Bind the new viewer-only tap navigation without editing prior receipts."""
     proof_path = (
@@ -69,7 +122,10 @@ def _tablet_focus_source_successor_proof() -> dict:
     for name, digest in proof["source_bindings"].items():
         if name in proof["base_source_bindings"]:
             assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        latest = _moved_label_clip_source_successor_proof()["source_bindings"].get(
+            name, digest
+        )
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == latest, name
     assert proof["validation"]["chrome_touch_focus_red_before"] == "reproduced"
     assert proof["validation"]["chrome_touch_focus_green_after"] == "passed"
     assert proof["validation"]["prior_native_viewer_browser_tests"] == "passed"
@@ -116,8 +172,11 @@ def _dynamic_label_clip_source_successor_proof() -> dict:
     }
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        expected = _tablet_focus_source_successor_proof()["source_bindings"].get(
+        tablet = _tablet_focus_source_successor_proof()["source_bindings"].get(
             name, digest
+        )
+        expected = _moved_label_clip_source_successor_proof()["source_bindings"].get(
+            name, tablet
         )
         assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected, name
     assert proof["validation"]["chrome_drag_stale_clip_red_before"] == "reproduced"
@@ -131,8 +190,11 @@ def _current_live_viewer_sha(name: str, previous_sha256: str) -> str:
     previous_sha256 = _dynamic_label_clip_source_successor_proof()[
         "source_bindings"
     ].get(name, previous_sha256)
-    return _tablet_focus_source_successor_proof()["source_bindings"].get(
+    tablet = _tablet_focus_source_successor_proof()["source_bindings"].get(
         name, previous_sha256
+    )
+    return _moved_label_clip_source_successor_proof()["source_bindings"].get(
+        name, tablet
     )
 
 
@@ -167,6 +229,7 @@ def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
         "_edge_label_visibility_successor_proof",
         "_dynamic_label_clip_source_successor_proof",
         "_tablet_focus_source_successor_proof",
+        "_moved_label_clip_source_successor_proof",
     ):
         monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
 
