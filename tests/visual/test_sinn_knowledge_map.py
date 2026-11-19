@@ -335,3 +335,39 @@ def test_knowledge_map_group_heights_follow_content() -> None:
     assert by_group["grundlagen"][1] < by_group["sinnerleben"][1]
     # Content and the outer viewBox still cover every real node.
     assert all(y + 116 < height for _, y in positions.values())
+
+
+def test_knowledge_map_keeps_semantic_flow_order() -> None:
+    """Fewer crossings must not turn a conceptual process upside down."""
+    from schauwerk.visual.native_diagram import _layout
+
+    groups = [
+        {"id": "steps", "label": "Steps"},
+        {"id": "anchors", "label": "Anchors"},
+    ]
+    nodes = [
+        {"id": name, "label": name, "kind": "action", "group": group}
+        for group, names in (
+            ("steps", ("p0", "p1", "p2", "p3")),
+            ("anchors", ("a0", "a1", "a2", "a3")),
+        )
+        for name in names
+    ]
+    edges = [
+        {"id": f"f{i}", "from": f"p{i}", "to": f"p{i + 1}",
+         "kind": "flow", "label": "then"} for i in range(3)
+    ] + [
+        {"id": f"g{i}", "from": f"a{i}", "to": f"a{i + 1}",
+         "kind": "flow", "label": "then"} for i in range(3)
+    ] + [
+        {"id": f"x{i}", "from": f"p{i}", "to": f"a{3 - i}",
+         "kind": "association", "label": "connects"} for i in range(4)
+    ]
+    model = {"intent": "knowledge_map", "groups": groups, "nodes": nodes, "edges": edges}
+    positions, _, _, _ = _layout(model)
+    assert [positions[f"p{i}"][1] for i in range(4)] == sorted(
+        positions[f"p{i}"][1] for i in range(4)
+    )
+    assert [positions[f"a{i}"][1] for i in range(4)] == sorted(
+        positions[f"a{i}"][1] for i in range(4)
+    )

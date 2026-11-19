@@ -567,6 +567,16 @@ def _knowledge_map_ordered_columns(
     if not cross_group:
         return columns
 
+    # A within-group directed chain expresses reading order. Its original
+    # relative order is semantic content, never expendable crossing budget.
+    # Keep the original relation even when the input order runs backwards.
+    fixed_order = [
+        (source_id, target_id, original_rows[source_id] < original_rows[target_id])
+        for source_id, target_id, _, kind in links
+        if node_columns[source_id] == node_columns[target_id]
+        and kind in {"flow", "authority", "evidence"}
+    ]
+
     # Only paths spanning the same pair of columns can be ordered here with a
     # reliable, cheap combinatorial crossing test. Their actual SVG routing
     # still owns obstacle avoidance and label clearance.
@@ -582,6 +592,11 @@ def _knowledge_map_ordered_columns(
             for column in order
             for row, node in enumerate(column)
         }
+        if any(
+            (rows[source_id] < rows[target_id]) != forward
+            for source_id, target_id, forward in fixed_order
+        ):
+            return float("inf")
         cost = 0.0
         for node_id, row in rows.items():
             # Keep independent or tied nodes close to the author's input order.
