@@ -286,6 +286,15 @@ try {
   if (!(edgeLabelRect.getAttribute("transform") || "").includes("translate(")) {
     throw new Error("incident edge label did not move during node drag");
   }
+  const edgeLabelClip = incidentEdge.querySelector("clipPath > rect");
+  if (!(edgeLabelClip instanceof SVGRectElement)) {
+    throw new Error("incident edge label clip rectangle missing");
+  }
+  // SVG clipPath geometry is already in the moved label's user space.
+  // Translating the clip rect too clips its moved text a second time.
+  if (edgeLabelClip.hasAttribute("transform")) {
+    throw new Error("incident edge label clip was translated twice after drag");
+  }
   if ((sharedLabelClip.getAttribute("d") || "") === clipBeforeDrag) {
     throw new Error("shared label cutouts did not follow dragged node and edge labels");
   }
