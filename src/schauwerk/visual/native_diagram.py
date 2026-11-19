@@ -508,6 +508,136 @@ def _grouped_process_layout(
     return positions, regions, width, height
 
 
+def _knowledge_map_ordered_columns(
+    columns: list[tuple[str | None, str, list[Mapping[str, Any]]]],
+    edges: Sequence[Mapping[str, Any]],
+) -> list[tuple[str | None, str, list[Mapping[str, Any]]]]:
+    """Reduce avoidable relation crossings without changing semantic group order.
+
+    The column geometry stays exactly as before. Only the row order of nodes
+    within their own group may change. This is deliberately a bounded local
+    optimizer, not a second layout engine or a general graph-topology rewrite.
+    """
+    if len(columns) < 2 or not any(len(nodes) > 1 for _, _, nodes in columns):
+        return columns
+
+    order = [list(nodes) for _, _, nodes in columns]
+    node_columns = {
+        str(node["id"]): col_index
+        for col_index, column in enumerate(order)
+        for node in column
+    }
+    original_rows = {
+        str(node["id"]): row
+        for column in order
+        for row, node in enumerate(column)
+    }
+    weights = {
+        "flow": 2.0,
+        "authority": 2.0,
+        "evidence": 1.8,
+        "association": 1.25,
+        "feedback": 0.55,
+        "risk": 0.75,
+    }
+    links: list[tuple[str, str, float, str]] = []
+    cross_group: list[tuple[int, int, str, str, float]] = []
+    for edge in edges:
+        source_id, target_id = str(edge["from"]), str(edge["to"])
+        if (
+            source_id not in node_columns
+            or target_id not in node_columns
+            or source_id == target_id
+        ):
+            continue
+        weight = weights.get(str(edge["kind"]), 1.0)
+        kind = str(edge["kind"])
+        links.append((source_id, target_id, weight, kind))
+        left_group, right_group = node_columns[source_id], node_columns[target_id]
+        if left_group != right_group:
+            left_id, right_id = (
+                (source_id, target_id)
+                if left_group < right_group
+                else (target_id, source_id)
+            )
+            cross_group.append(
+                (min(left_group, right_group), max(left_group, right_group),
+                 left_id, right_id, weight)
+            )
+    if not cross_group:
+        return columns
+
+    # Only paths spanning the same pair of columns can be ordered here with a
+    # reliable, cheap combinatorial crossing test. Their actual SVG routing
+    # still owns obstacle avoidance and label clearance.
+    crossing_pairs: list[tuple[str, str, str, str, float]] = []
+    for index, (left, right, a, b, weight) in enumerate(cross_group):
+        for other_left, other_right, c, d, other_weight in cross_group[index + 1:]:
+            if left == other_left and right == other_right and len({a, b, c, d}) == 4:
+                crossing_pairs.append((a, b, c, d, 12.0 * min(weight, other_weight)))
+
+    def score() -> float:
+        rows = {
+            str(node["id"]): row
+            for column in order
+            for row, node in enumerate(column)
+        }
+        cost = 0.0
+        for node_id, row in rows.items():
+            # Keep independent or tied nodes close to the author's input order.
+            cost += 0.45 * abs(row - original_rows[node_id])
+        for source_id, target_id, weight, kind in links:
+            source_row, target_row = rows[source_id], rows[target_id]
+            if node_columns[source_id] != node_columns[target_id]:
+                cost += weight * abs(source_row - target_row)
+            else:
+                cost += 0.25 * weight * abs(source_row - target_row)
+                if kind in {"flow", "authority", "evidence"} and source_row >= target_row:
+                    cost += 4.0 * weight
+        for a, b, c, d, weight in crossing_pairs:
+            if (rows[a] - rows[c]) * (rows[b] - rows[d]) < 0:
+                cost += weight
+        return cost
+
+    current_score = score()
+    # Keep cost bounded on dense 128-node canvases: evaluate distant swaps
+    # for short columns, adjacent swaps for larger columns. Every accepted
+    # move strictly improves a deterministic score; ties preserve input order.
+    for sweep in range(1 if len(original_rows) > 80 else 3):
+        changed = False
+        indices = range(len(order)) if sweep % 2 == 0 else range(len(order) - 1, -1, -1)
+        for group_index in indices:
+            column = order[group_index]
+            if len(column) < 2:
+                continue
+            candidates = (
+                [(i, j) for i in range(len(column)) for j in range(i + 1, len(column))]
+                if len(column) <= 8
+                else [(i, i + 1) for i in range(len(column) - 1)]
+            )
+            best_pair = None
+            best_score = current_score
+            for left, right in candidates:
+                column[left], column[right] = column[right], column[left]
+                candidate_score = score()
+                column[left], column[right] = column[right], column[left]
+                if candidate_score < best_score - 1e-6:
+                    best_score = candidate_score
+                    best_pair = (left, right)
+            if best_pair is not None:
+                left, right = best_pair
+                column[left], column[right] = column[right], column[left]
+                current_score = best_score
+                changed = True
+        if not changed:
+            break
+
+    return [
+        (group_id, label, ordered_nodes)
+        for (group_id, label, _), ordered_nodes in zip(columns, order)
+    ]
+
+
 def _layout(
     model: Mapping[str, Any],
 ) -> tuple[dict[str, tuple[int, int]], list[tuple[str | None, str, int, int, int, int]], int, int]:
@@ -542,6 +672,8 @@ def _layout(
         ]
         if members[None]:
             columns.append((None, "Ungruppiert", members[None]))
+        if model["intent"] == "knowledge_map":
+            columns = _knowledge_map_ordered_columns(columns, model["edges"])
 
         maximum_rows = max(1, *(len(column_nodes) for _, _, column_nodes in columns))
         region_bottom_padding = _NARRATIVE_REGION_BOTTOM_PADDING if is_narrative else 28
@@ -559,7 +691,7 @@ def _layout(
                 + row_count * _NODE_HEIGHT
                 + (row_count - 1) * _ROW_GAP
                 + region_bottom_padding
-                if is_narrative
+                if is_narrative or model["intent"] == "knowledge_map"
                 else maximum_region_height
             )
             regions.append((group_id, label, region_x, _CONTENT_TOP, group_width, region_height))
