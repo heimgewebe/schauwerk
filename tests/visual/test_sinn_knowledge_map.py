@@ -241,3 +241,133 @@ def test_sinn_unplaceable_local_feedback_falls_back_to_footer() -> None:
     assert path is not None
     assert path.get("d", "").count(" L ") >= 5
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_knowledge_map_layout_removes_simple_crossing() -> None:
+    """An avoidable two-column X should align its two relations instead."""
+    from schauwerk.visual.native_diagram import _layout
+
+    model = {
+        "intent": "knowledge_map",
+        "groups": [
+            {"id": "sources", "label": "Sources"},
+            {"id": "results", "label": "Results"},
+        ],
+        "nodes": [
+            {"id": "a", "label": "A", "kind": "concept", "group": "sources"},
+            {"id": "b", "label": "B", "kind": "concept", "group": "sources"},
+            {"id": "c", "label": "C", "kind": "concept", "group": "results"},
+            {"id": "d", "label": "D", "kind": "concept", "group": "results"},
+        ],
+        "edges": [
+            {"id": "e1", "from": "a", "to": "d", "label": "leads to", "kind": "flow"},
+            {"id": "e2", "from": "b", "to": "c", "label": "leads to", "kind": "flow"},
+        ],
+    }
+    positions, regions, _, _ = _layout(model)
+    assert [region[0] for region in regions] == ["sources", "results"]
+    assert positions["a"][0] == positions["b"][0]
+    assert positions["c"][0] == positions["d"][0]
+    assert (
+        (positions["a"][1] - positions["b"][1])
+        * (positions["d"][1] - positions["c"][1])
+    ) > 0
+    # Automatic ordering is deterministic and must not mutate the source.
+    assert _layout(copy.deepcopy(model)) == _layout(model)
+    assert [node["id"] for node in model["nodes"]] == ["a", "b", "c", "d"]
+
+
+def test_knowledge_map_layout_preserves_order_without_relations() -> None:
+    from schauwerk.visual.native_diagram import _layout
+
+    model = {
+        "intent": "knowledge_map",
+        "groups": [
+            {"id": "a", "label": "A"},
+            {"id": "b", "label": "B"},
+        ],
+        "nodes": [
+            {"id": "n1", "label": "One", "kind": "concept", "group": "a"},
+            {"id": "n2", "label": "Two", "kind": "concept", "group": "a"},
+            {"id": "n3", "label": "Three", "kind": "concept", "group": "b"},
+            {"id": "n4", "label": "Four", "kind": "concept", "group": "b"},
+        ],
+        "edges": [],
+    }
+    positions, _, _, _ = _layout(model)
+    assert positions["n1"][1] < positions["n2"][1]
+    assert positions["n3"][1] < positions["n4"][1]
+
+
+def test_non_knowledge_map_grouped_layout_is_unchanged() -> None:
+    from schauwerk.visual.native_diagram import _layout
+
+    model = {
+        "intent": "architecture",
+        "groups": [
+            {"id": "a", "label": "A"},
+            {"id": "b", "label": "B"},
+        ],
+        "nodes": [
+            {"id": "n1", "label": "One", "kind": "concept", "group": "a"},
+            {"id": "n2", "label": "Two", "kind": "concept", "group": "a"},
+            {"id": "n3", "label": "Three", "kind": "concept", "group": "b"},
+            {"id": "n4", "label": "Four", "kind": "concept", "group": "b"},
+        ],
+        "edges": [
+            {"id": "e1", "from": "n1", "to": "n4", "label": "to", "kind": "flow"},
+            {"id": "e2", "from": "n2", "to": "n3", "label": "to", "kind": "flow"},
+        ],
+    }
+    positions, _, _, _ = _layout(model)
+    assert positions["n1"][1] < positions["n2"][1]
+    assert positions["n3"][1] < positions["n4"][1]
+
+
+def test_knowledge_map_group_heights_follow_content() -> None:
+    """An almost-empty group must not appear as a full-height blank column."""
+    from schauwerk.visual.native_diagram import _layout
+
+    model = _sinn_model()
+    positions, regions, _, height = _layout(model)
+    by_group = {group_id: (top, group_height) for group_id, _, _, top, _, group_height in regions}
+    assert by_group["sinnbildung"][1] < by_group["grundlagen"][1]
+    assert by_group["grundlagen"][1] < by_group["sinnerleben"][1]
+    # Content and the outer viewBox still cover every real node.
+    assert all(y + 116 < height for _, y in positions.values())
+
+
+def test_knowledge_map_keeps_semantic_flow_order() -> None:
+    """Fewer crossings must not turn a conceptual process upside down."""
+    from schauwerk.visual.native_diagram import _layout
+
+    groups = [
+        {"id": "steps", "label": "Steps"},
+        {"id": "anchors", "label": "Anchors"},
+    ]
+    nodes = [
+        {"id": name, "label": name, "kind": "action", "group": group}
+        for group, names in (
+            ("steps", ("p0", "p1", "p2", "p3")),
+            ("anchors", ("a0", "a1", "a2", "a3")),
+        )
+        for name in names
+    ]
+    edges = [
+        {"id": f"f{i}", "from": f"p{i}", "to": f"p{i + 1}",
+         "kind": "flow", "label": "then"} for i in range(3)
+    ] + [
+        {"id": f"g{i}", "from": f"a{i}", "to": f"a{i + 1}",
+         "kind": "flow", "label": "then"} for i in range(3)
+    ] + [
+        {"id": f"x{i}", "from": f"p{i}", "to": f"a{3 - i}",
+         "kind": "association", "label": "connects"} for i in range(4)
+    ]
+    model = {"intent": "knowledge_map", "groups": groups, "nodes": nodes, "edges": edges}
+    positions, _, _, _ = _layout(model)
+    assert [positions[f"p{i}"][1] for i in range(4)] == sorted(
+        positions[f"p{i}"][1] for i in range(4)
+    )
+    assert [positions[f"a{i}"][1] for i in range(4)] == sorted(
+        positions[f"a{i}"][1] for i in range(4)
+    )
