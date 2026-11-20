@@ -735,6 +735,27 @@ def test_reported_sinn_routes_avoid_foreign_cards_and_labels() -> None:
         for other_id, other_boundary in list(label_boxes.items())[index + 1:]:
             assert not overlap(boundary, other_boundary), (edge_id, other_id)
 
+    # Edge-label cutouts must never erase node cards or peer arrowheads.
+    from schauwerk.visual.native_diagram import _process_svg_stroke_segments
+
+    for edge_id, label in label_boxes.items():
+        assert all(
+            not overlap(label, node_box)
+            for node_box in node_boxes.values()
+        ), f"{edge_id} label covers a node card"
+        for peer_id, peer_group in edges.items():
+            if peer_id == edge_id:
+                continue
+            peer_path = peer_group.find(SVG + "path")
+            assert peer_path is not None
+            segments = _process_svg_stroke_segments(peer_path.get("d", ""))
+            assert segments
+            for point in (segments[0][0], segments[-1][-1]):
+                assert not (
+                    label[0] <= point[0] <= label[0] + label[2]
+                    and label[1] <= point[1] <= label[1] + label[3]
+                ), (edge_id, peer_id, "arrowhead obscured by label")
+
     assert edges["e11"].attrib["data-route"] == "knowledge-map-readable-gutter"
     assert edges["e26"].attrib["data-route"] == "knowledge-map-readable-gutter"
     assert edges["e20"].attrib["data-kind"] == "risk"

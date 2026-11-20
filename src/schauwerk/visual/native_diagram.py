@@ -10164,11 +10164,19 @@ def render_native_diagram(
             if adjusted >= 4:
                 break
             own_path, old_box = label_layout[edge_id]
-            if not any(
+            blocked_by_peer_label = any(
                 boxes_overlap(old_box, other_box)
                 for other_id, (_, other_box) in label_layout.items()
                 if other_id != edge_id
-            ):
+            )
+            # A graph reordering may put an edge label onto an unrelated card
+            # even without colliding with another label. Since edge strokes
+            # are clipped around every label, it may also hide arrowheads.
+            blocked_by_card = (
+                20 <= len(paint_edges) <= 40
+                and any(boxes_overlap(old_box, box) for box in node_boxes)
+            )
+            if not blocked_by_peer_label and not blocked_by_card:
                 continue
             for trial in _process_near_path_label_boxes(
                 own_path, old_box, limit=320
