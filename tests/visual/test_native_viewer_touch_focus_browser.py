@@ -11,12 +11,25 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
-from test_sinn_knowledge_map import _sinn_model
+from test_sinn_knowledge_map import _crowded_sinn_model, _sinn_model
 
 from schauwerk.visual.native_viewer import build_native_viewer
 
 
-def test_compact_knowledge_map_tap_focus_preserves_drag_and_overview(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("model_factory", "group_id", "node_id", "edge_id", "group_title"),
+    [
+        pytest.param(_sinn_model, "wirkung", "handeln", "e13", "Wirkung", id="compact"),
+        pytest.param(
+            _crowded_sinn_model, "entstehung", "handeln", "e10", "entsteht",
+            id="crowded-19-nodes-27-edges",
+        ),
+    ],
+)
+def test_compact_knowledge_map_tap_focus_preserves_drag_and_overview(
+    tmp_path: Path, model_factory, group_id: str, node_id: str,
+    edge_id: str, group_title: str,
+) -> None:
     chrome = shutil.which("google-chrome") or shutil.which("google-chrome-stable")
     if not chrome:
         if os.environ.get("GITHUB_ACTIONS") == "true":
@@ -24,7 +37,7 @@ def test_compact_knowledge_map_tap_focus_preserves_drag_and_overview(tmp_path: P
         pytest.skip("Chrome not installed")
 
     output = tmp_path / "viewer"
-    build_native_viewer(_sinn_model(), output)
+    build_native_viewer(model_factory(), output)
     html_path = output / "index.html"
     html = html_path.read_text(encoding="utf-8")
     app_script = '<script type="module" src="app.js"></script>'
@@ -73,6 +86,25 @@ try {
   const overviewZoom = zoom();
   if (!(overviewZoom > 0 && overviewZoom < 0.75))
     throw new Error("fixture did not produce a small tablet overview");
+  // An unhelpful second "Einpassen" is replaced by an explicit first-step
+  // reading action. It preserves the same underlying SVG/source.
+  if (fitButton.textContent.trim() !== "Lesen" ||
+      fitButton.getAttribute("aria-label") !== "Bereich lesbar vergrößern")
+    throw new Error("small overview has no explicit readable entry");
+  const originalNode = node.getAttribute("transform");
+  const originalPath = edge.querySelector("path")?.getAttribute("d");
+  const originalClip = clip.getAttribute("d");
+  fitButton.click();
+  if (zoom() < 0.9 || fitButton.textContent.trim() !== "Übersicht")
+    throw new Error("Lesen did not open readable area");
+  if (node.getAttribute("transform") !== originalNode ||
+      edge.querySelector("path")?.getAttribute("d") !== originalPath ||
+      clip.getAttribute("d") !== originalClip)
+    throw new Error("Lesen changed original SVG/source");
+  fitButton.click();
+  if (Math.abs(zoom() - overviewZoom) > 0.015 ||
+      fitButton.textContent.trim() !== "Lesen")
+    throw new Error("Lesen -> Übersicht did not restore overview");
   const groupBounds = groupRect.getBoundingClientRect();
   const groupX = groupBounds.left + Math.min(45, groupBounds.width / 2);
   const groupY = groupBounds.top + Math.min(18, groupBounds.height / 4);
@@ -82,7 +114,7 @@ try {
   if (!group.querySelector("title")?.textContent.includes("Wirkung"))
     throw new Error("wrong group focused");
   fitButton.click();
-  if (Math.abs(zoom() - overviewZoom) > 0.015 || fitButton.textContent.trim() !== "Einpassen")
+  if (Math.abs(zoom() - overviewZoom) > 0.015 || fitButton.textContent.trim() !== "Lesen")
     throw new Error("single-click overview restore lost original fit");
   const beforePan = document.querySelector("#nativeCanvas").style.transform;
   dispatch(groupRect, "pointerdown", 42, groupX, groupY);
@@ -134,6 +166,13 @@ try {
 }
 </script>
 """
+    for old_id, new_id in (
+        ('data-source-id="wirkung"', f'data-source-id="{group_id}"'),
+        ('data-source-id="handeln"', f'data-source-id="{node_id}"'),
+        ('data-source-id="e13"', f'data-source-id="{edge_id}"'),
+        ('includes("Wirkung")', f'includes("{group_title}")'),
+    ):
+        probe = probe.replace(old_id, new_id)
     html_path.write_text(html.replace(app_script, app_script + probe), encoding="utf-8")
 
     class QuietHandler(SimpleHTTPRequestHandler):

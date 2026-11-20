@@ -1562,10 +1562,16 @@ function applyView() {
   if (knowledgeMapOverview) {
     svg.classList.toggle("is-compact-overview", view.scale < COMPACT_OVERVIEW_SCALE);
     if (fitButton instanceof HTMLButtonElement) {
-      fitButton.textContent = autoFitActive ? "Einpassen" : "Übersicht";
-      fitButton.title = autoFitActive
-        ? "Gesamtes Schaubild einpassen"
+      const readingEntry = autoFitActive && view.scale < COMPACT_OVERVIEW_SCALE;
+      fitButton.textContent = readingEntry ? "Lesen" : autoFitActive ? "Einpassen" : "Übersicht";
+      fitButton.title = readingEntry
+        ? "Den ersten Bereich zum Lesen vergrößern"
+        : autoFitActive ? "Gesamtes Schaubild einpassen"
         : "Zur gesamten Schaubild-Übersicht zurückkehren";
+      fitButton.setAttribute("aria-label", readingEntry
+        ? "Bereich lesbar vergrößern"
+        : autoFitActive ? "Gesamtes Schaubild einpassen"
+        : "Zur gesamten Schaubild-Übersicht zurückkehren");
     }
   }
   if (handleLayer && gesture?.kind !== "connection") refreshConnectionHandles();
@@ -3799,7 +3805,19 @@ if (knowledgeMapOverview && interactionHint) {
 
 zoomIn.addEventListener("click", () => zoomBy(1.2));
 zoomOut.addEventListener("click", () => zoomBy(1 / 1.2));
-fitButton.addEventListener("click", () => fit());
+fitButton.addEventListener("click", () => {
+  // A second "Einpassen" at 36 % is a no-op for people trying to read text.
+  // Let it enter the existing tap-to-focus view; "Übersicht" restores fit.
+  if (knowledgeMapOverview && autoFitActive && view.scale < COMPACT_OVERVIEW_SCALE) {
+    const firstGroup = svg.querySelector('[data-source-kind="group"]');
+    const firstNode = nodes.keys().next().value;
+    if (focusOverviewTarget({
+      groupId: firstGroup?.dataset.sourceId || null,
+      nodeId: firstGroup ? null : firstNode || null,
+    })) return;
+  }
+  fit();
+});
 window.addEventListener("resize", fitAfterLayoutChange);
 // The embedded parent layout can settle after native module initialization.
 window.addEventListener("load", fitAfterLayoutChange, { once: true });
