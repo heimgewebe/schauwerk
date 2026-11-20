@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from schauwerk.visual.native_diagram import render_native_diagram
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -373,7 +375,8 @@ def test_knowledge_map_keeps_semantic_flow_order() -> None:
     )
 
 
-def test_knowledge_map_long_diagonals_clear_foreign_cards() -> None:
+@pytest.mark.parametrize("row_count", [3, 4])
+def test_knowledge_map_long_diagonals_clear_foreign_cards(row_count: int) -> None:
     """Across four columns a long Bezier used to pierce several intermediate cards."""
     from schauwerk.visual.native_diagram import (
         _NODE_HEIGHT,
@@ -387,16 +390,16 @@ def test_knowledge_map_long_diagonals_clear_foreign_cards() -> None:
     nodes = [
         {"id": f"n{k}_{row}", "label": f"Knoten {k}/{row}",
          "kind": "concept", "group": f"g{k}"}
-        for k in range(4) for row in range(4)
+        for k in range(4) for row in range(row_count)
     ]
     edges = [
         {"id": f"chain_{k}_{row}", "from": f"n{k}_{row}",
          "to": f"n{k}_{row + 1}", "label": "leitet", "kind": "flow"}
-        for k in range(4) for row in range(3)
+        for k in range(4) for row in range(row_count - 1)
     ] + [
-        {"id": "long_right", "from": "n0_0", "to": "n3_3",
+        {"id": "long_right", "from": "n0_0", "to": f"n3_{row_count-1}",
          "label": "lange diagonale Verbindung", "kind": "association"},
-        {"id": "long_left", "from": "n3_0", "to": "n0_3",
+        {"id": "long_left", "from": "n3_0", "to": f"n0_{row_count-1}",
          "label": "gegengerichtete weite Verbindung", "kind": "association"},
     ]
     model = {

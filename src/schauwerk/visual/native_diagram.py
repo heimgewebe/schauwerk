@@ -2127,6 +2127,11 @@ def _knowledge_map_long_diagonal_gutter(
     target_port_y = target_y + _NODE_HEIGHT / 2
     midpoint = (source_port_y + target_port_y) / 2
     rows = sorted({source_y, target_y, *(y for _, y in obstacle_positions)})
+    # The nearest midpoint alone chooses the same shelf for opposite-direction
+    # long edges on three-row maps. Prefer opposite halves of the existing
+    # row gaps for opposite horizontal directions, without adding new rails.
+    row_step = min(lower - upper for upper, lower in zip(rows, rows[1:]))
+    preferred_y = midpoint - direction * row_step / 2
     best: tuple[tuple[float, float], str, float, float] | None = None
     for upper, lower in zip(rows, rows[1:]):
         # A full-height card may not intervene between a horizontal rail and
@@ -2162,10 +2167,9 @@ def _knowledge_map_long_diagonal_gutter(
             for box in boxes
         ):
             continue
-        # The renderer already assigns stable lanes to parallel relationships.
-        # Bias long detours toward a distinct available row gap rather than
-        # overlaying opposite directions on one long horizontal stroke.
-        score = (abs(rail_y - (midpoint + lane * 18)), rail_y)
+        # Opposite directions prefer opposite shelves; the existing stable
+        # lane still separates their vertical legs in the facing gutters.
+        score = (abs(rail_y - preferred_y), rail_y)
         if best is None or score < best[0]:
             best = (score, path, label_x, rail_y)
     if best is None:
