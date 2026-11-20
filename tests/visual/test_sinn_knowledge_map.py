@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import xml.etree.ElementTree as ET
 
+import pytest
+
 from schauwerk.visual.native_diagram import render_native_diagram
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -371,3 +373,198 @@ def test_knowledge_map_keeps_semantic_flow_order() -> None:
     assert [positions[f"a{i}"][1] for i in range(4)] == sorted(
         positions[f"a{i}"][1] for i in range(4)
     )
+
+
+@pytest.mark.parametrize("row_count", [3, 4])
+def test_knowledge_map_long_diagonals_clear_foreign_cards(row_count: int) -> None:
+    """Across four columns a long Bezier used to pierce several intermediate cards."""
+    from schauwerk.visual.native_diagram import (
+        _NODE_HEIGHT,
+        _NODE_WIDTH,
+        _layout,
+        _process_paths_share_physical_stroke,
+        _process_svg_path_hits_box,
+    )
+
+    groups = [{"id": f"g{k}", "label": f"Gruppe {k}"} for k in range(4)]
+    nodes = [
+        {"id": f"n{k}_{row}", "label": f"Knoten {k}/{row}",
+         "kind": "concept", "group": f"g{k}"}
+        for k in range(4) for row in range(row_count)
+    ]
+    edges = [
+        {"id": f"chain_{k}_{row}", "from": f"n{k}_{row}",
+         "to": f"n{k}_{row + 1}", "label": "leitet", "kind": "flow"}
+        for k in range(4) for row in range(row_count - 1)
+    ] + [
+        {"id": "long_right", "from": "n0_0", "to": f"n3_{row_count-1}",
+         "label": "lange diagonale Verbindung", "kind": "association"},
+        {"id": "long_left", "from": "n3_0", "to": f"n0_{row_count-1}",
+         "label": "gegengerichtete weite Verbindung", "kind": "association"},
+    ]
+    model = {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "knowledge_map_diagonal_fixture",
+        "title": "Wissensnetzwerk",
+        "purpose": "Kartenübergreifende diagonale Beziehungen",
+        "intent": "knowledge_map",
+        "groups": groups, "nodes": nodes, "edges": edges,
+        "requirements": {}, "requested_formats": [],
+    }
+    positions, _, _, _ = _layout(model)
+    root = ET.fromstring(render_native_diagram(model))
+    rendered = _edges(root)
+    long_paths = []
+    label_boxes = []
+    for edge_id in ("long_right", "long_left"):
+        edge = rendered[edge_id]
+        path = edge.find(SVG + "path")
+        label = edge.find(SVG + "rect")
+        assert path is not None and label is not None
+        data = path.get("d", "")
+        long_paths.append(data)
+        ends = next(
+            {relation["from"], relation["to"]}
+            for relation in edges if relation["id"] == edge_id
+        )
+        for node in nodes:
+            if node["id"] in ends:
+                continue
+            x, y = positions[node["id"]]
+            assert not _process_svg_path_hits_box(
+                data, (float(x), float(y),
+                       float(_NODE_WIDTH), float(_NODE_HEIGHT)),
+                padding=2,
+            ), (edge_id, node["id"], data)
+        label_boxes.append(tuple(
+            float(label.get(key, "0")) for key in ("x", "y", "width", "height")
+        ))
+    # Opposite-direction relations must not paint the same physical stroke.
+    assert not _process_paths_share_physical_stroke(*long_paths)
+    a, b = label_boxes
+    assert not (
+        a[0] < b[0] + b[2] and b[0] < a[0] + a[2]
+        and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+    )
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def _crowded_sinn_model() -> dict:
+    groups = [
+        ("dimensionen", "Dimensionen des Sinns"),
+        ("quellen", "Quellen des Sinns"),
+        ("entstehung", "Wie Sinn entsteht"),
+        ("grenzen", "Grenzen und Widersprüche"),
+    ]
+    nodespec = [
+        ("verstehen", "Verstehen", "concept", "dimensionen"),
+        ("orientierung", "Orientierung", "concept", "dimensionen"),
+        ("bedeutsamkeit", "Bedeutsamkeit", "concept", "dimensionen"),
+        ("werte", "Werte", "concept", "quellen"),
+        ("beziehungen", "Beziehungen", "concept", "quellen"),
+        ("wirksamkeit", "Wirksamkeit", "concept", "quellen"),
+        ("erfahrung", "Erfahrung", "concept", "quellen"),
+        ("beitrag", "Beitrag", "action", "quellen"),
+        ("wahrnehmung", "Wahrnehmung", "concept", "entstehung"),
+        ("deutung", "Deutung", "action", "entstehung"),
+        ("entscheidung", "Entscheidung", "action", "entstehung"),
+        ("handeln", "Handeln", "action", "entstehung"),
+        ("reflexion", "Reflexion", "action", "entstehung"),
+        ("freiheit", "Freiheit", "concept", "grenzen"),
+        ("zufall", "Zufall", "concept", "grenzen"),
+        ("sinnkrise", "Sinnkrise", "risk", "grenzen"),
+        ("absurditaet", "Absurdität", "concept", "grenzen"),
+        ("vorgegeben", "Vorgegebener Sinn?", "decision", "grenzen"),
+        ("sinn", "Sinn", "concept", None),
+    ]
+    edgepairs = [
+        ("werte", "orientierung", "geben Maßstäbe", "association"),
+        ("werte", "deutung", "bilden Zusammenhänge", "association"),
+        ("beziehungen", "bedeutsamkeit", "stiften Verbindungen", "association"),
+        ("beziehungen", "sinn", "schaffen Zugehörigkeit", "association"),
+        ("verstehen", "sinn", "führt zum Sinn", "association"),
+        ("erfahrung", "wahrnehmung", "prägt Wahrnehmung", "association"),
+        ("wahrnehmung", "deutung", "liefert Erfahrungen", "flow"),
+        ("deutung", "entscheidung", "eröffnet Möglichkeiten", "flow"),
+        ("entscheidung", "handeln", "führt zu", "flow"),
+        ("handeln", "reflexion", "regt an", "flow"),
+        ("reflexion", "wahrnehmung", "prüft und verändert", "feedback"),
+        ("handeln", "wirksamkeit", "ermöglicht", "flow"),
+        ("wirksamkeit", "bedeutsamkeit", "erzeugt Relevanz", "association"),
+        ("erfahrung", "wirksamkeit", "stärkt", "association"),
+        ("beitrag", "beziehungen", "stiftet Verbundenheit", "association"),
+        ("beitrag", "sinn", "kann auslösen", "association"),
+        ("orientierung", "entscheidung", "gibt Richtung", "flow"),
+        ("sinn", "orientierung", "gibt Orientierung", "feedback"),
+        ("freiheit", "entscheidung", "eröffnet Wahl", "association"),
+        ("zufall", "deutung", "öffnet Möglichkeiten", "association"),
+        ("deutung", "sinn", "konstruiert Bedeutung", "flow"),
+        ("sinnkrise", "sinn", "stellt infrage", "risk"),
+        ("absurditaet", "sinnkrise", "verschärft", "risk"),
+        ("vorgegeben", "sinn", "fragt nach Ursprung", "association"),
+        ("sinn", "freiheit", "relativiert Vorgaben", "association"),
+        ("sinn", "bedeutsamkeit", "erzeugt Bedeutung", "feedback"),
+        ("reflexion", "sinn", "fragt nach Sinn", "association"),
+    ]
+    model = {
+        "schema_version": "schauwerk-representation-input.v1",
+        "id": "sinn_screen_approx_qc",
+        "title": "Sinn – Was macht etwas bedeutsam?",
+        "purpose": "Verstehen, Erfahrung, Deutung, Handeln und ihre Widersprüche.",
+        "intent": "knowledge_map",
+        "groups": [{"id": i, "label": v} for i, v in groups],
+        "nodes": [
+            {"id": i, "label": label, "kind": kind, "group": group}
+            for i, label, kind, group in nodespec
+        ],
+        "edges": [
+            {"id": f"e{k:02d}", "from": a, "to": b, "label": label, "kind": kind}
+            for k, (a, b, label, kind) in enumerate(edgepairs, 1)
+        ],
+        "requirements": {},
+        "requested_formats": [],
+    }
+
+    return model
+
+
+def test_crowded_sinn_map_has_no_label_overlaps_or_card_piercings() -> None:
+    """The screenshot-like 19/27 map must avoid cards and label collisions."""
+    from schauwerk.visual.native_diagram import _process_svg_path_hits_box
+
+    model = _crowded_sinn_model()
+    root = ET.fromstring(render_native_diagram(model))
+    rects = {}
+    for group in root.iter():
+        if group.attrib.get("data-source-kind") != "node":
+            continue
+        rect = next((element for element in group if element.tag == SVG + "rect"), None)
+        assert rect is not None
+        rects[group.attrib["data-source-id"]] = tuple(
+            float(rect.get(key, "0")) for key in ("x", "y", "width", "height")
+        )
+
+    labels = {}
+    by_id = {edge["id"]: edge for edge in model["edges"]}
+    for edge_id, edge in _edges(root).items():
+        path = next((item for item in edge if item.tag == SVG + "path"), None)
+        label = edge.find(SVG + "rect")
+        assert path is not None and label is not None
+        labels[edge_id] = tuple(
+            float(label.get(key, "0")) for key in ("x", "y", "width", "height")
+        )
+        for node_id, box in rects.items():
+            if node_id in {by_id[edge_id]["from"], by_id[edge_id]["to"]}:
+                continue
+            assert not _process_svg_path_hits_box(path.get("d", ""), box, padding=0), (
+                edge_id, node_id,
+            )
+
+    assert len(rects) == 19 and len(labels) == 27
+    for idx, (left_id, a) in enumerate(labels.items()):
+        for right_id, b in list(labels.items())[idx + 1:]:
+            assert not (
+                a[0] < b[0] + b[2] and b[0] < a[0] + a[2]
+                and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
+            ), (left_id, right_id)
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))

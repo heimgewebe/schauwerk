@@ -2065,6 +2065,118 @@ def _process_svg_path_hits_box(
     return False
 
 
+def _knowledge_map_long_diagonal_gutter(
+    source: tuple[int, int],
+    target: tuple[int, int],
+    *,
+    node_width: int,
+    lane: int,
+    label_width: int,
+    label_height: int,
+    obstacle_positions: Sequence[tuple[int, int]],
+    default_path: str,
+) -> tuple[str, float, float, str] | None:
+    """Route an obstructed long diagonal through existing card-free row/column gaps.
+
+    Unlike a broad Bezier, two facing inter-column gutters and a row-gap rail
+    can cross multiple groups without traversing any foreign card. Only use
+    this when the original curve really hits a foreign card: ordinary curves,
+    narrative/process geometry, and short relations remain unchanged.
+    """
+    boxes = [
+        (float(x), float(y), float(node_width), float(_NODE_HEIGHT))
+        for x, y in obstacle_positions
+    ]
+    if not any(_process_svg_path_hits_box(default_path, box, padding=1.5) for box in boxes):
+        return None
+
+    source_x, source_y = source
+    target_x, target_y = target
+    direction = 1 if source_x < target_x else -1
+    columns = sorted({source_x, target_x, *(x for x, _ in obstacle_positions)})
+    if direction > 0:
+        next_source = min((x for x in columns if x > source_x), default=None)
+        prev_target = max((x for x in columns if x < target_x), default=None)
+        if next_source is None or prev_target is None:
+            return None
+        source_port_x, target_port_x = source_x + node_width, target_x
+        source_gutter = (source_port_x + next_source) / 2
+        target_gutter = (prev_target + node_width + target_port_x) / 2
+        source_clearance = next_source - source_port_x
+        target_clearance = target_port_x - (prev_target + node_width)
+    else:
+        prev_source = max((x for x in columns if x < source_x), default=None)
+        next_target = min((x for x in columns if x > target_x), default=None)
+        if prev_source is None or next_target is None:
+            return None
+        source_port_x, target_port_x = source_x, target_x + node_width
+        source_gutter = (prev_source + node_width + source_port_x) / 2
+        target_gutter = (target_port_x + next_target) / 2
+        source_clearance = source_port_x - (prev_source + node_width)
+        target_clearance = next_target - target_port_x
+    if min(source_clearance, target_clearance) < 20:
+        return None
+    # Different stable edge lanes also need distinct vertical gutter strokes.
+    # Stay within the measured gap so neither leg can touch a foreign card.
+    half_shift = min(source_clearance, target_clearance) / 2 - 10
+    lane_shift = max(-half_shift, min(half_shift, lane * 1.5))
+    source_gutter += lane_shift
+    target_gutter += lane_shift
+
+    source_port_y = source_y + _NODE_HEIGHT / 2
+    target_port_y = target_y + _NODE_HEIGHT / 2
+    midpoint = (source_port_y + target_port_y) / 2
+    rows = sorted({source_y, target_y, *(y for _, y in obstacle_positions)})
+    # The nearest midpoint alone chooses the same shelf for opposite-direction
+    # long edges on three-row maps. Prefer opposite halves of the existing
+    # row gaps for opposite horizontal directions, without adding new rails.
+    row_step = min(lower - upper for upper, lower in zip(rows, rows[1:]))
+    preferred_y = midpoint - direction * row_step / 2
+    best: tuple[tuple[float, float], str, float, float] | None = None
+    for upper, lower in zip(rows, rows[1:]):
+        # A full-height card may not intervene between a horizontal rail and
+        # the next row; the label needs enough vertical space for its own box.
+        clear_top, clear_bottom = upper + _NODE_HEIGHT, lower
+        if (
+            clear_bottom - clear_top < max(20, label_height + 8)
+            or not min(source_y, target_y) <= upper < max(source_y, target_y)
+        ):
+            continue
+        rail_y = (clear_top + clear_bottom) / 2
+        path = (
+            f"M {source_port_x:.1f} {source_port_y:.1f} "
+            f"L {source_gutter:.1f} {source_port_y:.1f} "
+            f"L {source_gutter:.1f} {rail_y:.1f} "
+            f"L {target_gutter:.1f} {rail_y:.1f} "
+            f"L {target_gutter:.1f} {target_port_y:.1f} "
+            f"L {target_port_x:.1f} {target_port_y:.1f}"
+        )
+        label_x = (source_gutter + target_gutter) / 2
+        label_box = (
+            label_x - label_width / 2, rail_y - label_height / 2,
+            float(label_width), float(label_height),
+        )
+        if any(
+            _process_svg_path_hits_box(path, box, padding=2)
+            or (
+                label_box[0] < box[0] + box[2]
+                and box[0] < label_box[0] + label_box[2]
+                and label_box[1] < box[1] + box[3]
+                and box[1] < label_box[1] + label_box[3]
+            )
+            for box in boxes
+        ):
+            continue
+        # Opposite directions prefer opposite shelves; the existing stable
+        # lane still separates their vertical legs in the facing gutters.
+        score = (abs(rail_y - preferred_y), rail_y)
+        if best is None or score < best[0]:
+            best = (score, path, label_x, rail_y)
+    if best is None:
+        return None
+    return best[1], best[2], best[3], "knowledge-map-long-card-safe"
+
+
 def _edge_geometry(
     source: tuple[int, int],
     target: tuple[int, int],
@@ -2946,6 +3058,28 @@ def _edge_geometry(
 
     control_one_x, control_one_y = control_one
     control_two_x, control_two_y = control_two
+    if (
+        intent == "knowledge_map"
+        and route == "standard"
+        and kind != "feedback"
+        and source_x != target_x
+        and abs(source_y - target_y) > _NODE_HEIGHT + non_process_row_gap
+    ):
+        original_path = (
+            f"M {start_x:.1f} {start_y:.1f} C {control_one_x:.1f} {control_one_y:.1f}, "
+            f"{control_two_x:.1f} {control_two_y:.1f}, {end_x:.1f} {end_y:.1f}"
+        )
+        safe = _knowledge_map_long_diagonal_gutter(
+            source, target,
+            node_width=node_width,
+            lane=lane,
+            label_width=label_width,
+            label_height=label_height,
+            obstacle_positions=obstacle_positions,
+            default_path=original_path,
+        )
+        if safe is not None:
+            return safe
     path = (
         f"M {start_x:.1f} {start_y:.1f} C {control_one_x:.1f} {control_one_y:.1f}, "
         f"{control_two_x:.1f} {control_two_y:.1f}, {end_x:.1f} {end_y:.1f}"
@@ -3264,11 +3398,9 @@ def _render_edge(
             max(label_x, half_label_width + 8),
             canvas_width - half_label_width - 8,
         )
-    if final_label_override is not None and (
-        intent == "process" or (intent == "knowledge_map" and kind == "feedback")
-    ):
-        # The rendered route is immutable; move only a demonstrably blocked
-        # outer-gutter label after checking every other physical SVG stroke.
+    if final_label_override is not None and intent in {"process", "knowledge_map"}:
+        # Prevalidated label relocations never change the accepted edge route.
+        # Knowledge maps may move non-feedback labels after peer collision tests.
         label_x, label_y = final_label_override
     label_top = label_y - label_height / 2
     # Short process labels should remain natural text when they already fit.
@@ -9723,6 +9855,97 @@ def render_native_diagram(
                         _knowledge_feedback_footer_ids | {edge_id}
                     ),
                 )
+
+        # Resolve residual knowledge-map relation label overlaps after all
+        # routes and local feedback paths have been finalized. Reuse the
+        # established near-path label placement and rerender only the moved
+        # label, never its underlying edge or source model. The bounded pass
+        # avoids multiplying the cost of very dense 256-edge graphs.
+        def edge_path(fragment: list[str]) -> str:
+            group = ET.fromstring("\n".join(fragment))
+            return next(
+                child.get("d", "") for child in group
+                if child.tag.endswith("path") and child.get("fill") == "none"
+            )
+
+        label_layout = {
+            edge_id: (edge_path(fragment), label_box(fragment))
+            for edge_id, fragment in planned_edge_lines.items()
+        }
+        node_boxes = [
+            (float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT))
+            for x, y in positions.values()
+        ]
+
+        def boxes_overlap(
+            a: tuple[float, float, float, float],
+            b: tuple[float, float, float, float],
+            margin: float = 2.0,
+        ) -> bool:
+            return (
+                a[0] < b[0] + b[2] + margin
+                and b[0] < a[0] + a[2] + margin
+                and a[1] < b[1] + b[3] + margin
+                and b[1] < a[1] + a[3] + margin
+            )
+
+        movable = {
+            str(edge["id"]): edge
+            for edge in model["edges"]
+            if str(edge["kind"]) != "feedback"
+        }
+        adjusted = 0
+        for edge_id in sorted(movable):
+            if adjusted >= 4:
+                break
+            own_path, old_box = label_layout[edge_id]
+            if not any(
+                boxes_overlap(old_box, other_box)
+                for other_id, (_, other_box) in label_layout.items()
+                if other_id != edge_id
+            ):
+                continue
+            for trial in _process_near_path_label_boxes(
+                own_path, old_box, limit=320
+            ):
+                if (
+                    trial[0] < 8 or trial[0] + trial[2] > width - 8
+                    or trial[1] < 104 or trial[1] + trial[3] > height - 8
+                    or not _process_label_near_own_path(own_path, trial)
+                    or any(boxes_overlap(trial, box) for box in node_boxes)
+                    or any(
+                        boxes_overlap(trial, box)
+                        for other_id, (_, box) in label_layout.items()
+                        if other_id != edge_id
+                    )
+                    or any(
+                        _process_svg_path_hits_box(path, trial)
+                        for other_id, (path, _) in label_layout.items()
+                        if other_id != edge_id
+                    )
+                ):
+                    continue
+                fragment = render_planned_edge(
+                    movable[edge_id],
+                    label_position_override=(
+                        trial[0] + trial[2] / 2,
+                        trial[1] + trial[3] / 2,
+                    ),
+                )
+                candidate_path = edge_path(fragment)
+                candidate_box = label_box(fragment)
+                if (
+                    candidate_path != own_path
+                    or any(
+                        abs(actual - proposed) > 0.1
+                        for actual, proposed in zip(candidate_box, trial)
+                    )
+                ):
+                    continue
+                planned_edge_lines[edge_id] = fragment
+                label_layout[edge_id] = candidate_path, candidate_box
+                adjusted += 1
+                break
 
         label_clearances: list[tuple[float, float, float, float]] = []
         for fragment in planned_edge_lines.values():
