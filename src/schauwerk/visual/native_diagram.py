@@ -538,7 +538,9 @@ def _knowledge_map_ordered_columns(
         "evidence": 1.8,
         "association": 1.25,
         "feedback": 0.55,
-        "risk": 0.75,
+        # Risk relations merit the same alignment priority as associations:
+        # otherwise long highlighted hazards dominate with avoidable crossings.
+        "risk": 1.25,
     }
     links: list[tuple[str, str, float, str]] = []
     cross_group: list[tuple[int, int, str, str, float]] = []
@@ -9791,6 +9793,269 @@ def render_native_diagram(
                 float(label.get(attribute, "0"))
                 for attribute in ("x", "y", "width", "height")
             )
+
+
+        # A card-safe path may still cross many unrelated relations or take
+        # a decorative multi-curve detour. For ordinary-sized knowledge maps,
+        # consider a few existing row gaps as readable alternatives. This
+        # pass only accepts routes that improve the whole physical drawing;
+        # large 256-edge documents keep the established bounded router.
+        # Retain the accepted route/label guarantees for smaller golden maps.
+        # The alternative planner addresses dense maps with 20–40 relations.
+        if 20 <= len(paint_edges) <= 40 and len(model["groups"]) >= 2:
+            def readable_fragment_parts(
+                fragment: list[str],
+            ) -> tuple[str, tuple[float, float, float, float]]:
+                group = ET.fromstring("\n".join(fragment))
+                path = next(
+                    child.get("d", "") for child in group
+                    if child.tag.endswith("path") and child.get("fill") == "none"
+                )
+                rect = next(
+                    child for child in group
+                    if child.tag.endswith("rect") and child.get("rx") == "9"
+                )
+                return path, tuple(
+                    float(rect.get(attribute, "0"))
+                    for attribute in ("x", "y", "width", "height")
+                )
+
+            planned_by_id = {str(edge["id"]): edge for edge in paint_edges}
+            routed = {
+                edge_id: readable_fragment_parts(fragment)[0]
+                for edge_id, fragment in planned_edge_lines.items()
+            }
+            sampled: dict[str, list[tuple[float, float]]] = {}
+
+            def route_points(path: str) -> list[tuple[float, float]] | None:
+                strokes = _process_svg_stroke_segments(path)
+                if strokes is None:
+                    return None
+                points: list[tuple[float, float]] = []
+                for segment in strokes:
+                    if len(segment) == 2:
+                        step = list(segment)
+                    else:
+                        step = [
+                            tuple(
+                                (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1
+                                + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
+                                for p0, p1, p2, p3 in zip(*segment)
+                            )
+                            for t in (index / 16 for index in range(17))
+                        ]
+                    points.extend(step if not points else step[1:])
+                return points
+
+            def crossings(
+                one: Sequence[tuple[float, float]],
+                two: Sequence[tuple[float, float]],
+            ) -> bool:
+                def side(
+                    a: tuple[float, float],
+                    b: tuple[float, float],
+                    c: tuple[float, float],
+                ) -> float:
+                    return (
+                        (b[0] - a[0]) * (c[1] - a[1])
+                        - (b[1] - a[1]) * (c[0] - a[0])
+                    )
+
+                return any(
+                    side(a, b, c) * side(a, b, d) < -1e-5
+                    and side(c, d, a) * side(c, d, b) < -1e-5
+                    for a, b in zip(one, one[1:])
+                    for c, d in zip(two, two[1:])
+                )
+
+            for edge_id, path in routed.items():
+                points = route_points(path)
+                if points is not None:
+                    sampled[edge_id] = points
+            node_obstacles = {
+                node_id: (float(x), float(y), float(_NODE_WIDTH), float(_NODE_HEIGHT))
+                for node_id, (x, y) in positions.items()
+            }
+            rows = sorted({y for _, y in positions.values()})
+            row_rails = sorted({
+                round((upper + _NODE_HEIGHT + lower) / 2 + offset, 1)
+                for upper, lower in zip(rows, rows[1:])
+                if lower - upper >= _NODE_HEIGHT + 32
+                for offset in (0, -12, 12, -24, 24)
+                if upper + _NODE_HEIGHT + 8
+                < (upper + _NODE_HEIGHT + lower) / 2 + offset
+                < lower - 8
+            })
+
+            def route_cost(
+                edge_id: str, path: str, points: Sequence[tuple[float, float]],
+            ) -> float:
+                length = sum(
+                    math.dist(first, second)
+                    for first, second in zip(points, points[1:])
+                )
+                parts = _process_svg_stroke_segments(path)
+                bends = max(0, len(parts) - 1) if parts is not None else 100
+                endpoints = {
+                    str(planned_by_id[edge_id]["from"]),
+                    str(planned_by_id[edge_id]["to"]),
+                }
+                crossing_count = sum(
+                    crossings(points, other_points)
+                    for other_id, other_points in sampled.items()
+                    if other_id != edge_id
+                    and endpoints.isdisjoint({
+                        str(planned_by_id[other_id]["from"]),
+                        str(planned_by_id[other_id]["to"]),
+                    })
+                )
+                return length + 200.0 * crossing_count + 20.0 * bends
+
+            def rectangles_overlap(
+                left: tuple[float, float, float, float],
+                right: tuple[float, float, float, float],
+            ) -> bool:
+                return (
+                    left[0] < right[0] + right[2] + 2
+                    and right[0] < left[0] + left[2] + 2
+                    and left[1] < right[1] + right[3] + 2
+                    and right[1] < left[1] + left[3] + 2
+                )
+
+            def label_conflict(
+                candidate: tuple[float, float, float, float], edge_id: str,
+            ) -> bool:
+                return any(
+                    rectangles_overlap(candidate, box)
+                    for box in node_obstacles.values()
+                ) or any(
+                    rectangles_overlap(candidate, label_box(fragment))
+                    for peer_id, fragment in planned_edge_lines.items()
+                    if peer_id != edge_id
+                )
+
+            # Evaluate in stable identifier order, never in semantic-priority order.
+            for edge_id in sorted(planned_by_id):
+                edge = planned_by_id[edge_id]
+                source = positions[str(edge["from"])]
+                target = positions[str(edge["to"])]
+                if (
+                    str(edge["kind"]) == "feedback"
+                    or abs(source[0] - target[0])
+                    <= _GROUP_WIDTH + _KNOWLEDGE_MAP_GROUP_GAP
+                    or edge_id not in sampled
+                ):
+                    continue
+                original = routed[edge_id]
+                points = sampled[edge_id]
+                start_x, start_y = points[0]
+                end_x, end_y = points[-1]
+                if abs(start_x - end_x) < 100:
+                    continue
+                direction = 1 if start_x < end_x else -1
+                own_box = label_box(planned_edge_lines[edge_id])
+                existing_cost = route_cost(edge_id, original, points)
+                best_score = existing_cost - 50.0
+                best_fragment: list[str] | None = None
+                best_path = ""
+                best_points: list[tuple[float, float]] | None = None
+                for gap, source_shift, target_shift in (
+                    (gap, source_shift, target_shift)
+                    for gap in (24.0, 36.0, 48.0, 60.0)
+                    for source_shift, target_shift in (
+                        (0.0, 0.0),
+                        (0.0, -16.0), (0.0, 16.0),
+                        (-16.0, 16.0), (16.0, -16.0),
+                        (16.0, 16.0), (-16.0, -16.0),
+                    )
+                ):
+                    first_gutter = start_x + direction * gap
+                    last_gutter = end_x - direction * gap
+                    if direction * (last_gutter - first_gutter) <= own_box[2] + 16:
+                        continue
+                    for rail_y in sorted(
+                        row_rails,
+                        key=lambda y: (abs(y - (start_y + end_y) / 2), y),
+                    )[:8]:
+                        source_port_y = start_y + source_shift
+                        target_port_y = end_y + target_shift
+                        candidate_path = (
+                            f"M {start_x:.1f} {source_port_y:.1f} "
+                            f"L {first_gutter:.1f} {source_port_y:.1f} "
+                            f"L {first_gutter:.1f} {rail_y:.1f} "
+                            f"L {last_gutter:.1f} {rail_y:.1f} "
+                            f"L {last_gutter:.1f} {target_port_y:.1f} "
+                            f"L {end_x:.1f} {target_port_y:.1f}"
+                        )
+                        if any(
+                            _process_svg_path_hits_box(candidate_path, obstacle, padding=2)
+                            for node_id, obstacle in node_obstacles.items()
+                            if node_id not in {str(edge["from"]), str(edge["to"])}
+                        ) or any(
+                            _process_paths_share_physical_stroke(candidate_path, path)
+                            and not _process_paths_share_physical_stroke(original, path)
+                            for other_id, path in routed.items()
+                            if other_id != edge_id
+                        ):
+                            continue
+                        candidate_points = route_points(candidate_path)
+                        if candidate_points is None:
+                            continue
+                        candidate_score = route_cost(
+                            edge_id, candidate_path, candidate_points
+                        ) + 0.5 * (abs(source_shift) + abs(target_shift))
+                        if candidate_score >= best_score:
+                            continue
+                        middle = (first_gutter + last_gutter) / 2
+                        for delta_x in (0.0, -120.0, 120.0, -240.0, 240.0):
+                            center_x = middle + delta_x
+                            label = (
+                                center_x - own_box[2] / 2,
+                                rail_y - own_box[3] / 2,
+                                own_box[2], own_box[3],
+                            )
+                            if (
+                                label[0] < min(first_gutter, last_gutter) + 8
+                                or label[0] + label[2]
+                                > max(first_gutter, last_gutter) - 8
+                                or label[1] < 104
+                                or label[1] + label[3] > height - 8
+                                or label_conflict(label, edge_id)
+                            ):
+                                continue
+                            fragment = render_planned_edge(
+                                edge, label_position_override=(center_x, rail_y)
+                            )
+                            rendered_path, rendered_box = readable_fragment_parts(fragment)
+                            if rendered_path != original or any(
+                                abs(actual - proposed) > 0.1
+                                for actual, proposed in zip(rendered_box, label)
+                            ):
+                                continue
+                            for index, line in enumerate(fragment):
+                                if line.startswith('<path d="') and 'fill="none"' in line:
+                                    fragment[index] = line.replace(
+                                        f'd="{rendered_path}"',
+                                        f'd="{candidate_path}"',
+                                        1,
+                                    )
+                                    break
+                            else:
+                                continue
+                            fragment[0] = re.sub(
+                                r'data-route="[^"]+"',
+                                'data-route="knowledge-map-readable-gutter"',
+                                fragment[0], count=1,
+                            )
+                            best_score = candidate_score
+                            best_fragment = fragment
+                            best_path = candidate_path
+                            best_points = candidate_points
+                            break
+                if best_fragment is not None and best_points is not None:
+                    planned_edge_lines[edge_id] = best_fragment
+                    routed[edge_id] = best_path
+                    sampled[edge_id] = best_points
 
         # A shortened feedback return can share its row gap with a vertical
         # relation label. Move only the blocked return label along its own

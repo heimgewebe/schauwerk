@@ -568,3 +568,176 @@ def test_crowded_sinn_map_has_no_label_overlaps_or_card_piercings() -> None:
                 and a[1] < b[1] + b[3] and b[1] < a[1] + a[3]
             ), (left_id, right_id)
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def _reported_sinn_19_26_model() -> dict:
+    """The exact 19-node/26-edge relations from the user's A3-PDF report."""
+    model = _crowded_sinn_model()
+    model["id"] = "sinn_und_bedeutung"
+    model["purpose"] = (
+        "Eine philosophische Wissenskarte über die Entstehung, Erfahrung, "
+        "Suche und mögliche Grenzen von Sinn."
+    )
+    model["groups"] = [
+        {"id": "dimensionen", "label": "Dimensionen des Sinns"},
+        {"id": "quellen", "label": "Quellen des Sinns"},
+        {"id": "sinnbildung", "label": "Wie Sinn entsteht"},
+        {"id": "spannungen", "label": "Grenzen und Widersprüche"},
+    ]
+    for node in model["nodes"]:
+        if node["group"] == "entstehung":
+            node["group"] = "sinnbildung"
+        elif node["group"] == "grenzen":
+            node["group"] = "spannungen"
+        if node["id"] == "vorgegeben":
+            node["id"] = "offene_frage"
+        if node["id"] == "sinn":
+            node["summary"] = (
+                "Das Erleben oder Erkennen von Zusammenhang, "
+                "Richtung und Bedeutsamkeit."
+            )
+    # Preserve the original source order and full node descriptions as well.
+    model["nodes"].sort(key=lambda node: 0 if node["id"] == "sinn" else 1)
+    summaries = {
+        "sinn": "Das Erleben oder Erkennen von Zusammenhang, Richtung und Bedeutsamkeit.",
+        "verstehen": "Ereignisse und Erfahrungen in einen nachvollziehbaren Zusammenhang bringen.",
+        "orientierung": "Wissen, worauf das eigene Handeln gerichtet ist.",
+        "bedeutsamkeit": "Etwas als wichtig und wertvoll erfahren.",
+        "werte": "Überzeugungen darüber, was wichtig und erstrebenswert ist.",
+        "beziehungen": "Liebe, Verbundenheit, Anerkennung und gemeinsames Leben.",
+        "wirksamkeit": "Durch eigenes Handeln etwas verändern oder gestalten.",
+        "erfahrung": (
+            "Sinn kann im unmittelbaren Erleben von Natur, Kunst, Freude "
+            "oder Begegnung liegen."
+        ),
+        "beitrag": "Etwas für andere oder für eine als wertvoll betrachtete Sache tun.",
+        "wahrnehmung": "Die Welt und das eigene Leben bewusst erfahren.",
+        "deutung": "Erlebnisse interpretieren und in größere Zusammenhänge einordnen.",
+        "entscheidung": "Zwischen Möglichkeiten wählen und Prioritäten setzen.",
+        "handeln": "Gewählte Werte und Ziele praktisch verwirklichen.",
+        "reflexion": "Erfahrungen, Überzeugungen und Ziele kritisch hinterfragen.",
+        "freiheit": (
+            "Sinn kann selbst gestaltet werden, ohne vollständig frei "
+            "von Bedingungen zu sein."
+        ),
+        "zufall": "Nicht jedes Ereignis folgt einem erkennbaren Zweck.",
+        "sinnkrise": "Bisher tragende Bedeutungen und Ziele verlieren ihre Überzeugungskraft.",
+        "absurditaet": (
+            "Spannung zwischen menschlicher Sinnsuche und einer Welt "
+            "ohne erkennbaren vorgegebenen Gesamtzweck."
+        ),
+        "offene_frage": (
+            "Ist Sinn bereits in der Welt vorhanden, wird er entdeckt "
+            "oder erst von Menschen geschaffen?"
+        ),
+    }
+    for node in model["nodes"]:
+        node["summary"] = summaries[node["id"]]
+    model["nodes"][0].pop("group", None)
+
+    pairs = [
+        ("sinn", "verstehen", "Zusammenhang", "association"),
+        ("sinn", "orientierung", "Richtung", "association"),
+        ("sinn", "bedeutsamkeit", "Wichtigkeit", "association"),
+        ("werte", "orientierung", "geben Maßstäbe", "association"),
+        ("beziehungen", "bedeutsamkeit", "stiften Verbundenheit", "association"),
+        ("wirksamkeit", "bedeutsamkeit", "erzeugt Relevanz", "association"),
+        ("erfahrung", "sinn", "macht erfahrbar", "association"),
+        ("beitrag", "beziehungen", "stärkt", "association"),
+        ("beitrag", "wirksamkeit", "ermöglicht", "flow"),
+        ("wahrnehmung", "deutung", "liefert Erfahrungen", "flow"),
+        ("deutung", "verstehen", "bildet Zusammenhänge", "flow"),
+        ("werte", "entscheidung", "leiten", "association"),
+        ("entscheidung", "handeln", "führt zu", "flow"),
+        ("handeln", "wirksamkeit", "ermöglicht", "flow"),
+        ("handeln", "erfahrung", "schafft", "flow"),
+        ("erfahrung", "reflexion", "regt an", "feedback"),
+        ("reflexion", "werte", "prüft und verändert", "feedback"),
+        ("reflexion", "deutung", "korrigiert", "feedback"),
+        ("freiheit", "entscheidung", "eröffnet Möglichkeiten", "association"),
+        ("zufall", "orientierung", "durchkreuzt Pläne", "risk"),
+        ("sinnkrise", "sinn", "stellt infrage", "risk"),
+        ("sinnkrise", "reflexion", "kann auslösen", "feedback"),
+        ("absurditaet", "offene_frage", "verschärft", "association"),
+        ("offene_frage", "sinn", "fragt nach Ursprung", "association"),
+        ("freiheit", "sinn", "ermöglicht Sinngebung", "association"),
+        ("deutung", "sinn", "konstruiert Bedeutung", "flow"),
+    ]
+    model["edges"] = [
+        {
+            "id": f"e{index:02d}", "from": source, "to": target,
+            "label": label, "kind": kind,
+        }
+        for index, (source, target, label, kind) in enumerate(pairs, 1)
+    ]
+    model["requirements"] = {
+        "formal_relations": True, "free_spatial_layout": False,
+        "presentation": True, "collaboration": False, "rich_text": False,
+        "structured_comparison": False, "portable_offline": False,
+    }
+    return model
+
+
+def test_reported_sinn_model_renders_all_26_relations_deterministically() -> None:
+    model = _reported_sinn_19_26_model()
+    root = ET.fromstring(render_native_diagram(model))
+    assert len(model["nodes"]) == 19
+    assert len(_edges(root)) == 26
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_reported_sinn_routes_avoid_foreign_cards_and_labels() -> None:
+    """The actual PDF example must have legible routes, not just visible nodes."""
+    from schauwerk.visual.native_diagram import _process_svg_path_hits_box
+
+    model = _reported_sinn_19_26_model()
+    root = ET.fromstring(render_native_diagram(model))
+    edges = _edges(root)
+    nodes = {
+        element.attrib["data-source-id"]: element
+        for element in root.iter()
+        if element.attrib.get("data-source-kind") == "node"
+    }
+
+    def box(element: ET.Element) -> tuple[float, float, float, float]:
+        rectangle = next(child for child in element if child.tag == SVG + "rect")
+        return tuple(
+            float(rectangle.get(attribute, "0"))
+            for attribute in ("x", "y", "width", "height")
+        )
+
+    node_boxes = {node_id: box(element) for node_id, element in nodes.items()}
+    label_boxes = {edge_id: box(element) for edge_id, element in edges.items()}
+
+    def overlap(
+        left: tuple[float, float, float, float],
+        right: tuple[float, float, float, float],
+    ) -> bool:
+        return (
+            left[0] < right[0] + right[2]
+            and right[0] < left[0] + left[2]
+            and left[1] < right[1] + right[3]
+            and right[1] < left[1] + left[3]
+        )
+
+    relations = {str(edge["id"]): edge for edge in model["edges"]}
+    for edge_id, group in edges.items():
+        stroke = group.find(SVG + "path")
+        assert stroke is not None
+        for node_id, boundary in node_boxes.items():
+            if node_id in {relations[edge_id]["from"], relations[edge_id]["to"]}:
+                continue
+            assert not _process_svg_path_hits_box(
+                stroke.get("d", ""), boundary, padding=0
+            ), (edge_id, node_id)
+
+    for index, (edge_id, boundary) in enumerate(label_boxes.items()):
+        for other_id, other_boundary in list(label_boxes.items())[index + 1:]:
+            assert not overlap(boundary, other_boundary), (edge_id, other_id)
+
+    assert edges["e11"].attrib["data-route"] == "knowledge-map-readable-gutter"
+    assert edges["e26"].attrib["data-route"] == "knowledge-map-readable-gutter"
+    assert edges["e20"].attrib["data-kind"] == "risk"
+    assert edges["e20"].attrib["data-route"] == "knowledge-map-readable-gutter"
+    # The high-visibility risk edge no longer needs a giant cross-row diagonal.
+    assert node_boxes["zufall"][1] == node_boxes["orientierung"][1]
