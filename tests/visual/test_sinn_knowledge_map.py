@@ -686,6 +686,31 @@ def test_reported_sinn_model_renders_all_26_relations_deterministically() -> Non
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
 
 
+def test_reported_sinn_long_same_column_route_stays_near_its_cards() -> None:
+    """A short adjacent peer must not push a long relation to the far page edge."""
+    from schauwerk.visual.native_diagram import _process_svg_stroke_segments
+
+    model = _reported_sinn_19_26_model()
+    root = ET.fromstring(render_native_diagram(model))
+    edge = _edges(root)["e08"]  # Beitrag -> Beziehungen (e09 starts in the same gap).
+    assert edge.get("data-route") == "knowledge-map-readable-gutter"
+    path = edge.find(SVG + "path")
+    assert path is not None
+    segments = _process_svg_stroke_segments(path.get("d", ""))
+    assert segments is not None and all(len(segment) == 2 for segment in segments)
+
+    points = [point for segment in segments for point in segment]
+    length = sum(
+        ((right[0] - left[0]) ** 2 + (right[1] - left[1]) ** 2) ** 0.5
+        for segment in segments
+        for left, right in zip(segment, segment[1:])
+    )
+    # The former global return traversed both sides of the canvas (3379 units)
+    # despite both cards belonging to the same column. Preserve a local side lane.
+    assert length < 1500
+    assert max(x for x, _ in points) - min(x for x, _ in points) < 300
+
+
 def test_reported_sinn_routes_avoid_foreign_cards_and_labels() -> None:
     """The actual PDF example must have legible routes, not just visible nodes."""
     from schauwerk.visual.native_diagram import _process_svg_path_hits_box
