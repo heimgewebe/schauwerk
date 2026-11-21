@@ -22,6 +22,10 @@ def test_ai_handoff_guide_is_copyable_and_tool_agnostic(tmp_path) -> None:
 
     assert "schauwerk-representation-input.v1" in AI_HANDOFF_PROMPT
     assert '"intent": "knowledge_map"' in AI_HANDOFF_PROMPT
+    assert '"groups": []' in AI_HANDOFF_PROMPT
+    assert "Gruppen sind optional" in AI_HANDOFF_PROMPT
+    assert "Ein zentraler Leitbegriff darf ohne group stehen." in AI_HANDOFF_PROMPT
+    assert '"group": "gruppe"' not in AI_HANDOFF_PROMPT
     assert "Knotenarten:" in AI_HANDOFF_PROMPT
     assert "Kantenarten:" in AI_HANDOFF_PROMPT
     assert '"requested_formats": []' in AI_HANDOFF_PROMPT
@@ -34,6 +38,8 @@ def test_ai_handoff_guide_is_copyable_and_tool_agnostic(tmp_path) -> None:
     validated = validate_representation_input(json.loads(example))
     assert validated["intent"] == "knowledge_map"
     assert validated["nodes"][0]["id"] == "knoten"
+    assert validated["groups"] == []
+    assert validated["nodes"][0].get("group") is None
 
     # The copied contract describes only the output expected from the LLM.
     # It must not prescribe where the user pastes it or add unrelated truthfulness policy.
