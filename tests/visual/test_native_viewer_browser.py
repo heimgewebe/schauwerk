@@ -2815,9 +2815,7 @@ try {
   const svg = document.querySelector("#nativeDiagram");
   if (!svg.querySelector("#native-node-deutung")?.hasAttribute("transform"))
     throw new Error("stored node offset not applied");
-  // The hub-centered e26 may be a safe cubic; all paths are independently
-  // sampled against cards and labels below, including e26.
-  for (const id of ["e11", "e20"]) {
+  for (const id of ["e11", "e20", "e26"]) {
     const path = svg.querySelector("#native-edge-" + id + " > path");
     if (!path?.getAttribute("d")?.includes(" L "))
       throw new Error(id + " corridor was replaced by cubic: " + path?.getAttribute("d"));

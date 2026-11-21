@@ -723,7 +723,7 @@ def _knowledge_map_centered_columns(
     center = len(grouped) // 2
     slots = sorted(
         (index for index in range(len(grouped) + 1) if index != center),
-        key=lambda index: (abs(index - center), index > center),
+        key=lambda index: (abs(index - center), index < center),
     )
     ranked = sorted(
         enumerate(grouped),

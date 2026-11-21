@@ -695,9 +695,9 @@ def test_reported_sinn_dominant_ungrouped_hub_is_visually_central() -> None:
     positions, regions, _, _ = _layout(model)
     assert len(regions) == 5
     assert (
-        positions["werte"][0] < positions["orientierung"][0]
-        < positions["sinn"][0] < positions["zufall"][0]
-        < positions["deutung"][0]
+        positions["deutung"][0] < positions["zufall"][0]
+        < positions["sinn"][0] < positions["orientierung"][0]
+        < positions["werte"][0]
     )
     assert regions[2][1] == "Leitbegriff"
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
@@ -744,7 +744,11 @@ def test_reported_sinn_long_same_column_route_stays_near_its_cards() -> None:
     model = _reported_sinn_19_26_model()
     root = ET.fromstring(render_native_diagram(model))
     edge = _edges(root)["e08"]  # Beitrag -> Beziehungen (e09 starts in the same gap).
-    assert edge.get("data-route") == "knowledge-map-readable-gutter"
+    # A mirrored thematic arrangement can keep the same short, card-safe
+    # side lane as an ordinary vertical route. Geometry is the acceptance.
+    assert edge.get("data-route") in {
+        "knowledge-map-readable-gutter", "vertical",
+    }
     path = edge.find(SVG + "path")
     assert path is not None
     segments = _process_svg_stroke_segments(path.get("d", ""))
