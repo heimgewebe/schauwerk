@@ -11,12 +11,12 @@
     "production_deployed",
     "physical_ipad_safari_acceptance"
   ],
-  "evidence_digest": "82386c65cdc7c399d052a1222bfb691b4cddecfba4df09038ae1df14e99bdf28",
+  "evidence_digest": "601e9522fad82e20be07f68a48ad00edf292b950264b9c151adc80bb4da64d0c",
   "schema_version": "schauwerk-schaubild-drag-gutter-source-successor.v1",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "e33e88e6f71356981d9b5598f7dae1b2e3f111fec5f3455f469dbb1604736bd1",
+    "src/schauwerk/resources/native_viewer/assets.py": "d48283a4034b8514e164484060a559b404b43a1337fe6599296ffb3948571046",
     "tests/visual/test_native_canvas_smart_integration.py": "037aeee3d3c465ec9e7066638a5a5fe19ddeb841133d75ce47248a0c7044c2b2",
-    "tests/visual/test_native_viewer_browser.py": "b4cb4fe6869171340f3f733a96c11856b0609cacc625dced77ae0a308cc25b32"
+    "tests/visual/test_native_viewer_browser.py": "6ded6a8956a44840f40385d0b104950d527bc9e66ddcd095db0497d484c54257"
   },
   "source_mode": "source-code-successor",
   "source_pr": 266,
@@ -35,9 +35,12 @@
     "node_count": 19,
     "node_offsets_replayed": 4,
     "node_self_loop_harness": "passed_with_document_mode_explicit",
+    "polyline_label_after_both_endpoints_move_green_task": "932d6b1fa7294475830fde34",
+    "polyline_label_after_both_endpoints_move_red_task": "04eed858ad1a4d9993999736",
     "reported_svg": "Schaubild (4).svg",
     "review_p2_cubic_label": "github:heimgewebe/schauwerk#266:discussion_r4651203832",
-    "review_p2_endpoint_card": "github:heimgewebe/schauwerk#266:discussion_r4651159235"
+    "review_p2_endpoint_card": "github:heimgewebe/schauwerk#266:discussion_r4651159235",
+    "review_p2_polyline_label": "github:heimgewebe/schauwerk#266:discussion_r4651674271"
   },
   "visual_acceptance": "not_inherited"
 }

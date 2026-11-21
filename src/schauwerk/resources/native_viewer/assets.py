@@ -1947,9 +1947,44 @@ function nudgedCertifiedKnowledgePath(edge, fromOffset, toOffset) {
 
 
 function nudgedKnowledgeLabel(edge, candidate) {
-  // Keep the server's explicitly placed label on the original straight gutter.
   if (!edge.basePath.includes("C")) {
-    return { x: edge.baseLabelX, y: edge.baseLabelY };
+    // Follow the actual label-bearing straight segment: it may move as a
+    // whole, while the long central gutter of another route stays fixed.
+    const points = path => {
+      const parts = [...path.matchAll(/([ML])\s*([^MLC]*)/g)];
+      if (parts.length < 2 || parts[0][1] !== "M") return null;
+      const values = parts.map(part =>
+        (part[2].match(/-?(?:\d+(?:\.\d*)?|\.\d+)/g) || []).map(Number)
+      );
+      return values.every(pair => pair.length === 2 && pair.every(Number.isFinite))
+        ? values : null;
+    };
+    const before = points(edge.basePath);
+    const after = points(candidate);
+    if (!before || !after || before.length !== after.length) return null;
+    let closest = null;
+    for (let i = 1; i < before.length; i += 1) {
+      const [ax, ay] = before[i - 1];
+      const [bx, by] = before[i];
+      const dx = bx - ax, dy = by - ay;
+      const squared = dx * dx + dy * dy;
+      if (!(squared > 0)) continue;
+      const fraction = Math.max(0, Math.min(1,
+        ((edge.baseLabelX - ax) * dx + (edge.baseLabelY - ay) * dy) / squared
+      ));
+      const px = ax + fraction * dx, py = ay + fraction * dy;
+      const distance = (edge.baseLabelX - px) ** 2 + (edge.baseLabelY - py) ** 2;
+      if (closest && distance >= closest.distance) continue;
+      const [cx, cy] = after[i - 1];
+      const [ex, ey] = after[i];
+      closest = {
+        distance,
+        x: edge.baseLabelX + cx + fraction * (ex - cx) - px,
+        y: edge.baseLabelY + cy + fraction * (ey - cy) - py,
+      };
+    }
+    return closest && Number.isFinite(closest.x) && Number.isFinite(closest.y)
+      ? { x: closest.x, y: closest.y } : null;
   }
   const original = edge.path.getAttribute("d") || "";
   try {
@@ -2090,7 +2125,8 @@ function updateEdgeGeometry(edgeId) {
       edgeState.naturalLabelY = anchoredLabel.y;
       edgeState.routeBounds = null;
       edgeState.routePoints = edgeState.baseRoutePoints;
-      if (edgeState.basePath.includes("C")) {
+      if (Math.abs(anchoredLabel.x - edgeState.baseLabelX) > 0.01 ||
+          Math.abs(anchoredLabel.y - edgeState.baseLabelY) > 0.01) {
         placeLiveLabel(edgeState, anchoredLabel.x, anchoredLabel.y);
       } else {
         resetEdgeLabel(edgeState);
