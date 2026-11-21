@@ -2939,3 +2939,102 @@ def test_knowledge_map_paths_must_not_pierce_own_endpoint_cards(
     )
     assert result.returncode == 0, result.stderr
     assert 'data-own-card-route="pass"' in result.stdout, result.stdout[-1700:]
+
+
+def test_knowledge_map_nudged_cubic_label_follows_both_endpoints(
+    tmp_path: Path,
+) -> None:
+    """The label must follow the curve when both endpoint cards move together."""
+    import runpy
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for cubic label regression")
+        raise AssertionError("unreachable")
+    model = runpy.run_path(
+        str(ROOT / "tests/visual/test_sinn_knowledge_map.py")
+    )["_sinn_model"]()
+    output = tmp_path / "sinn"
+    build_native_viewer(model, output)
+    index = output / "index.html"
+    source = index.read_text(encoding="utf-8")
+    marker = '<script type="module" src="app.js"></script>'
+    assert source.count(marker) == 1
+    injection = r"""
+<script>
+const svg = document.querySelector("#nativeDiagram");
+const original = svg.querySelector("#native-edge-e01 > path");
+if (!original.getAttribute("d").includes(" C ")) {
+  throw new Error("e01 fixture is not cubic");
+}
+window.__baseMidY = original.getPointAtLength(original.getTotalLength()/2).y;
+localStorage.setItem(
+  "schauwerk.native-viewer.layout.v1." + svg.dataset.inputDigest,
+  JSON.stringify({erfahrung:{x:0,y:48},deutung:{x:0,y:48}})
+);
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+try {
+  for (let i = 0; i < 180; i++) {
+    if (document.querySelector("#native-node-erfahrung")?.hasAttribute("transform")
+        && document.querySelector("#native-node-deutung")?.hasAttribute("transform"))
+      break;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  const edge = document.querySelector("#native-edge-e01");
+  const curve = [...edge.children].find(child => child instanceof SVGPathElement);
+  const rect = [...edge.children].find(child => child instanceof SVGRectElement);
+  if (!curve.getAttribute("d").includes(" C ")) {
+    throw new Error("e01 moved route is no longer cubic");
+  }
+  const newMidY = curve.getPointAtLength(curve.getTotalLength()/2).y;
+  const dyCurve = newMidY - window.__baseMidY;
+  const dyLabel = rect.transform.baseVal.consolidate()?.matrix.f ?? 0;
+  if (Math.abs(dyCurve - 48) > 3) {
+    throw new Error("e01 path is not translated: dy=" + dyCurve +
+      " route=" + edge.dataset.route);
+  }
+  if (Math.abs(dyLabel - dyCurve) > 5) {
+    throw new Error("e01 label detached from cubic: path dy=" +
+      dyCurve + " label dy=" + dyLabel);
+  }
+  document.documentElement.dataset.cubicLabelDragRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.cubicLabelDragRegression = "fail";
+  document.documentElement.dataset.cubicLabelDragError =
+    String(error?.message || error);
+}
+</script>
+"""
+    index.write_text(source.replace(marker, injection), encoding="utf-8")
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        proc = subprocess.run(
+            [
+                chrome, "--headless=new",
+                f"--user-data-dir={tmp_path / 'profile'}", "--no-first-run",
+                "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+                "--virtual-time-budget=18000", "--dump-dom",
+                f"http://127.0.0.1:{server.server_address[1]}/",
+            ],
+            capture_output=True, text=True, timeout=40, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert proc.returncode == 0, proc.stderr
+    import re
+
+    error = re.search(r'data-cubic-label-drag-error="([^"]+)"', proc.stdout)
+    assert 'data-cubic-label-drag-regression="pass"' in proc.stdout, (
+        (error.group(1) if error else "missing Chrome status") + proc.stderr[-450:]
+    )

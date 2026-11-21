@@ -1945,6 +1945,32 @@ function nudgedCertifiedKnowledgePath(edge, fromOffset, toOffset) {
   ).join(" ");
 }
 
+
+function nudgedKnowledgeLabel(edge, candidate) {
+  // Keep the server's explicitly placed label on the original straight gutter.
+  if (!edge.basePath.includes("C")) {
+    return { x: edge.baseLabelX, y: edge.baseLabelY };
+  }
+  const original = edge.path.getAttribute("d") || "";
+  try {
+    edge.path.setAttribute("d", edge.basePath);
+    const baseLength = edge.path.getTotalLength();
+    if (!(baseLength > 0)) return null;
+    const baseMid = edge.path.getPointAtLength(baseLength / 2);
+    edge.path.setAttribute("d", candidate);
+    const movedLength = edge.path.getTotalLength();
+    if (!(movedLength > 0)) return null;
+    const movedMid = edge.path.getPointAtLength(movedLength / 2);
+    const x = edge.baseLabelX + movedMid.x - baseMid.x;
+    const y = edge.baseLabelY + movedMid.y - baseMid.y;
+    return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+  } catch (_) {
+    return null;
+  } finally {
+    edge.path.setAttribute("d", original);
+  }
+}
+
 function knowledgePathAvoidsCards(edge, candidate, labelX, labelY) {
   const source = edge.path.getAttribute("d") || "";
   edge.path.setAttribute("d", candidate);
@@ -2051,19 +2077,24 @@ function updateEdgeGeometry(edgeId) {
   }
   if (knowledgeMapOverview && edges.size <= 40) {
     const anchored = nudgedCertifiedKnowledgePath(edgeState, fromOffset, toOffset);
+    const anchoredLabel = anchored ? nudgedKnowledgeLabel(edgeState, anchored) : null;
     if (
-      anchored &&
+      anchored && anchoredLabel &&
       knowledgePathAvoidsCards(
-        edgeState, anchored, edgeState.baseLabelX, edgeState.baseLabelY,
+        edgeState, anchored, anchoredLabel.x, anchoredLabel.y,
       )
     ) {
       edgeState.path.setAttribute("d", anchored);
       edgeState.hitPath.setAttribute("d", anchored);
-      edgeState.naturalLabelX = edgeState.baseLabelX;
-      edgeState.naturalLabelY = edgeState.baseLabelY;
+      edgeState.naturalLabelX = anchoredLabel.x;
+      edgeState.naturalLabelY = anchoredLabel.y;
       edgeState.routeBounds = null;
       edgeState.routePoints = edgeState.baseRoutePoints;
-      resetEdgeLabel(edgeState);
+      if (edgeState.basePath.includes("C")) {
+        placeLiveLabel(edgeState, anchoredLabel.x, anchoredLabel.y);
+      } else {
+        resetEdgeLabel(edgeState);
+      }
       placeLiveEdgeConflict(edgeState, false);
       edgeState.element.dataset.route = edgeState.route;
       return;
