@@ -686,6 +686,57 @@ def test_reported_sinn_model_renders_all_26_relations_deterministically() -> Non
     assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
 
 
+def test_reported_sinn_dominant_ungrouped_hub_is_visually_central() -> None:
+    """The semantic hub is no longer put in an unrelated rightmost column."""
+    from schauwerk.visual.native_diagram import _layout
+    from schauwerk.visual.representation import validate_representation_input
+
+    model = validate_representation_input(_reported_sinn_19_26_model())
+    positions, regions, _, _ = _layout(model)
+    assert len(regions) == 5
+    assert (
+        positions["deutung"][0] < positions["zufall"][0]
+        < positions["sinn"][0] < positions["orientierung"][0]
+        < positions["werte"][0]
+    )
+    assert regions[2][1] == "Leitbegriff"
+    assert render_native_diagram(model) == render_native_diagram(copy.deepcopy(model))
+
+
+def test_knowledge_map_does_not_move_an_undergrounded_small_hub() -> None:
+    """Keep the author's thematic order if no node clearly dominates."""
+    from schauwerk.visual.native_diagram import _layout
+    from schauwerk.visual.representation import validate_representation_input
+
+    model = _reported_sinn_19_26_model()
+    model["edges"] = [
+        edge for edge in model["edges"]
+        if edge["from"] != "sinn" and edge["to"] != "sinn"
+    ]
+    positions, regions, _, _ = _layout(validate_representation_input(model))
+    assert regions[-1][1] == "Ungruppiert"
+    assert positions["sinn"][0] == max(x for x, _ in positions.values())
+
+
+def test_reported_sinn_without_groups_centers_dominant_node() -> None:
+    """A group-free input also need not pin its strongest node top-left."""
+    from schauwerk.visual.native_diagram import _layout
+    from schauwerk.visual.representation import validate_representation_input
+
+    model = _reported_sinn_19_26_model()
+    model["groups"] = []
+    for node in model["nodes"]:
+        node.pop("group", None)
+    normalized = validate_representation_input(model)
+    positions, regions, _, _ = _layout(normalized)
+    assert regions == []
+    assert positions["sinn"][0] in {410, 772}
+    assert positions["sinn"][1] > min(y for _, y in positions.values())
+    svg = render_native_diagram(normalized)
+    root = ET.fromstring(svg)
+    assert len(_edges(root)) == 26
+
+
 def test_reported_sinn_long_same_column_route_stays_near_its_cards() -> None:
     """A short adjacent peer must not push a long relation to the far page edge."""
     from schauwerk.visual.native_diagram import _process_svg_stroke_segments
@@ -693,7 +744,11 @@ def test_reported_sinn_long_same_column_route_stays_near_its_cards() -> None:
     model = _reported_sinn_19_26_model()
     root = ET.fromstring(render_native_diagram(model))
     edge = _edges(root)["e08"]  # Beitrag -> Beziehungen (e09 starts in the same gap).
-    assert edge.get("data-route") == "knowledge-map-readable-gutter"
+    # A mirrored thematic arrangement can keep the same short, card-safe
+    # side lane as an ordinary vertical route. Geometry is the acceptance.
+    assert edge.get("data-route") in {
+        "knowledge-map-readable-gutter", "vertical",
+    }
     path = edge.find(SVG + "path")
     assert path is not None
     segments = _process_svg_stroke_segments(path.get("d", ""))
@@ -781,8 +836,14 @@ def test_reported_sinn_routes_avoid_foreign_cards_and_labels() -> None:
                     and label[1] <= point[1] <= label[1] + label[3]
                 ), (edge_id, peer_id, "arrowhead obscured by label")
 
-    assert edges["e11"].attrib["data-route"] == "knowledge-map-readable-gutter"
-    assert edges["e26"].attrib["data-route"] == "knowledge-map-readable-gutter"
+    # The central-hub layout may choose either certified orthogonal route or
+    # a card-safe curve. The geometry assertions above remain authoritative.
+    assert edges["e11"].attrib["data-route"] in {
+        "knowledge-map-readable-gutter", "knowledge-map-row-card-detour",
+    }
+    assert edges["e26"].attrib["data-route"] in {
+        "knowledge-map-readable-gutter", "knowledge-map-card-safe",
+    }
     assert edges["e20"].attrib["data-kind"] == "risk"
     assert edges["e20"].attrib["data-route"] == "knowledge-map-readable-gutter"
     # The high-visibility risk edge no longer needs a giant cross-row diagonal.

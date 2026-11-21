@@ -655,6 +655,89 @@ def _knowledge_map_ordered_columns(
     ]
 
 
+def _knowledge_map_leading_node(
+    nodes: Sequence[Mapping[str, Any]],
+    edges: Sequence[Mapping[str, Any]],
+) -> str | None:
+    """Find a genuinely dominant semantic hub, without relying on labels or IDs."""
+    if not 5 <= len(nodes) <= 32:
+        return None
+    degree: dict[str, int] = defaultdict(int)
+    for edge in edges:
+        source, target = str(edge["from"]), str(edge["to"])
+        if source != target:
+            degree[source] += 1
+            degree[target] += 1
+    ranked = sorted(
+        ((degree.get(str(node["id"]), 0), index, str(node["id"]))
+         for index, node in enumerate(nodes)),
+        key=lambda item: (-item[0], item[1]),
+    )
+    if (
+        len(ranked) < 2
+        or ranked[0][0] < 5
+        or ranked[0][0] * 2 < ranked[1][0] * 3
+    ):
+        return None
+    return ranked[0][2]
+
+
+def _knowledge_map_centered_columns(
+    columns: list[tuple[str | None, str, list[Mapping[str, Any]]]],
+    edges: Sequence[Mapping[str, Any]],
+    hub_id: str,
+) -> list[tuple[str | None, str, list[Mapping[str, Any]]]]:
+    """Keep a strong ungrouped hub central and its closest themes nearby.
+
+    Knowledge-map groups express themes rather than a process sequence. Only
+    the one-node ungrouped column is eligible; all other model and group IDs
+    remain untouched. The existing row-optimizer and obstacle-safe router own
+    the final reading order and edge geometry.
+    """
+    grouped = [column for column in columns if column[0] is not None]
+    ungrouped = [column for column in columns if column[0] is None]
+    if (
+        not 3 <= len(grouped) <= 4
+        or len(ungrouped) != 1
+        or len(ungrouped[0][2]) != 1
+        or str(ungrouped[0][2][0]["id"]) != hub_id
+        or any(not members for _, _, members in grouped)
+    ):
+        return columns
+    owner = {
+        str(node["id"]): group_id
+        for group_id, _, members in grouped
+        for node in members
+    }
+    affinity: dict[str, int] = defaultdict(int)
+    for edge in edges:
+        source, target = str(edge["from"]), str(edge["to"])
+        other = target if source == hub_id else source if target == hub_id else None
+        if other is not None and owner.get(other) is not None:
+            affinity[str(owner[other])] += 1
+    if sum(affinity.get(str(group_id), 0) > 0 for group_id, _, _ in grouped) < 3:
+        return columns
+
+    # Nearest left/right slots get the most directly related groups; ties
+    # retain the source's group order. No new semantic group is added.
+    center = len(grouped) // 2
+    slots = sorted(
+        (index for index in range(len(grouped) + 1) if index != center),
+        key=lambda index: (abs(index - center), index < center),
+    )
+    ranked = sorted(
+        enumerate(grouped),
+        key=lambda item: (-affinity.get(str(item[1][0]), 0), item[0]),
+    )
+    result: list[tuple[str | None, str, list[Mapping[str, Any]]] | None] = [
+        None
+    ] * (len(grouped) + 1)
+    result[center] = (None, "Leitbegriff", ungrouped[0][2])
+    for slot, (_, column) in zip(slots, ranked):
+        result[slot] = column
+    return [column for column in result if column is not None]
+
+
 def _layout(
     model: Mapping[str, Any],
 ) -> tuple[dict[str, tuple[int, int]], list[tuple[str | None, str, int, int, int, int]], int, int]:
@@ -690,6 +773,11 @@ def _layout(
         if members[None]:
             columns.append((None, "Ungruppiert", members[None]))
         if model["intent"] == "knowledge_map":
+            hub = _knowledge_map_leading_node(nodes, model["edges"])
+            if hub is not None:
+                columns = _knowledge_map_centered_columns(
+                    columns, model["edges"], hub
+                )
             columns = _knowledge_map_ordered_columns(columns, model["edges"])
 
         maximum_rows = max(1, *(len(column_nodes) for _, _, column_nodes in columns))
@@ -728,6 +816,20 @@ def _layout(
 
     process_like = model["intent"] in {"process", "sequence", "state", "timeline", "narrative"}
     column_count = min(len(nodes), 6 if process_like else 4)
+    if model["intent"] == "knowledge_map":
+        hub = _knowledge_map_leading_node(nodes, model["edges"])
+        if hub is not None:
+            # A group-free input has no thematic column constraints. Put its
+            # strongest concept near the center of the existing four-column
+            # grid, not at the input-order-dependent top-left corner.
+            row_count = (len(nodes) + column_count - 1) // column_count
+            middle = min(
+                len(nodes) - 1,
+                (row_count // 2) * column_count + column_count // 2,
+            )
+            lead = next(node for node in nodes if str(node["id"]) == hub)
+            nodes = [node for node in nodes if str(node["id"]) != hub]
+            nodes.insert(middle, lead)
     horizontal_gap = _UNGROUPED_PROCESS_HORIZONTAL_GAP if process_like else 112
     for index, node in enumerate(nodes):
         column = index % column_count
