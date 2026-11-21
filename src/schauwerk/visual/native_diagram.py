@@ -10057,6 +10057,119 @@ def render_native_diagram(
                     routed[edge_id] = best_path
                     sampled[edge_id] = best_points
 
+            # A shared adjacent-row corridor need not send a long same-column
+            # relation around every group. Reuse the dense-map score and safe
+            # label placement to select a nearer side corridor if available.
+            for edge_id in sorted(planned_by_id):
+                edge = planned_by_id[edge_id]
+                source, target = (
+                    positions[str(edge["from"])], positions[str(edge["to"])]
+                )
+                if (
+                    str(edge["kind"]) == "feedback"
+                    or source[0] != target[0]
+                    or source[1] == target[1]
+                    or 'data-route="vertical"' not in planned_edge_lines[edge_id][0]
+                    or edge_id not in sampled
+                ):
+                    continue
+                old_path = routed[edge_id]
+                pieces = _process_svg_stroke_segments(old_path)
+                if (
+                    pieces is None or len(pieces) != 5
+                    or any(len(piece) != 2 for piece in pieces)
+                ):
+                    continue
+                start, source_gap = pieces[0]
+                target_gap, end = pieces[-1]
+                old_length = sum(
+                    math.dist(a, b)
+                    for piece in pieces for a, b in zip(piece, piece[1:])
+                )
+                if old_length <= 2 * abs(start[1] - end[1]):
+                    continue
+                label_box_before = label_box(planned_edge_lines[edge_id])
+                best_score = route_cost(edge_id, old_path, sampled[edge_id]) - 100
+                winner = None
+                for offset in (9.0, 18.0, 27.0):
+                    for x in (source[0] - offset, source[0] + _NODE_WIDTH + offset):
+                        candidate_path = (
+                            f"M {start[0]:.1f} {start[1]:.1f} "
+                            f"L {source_gap[0]:.1f} {source_gap[1]:.1f} "
+                            f"L {x:.1f} {source_gap[1]:.1f} "
+                            f"L {x:.1f} {target_gap[1]:.1f} "
+                            f"L {target_gap[0]:.1f} {target_gap[1]:.1f} "
+                            f"L {end[0]:.1f} {end[1]:.1f}"
+                        )
+                        if any(
+                            _process_svg_path_hits_box(candidate_path, box, padding=2)
+                            for node_id, box in node_obstacles.items()
+                            if node_id not in {str(edge["from"]), str(edge["to"])}
+                        ) or any(
+                            _process_paths_share_physical_stroke(candidate_path, path)
+                            and not _process_paths_share_physical_stroke(old_path, path)
+                            for peer_id, path in routed.items() if peer_id != edge_id
+                        ):
+                            continue
+                        points = route_points(candidate_path)
+                        if points is None:
+                            continue
+                        score = route_cost(edge_id, candidate_path, points)
+                        if score >= best_score:
+                            continue
+                        center_y = (source_gap[1] + target_gap[1]) / 2
+                        rails = sorted(
+                            (y for y in row_rails
+                             if min(source_gap[1], target_gap[1]) < y
+                             < max(source_gap[1], target_gap[1])),
+                            key=lambda y: (abs(y - center_y), y),
+                        )[:8]
+                        for rail_y in rails:
+                            for side in (1, -1):
+                                center_x = x + side * (8 + label_box_before[2] / 2)
+                                label = (
+                                    center_x - label_box_before[2] / 2,
+                                    rail_y - label_box_before[3] / 2,
+                                    label_box_before[2], label_box_before[3],
+                                )
+                                if (
+                                    label[0] < 8 or label[0] + label[2] > width - 8
+                                    or label_conflict(label, edge_id)
+                                    or any(
+                                        _process_svg_path_hits_box(path, label)
+                                        for peer_id, path in routed.items()
+                                        if peer_id != edge_id
+                                    )
+                                ):
+                                    continue
+                                fragment = render_planned_edge(
+                                    edge, label_position_override=(center_x, rail_y)
+                                )
+                                actual_path, actual_label = readable_fragment_parts(fragment)
+                                if actual_path != old_path or any(
+                                    abs(a - b) > 0.1
+                                    for a, b in zip(actual_label, label)
+                                ):
+                                    continue
+                                for i, line in enumerate(fragment):
+                                    if line.startswith('<path d="') and 'fill="none"' in line:
+                                        fragment[i] = line.replace(
+                                            f'd="{actual_path}"', f'd="{candidate_path}"', 1
+                                        )
+                                        break
+                                else:
+                                    continue
+                                fragment[0] = re.sub(
+                                    r'data-route="[^"]+"',
+                                    'data-route="knowledge-map-readable-gutter"',
+                                    fragment[0], count=1,
+                                )
+                                best_score = score
+                                winner = candidate_path, fragment, points
+                                break
+                if winner is not None:
+                    routed[edge_id], planned_edge_lines[edge_id], sampled[edge_id] = winner
+
         # A shortened feedback return can share its row gap with a vertical
         # relation label. Move only the blocked return label along its own
         # unchanged horizontal path; prefer the end nearest its source.
