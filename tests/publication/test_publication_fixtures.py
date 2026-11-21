@@ -30,6 +30,45 @@ _CURRENT_AI_HANDOFF_SOURCES = {
 }
 
 
+def _drag_gutter_source_successor_proof() -> dict:
+    """Current candidate binds exact new bytes without rewriting old visual proofs."""
+    proof = json.loads(
+        (
+            ROOT / "docs/operators/evidence/schaubild-drag-gutter-source-successor-20261121"
+            / "technical-proof.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert proof["schema_version"] == "schauwerk-schaubild-drag-gutter-source-successor.v1"
+    assert proof["base_revision"] == "fc8cdc4b04162ec1e3e4c77df2c23c5108eb59e6"
+    assert proof["source_pr"] == 266
+    assert proof["status"] == "technical_candidate_only"
+    assert proof["visual_acceptance"] == "not_inherited"
+    assert proof["consumer_runtime"] == "not_integrated"
+    assert proof["evidence_digest"] == digest_mapping(proof, "evidence_digest")
+    assert proof["base_source_bindings"] == {
+        "src/schauwerk/resources/native_viewer/assets.py":
+            "f9d1705edc241e92b46e5f31878f70db45c16b814e7ff65b076f8c20b2698034",
+        "tests/visual/test_native_viewer_browser.py":
+            "8e89cce10d26f3bb8466da610840338a53701921a8510587eb78d38467e62dcf",
+        "tests/visual/test_native_canvas_smart_integration.py":
+            "cb249f17745ef8e8af05a8b03138cc1b2dce614bde011c9f53cd9ae4b20158c8",
+    }
+    assert set(proof["source_bindings"]) == set(proof["base_source_bindings"])
+    for path, expected in proof["source_bindings"].items():
+        assert expected != proof["base_source_bindings"][path]
+        assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == expected, path
+    assert proof["validation"]["node_count"] == 19
+    assert proof["validation"]["edge_count"] == 26
+    assert "production_deployed" in proof["does_not_establish"]
+    return proof
+
+
+def _newest_proven_viewer_sha(path: str, historical_sha: str) -> str:
+    """Only the explicitly pinned source successor may override old digest expectations."""
+    proof = _drag_gutter_source_successor_proof()
+    return proof["source_bindings"].get(path, historical_sha)
+
+
 def _tablet_reading_source_successor_proof() -> dict:
     """Validate the current viewer-only revision, not inherited visual acceptance."""
     path = (
@@ -65,7 +104,9 @@ def _tablet_reading_source_successor_proof() -> dict:
     assert set(proof["source_bindings"]) == {asset, touch}
     for name, digest in proof["source_bindings"].items():
         assert digest != proof["base_source_bindings"][name]
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest, name
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _newest_proven_viewer_sha(name, digest)
+        ), name
     assert proof["validation"]["chrome_touch_focus_compact_and_19_node_crowded"] == "passed"
     assert proof["validation"]["full_ci"] == "pending_exact_head"
     assert proof["validation"]["physical_ipad_safari"] == "not_tested"
@@ -74,7 +115,10 @@ def _tablet_reading_source_successor_proof() -> dict:
 
 
 def _reading_latest_source_sha(name: str, previous_sha: str) -> str:
-    return _tablet_reading_source_successor_proof()["source_bindings"].get(name, previous_sha)
+    latest_accepted_source = _tablet_reading_source_successor_proof()[
+        "source_bindings"
+    ].get(name, previous_sha)
+    return _newest_proven_viewer_sha(name, latest_accepted_source)
 
 
 def test_schaubild_tablet_reading_source_is_not_inherited_acceptance() -> None:
@@ -292,6 +336,7 @@ def _memoize_immutable_proofs_during_one_test(monkeypatch) -> None:
         "_tablet_focus_source_successor_proof",
         "_moved_label_clip_source_successor_proof",
         "_tablet_reading_source_successor_proof",
+        "_drag_gutter_source_successor_proof",
     ):
         monkeypatch.setitem(globals(), loader, lru_cache(maxsize=4)(globals()[loader]))
 
@@ -737,7 +782,9 @@ def _readable_router_source_proof() -> dict:
     assert set(receipt["base_source_bindings"]) == set(receipt["source_bindings"])
     for name, digest in receipt["source_bindings"].items():
         assert receipt["base_source_bindings"][name] != digest
-        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == digest
+        assert hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == (
+            _newest_proven_viewer_sha(name, digest)
+        )
     return receipt
 
 

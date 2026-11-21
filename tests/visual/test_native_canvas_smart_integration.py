@@ -669,6 +669,8 @@ if(events.length!==2 || events[1][0]!=="save")
   throw Error("Ordinary small drag regressed into a second full render");
 """ + r"""
 const documentModeDummy = true;
+// The isolated document-mode test does not enter the knowledge-map router.
+const knowledgeMapOverview = false;
 const routingMode=()=> "smart";
 const svg={
   viewBox:{baseVal:{width:1000,height:600}},

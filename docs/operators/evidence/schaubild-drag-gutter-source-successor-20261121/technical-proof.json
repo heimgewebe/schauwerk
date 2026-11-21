@@ -1,0 +1,46 @@
+{
+  "base_revision": "fc8cdc4b04162ec1e3e4c77df2c23c5108eb59e6",
+  "base_source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "f9d1705edc241e92b46e5f31878f70db45c16b814e7ff65b076f8c20b2698034",
+    "tests/visual/test_native_canvas_smart_integration.py": "cb249f17745ef8e8af05a8b03138cc1b2dce614bde011c9f53cd9ae4b20158c8",
+    "tests/visual/test_native_viewer_browser.py": "8e89cce10d26f3bb8466da610840338a53701921a8510587eb78d38467e62dcf"
+  },
+  "consumer_runtime": "not_integrated",
+  "does_not_establish": [
+    "historical_visual_acceptance_inherited",
+    "production_deployed",
+    "physical_ipad_safari_acceptance"
+  ],
+  "evidence_digest": "601e9522fad82e20be07f68a48ad00edf292b950264b9c151adc80bb4da64d0c",
+  "schema_version": "schauwerk-schaubild-drag-gutter-source-successor.v1",
+  "source_bindings": {
+    "src/schauwerk/resources/native_viewer/assets.py": "d48283a4034b8514e164484060a559b404b43a1337fe6599296ffb3948571046",
+    "tests/visual/test_native_canvas_smart_integration.py": "037aeee3d3c465ec9e7066638a5a5fe19ddeb841133d75ce47248a0c7044c2b2",
+    "tests/visual/test_native_viewer_browser.py": "6ded6a8956a44840f40385d0b104950d527bc9e66ddcd095db0497d484c54257"
+  },
+  "source_mode": "source-code-successor",
+  "source_pr": 266,
+  "source_repository": "heimgewebe/schauwerk",
+  "status": "technical_candidate_only",
+  "validation": {
+    "chrome_green_task": "8b839226fcf74b8c9716e5ad",
+    "chrome_red_task": "02748815101e4671a8b68978",
+    "cubic_label_after_both_endpoints_move_green_task": "d6ce7ac3afa44e52957bc068",
+    "cubic_label_after_both_endpoints_move_red_task": "69bd932213a4431fb96c6f03",
+    "edge_count": 26,
+    "endpoint_card_self_penetration_green_task": "bdc60586f5b0426aa38d6b39",
+    "endpoint_card_self_penetration_red_task": "857535f7cc6c43089d374036",
+    "full_ci": "pending_exact_head",
+    "native_viewer_suite_task": "b7937695ffd94136a3c3f14d",
+    "node_count": 19,
+    "node_offsets_replayed": 4,
+    "node_self_loop_harness": "passed_with_document_mode_explicit",
+    "polyline_label_after_both_endpoints_move_green_task": "932d6b1fa7294475830fde34",
+    "polyline_label_after_both_endpoints_move_red_task": "04eed858ad1a4d9993999736",
+    "reported_svg": "Schaubild (4).svg",
+    "review_p2_cubic_label": "github:heimgewebe/schauwerk#266:discussion_r4651203832",
+    "review_p2_endpoint_card": "github:heimgewebe/schauwerk#266:discussion_r4651159235",
+    "review_p2_polyline_label": "github:heimgewebe/schauwerk#266:discussion_r4651674271"
+  },
+  "visual_acceptance": "not_inherited"
+}

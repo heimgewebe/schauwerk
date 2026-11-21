@@ -13,6 +13,7 @@ from urllib.request import urlopen
 
 import pytest
 
+from schauwerk.resources.native_viewer.assets import ASSETS
 from schauwerk.visual.native_document import (
     MAX_NATIVE_ABS_COORDINATE,
     json_canvas_to_editing_document,
@@ -2771,3 +2772,367 @@ try {
         server.shutdown()
         server.server_close()
         worker.join(timeout=5)
+
+def test_knowledge_map_saved_nudges_keep_certified_edge_paths(tmp_path: Path) -> None:
+    """An actual stored drag must not replace card-safe gutters with cubics."""
+    import runpy
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for Sinn saved-drag regression")
+        raise AssertionError("unreachable")
+    model = runpy.run_path(
+        str(ROOT / "tests/visual/test_sinn_knowledge_map.py")
+    )["_reported_sinn_19_26_model"]()
+    output = tmp_path / "sinn"
+    build_native_viewer(model, output)
+    index = output / "index.html"
+    source = index.read_text(encoding="utf-8")
+    marker = '<script type="module" src="app.js"></script>'
+    assert source.count(marker) == 1
+    injection = r"""
+<script>
+const nativeSvg = document.querySelector("#nativeDiagram");
+const offsets = {
+  sinn: { x: 0, y: 0.9589207469713837 },
+  beitrag: { x: -20.435381347809084, y: -21.517259393761293 },
+  deutung: { x: 6.584346872295868, y: -30.626012619494364 },
+  zufall: { x: -4.641270515548179, y: -1.7255868435150954 },
+};
+localStorage.setItem(
+  "schauwerk.native-viewer.layout.v1." + nativeSvg.dataset.inputDigest,
+  JSON.stringify(offsets)
+);
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+try {
+  for (let i = 0; i < 180; i++) {
+    if (document.querySelector("#nativeCanvas")?.style.transform.includes("scale(")
+      && document.querySelector("#native-node-deutung")?.hasAttribute("transform")) break;
+    await new Promise(done => setTimeout(done, 30));
+  }
+  const svg = document.querySelector("#nativeDiagram");
+  if (!svg.querySelector("#native-node-deutung")?.hasAttribute("transform"))
+    throw new Error("stored node offset not applied");
+  for (const id of ["e11", "e20", "e26"]) {
+    const path = svg.querySelector("#native-edge-" + id + " > path");
+    if (!path?.getAttribute("d")?.includes(" L "))
+      throw new Error(id + " corridor was replaced by cubic: " + path?.getAttribute("d"));
+  }
+  const edges = [...svg.querySelectorAll('[data-source-kind="edge"]')];
+  const source = JSON.parse(document.querySelector("#nativeModel").textContent);
+  const pairs = new Map(source.edges.map(e => [String(e.id), [String(e.from), String(e.to)]]));
+  const cards = [...svg.querySelectorAll('[data-source-kind="node"]')].map(node => [
+    node.dataset.sourceId, node.querySelector(":scope > rect").getBoundingClientRect()
+  ]);
+  for (const edge of edges) {
+    const path = [...edge.children].find(el => el instanceof SVGPathElement);
+    const pair = pairs.get(edge.dataset.sourceId);
+    const total = path.getTotalLength();
+    const matrix = path.getScreenCTM();
+    for (let j = 1, n = Math.ceil(total / 8); j < n; j++) {
+      const point = path.getPointAtLength(total * j / n).matrixTransform(matrix);
+      for (const [id, rect] of cards) {
+        if (pair.includes(id)) continue;
+        if (point.x > rect.left + 2 && point.x < rect.right - 2
+          && point.y > rect.top + 2 && point.y < rect.bottom - 2)
+          throw new Error(edge.dataset.sourceId + " pierces " + id);
+      }
+    }
+  }
+  const labels = edges.map(edge => [
+    edge.dataset.sourceId,
+    [...edge.children].find(el => el instanceof SVGRectElement).getBoundingClientRect()
+  ]);
+  const overlap = (a,b) =>
+    Math.min(a.right,b.right)-Math.max(a.left,b.left)>2 &&
+    Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>2;
+  for (const [edge,label] of labels) for (const [id,card] of cards)
+    if (overlap(label,card)) throw new Error(edge + " label overlaps " + id);
+  for (let i = 0; i < labels.length; i++) for (let j = i+1; j < labels.length; j++)
+    if (overlap(labels[i][1],labels[j][1]))
+      throw new Error(labels[i][0] + " label overlaps " + labels[j][0]);
+  document.documentElement.dataset.savedDragRegression = "pass";
+} catch(error) {
+  document.documentElement.dataset.savedDragRegression = "fail";
+  document.documentElement.dataset.savedDragRegressionError = String(error?.message || error);
+}
+</script>
+"""
+    index.write_text(source.replace(marker, injection), encoding="utf-8")
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        proc = subprocess.run(
+            [chrome, "--headless=new",
+             f"--user-data-dir={tmp_path / 'profile'}", "--no-first-run",
+             "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+             "--virtual-time-budget=18000", "--dump-dom",
+             f"http://127.0.0.1:{server.server_address[1]}/"],
+            capture_output=True, text=True, timeout=40, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert proc.returncode == 0, proc.stderr
+    assert 'data-saved-drag-regression="pass"' in proc.stdout, (
+        proc.stdout[-2400:] + proc.stderr[-1200:]
+    )
+
+
+
+def test_knowledge_map_paths_must_not_pierce_own_endpoint_cards(
+    tmp_path: Path,
+) -> None:
+    """The real SVG guard rejects source- and target-card interior crossings."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for own-card route guard")
+        raise AssertionError("unreachable")
+
+    app = ASSETS["app.js"]
+    start = app.index("function knowledgePathAvoidsCards(")
+    end = app.index("function updateEdgeGeometry(", start)
+    actual_guard = app[start:end]
+    html = (
+        '<!doctype html><html><body>'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200"'
+        ' viewBox="0 0 2000 1200">'
+        '<path id="route" d="M 1497 343 L 1545 442.5" fill="none"/>'
+        '<rect id="label" width="70" height="20"/></svg><script>'
+        'const nodes=new Map([["sinn",{}],["orientierung",{}]]);'
+        'const liveBounds=id=>id==="sinn"?'
+        '{x:1521,y:244,width:250,height:166}:'
+        '{x:300,y:200,width:100,height:140};'
+        + actual_guard
+        + 'const edge={from:"sinn",to:"orientierung",'
+        'path:document.getElementById("route"),'
+        'labelRect:document.getElementById("label")};'
+        'const insideSource=knowledgePathAvoidsCards('
+        'edge,"M 1497 343 L 1545 442.5",1000,800);'
+        'const insideTarget=knowledgePathAvoidsCards('
+        'edge,"M 250 150 L 350 280",1000,800);'
+        'const safeBoundary=knowledgePathAvoidsCards('
+        'edge,"M 1521 343 L 1490 343",1000,800);'
+        'document.documentElement.dataset.ownCardRoute='
+        '(!insideSource && !insideTarget && safeBoundary)?"pass":"fail";'
+        '</script></body></html>'
+    )
+    case = tmp_path / "own-card.html"
+    case.write_text(html, encoding="utf-8")
+    result = subprocess.run(
+        [
+            chrome, "--headless=new", "--no-first-run", "--no-sandbox",
+            "--disable-gpu", "--disable-dev-shm-usage",
+            f"--user-data-dir={tmp_path / 'chrome-profile'}",
+            "--virtual-time-budget=1500", "--dump-dom", case.as_uri(),
+        ],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert 'data-own-card-route="pass"' in result.stdout, result.stdout[-1700:]
+
+
+def test_knowledge_map_nudged_cubic_label_follows_both_endpoints(
+    tmp_path: Path,
+) -> None:
+    """The label must follow the curve when both endpoint cards move together."""
+    import runpy
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for cubic label regression")
+        raise AssertionError("unreachable")
+    model = runpy.run_path(
+        str(ROOT / "tests/visual/test_sinn_knowledge_map.py")
+    )["_sinn_model"]()
+    output = tmp_path / "sinn"
+    build_native_viewer(model, output)
+    index = output / "index.html"
+    source = index.read_text(encoding="utf-8")
+    marker = '<script type="module" src="app.js"></script>'
+    assert source.count(marker) == 1
+    injection = r"""
+<script>
+const svg = document.querySelector("#nativeDiagram");
+const original = svg.querySelector("#native-edge-e01 > path");
+if (!original.getAttribute("d").includes(" C ")) {
+  throw new Error("e01 fixture is not cubic");
+}
+window.__baseMidY = original.getPointAtLength(original.getTotalLength()/2).y;
+localStorage.setItem(
+  "schauwerk.native-viewer.layout.v1." + svg.dataset.inputDigest,
+  JSON.stringify({erfahrung:{x:0,y:48},deutung:{x:0,y:48}})
+);
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+try {
+  for (let i = 0; i < 180; i++) {
+    if (document.querySelector("#native-node-erfahrung")?.hasAttribute("transform")
+        && document.querySelector("#native-node-deutung")?.hasAttribute("transform"))
+      break;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  const edge = document.querySelector("#native-edge-e01");
+  const curve = [...edge.children].find(child => child instanceof SVGPathElement);
+  const rect = [...edge.children].find(child => child instanceof SVGRectElement);
+  if (!curve.getAttribute("d").includes(" C ")) {
+    throw new Error("e01 moved route is no longer cubic");
+  }
+  const newMidY = curve.getPointAtLength(curve.getTotalLength()/2).y;
+  const dyCurve = newMidY - window.__baseMidY;
+  const dyLabel = rect.transform.baseVal.consolidate()?.matrix.f ?? 0;
+  if (Math.abs(dyCurve - 48) > 3) {
+    throw new Error("e01 path is not translated: dy=" + dyCurve +
+      " route=" + edge.dataset.route);
+  }
+  if (Math.abs(dyLabel - dyCurve) > 5) {
+    throw new Error("e01 label detached from cubic: path dy=" +
+      dyCurve + " label dy=" + dyLabel);
+  }
+  document.documentElement.dataset.cubicLabelDragRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.cubicLabelDragRegression = "fail";
+  document.documentElement.dataset.cubicLabelDragError =
+    String(error?.message || error);
+}
+</script>
+"""
+    index.write_text(source.replace(marker, injection), encoding="utf-8")
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        proc = subprocess.run(
+            [
+                chrome, "--headless=new",
+                f"--user-data-dir={tmp_path / 'profile'}", "--no-first-run",
+                "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+                "--virtual-time-budget=18000", "--dump-dom",
+                f"http://127.0.0.1:{server.server_address[1]}/",
+            ],
+            capture_output=True, text=True, timeout=40, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert proc.returncode == 0, proc.stderr
+    import re
+
+    error = re.search(r'data-cubic-label-drag-error="([^"]+)"', proc.stdout)
+    assert 'data-cubic-label-drag-regression="pass"' in proc.stdout, (
+        (error.group(1) if error else "missing Chrome status") + proc.stderr[-450:]
+    )
+
+def test_knowledge_map_nudged_polyline_label_follows_both_endpoints(
+    tmp_path: Path,
+) -> None:
+    """The label must follow the curve when both endpoint cards move together."""
+    import runpy
+
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for polyline label regression")
+        raise AssertionError("unreachable")
+    model = runpy.run_path(
+        str(ROOT / "tests/visual/test_sinn_knowledge_map.py")
+    )["_sinn_model"]()
+    output = tmp_path / "sinn"
+    build_native_viewer(model, output)
+    index = output / "index.html"
+    source = index.read_text(encoding="utf-8")
+    marker = '<script type="module" src="app.js"></script>'
+    assert source.count(marker) == 1
+    injection = r"""
+<script>
+const svg = document.querySelector("#nativeDiagram");
+const original = svg.querySelector("#native-edge-e13 > path");
+if (!original.getAttribute("d").includes(" L ")) {
+  throw new Error("e13 fixture is not polyline");
+}
+window.__baseMidY = original.getPointAtLength(original.getTotalLength()/2).y;
+localStorage.setItem(
+  "schauwerk.native-viewer.layout.v1." + svg.dataset.inputDigest,
+  JSON.stringify({handeln:{x:0,y:-48},wirksamkeit:{x:0,y:-48}})
+);
+</script>
+<script type="module" src="app.js"></script>
+<script type="module">
+try {
+  for (let i = 0; i < 180; i++) {
+    if (document.querySelector("#native-node-handeln")?.hasAttribute("transform")
+        && document.querySelector("#native-node-wirksamkeit")?.hasAttribute("transform"))
+      break;
+    await new Promise(resolve => setTimeout(resolve, 30));
+  }
+  const edge = document.querySelector("#native-edge-e13");
+  const curve = [...edge.children].find(child => child instanceof SVGPathElement);
+  const rect = [...edge.children].find(child => child instanceof SVGRectElement);
+  if (!curve.getAttribute("d").includes(" L ")) {
+    throw new Error("e13 moved route is no longer polyline");
+  }
+  const newMidY = curve.getPointAtLength(curve.getTotalLength()/2).y;
+  const dyCurve = newMidY - window.__baseMidY;
+  const dyLabel = rect.transform.baseVal.consolidate()?.matrix.f ?? 0;
+  if (Math.abs(dyCurve + 48) > 3) {
+    throw new Error("e13 path is not translated: dy=" + dyCurve +
+      " route=" + edge.dataset.route);
+  }
+  if (Math.abs(dyLabel - dyCurve) > 5) {
+    throw new Error("e13 label detached from polyline: path dy=" +
+      dyCurve + " label dy=" + dyLabel);
+  }
+  document.documentElement.dataset.polylineLabelDragRegression = "pass";
+} catch (error) {
+  document.documentElement.dataset.polylineLabelDragRegression = "fail";
+  document.documentElement.dataset.polylineLabelDragError =
+    String(error?.message || error);
+}
+</script>
+"""
+    index.write_text(source.replace(marker, injection), encoding="utf-8")
+    class QuietHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+            return
+    server = ThreadingHTTPServer(
+        ("127.0.0.1", 0), partial(QuietHandler, directory=str(output))
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        proc = subprocess.run(
+            [
+                chrome, "--headless=new",
+                f"--user-data-dir={tmp_path / 'profile'}", "--no-first-run",
+                "--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox",
+                "--virtual-time-budget=18000", "--dump-dom",
+                f"http://127.0.0.1:{server.server_address[1]}/",
+            ],
+            capture_output=True, text=True, timeout=40, check=False,
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+    assert proc.returncode == 0, proc.stderr
+    import re
+
+    error = re.search(r'data-polyline-label-drag-error="([^"]+)"', proc.stdout)
+    assert 'data-polyline-label-drag-regression="pass"' in proc.stdout, (
+        (error.group(1) if error else "missing Chrome status") + proc.stderr[-450:]
+    )
