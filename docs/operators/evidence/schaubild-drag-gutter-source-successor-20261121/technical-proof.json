@@ -11,12 +11,12 @@
     "production_deployed",
     "physical_ipad_safari_acceptance"
   ],
-  "evidence_digest": "a0faca308a0cde74784ecf2c1fb152fe1f5da4f90102ccb3a9da5c1b844ea585",
+  "evidence_digest": "efbf1b4b892eb4a20f6e880823dfe48344f89ee81387435bf7d691a746e42122",
   "schema_version": "schauwerk-schaubild-drag-gutter-source-successor.v1",
   "source_bindings": {
-    "src/schauwerk/resources/native_viewer/assets.py": "dc05c5a38e6cc292ba587b92ac6dfee7449dd54af3bddb38b0c8a661d221bfe7",
+    "src/schauwerk/resources/native_viewer/assets.py": "7ba9d50f7f21e4f098427d2002e399d5500edeb05b1bbbe58b8cbff49c70fa74",
     "tests/visual/test_native_canvas_smart_integration.py": "037aeee3d3c465ec9e7066638a5a5fe19ddeb841133d75ce47248a0c7044c2b2",
-    "tests/visual/test_native_viewer_browser.py": "5ff8ea9d9a8d3ad7c2a6a135c4455fab992f097487354aceeab8ca83e1b3bb6b"
+    "tests/visual/test_native_viewer_browser.py": "39a01ae822db66b88483f7eef44cd25487d49fa62e8c955302d904b63d27a91b"
   },
   "source_mode": "source-code-successor",
   "source_pr": 266,
@@ -26,12 +26,15 @@
     "chrome_green_task": "8b839226fcf74b8c9716e5ad",
     "chrome_red_task": "02748815101e4671a8b68978",
     "edge_count": 26,
+    "endpoint_card_self_penetration_green_task": "bdc60586f5b0426aa38d6b39",
+    "endpoint_card_self_penetration_red_task": "857535f7cc6c43089d374036",
     "full_ci": "pending_exact_head",
     "native_viewer_suite_task": "b7937695ffd94136a3c3f14d",
     "node_count": 19,
     "node_offsets_replayed": 4,
     "node_self_loop_harness": "passed_with_document_mode_explicit",
-    "reported_svg": "Schaubild (4).svg"
+    "reported_svg": "Schaubild (4).svg",
+    "review_p2_endpoint_card": "github:heimgewebe/schauwerk#266:discussion_r4651159235"
   },
   "visual_acceptance": "not_inherited"
 }

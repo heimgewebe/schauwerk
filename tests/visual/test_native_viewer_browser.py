@@ -13,6 +13,7 @@ from urllib.request import urlopen
 
 import pytest
 
+from schauwerk.resources.native_viewer.assets import ASSETS
 from schauwerk.visual.native_document import (
     MAX_NATIVE_ABS_COORDINATE,
     json_canvas_to_editing_document,
@@ -2885,3 +2886,56 @@ try {
     assert 'data-saved-drag-regression="pass"' in proc.stdout, (
         proc.stdout[-2400:] + proc.stderr[-1200:]
     )
+
+
+
+def test_knowledge_map_paths_must_not_pierce_own_endpoint_cards(
+    tmp_path: Path,
+) -> None:
+    """The real SVG guard rejects source- and target-card interior crossings."""
+    chrome = _chrome()
+    if chrome is None:
+        _skip_or_fail_browser("Chrome unavailable for own-card route guard")
+        raise AssertionError("unreachable")
+
+    app = ASSETS["app.js"]
+    start = app.index("function knowledgePathAvoidsCards(")
+    end = app.index("function updateEdgeGeometry(", start)
+    actual_guard = app[start:end]
+    html = (
+        '<!doctype html><html><body>'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200"'
+        ' viewBox="0 0 2000 1200">'
+        '<path id="route" d="M 1497 343 L 1545 442.5" fill="none"/>'
+        '<rect id="label" width="70" height="20"/></svg><script>'
+        'const nodes=new Map([["sinn",{}],["orientierung",{}]]);'
+        'const liveBounds=id=>id==="sinn"?'
+        '{x:1521,y:244,width:250,height:166}:'
+        '{x:300,y:200,width:100,height:140};'
+        + actual_guard
+        + 'const edge={from:"sinn",to:"orientierung",'
+        'path:document.getElementById("route"),'
+        'labelRect:document.getElementById("label")};'
+        'const insideSource=knowledgePathAvoidsCards('
+        'edge,"M 1497 343 L 1545 442.5",1000,800);'
+        'const insideTarget=knowledgePathAvoidsCards('
+        'edge,"M 250 150 L 350 280",1000,800);'
+        'const safeBoundary=knowledgePathAvoidsCards('
+        'edge,"M 1521 343 L 1490 343",1000,800);'
+        'document.documentElement.dataset.ownCardRoute='
+        '(!insideSource && !insideTarget && safeBoundary)?"pass":"fail";'
+        '</script></body></html>'
+    )
+    case = tmp_path / "own-card.html"
+    case.write_text(html, encoding="utf-8")
+    result = subprocess.run(
+        [
+            chrome, "--headless=new", "--no-first-run", "--no-sandbox",
+            "--disable-gpu", "--disable-dev-shm-usage",
+            f"--user-data-dir={tmp_path / 'chrome-profile'}",
+            "--virtual-time-budget=1500", "--dump-dom", case.as_uri(),
+        ],
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert 'data-own-card-route="pass"' in result.stdout, result.stdout[-1700:]

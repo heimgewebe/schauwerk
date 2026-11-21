@@ -1966,9 +1966,12 @@ function knowledgePathAvoidsCards(edge, candidate, labelX, labelY) {
       };
       if (labelX + labelW / 2 > r.minX && labelX - labelW / 2 < r.maxX
         && labelY + labelH / 2 > r.minY && labelY - labelH / 2 < r.maxY) return false;
-      if (id !== edge.from && id !== edge.to
-        && bounds.x < r.maxX && bounds.x + bounds.width > r.minX
-        && bounds.y < r.maxY && bounds.y + bounds.height > r.minY) foreign.push(r);
+      // The first/last exact endpoint may touch its own card boundary.
+      // No other part of a route may travel through either endpoint card.
+      if (bounds.x < r.maxX && bounds.x + bounds.width > r.minX
+        && bounds.y < r.maxY && bounds.y + bounds.height > r.minY) {
+        foreign.push(r);
+      }
     }
     if (!foreign.length) return true;
     const steps = Math.max(2, Math.min(350, Math.ceil(length / 8)));
